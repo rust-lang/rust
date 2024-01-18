@@ -71,14 +71,17 @@ impl Definition {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
+        rename_external: bool,
     ) -> Result<SourceChange> {
         // self.krate() returns None if
         // self is a built-in attr, built-in type or tool module.
         // it is not allowed for these defs to be renamed.
         // cases where self.krate() is None is handled below.
         if let Some(krate) = self.krate(sema.db) {
-            if !krate.origin(sema.db).is_local() {
-                bail!("Cannot rename a non-local definition.")
+            // Can we not rename non-local items?
+            // Then bail if non-local
+            if !rename_external && !krate.origin(sema.db).is_local() {
+                bail!("Cannot rename a non-local definition. Set `renameExternalItems` to `true` to allow renaming for this item.")
             }
         }
 

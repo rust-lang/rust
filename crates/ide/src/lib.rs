@@ -680,8 +680,9 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
+        rename_external: bool,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| rename::rename(db, position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name, rename_external))
     }
 
     pub fn prepare_rename(

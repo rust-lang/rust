@@ -1503,6 +1503,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.rename.allowExternalItems": {
+                    "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.runnables.command": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                     "default": null,
