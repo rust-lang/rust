@@ -168,7 +168,9 @@ const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZeroUsize>,
     step_expand: Option<NonZeroUsize>,
 ) -> bool {
-    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() < mem::align_of::<DEST>() } {
+    // Require matching alignments because an alignment-changing realloc is inefficient on many
+    // system allocators and better implementations would require the unstable Allocator trait.
+    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
         return false;
     }
 
@@ -188,7 +190,8 @@ const fn in_place_collectible<DEST, SRC>(
 
 const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
     if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
-        return src_cap > 0;
+        // FIXME: use unreachable! once that works in const
+        panic!("in_place_collectible() prevents this");
     }
 
     // If src type size is an integer multiple of the destination type size then
@@ -276,8 +279,8 @@ where
         let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
         src.forget_allocation_drop_remaining();
 
-        // Adjust the allocation if the alignment didn't match or the source had a capacity in bytes
-        // that wasn't a multiple of the destination type size.
+        // Adjust the allocation if the source had a capacity in bytes that wasn't a multiple
+        // of the destination type size.
         // Since the discrepancy should generally be small this should only result in some
         // bookkeeping updates and no memmove.
         if needs_realloc::<I::Src, T>(src_cap, dst_cap) {
@@ -290,7 +293,7 @@ where
                 let src_size = mem::size_of::<I::Src>().unchecked_mul(src_cap);
                 let old_layout = Layout::from_size_align_unchecked(src_size, src_align);
 
-                // The must be equal or smaller for in-place iteration to be possible
+                // The allocation must be equal or smaller for in-place iteration to be possible
                 // therefore the new layout must be ≤ the old one and therefore valid.
                 let dst_align = mem::align_of::<T>();
                 let dst_size = mem::size_of::<T>().unchecked_mul(dst_cap);
