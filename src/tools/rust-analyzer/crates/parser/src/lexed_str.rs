@@ -369,6 +369,7 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
             "non-ASCII character in byte string literal"
         }
         EscapeError::NonAsciiCharInByte => "non-ASCII character in raw byte string literal",
+        EscapeError::NulInCStr => "null character in C string literal",
         EscapeError::UnskippedWhitespaceWarning => "",
         EscapeError::MultipleSkippedLinesWarning => "",
     }
