@@ -1344,7 +1344,7 @@ dependencies = [
  "fluent-syntax",
  "intl-memoizer",
  "intl_pluralrules",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "self_cell 0.10.3",
  "smallvec",
  "unic-langid",
@@ -2118,7 +2118,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -2374,7 +2374,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "perf-event-open-sys",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "smallvec",
 ]
 
@@ -2942,7 +2942,7 @@ checksum = "c4e8e505342045d397d0b6674dcb82d6faf5cf40484d30eeb88fc82ef14e903f"
 dependencies = [
  "datafrog",
  "log",
- "rustc-hash",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]
@@ -3316,6 +3316,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc-hash"
+version = "2.0.0"
+source = "git+https://github.com/adamreichold/rustc-hash.git?branch=small-strings#6f0afc1216c5a6e67f0829facf466839ab7d845a"
+
+[[package]]
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
@@ -3675,7 +3680,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_arena",
@@ -4355,7 +4360,7 @@ name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
  "derivative",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4710,7 +4715,7 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "serde",
  "serde_json",
 ]
@@ -5705,7 +5710,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
 dependencies = [
- "rustc-hash",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]
