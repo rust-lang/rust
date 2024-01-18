@@ -220,8 +220,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.warn_if_unreachable(expr.hir_id, expr.span, "expression");
         }
 
-        // Hide the outer diverging and has_errors flags.
+        // Whether a past expression diverges doesn't affect typechecking of this expression, so we
+        // reset `diverges` while checking `expr`.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
+
+        if self.is_whole_body.replace(false) {
+            // If this expression is the whole body and the function diverges because of its
+            // arguments, we check this here to ensure the body is considered to diverge.
+            self.diverges.set(self.function_diverges_because_of_empty_arguments.get())
+        };
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
