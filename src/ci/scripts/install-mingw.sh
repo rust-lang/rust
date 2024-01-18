@@ -13,14 +13,6 @@ MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 
 if isWindows; then
-    # echo "Path of / : $(cygpath -w /)"
-    # echo "PATH: $PATH"
-    # echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
-    # echo "MSYSTEM: ${MSYSTEM-unset}"
-    # echo "MAJAHA 3: $(cygpath -w $(which git))"
-    # echo "MAJAHA 3: $(cygpath -w $(which python))"
-    # echo "GITHUB_PATH: $GITHUB_PATH"
-    # cat "$GITHUB_PATH"
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -33,7 +25,7 @@ if isWindows; then
             mingw_archive="${MINGW_ARCHIVE_64}"
             ;;
         *aarch64*)
-            # aarch64 is a cross-compiled target. Use the x86_64 #NOTE check msystem variable CI
+            # aarch64 is a cross-compiled target. Use the x86_64
             # mingw, since that's the host architecture.
             bits=64
             arch=x86_64

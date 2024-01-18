@@ -54,7 +54,7 @@ function isLinux {
 
 function isMingwBuild {
     if isGitHubActions; then
-        [[ foooa == *a ]]
+        [[ "${CI_JOB_NAME}" == *mingw ]]
         return
     else
         echo "isMingwBuild only works inside CI!"
