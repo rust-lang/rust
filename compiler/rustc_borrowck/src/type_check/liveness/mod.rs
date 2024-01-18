@@ -6,6 +6,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use std::rc::Rc;
 
@@ -13,7 +14,7 @@ use crate::{
     constraints::OutlivesConstraintSet,
     facts::{AllFacts, AllFactsExt},
     location::LocationTable,
-    region_infer::values::{LivenessValues, RegionValueElements},
+    region_infer::values::LivenessValues,
     universal_regions::UniversalRegions,
 };
 
@@ -34,7 +35,7 @@ mod trace;
 pub(super) fn generate<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &Rc<RegionValueElements>,
+    elements: &Rc<DenseLocationMap>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_table: &LocationTable,
