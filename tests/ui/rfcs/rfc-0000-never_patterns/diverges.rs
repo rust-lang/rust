@@ -13,12 +13,12 @@ fn never_arg(!: Void) -> u32 {}
 
 fn ref_never_arg(&!: &Void) -> u32 {}
 
-// fn never_let() -> u32 {
-//     let ptr: *const Void = std::ptr::null();
-//     unsafe {
-//         let ! = *ptr;
-//     }
-// }
+fn never_let() -> u32 {
+    let ptr: *const Void = std::ptr::null();
+    unsafe {
+        let ! = *ptr;
+    }
+}
 
 fn never_match() -> u32 {
     let ptr: *const Void = std::ptr::null();

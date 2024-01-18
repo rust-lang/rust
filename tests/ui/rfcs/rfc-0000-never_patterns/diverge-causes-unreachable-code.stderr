@@ -24,7 +24,18 @@ LL |     println!();
    = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unreachable statement
-  --> $DIR/diverge-causes-unreachable-code.rs:33:5
+  --> $DIR/diverge-causes-unreachable-code.rs:25:5
+   |
+LL |         let ! = *ptr;
+   |             - any code following a never pattern is unreachable
+LL |     }
+LL |     println!();
+   |     ^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/diverge-causes-unreachable-code.rs:34:5
    |
 LL |         match *ptr { ! };
    |         ---------------- any code following this `match` expression is unreachable, as all arms diverge
@@ -34,5 +45,5 @@ LL |     println!();
    |
    = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
