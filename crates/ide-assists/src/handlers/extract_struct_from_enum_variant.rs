@@ -441,6 +441,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_with_marco() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+macro_rules! foo {
+    ($x:expr) => {
+        $x
+    };
+}
+
+enum TheEnum {
+    TheVariant$0 { the_field: u8 },
+}
+
+fn main() {
+    foo![TheEnum::TheVariant { the_field: 42 }];
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($x:expr) => {
+        $x
+    };
+}
+
+struct TheVariant{ the_field: u8 }
+
+enum TheEnum {
+    TheVariant(TheVariant),
+}
+
+fn main() {
+    foo![TheEnum::TheVariant { the_field: 42 }];
+}
+"#,
+        );
+    }
+
+    #[test]
     fn issue_16197() {
         check_assist(
             extract_struct_from_enum_variant,
