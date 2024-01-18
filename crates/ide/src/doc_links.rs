@@ -368,16 +368,21 @@ fn rewrite_intra_doc_link(
 ) -> Option<(String, String)> {
     let (link, ns) = parse_intra_doc_link(target);
 
+    let (link, anchor) = match link.split_once('#') {
+        Some((new_link, anchor)) => (new_link, Some(anchor)),
+        None => (link, None),
+    };
+
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let mut url = get_doc_base_urls(db, resolved, None, None).0?;
 
-    let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
+    let (_, file, _) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
         url = url.join(&path).ok()?;
     }
 
     url = url.join(&file).ok()?;
-    url.set_fragment(frag.as_deref());
+    url.set_fragment(anchor);
 
     Some((url.into(), strip_prefixes_suffixes(title).to_string()))
 }
