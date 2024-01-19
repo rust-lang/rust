@@ -272,6 +272,7 @@ const STACK_OFFSET: usize = 1 << 30;
 const HEAP_OFFSET: usize = 1 << 29;
 
 impl Address {
+    #[allow(clippy::double_parens)]
     fn from_bytes(it: &[u8]) -> Result<Self> {
         Ok(Address::from_usize(from_bytes!(usize, it)))
     }
@@ -1661,6 +1662,7 @@ impl Evaluator<'_> {
         })
     }
 
+    #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
         let ty = &konst.data(Interner).ty;
         let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
