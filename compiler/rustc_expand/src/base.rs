@@ -666,8 +666,8 @@ pub enum SyntaxExtensionKind {
     /// A token-based attribute macro.
     Attr(
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
-        /// The first TokenSteam is the attribute itself, the second is the annotated item.
-        /// The produced TokenSteam replaces the input TokenSteam.
+        /// The first TokenStream is the attribute itself, the second is the annotated item.
+        /// The produced TokenStream replaces the input TokenStream.
         Box<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
@@ -687,7 +687,7 @@ pub enum SyntaxExtensionKind {
     /// A token-based derive macro.
     Derive(
         /// An expander with signature TokenStream -> TokenStream.
-        /// The produced TokenSteam is appended to the input TokenSteam.
+        /// The produced TokenStream is appended to the input TokenStream.
         ///
         /// FIXME: The text above describes how this should work. Currently it
         /// is handled identically to `LegacyDerive`. It should be migrated to

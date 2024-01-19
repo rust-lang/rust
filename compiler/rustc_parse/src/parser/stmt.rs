@@ -389,7 +389,7 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
-                    sugg: errors::WrapExpressionInParentheses {
+                    sugg: errors::WrapInParentheses::Expression {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
                     },
@@ -400,12 +400,19 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
-                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
-                sugg: errors::WrapExpressionInParentheses {
+            let sugg = match &trailing.kind {
+                ExprKind::MacCall(mac) => errors::WrapInParentheses::MacroArgs {
+                    left: mac.args.dspan.open,
+                    right: mac.args.dspan.close,
+                },
+                _ => errors::WrapInParentheses::Expression {
                     left: trailing.span.shrink_to_lo(),
                     right: trailing.span.shrink_to_hi(),
                 },
+            };
+            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
+                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                sugg,
             });
         }
     }
