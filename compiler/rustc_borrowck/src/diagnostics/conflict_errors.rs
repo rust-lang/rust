@@ -26,6 +26,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
 
@@ -1304,14 +1305,96 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place: Place<'tcx>,
         borrowed_place: Place<'tcx>,
     ) {
-        if let ([ProjectionElem::Index(_)], [ProjectionElem::Index(_)]) =
-            (&place.projection[..], &borrowed_place.projection[..])
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
+
+        if let ([ProjectionElem::Index(index1)], [ProjectionElem::Index(index2)])
+        | (
+            [ProjectionElem::Deref, ProjectionElem::Index(index1)],
+            [ProjectionElem::Deref, ProjectionElem::Index(index2)],
+        ) = (&place.projection[..], &borrowed_place.projection[..])
         {
-            err.help(
-                "consider using `.split_at_mut(position)` or similar method to obtain \
-                     two mutable non-overlapping sub-slices",
-            )
-            .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
+            let mut note_default_suggestion = || {
+                err.help(
+                    "consider using `.split_at_mut(position)` or similar method to obtain \
+                         two mutable non-overlapping sub-slices",
+                )
+                .help("consider using `.swap(index_1, index_2)` to swap elements at the specified indices");
+            };
+
+            let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else {
+                note_default_suggestion();
+                return;
+            };
+
+            let mut expr_finder =
+                FindExprBySpan::new(self.body.local_decls[*index1].source_info.span);
+            expr_finder.visit_expr(hir.body(body_id).value);
+            let Some(index1) = expr_finder.result else {
+                note_default_suggestion();
+                return;
+            };
+
+            expr_finder = FindExprBySpan::new(self.body.local_decls[*index2].source_info.span);
+            expr_finder.visit_expr(hir.body(body_id).value);
+            let Some(index2) = expr_finder.result else {
+                note_default_suggestion();
+                return;
+            };
+
+            let sm = tcx.sess.source_map();
+
+            let Ok(index1_str) = sm.span_to_snippet(index1.span) else {
+                note_default_suggestion();
+                return;
+            };
+
+            let Ok(index2_str) = sm.span_to_snippet(index2.span) else {
+                note_default_suggestion();
+                return;
+            };
+
+            let Some(object) = hir.parent_id_iter(index1.hir_id).find_map(|id| {
+                if let hir::Node::Expr(expr) = tcx.hir_node(id)
+                    && let hir::ExprKind::Index(obj, ..) = expr.kind
+                {
+                    Some(obj)
+                } else {
+                    None
+                }
+            }) else {
+                note_default_suggestion();
+                return;
+            };
+
+            let Ok(obj_str) = sm.span_to_snippet(object.span) else {
+                note_default_suggestion();
+                return;
+            };
+
+            let Some(swap_call) = hir.parent_id_iter(object.hir_id).find_map(|id| {
+                if let hir::Node::Expr(call) = tcx.hir_node(id)
+                    && let hir::ExprKind::Call(callee, ..) = call.kind
+                    && let hir::ExprKind::Path(qpath) = callee.kind
+                    && let hir::QPath::Resolved(None, res) = qpath
+                    && let hir::def::Res::Def(_, did) = res.res
+                    && tcx.is_diagnostic_item(sym::mem_swap, did)
+                {
+                    Some(call)
+                } else {
+                    None
+                }
+            }) else {
+                note_default_suggestion();
+                return;
+            };
+
+            err.span_suggestion(
+                swap_call.span,
+                "use `.swap()` to swap elements at the specified indices instead",
+                format!("{obj_str}.swap({index1_str}, {index2_str})"),
+                Applicability::MachineApplicable,
+            );
         }
     }
 
