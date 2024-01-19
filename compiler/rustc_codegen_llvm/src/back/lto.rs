@@ -687,6 +687,14 @@ impl ThinBufferMethods for ThinBuffer {
             slice::from_raw_parts(ptr, len)
         }
     }
+
+    fn thin_link_data(&self) -> &[u8] {
+        unsafe {
+            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
+            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
 }
 
 impl Drop for ThinBuffer {

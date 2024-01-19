@@ -708,6 +708,8 @@ pub(crate) unsafe fn codegen(
         //   asm from LLVM and use `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
+        let bc_index_out =
+            cgcx.output_filenames.temp_path(OutputType::ThinLinkBitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
         if config.bitcode_needed() {
@@ -716,6 +718,7 @@ pub(crate) unsafe fn codegen(
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
             let thin = ThinBuffer::new(llmod, config.emit_thin_lto);
             let data = thin.data();
+            let index_data = thin.thin_link_data();
 
             if let Some(bitcode_filename) = bc_out.file_name() {
                 cgcx.prof.artifact_size(
@@ -725,12 +728,31 @@ pub(crate) unsafe fn codegen(
                 );
             }
 
+            if let Some(thin_link_bitcode_filename) = bc_index_out.file_name() {
+                cgcx.prof.artifact_size(
+                    "llvm_bitcode_summary",
+                    thin_link_bitcode_filename.to_string_lossy(),
+                    index_data.len() as u64,
+                );
+
+                let _timer = cgcx.prof.generic_activity_with_arg(
+                    "LLVM_module_codegen_emit_bitcode_index",
+                    &*module.name,
+                );
+                if let Err(err) = fs::write(&bc_index_out, index_data) {
+                    dcx.emit_err(WriteBytecode { path: &bc_index_out, err });
+                }
+            }
+
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
-                if let Err(err) = fs::write(&bc_out, data) {
-                    dcx.emit_err(WriteBytecode { path: &bc_out, err });
+                {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "LLVM_module_codegen_emit_bitcode",
+                        &*module.name,
+                    );
+                    if let Err(err) = fs::write(&bc_out, data) {
+                        dcx.emit_err(WriteBytecode { path: &bc_out, err });
+                    }
                 }
             }
 

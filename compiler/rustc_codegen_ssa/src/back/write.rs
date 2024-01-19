@@ -107,6 +107,7 @@ pub struct ModuleConfig {
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
+    pub emit_thin_lto_index: bool,
     pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
@@ -231,6 +232,10 @@ impl ModuleConfig {
             ),
             emit_obj,
             emit_thin_lto: sess.opts.unstable_opts.emit_thin_lto,
+            emit_thin_lto_index: if_regular!(
+                sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
+                false
+            ),
             bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
@@ -282,6 +287,7 @@ impl ModuleConfig {
 
     pub fn bitcode_needed(&self) -> bool {
         self.emit_bc
+            || self.emit_thin_lto_index
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
@@ -628,6 +634,9 @@ fn produce_final_output_artifacts(
                 // check to figure out if we should delete .0.bc files, or keep
                 // them for making an rlib.
                 copy_if_one_unit(OutputType::Bitcode, true);
+            }
+            OutputType::ThinLinkBitcode => {
+                copy_if_one_unit(OutputType::ThinLinkBitcode, false);
             }
             OutputType::LlvmAssembly => {
                 copy_if_one_unit(OutputType::LlvmAssembly, false);
