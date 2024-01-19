@@ -1594,12 +1594,11 @@ impl DefWithBody {
         for diag in source_map.diagnostics() {
             match diag {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
-                    InactiveCode { node: node.clone(), cfg: cfg.clone(), opts: opts.clone() }
-                        .into(),
+                    InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into(),
                 ),
                 BodyDiagnostic::MacroError { node, message } => acc.push(
                     MacroError {
-                        node: node.clone().map(|it| it.into()),
+                        node: (*node).map(|it| it.into()),
                         precise_location: None,
                         message: message.to_string(),
                     }
@@ -1607,7 +1606,7 @@ impl DefWithBody {
                 ),
                 BodyDiagnostic::UnresolvedProcMacro { node, krate } => acc.push(
                     UnresolvedProcMacro {
-                        node: node.clone().map(|it| it.into()),
+                        node: (*node).map(|it| it.into()),
                         precise_location: None,
                         macro_name: None,
                         kind: MacroKind::ProcMacro,
@@ -1617,7 +1616,7 @@ impl DefWithBody {
                 ),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
                     UnresolvedMacroCall {
-                        macro_call: node.clone().map(|ast_ptr| ast_ptr.into()),
+                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
                         precise_location: None,
                         path: path.clone(),
                         is_bang: true,
@@ -1625,10 +1624,10 @@ impl DefWithBody {
                     .into(),
                 ),
                 BodyDiagnostic::UnreachableLabel { node, name } => {
-                    acc.push(UnreachableLabel { node: node.clone(), name: name.clone() }.into())
+                    acc.push(UnreachableLabel { node: *node, name: name.clone() }.into())
                 }
                 BodyDiagnostic::UndeclaredLabel { node, name } => {
-                    acc.push(UndeclaredLabel { node: node.clone(), name: name.clone() }.into())
+                    acc.push(UndeclaredLabel { node: *node, name: name.clone() }.into())
                 }
             }
         }
@@ -1715,7 +1714,7 @@ impl DefWithBody {
                             field_with_same_name: field_with_same_name
                                 .clone()
                                 .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
-                            assoc_func_with_same_name: assoc_func_with_same_name.clone(),
+                            assoc_func_with_same_name: *assoc_func_with_same_name,
                         }
                         .into(),
                     )
@@ -1931,8 +1930,7 @@ impl DefWithBody {
                         },
                         Either::Right(record_pat) => match source_map.pat_syntax(record_pat) {
                             Ok(source_ptr) => {
-                                if let Some(ptr) = source_ptr.value.clone().cast::<ast::RecordPat>()
-                                {
+                                if let Some(ptr) = source_ptr.value.cast::<ast::RecordPat>() {
                                     let root = source_ptr.file_syntax(db.upcast());
                                     let record_pat = ptr.to_node(&root);
                                     if record_pat.record_pat_field_list().is_some() {
