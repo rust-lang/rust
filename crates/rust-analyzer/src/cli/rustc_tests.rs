@@ -226,6 +226,7 @@ const SUPPORTED_DIAGNOSTICS: &[DiagnosticCode] = &[
 ];
 
 impl flags::RustcTests {
+    #[allow(clippy::redundant_locals)]
     pub fn run(self) -> Result<()> {
         let mut tester = Tester::new()?;
         let walk_dir = WalkDir::new(self.rustc_repo.join("tests/ui"));

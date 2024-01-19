@@ -392,6 +392,7 @@ fn unreachable_expand(
     ExpandResult::ok(call)
 }
 
+#[allow(clippy::never_loop)]
 fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
     // To determine the edition, we check the first span up the expansion
     // stack that does not have #[allow_internal_unstable(edition_panic)].

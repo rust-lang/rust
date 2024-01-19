@@ -225,6 +225,7 @@ impl fmt::Debug for HirFileIdRepr {
 }
 
 impl From<FileId> for HirFileId {
+    #[allow(clippy::let_unit_value)]
     fn from(id: FileId) -> Self {
         _ = Self::ASSERT_MAX_FILE_ID_IS_SAME;
         assert!(id.index() <= Self::MAX_HIR_FILE_ID, "FileId index {} is too large", id.index());
@@ -233,6 +234,7 @@ impl From<FileId> for HirFileId {
 }
 
 impl From<MacroFileId> for HirFileId {
+    #[allow(clippy::let_unit_value)]
     fn from(MacroFileId { macro_call_id: MacroCallId(id) }: MacroFileId) -> Self {
         _ = Self::ASSERT_MAX_FILE_ID_IS_SAME;
         let id = id.as_u32();
