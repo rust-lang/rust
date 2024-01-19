@@ -144,13 +144,13 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         }
     } else if let StmtKind::Local(local) = stmt.kind {
         if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
-            && !any_parent_is_automatically_derived(cx.tcx, local.hir_id)
             && let Some(init) = local.init
             && local.els.is_none()
             && !local.pat.span.from_expansion()
             && has_no_effect(cx, init)
             && let PatKind::Binding(_, _, ident, _) = local.pat.kind
             && ident.name.to_ident_string().starts_with('_')
+            && !any_parent_is_automatically_derived(cx.tcx, local.hir_id)
         {
             span_lint_hir(
                 cx,
