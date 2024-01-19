@@ -2495,14 +2495,7 @@ impl Trait {
         db.generic_params(GenericDefId::from(self.id))
             .type_or_consts
             .iter()
-            .filter(|(_, ty)| match ty {
-                TypeOrConstParamData::TypeParamData(ty)
-                    if ty.provenance != TypeParamProvenance::TypeParamList =>
-                {
-                    false
-                }
-                _ => true,
-            })
+            .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
     }
@@ -3872,10 +3865,7 @@ impl Type {
     }
 
     pub fn is_int_or_uint(&self) -> bool {
-        match self.ty.kind(Interner) {
-            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)) => true,
-            _ => false,
-        }
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)))
     }
 
     pub fn is_scalar(&self) -> bool {

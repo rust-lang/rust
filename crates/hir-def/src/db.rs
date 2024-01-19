@@ -259,10 +259,8 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
             None => continue,
         };
 
-        let segments = tt.split(|tt| match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => true,
-            _ => false,
-        });
+        let segments =
+            tt.split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
         for output in segments.skip(1) {
             match output {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "no_std" => {

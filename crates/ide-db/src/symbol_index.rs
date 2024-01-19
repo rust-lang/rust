@@ -383,10 +383,10 @@ impl Query {
     }
 
     fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {
-        match (is_trait_assoc_item, self.assoc_mode) {
-            (true, AssocSearchMode::Exclude) | (false, AssocSearchMode::AssocItemsOnly) => false,
-            _ => true,
-        }
+        !matches!(
+            (is_trait_assoc_item, self.assoc_mode),
+            (true, AssocSearchMode::Exclude) | (false, AssocSearchMode::AssocItemsOnly)
+        )
     }
 }
 
