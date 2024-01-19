@@ -56,8 +56,7 @@ fn data_moved() {
 fn run_fut<T>(fut: impl Future<Output = T>) -> T {
     use std::task::{Context, Poll, Waker};
 
-    let waker = Waker::noop();
-    let mut context = Context::from_waker(&waker);
+    let mut context = Context::from_waker(Waker::noop());
 
     let mut pinned = Box::pin(fut);
     loop {
