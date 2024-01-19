@@ -39,6 +39,7 @@ if isWindows; then
     esac
 
     if [[ "${CUSTOM_MINGW-0}" -eq 0 ]]; then
+        pacman -S --noconfirm pactoys
         pacboy -S --noconfirm toolchain:p
         # Maybe even:
         # pacboy -S --noconfirm clang:p ...
