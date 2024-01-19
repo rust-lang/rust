@@ -974,8 +974,8 @@ class RustBuild(object):
         # RUSTFLAGS, passing `-Awarnings` from RUSTFLAGS_BOOTSTRAP should override it).
         if "RUSTFLAGS_BOOTSTRAP" in env:
             env["RUSTFLAGS"] += " " + env["RUSTFLAGS_BOOTSTRAP"]
-
-        cargo_bin_path = os.path.join(self.bin_root(), "bin", "cargo")
+		cargo_bin_path = os.path.join(self.bin_root(), "bin") + \
+            os.pathsep + env["PATH"]
         if not os.path.isfile(cargo_bin_path):
             cargo_bin_path = os.getenv("RUST_TARGET_PATH") + "rust-snapshot/bin/cargo"
             env["PATH"] = os.path.dirname(cargo_bin_path) + os.pathsep + env["PATH"]
