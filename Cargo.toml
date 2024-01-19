@@ -105,7 +105,7 @@ dissimilar = "1.0.7"
 either = "1.9.0"
 expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
-  "inline-more",
+    "inline-more",
 ], default-features = false }
 indexmap = "2.1.0"
 itertools = "0.12.0"
@@ -118,9 +118,9 @@ semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [
-  "const_new",
-  "union",
-  "const_generics",
+    "const_new",
+    "union",
+    "const_generics",
 ] }
 smol_str = "0.2.1"
 text-size = "1.1.1"
@@ -138,8 +138,49 @@ xshell = "0.2.5"
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
 
+[workspace.lints.rust]
+rust_2018_idioms = "warn"
+unused_lifetimes = "warn"
+semicolon_in_expressions_from_macros = "warn"
+
 [workspace.lints.clippy]
+# TODO: Remove the tidy test once the lint table is stable
+
+# lint groups
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+restriction = { level = "allow", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+
+# allow following lints
 collapsible_if = "allow"
 needless_pass_by_value = "allow"
 nonminimal_bool = "allow"
 redundant_pattern_matching = "allow"
+# () makes a fine error in most cases
+result_unit_err = "allow"
+# We don't expose public APIs that matter like this
+len_without_is_empty = "allow"
+# We currently prefer explicit control flow return over `...?;` statements whose result is unused
+question_mark = "allow"
+# We have macros that rely on this currently
+enum_variant_names = "allow"
+# Builder pattern disagrees
+new_ret_no_self = "allow"
+non_canonical_clone_impl = "allow"
+non_canonical_partial_ord_impl = "allow"
+format_collect = "allow"
+
+# Following lints should be tackled at some point
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+# warn at following lints
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+rc_buffer = "warn"
+# FIXME enable this, we use this pattern a lot so its annoying work ...
+# str_to_string = "warn"
