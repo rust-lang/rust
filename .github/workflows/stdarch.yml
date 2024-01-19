@@ -41,9 +41,9 @@ jobs:
       run: |
           mkdir intel-sde
           cd intel-sde
-          dir=sde-external-9.14.0-2022-10-25-lin
+          dir=sde-external-9.33.0-2024-01-07-lin
           file=$dir.tar.xz
-          wget https://downloadmirror.intel.com/751535/$file
+          wget https://downloadmirror.intel.com/813591/$file
           tar xvf $file
           sudo mkdir /usr/share/intel-sde
           sudo cp -r $dir/* /usr/share/intel-sde
