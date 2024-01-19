@@ -1,40 +1,43 @@
-use crate::utils::remove_file;
+use crate::utils::{remove_file, run_command};
 
 use std::fs::remove_dir_all;
 
 #[derive(Default)]
-struct CleanArg {
-    all: bool,
+enum CleanArg {
+    /// `clean all`
+    All,
+    /// `clean ui-tests`
+    UiTests,
+    /// `clean --help`
+    #[default]
+    Help,
 }
 
 impl CleanArg {
-    fn new() -> Result<Option<Self>, String> {
-        let mut args = CleanArg::default();
-
+    fn new() -> Result<Self, String> {
         // We skip the binary and the "clean" option.
         for arg in std::env::args().skip(2) {
-            match arg.as_str() {
-                "all" => args.all = true,
-                "--help" => {
-                    Self::usage();
-                    return Ok(None);
-                }
-                a => return Err(format!("Unknown argument `{}`", a)),
-            }
+            return match arg.as_str() {
+                "all" => Ok(Self::All),
+                "ui-tests" => Ok(Self::UiTests),
+                "--help" => Ok(Self::Help),
+                a => Err(format!("Unknown argument `{}`", a)),
+            };
         }
-        Ok(Some(args))
+        Ok(Self::default())
     }
+}
 
-    fn usage() {
-        println!(
-            r#"
-    `clean` command help:
+fn usage() {
+    println!(
+        r#"
+`clean` command help:
 
-        all                      : Clean all data
-        --help                   : Show this help
-    "#
-        )
-    }
+    all                      : Clean all data
+    ui-tests                 : Clean ui tests
+    --help                   : Show this help
+"#
+    )
 }
 
 fn clean_all() -> Result<(), String> {
@@ -60,14 +63,25 @@ fn clean_all() -> Result<(), String> {
     Ok(())
 }
 
-pub fn run() -> Result<(), String> {
-    let args = match CleanArg::new()? {
-        Some(a) => a,
-        None => return Ok(()),
-    };
+fn clean_ui_tests() -> Result<(), String> {
+    run_command(
+        &[
+            &"find",
+            &"rust/build/x86_64-unknown-linux-gnu/test/ui/",
+            &"-name",
+            &"stamp",
+            &"-delete",
+        ],
+        None,
+    )?;
+    Ok(())
+}
 
-    if args.all {
-        clean_all()?;
+pub fn run() -> Result<(), String> {
+    match CleanArg::new()? {
+        CleanArg::All => clean_all()?,
+        CleanArg::UiTests => clean_ui_tests()?,
+        CleanArg::Help => usage(),
     }
     Ok(())
 }

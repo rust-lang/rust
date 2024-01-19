@@ -32,7 +32,6 @@ fn get_runners() -> Runners {
         ("Run failing rustc tests", test_failing_rustc),
     );
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
-    runners.insert("--clean-ui-tests", ("Clean ui tests", clean_ui_tests));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
     runners.insert("--std-tests", ("Run std tests", std_tests));
@@ -1096,20 +1095,6 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         }
         Ok(true)
     })
-}
-
-fn clean_ui_tests(_env: &Env, _args: &TestArg) -> Result<(), String> {
-    run_command(
-        &[
-            &"find",
-            &"rust/build/x86_64-unknown-linux-gnu/test/ui/",
-            &"-name",
-            &"stamp",
-            &"-delete",
-        ],
-        None,
-    )?;
-    Ok(())
 }
 
 fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
