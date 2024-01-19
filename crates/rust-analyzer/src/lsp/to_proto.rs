@@ -931,9 +931,9 @@ fn merge_text_and_snippet_edits(
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
-    let mut text_edits = edit.into_iter();
+    let text_edits = edit.into_iter();
 
-    while let Some(current_indel) = text_edits.next() {
+    for current_indel in text_edits {
         let new_range = {
             let insert_len =
                 TextSize::try_from(current_indel.insert.len()).unwrap_or(TextSize::from(u32::MAX));
@@ -956,7 +956,7 @@ fn merge_text_and_snippet_edits(
                 snippet_range
             };
 
-            let range = range(&line_index, snippet_range);
+            let range = range(line_index, snippet_range);
             let new_text = format!("${snippet_index}");
 
             edits.push(SnippetTextEdit {
@@ -1026,7 +1026,7 @@ fn merge_text_and_snippet_edits(
             snippet_range
         };
 
-        let range = range(&line_index, snippet_range);
+        let range = range(line_index, snippet_range);
         let new_text = format!("${snippet_index}");
 
         SnippetTextEdit {

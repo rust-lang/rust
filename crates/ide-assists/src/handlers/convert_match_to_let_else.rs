@@ -113,7 +113,7 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
         }
         _ => {
             cov_mark::hit!(extracting_arm_is_not_an_identity_expr);
-            return None;
+            None
         }
     }
 }

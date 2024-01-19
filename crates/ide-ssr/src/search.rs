@@ -56,7 +56,7 @@ impl MatchFinder<'_> {
         matches_out: &mut Vec<Match>,
     ) {
         if let Some(resolved_path) = pick_path_for_usages(pattern) {
-            let definition: Definition = resolved_path.resolution.clone().into();
+            let definition: Definition = resolved_path.resolution.into();
             for file_range in self.find_usages(usage_cache, definition).file_ranges() {
                 for node_to_match in self.find_nodes_to_match(resolved_path, file_range) {
                     if !is_search_permitted_ancestors(&node_to_match) {

@@ -387,7 +387,7 @@ impl chalk_ir::interner::HasInterner for Interner {
 macro_rules! has_interner {
     ($t:ty) => {
         impl HasInterner for $t {
-            type Interner = crate::Interner;
+            type Interner = $crate::Interner;
         }
     };
 }

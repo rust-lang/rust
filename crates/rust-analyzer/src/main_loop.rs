@@ -521,7 +521,7 @@ impl GlobalState {
 
                         if self.config.run_build_scripts() && workspaces_updated {
                             self.fetch_build_data_queue
-                                .request_op(format!("workspace updated"), ());
+                                .request_op("workspace updated".to_string(), ());
                         }
 
                         (Progress::End, None)
@@ -604,7 +604,7 @@ impl GlobalState {
                 if let Some(dir) = dir {
                     message += &format!(
                         ": {}",
-                        match dir.strip_prefix(&self.config.root_path()) {
+                        match dir.strip_prefix(self.config.root_path()) {
                             Some(relative_path) => relative_path.as_ref(),
                             None => dir.as_ref(),
                         }

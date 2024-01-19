@@ -202,7 +202,7 @@ pub fn layout_of_ty_query(
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
     let cx = LayoutCx { target: &target };
-    let dl = &*cx.current_data_layout();
+    let dl = cx.current_data_layout();
     let ty = normalize(db, trait_env.clone(), ty);
     let result = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => {
@@ -278,7 +278,7 @@ pub fn layout_of_ty_query(
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::HasErrorConst)? as u64;
+            let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
             let element = db.layout_of_ty(element.clone(), trait_env)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 

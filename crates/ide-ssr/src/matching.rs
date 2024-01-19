@@ -320,7 +320,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 kind.matches(code)?;
             }
             Constraint::Not(sub) => {
-                if self.check_constraint(&*sub, code).is_ok() {
+                if self.check_constraint(sub, code).is_ok() {
                     fail_match!("Constraint {:?} failed for '{}'", constraint, code.text());
                 }
             }

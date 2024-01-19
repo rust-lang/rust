@@ -425,7 +425,7 @@ fn clone_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<t
         let name = &adt.name;
         let patterns = adt.shape.as_pattern(span, name);
         let exprs = adt.shape.as_pattern_map(name, |it| quote! {span => #it .clone() }, span);
-        let arms = patterns.into_iter().zip(exprs.into_iter()).map(|(pat, expr)| {
+        let arms = patterns.into_iter().zip(exprs).map(|(pat, expr)| {
             let fat_arrow = fat_arrow(span);
             quote! {span =>
                 #pat #fat_arrow #expr,

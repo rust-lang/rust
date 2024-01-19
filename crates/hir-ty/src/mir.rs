@@ -159,7 +159,7 @@ impl<V, T> ProjectionElem<V, T> {
                 }
                 _ => {
                     never!("Overloaded deref on type {} is not a projection", base.display(db));
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
@@ -168,7 +168,7 @@ impl<V, T> ProjectionElem<V, T> {
                 }
                 ty => {
                     never!("Only adt has field, found {:?}", ty);
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::Field(Either::Right(f)) => match &base.kind(Interner) {
@@ -183,14 +183,14 @@ impl<V, T> ProjectionElem<V, T> {
                     }),
                 _ => {
                     never!("Only tuple has tuple field");
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::ClosureField(f) => match &base.kind(Interner) {
                 TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
                 _ => {
                     never!("Only closure has closure field");
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
@@ -198,7 +198,7 @@ impl<V, T> ProjectionElem<V, T> {
                     TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
                     _ => {
                         never!("Overloaded index is not a projection");
-                        return TyKind::Error.intern(Interner);
+                        TyKind::Error.intern(Interner)
                     }
                 }
             }
@@ -217,12 +217,12 @@ impl<V, T> ProjectionElem<V, T> {
                 TyKind::Slice(_) => base.clone(),
                 _ => {
                     never!("Subslice projection should only happen on slice and array");
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::OpaqueCast(_) => {
                 never!("We don't emit these yet");
-                return TyKind::Error.intern(Interner);
+                TyKind::Error.intern(Interner)
             }
         }
     }
@@ -299,7 +299,7 @@ pub struct Place {
 impl Place {
     fn is_parent(&self, child: &Place, store: &ProjectionStore) -> bool {
         self.local == child.local
-            && child.projection.lookup(store).starts_with(&self.projection.lookup(store))
+            && child.projection.lookup(store).starts_with(self.projection.lookup(store))
     }
 
     /// The place itself is not included

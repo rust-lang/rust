@@ -148,7 +148,7 @@ impl MirLowerCtx<'_> {
                         let temp: Place = self.temp(ref_ty, current, expr_id.into())?.into();
                         self.push_assignment(
                             current,
-                            temp.clone(),
+                            temp,
                             Operand::Static(s).into(),
                             expr_id.into(),
                         );
@@ -304,7 +304,7 @@ impl MirLowerCtx<'_> {
         let Some(current) = self.lower_call(
             index_fn_op,
             Box::new([Operand::Copy(place), index_operand]),
-            result.clone(),
+            result,
             current,
             false,
             span,
@@ -338,7 +338,7 @@ impl MirLowerCtx<'_> {
         let ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), source_ty.clone()).intern(Interner);
         let target_ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), target_ty).intern(Interner);
         let ref_place: Place = self.temp(ty_ref, current, span)?.into();
-        self.push_assignment(current, ref_place.clone(), Rvalue::Ref(borrow_kind, place), span);
+        self.push_assignment(current, ref_place, Rvalue::Ref(borrow_kind, place), span);
         let deref_trait = self
             .resolve_lang_item(trait_lang_item)?
             .as_trait()
@@ -359,7 +359,7 @@ impl MirLowerCtx<'_> {
         let Some(current) = self.lower_call(
             deref_fn_op,
             Box::new([Operand::Copy(ref_place)]),
-            result.clone(),
+            result,
             current,
             false,
             span,

@@ -77,7 +77,7 @@ macro_rules! impl_intern_lookup {
         impl $crate::Intern for $loc {
             type Database<'db> = dyn $db + 'db;
             type ID = $id;
-            fn intern<'db>(self, db: &Self::Database<'db>) -> $id {
+            fn intern(self, db: &Self::Database<'_>) -> $id {
                 db.$intern(self)
             }
         }
@@ -85,7 +85,7 @@ macro_rules! impl_intern_lookup {
         impl $crate::Lookup for $id {
             type Database<'db> = dyn $db + 'db;
             type Data = $loc;
-            fn lookup<'db>(&self, db: &Self::Database<'db>) -> $loc {
+            fn lookup(&self, db: &Self::Database<'_>) -> $loc {
                 db.$lookup(*self)
             }
         }
@@ -96,13 +96,13 @@ macro_rules! impl_intern_lookup {
 pub trait Intern {
     type Database<'db>: ?Sized;
     type ID;
-    fn intern<'db>(self, db: &Self::Database<'db>) -> Self::ID;
+    fn intern(self, db: &Self::Database<'_>) -> Self::ID;
 }
 
 pub trait Lookup {
     type Database<'db>: ?Sized;
     type Data;
-    fn lookup<'db>(&self, db: &Self::Database<'db>) -> Self::Data;
+    fn lookup(&self, db: &Self::Database<'_>) -> Self::Data;
 }
 
 impl_intern_lookup!(
@@ -425,7 +425,7 @@ impl MacroDefId {
 
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
         match self.kind {
-            MacroDefKind::ProcMacro(.., id) => return Either::Right(id),
+            MacroDefKind::ProcMacro(.., id) => Either::Right(id),
             MacroDefKind::Declarative(id)
             | MacroDefKind::BuiltIn(_, id)
             | MacroDefKind::BuiltInAttr(_, id)
@@ -657,10 +657,10 @@ impl ExpansionInfo {
     }
 
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
-    pub fn map_range_down<'a>(
-        &'a self,
+    pub fn map_range_down(
+        &self,
         span: Span,
-    ) -> Option<InMacroFile<impl Iterator<Item = SyntaxToken> + 'a>> {
+    ) -> Option<InMacroFile<impl Iterator<Item = SyntaxToken> + '_>> {
         let tokens = self
             .exp_map
             .ranges_with_span(span)

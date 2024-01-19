@@ -218,7 +218,7 @@ impl TyExt for Ty {
             // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
             // FIXME: dyn types may not have principal trait and we don't want to return auto trait
             // here.
-            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
+            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().first().and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
                     _ => None,
@@ -427,7 +427,7 @@ pub trait DynTyExt {
 
 impl DynTyExt for DynTy {
     fn principal(&self) -> Option<&TraitRef> {
-        self.bounds.skip_binders().interned().get(0).and_then(|b| match b.skip_binders() {
+        self.bounds.skip_binders().interned().first().and_then(|b| match b.skip_binders() {
             crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
             _ => None,
         })

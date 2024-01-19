@@ -124,7 +124,9 @@ fn add_variant_to_accumulator(
             builder.edit_file(file_id);
             let node = builder.make_mut(enum_node);
             let variant = make_variant(ctx, name_ref, parent);
-            node.variant_list().map(|it| it.add_variant(variant.clone_for_update()));
+            if let Some(it) = node.variant_list() {
+                it.add_variant(variant.clone_for_update())
+            }
         },
     )
 }

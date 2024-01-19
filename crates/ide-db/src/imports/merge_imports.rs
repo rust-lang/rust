@@ -112,7 +112,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         .collect::<Option<_>>()?;
     // Sorts the use trees similar to rustfmt's algorithm for ordering imports
     // (see `use_tree_cmp` doc).
-    use_trees.sort_unstable_by(|a, b| use_tree_cmp(a, b));
+    use_trees.sort_unstable_by(use_tree_cmp);
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
@@ -365,7 +365,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                     if is_upper_snake_case(a_text) && !is_upper_snake_case(b_text) {
                         return Ordering::Greater;
                     }
-                    a_text.cmp(&b_text)
+                    a_text.cmp(b_text)
                 }
             }
         }

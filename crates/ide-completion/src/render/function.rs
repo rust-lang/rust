@@ -304,9 +304,7 @@ fn params(
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
-    if ctx.config.callable.is_none() {
-        return None;
-    }
+    ctx.config.callable.as_ref()?;
 
     // Don't add parentheses if the expected type is a function reference with the same signature.
     if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn()) {

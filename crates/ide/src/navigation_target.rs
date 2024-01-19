@@ -689,7 +689,7 @@ impl<T> UpmappingResult<T> {
     }
 
     pub fn collect<FI: FromIterator<T>>(self) -> FI {
-        FI::from_iter(self.into_iter())
+        FI::from_iter(self)
     }
 }
 

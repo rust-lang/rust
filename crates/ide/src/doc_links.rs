@@ -351,8 +351,12 @@ fn get_doc_links(
     web_url = join_url(web_url, &file);
     local_url = join_url(local_url, &file);
 
-    web_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
-    local_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
+    if let Some(url) = web_url.as_mut() {
+        url.set_fragment(frag.as_deref())
+    }
+    if let Some(url) = local_url.as_mut() {
+        url.set_fragment(frag.as_deref())
+    }
 
     DocumentationLinks {
         web_url: web_url.map(|it| it.into()),

@@ -141,8 +141,8 @@ impl ExprValidator {
                     );
                 }
             }
-            _ => return,
-        };
+            _ => (),
+        }
     }
 
     fn validate_match(

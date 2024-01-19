@@ -201,7 +201,7 @@ impl Sysroot {
                     e
                 });
                 if let Err(e) =
-                    std::fs::remove_file(&format!("{sysroot_src_dir}/sysroot/Cargo.lock"))
+                    std::fs::remove_file(format!("{sysroot_src_dir}/sysroot/Cargo.lock"))
                 {
                     tracing::error!(
                         "failed to remove sysroot `{sysroot_src_dir}/sysroot/Cargo.lock`: {}",
@@ -268,11 +268,8 @@ impl Sysroot {
                 res.workspace_members = res
                     .packages
                     .iter()
-                    .filter_map(|package| {
-                        RELEVANT_SYSROOT_CRATES
-                            .contains(&&*package.name)
-                            .then(|| package.id.clone())
-                    })
+                    .filter(|&package| RELEVANT_SYSROOT_CRATES.contains(&&*package.name))
+                    .map(|package| package.id.clone())
                     .collect();
                 let cargo_workspace = CargoWorkspace::new(res);
                 Some(Sysroot {

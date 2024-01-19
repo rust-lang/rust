@@ -87,9 +87,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
         _ => return None,
     };
 
-    if then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{']).is_none() {
-        return None;
-    }
+    then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{'])?;
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == T!['}'])?;
 

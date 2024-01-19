@@ -108,7 +108,7 @@ fn fill_fn_params(
     remove_duplicated(&mut file_params, param_list.params());
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
     if should_add_self_completions(ctx.token.text_range().start(), param_list, impl_) {
-        self_completion_items.into_iter().for_each(|self_item| add_new_item_to_acc(self_item));
+        self_completion_items.into_iter().for_each(&mut add_new_item_to_acc);
     }
 
     file_params.keys().for_each(|whole_param| add_new_item_to_acc(whole_param));

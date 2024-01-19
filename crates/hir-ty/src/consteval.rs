@@ -173,7 +173,7 @@ pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
         chalk_ir::ConstValue::InferenceVar(_) => None,
         chalk_ir::ConstValue::Placeholder(_) => None,
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(&it, false))),
+            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, false))),
             ConstScalar::UnevaluatedConst(c, subst) => {
                 let ec = db.const_eval(*c, subst.clone(), None).ok()?;
                 try_const_usize(db, &ec)
@@ -298,7 +298,7 @@ pub(crate) fn eval_to_const(
         body[expr].walk_child_exprs(|idx| r |= has_closure(body, idx));
         r
     }
-    if has_closure(&ctx.body, expr) {
+    if has_closure(ctx.body, expr) {
         // Type checking clousres need an isolated body (See the above FIXME). Bail out early to prevent panic.
         return unknown_const(infer[expr].clone());
     }
@@ -308,7 +308,7 @@ pub(crate) fn eval_to_const(
             return c;
         }
     }
-    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
+    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr) {
         if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true, None).0 {
             return result;
         }

@@ -130,11 +130,11 @@ pub(super) fn hints(
         [(_, _, lifetime, _), ..] if self_param.is_some() || potential_lt_refs.len() == 1 => {
             match lifetime {
                 Some(lt) => match lt.text().as_str() {
-                    "'_" => allocated_lifetimes.get(0).cloned(),
+                    "'_" => allocated_lifetimes.first().cloned(),
                     "'static" => None,
                     name => Some(name.into()),
                 },
-                None => allocated_lifetimes.get(0).cloned(),
+                None => allocated_lifetimes.first().cloned(),
             }
         }
         [..] => None,

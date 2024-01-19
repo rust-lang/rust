@@ -27,7 +27,7 @@ pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
             "{} `{}` should have {} name, e.g. `{}`",
             d.ident_type, d.ident_text, d.expected_case, d.suggested_text
         ),
-        InFile::new(d.file, d.ident.clone().into()),
+        InFile::new(d.file, d.ident.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

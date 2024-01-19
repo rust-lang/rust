@@ -36,7 +36,7 @@ fn ref_simple() {
             let mut y: i32 = 5;
         ]
         |x: i32| {
-            y = y + x;
+            y += x;
             y
         }
     }
@@ -66,7 +66,7 @@ fn ref_simple() {
             let x: &mut X = &mut X(2, 6);
         ]
         || {
-            (*x).0 as i64 + x.1
+            x.0 as i64 + x.1
         }
     }
 }
@@ -188,9 +188,7 @@ fn match_pattern() {
         struct X(i64, i32, (u8, i128));
         let _y: X = X(2, 5, (7, 3));
         move |x: i64| {
-            match _y {
-                _ => x,
-            }
+            x
         }
     }
     size_and_align_expr! {
@@ -264,8 +262,8 @@ fn regression_15623() {
         let c = 5;
         move || {
             let 0 = a else { return b; };
-            let y = c;
-            y
+
+            c
         }
     }
 }

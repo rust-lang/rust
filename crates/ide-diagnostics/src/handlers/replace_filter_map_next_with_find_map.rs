@@ -19,7 +19,7 @@ pub(crate) fn replace_filter_map_next_with_find_map(
         ctx,
         DiagnosticCode::Clippy("filter_map_next"),
         "replace filter_map(..).next() with find_map(..)",
-        InFile::new(d.file, d.next_expr.clone().into()),
+        InFile::new(d.file, d.next_expr.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

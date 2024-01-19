@@ -35,7 +35,9 @@ pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
         parse.tree().syntax().descendants().skip(2).find_map(ast::Stmt::cast).ok_or(())?;
     if !s.ends_with(';') && node.to_string().ends_with(';') {
         node = node.clone_for_update();
-        node.syntax().last_token().map(|it| it.detach());
+        if let Some(it) = node.syntax().last_token() {
+            it.detach()
+        }
     }
     if node.to_string() != s {
         return Err(());

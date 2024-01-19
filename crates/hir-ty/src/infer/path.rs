@@ -389,7 +389,7 @@ impl InferenceContext<'_> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        let ty = self.resolve_ty_shallow(&ty);
+        let ty = self.resolve_ty_shallow(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

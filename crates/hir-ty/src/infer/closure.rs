@@ -815,8 +815,7 @@ impl InferenceContext<'_> {
             .iter()
             .cloned()
             .chain((0..cnt).map(|_| ProjectionElem::Deref))
-            .collect::<Vec<_>>()
-            .into();
+            .collect::<Vec<_>>();
         match &self.body[pat] {
             Pat::Missing | Pat::Wild => (),
             Pat::Tuple { args, ellipsis } => {
@@ -858,7 +857,7 @@ impl InferenceContext<'_> {
                             };
                             let mut p = place.clone();
                             p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
-                                parent: variant.into(),
+                                parent: variant,
                                 local_id,
                             })));
                             self.consume_with_pat(p, arg);
@@ -902,7 +901,7 @@ impl InferenceContext<'_> {
                         for (arg, (i, _)) in it {
                             let mut p = place.clone();
                             p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
-                                parent: variant.into(),
+                                parent: variant,
                                 local_id: i,
                             })));
                             self.consume_with_pat(p, *arg);

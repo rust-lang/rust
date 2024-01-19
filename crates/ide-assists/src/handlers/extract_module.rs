@@ -668,7 +668,7 @@ fn check_intersection_and_push(
     // check for intersection between all current members
     // and combine all such ranges into one.
     let s: SmallVec<[_; 2]> = import_paths_to_be_removed
-        .into_iter()
+        .iter_mut()
         .positions(|it| it.intersect(import_path).is_some())
         .collect();
     for pos in s.into_iter().rev() {

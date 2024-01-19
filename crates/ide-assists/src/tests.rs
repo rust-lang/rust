@@ -243,7 +243,7 @@ fn check_with_config(
                 .filter(|it| !it.source_file_edits.is_empty() || !it.file_system_edits.is_empty())
                 .expect("Assist did not contain any source changes");
             let skip_header = source_change.source_file_edits.len() == 1
-                && source_change.file_system_edits.len() == 0;
+                && source_change.file_system_edits.is_empty();
 
             let mut buf = String::new();
             for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {

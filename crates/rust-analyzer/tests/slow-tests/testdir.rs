@@ -11,11 +11,11 @@ pub(crate) struct TestDir {
 
 impl TestDir {
     pub(crate) fn new() -> TestDir {
-        return TestDir::new_dir(false);
+        TestDir::new_dir(false)
     }
 
     pub(crate) fn new_symlink() -> TestDir {
-        return TestDir::new_dir(true);
+        TestDir::new_dir(true)
     }
 
     fn new_dir(symlink: bool) -> TestDir {

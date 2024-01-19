@@ -88,11 +88,11 @@ pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>
     let strukt = Struct::new(ctx.find_node_at_offset::<ast::Struct>()?)?;
 
     let field: Field = match ctx.find_node_at_offset::<ast::RecordField>() {
-        Some(field) => Field::new(&ctx, Either::Left(field))?,
+        Some(field) => Field::new(ctx, Either::Left(field))?,
         None => {
             let field = ctx.find_node_at_offset::<ast::TupleField>()?;
             let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
-            Field::new(&ctx, either::Right((field, field_list)))?
+            Field::new(ctx, either::Right((field, field_list)))?
         }
     };
 
@@ -276,7 +276,7 @@ fn generate_impl(
                         .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
                         .for_each(|item| {
                             let assoc =
-                                process_assoc_item(item, qualified_path_type.clone(), &field_name);
+                                process_assoc_item(item, qualified_path_type.clone(), field_name);
                             if let Some(assoc) = assoc {
                                 delegate_assoc_items.add_item(assoc);
                             }
@@ -288,7 +288,7 @@ fn generate_impl(
             let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
             let source_scope = ctx.sema.scope(bound_def.syntax())?;
             let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
-            transform.apply(&delegate.syntax());
+            transform.apply(delegate.syntax());
         }
         Delegee::Impls(trait_, old_impl) => {
             let old_impl = ctx.sema.source(old_impl.to_owned())?.value;
@@ -306,7 +306,7 @@ fn generate_impl(
                     let field_ty = rename_strukt_args(ctx, ast_strukt, field_ty, &args)?;
                     let where_clause = ast_strukt
                         .where_clause()
-                        .and_then(|wc| Some(rename_strukt_args(ctx, ast_strukt, &wc, &args)?));
+                        .and_then(|wc| rename_strukt_args(ctx, ast_strukt, &wc, &args));
                     (field_ty, where_clause)
                 }
                 None => (field_ty.clone_for_update(), None),
@@ -323,7 +323,7 @@ fn generate_impl(
                 .trait_()?
                 .generic_arg_list()
                 .map(|l| l.generic_args().map(|arg| arg.to_string()))
-                .map_or_else(|| FxHashSet::default(), |it| it.collect());
+                .map_or_else(FxHashSet::default, |it| it.collect());
 
             let trait_gen_params = remove_instantiated_params(
                 &old_impl.self_ty()?,
@@ -345,13 +345,13 @@ fn generate_impl(
             let mut trait_gen_args = old_impl.trait_()?.generic_arg_list();
             if let Some(trait_args) = &mut trait_gen_args {
                 *trait_args = trait_args.clone_for_update();
-                transform_impl(ctx, ast_strukt, &old_impl, &transform_args, &trait_args.syntax())?;
+                transform_impl(ctx, ast_strukt, &old_impl, &transform_args, trait_args.syntax())?;
             }
 
             let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
 
             let path_type = make::ty(&trait_.name(db).to_smol_str()).clone_for_update();
-            transform_impl(ctx, ast_strukt, &old_impl, &transform_args, &path_type.syntax())?;
+            transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type.syntax())?;
 
             // 3) Generate delegate trait impl
             delegate = make::impl_trait(
@@ -383,7 +383,7 @@ fn generate_impl(
                 let item = item.clone_for_update();
                 transform_impl(ctx, ast_strukt, &old_impl, &transform_args, item.syntax())?;
 
-                let assoc = process_assoc_item(item, qualified_path_type.clone(), &field_name)?;
+                let assoc = process_assoc_item(item, qualified_path_type.clone(), field_name)?;
                 delegate_assoc_items.add_item(assoc);
             }
 
@@ -404,8 +404,8 @@ fn transform_impl(
     args: &Option<GenericArgList>,
     syntax: &syntax::SyntaxNode,
 ) -> Option<()> {
-    let source_scope = ctx.sema.scope(&old_impl.self_ty()?.syntax())?;
-    let target_scope = ctx.sema.scope(&strukt.syntax())?;
+    let source_scope = ctx.sema.scope(old_impl.self_ty()?.syntax())?;
+    let target_scope = ctx.sema.scope(strukt.syntax())?;
     let hir_old_impl = ctx.sema.to_impl_def(old_impl)?;
 
     let transform = args.as_ref().map_or_else(
@@ -420,7 +420,7 @@ fn transform_impl(
         },
     );
 
-    transform.apply(&syntax);
+    transform.apply(syntax);
     Some(())
 }
 
@@ -481,7 +481,7 @@ fn remove_useless_where_clauses(trait_ty: &ast::Type, self_ty: &ast::Type, wc: a
                     .skip(1)
                     .take_while(|node_or_tok| node_or_tok.kind() == SyntaxKind::WHITESPACE)
             })
-            .for_each(|ws| ted::remove(ws));
+            .for_each(ted::remove);
 
         ted::insert(
             ted::Position::after(wc.syntax()),
@@ -539,7 +539,7 @@ fn generate_args_for_impl(
             )
         })
         .collect_vec();
-    args.is_empty().not().then(|| make::generic_arg_list(args.into_iter()))
+    args.is_empty().not().then(|| make::generic_arg_list(args))
 }
 
 fn rename_strukt_args<N>(
@@ -558,7 +558,7 @@ where
     let scope = ctx.sema.scope(item.syntax())?;
 
     let transform = PathTransform::adt_transformation(&scope, &scope, hir_adt, args.clone());
-    transform.apply(&item.syntax());
+    transform.apply(item.syntax());
 
     Some(item)
 }
