@@ -4,22 +4,22 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     debug slice => _1;
     debug f => _2;
     let mut _0: ();
-    let mut _12: std::slice::Iter<'_, T>;
+    let mut _11: std::slice::Iter<'_, T>;
+    let mut _12: std::iter::Enumerate<std::slice::Iter<'_, T>>;
     let mut _13: std::iter::Enumerate<std::slice::Iter<'_, T>>;
-    let mut _14: std::iter::Enumerate<std::slice::Iter<'_, T>>;
-    let mut _15: &mut std::iter::Enumerate<std::slice::Iter<'_, T>>;
-    let mut _16: std::option::Option<(usize, &T)>;
-    let mut _17: isize;
-    let mut _20: &impl Fn(usize, &T);
-    let mut _21: (usize, &T);
-    let _22: ();
+    let mut _14: &mut std::iter::Enumerate<std::slice::Iter<'_, T>>;
+    let mut _15: std::option::Option<(usize, &T)>;
+    let mut _16: isize;
+    let mut _19: &impl Fn(usize, &T);
+    let mut _20: (usize, &T);
+    let _21: ();
     scope 1 {
-        debug iter => _14;
-        let _18: usize;
-        let _19: &T;
+        debug iter => _13;
+        let _17: usize;
+        let _18: &T;
         scope 2 {
-            debug i => _18;
-            debug x => _19;
+            debug i => _17;
+            debug x => _18;
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -32,7 +32,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             let mut _7: *const T;
             let mut _8: usize;
             let mut _9: *mut T;
-            let mut _11: std::ptr::NonNull<T>;
+            let mut _10: std::ptr::NonNull<T>;
             scope 5 {
                 debug ptr => _4;
                 scope 6 {
@@ -40,22 +40,21 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                         debug end_or_len => _7;
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
-                            let mut _10: *const T;
-                            let mut _23: *mut T;
+                            let mut _22: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _23;
+                                    debug ptr => _22;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _23;
-                                        let mut _24: *mut u8;
+                                        debug self => _22;
+                                        let mut _23: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _24;
+                                                debug ptr => _23;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _24;
+                                                    debug self => _23;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _24;
+                                                            debug self => _23;
                                                         }
                                                     }
                                                 }
@@ -86,23 +85,22 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         }
     }
     scope 22 (inlined <std::slice::Iter<'_, T> as Iterator>::enumerate) {
-        debug self => _12;
+        debug self => _11;
         scope 23 (inlined Enumerate::<std::slice::Iter<'_, T>>::new) {
-            debug iter => _12;
+            debug iter => _11;
         }
     }
     scope 24 (inlined <Enumerate<std::slice::Iter<'_, T>> as IntoIterator>::into_iter) {
-        debug self => _13;
+        debug self => _12;
     }
 
     bb0: {
-        StorageLive(_12);
+        StorageLive(_11);
         StorageLive(_4);
         StorageLive(_7);
         StorageLive(_3);
         _3 = &raw const (*_1);
-        _4 = move _3 as *const T (PtrToPtr);
-        StorageDead(_3);
+        _4 = _3 as *const T (PtrToPtr);
         StorageLive(_5);
         _5 = const _;
         switchInt(move _5) -> [0: bb1, otherwise: bb2];
@@ -126,45 +124,43 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb3: {
         StorageDead(_5);
-        StorageLive(_11);
-        StorageLive(_9);
-        _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
+        StorageLive(_9);
+        _9 = _3 as *mut T (PtrToPtr);
+        StorageLive(_22);
         StorageLive(_23);
-        StorageLive(_24);
-        _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
-        _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_24);
+        _10 = NonNull::<T> { pointer: _4 };
         StorageDead(_23);
-        StorageDead(_10);
+        StorageDead(_22);
         StorageDead(_9);
-        _12 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
-        StorageDead(_11);
+        _11 = std::slice::Iter::<'_, T> { ptr: move _10, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
+        StorageDead(_10);
+        StorageDead(_3);
         StorageDead(_7);
         StorageDead(_4);
-        _13 = Enumerate::<std::slice::Iter<'_, T>> { iter: _12, count: const 0_usize };
-        StorageDead(_12);
-        StorageLive(_14);
-        _14 = _13;
+        _12 = Enumerate::<std::slice::Iter<'_, T>> { iter: _11, count: const 0_usize };
+        StorageDead(_11);
+        StorageLive(_13);
+        _13 = _12;
         goto -> bb4;
     }
 
     bb4: {
-        StorageLive(_16);
         StorageLive(_15);
-        _15 = &mut _14;
-        _16 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _15) -> [return: bb5, unwind unreachable];
+        StorageLive(_14);
+        _14 = &mut _13;
+        _15 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _14) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
-        StorageDead(_15);
-        _17 = discriminant(_16);
-        switchInt(move _17) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageDead(_14);
+        _16 = discriminant(_15);
+        switchInt(move _16) -> [0: bb6, 1: bb8, otherwise: bb10];
     }
 
     bb6: {
-        StorageDead(_16);
-        StorageDead(_14);
+        StorageDead(_15);
+        StorageDead(_13);
         drop(_2) -> [return: bb7, unwind unreachable];
     }
 
@@ -173,19 +169,19 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb8: {
-        _18 = (((_16 as Some).0: (usize, &T)).0: usize);
-        _19 = (((_16 as Some).0: (usize, &T)).1: &T);
+        _17 = (((_15 as Some).0: (usize, &T)).0: usize);
+        _18 = (((_15 as Some).0: (usize, &T)).1: &T);
+        StorageLive(_19);
+        _19 = &_2;
         StorageLive(_20);
-        _20 = &_2;
-        StorageLive(_21);
-        _21 = (_18, _19);
-        _22 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _20, move _21) -> [return: bb9, unwind unreachable];
+        _20 = (_17, _18);
+        _21 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _19, move _20) -> [return: bb9, unwind unreachable];
     }
 
     bb9: {
-        StorageDead(_21);
         StorageDead(_20);
-        StorageDead(_16);
+        StorageDead(_19);
+        StorageDead(_15);
         goto -> bb4;
     }
 

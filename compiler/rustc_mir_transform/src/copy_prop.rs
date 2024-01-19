@@ -112,6 +112,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
         let new_local = self.copy_classes[*local];
+        if self.borrowed_locals.contains(*local) {
+            return;
+        }
         match ctxt {
             // Do not modify the local in storage statements.
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => {}
@@ -122,32 +125,16 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         }
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, loc: Location) {
         if let Some(new_projection) = self.process_projection(place.projection, loc) {
             place.projection = self.tcx().mk_place_elems(&new_projection);
         }
 
-        let observes_address = match ctxt {
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf,
-            ) => true,
-            // For debuginfo, merging locals is ok.
-            PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
-                self.borrowed_locals.contains(place.local)
-            }
-            _ => false,
-        };
-        if observes_address && !place.is_indirect() {
-            // We observe the address of `place.local`. Do not replace it.
-        } else {
-            self.visit_local(
-                &mut place.local,
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                loc,
-            )
-        }
+        self.visit_local(
+            &mut place.local,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+            loc,
+        )
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {

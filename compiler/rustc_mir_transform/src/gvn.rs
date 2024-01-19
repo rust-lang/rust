@@ -93,7 +93,6 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
@@ -154,6 +153,9 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     state.next_opaque = None;
 
     let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
+    for dbg in body.var_debug_info.iter_mut() {
+        state.visit_var_debug_info(dbg);
+    }
     for bb in reverse_postorder {
         let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
         state.visit_basic_block_data(bb, data);
@@ -551,6 +553,29 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
                 }
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
+                    self.ecx.unsize_into(src, to, &dest.clone().into()).ok()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .ok()?;
+                    dest.into()
+                }
+                CastKind::FnPtrToPtr
+                | CastKind::PtrToPtr
+                | CastKind::PointerCoercion(
+                    ty::adjustment::PointerCoercion::MutToConstPointer
+                    | ty::adjustment::PointerCoercion::ArrayToPointer
+                    | ty::adjustment::PointerCoercion::UnsafeFnPointer,
+                ) => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let src = self.ecx.read_immediate(src).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
+                    ret.into()
+                }
                 _ => return None,
             },
         };
@@ -698,6 +723,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
         let mut value = self.locals[place.local]?;
         for (index, proj) in place.projection.iter().enumerate() {
+            if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+                && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+                && let AddressKind::Ref(BorrowKind::Shared) = kind
+                && let Some(v) = self.simplify_place_value(&mut pointee, location)
+            {
+                value = v;
+                place_ref = pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+            }
             if let Some(local) = self.try_as_local(value, location) {
                 // Both `local` and `Place { local: place.local, projection: projection[..index] }`
                 // hold the same value. Therefore, following place holds the value in the original
@@ -709,6 +742,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             value = self.project(base, value, proj)?;
         }
 
+        if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+            && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+            && let AddressKind::Ref(BorrowKind::Shared) = kind
+            && let Some(v) = self.simplify_place_value(&mut pointee, location)
+        {
+            value = v;
+            place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+        }
         if let Some(new_local) = self.try_as_local(value, location) {
             place_ref = PlaceRef { local: new_local, projection: &[] };
         }
@@ -777,18 +818,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             // Operations.
             Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
-            Rvalue::Cast(kind, ref mut value, to) => {
-                let from = value.ty(self.local_decls, self.tcx);
-                let value = self.simplify_operand(value, location)?;
-                if let CastKind::PointerCoercion(
-                    PointerCoercion::ReifyFnPointer | PointerCoercion::ClosureFnPointer(_),
-                ) = kind
-                {
-                    // Each reification of a generic fn may get a different pointer.
-                    // Do not try to merge them.
-                    return self.new_opaque();
-                }
-                Value::Cast { kind, value, from, to }
+            Rvalue::Cast(ref mut kind, ref mut value, to) => {
+                return self.simplify_cast(kind, value, to, location);
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
                 let ty = lhs.ty(self.local_decls, self.tcx);
@@ -876,6 +907,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        let fields: Option<Vec<_>> = fields
+            .iter_mut()
+            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
+            .collect();
+        let fields = fields?;
+
         let (ty, variant_index) = match *kind {
             AggregateKind::Array(..) => {
                 assert!(!fields.is_empty());
@@ -894,12 +931,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
         };
-
-        let fields: Option<Vec<_>> = fields
-            .iter_mut()
-            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
-            .collect();
-        let fields = fields?;
 
         if let AggregateTy::Array = ty
             && fields.len() > 4
@@ -1029,6 +1060,50 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         } else {
             Some(result)
         }
+    }
+
+    fn simplify_cast(
+        &mut self,
+        kind: &mut CastKind,
+        operand: &mut Operand<'tcx>,
+        to: Ty<'tcx>,
+        location: Location,
+    ) -> Option<VnIndex> {
+        use rustc_middle::ty::adjustment::PointerCoercion::*;
+        use CastKind::*;
+
+        let mut from = operand.ty(self.local_decls, self.tcx);
+        let mut value = self.simplify_operand(operand, location)?;
+        if from == to {
+            return Some(value);
+        }
+
+        if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
+            // Each reification of a generic fn may get a different pointer.
+            // Do not try to merge them.
+            return self.new_opaque();
+        }
+
+        if let PtrToPtr | PointerCoercion(MutToConstPointer) = kind
+            && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
+                *self.get(value)
+            && let PtrToPtr | PointerCoercion(MutToConstPointer) = inner_kind
+        {
+            from = inner_from;
+            value = inner_value;
+            *kind = PtrToPtr;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+            if let Some(const_) = self.try_as_constant(value) {
+                *operand = Operand::Constant(Box::new(const_));
+            } else if let Some(local) = self.try_as_local(value, location) {
+                *operand = Operand::Copy(local.into());
+                self.reused_locals.insert(local);
+            }
+        }
+
+        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
@@ -1176,6 +1251,51 @@ impl<'tcx> VnState<'_, 'tcx> {
 impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
+        let mut replace_dereffed = |place: &mut Place<'tcx>| -> Option<!> {
+            let last_deref = place.projection.iter().rposition(|e| e == PlaceElem::Deref)?;
+
+            // Another place that holds the same value.
+            let mut place_ref = place.as_ref();
+            let mut value = self.locals[place.local]?;
+
+            for (index, &proj) in place.projection[..last_deref].iter().enumerate() {
+                if let Some(candidates) = self.rev_locals.get(value)
+                    && let Some(&local) = candidates.first()
+                {
+                    place_ref = PlaceRef { local, projection: &place.projection[index..] };
+                }
+
+                let place_upto =
+                    PlaceRef { local: place.local, projection: &place.projection[..index] };
+                if let Some(projected) = self.project(place_upto, value, proj) {
+                    value = projected;
+                } else {
+                    if place_ref.projection.len() < place.projection.len() {
+                        *place = place_ref.project_deeper(&[], self.tcx);
+                    }
+                    return None;
+                }
+            }
+
+            if let Some(candidates) = self.rev_locals.get(value)
+                && let Some(&local) = candidates.first()
+            {
+                let place_ref = PlaceRef { local, projection: &place.projection[last_deref..] };
+                *place = place_ref.project_deeper(&[], self.tcx);
+            }
+
+            return None;
+        };
+
+        match &mut var_debug_info.value {
+            VarDebugInfoContents::Const(_) => {}
+            VarDebugInfoContents::Place(place) => {
+                replace_dereffed(place);
+            }
+        }
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
