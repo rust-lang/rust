@@ -1121,6 +1121,10 @@ macro_rules! int_impl {
         /// Saturating integer division. Computes `self / rhs`, saturating at the
         /// numeric bounds instead of overflowing.
         ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1129,11 +1133,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".saturating_div(2), 2);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_div(-1), ", stringify!($SelfT), "::MIN + 1);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_div(-1), ", stringify!($SelfT), "::MAX);")]
-        ///
-        /// ```
-        ///
-        /// ```should_panic
-        #[doc = concat!("let _ = 1", stringify!($SelfT), ".saturating_div(0);")]
         ///
         /// ```
         #[stable(feature = "saturating_div", since = "1.58.0")]
