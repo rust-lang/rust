@@ -174,14 +174,6 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Gives access to the HIR node for the HIR owner `key`.
-    ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query hir_owner(key: hir::OwnerId) -> Option<crate::hir::Owner<'tcx>> {
-        desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key) }
-    }
-
     /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
     /// Definitions that were generated with no HIR, would be fed to return `None`.

@@ -90,9 +90,9 @@ pub fn add_field_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -185,15 +185,9 @@ pub mod change_constructor_path_indirectly_regular_struct {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::RegularStruct2 as Struct;
 
-    #[rustc_clean(
-        cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
-        cfg="cfail5",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
     pub fn function() -> Struct {
         Struct {
@@ -251,15 +245,9 @@ pub mod change_constructor_path_indirectly_tuple_struct {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::TupleStruct2 as Struct;
 
-    #[rustc_clean(
-        cfg="cfail5",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
-    #[rustc_clean(
-        cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {
         Struct(0, 1, 2)
