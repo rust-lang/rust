@@ -3152,7 +3152,7 @@ impl DeriveHelper {
                 .and_then(|it| it.get(self.idx as usize))
                 .cloned(),
         }
-        .unwrap_or_else(|| Name::missing())
+        .unwrap_or_else(Name::missing)
     }
 }
 
@@ -4421,7 +4421,7 @@ impl Type {
             traits_in_scope,
             with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
-            &mut |id| callback(id),
+            callback,
         );
     }
 

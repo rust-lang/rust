@@ -258,12 +258,12 @@ impl Body {
                 }
             }
             Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-                args.iter().copied().for_each(|p| f(p));
+                args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice { prefix, slice, suffix } => {
                 let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-                total_iter.copied().for_each(|p| f(p));
+                total_iter.copied().for_each(f);
             }
             Pat::Record { args, .. } => {
                 args.iter().for_each(|RecordFieldPat { pat, .. }| f(*pat));
