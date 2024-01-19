@@ -2371,9 +2371,9 @@ impl ModCollector<'_, '_> {
         };
 
         for (name, macs) in source.scope.legacy_macros() {
-            macs.last().map(|&mac| {
+            if let Some(&mac) = macs.last() {
                 target.scope.define_legacy_macro(name.clone(), mac);
-            });
+            }
         }
     }
 
