@@ -296,7 +296,7 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Returns a mutable pointer to the last item in the slice.
+    /// Returns a mutable reference to the last item in the slice.
     ///
     /// # Examples
     ///
@@ -316,13 +316,13 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Returns the first `N` elements of the slice, or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the first `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let u = [10, 40, 30];
     /// assert_eq!(Some(&[10, 40]), u.first_chunk::<2>());
     ///
@@ -332,27 +332,26 @@ impl<T> [T] {
     /// let w: &[i32] = &[];
     /// assert_eq!(Some(&[]), w.first_chunk::<0>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
     pub const fn first_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
         } else {
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the reference outlive the slice.
-            Some(unsafe { &*(self.as_ptr() as *const [T; N]) })
+            Some(unsafe { &*(self.as_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns a mutable reference to the first `N` elements of the slice,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return a mutable array reference to the first `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some(first) = x.first_chunk_mut::<2>() {
@@ -360,10 +359,12 @@ impl<T> [T] {
     ///     first[1] = 4;
     /// }
     /// assert_eq!(x, &[5, 4, 2]);
+    ///
+    /// assert_eq!(None, x.first_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn first_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() < N {
             None
@@ -371,28 +372,29 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(self.as_mut_ptr() as *mut [T; N]) })
+            Some(unsafe { &mut *(self.as_mut_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns the first `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the first `N` items in the slice and the remaining slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &[0, 1, 2];
     ///
     /// if let Some((first, elements)) = x.split_first_chunk::<2>() {
     ///     assert_eq!(first, &[0, 1]);
     ///     assert_eq!(elements, &[2]);
     /// }
+    ///
+    /// assert_eq!(None, x.split_first_chunk::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
         if self.len() < N {
             None
@@ -402,18 +404,18 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some((unsafe { &*(first.as_ptr() as *const [T; N]) }, tail))
+            Some((unsafe { &*(first.as_ptr().cast::<[T; N]>()) }, tail))
         }
     }
 
-    /// Returns a mutable reference to the first `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return a mutable array reference to the first `N` items in the slice and the remaining
+    /// slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some((first, elements)) = x.split_first_chunk_mut::<2>() {
@@ -422,10 +424,12 @@ impl<T> [T] {
     ///     elements[0] = 5;
     /// }
     /// assert_eq!(x, &[3, 4, 5]);
+    ///
+    /// assert_eq!(None, x.split_first_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn split_first_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T; N], &mut [T])> {
@@ -438,29 +442,30 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and enforce exclusive mutability of the chunk by the split.
-            Some((unsafe { &mut *(first.as_mut_ptr() as *mut [T; N]) }, tail))
+            Some((unsafe { &mut *(first.as_mut_ptr().cast::<[T; N]>()) }, tail))
         }
     }
 
-    /// Returns the last `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the last `N` items in the slice and the remaining slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &[0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_chunk::<2>() {
-    ///     assert_eq!(last, &[1, 2]);
+    /// if let Some((elements, last)) = x.split_last_chunk::<2>() {
     ///     assert_eq!(elements, &[0]);
+    ///     assert_eq!(last, &[1, 2]);
     /// }
+    ///
+    /// assert_eq!(None, x.split_last_chunk::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
-    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
         if self.len() < N {
             None
         } else {
@@ -469,32 +474,35 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some((unsafe { &*(last.as_ptr() as *const [T; N]) }, init))
+            Some((init, unsafe { &*(last.as_ptr().cast::<[T; N]>()) }))
         }
     }
 
-    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Return a mutable array reference to the last `N` items in the slice and the remaining
+    /// slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_chunk_mut::<2>() {
+    /// if let Some((elements, last)) = x.split_last_chunk_mut::<2>() {
     ///     last[0] = 3;
     ///     last[1] = 4;
     ///     elements[0] = 5;
     /// }
     /// assert_eq!(x, &[5, 3, 4]);
+    ///
+    /// assert_eq!(None, x.split_last_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn split_last_chunk_mut<const N: usize>(
         &mut self,
-    ) -> Option<(&mut [T; N], &mut [T])> {
+    ) -> Option<(&mut [T], &mut [T; N])> {
         if self.len() < N {
             None
         } else {
@@ -504,17 +512,17 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and enforce exclusive mutability of the chunk by the split.
-            Some((unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }, init))
+            Some((init, unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) }))
         }
     }
 
-    /// Returns the last element of the slice, or `None` if it is empty.
+    /// Return an array reference to the last `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let u = [10, 40, 30];
     /// assert_eq!(Some(&[40, 30]), u.last_chunk::<2>());
     ///
@@ -524,9 +532,9 @@ impl<T> [T] {
     /// let w: &[i32] = &[];
     /// assert_eq!(Some(&[]), w.last_chunk::<0>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
@@ -537,17 +545,17 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some(unsafe { &*(last.as_ptr() as *const [T; N]) })
+            Some(unsafe { &*(last.as_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns a mutable pointer to the last item in the slice.
+    /// Return a mutable array reference to the last `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some(last) = x.last_chunk_mut::<2>() {
@@ -555,10 +563,12 @@ impl<T> [T] {
     ///     last[1] = 20;
     /// }
     /// assert_eq!(x, &[0, 10, 20]);
+    ///
+    /// assert_eq!(None, x.last_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() < N {
             None
@@ -570,7 +580,7 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) })
+            Some(unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) })
         }
     }
 
@@ -1859,7 +1869,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
-    #[rustc_allow_const_fn_unstable(slice_split_at_unchecked)]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1946,7 +1955,10 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
-    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
+    #[rustc_const_stable(
+        feature = "const_slice_split_at_unchecked",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
@@ -2017,164 +2029,6 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
-    }
-
-    /// Divides one slice into an array and a remainder slice at an index.
-    ///
-    /// The array will contain all indices from `[0, N)` (excluding
-    /// the index `N` itself) and the slice will contain all
-    /// indices from `[N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let v = &[1, 2, 3, 4, 5, 6][..];
-    ///
-    /// {
-    ///    let (left, right) = v.split_array_ref::<0>();
-    ///    assert_eq!(left, &[]);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.split_array_ref::<2>();
-    ///     assert_eq!(left, &[1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.split_array_ref::<6>();
-    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
-    ///     assert_eq!(right, []);
-    /// }
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[track_caller]
-    #[must_use]
-    pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
-        let (a, b) = self.split_at(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
-    }
-
-    /// Divides one mutable slice into an array and a remainder slice at an index.
-    ///
-    /// The array will contain all indices from `[0, N)` (excluding
-    /// the index `N` itself) and the slice will contain all
-    /// indices from `[N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.split_array_mut::<2>();
-    /// assert_eq!(left, &mut [1, 0]);
-    /// assert_eq!(right, [3, 0, 5, 6]);
-    /// left[1] = 2;
-    /// right[1] = 4;
-    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[track_caller]
-    #[must_use]
-    pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
-        let (a, b) = self.split_at_mut(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) }
-    }
-
-    /// Divides one slice into an array and a remainder slice at an index from
-    /// the end.
-    ///
-    /// The slice will contain all indices from `[0, len - N)` (excluding
-    /// the index `len - N` itself) and the array will contain all
-    /// indices from `[len - N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let v = &[1, 2, 3, 4, 5, 6][..];
-    ///
-    /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>();
-    ///    assert_eq!(left, [1, 2, 3, 4, 5, 6]);
-    ///    assert_eq!(right, &[]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.rsplit_array_ref::<2>();
-    ///     assert_eq!(left, [1, 2, 3, 4]);
-    ///     assert_eq!(right, &[5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.rsplit_array_ref::<6>();
-    ///     assert_eq!(left, []);
-    ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
-    /// }
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[must_use]
-    pub fn rsplit_array_ref<const N: usize>(&self) -> (&[T], &[T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (a, &*(b.as_ptr() as *const [T; N])) }
-    }
-
-    /// Divides one mutable slice into an array and a remainder slice at an
-    /// index from the end.
-    ///
-    /// The slice will contain all indices from `[0, len - N)` (excluding
-    /// the index `N` itself) and the array will contain all
-    /// indices from `[len - N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.rsplit_array_mut::<4>();
-    /// assert_eq!(left, [1, 0]);
-    /// assert_eq!(right, &mut [3, 0, 5, 6]);
-    /// left[1] = 2;
-    /// right[1] = 4;
-    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[must_use]
-    pub fn rsplit_array_mut<const N: usize>(&mut self) -> (&mut [T], &mut [T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at_mut(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (a, &mut *(b.as_mut_ptr() as *mut [T; N])) }
     }
 
     /// Returns an iterator over subslices separated by elements that match
