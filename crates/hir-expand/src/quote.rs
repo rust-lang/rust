@@ -1,4 +1,5 @@
 //! A simplified version of quote-crate like quasi quote macro
+#![allow(clippy::crate_in_macro_def)]
 
 use span::Span;
 use syntax::format_smolstr;

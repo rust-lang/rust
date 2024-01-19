@@ -260,6 +260,7 @@ macro_rules! language_item_table {
             }
 
             /// Opposite of [`LangItem::name`]
+            #[allow(clippy::should_implement_trait)]
             pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     $( stringify!($name) => Some(LangItem::$variant), )*
