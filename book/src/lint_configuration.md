@@ -828,3 +828,13 @@ exported visibility, or whether they are marked as "pub".
 * [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
 
 
+## `allow-comparison-to-zero`
+Don't lint when comparing the result of a modulo operation to zero.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`modulo_arithmetic`](https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic)
+
+
