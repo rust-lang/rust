@@ -733,9 +733,7 @@ pub struct InTypeConstLoc {
 
 impl PartialEq for InTypeConstLoc {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.owner == other.owner
-            && &*self.expected_ty == &*other.expected_ty
+        self.id == other.id && self.owner == other.owner && *self.expected_ty == *other.expected_ty
     }
 }
 

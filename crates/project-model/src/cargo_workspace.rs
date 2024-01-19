@@ -368,7 +368,7 @@ impl CargoWorkspace {
                     name,
                     root: AbsPathBuf::assert(src_path.into()),
                     kind: TargetKind::new(&kind),
-                    is_proc_macro: &*kind == ["proc-macro"],
+                    is_proc_macro: *kind == ["proc-macro"],
                     required_features,
                 });
                 pkg_data.targets.push(tgt);
