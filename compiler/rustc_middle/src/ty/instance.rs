@@ -3,6 +3,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
@@ -11,6 +12,7 @@ use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
 
+use std::assert_matches::assert_matches;
 use std::fmt;
 
 /// A monomorphized `InstanceDef`.
@@ -570,6 +572,54 @@ impl<'tcx> Instance<'tcx> {
 
         debug!(?self_ty, ?sig);
         Some(Instance { def, args })
+    }
+
+    pub fn try_resolve_item_for_coroutine(
+        tcx: TyCtxt<'tcx>,
+        trait_item_id: DefId,
+        trait_id: DefId,
+        rcvr_args: ty::GenericArgsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
+        let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
+            return None;
+        };
+        let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
+
+        let lang_items = tcx.lang_items();
+        let coroutine_callable_item = if Some(trait_id) == lang_items.future_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+            );
+            hir::LangItem::FuturePoll
+        } else if Some(trait_id) == lang_items.iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+            );
+            hir::LangItem::IteratorNext
+        } else if Some(trait_id) == lang_items.async_iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
+            );
+            hir::LangItem::AsyncIteratorPollNext
+        } else if Some(trait_id) == lang_items.coroutine_trait() {
+            assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
+            hir::LangItem::CoroutineResume
+        } else {
+            return None;
+        };
+
+        if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+            Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args: args })
+        } else {
+            // All other methods should be defaulted methods of the built-in trait.
+            // This is important for `Iterator`'s combinators, but also useful for
+            // adding future default methods to `Future`, for instance.
+            debug_assert!(tcx.defaultness(trait_item_id).has_value());
+            Some(Instance::new(trait_item_id, rcvr_args))
+        }
     }
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
