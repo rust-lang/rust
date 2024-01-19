@@ -796,8 +796,7 @@ fn classify_name_ref(
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
                             match sema.resolve_path(&trait_.parent_path().top_path())? {
-                                hir::PathResolution::Def(def) => match def {
-                                    hir::ModuleDef::Trait(trait_) => {
+                                hir::PathResolution::Def(hir::ModuleDef::Trait(trait_)) =>  {
                                         let arg_name = arg.name_ref()?;
                                         let arg_name = arg_name.text();
                                         let trait_items = trait_.items_with_supertraits(sema.db);
@@ -810,8 +809,6 @@ fn classify_name_ref(
                                         })?;
                                         sema.source(*assoc_ty)?.value.generic_param_list()
                                     }
-                                    _ => None,
-                                },
                                 _ => None,
                             }
                         },

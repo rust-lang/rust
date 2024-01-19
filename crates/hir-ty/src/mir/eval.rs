@@ -1387,10 +1387,7 @@ impl Evaluator<'_> {
                 | CastKind::PointerFromExposedAddress => {
                     let current_ty = self.operand_ty(operand, locals)?;
                     let is_signed = match current_ty.kind(Interner) {
-                        TyKind::Scalar(s) => match s {
-                            chalk_ir::Scalar::Int(_) => true,
-                            _ => false,
-                        },
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_)) => true,
                         _ => false,
                     };
                     let current = pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed);

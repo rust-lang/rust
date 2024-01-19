@@ -331,10 +331,8 @@ impl MirLowerCtx<'_> {
                                 break 'b (c, x.1);
                             }
                         }
-                        if let ResolveValueResult::ValueNs(v, _) = pr {
-                            if let ValueNs::ConstId(c) = v {
-                                break 'b (c, Substitution::empty(Interner));
-                            }
+                        if let ResolveValueResult::ValueNs(ValueNs::ConstId(c), _) = pr {
+                            break 'b (c, Substitution::empty(Interner));
                         }
                         not_supported!("path in pattern position that is not const or variant")
                     };
