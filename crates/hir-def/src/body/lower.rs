@@ -1844,8 +1844,8 @@ impl ExprCollector<'_> {
             flags as u128,
             Some(BuiltinUint::U32),
         )));
-        let precision = self.make_count(&precision, argmap);
-        let width = self.make_count(&width, argmap);
+        let precision = self.make_count(precision, argmap);
+        let width = self.make_count(width, argmap);
 
         let format_placeholder_new = {
             let format_placeholder_new =

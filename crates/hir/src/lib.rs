@@ -1439,7 +1439,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                (&gp.lifetimes)
+                gp.lifetimes
                     .iter()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
@@ -4286,7 +4286,7 @@ impl Type {
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
-            .and_then(|a| a.lifetime(db).map(|lt| (&lt.name).to_smol_str()))
+            .and_then(|a| a.lifetime(db).map(|lt| lt.name.to_smol_str()))
             .into_iter()
             // add the type and const parameters
             .chain(self.type_and_const_arguments(db))

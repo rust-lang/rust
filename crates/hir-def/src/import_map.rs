@@ -294,14 +294,14 @@ impl SearchMode {
     pub fn check(self, query: &str, case_sensitive: bool, candidate: &str) -> bool {
         match self {
             SearchMode::Exact if case_sensitive => candidate == query,
-            SearchMode::Exact => candidate.eq_ignore_ascii_case(&query),
+            SearchMode::Exact => candidate.eq_ignore_ascii_case(query),
             SearchMode::Prefix => {
                 query.len() <= candidate.len() && {
                     let prefix = &candidate[..query.len() as usize];
                     if case_sensitive {
                         prefix == query
                     } else {
-                        prefix.eq_ignore_ascii_case(&query)
+                        prefix.eq_ignore_ascii_case(query)
                     }
                 }
             }
