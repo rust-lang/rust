@@ -796,7 +796,67 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) | Rvalue::Aggregate(..) => {}
+            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Aggregate(kind, fields) => match **kind {
+                AggregateKind::Tuple => {}
+                AggregateKind::Array(dest) => {
+                    for src in fields {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "array field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Adt(def_id, idx, args, _, Some(field)) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(adt_def.is_union());
+                    assert_eq!(idx, FIRST_VARIANT);
+                    let dest = adt_def.non_enum_variant().fields[field].ty(self.tcx, args);
+                    if fields.len() != 1 {
+                        self.fail(location, "unions should have one initialized field");
+                    }
+                    if !self.mir_assign_valid_types(fields.raw[0].ty(self.body, self.tcx), dest) {
+                        self.fail(location, "union field has the wrong type");
+                    }
+                }
+                AggregateKind::Adt(def_id, idx, args, _, None) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(!adt_def.is_union());
+                    let variant = &adt_def.variants()[idx];
+                    if variant.fields.len() != fields.len() {
+                        self.fail(location, "adt has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, &variant.fields) {
+                        if !self.mir_assign_valid_types(
+                            src.ty(self.body, self.tcx),
+                            dest.ty(self.tcx, args),
+                        ) {
+                            self.fail(location, "adt field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Closure(_, args) => {
+                    let upvars = args.as_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "closure has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "closure field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Coroutine(_, args) => {
+                    let upvars = args.as_coroutine().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "coroutine has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "coroutine field has the wrong type");
+                        }
+                    }
+                }
+            },
             Rvalue::Ref(_, BorrowKind::Fake, _) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
