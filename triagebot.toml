@@ -364,7 +364,8 @@ new_pr = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue"
+    "C-tracking-issue",
+    "A-diagnostics",
 ]
 
 [autolabel."WG-trait-system-refactor"]
