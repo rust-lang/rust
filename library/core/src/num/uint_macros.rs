@@ -1141,6 +1141,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn saturating_div(self, rhs: Self) -> Self {
             // on unsigned types, there is no overflow in integer division
             self.wrapping_div(rhs)
@@ -1275,6 +1276,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[track_caller]
         pub const fn wrapping_div(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -1304,6 +1306,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[track_caller]
         pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -1331,6 +1334,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[track_caller]
         pub const fn wrapping_rem(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -1361,6 +1365,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[track_caller]
         pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -1743,6 +1748,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             (self / rhs, false)
         }
@@ -1773,6 +1779,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
             (self / rhs, false)
         }
@@ -1800,6 +1807,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
             (self % rhs, false)
         }
@@ -1830,6 +1838,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
             (self % rhs, false)
         }
@@ -2065,7 +2074,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_euclid(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -2094,7 +2103,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -2119,6 +2128,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
+        #[track_caller]
         pub const fn div_floor(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -2146,7 +2156,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;

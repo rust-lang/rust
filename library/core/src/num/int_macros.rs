@@ -1913,6 +1913,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
             if unlikely!(rhs == -1) {
                 (0, self == Self::MIN)
@@ -2172,7 +2173,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_euclid(self, rhs: Self) -> Self {
             let q = self / rhs;
             if self % rhs < 0 {
@@ -2211,7 +2212,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             let r = self % rhs;
             if r < 0 {
@@ -2258,7 +2259,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_floor(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
@@ -2298,7 +2299,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
