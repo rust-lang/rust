@@ -4285,10 +4285,8 @@ impl Type {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
                     Some(format_smolstr!("{}", ty.display(db)))
-                } else if let Some(const_) = arg.constant(Interner) {
-                    Some(format_smolstr!("{}", const_.display(db)))
                 } else {
-                    None
+                    arg.constant(Interner).map(|const_| format_smolstr!("{}", const_.display(db)))
                 }
             })
     }

@@ -410,11 +410,7 @@ impl ConstRef {
         lower_ctx: &LowerCtx<'_>,
         param: &ast::ConstParam,
     ) -> Option<Self> {
-        let default = param.default_val();
-        match default {
-            Some(_) => Some(Self::from_const_arg(lower_ctx, default)),
-            None => None,
-        }
+        param.default_val().map(|default| Self::from_const_arg(lower_ctx, Some(default)))
     }
 
     pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
