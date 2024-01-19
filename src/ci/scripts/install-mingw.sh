@@ -38,19 +38,17 @@ if isWindows; then
             ;;
     esac
 
-    if isMingwBuild; then
-        if [[ "${CUSTOM_MINGW-0}" -eq 0 ]]; then
-            pacboy -S --noconfirm gcc:p
-            # Maybe even:
-            # pacboy -S --noconfirm clang:p
-            # It kinda works, for the opposite CI jobs that gcc works for.
-            # the windows part of install-clang.sh has something to say about this.
-        else
-            mingw_dir="mingw${bits}"
+    if [[ "${CUSTOM_MINGW-0}" -eq 0 ]]; then
+        pacboy -S --noconfirm toolchain:p
+        # Maybe even:
+        # pacboy -S --noconfirm clang:p ...
+        # It kinda works, for the opposite CI jobs that gcc works for.
+        # the windows part of install-clang.sh has something to say about this.
+    else
+        mingw_dir="mingw${bits}"
 
-            curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
-            7z x -y mingw.7z > /dev/null
-            ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        fi
+        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
+        7z x -y mingw.7z > /dev/null
+        ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
     fi
 fi
