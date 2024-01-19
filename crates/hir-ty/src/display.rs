@@ -1327,15 +1327,16 @@ fn hir_fmt_generics(
 
 impl HirDisplay for CallableSig {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        let CallableSig { params_and_return: _, is_varargs, safety, abi } = *self;
+        let CallableSig { params_and_return: _, is_varargs, safety, abi: _ } = *self;
         if let Safety::Unsafe = safety {
             write!(f, "unsafe ")?;
         }
-        if !matches!(abi, FnAbi::Rust) {
-            f.write_str("extern \"")?;
-            f.write_str(abi.as_str())?;
-            f.write_str("\" ")?;
-        }
+        // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
+        // if !matches!(abi, FnAbi::Rust) {
+        //     f.write_str("extern \"")?;
+        //     f.write_str(abi.as_str())?;
+        //     f.write_str("\" ")?;
+        // }
         write!(f, "fn(")?;
         f.write_joined(self.params(), ", ")?;
         if is_varargs {
