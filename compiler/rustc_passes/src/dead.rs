@@ -57,7 +57,7 @@ struct MarkSymbolVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     live_symbols: LocalDefIdSet,
-    repr_has_repr_c: bool,
+    repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
@@ -365,15 +365,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             return;
         }
 
-        let had_repr_c = self.repr_has_repr_c;
+        let unconditionally_treated_fields_as_live =
+            self.repr_unconditionally_treats_fields_as_live;
         let had_repr_simd = self.repr_has_repr_simd;
-        self.repr_has_repr_c = false;
+        self.repr_unconditionally_treats_fields_as_live = false;
         self.repr_has_repr_simd = false;
         match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(item.owner_id);
-                    self.repr_has_repr_c = def.repr().c();
+                    self.repr_unconditionally_treats_fields_as_live =
+                        def.repr().c() || def.repr().transparent();
                     self.repr_has_repr_simd = def.repr().simd();
 
                     intravisit::walk_item(self, item)
@@ -411,7 +413,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ => {}
         }
         self.repr_has_repr_simd = had_repr_simd;
-        self.repr_has_repr_c = had_repr_c;
+        self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
     }
 
     fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
@@ -435,11 +437,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) {
         let tcx = self.tcx;
-        let has_repr_c = self.repr_has_repr_c;
+        let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
         let has_repr_simd = self.repr_has_repr_simd;
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
-            if has_repr_c || (f.is_positional() && has_repr_simd) {
+            if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
             if !tcx.visibility(f.hir_id.owner.def_id).is_public() {
@@ -741,7 +743,7 @@ fn live_symbols_and_ignored_derived_traits(
         tcx,
         maybe_typeck_results: None,
         live_symbols: Default::default(),
-        repr_has_repr_c: false,
+        repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd: false,
         in_pat: false,
         ignore_variant_stack: vec![],
