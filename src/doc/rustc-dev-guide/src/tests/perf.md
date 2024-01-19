@@ -46,5 +46,15 @@ suite against it.
 After the performance tests finish, the bot will post a comment on the PR with
 a summary and a link to a full report.
 
-More details are available in the [perf collector
+If you want to do a perf run for an already built artifact (e.g. for a previous try
+build that wasn't benchmarked yet), you can run this instead:
+
+`@rust-timer build <commit-sha>`
+
+You cannot benchmark the same artifact twice though.
+
+More information about the available perf bot commands can be found
+[here](https://perf.rust-lang.org/help.html). 
+
+More details about the benchmarking process itself are available in the [perf collector
 documentation](https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md).
