@@ -142,7 +142,7 @@ impl SourceToDefCtx<'_, '_> {
             Some(parent_declaration) => self.module_to_def(parent_declaration),
             None => {
                 let file_id = src.file_id.original_file(self.db.upcast());
-                self.file_to_def(file_id).get(0).copied()
+                self.file_to_def(file_id).first().copied()
             }
         }?;
 
@@ -155,7 +155,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn source_file_to_def(&self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
         let _p = profile::span("source_file_to_def");
         let file_id = src.file_id.original_file(self.db.upcast());
-        self.file_to_def(file_id).get(0).copied()
+        self.file_to_def(file_id).first().copied()
     }
 
     pub(super) fn trait_to_def(&mut self, src: InFile<ast::Trait>) -> Option<TraitId> {
@@ -370,7 +370,7 @@ impl SourceToDefCtx<'_, '_> {
             }
         }
 
-        let def = self.file_to_def(src.file_id.original_file(self.db.upcast())).get(0).copied()?;
+        let def = self.file_to_def(src.file_id.original_file(self.db.upcast())).first().copied()?;
         Some(def.into())
     }
 
