@@ -181,21 +181,18 @@ fn remove_items_visibility(item: &ast::AssocItem) {
 }
 
 fn strip_body(item: &ast::AssocItem) {
-    match item {
-        ast::AssocItem::Fn(f) => {
-            if let Some(body) = f.body() {
-                // In constrast to function bodies, we want to see no ws before a semicolon.
-                // So let's remove them if we see any.
-                if let Some(prev) = body.syntax().prev_sibling_or_token() {
-                    if prev.kind() == SyntaxKind::WHITESPACE {
-                        ted::remove(prev);
-                    }
+    if let ast::AssocItem::Fn(f) = item {
+        if let Some(body) = f.body() {
+            // In constrast to function bodies, we want to see no ws before a semicolon.
+            // So let's remove them if we see any.
+            if let Some(prev) = body.syntax().prev_sibling_or_token() {
+                if prev.kind() == SyntaxKind::WHITESPACE {
+                    ted::remove(prev);
                 }
-
-                ted::replace(body.syntax(), make::tokens::semicolon());
             }
+
+            ted::replace(body.syntax(), make::tokens::semicolon());
         }
-        _ => (),
     };
 }
 

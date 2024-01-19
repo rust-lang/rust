@@ -1978,14 +1978,13 @@ fn run_rustfmt(
                     // approach: if the command name contains a path separator, join it with the workspace root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
-                    let cmd_path =
-                        if cfg!(windows) && command.contains([std::path::MAIN_SEPARATOR, '/']) {
-                            spec.workspace_root.join(cmd).into()
-                        } else if command.contains(std::path::MAIN_SEPARATOR) {
-                            spec.workspace_root.join(cmd).into()
-                        } else {
-                            cmd
-                        };
+                    let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
+                        || (cfg!(windows) && command.contains('/'))
+                    {
+                        spec.workspace_root.join(cmd).into()
+                    } else {
+                        cmd
+                    };
                     process::Command::new(cmd_path)
                 }
                 None => process::Command::new(cmd),

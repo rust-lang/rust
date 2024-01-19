@@ -142,13 +142,10 @@ impl HirPlace {
         mut current_capture: CaptureKind,
         len: usize,
     ) -> CaptureKind {
-        match current_capture {
-            CaptureKind::ByRef(BorrowKind::Mut { .. }) => {
-                if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
-                    current_capture = CaptureKind::ByRef(BorrowKind::Unique);
-                }
+        if let CaptureKind::ByRef(BorrowKind::Mut { .. }) = current_capture {
+            if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
+                current_capture = CaptureKind::ByRef(BorrowKind::Unique);
             }
-            _ => (),
         }
         current_capture
     }
@@ -334,12 +331,10 @@ impl InferenceContext<'_> {
         match &self.body[tgt_expr] {
             Expr::Path(p) => {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
-                if let Some(r) = resolver.resolve_path_in_value_ns(self.db.upcast(), p) {
-                    if let ResolveValueResult::ValueNs(v, _) = r {
-                        if let ValueNs::LocalBinding(b) = v {
-                            return Some(HirPlace { local: b, projections: vec![] });
-                        }
-                    }
+                if let Some(ResolveValueResult::ValueNs(ValueNs::LocalBinding(b), _)) =
+                    resolver.resolve_path_in_value_ns(self.db.upcast(), p)
+                {
+                    return Some(HirPlace { local: b, projections: vec![] });
                 }
             }
             Expr::Field { expr, name: _ } => {
@@ -1010,7 +1005,7 @@ impl InferenceContext<'_> {
         let mut deferred_closures = mem::take(&mut self.deferred_closures);
         let mut dependents_count: FxHashMap<ClosureId, usize> =
             deferred_closures.keys().map(|it| (*it, 0)).collect();
-        for (_, deps) in &self.closure_dependencies {
+        for deps in self.closure_dependencies.values() {
             for dep in deps {
                 *dependents_count.entry(*dep).or_default() += 1;
             }

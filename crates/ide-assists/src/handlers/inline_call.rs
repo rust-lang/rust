@@ -425,8 +425,8 @@ fn inline(
             if is_self {
                 let mut this_pat = make::ident_pat(false, false, make::name("this"));
                 let mut expr = expr.clone();
-                match pat {
-                    Pat::IdentPat(pat) => match (pat.ref_token(), pat.mut_token()) {
+                if let Pat::IdentPat(pat) = pat {
+                    match (pat.ref_token(), pat.mut_token()) {
                         // self => let this = obj
                         (None, None) => {}
                         // mut self => let mut this = obj
@@ -449,8 +449,7 @@ fn inline(
                                 make::expr_ref(expr, true)
                             };
                         }
-                    },
-                    _ => {}
+                    }
                 };
                 let_stmts
                     .push(make::let_stmt(this_pat.into(), ty, Some(expr)).clone_for_update().into())

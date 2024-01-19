@@ -369,11 +369,10 @@ fn import_on_the_fly_method(
             };
             key(&a.import_path).cmp(&key(&b.import_path))
         })
-        .for_each(|import| match import.original_item {
-            ItemInNs::Values(hir::ModuleDef::Function(f)) => {
+        .for_each(|import| {
+            if let ItemInNs::Values(hir::ModuleDef::Function(f)) = import.original_item {
                 acc.add_method_with_import(ctx, dot_access, f, import);
             }
-            _ => (),
         });
     Some(())
 }

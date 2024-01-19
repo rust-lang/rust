@@ -1439,7 +1439,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                (&gp.lifetimes)
+                gp.lifetimes
                     .iter()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
@@ -1594,12 +1594,11 @@ impl DefWithBody {
         for diag in source_map.diagnostics() {
             match diag {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
-                    InactiveCode { node: node.clone(), cfg: cfg.clone(), opts: opts.clone() }
-                        .into(),
+                    InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into(),
                 ),
                 BodyDiagnostic::MacroError { node, message } => acc.push(
                     MacroError {
-                        node: node.clone().map(|it| it.into()),
+                        node: (*node).map(|it| it.into()),
                         precise_location: None,
                         message: message.to_string(),
                     }
@@ -1607,7 +1606,7 @@ impl DefWithBody {
                 ),
                 BodyDiagnostic::UnresolvedProcMacro { node, krate } => acc.push(
                     UnresolvedProcMacro {
-                        node: node.clone().map(|it| it.into()),
+                        node: (*node).map(|it| it.into()),
                         precise_location: None,
                         macro_name: None,
                         kind: MacroKind::ProcMacro,
@@ -1617,7 +1616,7 @@ impl DefWithBody {
                 ),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
                     UnresolvedMacroCall {
-                        macro_call: node.clone().map(|ast_ptr| ast_ptr.into()),
+                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
                         precise_location: None,
                         path: path.clone(),
                         is_bang: true,
@@ -1625,10 +1624,10 @@ impl DefWithBody {
                     .into(),
                 ),
                 BodyDiagnostic::UnreachableLabel { node, name } => {
-                    acc.push(UnreachableLabel { node: node.clone(), name: name.clone() }.into())
+                    acc.push(UnreachableLabel { node: *node, name: name.clone() }.into())
                 }
                 BodyDiagnostic::UndeclaredLabel { node, name } => {
-                    acc.push(UndeclaredLabel { node: node.clone(), name: name.clone() }.into())
+                    acc.push(UndeclaredLabel { node: *node, name: name.clone() }.into())
                 }
             }
         }
@@ -1715,7 +1714,7 @@ impl DefWithBody {
                             field_with_same_name: field_with_same_name
                                 .clone()
                                 .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
-                            assoc_func_with_same_name: assoc_func_with_same_name.clone(),
+                            assoc_func_with_same_name: *assoc_func_with_same_name,
                         }
                         .into(),
                     )
@@ -1931,8 +1930,7 @@ impl DefWithBody {
                         },
                         Either::Right(record_pat) => match source_map.pat_syntax(record_pat) {
                             Ok(source_ptr) => {
-                                if let Some(ptr) = source_ptr.value.clone().cast::<ast::RecordPat>()
-                                {
+                                if let Some(ptr) = source_ptr.value.cast::<ast::RecordPat>() {
                                     let root = source_ptr.file_syntax(db.upcast());
                                     let record_pat = ptr.to_node(&root);
                                     if record_pat.record_pat_field_list().is_some() {
@@ -2083,9 +2081,7 @@ impl Function {
     }
 
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
-        if self.self_param(db).is_none() {
-            return None;
-        }
+        self.self_param(db)?;
         Some(self.params_without_self(db))
     }
 
@@ -2406,10 +2402,10 @@ impl Const {
             }
         }
         if let Ok(s) = mir::render_const_using_debug_impl(db, self.id, &c) {
-            return Ok(s);
+            Ok(s)
+        } else {
+            Ok(format!("{}", c.display(db)))
         }
-        let r = format!("{}", c.display(db));
-        return Ok(r);
     }
 }
 
@@ -2497,14 +2493,7 @@ impl Trait {
         db.generic_params(GenericDefId::from(self.id))
             .type_or_consts
             .iter()
-            .filter(|(_, ty)| match ty {
-                TypeOrConstParamData::TypeParamData(ty)
-                    if ty.provenance != TypeParamProvenance::TypeParamList =>
-                {
-                    false
-                }
-                _ => true,
-            })
+            .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
     }
@@ -3163,7 +3152,7 @@ impl DeriveHelper {
                 .and_then(|it| it.get(self.idx as usize))
                 .cloned(),
         }
-        .unwrap_or_else(|| Name::missing())
+        .unwrap_or_else(Name::missing)
     }
 }
 
@@ -3874,10 +3863,7 @@ impl Type {
     }
 
     pub fn is_int_or_uint(&self) -> bool {
-        match self.ty.kind(Interner) {
-            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)) => true,
-            _ => false,
-        }
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)))
     }
 
     pub fn is_scalar(&self) -> bool {
@@ -4285,10 +4271,8 @@ impl Type {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
                     Some(format_smolstr!("{}", ty.display(db)))
-                } else if let Some(const_) = arg.constant(Interner) {
-                    Some(format_smolstr!("{}", const_.display(db)))
                 } else {
-                    None
+                    arg.constant(Interner).map(|const_| format_smolstr!("{}", const_.display(db)))
                 }
             })
     }
@@ -4300,7 +4284,7 @@ impl Type {
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
-            .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
+            .and_then(|a| a.lifetime(db).map(|lt| lt.name.to_smol_str()))
             .into_iter()
             // add the type and const parameters
             .chain(self.type_and_const_arguments(db))
@@ -4437,7 +4421,7 @@ impl Type {
             traits_in_scope,
             with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
-            &mut |id| callback(id),
+            callback,
         );
     }
 

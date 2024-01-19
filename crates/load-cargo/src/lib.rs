@@ -358,7 +358,7 @@ fn expander_to_proc_macro(
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
     let expander: sync::Arc<dyn ProcMacroExpander> =
-        if dummy_replace.iter().any(|replace| &**replace == name) {
+        if dummy_replace.iter().any(|replace| **replace == name) {
             match kind {
                 ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
                 _ => sync::Arc::new(EmptyExpander),

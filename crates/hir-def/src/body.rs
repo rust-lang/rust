@@ -258,12 +258,12 @@ impl Body {
                 }
             }
             Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-                args.iter().copied().for_each(|p| f(p));
+                args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice { prefix, slice, suffix } => {
                 let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-                total_iter.copied().for_each(|p| f(p));
+                total_iter.copied().for_each(f);
             }
             Pat::Record { args, .. } => {
                 args.iter().for_each(|RecordFieldPat { pat, .. }| f(*pat));
@@ -369,7 +369,7 @@ impl BodySourceMap {
     }
 
     pub fn label_syntax(&self, label: LabelId) -> LabelSource {
-        self.label_map_back[label].clone()
+        self.label_map_back[label]
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
@@ -378,11 +378,11 @@ impl BodySourceMap {
     }
 
     pub fn field_syntax(&self, expr: ExprId) -> FieldSource {
-        self.field_map_back[&expr].clone()
+        self.field_map_back[&expr]
     }
 
     pub fn pat_field_syntax(&self, pat: PatId) -> PatFieldSource {
-        self.pat_field_map_back[&pat].clone()
+        self.pat_field_map_back[&pat]
     }
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {

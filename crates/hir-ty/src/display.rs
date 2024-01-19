@@ -1043,7 +1043,7 @@ impl HirDisplay for Ty {
                             f.start_location_link(t.into());
                         }
                         write!(f, "Future")?;
-                        if let Some(_) = future_trait {
+                        if future_trait.is_some() {
                             f.end_location_link();
                         }
                         write!(f, "<")?;
@@ -1051,7 +1051,7 @@ impl HirDisplay for Ty {
                             f.start_location_link(t.into());
                         }
                         write!(f, "Output")?;
-                        if let Some(_) = output {
+                        if output.is_some() {
                             f.end_location_link();
                         }
                         write!(f, " = ")?;
@@ -1520,7 +1520,7 @@ fn write_bounds_like_dyn_trait(
             }
             write!(f, "Sized")?;
         }
-        if let Some(_) = sized_trait {
+        if sized_trait.is_some() {
             f.end_location_link();
         }
     }

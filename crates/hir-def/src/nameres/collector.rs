@@ -1406,7 +1406,7 @@ impl DefCollector<'_> {
         }
         if let errors @ [_, ..] = &*value {
             let loc: MacroCallLoc = self.db.lookup_intern_macro_call(macro_call_id);
-            let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, &errors);
+            let diag = DefDiagnostic::macro_expansion_parse_error(module_id, loc.kind, errors);
             self.def_map.diagnostics.push(diag);
         }
 
@@ -2287,7 +2287,7 @@ impl ModCollector<'_, '_> {
         &MacroCall { ref path, ast_id, expand_to, call_site }: &MacroCall,
         container: ItemContainerId,
     ) {
-        let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(&path));
+        let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(path));
         let db = self.def_collector.db;
 
         // FIXME: Immediately expanding in "Case 1" is insufficient since "Case 2" may also define
@@ -2371,9 +2371,9 @@ impl ModCollector<'_, '_> {
         };
 
         for (name, macs) in source.scope.legacy_macros() {
-            macs.last().map(|&mac| {
+            if let Some(&mac) = macs.last() {
                 target.scope.define_legacy_macro(name.clone(), mac);
-            });
+            }
         }
     }
 

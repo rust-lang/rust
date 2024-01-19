@@ -689,27 +689,22 @@ fn does_source_exists_outside_sel_in_same_mod(
     match def {
         Definition::Module(x) => {
             let source = x.definition_source(ctx.db());
-            let have_same_parent;
-            if let Some(ast_module) = &curr_parent_module {
+            let have_same_parent = if let Some(ast_module) = &curr_parent_module {
                 if let Some(hir_module) = x.parent(ctx.db()) {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some();
+                    compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
+                    source_file_id == curr_file_id
                 }
             } else {
                 let source_file_id = source.file_id.original_file(ctx.db());
-                have_same_parent = source_file_id == curr_file_id;
-            }
+                source_file_id == curr_file_id
+            };
 
             if have_same_parent {
-                match source.value {
-                    ModuleSource::Module(module_) => {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(module_.syntax().text_range());
-                    }
-                    _ => {}
+                if let ModuleSource::Module(module_) = source.value {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(module_.syntax().text_range());
                 }
             }
         }

@@ -100,7 +100,7 @@ fn validate_type_recursively(
         }
         (_, Some(ty)) => match ty.as_builtin() {
             // `const A: str` is not correct, but `const A: &builtin` is.
-            Some(builtin) if refed || (!refed && !builtin.is_str()) => Some(()),
+            Some(builtin) if refed || !builtin.is_str() => Some(()),
             _ => None,
         },
         _ => None,

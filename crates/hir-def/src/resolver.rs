@@ -239,8 +239,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
-        let within_impl =
-            self.scopes().find(|scope| matches!(scope, Scope::ImplDefScope(_))).is_some();
+        let within_impl = self.scopes().any(|scope| matches!(scope, Scope::ImplDefScope(_)));
         match visibility {
             RawVisibility::Module(_, _) => {
                 let (item_map, module) = self.item_scope();
@@ -509,7 +508,7 @@ impl Resolver {
             .map(|id| ExternCrateDeclData::extern_crate_decl_data_query(db, id).name.clone())
     }
 
-    pub fn extern_crates_in_scope<'a>(&'a self) -> impl Iterator<Item = (Name, ModuleId)> + 'a {
+    pub fn extern_crates_in_scope(&self) -> impl Iterator<Item = (Name, ModuleId)> + '_ {
         self.module_scope
             .def_map
             .extern_prelude()

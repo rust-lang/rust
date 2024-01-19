@@ -29,7 +29,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
 
-    if let Some(_) = ctx.find_node_at_offset::<ast::RecordFieldList>() {
+    if ctx.find_node_at_offset::<ast::RecordFieldList>().is_some() {
         return None;
     }
 
@@ -77,7 +77,7 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
 
-    if let Some(_) = ctx.find_node_at_offset::<ast::RecordFieldList>() {
+    if ctx.find_node_at_offset::<ast::RecordFieldList>().is_some() {
         return None;
     }
 

@@ -109,7 +109,7 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
         }
-        if let Err(_) = self.fetch_build_data_error() {
+        if self.fetch_build_data_error().is_err() {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
@@ -173,7 +173,7 @@ impl GlobalState {
             }
         }
 
-        if let Err(_) = self.fetch_workspace_error() {
+        if self.fetch_workspace_error().is_err() {
             status.health = lsp_ext::Health::Error;
             message.push_str("Failed to load workspaces.");
 
@@ -364,15 +364,13 @@ impl GlobalState {
             return;
         };
 
-        if let Err(_) = self.fetch_workspace_error() {
-            if !self.workspaces.is_empty() {
-                if *force_reload_crate_graph {
-                    self.recreate_crate_graph(cause);
-                }
-                // It only makes sense to switch to a partially broken workspace
-                // if we don't have any workspace at all yet.
-                return;
+        if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
+            if *force_reload_crate_graph {
+                self.recreate_crate_graph(cause);
             }
+            // It only makes sense to switch to a partially broken workspace
+            // if we don't have any workspace at all yet.
+            return;
         }
 
         let workspaces =
@@ -454,27 +452,27 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_clients.is_empty() || !same_workspaces {
-            if self.config.expand_proc_macros() {
-                tracing::info!("Spawning proc-macro servers");
+        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+            && self.config.expand_proc_macros()
+        {
+            tracing::info!("Spawning proc-macro servers");
 
-                self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
-                    let path = match self.config.proc_macro_srv() {
-                        Some(path) => path,
-                        None => ws.find_sysroot_proc_macro_srv()?,
-                    };
+            self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
+                let path = match self.config.proc_macro_srv() {
+                    Some(path) => path,
+                    None => ws.find_sysroot_proc_macro_srv()?,
+                };
 
-                    tracing::info!("Using proc-macro server at {path}");
-                    ProcMacroServer::spawn(path.clone()).map_err(|err| {
-                        tracing::error!(
-                            "Failed to run proc-macro server from path {path}, error: {err:?}",
-                        );
-                        anyhow::format_err!(
-                            "Failed to run proc-macro server from path {path}, error: {err:?}",
-                        )
-                    })
-                }))
-            };
+                tracing::info!("Using proc-macro server at {path}");
+                ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                    tracing::error!(
+                        "Failed to run proc-macro server from path {path}, error: {err:?}",
+                    );
+                    anyhow::format_err!(
+                        "Failed to run proc-macro server from path {path}, error: {err:?}",
+                    )
+                })
+            }))
         }
 
         let watch = match files_config.watcher {
@@ -569,10 +567,11 @@ impl GlobalState {
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {
             match ws {
-                Ok(data) => match data.error() {
-                    Some(stderr) => stdx::format_to!(buf, "{:#}\n", stderr),
-                    _ => (),
-                },
+                Ok(data) => {
+                    if let Some(stderr) = data.error() {
+                        stdx::format_to!(buf, "{:#}\n", stderr)
+                    }
+                }
                 // io errors
                 Err(err) => stdx::format_to!(buf, "{:#}\n", err),
             }

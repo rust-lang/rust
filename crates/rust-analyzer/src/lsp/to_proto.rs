@@ -310,22 +310,20 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    if config.completion().enable_imports_on_the_fly {
-        if !item.import_to_add.is_empty() {
-            let imports: Vec<_> = item
-                .import_to_add
-                .into_iter()
-                .filter_map(|(import_path, import_name)| {
-                    Some(lsp_ext::CompletionImport {
-                        full_import_path: import_path,
-                        imported_name: import_name,
-                    })
+    if config.completion().enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+        let imports: Vec<_> = item
+            .import_to_add
+            .into_iter()
+            .filter_map(|(import_path, import_name)| {
+                Some(lsp_ext::CompletionImport {
+                    full_import_path: import_path,
+                    imported_name: import_name,
                 })
-                .collect();
-            if !imports.is_empty() {
-                let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
-                lsp_item.data = Some(to_value(data).unwrap());
-            }
+            })
+            .collect();
+        if !imports.is_empty() {
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
+            lsp_item.data = Some(to_value(data).unwrap());
         }
     }
 

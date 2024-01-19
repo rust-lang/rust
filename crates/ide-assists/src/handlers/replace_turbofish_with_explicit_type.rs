@@ -69,7 +69,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
         return None;
     }
 
-    if let None = let_stmt.colon_token() {
+    if let_stmt.colon_token().is_none() {
         // If there's no colon in a let statement, then there is no explicit type.
         // let x = fn::<...>();
         let ident_range = let_stmt.pat()?.syntax().text_range();

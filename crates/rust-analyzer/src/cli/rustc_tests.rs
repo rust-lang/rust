@@ -226,7 +226,6 @@ const SUPPORTED_DIAGNOSTICS: &[DiagnosticCode] = &[
 ];
 
 impl flags::RustcTests {
-    #[allow(clippy::redundant_locals)]
     pub fn run(self) -> Result<()> {
         let mut tester = Tester::new()?;
         let walk_dir = WalkDir::new(self.rustc_repo.join("tests/ui"));
@@ -246,8 +245,7 @@ impl flags::RustcTests {
                 let p = p.clone();
                 move || {
                     let _guard = stdx::panic_context::enter(p.display().to_string());
-                    let tester = tester;
-                    tester.0.test(p);
+                    { tester }.0.test(p);
                 }
             }) {
                 std::panic::resume_unwind(e);

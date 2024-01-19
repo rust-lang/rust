@@ -230,7 +230,7 @@ fn find_path_for_module(
     }
 
     if let value @ Some(_) =
-        find_in_prelude(ctx.db, &root_def_map, &def_map, ItemInNs::Types(module_id.into()), from)
+        find_in_prelude(ctx.db, &root_def_map, def_map, ItemInNs::Types(module_id.into()), from)
     {
         return value.zip(Some(Stable));
     }

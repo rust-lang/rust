@@ -52,7 +52,6 @@ fn syntax_tree_for_string(token: &SyntaxToken, text_range: TextRange) -> Option<
     }
 }
 
-#[allow(clippy::redundant_locals)]
 fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<String> {
     // Range of the full node
     let node_range = node.text_range();
@@ -67,8 +66,6 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
     let len = text_range.len();
 
     let node_len = node_range.len();
-
-    let start = start;
 
     // We want to cap our length
     let len = len.min(node_len);

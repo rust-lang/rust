@@ -288,12 +288,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
         current: BasicBlockId,
     ) -> Result<Option<(Operand, BasicBlockId)>> {
         if !self.has_adjustments(expr_id) {
-            match &self.body.exprs[expr_id] {
-                Expr::Literal(l) => {
-                    let ty = self.expr_ty_without_adjust(expr_id);
-                    return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
-                }
-                _ => (),
+            if let Expr::Literal(l) = &self.body.exprs[expr_id] {
+                let ty = self.expr_ty_without_adjust(expr_id);
+                return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
             }
         }
         let Some((p, current)) = self.lower_expr_as_place(current, expr_id, true)? else {
@@ -948,10 +945,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     // for binary operator, and use without adjust to simplify our conditions.
                     let lhs_ty = self.expr_ty_without_adjust(*lhs);
                     let rhs_ty = self.expr_ty_without_adjust(*rhs);
-                    if matches!(op, BinaryOp::CmpOp(syntax::ast::CmpOp::Eq { .. })) {
-                        if lhs_ty.as_raw_ptr().is_some() && rhs_ty.as_raw_ptr().is_some() {
-                            break 'b true;
-                        }
+                    if matches!(op, BinaryOp::CmpOp(syntax::ast::CmpOp::Eq { .. }))
+                        && lhs_ty.as_raw_ptr().is_some()
+                        && rhs_ty.as_raw_ptr().is_some()
+                    {
+                        break 'b true;
                     }
                     let builtin_inequal_impls = matches!(
                         op,

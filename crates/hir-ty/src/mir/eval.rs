@@ -272,6 +272,7 @@ const STACK_OFFSET: usize = 1 << 30;
 const HEAP_OFFSET: usize = 1 << 29;
 
 impl Address {
+    #[allow(clippy::double_parens)]
     fn from_bytes(it: &[u8]) -> Result<Self> {
         Ok(Address::from_usize(from_bytes!(usize, it)))
     }
@@ -1386,13 +1387,10 @@ impl Evaluator<'_> {
                 | CastKind::PointerExposeAddress
                 | CastKind::PointerFromExposedAddress => {
                     let current_ty = self.operand_ty(operand, locals)?;
-                    let is_signed = match current_ty.kind(Interner) {
-                        TyKind::Scalar(s) => match s {
-                            chalk_ir::Scalar::Int(_) => true,
-                            _ => false,
-                        },
-                        _ => false,
-                    };
+                    let is_signed = matches!(
+                        current_ty.kind(Interner),
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_))
+                    );
                     let current = pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed);
                     let dest_size =
                         self.size_of_sized(target_ty, locals, "destination of int to int cast")?;
@@ -1664,6 +1662,7 @@ impl Evaluator<'_> {
         })
     }
 
+    #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
         let ty = &konst.data(Interner).ty;
         let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
@@ -1842,10 +1841,10 @@ impl Evaluator<'_> {
             }
         }
         let layout = self.layout(ty);
-        if self.assert_placeholder_ty_is_unused {
-            if matches!(layout, Err(MirEvalError::LayoutError(LayoutError::HasPlaceholder, _))) {
-                return Ok(Some((0, 1)));
-            }
+        if self.assert_placeholder_ty_is_unused
+            && matches!(layout, Err(MirEvalError::LayoutError(LayoutError::HasPlaceholder, _)))
+        {
+            return Ok(Some((0, 1)));
         }
         let layout = layout?;
         Ok(layout
@@ -2218,7 +2217,7 @@ impl Evaluator<'_> {
         let generic_args = generic_args.clone();
         match def {
             CallableDefId::FunctionId(def) => {
-                if let Some(_) = self.detect_fn_trait(def) {
+                if self.detect_fn_trait(def).is_some() {
                     return self.exec_fn_trait(
                         def,
                         args,

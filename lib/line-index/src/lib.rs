@@ -339,7 +339,7 @@ unsafe fn analyze_source_file_sse2(
 }
 
 #[target_feature(enable = "neon")]
-#[cfg(any(target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[inline]
 // See https://community.arm.com/arm-community-blogs/b/infrastructure-solutions-blog/posts/porting-x86-vector-bitmask-optimizations-to-arm-neon
 //
@@ -354,7 +354,7 @@ unsafe fn move_mask(v: std::arch::aarch64::uint8x16_t) -> u64 {
 }
 
 #[target_feature(enable = "neon")]
-#[cfg(any(target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 unsafe fn analyze_source_file_neon(
     src: &str,
     lines: &mut Vec<TextSize>,

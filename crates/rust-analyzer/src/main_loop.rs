@@ -579,10 +579,10 @@ impl GlobalState {
                     let path = VfsPath::from(path);
                     // if the file is in mem docs, it's managed by the client via notifications
                     // so only set it if its not in there
-                    if !self.mem_docs.contains(&path) {
-                        if is_changed || vfs.file_id(&path).is_none() {
-                            vfs.set_file_contents(path, contents);
-                        }
+                    if !self.mem_docs.contains(&path)
+                        && (is_changed || vfs.file_id(&path).is_none())
+                    {
+                        vfs.set_file_contents(path, contents);
                     }
                 }
             }
