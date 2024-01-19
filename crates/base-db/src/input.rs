@@ -331,7 +331,7 @@ impl CrateData {
                 return false;
             }
 
-            if let Some(_) = opts.next() {
+            if opts.next().is_some() {
                 return false;
             }
         }

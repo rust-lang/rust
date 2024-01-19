@@ -439,7 +439,7 @@ impl InferenceContext<'_> {
                 ty
             }
             &Expr::Continue { label } => {
-                if let None = find_continuable(&mut self.breakables, label) {
+                if find_continuable(&mut self.breakables, label).is_none() {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                         is_break: false,

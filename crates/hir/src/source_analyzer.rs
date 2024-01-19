@@ -614,7 +614,7 @@ impl SourceAnalyzer {
             }
             None
         })();
-        if let Some(_) = resolved {
+        if resolved.is_some() {
             return resolved;
         }
 
@@ -659,7 +659,7 @@ impl SourceAnalyzer {
             if let Some(name_ref) = path.as_single_name_ref() {
                 let builtin =
                     BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text());
-                if let Some(_) = builtin {
+                if builtin.is_some() {
                     return builtin.map(PathResolution::BuiltinAttr);
                 }
 

@@ -109,7 +109,7 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
         }
-        if let Err(_) = self.fetch_build_data_error() {
+        if self.fetch_build_data_error().is_err() {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
@@ -173,7 +173,7 @@ impl GlobalState {
             }
         }
 
-        if let Err(_) = self.fetch_workspace_error() {
+        if self.fetch_workspace_error().is_err() {
             status.health = lsp_ext::Health::Error;
             message.push_str("Failed to load workspaces.");
 
@@ -364,15 +364,13 @@ impl GlobalState {
             return;
         };
 
-        if let Err(_) = self.fetch_workspace_error() {
-            if !self.workspaces.is_empty() {
-                if *force_reload_crate_graph {
-                    self.recreate_crate_graph(cause);
-                }
-                // It only makes sense to switch to a partially broken workspace
-                // if we don't have any workspace at all yet.
-                return;
+        if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
+            if *force_reload_crate_graph {
+                self.recreate_crate_graph(cause);
             }
+            // It only makes sense to switch to a partially broken workspace
+            // if we don't have any workspace at all yet.
+            return;
         }
 
         let workspaces =

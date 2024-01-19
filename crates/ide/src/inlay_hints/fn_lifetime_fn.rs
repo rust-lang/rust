@@ -98,15 +98,13 @@ pub(super) fn hints(
         };
     {
         let mut potential_lt_refs = potential_lt_refs.iter().filter(|&&(.., is_elided)| is_elided);
-        if let Some(_) = &self_param {
-            if let Some(_) = potential_lt_refs.next() {
-                allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
-                    // self can't be used as a lifetime, so no need to check for collisions
-                    "'self".into()
-                } else {
-                    gen_idx_name()
-                });
-            }
+        if self_param.is_some() && potential_lt_refs.next().is_some() {
+            allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
+                // self can't be used as a lifetime, so no need to check for collisions
+                "'self".into()
+            } else {
+                gen_idx_name()
+            });
         }
         potential_lt_refs.for_each(|(name, ..)| {
             let name = match name {

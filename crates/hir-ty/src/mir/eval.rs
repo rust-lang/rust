@@ -2217,7 +2217,7 @@ impl Evaluator<'_> {
         let generic_args = generic_args.clone();
         match def {
             CallableDefId::FunctionId(def) => {
-                if let Some(_) = self.detect_fn_trait(def) {
+                if self.detect_fn_trait(def).is_some() {
                     return self.exec_fn_trait(
                         def,
                         args,

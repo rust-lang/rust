@@ -198,7 +198,7 @@ pub(super) fn find_importable_node(
     {
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
             .zip(Some(method_under_caret.syntax().clone().into()))
-    } else if let Some(_) = ctx.find_node_at_offset_with_descend::<ast::Param>() {
+    } else if ctx.find_node_at_offset_with_descend::<ast::Param>().is_some() {
         None
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()
