@@ -24,7 +24,6 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
-use std::borrow::Cow;
 use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -337,11 +336,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Ensures that the last parsed pattern is not followed by a method call or an operator.
+    /// Ensures that the last parsed pattern (or pattern range bound) is not followed by a method call or an operator.
+    ///
+    /// `is_end_bound` indicates whether the last parsed thing was the end bound of a range pattern (see [`parse_pat_range_end`](Self::parse_pat_range_end))
+    /// in order to say "expected a pattern range bound" instead of "expected a pattern";
+    /// ```text
+    /// 0..=1 + 2
+    ///     ^^^^^
+    /// ```
+    /// Only the end bound is spanned, and this function have no idea if there were a `..=` before `pat_span`, hence the parameter.
     #[must_use = "the pattern must be discarded as `PatKind::Err` if this function returns Some"]
-    fn maybe_recover_trailing_expr<'b>(
-        &'b mut self,
-        pat: Cow<'b, P<Expr>>,
+    fn maybe_recover_trailing_expr(
+        &mut self,
+        pat_span: Span,
         is_end_bound: bool,
     ) -> Option<ErrorGuaranteed> {
         if self.prev_token.is_keyword(kw::Underscore) || !self.may_recover() {
@@ -353,7 +360,7 @@ impl<'a> Parser<'a> {
         let has_trailing_method = self.check_noexpect(&token::Dot)
             && self.look_ahead(1, |tok| {
                 tok.ident()
-                    .and_then(|(ident, _)| ident.name.to_string().chars().next())
+                    .and_then(|(ident, _)| ident.name.as_str().chars().next())
                     .is_some_and(char::is_lowercase)
             })
             && self.look_ahead(2, |tok| tok.kind == token::OpenDelim(Delimiter::Parenthesis));
@@ -374,15 +381,16 @@ impl<'a> Parser<'a> {
         }
 
         // Let's try to parse an expression to emit a better diagnostic.
-        let pat = pat.into_owned();
-        let pat_span = pat.span;
-
         let mut snapshot = self.create_snapshot_for_diagnostic();
         snapshot.restrictions.insert(Restrictions::IS_PAT);
 
         // Parse `?`, `.f`, `(arg0, arg1, ...)` or `[expr]` until they've all been eaten.
         if let Ok(expr) = snapshot
-            .parse_expr_dot_or_call_with(pat, pat_span, AttrVec::new())
+            .parse_expr_dot_or_call_with(
+                self.mk_expr_err(pat_span), // equivalent to transforming the parsed pattern into an `Expr`
+                pat_span,
+                AttrVec::new(),
+            )
             .map_err(|err| err.cancel())
         {
             let non_assoc_span = expr.span;
@@ -396,8 +404,6 @@ impl<'a> Parser<'a> {
                 self.restore_snapshot(snapshot);
                 self.restrictions.remove(Restrictions::IS_PAT);
 
-                let span = expr.span;
-
                 let is_bound = is_end_bound
                     // is_start_bound: either `..` or `)..`
                     || self.token.is_range_separator()
@@ -405,10 +411,10 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, Token::is_range_separator);
 
                 // Check that `parse_expr_assoc_with` didn't eat a rhs.
-                let is_method_call = has_trailing_method && non_assoc_span == span;
+                let is_method_call = has_trailing_method && non_assoc_span == expr.span;
 
                 return Some(self.dcx().emit_err(UnexpectedExpressionInPattern {
-                    span,
+                    span: expr.span,
                     is_bound,
                     is_method_call,
                 }));
@@ -524,8 +530,7 @@ impl<'a> Parser<'a> {
             } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                 self.parse_pat_tuple_struct(qself, path)?
             } else {
-                let pat = self.mk_expr(span, ExprKind::Path(qself.clone(), path.clone()));
-                match self.maybe_recover_trailing_expr(Cow::Owned(pat), false) {
+                match self.maybe_recover_trailing_expr(span, false) {
                     Some(guar) => PatKind::Err(guar),
                     None => PatKind::Path(qself, path),
                 }
@@ -558,8 +563,7 @@ impl<'a> Parser<'a> {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
                 Ok(begin) => {
-                    let begin = match self.maybe_recover_trailing_expr(Cow::Borrowed(&begin), false)
-                    {
+                    let begin = match self.maybe_recover_trailing_expr(begin.span, false) {
                         Some(_) => self.mk_expr_err(begin.span),
                         None => begin,
                     };
@@ -963,7 +967,7 @@ impl<'a> Parser<'a> {
             self.parse_literal_maybe_minus()
         }?;
 
-        let recovered = self.maybe_recover_trailing_expr(Cow::Borrowed(&bound), true);
+        let recovered = self.maybe_recover_trailing_expr(bound.span, true);
 
         // recover trailing `)`
         if let Some(open_paren) = open_paren {
@@ -1047,9 +1051,8 @@ impl<'a> Parser<'a> {
         // Check for method calls after the `ident`,
         // but not `ident @ subpat` as `subpat` was already checked and `ident` continues with `@`.
 
-        let expr = self.mk_expr(ident.span, ExprKind::Path(None, Path::from_ident(ident)));
         let pat = if sub.is_none()
-            && let Some(guar) = self.maybe_recover_trailing_expr(Cow::Owned(expr), false)
+            && let Some(guar) = self.maybe_recover_trailing_expr(ident.span, false)
         {
             PatKind::Err(guar)
         } else {
