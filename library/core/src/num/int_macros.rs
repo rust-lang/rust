@@ -2152,7 +2152,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2190,7 +2191,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2233,12 +2235,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero.
-        ///
-        /// ## Overflow behavior
-        ///
-        /// On overflow, this function will panic if overflow checks are enabled (default in debug
-        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2273,12 +2271,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero.
-        ///
-        /// ## Overflow behavior
-        ///
-        /// On overflow, this function will panic if overflow checks are enabled (default in debug
-        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///

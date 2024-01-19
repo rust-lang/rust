@@ -2138,11 +2138,6 @@ macro_rules! uint_impl {
         ///
         /// This function will panic if `rhs` is zero.
         ///
-        /// ## Overflow behavior
-        ///
-        /// On overflow, this function will panic if overflow checks are enabled (default in debug
-        /// mode) and wrap if overflow checks are disabled (default in release mode).
-        ///
         /// # Examples
         ///
         /// Basic usage:
