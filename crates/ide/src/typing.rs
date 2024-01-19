@@ -359,19 +359,16 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
         }
     }
 
-    if ancestors_at_offset(file.syntax(), offset)
-        .find(|n| {
-            ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
-        })
-        .is_some()
-    {
-        return Some(ExtendedTextEdit {
+    if ancestors_at_offset(file.syntax(), offset).any(|n| {
+        ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
+    }) {
+        Some(ExtendedTextEdit {
             edit: TextEdit::replace(range, "<$0>".to_string()),
             is_snippet: true,
-        });
+        })
+    } else {
+        None
     }
-
-    None
 }
 
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
