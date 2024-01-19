@@ -46,11 +46,13 @@
       let mut _42: *const dyn std::marker::Send;
       let mut _44: &i32;
       scope 1 {
-          debug a => _1;
+-         debug a => _1;
++         debug a => _2;
           let _7: *const dyn std::marker::Send;
           let mut _43: &i32;
           scope 2 {
-              debug b => _7;
+-             debug b => _7;
++             debug b => _8;
           }
       }
   

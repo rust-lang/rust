@@ -10,7 +10,8 @@
       let _5: T;
       let mut _6: !;
       scope 1 {
-          debug y => _5;
+-         debug y => _5;
++         debug y => _1;
       }
   
       bb0: {

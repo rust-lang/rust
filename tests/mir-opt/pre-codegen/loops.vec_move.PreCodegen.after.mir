@@ -3,83 +3,77 @@
 fn vec_move(_1: Vec<impl Sized>) -> () {
     debug v => _1;
     let mut _0: ();
-    let mut _2: std::ptr::NonNull<impl Sized>;
-    let mut _3: std::marker::PhantomData<impl Sized>;
-    let mut _4: alloc::raw_vec::Cap;
-    let mut _5: std::alloc::Global;
-    let mut _6: usize;
-    let mut _30: std::vec::IntoIter<impl Sized>;
-    let mut _31: std::vec::IntoIter<impl Sized>;
-    let mut _62: std::option::Option<impl Sized>;
-    let _91: ();
+    let mut _28: std::vec::IntoIter<impl Sized>;
+    let mut _29: std::vec::IntoIter<impl Sized>;
+    let mut _60: std::option::Option<impl Sized>;
+    let _89: ();
     scope 1 {
-        debug iter => _31;
-        let _90: impl Sized;
+        debug iter => _29;
+        let _88: impl Sized;
         scope 2 {
-            debug x => _90;
+            debug x => _88;
         }
         scope 77 (inlined <std::vec::IntoIter<impl Sized> as Iterator>::next) {
-            debug (*(self: &mut std::vec::IntoIter<impl Sized>)) => _31;
-            let mut _32: bool;
-            let mut _33: *const *const impl Sized;
-            let mut _34: *const std::ptr::NonNull<impl Sized>;
-            let _35: std::ptr::NonNull<impl Sized>;
-            let mut _51: bool;
-            let _52: std::ptr::NonNull<impl Sized>;
-            let mut _55: std::ptr::NonNull<impl Sized>;
-            let mut _61: impl Sized;
-            let mut _63: std::ptr::NonNull<impl Sized>;
+            debug (*(self: &mut std::vec::IntoIter<impl Sized>)) => _29;
+            let mut _30: bool;
+            let mut _31: *const *const impl Sized;
+            let mut _32: *const std::ptr::NonNull<impl Sized>;
+            let _33: std::ptr::NonNull<impl Sized>;
+            let mut _49: bool;
+            let _50: std::ptr::NonNull<impl Sized>;
+            let mut _53: std::ptr::NonNull<impl Sized>;
+            let mut _59: impl Sized;
+            let mut _61: std::ptr::NonNull<impl Sized>;
+            let mut _68: *mut impl Sized;
+            let mut _69: *const impl Sized;
             let mut _70: *mut impl Sized;
-            let mut _71: *const impl Sized;
-            let mut _72: *mut impl Sized;
-            let mut _73: bool;
-            let mut _74: *const impl Sized;
-            let mut _80: *const impl Sized;
-            let mut _89: impl Sized;
+            let mut _71: bool;
+            let mut _72: *const impl Sized;
+            let mut _78: *const impl Sized;
+            let mut _87: impl Sized;
             scope 78 {
                 scope 104 (inlined #[track_caller] zeroed::<impl Sized>) {
-                    let _81: ();
-                    let mut _86: std::mem::MaybeUninit<impl Sized>;
+                    let _79: ();
+                    let mut _84: std::mem::MaybeUninit<impl Sized>;
                     scope 105 {
                         scope 106 (inlined MaybeUninit::<impl Sized>::zeroed) {
-                            let mut _82: std::mem::MaybeUninit<impl Sized>;
-                            let mut _84: *mut impl Sized;
-                            let _85: ();
+                            let mut _80: std::mem::MaybeUninit<impl Sized>;
+                            let mut _82: *mut impl Sized;
+                            let _83: ();
                             scope 107 {
-                                debug u => _82;
+                                debug u => _80;
                                 scope 108 {
                                     scope 110 (inlined MaybeUninit::<impl Sized>::as_mut_ptr) {
-                                        debug (*(self: &mut MaybeUninit<impl Sized>)) => _82;
-                                        let mut _83: *mut std::mem::MaybeUninit<impl Sized>;
+                                        debug (*(self: &mut MaybeUninit<impl Sized>)) => _80;
+                                        let mut _81: *mut std::mem::MaybeUninit<impl Sized>;
                                     }
                                     scope 111 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::write_bytes) {
-                                        debug self => _84;
+                                        debug self => _82;
                                         debug val => const 0_u8;
                                         debug count => const 1_usize;
                                         scope 112 {
                                             scope 113 (inlined write_bytes::<impl Sized>) {
-                                                debug dst => _84;
+                                                debug dst => _82;
                                                 debug val => const 0_u8;
                                                 debug count => const 1_usize;
-                                                let mut _99: *mut impl Sized;
                                                 scope 114 {
                                                     scope 115 (inlined write_bytes::runtime::<impl Sized>) {
-                                                        debug dst => _99;
-                                                        let mut _100: *const impl Sized;
+                                                        debug dst => _82;
+                                                        let mut _95: *const impl Sized;
                                                         scope 116 (inlined intrinsics::is_aligned_and_not_null::<impl Sized>) {
-                                                            debug ptr => _100;
+                                                            debug ptr => _95;
                                                             scope 117 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                                                                debug self => _100;
-                                                                let mut _101: *const u8;
+                                                                debug self => _95;
+                                                                let mut _96: *const u8;
                                                                 scope 118 {
                                                                     scope 119 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                                                        debug ptr => _101;
+                                                                        debug ptr => _96;
                                                                         scope 120 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                                                            debug self => _101;
-                                                                            let mut _102: *const ();
+                                                                            debug self => _96;
+                                                                            let mut _97: *const ();
                                                                             scope 121 {
                                                                                 scope 122 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                                                    debug self => _101;
+                                                                                    debug self => _96;
                                                                                 }
                                                                             }
                                                                         }
@@ -87,39 +81,39 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                                                 }
                                                             }
                                                             scope 123 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_aligned) {
-                                                                debug self => _100;
-                                                                let mut _103: usize;
+                                                                debug self => _95;
+                                                                let mut _98: usize;
                                                                 scope 124 (inlined align_of::<impl Sized>) {
                                                                 }
                                                                 scope 125 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_aligned_to) {
-                                                                    debug self => _100;
-                                                                    debug align => _103;
-                                                                    let mut _104: &[&str];
+                                                                    debug self => _95;
+                                                                    debug align => _98;
+                                                                    let mut _99: &[&str];
                                                                     scope 126 {
                                                                         scope 129 (inlined std::ptr::const_ptr::<impl *const impl Sized>::cast::<()>) {
-                                                                            debug self => _100;
+                                                                            debug self => _95;
                                                                         }
                                                                         scope 131 (inlined std::ptr::const_ptr::<impl *const T>::is_aligned_to::runtime_impl) {
-                                                                            debug ptr => _102;
-                                                                            debug align => _103;
+                                                                            debug ptr => _97;
+                                                                            debug align => _98;
                                                                             scope 132 (inlined std::ptr::const_ptr::<impl *const ()>::addr) {
-                                                                                debug self => _102;
+                                                                                debug self => _97;
                                                                                 scope 133 {
                                                                                     scope 134 (inlined std::ptr::const_ptr::<impl *const ()>::cast::<()>) {
-                                                                                        debug self => _102;
+                                                                                        debug self => _97;
                                                                                     }
                                                                                 }
                                                                             }
                                                                         }
                                                                     }
                                                                     scope 127 (inlined core::num::<impl usize>::is_power_of_two) {
-                                                                        debug self => _103;
+                                                                        debug self => _98;
                                                                         scope 128 (inlined core::num::<impl usize>::count_ones) {
-                                                                            debug self => _103;
+                                                                            debug self => _98;
                                                                         }
                                                                     }
                                                                     scope 130 (inlined Arguments::<'_>::new_const) {
-                                                                        debug pieces => _104;
+                                                                        debug pieces => _99;
                                                                     }
                                                                 }
                                                             }
@@ -135,12 +129,12 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                             }
                         }
                         scope 135 (inlined #[track_caller] MaybeUninit::<impl Sized>::assume_init) {
-                            debug self => _86;
-                            let _87: ();
-                            let mut _88: std::mem::ManuallyDrop<impl Sized>;
+                            debug self => _84;
+                            let _85: ();
+                            let mut _86: std::mem::ManuallyDrop<impl Sized>;
                             scope 136 {
                                 scope 137 (inlined ManuallyDrop::<impl Sized>::into_inner) {
-                                    debug slot => _88;
+                                    debug slot => _86;
                                 }
                             }
                         }
@@ -152,36 +146,36 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                 }
             }
             scope 81 {
-                debug old => _52;
+                debug old => _50;
                 scope 82 {
                     scope 155 (inlined NonNull::<impl Sized>::add) {
-                        debug self => _52;
+                        debug self => _50;
                         debug count => const 1_usize;
-                        let mut _53: *const impl Sized;
-                        let mut _54: *const impl Sized;
+                        let mut _51: *const impl Sized;
+                        let mut _52: *const impl Sized;
                         scope 156 {
                         }
                     }
                 }
                 scope 83 {
                     scope 157 (inlined NonNull::<impl Sized>::as_ptr) {
-                        debug self => _52;
-                        let mut _59: bool;
-                        let mut _60: bool;
+                        debug self => _50;
+                        let mut _57: bool;
+                        let mut _58: bool;
                         scope 158 {
                             scope 159 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                                debug self => _53;
-                                let mut _56: *const u8;
+                                debug self => _51;
+                                let mut _54: *const u8;
                                 scope 160 {
                                     scope 161 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                        debug ptr => _56;
-                                        let mut _58: usize;
+                                        debug ptr => _54;
+                                        let mut _56: usize;
                                         scope 162 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                            debug self => _56;
-                                            let mut _57: *const ();
+                                            debug self => _54;
+                                            let mut _55: *const ();
                                             scope 163 {
                                                 scope 164 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                    debug self => _56;
+                                                    debug self => _54;
                                                 }
                                             }
                                         }
@@ -191,25 +185,24 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                         }
                     }
                     scope 165 (inlined std::ptr::read::<impl Sized>) {
-                        debug src => _53;
-                        let mut _105: *const impl Sized;
+                        debug src => _51;
                         scope 166 {
                             scope 167 (inlined std::ptr::read::runtime::<impl Sized>) {
-                                debug src => _105;
+                                debug src => _51;
                                 scope 168 (inlined intrinsics::is_aligned_and_not_null::<impl Sized>) {
-                                    debug ptr => _105;
+                                    debug ptr => _51;
                                     scope 169 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                                        debug self => _105;
-                                        let mut _106: *const u8;
+                                        debug self => _51;
+                                        let mut _100: *const u8;
                                         scope 170 {
                                             scope 171 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                                debug ptr => _106;
+                                                debug ptr => _100;
                                                 scope 172 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                                    debug self => _106;
-                                                    let mut _107: *const ();
+                                                    debug self => _100;
+                                                    let mut _101: *const ();
                                                     scope 173 {
                                                         scope 174 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                            debug self => _106;
+                                                            debug self => _100;
                                                         }
                                                     }
                                                 }
@@ -217,39 +210,39 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                         }
                                     }
                                     scope 175 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_aligned) {
-                                        debug self => _105;
-                                        let mut _108: usize;
+                                        debug self => _51;
+                                        let mut _102: usize;
                                         scope 176 (inlined align_of::<impl Sized>) {
                                         }
                                         scope 177 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_aligned_to) {
-                                            debug self => _105;
-                                            debug align => _108;
-                                            let mut _109: &[&str];
+                                            debug self => _51;
+                                            debug align => _102;
+                                            let mut _103: &[&str];
                                             scope 178 {
                                                 scope 181 (inlined std::ptr::const_ptr::<impl *const impl Sized>::cast::<()>) {
-                                                    debug self => _105;
+                                                    debug self => _51;
                                                 }
                                                 scope 183 (inlined std::ptr::const_ptr::<impl *const T>::is_aligned_to::runtime_impl) {
-                                                    debug ptr => _107;
-                                                    debug align => _108;
+                                                    debug ptr => _101;
+                                                    debug align => _102;
                                                     scope 184 (inlined std::ptr::const_ptr::<impl *const ()>::addr) {
-                                                        debug self => _107;
+                                                        debug self => _101;
                                                         scope 185 {
                                                             scope 186 (inlined std::ptr::const_ptr::<impl *const ()>::cast::<()>) {
-                                                                debug self => _107;
+                                                                debug self => _101;
                                                             }
                                                         }
                                                     }
                                                 }
                                             }
                                             scope 179 (inlined core::num::<impl usize>::is_power_of_two) {
-                                                debug self => _108;
+                                                debug self => _102;
                                                 scope 180 (inlined core::num::<impl usize>::count_ones) {
-                                                    debug self => _108;
+                                                    debug self => _102;
                                                 }
                                             }
                                             scope 182 (inlined Arguments::<'_>::new_const) {
-                                                debug pieces => _109;
+                                                debug pieces => _103;
                                             }
                                         }
                                     }
@@ -260,24 +253,24 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                 }
             }
             scope 84 (inlined NonNull::<impl Sized>::as_ptr) {
-                debug self => _63;
-                let mut _64: *const impl Sized;
-                let mut _68: bool;
-                let mut _69: bool;
+                debug self => _61;
+                let mut _62: *const impl Sized;
+                let mut _66: bool;
+                let mut _67: bool;
                 scope 85 {
                     scope 86 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                        debug self => _64;
-                        let mut _65: *const u8;
+                        debug self => _62;
+                        let mut _63: *const u8;
                         scope 87 {
                             scope 88 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                debug ptr => _65;
-                                let mut _67: usize;
+                                debug ptr => _63;
+                                let mut _65: usize;
                                 scope 89 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                    debug self => _65;
-                                    let mut _66: *const ();
+                                    debug self => _63;
+                                    let mut _64: *const ();
                                     scope 90 {
                                         scope 91 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                            debug self => _65;
+                                            debug self => _63;
                                         }
                                     }
                                 }
@@ -287,15 +280,15 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                 }
             }
             scope 92 (inlined std::ptr::const_ptr::<impl *const impl Sized>::wrapping_byte_sub) {
-                debug self => _74;
+                debug self => _72;
                 debug count => const 1_usize;
-                let mut _75: *const u8;
-                let mut _76: *const u8;
+                let mut _73: *const u8;
+                let mut _74: *const u8;
                 scope 93 (inlined std::ptr::const_ptr::<impl *const impl Sized>::cast::<u8>) {
-                    debug self => _74;
+                    debug self => _72;
                 }
                 scope 94 (inlined std::ptr::const_ptr::<impl *const u8>::wrapping_sub) {
-                    debug self => _75;
+                    debug self => _73;
                     debug count => const 1_usize;
                     scope 95 (inlined core::num::<impl isize>::wrapping_neg) {
                         debug self => const 1_isize;
@@ -305,56 +298,56 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                         }
                     }
                     scope 97 (inlined std::ptr::const_ptr::<impl *const u8>::wrapping_offset) {
-                        debug self => _75;
+                        debug self => _73;
                         debug count => const -1_isize;
                         scope 98 {
                         }
                     }
                 }
                 scope 99 (inlined std::ptr::const_ptr::<impl *const u8>::with_metadata_of::<impl Sized>) {
-                    debug self => _76;
-                    debug meta => _74;
-                    let mut _77: *const ();
+                    debug self => _74;
+                    debug meta => _72;
+                    let mut _75: *const ();
                     scope 100 (inlined std::ptr::metadata::<impl Sized>) {
-                        debug ptr => _74;
+                        debug ptr => _72;
                         scope 101 {
                         }
                     }
                     scope 102 (inlined std::ptr::from_raw_parts::<impl Sized>) {
-                        debug data_address => _77;
+                        debug data_address => _75;
                         debug metadata => const ();
-                        let mut _78: std::ptr::metadata::PtrComponents<impl Sized>;
-                        let mut _79: std::ptr::metadata::PtrRepr<impl Sized>;
+                        let mut _76: std::ptr::metadata::PtrComponents<impl Sized>;
+                        let mut _77: std::ptr::metadata::PtrRepr<impl Sized>;
                         scope 103 {
                         }
                     }
                 }
             }
             scope 138 (inlined <NonNull<impl Sized> as PartialEq>::eq) {
-                debug (*(self: &NonNull<impl Sized>)) => (_31.4: std::ptr::NonNull<impl Sized>);
-                debug (*(other: &NonNull<impl Sized>)) => _35;
-                let mut _36: std::ptr::NonNull<impl Sized>;
-                let mut _43: *mut impl Sized;
-                let mut _50: *mut impl Sized;
+                debug (*(self: &NonNull<impl Sized>)) => (_29.4: std::ptr::NonNull<impl Sized>);
+                debug (*(other: &NonNull<impl Sized>)) => _33;
+                let mut _34: std::ptr::NonNull<impl Sized>;
+                let mut _41: *mut impl Sized;
+                let mut _48: *mut impl Sized;
                 scope 139 (inlined NonNull::<impl Sized>::as_ptr) {
-                    debug self => _36;
-                    let mut _37: *const impl Sized;
-                    let mut _41: bool;
-                    let mut _42: bool;
+                    debug self => _34;
+                    let mut _35: *const impl Sized;
+                    let mut _39: bool;
+                    let mut _40: bool;
                     scope 140 {
                         scope 141 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                            debug self => _37;
-                            let mut _38: *const u8;
+                            debug self => _35;
+                            let mut _36: *const u8;
                             scope 142 {
                                 scope 143 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                    debug ptr => _38;
-                                    let mut _40: usize;
+                                    debug ptr => _36;
+                                    let mut _38: usize;
                                     scope 144 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                        debug self => _38;
-                                        let mut _39: *const ();
+                                        debug self => _36;
+                                        let mut _37: *const ();
                                         scope 145 {
                                             scope 146 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                debug self => _38;
+                                                debug self => _36;
                                             }
                                         }
                                     }
@@ -364,24 +357,24 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                     }
                 }
                 scope 147 (inlined NonNull::<impl Sized>::as_ptr) {
-                    debug self => _35;
-                    let mut _44: *const impl Sized;
-                    let mut _48: bool;
-                    let mut _49: bool;
+                    debug self => _33;
+                    let mut _42: *const impl Sized;
+                    let mut _46: bool;
+                    let mut _47: bool;
                     scope 148 {
                         scope 149 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                            debug self => _44;
-                            let mut _45: *const u8;
+                            debug self => _42;
+                            let mut _43: *const u8;
                             scope 150 {
                                 scope 151 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                    debug ptr => _45;
-                                    let mut _47: usize;
+                                    debug ptr => _43;
+                                    let mut _45: usize;
                                     scope 152 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                        debug self => _45;
-                                        let mut _46: *const ();
+                                        debug self => _43;
+                                        let mut _44: *const ();
                                         scope 153 {
                                             scope 154 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                debug self => _45;
+                                                debug self => _43;
                                             }
                                         }
                                     }
@@ -394,50 +387,47 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         }
     }
     scope 3 (inlined <Vec<impl Sized> as IntoIterator>::into_iter) {
-        debug ((((self: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>) => _2;
-        debug ((((self: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).1: std::marker::PhantomData<impl Sized>) => _3;
-        debug (((self: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).1: alloc::raw_vec::Cap) => _4;
-        debug (((self: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).2: std::alloc::Global) => _5;
-        debug ((self: Vec<impl Sized>).1: usize) => _6;
-        let mut _15: bool;
-        let mut _16: *mut impl Sized;
-        let mut _17: *const impl Sized;
-        let mut _26: *mut impl Sized;
-        let mut _28: usize;
+        debug self => _1;
+        let mut _11: bool;
+        let mut _12: usize;
+        let mut _13: *mut impl Sized;
+        let mut _14: *const impl Sized;
+        let mut _15: usize;
+        let mut _24: *mut impl Sized;
+        let mut _26: usize;
         scope 4 {
-            let mut _7: std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
+            let mut _2: std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
             scope 5 {
-                debug me => _7;
+                debug me => _2;
                 scope 6 {
                     debug alloc => const ManuallyDrop::<std::alloc::Global> {{ value: std::alloc::Global }};
-                    let _14: *mut impl Sized;
+                    let _10: *mut impl Sized;
                     scope 7 {
-                        debug begin => _14;
+                        debug begin => _10;
                         scope 8 {
-                            debug end => _17;
+                            debug end => _14;
                             scope 9 {
-                                debug cap => _28;
-                                let _29: std::ptr::NonNull<impl Sized>;
+                                debug cap => _26;
+                                let _27: std::ptr::NonNull<impl Sized>;
                                 scope 10 {
-                                    debug buf => _29;
+                                    debug buf => _27;
                                 }
                                 scope 68 (inlined NonNull::<impl Sized>::new_unchecked) {
-                                    debug ptr => _14;
-                                    let mut _97: *mut impl Sized;
+                                    debug ptr => _10;
                                     scope 69 {
                                         scope 70 (inlined NonNull::<T>::new_unchecked::runtime::<impl Sized>) {
-                                            debug ptr => _97;
+                                            debug ptr => _10;
                                             scope 71 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::is_null) {
-                                                debug self => _97;
-                                                let mut _98: *mut u8;
+                                                debug self => _10;
+                                                let mut _94: *mut u8;
                                                 scope 72 {
                                                     scope 73 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                        debug ptr => _98;
+                                                        debug ptr => _94;
                                                         scope 74 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                            debug self => _98;
+                                                            debug self => _94;
                                                             scope 75 {
                                                                 scope 76 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                                    debug self => _98;
+                                                                    debug self => _94;
                                                                 }
                                                             }
                                                         }
@@ -449,101 +439,102 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                 }
                             }
                             scope 66 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                                debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _7;
+                                debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _2;
                             }
                             scope 67 (inlined alloc::raw_vec::RawVec::<impl Sized>::capacity) {
-                                debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => ((_7.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-                                let mut _27: bool;
+                                debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => (_1.0: alloc::raw_vec::RawVec<impl Sized>);
+                                let mut _25: bool;
                             }
                         }
                         scope 50 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                            debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _7;
+                            debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _2;
                         }
                         scope 51 (inlined Vec::<impl Sized>::len) {
-                            debug (*(self: &Vec<impl Sized>)) => (_7.0: std::vec::Vec<impl Sized>);
+                            debug (*(self: &Vec<impl Sized>)) => _1;
                         }
                         scope 52 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
-                            debug self => _14;
-                            debug count => _6;
-                            let mut _18: *mut u8;
-                            let mut _21: *mut u8;
+                            debug self => _10;
+                            debug count => _12;
+                            let mut _16: *mut u8;
+                            let mut _19: *mut u8;
                             scope 53 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
-                                debug self => _14;
+                                debug self => _10;
                             }
                             scope 54 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
-                                debug self => _18;
-                                debug count => _6;
-                                let mut _19: isize;
+                                debug self => _16;
+                                debug count => _12;
+                                let mut _17: isize;
                                 scope 55 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
-                                    debug self => _18;
-                                    debug count => _19;
-                                    let mut _20: *const u8;
+                                    debug self => _16;
+                                    debug count => _17;
+                                    let mut _18: *const u8;
                                     scope 56 {
                                     }
                                 }
                             }
                             scope 57 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
-                                debug self => _21;
-                                debug meta => _8;
-                                let mut _22: *mut ();
+                                debug self => _19;
+                                debug meta => _4;
+                                let mut _20: *mut ();
                                 scope 58 (inlined std::ptr::metadata::<impl Sized>) {
-                                    debug ptr => _8;
+                                    debug ptr => _4;
                                     scope 59 {
                                     }
                                 }
                                 scope 60 (inlined std::ptr::from_raw_parts_mut::<impl Sized>) {
-                                    debug data_address => _22;
+                                    debug data_address => _20;
                                     debug metadata => const ();
-                                    let mut _23: *const ();
-                                    let mut _24: std::ptr::metadata::PtrComponents<impl Sized>;
-                                    let mut _25: std::ptr::metadata::PtrRepr<impl Sized>;
+                                    let mut _21: *const ();
+                                    let mut _22: std::ptr::metadata::PtrComponents<impl Sized>;
+                                    let mut _23: std::ptr::metadata::PtrRepr<impl Sized>;
                                     scope 61 {
                                     }
                                 }
                             }
                         }
                         scope 62 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                            debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _7;
+                            debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _2;
                         }
                         scope 63 (inlined Vec::<impl Sized>::len) {
-                            debug (*(self: &Vec<impl Sized>)) => (_7.0: std::vec::Vec<impl Sized>);
+                            debug (*(self: &Vec<impl Sized>)) => _1;
                         }
                         scope 64 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::add) {
-                            debug self => _14;
-                            debug count => _6;
+                            debug self => _10;
+                            debug count => _12;
                             scope 65 {
                             }
                         }
                     }
                     scope 38 (inlined <ManuallyDrop<Vec<impl Sized>> as DerefMut>::deref_mut) {
-                        debug (*(self: &mut ManuallyDrop<Vec<impl Sized>>)) => _7;
+                        debug (*(self: &mut ManuallyDrop<Vec<impl Sized>>)) => _2;
                     }
                     scope 39 (inlined Vec::<impl Sized>::as_mut_ptr) {
-                        debug (*(self: &mut Vec<impl Sized>)) => (_7.0: std::vec::Vec<impl Sized>);
+                        debug (*(self: &mut Vec<impl Sized>)) => _1;
                         scope 40 (inlined alloc::raw_vec::RawVec::<impl Sized>::ptr) {
-                            debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => ((_7.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
+                            debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => (_1.0: alloc::raw_vec::RawVec<impl Sized>);
+                            let mut _3: std::ptr::NonNull<impl Sized>;
                             scope 41 (inlined Unique::<impl Sized>::as_ptr) {
-                                debug ((self: Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>) => _2;
+                                debug ((self: Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>) => _3;
                                 debug ((self: Unique<impl Sized>).1: std::marker::PhantomData<impl Sized>) => const ZeroSized: PhantomData<impl Sized>;
                                 scope 42 (inlined NonNull::<impl Sized>::as_ptr) {
-                                    debug self => _2;
-                                    let mut _8: *const impl Sized;
-                                    let mut _12: bool;
-                                    let mut _13: bool;
+                                    debug self => _3;
+                                    let mut _4: *const impl Sized;
+                                    let mut _8: bool;
+                                    let mut _9: bool;
                                     scope 43 {
                                         scope 44 (inlined std::ptr::const_ptr::<impl *const impl Sized>::is_null) {
-                                            debug self => _8;
-                                            let mut _9: *const u8;
+                                            debug self => _4;
+                                            let mut _5: *const u8;
                                             scope 45 {
                                                 scope 46 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                                    debug ptr => _9;
-                                                    let mut _11: usize;
+                                                    debug ptr => _5;
+                                                    let mut _7: usize;
                                                     scope 47 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                                        debug self => _9;
-                                                        let mut _10: *const ();
+                                                        debug self => _5;
+                                                        let mut _6: *const ();
                                                         scope 48 {
                                                             scope 49 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                                debug self => _9;
+                                                                debug self => _5;
                                                             }
                                                         }
                                                     }
@@ -557,34 +548,33 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                     }
                 }
                 scope 12 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                    debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _7;
+                    debug (*(self: &ManuallyDrop<Vec<impl Sized>>)) => _2;
                 }
                 scope 13 (inlined Vec::<impl Sized>::allocator) {
-                    debug (*(self: &Vec<impl Sized>)) => (_7.0: std::vec::Vec<impl Sized>);
+                    debug (*(self: &Vec<impl Sized>)) => _1;
                     scope 14 (inlined alloc::raw_vec::RawVec::<impl Sized>::allocator) {
-                        debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => ((_7.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
+                        debug (*(self: &alloc::raw_vec::RawVec<impl Sized>)) => (_1.0: alloc::raw_vec::RawVec<impl Sized>);
                     }
                 }
                 scope 15 (inlined std::ptr::read::<std::alloc::Global>) {
                     debug (*(src: *const std::alloc::Global)) => const std::alloc::Global;
-                    let mut _92: *const std::alloc::Global;
                     scope 16 {
                         scope 17 (inlined std::ptr::read::runtime::<std::alloc::Global>) {
-                            debug src => _92;
+                            debug (*(src: *const std::alloc::Global)) => const std::alloc::Global;
                             scope 18 (inlined intrinsics::is_aligned_and_not_null::<std::alloc::Global>) {
-                                debug ptr => _92;
+                                debug (*(ptr: *const std::alloc::Global)) => const std::alloc::Global;
                                 scope 19 (inlined std::ptr::const_ptr::<impl *const std::alloc::Global>::is_null) {
-                                    debug self => _92;
-                                    let mut _93: *const u8;
+                                    debug (*(self: *const std::alloc::Global)) => const std::alloc::Global;
+                                    let mut _90: *const u8;
                                     scope 20 {
                                         scope 21 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
-                                            debug ptr => _93;
+                                            debug ptr => _90;
                                             scope 22 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
-                                                debug self => _93;
-                                                let mut _94: *const ();
+                                                debug self => _90;
+                                                let mut _91: *const ();
                                                 scope 23 {
                                                     scope 24 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
-                                                        debug self => _93;
+                                                        debug self => _90;
                                                     }
                                                 }
                                             }
@@ -592,39 +582,39 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                     }
                                 }
                                 scope 25 (inlined std::ptr::const_ptr::<impl *const std::alloc::Global>::is_aligned) {
-                                    debug self => _92;
-                                    let mut _95: usize;
+                                    debug (*(self: *const std::alloc::Global)) => const std::alloc::Global;
+                                    let mut _92: usize;
                                     scope 26 (inlined align_of::<std::alloc::Global>) {
                                     }
                                     scope 27 (inlined std::ptr::const_ptr::<impl *const std::alloc::Global>::is_aligned_to) {
-                                        debug self => _92;
-                                        debug align => _95;
-                                        let mut _96: &[&str];
+                                        debug (*(self: *const std::alloc::Global)) => const std::alloc::Global;
+                                        debug align => _92;
+                                        let mut _93: &[&str];
                                         scope 28 {
                                             scope 31 (inlined std::ptr::const_ptr::<impl *const std::alloc::Global>::cast::<()>) {
-                                                debug self => _92;
+                                                debug (*(self: *const std::alloc::Global)) => const std::alloc::Global;
                                             }
                                             scope 33 (inlined std::ptr::const_ptr::<impl *const T>::is_aligned_to::runtime_impl) {
-                                                debug ptr => _94;
-                                                debug align => _95;
+                                                debug ptr => _91;
+                                                debug align => _92;
                                                 scope 34 (inlined std::ptr::const_ptr::<impl *const ()>::addr) {
-                                                    debug self => _94;
+                                                    debug self => _91;
                                                     scope 35 {
                                                         scope 36 (inlined std::ptr::const_ptr::<impl *const ()>::cast::<()>) {
-                                                            debug self => _94;
+                                                            debug self => _91;
                                                         }
                                                     }
                                                 }
                                             }
                                         }
                                         scope 29 (inlined core::num::<impl usize>::is_power_of_two) {
-                                            debug self => _95;
+                                            debug self => _92;
                                             scope 30 (inlined core::num::<impl usize>::count_ones) {
-                                                debug self => _95;
+                                                debug self => _92;
                                             }
                                         }
                                         scope 32 (inlined Arguments::<'_>::new_const) {
-                                            debug pieces => _96;
+                                            debug pieces => _93;
                                         }
                                     }
                                 }
@@ -637,401 +627,389 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                 }
             }
             scope 11 (inlined ManuallyDrop::<Vec<impl Sized>>::new) {
-                debug ((((value: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>) => _2;
-                debug ((((value: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).1: std::marker::PhantomData<impl Sized>) => const ZeroSized: PhantomData<impl Sized>;
-                debug (((value: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).1: alloc::raw_vec::Cap) => _4;
-                debug (((value: Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).2: std::alloc::Global) => const std::alloc::Global;
-                debug ((value: Vec<impl Sized>).1: usize) => _6;
+                debug value => _1;
             }
         }
     }
 
     bb0: {
-        StorageLive(_30);
-        StorageLive(_3);
-        StorageLive(_5);
-        _2 = (((_1.0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>);
-        _3 = const ZeroSized: PhantomData<impl Sized>;
-        _4 = ((_1.0: alloc::raw_vec::RawVec<impl Sized>).1: alloc::raw_vec::Cap);
-        _5 = const std::alloc::Global;
-        _6 = (_1.1: usize);
-        StorageLive(_14);
-        StorageLive(_29);
         StorageLive(_28);
-        StorageLive(_17);
-        StorageLive(_8);
-        StorageLive(_9);
-        StorageLive(_7);
-        _7 = ManuallyDrop::<Vec<impl Sized>> { value: _1 };
+        StorageLive(_10);
+        StorageLive(_27);
+        StorageLive(_26);
+        StorageLive(_14);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_2);
+        _2 = ManuallyDrop::<Vec<impl Sized>> { value: _1 };
+        StorageLive(_90);
+        StorageLive(_91);
         StorageLive(_92);
         StorageLive(_93);
-        StorageLive(_94);
-        StorageLive(_95);
-        StorageLive(_96);
-        StorageDead(_96);
-        StorageDead(_95);
-        StorageDead(_94);
         StorageDead(_93);
         StorageDead(_92);
-        StorageLive(_13);
-        StorageLive(_12);
-        _8 = (_2.0: *const impl Sized);
-        _9 = _8 as *const u8 (PtrToPtr);
+        StorageDead(_91);
+        StorageDead(_90);
+        StorageLive(_3);
+        _3 = (((_1.0: alloc::raw_vec::RawVec<impl Sized>).0: std::ptr::Unique<impl Sized>).0: std::ptr::NonNull<impl Sized>);
+        StorageLive(_9);
+        StorageLive(_8);
+        _4 = (_3.0: *const impl Sized);
+        _5 = _4 as *const u8 (PtrToPtr);
+        StorageLive(_7);
+        StorageLive(_6);
+        _6 = _4 as *const () (PtrToPtr);
+        _7 = move _6 as usize (Transmute);
+        StorageDead(_6);
+        _8 = Eq(move _7, const 0_usize);
+        StorageDead(_7);
+        _9 = Not(move _8);
+        StorageDead(_8);
+        assume(move _9);
+        StorageDead(_9);
+        _10 = _4 as *mut impl Sized (PtrToPtr);
+        StorageDead(_3);
         StorageLive(_11);
-        StorageLive(_10);
-        _10 = _8 as *const () (PtrToPtr);
-        _11 = move _10 as usize (Transmute);
-        StorageDead(_10);
-        _12 = Eq(move _11, const 0_usize);
-        StorageDead(_11);
-        _13 = Not(move _12);
-        StorageDead(_12);
-        assume(move _13);
-        StorageDead(_13);
-        _14 = _8 as *mut impl Sized (PtrToPtr);
-        StorageLive(_15);
-        _15 = const _;
-        switchInt(move _15) -> [0: bb1, otherwise: bb2];
+        _11 = const _;
+        switchInt(move _11) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageLive(_16);
-        _16 = Offset(_14, _6);
-        _17 = move _16 as *const impl Sized (PointerCoercion(MutToConstPointer));
-        StorageDead(_16);
+        StorageLive(_13);
+        StorageLive(_12);
+        _12 = (_1.1: usize);
+        _13 = Offset(_10, _12);
+        _14 = move _13 as *const impl Sized (PointerCoercion(MutToConstPointer));
+        StorageDead(_12);
+        StorageDead(_13);
         goto -> bb4;
     }
 
     bb2: {
-        StorageLive(_26);
-        StorageLive(_20);
-        StorageLive(_21);
+        StorageLive(_24);
+        StorageLive(_15);
+        _15 = (_1.1: usize);
         StorageLive(_18);
-        _18 = _8 as *mut u8 (PtrToPtr);
         StorageLive(_19);
-        _19 = _6 as isize (IntToInt);
-        _20 = arith_offset::<u8>(move _9, move _19) -> [return: bb3, unwind unreachable];
+        StorageLive(_16);
+        _16 = _4 as *mut u8 (PtrToPtr);
+        StorageLive(_17);
+        _17 = _15 as isize (IntToInt);
+        _18 = arith_offset::<u8>(move _5, move _17) -> [return: bb3, unwind unreachable];
     }
 
     bb3: {
-        _21 = _20 as *mut u8 (PtrToPtr);
+        _19 = _18 as *mut u8 (PtrToPtr);
+        StorageDead(_17);
+        StorageDead(_16);
+        StorageLive(_20);
+        _20 = _18 as *mut () (PtrToPtr);
+        StorageLive(_23);
+        StorageLive(_22);
+        StorageLive(_21);
+        _21 = _18 as *const () (PtrToPtr);
+        _22 = std::ptr::metadata::PtrComponents::<impl Sized> { data_address: move _21, metadata: const () };
+        StorageDead(_21);
+        _23 = std::ptr::metadata::PtrRepr::<impl Sized> { const_ptr: move _22 };
+        StorageDead(_22);
+        _24 = (_23.1: *mut impl Sized);
+        StorageDead(_23);
+        StorageDead(_20);
         StorageDead(_19);
         StorageDead(_18);
-        StorageLive(_22);
-        _22 = _20 as *mut () (PtrToPtr);
-        StorageLive(_25);
-        StorageLive(_24);
-        StorageLive(_23);
-        _23 = _20 as *const () (PtrToPtr);
-        _24 = std::ptr::metadata::PtrComponents::<impl Sized> { data_address: move _23, metadata: const () };
-        StorageDead(_23);
-        _25 = std::ptr::metadata::PtrRepr::<impl Sized> { const_ptr: move _24 };
+        StorageDead(_15);
+        _14 = move _24 as *const impl Sized (PointerCoercion(MutToConstPointer));
         StorageDead(_24);
-        _26 = (_25.1: *mut impl Sized);
-        StorageDead(_25);
-        StorageDead(_22);
-        StorageDead(_21);
-        StorageDead(_20);
-        _17 = move _26 as *const impl Sized (PointerCoercion(MutToConstPointer));
-        StorageDead(_26);
         goto -> bb4;
     }
 
     bb4: {
-        StorageDead(_15);
-        StorageLive(_27);
-        _27 = const _;
-        switchInt(move _27) -> [0: bb5, otherwise: bb6];
+        StorageDead(_11);
+        StorageLive(_25);
+        _25 = const _;
+        switchInt(move _25) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        _28 = (_4.0: usize);
+        _26 = (((_1.0: alloc::raw_vec::RawVec<impl Sized>).1: alloc::raw_vec::Cap).0: usize);
         goto -> bb7;
     }
 
     bb6: {
-        _28 = const _;
+        _26 = const _;
         goto -> bb7;
     }
 
     bb7: {
-        StorageDead(_27);
-        StorageLive(_97);
-        StorageLive(_98);
-        _29 = NonNull::<impl Sized> { pointer: _8 };
-        StorageDead(_98);
-        StorageDead(_97);
-        _30 = std::vec::IntoIter::<impl Sized> { buf: _29, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _28, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: std::alloc::Global }}, ptr: _29, end: move _17 };
-        StorageDead(_7);
-        StorageDead(_9);
-        StorageDead(_8);
-        StorageDead(_17);
-        StorageDead(_28);
-        StorageDead(_29);
-        StorageDead(_14);
-        StorageDead(_3);
+        StorageDead(_25);
+        StorageLive(_94);
+        _27 = NonNull::<impl Sized> { pointer: _4 };
+        StorageDead(_94);
+        _28 = std::vec::IntoIter::<impl Sized> { buf: _27, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _26, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: std::alloc::Global }}, ptr: _27, end: move _14 };
+        StorageDead(_2);
         StorageDead(_5);
-        StorageLive(_31);
-        _31 = move _30;
+        StorageDead(_4);
+        StorageDead(_14);
+        StorageDead(_26);
+        StorageDead(_27);
+        StorageDead(_10);
+        StorageLive(_29);
+        _29 = move _28;
         goto -> bb8;
     }
 
     bb8: {
-        StorageLive(_62);
-        StorageLive(_72);
-        StorageLive(_35);
-        StorageLive(_52);
-        StorageLive(_53);
-        StorageLive(_32);
-        _32 = const _;
-        switchInt(move _32) -> [0: bb9, otherwise: bb12];
+        StorageLive(_60);
+        StorageLive(_70);
+        StorageLive(_33);
+        StorageLive(_50);
+        StorageLive(_51);
+        StorageLive(_30);
+        _30 = const _;
+        switchInt(move _30) -> [0: bb9, otherwise: bb12];
     }
 
     bb9: {
-        StorageLive(_51);
-        StorageLive(_34);
-        StorageLive(_33);
-        _33 = &raw const (_31.5: *const impl Sized);
-        _34 = move _33 as *const std::ptr::NonNull<impl Sized> (PtrToPtr);
-        StorageDead(_33);
-        _35 = (*_34);
-        StorageLive(_43);
-        StorageLive(_36);
-        _36 = (_31.4: std::ptr::NonNull<impl Sized>);
-        StorageLive(_37);
-        StorageLive(_42);
+        StorageLive(_49);
+        StorageLive(_32);
+        StorageLive(_31);
+        _31 = &raw const (_29.5: *const impl Sized);
+        _32 = move _31 as *const std::ptr::NonNull<impl Sized> (PtrToPtr);
+        StorageDead(_31);
+        _33 = (*_32);
         StorageLive(_41);
-        _37 = (_36.0: *const impl Sized);
-        StorageLive(_38);
-        _38 = _37 as *const u8 (PtrToPtr);
+        StorageLive(_34);
+        _34 = (_29.4: std::ptr::NonNull<impl Sized>);
+        StorageLive(_35);
         StorageLive(_40);
         StorageLive(_39);
-        _39 = _37 as *const () (PtrToPtr);
-        _40 = move _39 as usize (Transmute);
-        StorageDead(_39);
-        _41 = Eq(move _40, const 0_usize);
-        StorageDead(_40);
-        StorageDead(_38);
-        _42 = Not(move _41);
-        StorageDead(_41);
-        assume(move _42);
-        StorageDead(_42);
-        _43 = _37 as *mut impl Sized (PtrToPtr);
+        _35 = (_34.0: *const impl Sized);
+        StorageLive(_36);
+        _36 = _35 as *const u8 (PtrToPtr);
+        StorageLive(_38);
+        StorageLive(_37);
+        _37 = _35 as *const () (PtrToPtr);
+        _38 = move _37 as usize (Transmute);
         StorageDead(_37);
+        _39 = Eq(move _38, const 0_usize);
+        StorageDead(_38);
         StorageDead(_36);
-        StorageLive(_50);
-        StorageLive(_44);
-        StorageLive(_49);
+        _40 = Not(move _39);
+        StorageDead(_39);
+        assume(move _40);
+        StorageDead(_40);
+        _41 = _35 as *mut impl Sized (PtrToPtr);
+        StorageDead(_35);
+        StorageDead(_34);
         StorageLive(_48);
-        _44 = (_35.0: *const impl Sized);
-        StorageLive(_45);
-        _45 = _44 as *const u8 (PtrToPtr);
+        StorageLive(_42);
         StorageLive(_47);
         StorageLive(_46);
-        _46 = _44 as *const () (PtrToPtr);
-        _47 = move _46 as usize (Transmute);
-        StorageDead(_46);
-        _48 = Eq(move _47, const 0_usize);
-        StorageDead(_47);
-        StorageDead(_45);
-        _49 = Not(move _48);
-        StorageDead(_48);
-        assume(move _49);
-        StorageDead(_49);
-        _50 = _44 as *mut impl Sized (PtrToPtr);
+        _42 = (_33.0: *const impl Sized);
+        StorageLive(_43);
+        _43 = _42 as *const u8 (PtrToPtr);
+        StorageLive(_45);
+        StorageLive(_44);
+        _44 = _42 as *const () (PtrToPtr);
+        _45 = move _44 as usize (Transmute);
         StorageDead(_44);
-        _51 = Eq(move _43, move _50);
-        StorageDead(_50);
+        _46 = Eq(move _45, const 0_usize);
+        StorageDead(_45);
         StorageDead(_43);
-        switchInt(move _51) -> [0: bb10, otherwise: bb11];
+        _47 = Not(move _46);
+        StorageDead(_46);
+        assume(move _47);
+        StorageDead(_47);
+        _48 = _42 as *mut impl Sized (PtrToPtr);
+        StorageDead(_42);
+        _49 = Eq(move _41, move _48);
+        StorageDead(_48);
+        StorageDead(_41);
+        switchInt(move _49) -> [0: bb10, otherwise: bb11];
     }
 
     bb10: {
-        StorageDead(_34);
-        _52 = (_31.4: std::ptr::NonNull<impl Sized>);
-        StorageLive(_55);
-        StorageLive(_54);
-        _53 = (_52.0: *const impl Sized);
-        _54 = Offset(_53, const 1_usize);
-        _55 = NonNull::<impl Sized> { pointer: move _54 };
-        StorageDead(_54);
-        (_31.4: std::ptr::NonNull<impl Sized>) = move _55;
-        StorageDead(_55);
-        StorageLive(_61);
-        StorageLive(_60);
+        StorageDead(_32);
+        _50 = (_29.4: std::ptr::NonNull<impl Sized>);
+        StorageLive(_53);
+        StorageLive(_52);
+        _51 = (_50.0: *const impl Sized);
+        _52 = Offset(_51, const 1_usize);
+        _53 = NonNull::<impl Sized> { pointer: move _52 };
+        StorageDead(_52);
+        (_29.4: std::ptr::NonNull<impl Sized>) = move _53;
+        StorageDead(_53);
         StorageLive(_59);
-        StorageLive(_56);
-        _56 = _53 as *const u8 (PtrToPtr);
         StorageLive(_58);
         StorageLive(_57);
-        _57 = _53 as *const () (PtrToPtr);
-        _58 = move _57 as usize (Transmute);
-        StorageDead(_57);
-        _59 = Eq(move _58, const 0_usize);
-        StorageDead(_58);
+        StorageLive(_54);
+        _54 = _51 as *const u8 (PtrToPtr);
+        StorageLive(_56);
+        StorageLive(_55);
+        _55 = _51 as *const () (PtrToPtr);
+        _56 = move _55 as usize (Transmute);
+        StorageDead(_55);
+        _57 = Eq(move _56, const 0_usize);
         StorageDead(_56);
-        _60 = Not(move _59);
-        StorageDead(_59);
-        assume(move _60);
-        StorageDead(_60);
-        StorageLive(_105);
-        StorageLive(_106);
-        StorageLive(_107);
-        StorageLive(_108);
-        StorageLive(_109);
-        _61 = (*_53);
-        StorageDead(_109);
-        StorageDead(_108);
-        StorageDead(_107);
-        StorageDead(_106);
-        StorageDead(_105);
-        _62 = Option::<impl Sized>::Some(move _61);
-        StorageDead(_61);
-        StorageDead(_51);
-        StorageDead(_32);
-        StorageDead(_53);
-        StorageDead(_52);
-        StorageDead(_35);
-        StorageDead(_72);
-        goto -> bb18;
-    }
-
-    bb11: {
-        StorageDead(_34);
-        StorageDead(_51);
-        StorageDead(_32);
-        StorageDead(_53);
-        StorageDead(_52);
-        StorageDead(_35);
-        StorageDead(_72);
-        goto -> bb23;
-    }
-
-    bb12: {
-        StorageLive(_73);
-        StorageLive(_70);
-        StorageLive(_63);
-        _63 = (_31.4: std::ptr::NonNull<impl Sized>);
-        StorageLive(_64);
-        StorageLive(_69);
-        StorageLive(_68);
-        _64 = (_63.0: *const impl Sized);
-        StorageLive(_65);
-        _65 = _64 as *const u8 (PtrToPtr);
-        StorageLive(_67);
-        StorageLive(_66);
-        _66 = _64 as *const () (PtrToPtr);
-        _67 = move _66 as usize (Transmute);
-        StorageDead(_66);
-        _68 = Eq(move _67, const 0_usize);
-        StorageDead(_67);
-        StorageDead(_65);
-        _69 = Not(move _68);
-        StorageDead(_68);
-        assume(move _69);
-        StorageDead(_69);
-        _70 = _64 as *mut impl Sized (PtrToPtr);
-        StorageDead(_64);
-        StorageDead(_63);
-        StorageLive(_71);
-        _71 = (_31.5: *const impl Sized);
-        _72 = move _71 as *mut impl Sized (PtrToPtr);
-        StorageDead(_71);
-        _73 = Eq(move _70, _72);
-        switchInt(move _73) -> [0: bb13, otherwise: bb22];
-    }
-
-    bb13: {
-        StorageDead(_70);
-        StorageLive(_80);
-        StorageLive(_74);
-        _74 = (_31.5: *const impl Sized);
-        StorageLive(_76);
-        StorageLive(_75);
-        _75 = _74 as *const u8 (PtrToPtr);
-        _76 = arith_offset::<u8>(move _75, const -1_isize) -> [return: bb14, unwind unreachable];
-    }
-
-    bb14: {
-        StorageDead(_75);
-        StorageLive(_77);
-        _77 = _76 as *const () (PtrToPtr);
-        StorageLive(_79);
-        StorageLive(_78);
-        _78 = std::ptr::metadata::PtrComponents::<impl Sized> { data_address: _77, metadata: const () };
-        _79 = std::ptr::metadata::PtrRepr::<impl Sized> { const_ptr: move _78 };
-        StorageDead(_78);
-        _80 = (_79.0: *const impl Sized);
-        StorageDead(_79);
-        StorageDead(_77);
-        StorageDead(_76);
-        StorageDead(_74);
-        (_31.5: *const impl Sized) = move _80;
-        StorageDead(_80);
-        StorageLive(_89);
-        _81 = assert_zero_valid::<impl Sized>() -> [return: bb15, unwind unreachable];
-    }
-
-    bb15: {
-        StorageLive(_86);
-        StorageLive(_82);
-        _82 = MaybeUninit::<impl Sized> { uninit: const () };
-        StorageLive(_84);
-        StorageLive(_83);
-        _83 = &raw mut _82;
-        _84 = _83 as *mut impl Sized (PtrToPtr);
-        StorageDead(_83);
-        StorageLive(_99);
+        StorageDead(_54);
+        _58 = Not(move _57);
+        StorageDead(_57);
+        assume(move _58);
+        StorageDead(_58);
         StorageLive(_100);
         StorageLive(_101);
         StorageLive(_102);
         StorageLive(_103);
-        StorageLive(_104);
-        _85 = write_bytes::write_bytes::<impl Sized>(move _84, const 0_u8, const 1_usize) -> [return: bb16, unwind unreachable];
-    }
-
-    bb16: {
-        StorageDead(_104);
+        _59 = (*_51);
         StorageDead(_103);
         StorageDead(_102);
         StorageDead(_101);
         StorageDead(_100);
+        _60 = Option::<impl Sized>::Some(move _59);
+        StorageDead(_59);
+        StorageDead(_49);
+        StorageDead(_30);
+        StorageDead(_51);
+        StorageDead(_50);
+        StorageDead(_33);
+        StorageDead(_70);
+        goto -> bb18;
+    }
+
+    bb11: {
+        StorageDead(_32);
+        StorageDead(_49);
+        StorageDead(_30);
+        StorageDead(_51);
+        StorageDead(_50);
+        StorageDead(_33);
+        StorageDead(_70);
+        goto -> bb23;
+    }
+
+    bb12: {
+        StorageLive(_71);
+        StorageLive(_68);
+        StorageLive(_61);
+        _61 = (_29.4: std::ptr::NonNull<impl Sized>);
+        StorageLive(_62);
+        StorageLive(_67);
+        StorageLive(_66);
+        _62 = (_61.0: *const impl Sized);
+        StorageLive(_63);
+        _63 = _62 as *const u8 (PtrToPtr);
+        StorageLive(_65);
+        StorageLive(_64);
+        _64 = _62 as *const () (PtrToPtr);
+        _65 = move _64 as usize (Transmute);
+        StorageDead(_64);
+        _66 = Eq(move _65, const 0_usize);
+        StorageDead(_65);
+        StorageDead(_63);
+        _67 = Not(move _66);
+        StorageDead(_66);
+        assume(move _67);
+        StorageDead(_67);
+        _68 = _62 as *mut impl Sized (PtrToPtr);
+        StorageDead(_62);
+        StorageDead(_61);
+        StorageLive(_69);
+        _69 = (_29.5: *const impl Sized);
+        _70 = move _69 as *mut impl Sized (PtrToPtr);
+        StorageDead(_69);
+        _71 = Eq(move _68, _70);
+        switchInt(move _71) -> [0: bb13, otherwise: bb22];
+    }
+
+    bb13: {
+        StorageDead(_68);
+        StorageLive(_78);
+        StorageLive(_72);
+        _72 = (_29.5: *const impl Sized);
+        StorageLive(_74);
+        StorageLive(_73);
+        _73 = _72 as *const u8 (PtrToPtr);
+        _74 = arith_offset::<u8>(move _73, const -1_isize) -> [return: bb14, unwind unreachable];
+    }
+
+    bb14: {
+        StorageDead(_73);
+        StorageLive(_75);
+        _75 = _74 as *const () (PtrToPtr);
+        StorageLive(_77);
+        StorageLive(_76);
+        _76 = std::ptr::metadata::PtrComponents::<impl Sized> { data_address: _75, metadata: const () };
+        _77 = std::ptr::metadata::PtrRepr::<impl Sized> { const_ptr: move _76 };
+        StorageDead(_76);
+        _78 = (_77.0: *const impl Sized);
+        StorageDead(_77);
+        StorageDead(_75);
+        StorageDead(_74);
+        StorageDead(_72);
+        (_29.5: *const impl Sized) = move _78;
+        StorageDead(_78);
+        StorageLive(_87);
+        _79 = assert_zero_valid::<impl Sized>() -> [return: bb15, unwind unreachable];
+    }
+
+    bb15: {
+        StorageLive(_84);
+        StorageLive(_80);
+        _80 = MaybeUninit::<impl Sized> { uninit: const () };
+        StorageLive(_82);
+        StorageLive(_81);
+        _81 = &raw mut _80;
+        _82 = _81 as *mut impl Sized (PtrToPtr);
+        StorageDead(_81);
+        StorageLive(_95);
+        StorageLive(_96);
+        StorageLive(_97);
+        StorageLive(_98);
+        StorageLive(_99);
+        _83 = write_bytes::write_bytes::<impl Sized>(move _82, const 0_u8, const 1_usize) -> [return: bb16, unwind unreachable];
+    }
+
+    bb16: {
         StorageDead(_99);
-        StorageDead(_84);
-        _86 = move _82;
+        StorageDead(_98);
+        StorageDead(_97);
+        StorageDead(_96);
+        StorageDead(_95);
         StorageDead(_82);
-        _87 = assert_inhabited::<impl Sized>() -> [return: bb17, unwind unreachable];
+        _84 = move _80;
+        StorageDead(_80);
+        _85 = assert_inhabited::<impl Sized>() -> [return: bb17, unwind unreachable];
     }
 
     bb17: {
-        StorageLive(_88);
-        _88 = move (_86.1: std::mem::ManuallyDrop<impl Sized>);
-        _89 = move (_88.0: impl Sized);
-        StorageDead(_88);
+        StorageLive(_86);
+        _86 = move (_84.1: std::mem::ManuallyDrop<impl Sized>);
+        _87 = move (_86.0: impl Sized);
         StorageDead(_86);
-        _62 = Option::<impl Sized>::Some(move _89);
-        StorageDead(_89);
-        StorageDead(_73);
-        StorageDead(_32);
-        StorageDead(_53);
-        StorageDead(_52);
-        StorageDead(_35);
-        StorageDead(_72);
+        StorageDead(_84);
+        _60 = Option::<impl Sized>::Some(move _87);
+        StorageDead(_87);
+        StorageDead(_71);
+        StorageDead(_30);
+        StorageDead(_51);
+        StorageDead(_50);
+        StorageDead(_33);
+        StorageDead(_70);
         goto -> bb18;
     }
 
     bb18: {
-        _90 = move ((_62 as Some).0: impl Sized);
-        _91 = opaque::<impl Sized>(move _90) -> [return: bb19, unwind: bb20];
+        _88 = move ((_60 as Some).0: impl Sized);
+        _89 = opaque::<impl Sized>(move _88) -> [return: bb19, unwind: bb20];
     }
 
     bb19: {
-        StorageDead(_62);
+        StorageDead(_60);
         goto -> bb8;
     }
 
     bb20 (cleanup): {
-        drop(_31) -> [return: bb21, unwind terminate(cleanup)];
+        drop(_29) -> [return: bb21, unwind terminate(cleanup)];
     }
 
     bb21 (cleanup): {
@@ -1039,24 +1017,24 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb22: {
+        StorageDead(_68);
+        StorageDead(_71);
+        StorageDead(_30);
+        StorageDead(_51);
+        StorageDead(_50);
+        StorageDead(_33);
         StorageDead(_70);
-        StorageDead(_73);
-        StorageDead(_32);
-        StorageDead(_53);
-        StorageDead(_52);
-        StorageDead(_35);
-        StorageDead(_72);
         goto -> bb23;
     }
 
     bb23: {
-        StorageDead(_62);
-        drop(_31) -> [return: bb24, unwind continue];
+        StorageDead(_60);
+        drop(_29) -> [return: bb24, unwind continue];
     }
 
     bb24: {
-        StorageDead(_31);
-        StorageDead(_30);
+        StorageDead(_29);
+        StorageDead(_28);
         return;
     }
 }

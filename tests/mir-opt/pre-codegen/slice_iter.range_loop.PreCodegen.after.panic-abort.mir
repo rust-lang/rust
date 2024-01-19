@@ -6,62 +6,60 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _0: ();
     let mut _3: usize;
     let mut _4: usize;
-    let mut _5: usize;
-    let mut _8: usize;
-    let mut _9: bool;
-    let mut _11: &impl Fn(usize, &T);
-    let mut _12: (usize, &T);
-    let _13: ();
+    let mut _7: usize;
+    let mut _8: bool;
+    let mut _10: &impl Fn(usize, &T);
+    let mut _11: (usize, &T);
+    let _12: ();
     scope 1 {
-        debug ((iter: std::ops::Range<usize>).0: usize) => _5;
+        debug ((iter: std::ops::Range<usize>).0: usize) => _4;
         debug ((iter: std::ops::Range<usize>).1: usize) => _3;
         scope 2 {
-            debug i => _7;
-            let _10: &T;
+            debug i => _6;
+            let _9: &T;
             scope 3 {
-                debug x => _10;
+                debug x => _9;
             }
         }
         scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
-            debug ((*(self: &mut std::ops::Range<usize>)).0: usize) => _5;
+            debug ((*(self: &mut std::ops::Range<usize>)).0: usize) => _4;
             debug ((*(self: &mut std::ops::Range<usize>)).1: usize) => _3;
             scope 6 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
-                debug ((*(self: &mut std::ops::Range<usize>)).0: usize) => _5;
+                debug ((*(self: &mut std::ops::Range<usize>)).0: usize) => _4;
                 debug ((*(self: &mut std::ops::Range<usize>)).1: usize) => _3;
-                let mut _6: bool;
-                let _7: usize;
+                let mut _5: bool;
+                let _6: usize;
                 scope 7 {
-                    debug old => _7;
+                    debug old => _6;
                     scope 8 {
                     }
                 }
                 scope 9 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
-                    debug (*(self: &usize)) => _5;
+                    debug (*(self: &usize)) => _4;
                     debug (*(other: &usize)) => _3;
                 }
             }
         }
     }
     scope 4 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) {
-        debug ((self: std::ops::Range<usize>).0: usize) => _4;
+        debug ((self: std::ops::Range<usize>).0: usize) => const 0_usize;
         debug ((self: std::ops::Range<usize>).1: usize) => _3;
     }
 
     bb0: {
         _3 = Len((*_1));
         _4 = const 0_usize;
-        _5 = const 0_usize;
         goto -> bb1;
     }
 
     bb1: {
-        StorageLive(_6);
-        _6 = Lt(_5, _3);
-        switchInt(move _6) -> [0: bb2, otherwise: bb4];
+        StorageLive(_5);
+        _5 = Lt(_4, _3);
+        switchInt(move _5) -> [0: bb2, otherwise: bb4];
     }
 
     bb2: {
-        StorageDead(_6);
+        StorageDead(_5);
         drop(_2) -> [return: bb3, unwind unreachable];
     }
 
@@ -70,29 +68,29 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
-        _7 = _5;
-        _5 = <usize as Step>::forward_unchecked(_7, const 1_usize) -> [return: bb5, unwind unreachable];
+        _6 = _4;
+        _4 = <usize as Step>::forward_unchecked(_6, const 1_usize) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
-        StorageDead(_6);
-        _8 = Len((*_1));
-        _9 = Lt(_7, _8);
-        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb6, unwind unreachable];
+        StorageDead(_5);
+        _7 = Len((*_1));
+        _8 = Lt(_6, _7);
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb6, unwind unreachable];
     }
 
     bb6: {
-        _10 = &(*_1)[_7];
+        _9 = &(*_1)[_6];
+        StorageLive(_10);
+        _10 = &_2;
         StorageLive(_11);
-        _11 = &_2;
-        StorageLive(_12);
-        _12 = (_7, _10);
-        _13 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _11, move _12) -> [return: bb7, unwind unreachable];
+        _11 = (_6, _9);
+        _12 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _10, move _11) -> [return: bb7, unwind unreachable];
     }
 
     bb7: {
-        StorageDead(_12);
         StorageDead(_11);
+        StorageDead(_10);
         goto -> bb1;
     }
 }

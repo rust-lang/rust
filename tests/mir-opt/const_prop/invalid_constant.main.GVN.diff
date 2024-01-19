@@ -10,7 +10,8 @@
       let mut _7: Empty;
       let mut _8: main::NoVariants;
       scope 1 {
-          debug _invalid_char => _1;
+-         debug _invalid_char => _1;
++         debug _invalid_char => (_2.1: char);
           let _3: [E; 1];
           scope 3 {
               debug _invalid_tag => _3;

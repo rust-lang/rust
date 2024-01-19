@@ -53,16 +53,20 @@
           debug s => _1;
           let _4: &str;
           scope 2 {
-              debug t => _4;
+-             debug t => _4;
++             debug t => _1;
               let _15: &*const u8;
               let _16: &*const u8;
               let _29: &[u8];
               scope 3 {
-                  debug left_val => _15;
-                  debug right_val => _16;
+-                 debug left_val => _15;
+-                 debug right_val => _16;
++                 debug left_val => _9;
++                 debug right_val => _12;
                   let _21: core::panicking::AssertKind;
                   scope 4 {
-                      debug kind => _21;
+-                     debug kind => _21;
++                     debug kind => const core::panicking::AssertKind::Eq;
                   }
               }
               scope 5 {
@@ -70,11 +74,14 @@
                   let _41: &*const u8;
                   let _42: &*const u8;
                   scope 7 {
-                      debug left_val => _41;
-                      debug right_val => _42;
+-                     debug left_val => _41;
+-                     debug right_val => _42;
++                     debug left_val => _35;
++                     debug right_val => _38;
                       let _47: core::panicking::AssertKind;
                       scope 8 {
-                          debug kind => _47;
+-                         debug kind => _47;
++                         debug kind => const core::panicking::AssertKind::Eq;
                       }
                   }
               }

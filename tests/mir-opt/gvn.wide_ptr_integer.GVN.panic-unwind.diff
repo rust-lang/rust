@@ -31,10 +31,12 @@
       let mut _27: *const [u8];
       let mut _28: *const [u8];
       scope 1 {
-          debug a => _1;
+-         debug a => _1;
++         debug a => const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
           let _3: *const [u8];
           scope 3 {
-              debug b => _3;
+-             debug b => _3;
++             debug b => const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
           }
           scope 4 {
           }

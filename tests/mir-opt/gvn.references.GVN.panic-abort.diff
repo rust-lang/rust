@@ -35,7 +35,8 @@
           debug r => _18;
           let _19: &mut impl Sized;
           scope 2 {
-              debug s => _19;
+-             debug s => _19;
++             debug s => _18;
           }
       }
   

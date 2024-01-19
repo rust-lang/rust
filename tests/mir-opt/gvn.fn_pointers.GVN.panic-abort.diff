@@ -21,7 +21,8 @@
               debug g => _4;
               let _7: {closure@$DIR/gvn.rs:610:19: 610:21};
               scope 3 {
-                  debug closure => _7;
+-                 debug closure => _7;
++                 debug closure => const ZeroSized: {closure@$DIR/gvn.rs:610:19: 610:21};
                   let _8: fn();
                   scope 4 {
                       debug cf => _8;

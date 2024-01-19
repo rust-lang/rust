@@ -225,21 +225,20 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                         debug end_or_len => _7;
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
-                            let mut _60: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _60;
+                                    debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _60;
-                                        let mut _61: *mut u8;
+                                        debug self => _9;
+                                        let mut _60: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _61;
+                                                debug ptr => _60;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _61;
+                                                    debug self => _60;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _61;
+                                                            debug self => _60;
                                                         }
                                                     }
                                                 }
@@ -313,9 +312,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_9);
         _9 = _3 as *mut T (PtrToPtr);
         StorageLive(_60);
-        StorageLive(_61);
         _10 = NonNull::<T> { pointer: _4 };
-        StorageDead(_61);
         StorageDead(_60);
         StorageDead(_9);
         _11 = std::slice::Iter::<'_, T> { ptr: move _10, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };

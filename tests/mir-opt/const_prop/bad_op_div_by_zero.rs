@@ -5,7 +5,7 @@
 #[allow(unconditional_panic)]
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK: debug y => [[y:_.*]];
+    // CHECK: debug y => const 0_i32;
     // CHECK: debug _z => [[z:_.*]];
     // CHECK: assert(!const true, "attempt to divide `{}` by zero", const 1_i32)
     // CHECK: assert(!const false, "attempt to compute `{} / {}`, which would overflow", const 1_i32, const 0_i32)

@@ -11,8 +11,7 @@ fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];
     // CHECK: (*{{_.*}}) = const 42_i32;
-    // CHECK: [[tmp:_.*]] = (*{{_.*}});
-    // CHECK: [[x]] = [[tmp]];
+    // CHECK: [[x]] = (*{{_.*}});
     let x = *(#[rustc_box]
     Box::new(42))
         + 0;

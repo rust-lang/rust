@@ -4,16 +4,14 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     debug slice => _1;
     debug index => _2;
     let mut _0: &[u32];
-    let mut _3: usize;
-    let mut _4: usize;
     scope 1 (inlined #[track_caller] core::slice::index::<impl Index<std::ops::Range<usize>> for [u32]>::index) {
         debug self => _1;
-        debug ((index: std::ops::Range<usize>).0: usize) => _3;
-        debug ((index: std::ops::Range<usize>).1: usize) => _4;
+        debug index => _2;
         scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::index) {
-            debug ((self: std::ops::Range<usize>).0: usize) => _3;
-            debug ((self: std::ops::Range<usize>).1: usize) => _4;
+            debug self => _2;
             debug slice => _1;
+            let mut _3: usize;
+            let mut _4: usize;
             let mut _5: bool;
             let mut _6: usize;
             let mut _7: bool;
@@ -23,12 +21,12 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
             let _17: !;
             scope 3 {
                 scope 4 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
-                    debug ((self: std::ops::Range<usize>).0: usize) => _3;
-                    debug ((self: std::ops::Range<usize>).1: usize) => _4;
+                    debug self => _2;
                     debug slice => _1;
                     let mut _10: *const u32;
                     let mut _11: *const u32;
-                    let mut _18: &[&str];
+                    let mut _18: usize;
+                    let mut _19: &[&str];
                     scope 5 {
                         let _9: usize;
                         scope 6 {
@@ -38,7 +36,7 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
                             }
                             scope 12 (inlined std::ptr::const_ptr::<impl *const u32>::add) {
                                 debug self => _10;
-                                debug count => _3;
+                                debug count => _18;
                                 scope 13 {
                                 }
                             }
@@ -69,7 +67,7 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
                         }
                     }
                     scope 10 (inlined Arguments::<'_>::new_const) {
-                        debug pieces => _18;
+                        debug pieces => _19;
                     }
                 }
             }
@@ -77,9 +75,11 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     }
 
     bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
         _3 = (_2.0: usize);
         _4 = (_2.1: usize);
-        StorageLive(_5);
         _5 = Gt(_3, _4);
         switchInt(move _5) -> [0: bb1, otherwise: bb4];
     }
@@ -97,6 +97,7 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
         StorageLive(_8);
         _8 = &raw const (*_1);
         StorageLive(_18);
+        StorageLive(_19);
         StorageLive(_9);
         _9 = SubUnchecked(_4, _3);
         StorageLive(_11);
@@ -116,8 +117,11 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_9);
+        StorageDead(_19);
         StorageDead(_18);
         StorageDead(_8);
+        StorageDead(_4);
+        StorageDead(_3);
         _0 = &(*_15);
         return;
     }

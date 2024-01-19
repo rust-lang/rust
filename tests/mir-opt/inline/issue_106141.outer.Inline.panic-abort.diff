@@ -8,7 +8,7 @@
 +         let mut _2: bool;
 +         let mut _3: bool;
 +         scope 2 {
-+             debug buffer => const _;
++             debug buffer => const {ALLOC0<imm>: &[bool; 1]};
 +             scope 3 {
 +                 debug index => _0;
 +             }
@@ -45,5 +45,9 @@
 +         StorageDead(_1);
           return;
       }
++ }
++ 
++ ALLOC0 (size: 1, align: 1) {
++     01                                              │ .
   }
   

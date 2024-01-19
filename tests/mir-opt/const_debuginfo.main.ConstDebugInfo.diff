@@ -11,20 +11,16 @@
       let mut _14: u32;
       let mut _15: u32;
       scope 1 {
--         debug x => _1;
-+         debug x => const 1_u8;
+          debug x => const 1_u8;
           let _2: u8;
           scope 2 {
--             debug y => _2;
-+             debug y => const 2_u8;
+              debug y => const 2_u8;
               let _3: u8;
               scope 3 {
--                 debug z => _3;
-+                 debug z => const 3_u8;
+                  debug z => const 3_u8;
                   let _4: u8;
                   scope 4 {
--                     debug sum => _4;
-+                     debug sum => const 6_u8;
+                      debug sum => const 6_u8;
                       let _9: &str;
                       scope 5 {
 -                         debug s => _9;
@@ -34,16 +30,13 @@
                               debug f => _10;
                               let _11: std::option::Option<u16>;
                               scope 7 {
--                                 debug o => _11;
-+                                 debug o => const Option::<u16>::Some(99_u16);
+                                  debug o => const Option::<u16>::Some(99_u16);
                                   let _12: Point;
                                   scope 8 {
--                                     debug p => _12;
-+                                     debug p => const Point {{ x: 32_u32, y: 32_u32 }};
+                                      debug p => const Point {{ x: 32_u32, y: 32_u32 }};
                                       let _13: u32;
                                       scope 9 {
--                                         debug a => _13;
-+                                         debug a => const 64_u32;
+                                          debug a => const 64_u32;
                                       }
                                   }
                               }

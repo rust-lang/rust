@@ -631,9 +631,9 @@ fn indirect_static() {
 /// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
 fn constant_index_overflow<T: Copy>(x: &[T]) {
     // CHECK-LABEL: fn constant_index_overflow(
-    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug a => const usize::MAX;
     // CHECK: debug b => [[b:_.*]];
-    // CHECK: [[a]] = const usize::MAX;
+    // CHECK: [[a:_.*]] = const usize::MAX;
     // CHECK-NOT: = (*_1)[{{.*}} of 0];
     // CHECK: [[b]] = (*_1)[[[a]]];
     // CHECK-NOT: = (*_1)[{{.*}} of 0];
@@ -673,8 +673,8 @@ fn wide_ptr_provenance() {
 /// Check that we do simplify when there is no provenance, and do not ICE.
 fn wide_ptr_integer() {
     // CHECK-LABEL: fn wide_ptr_integer(
-    // CHECK: debug a => [[a:_.*]];
-    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug a => const
+    // CHECK: debug b => const
 
     let a: *const [u8] = unsafe { transmute((1usize, 1usize)) };
     let b: *const [u8] = unsafe { transmute((1usize, 2usize)) };

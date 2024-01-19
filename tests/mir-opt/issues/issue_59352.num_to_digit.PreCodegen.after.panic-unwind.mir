@@ -12,6 +12,7 @@ fn num_to_digit(_1: char) -> u32 {
             debug self => _1;
             debug radix => const 8_u32;
             let mut _2: u32;
+            let mut _3: u32;
             let mut _4: bool;
             let mut _8: &[&str];
             let mut _9: u32;
@@ -42,21 +43,17 @@ fn num_to_digit(_1: char) -> u32 {
     scope 9 (inlined char::methods::<impl char>::to_digit) {
         debug self => _1;
         debug radix => const 8_u32;
-        let mut _3: u32;
-        let mut _11: &[&str];
-        let mut _12: u32;
-        let mut _13: u32;
         scope 10 {
             debug digit => _3;
             scope 12 (inlined Arguments::<'_>::new_const) {
-                debug pieces => _11;
+                debug pieces => _8;
             }
             scope 13 (inlined core::num::<impl u32>::wrapping_sub) {
-                debug self => _13;
+                debug self => _10;
                 debug rhs => const 97_u32;
             }
             scope 14 (inlined core::num::<impl u32>::saturating_add) {
-                debug self => _12;
+                debug self => _9;
                 debug rhs => const 10_u32;
             }
         }

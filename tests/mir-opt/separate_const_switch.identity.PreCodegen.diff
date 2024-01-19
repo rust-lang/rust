@@ -51,7 +51,7 @@
       }
   
       bb1: {
-          _3 = ((_1 as Ok).0: i32);
+          _3 = move ((_1 as Ok).0: i32);
           _4 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_3);
           StorageDead(_6);
           StorageDead(_3);
@@ -63,7 +63,7 @@
       }
   
       bb2: {
-          _6 = ((_1 as Err).0: i32);
+          _6 = move ((_1 as Err).0: i32);
           StorageLive(_7);
           _7 = Result::<Infallible, i32>::Err(_6);
           _4 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _7);
@@ -72,7 +72,7 @@
           StorageDead(_3);
           StorageDead(_2);
           _8 = ((_4 as Break).0: std::result::Result<std::convert::Infallible, i32>);
-          _9 = ((_8 as Err).0: i32);
+          _9 = move ((_8 as Err).0: i32);
           _0 = Result::<i32, i32>::Err(_9);
           StorageDead(_4);
           return;

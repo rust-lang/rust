@@ -6,7 +6,8 @@
       let _1: &mut Never;
       let mut _2: &mut Never;
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const {0x1 as &mut Never};
       }
       scope 2 {
       }

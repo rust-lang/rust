@@ -6,7 +6,8 @@
       let _1: std::boxed::Box<Never>;
       let mut _2: *const Never;
       scope 1 {
-          debug x => _1;
+-         debug x => _1;
++         debug x => const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global);
       }
       scope 2 {
       }

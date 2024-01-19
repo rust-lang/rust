@@ -4,33 +4,31 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     debug slice => _1;
     debug index => _2;
     let mut _0: &mut [u32];
-    let mut _3: usize;
-    let mut _4: usize;
     scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
         debug self => _1;
-        debug ((index: std::ops::Range<usize>).0: usize) => _3;
-        debug ((index: std::ops::Range<usize>).1: usize) => _4;
-        let mut _5: *mut [u32];
+        debug index => _2;
+        let mut _3: *mut [u32];
         let mut _13: *mut [u32];
         scope 2 {
             scope 3 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
-                debug ((self: std::ops::Range<usize>).0: usize) => _3;
-                debug ((self: std::ops::Range<usize>).1: usize) => _4;
-                debug slice => _5;
+                debug self => _2;
+                debug slice => _3;
+                let mut _4: usize;
+                let mut _5: usize;
                 let mut _7: *mut u32;
                 let mut _8: *mut u32;
-                let mut _14: *mut [u32];
+                let mut _14: usize;
                 let mut _15: &[&str];
                 scope 4 {
                     let _6: usize;
                     scope 5 {
                         debug new_len => _6;
                         scope 10 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
-                            debug self => _5;
+                            debug self => _3;
                         }
                         scope 11 (inlined std::ptr::mut_ptr::<impl *mut u32>::add) {
                             debug self => _7;
-                            debug count => _3;
+                            debug count => _14;
                             scope 12 {
                             }
                         }
@@ -54,7 +52,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                     }
                 }
                 scope 6 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
-                    debug self => _14;
+                    debug self => _3;
                     let mut _16: *const [u32];
                     scope 7 (inlined std::ptr::metadata::<[u32]>) {
                         debug ptr => _16;
@@ -70,19 +68,22 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     }
 
     bb0: {
-        _3 = (_2.0: usize);
-        _4 = (_2.1: usize);
-        StorageLive(_5);
-        _5 = &raw mut (*_1);
+        StorageLive(_3);
+        _3 = &raw mut (*_1);
         StorageLive(_14);
         StorageLive(_15);
         StorageLive(_6);
+        StorageLive(_5);
         StorageLive(_16);
-        _6 = SubUnchecked(_4, _3);
+        StorageLive(_4);
+        _4 = (_2.1: usize);
+        _5 = (_2.0: usize);
+        _6 = SubUnchecked(move _4, _5);
+        StorageDead(_4);
         StorageLive(_8);
         StorageLive(_7);
-        _7 = _5 as *mut u32 (PtrToPtr);
-        _8 = Offset(_7, _3);
+        _7 = _3 as *mut u32 (PtrToPtr);
+        _8 = Offset(_7, _5);
         StorageDead(_7);
         StorageLive(_9);
         _9 = _8 as *mut () (PtrToPtr);
@@ -99,10 +100,11 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageDead(_9);
         StorageDead(_8);
         StorageDead(_16);
+        StorageDead(_5);
         StorageDead(_6);
         StorageDead(_15);
         StorageDead(_14);
-        StorageDead(_5);
+        StorageDead(_3);
         _0 = &mut (*_13);
         return;
     }

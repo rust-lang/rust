@@ -28,7 +28,9 @@
 //! return.
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
@@ -382,7 +384,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
 
 pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, true);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -394,7 +396,7 @@ pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
 
 pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, true);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -441,19 +443,21 @@ fn make_local_map<V>(
 }
 
 /// Keeps track of used & unused locals.
-struct UsedLocals {
+pub(crate) struct UsedLocals {
     increment: bool,
     arg_count: u32,
-    use_count: IndexVec<Local, u32>,
+    pub(crate) use_count: IndexVec<Local, u32>,
+    with_debuginfo: bool,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'_>) -> Self {
+    pub(crate) fn new(body: &Body<'_>, with_debuginfo: bool) -> Self {
         let mut this = Self {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            with_debuginfo,
         };
         this.visit_body(body);
         this
@@ -462,7 +466,7 @@ impl UsedLocals {
     /// Checks if local is used.
     ///
     /// Return place and arguments are always considered used.
-    fn is_used(&self, local: Local) -> bool {
+    pub(crate) fn is_used(&self, local: Local) -> bool {
         trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
         local.as_u32() <= self.arg_count || self.use_count[local] != 0
     }
@@ -526,7 +530,11 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
         }
     }
 
-    fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, ctx: PlaceContext, _location: Location) {
+        if matches!(ctx, PlaceContext::NonUse(NonUseContext::VarDebugInfo)) && !self.with_debuginfo
+        {
+            return;
+        };
         if self.increment {
             self.use_count[local] += 1;
         } else {

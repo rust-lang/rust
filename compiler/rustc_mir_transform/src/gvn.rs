@@ -102,6 +102,7 @@ use smallvec::SmallVec;
 use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
+use crate::simplify::UsedLocals;
 use crate::ssa::{AssignedValue, SsaLocals};
 use either::Either;
 
@@ -163,12 +164,14 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     state.next_opaque = None;
 
     let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-    for dbg in body.var_debug_info.iter_mut() {
-        state.visit_var_debug_info(dbg);
-    }
     for bb in reverse_postorder {
         let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
         state.visit_basic_block_data(bb, data);
+    }
+
+    let mut used_locals = UsedLocals::new(body, false);
+    for dbg in body.var_debug_info.iter_mut() {
+        state.reduce_debuginfo(dbg, &mut used_locals);
     }
 
     // For each local that is reused (`y` above), we remove its storage statements do avoid any
@@ -1256,26 +1259,40 @@ impl<'tcx> VnState<'_, 'tcx> {
             .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
             .copied()
     }
-}
 
-impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn visit_var_debug_info(&mut self, var_debug_info: &mut VarDebugInfo<'tcx>) {
-        let mut replace_dereffed = |place: &mut Place<'tcx>| -> Option<!> {
-            let last_deref = place.projection.iter().rposition(|e| e == PlaceElem::Deref)?;
-
-            // Another place that holds the same value.
+    fn reduce_debuginfo(
+        &mut self,
+        var_debug_info: &mut VarDebugInfo<'tcx>,
+        used_locals: &mut UsedLocals,
+    ) {
+        let mut simplify_place = |place: &mut Place<'tcx>| -> Option<ConstOperand<'tcx>> {
+            // Another place that points to the same memory.
             let mut place_ref = place.as_ref();
             let mut value = self.locals[place.local]?;
 
-            for (index, &proj) in place.projection[..last_deref].iter().enumerate() {
-                if let Some(candidates) = self.rev_locals.get(value)
-                    && let Some(&local) = candidates.first()
+            // The position of the last deref projection. If there is one, the place preceding it
+            // can be treated and simplified as a value. Afterwards, projections need to be treated
+            // as a memory place.
+            let last_deref = place.projection.iter().rposition(|e| e == PlaceElem::Deref);
+
+            for (index, proj) in place.projection.iter().enumerate() {
+                // We are before the last projection, so we can treat as a value.
+                if last_deref.map_or(false, |ld| index <= ld)
+                    && let Some(candidates) = self.rev_locals.get(value)
+                    // Do not introduce an unused local.
+                    && let Some(&local) = candidates.iter().find(|&&l| used_locals.is_used(l))
                 {
                     place_ref = PlaceRef { local, projection: &place.projection[index..] };
+                }
+
+                // We are at the last projection, treat as a value if possible.
+                if Some(index) == last_deref {
+                    *place = place_ref.project_deeper(&[], self.tcx);
+
+                    // If the base local is used, do not bother trying to simplify anything.
+                    if used_locals.is_used(place_ref.local) {
+                        return None;
+                    }
                 }
 
                 let place_upto =
@@ -1283,18 +1300,52 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 if let Some(projected) = self.project(place_upto, value, proj) {
                     value = projected;
                 } else {
-                    if place_ref.projection.len() < place.projection.len() {
+                    if last_deref.map_or(false, |ld| index <= ld)
+                        && place_ref.projection.len() < place.projection.len()
+                    {
                         *place = place_ref.project_deeper(&[], self.tcx);
                     }
                     return None;
                 }
             }
 
-            if let Some(candidates) = self.rev_locals.get(value)
-                && let Some(&local) = candidates.first()
-            {
-                let place_ref = PlaceRef { local, projection: &place.projection[last_deref..] };
-                *place = place_ref.project_deeper(&[], self.tcx);
+            if let Some(constant) = self.try_as_constant(value) {
+                return Some(constant);
+            }
+
+            let mut projections = vec![];
+            loop {
+                if let Some(candidates) = self.rev_locals.get(value)
+                    // Do not reintroduce an unused local.
+                    && let Some(&local) = candidates.iter().find(|&&l| used_locals.is_used(l))
+                {
+                    projections.reverse();
+                    *place = Place {
+                        local,
+                        projection: self.tcx.mk_place_elems_from_iter(projections.into_iter()),
+                    };
+                    return None;
+                }
+
+                let Value::Projection(base, elem) = *self.get(value) else {
+                    break;
+                };
+
+                let elem = match elem {
+                    ProjectionElem::Deref => ProjectionElem::Deref,
+                    ProjectionElem::Downcast(name, read_variant) => {
+                        ProjectionElem::Downcast(name, read_variant)
+                    }
+                    ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty),
+                    ProjectionElem::ConstantIndex { offset, min_length, from_end: false } => {
+                        ProjectionElem::ConstantIndex { offset, min_length, from_end: false }
+                    }
+                    // Not allowed in debuginfo.
+                    _ => return None,
+                };
+
+                projections.push(elem);
+                value = base;
             }
 
             return None;
@@ -1303,9 +1354,19 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         match &mut var_debug_info.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                replace_dereffed(place);
+                if let Some(constant) = simplify_place(place) {
+                    var_debug_info.value = VarDebugInfoContents::Const(constant);
+                } else {
+                    used_locals.use_count[place.local] += 1;
+                }
             }
         }
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {

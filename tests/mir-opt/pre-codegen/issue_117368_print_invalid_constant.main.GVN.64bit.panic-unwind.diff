@@ -13,15 +13,18 @@
       let _9: std::alloc::Global;
       let mut _10: std::alloc::Layout;
       scope 1 {
-          debug layout => _1;
+-         debug layout => _1;
++         debug layout => const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
           let _3: *mut u8;
           let mut _11: &std::alloc::Global;
           scope 2 {
               debug ptr => _4;
           }
           scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
-              debug self => _11;
-              debug layout => _10;
+-             debug self => _11;
+-             debug layout => _10;
++             debug self => const {ALLOC1<imm>: &std::alloc::Global};
++             debug layout => const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
           }
           scope 6 (inlined NonNull::<[u8]>::as_ptr) {
               debug self => _6;
@@ -52,11 +55,13 @@
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
-          debug self => _2;
+-         debug self => _2;
++         debug self => const Option::<Layout>::None;
           let mut _12: isize;
           let mut _13: !;
           scope 4 {
-              debug val => _1;
+-             debug val => _1;
++             debug val => const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): std::ptr::alignment::AlignmentEnum64) }};
           }
       }
   
@@ -139,9 +144,11 @@
       bb5: {
           unreachable;
       }
-+ }
+  }
 + 
 + ALLOC0 (size: 16, align: 8) {
 +     00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
-  }
++ }
++ 
++ ALLOC1 (size: 0, align: 1) {}
   

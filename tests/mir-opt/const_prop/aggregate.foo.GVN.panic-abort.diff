@@ -12,10 +12,12 @@
       let mut _8: (u8, i32);
       let mut _9: u8;
       scope 1 {
-          debug first => _2;
+-         debug first => _2;
++         debug first => const 1_i32;
           let _6: i32;
           scope 2 {
-              debug second => _6;
+-             debug second => _6;
++             debug second => const 3_i32;
           }
       }
   

@@ -250,21 +250,20 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                         debug end_or_len => _7;
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
-                            let mut _64: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _64;
+                                    debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _64;
-                                        let mut _65: *mut u8;
+                                        debug self => _9;
+                                        let mut _64: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _65;
+                                                debug ptr => _64;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _65;
+                                                    debug self => _64;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _65;
+                                                            debug self => _64;
                                                         }
                                                     }
                                                 }
@@ -338,9 +337,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_9);
         _9 = _3 as *mut T (PtrToPtr);
         StorageLive(_64);
-        StorageLive(_65);
         _10 = NonNull::<T> { pointer: _4 };
-        StorageDead(_65);
         StorageDead(_64);
         StorageDead(_9);
         _11 = std::slice::Iter::<'_, T> { ptr: move _10, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
