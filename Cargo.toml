@@ -159,8 +159,6 @@ suspicious = { level = "warn", priority = -1 }
 result_unit_err = "allow"
 # We don't expose public APIs that matter like this
 len_without_is_empty = "allow"
-# We currently prefer explicit control flow return over `...?;` statements whose result is unused
-question_mark = "allow"
 # We have macros that rely on this currently
 enum_variant_names = "allow"
 # Builder pattern disagrees

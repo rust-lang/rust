@@ -2081,9 +2081,7 @@ impl Function {
     }
 
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
-        if self.self_param(db).is_none() {
-            return None;
-        }
+        self.self_param(db)?;
         Some(self.params_without_self(db))
     }
 

@@ -659,10 +659,8 @@ impl<'db> SemanticsImpl<'db> {
                     // First expand into attribute invocations
                     let containing_attribute_macro_call = self.with_ctx(|ctx| {
                         token.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
-                            if item.attrs().next().is_none() {
-                                // Don't force populate the dyn cache for items that don't have an attribute anyways
-                                return None;
-                            }
+                            // Don't force populate the dyn cache for items that don't have an attribute anyways
+                            item.attrs().next()?;
                             Some((
                                 ctx.item_to_macro_call(InFile::new(file_id, item.clone()))?,
                                 item,
