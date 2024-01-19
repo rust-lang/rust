@@ -1337,8 +1337,9 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
 }
 
 declare_lint! {
-    /// The `unreachable_pub` lint triggers for `pub` items not reachable from
-    /// the crate root.
+    /// The `unreachable_pub` lint triggers for `pub` items not reachable from other crates - that
+    /// means neither directly accessible, nor reexported, nor leaked through things like return
+    /// types.
     ///
     /// ### Example
     ///

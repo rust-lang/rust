@@ -605,8 +605,6 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
-    /// Allows using type privacy lints (`private_interfaces`, `private_bounds`, `unnameable_types`).
-    (unstable, type_privacy_lints, "1.72.0", Some(48054)),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
     (unstable, unix_sigpipe, "1.65.0", Some(97889)),
     /// Allows unnamed fields of struct and union type

@@ -351,6 +351,8 @@ declare_features! (
     (accepted, type_alias_enum_variants, "1.37.0", Some(49683)),
     /// Allows macros to appear in the type position.
     (accepted, type_macros, "1.13.0", Some(27245)),
+    /// Allows using type privacy lints (`private_interfaces`, `private_bounds`, `unnameable_types`).
+    (accepted, type_privacy_lints, "CURRENT_RUSTC_VERSION", Some(48054)),
     /// Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912)),
     /// Allows `use path as _;` and `extern crate c as _;`.

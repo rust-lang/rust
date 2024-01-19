@@ -4248,7 +4248,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #![feature(type_privacy_lints)]
     /// # #![allow(unused)]
     /// #![deny(unnameable_types)]
     /// mod m {
@@ -4265,10 +4264,14 @@ declare_lint! {
     ///
     /// It is often expected that if you can obtain an object of type `T`, then
     /// you can name the type `T` as well, this lint attempts to enforce this rule.
+    /// The recommended action is to either reexport the type properly to make it nameable,
+    /// or document that users are not supposed to be able to name it for one reason or another.
+    ///
+    /// Besides types, this lint applies to traits because traits can also leak through signatures,
+    /// and you may obtain objects of their `dyn Trait` or `impl Trait` types.
     pub UNNAMEABLE_TYPES,
     Allow,
     "effective visibility of a type is larger than the area in which it can be named",
-    @feature_gate = sym::type_privacy_lints;
 }
 
 declare_lint! {
