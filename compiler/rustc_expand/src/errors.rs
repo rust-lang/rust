@@ -59,6 +59,13 @@ pub(crate) struct ResolveRelativePath {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_collapse_debuginfo_illegal)]
+pub(crate) struct CollapseMacroDebuginfoIllegal {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_macro_const_stability)]
 pub(crate) struct MacroConstStability {
     #[primary_span]

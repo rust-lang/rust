@@ -388,6 +388,7 @@ mod desc {
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
     pub const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
+    pub const parse_collapse_macro_debuginfo: &str = "one of `no`, `external`, or `yes`";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
@@ -1302,6 +1303,19 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_collapse_macro_debuginfo(
+        slot: &mut CollapseMacroDebuginfo,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("no") => CollapseMacroDebuginfo::No,
+            Some("external") => CollapseMacroDebuginfo::External,
+            Some("yes") => CollapseMacroDebuginfo::Yes,
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_proc_macro_execution_strategy(
         slot: &mut ProcMacroExecutionStrategy,
         v: Option<&str>,
@@ -1534,6 +1548,9 @@ options! {
         "instrument control-flow architecture protection"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
+        parse_collapse_macro_debuginfo, [TRACKED],
+        "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],

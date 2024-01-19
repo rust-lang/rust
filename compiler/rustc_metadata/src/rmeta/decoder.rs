@@ -1027,6 +1027,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             self.root.edition,
             Symbol::intern(name),
             &attrs,
+            false,
         )
     }
 

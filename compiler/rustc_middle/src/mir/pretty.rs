@@ -1098,10 +1098,10 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             | ProjectionElem::Subtype(_)
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Field(_, _) => {
-                write!(fmt, "(").unwrap();
+                write!(fmt, "(")?;
             }
             ProjectionElem::Deref => {
-                write!(fmt, "(*").unwrap();
+                write!(fmt, "(*")?;
             }
             ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }

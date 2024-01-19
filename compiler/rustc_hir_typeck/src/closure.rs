@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_args =
             GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id(expr_def_id.to_def_id()));
 
-        let tupled_upvars_ty = self.next_root_ty_var(TypeVariableOrigin {
+        let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::ClosureSynthetic,
             span: expr_span,
         });
@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    None => self.next_root_ty_var(TypeVariableOrigin {
+                    None => self.next_ty_var(TypeVariableOrigin {
                         // FIXME(eddyb) distinguish closure kind inference variables from the rest.
                         kind: TypeVariableOriginKind::ClosureSynthetic,
                         span: expr_span,

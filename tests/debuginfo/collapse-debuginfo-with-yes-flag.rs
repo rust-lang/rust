@@ -1,10 +1,10 @@
 // ignore-lldb
 #![feature(collapse_debuginfo)]
 
-// Test that line numbers are not replaced with those of the outermost expansion site when the
-// `collapse_debuginfo` feature is active and the attribute is not provided.
+// Test that line numbers are replaced with those of the outermost expansion site when the
+// `collapse_debuginfo` feature is active and the command line flag is provided.
 
-// compile-flags:-g -Z collapse_macro_debuginfo=no
+// compile-flags:-g -Z collapse_macro_debuginfo=yes
 
 // === GDB TESTS ===================================================================================
 
@@ -18,9 +18,6 @@
 // gdb-command:next
 // gdb-command:frame
 // gdb-check:[...]#loc3[...]
-// gdb-command:next
-// gdb-command:frame
-// gdb-check:[...]#loc4[...]
 // gdb-command:continue
 
 fn one() {
@@ -38,7 +35,7 @@ fn four() {
 
 macro_rules! outer {
     ($b:block) => {
-        one(); // #loc1
+        one();
         inner!();
         $b
     };
@@ -46,15 +43,15 @@ macro_rules! outer {
 
 macro_rules! inner {
     () => {
-        two(); // #loc2
+        two();
     };
 }
 
 fn main() {
     let ret = 0; // #break
-    outer!({
-        three(); // #loc3
-        four(); // #loc4
+    outer!({ // #loc1
+        three(); // #loc2
+        four(); // #loc3
     });
     std::process::exit(ret);
 }
