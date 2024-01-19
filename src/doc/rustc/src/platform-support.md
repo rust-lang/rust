@@ -15,11 +15,13 @@ the compiler what kind of output should be produced.
 
 Component availability is tracked [here](https://rust-lang.github.io/rustup-components-history/).
 
-## Tier 1 with Host Tools
+## Tier 1
 
 Tier 1 targets can be thought of as "guaranteed to work". The Rust project
 builds official binary releases for each tier 1 target, and automated testing
 ensures that each tier 1 target builds and passes tests after each change.
+
+### Tier 1 with Host Tools
 
 Tier 1 targets with host tools additionally support running tools like `rustc`
 and `cargo` natively on the target, and automated testing ensures that tests
@@ -52,7 +54,11 @@ target | notes
 [77071]: https://github.com/rust-lang/rust/issues/77071
 [x86-32-float-issue]: https://github.com/rust-lang/rust/issues/114479
 
-## Tier 2 with Host Tools
+### Tier 1 without Host Tools
+
+At this time, all Tier 1 targets are [Tier 1 with Host Tools](#tier-1-with-host-tools).
+
+## Tier 2
 
 Tier 2 targets can be thought of as "guaranteed to build". The Rust project
 builds official binary releases of the standard library (or, in some cases,
@@ -60,6 +66,11 @@ only the `core` library) for each tier 2 target, and automated builds
 ensure that each tier 2 target can be used as build target after each change. Automated tests are
 not always run so it's not guaranteed to produce a working build, but tier 2
 targets often work to quite a good degree and patches are always welcome!
+
+For the full requirements, see [Tier 2 target
+policy](target-tier-policy.md#tier-2-target-policy) in the Target Tier Policy.
+
+### Tier 2 with Host Tools
 
 Tier 2 targets with host tools additionally support running tools like `rustc`
 and `cargo` natively on the target, and automated builds ensure that the host
@@ -92,16 +103,11 @@ target | notes
 `x86_64-unknown-linux-musl` | 64-bit Linux with MUSL
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
 
-## Tier 2 without Host Tools
+### Tier 2 without Host Tools
 
-Tier 2 targets can be thought of as "guaranteed to build". The Rust project
-builds official binary releases of the standard library (or, in some cases,
-only the `core` library) for each tier 2 target, and automated builds
-ensure that each tier 2 target can be used as build target after each change. Automated tests are
-not always run so it's not guaranteed to produce a working build, but tier 2
-targets often work to quite a good degree and patches are always welcome! For
-the full requirements, see [Tier 2 target
-policy](target-tier-policy.md#tier-2-target-policy) in the Target Tier Policy.
+Tier 2 targets without host tools are targets that can not be used to build Rust
+code. It can only execute code that was built on a target with host tools,
+compiled for this target.
 
 The `std` column in the table below has the following meanings:
 
