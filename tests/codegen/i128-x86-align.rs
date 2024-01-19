@@ -8,6 +8,8 @@
 // CHECK: %ScalarPair = type { i32, [3 x i32], i128 }
 // CHECK: %Struct = type { i32, i32, [2 x i32], i128 }
 
+#![feature(core_intrinsics)]
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ScalarPair {
@@ -59,7 +61,7 @@ pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
     // CHECK-NEXT: [[A:%.*]] = load i32, ptr [[TMP]], align 16
     // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
     // CHECK-NEXT: [[B:%.*]] = load i128, ptr [[GEP]], align 16
-    unsafe { std::ptr::read_volatile(x) }
+    unsafe { std::intrinsics::volatile_load(x) }
 }
 
 #[no_mangle]
