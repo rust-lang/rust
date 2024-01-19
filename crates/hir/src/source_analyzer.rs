@@ -197,10 +197,8 @@ impl SourceAnalyzer {
     ) -> Option<(Type, Option<Type>)> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced = infer
-            .pat_adjustments
-            .get(&pat_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| adjust.clone()));
+        let coerced =
+            infer.pat_adjustments.get(&pat_id).and_then(|adjusts| adjusts.last().cloned());
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
