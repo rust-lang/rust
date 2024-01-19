@@ -819,7 +819,11 @@ pub(crate) fn fn_def_datum_query(
     };
     let datum = FnDefDatum {
         id: fn_def_id,
-        sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: sig.is_varargs },
+        sig: chalk_ir::FnSig {
+            abi: sig.abi,
+            safety: chalk_ir::Safety::Safe,
+            variadic: sig.is_varargs,
+        },
         binders: chalk_ir::Binders::new(binders, bound),
     };
     Arc::new(datum)

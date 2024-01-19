@@ -8,7 +8,7 @@ use std::{
 };
 
 use base_db::CrateId;
-use chalk_ir::{BoundVar, TyKind};
+use chalk_ir::{BoundVar, Safety, TyKind};
 use hir_def::{
     data::adt::VariantData,
     db::DefDatabase,
@@ -41,7 +41,7 @@ use crate::{
     primitive, to_assoc_type_id,
     utils::{self, detect_variant_from_bytes, generics, ClosureSubst},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
-    DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
+    DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
     MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
     Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
 };
@@ -879,16 +879,27 @@ impl HirDisplay for Ty {
                     // function pointer type.
                     return sig.hir_fmt(f);
                 }
+                if let Safety::Unsafe = sig.safety {
+                    write!(f, "unsafe ")?;
+                }
+                if !matches!(sig.abi, FnAbi::Rust) {
+                    f.write_str("extern \"")?;
+                    f.write_str(sig.abi.as_str())?;
+                    f.write_str("\" ")?;
+                }
 
-                f.start_location_link(def.into());
                 match def {
                     CallableDefId::FunctionId(ff) => {
-                        write!(f, "fn {}", db.function_data(ff).name.display(f.db.upcast()))?
+                        write!(f, "fn ")?;
+                        f.start_location_link(def.into());
+                        write!(f, "{}", db.function_data(ff).name.display(f.db.upcast()))?
                     }
                     CallableDefId::StructId(s) => {
+                        f.start_location_link(def.into());
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast()))?
                     }
                     CallableDefId::EnumVariantId(e) => {
+                        f.start_location_link(def.into());
                         write!(f, "{}", db.enum_variant_data(e).name.display(f.db.upcast()))?
                     }
                 };
@@ -1316,9 +1327,19 @@ fn hir_fmt_generics(
 
 impl HirDisplay for CallableSig {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        let CallableSig { params_and_return: _, is_varargs, safety, abi: _ } = *self;
+        if let Safety::Unsafe = safety {
+            write!(f, "unsafe ")?;
+        }
+        // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
+        // if !matches!(abi, FnAbi::Rust) {
+        //     f.write_str("extern \"")?;
+        //     f.write_str(abi.as_str())?;
+        //     f.write_str("\" ")?;
+        // }
         write!(f, "fn(")?;
         f.write_joined(self.params(), ", ")?;
-        if self.is_varargs {
+        if is_varargs {
             if self.params().is_empty() {
                 write!(f, "...")?;
             } else {
@@ -1683,10 +1704,14 @@ impl HirDisplay for TypeRef {
                 inner.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe) => {
-                // FIXME: Function pointer qualifiers.
+            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe, ref abi) => {
                 if is_unsafe {
                     write!(f, "unsafe ")?;
+                }
+                if let Some(abi) = abi {
+                    f.write_str("extern \"")?;
+                    f.write_str(abi)?;
+                    f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
                 if let Some(((_, return_type), function_parameters)) = parameters.split_last() {

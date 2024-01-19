@@ -574,6 +574,7 @@ fn two_closures_lub() {
         r#"
 fn foo(c: i32) {
     let add = |a: i32, b: i32| a + b;
+            //^^^^^^^^^^^^^^^^^^^^^^ impl Fn(i32, i32) -> i32
     let sub = |a, b| a - b;
             //^^^^^^^^^^^^ impl Fn(i32, i32) -> i32
     if c > 42 { add } else { sub };

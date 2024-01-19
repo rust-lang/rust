@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 
 use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef, HirFileId};
-use syntax::ast::{self, HasModuleItem, HasTypeBounds};
+use syntax::ast::{self, HasModuleItem, HasTypeBounds, IsString};
 
 use crate::{
     generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
@@ -721,16 +721,10 @@ enum HasImplicitSelf {
 }
 
 fn lower_abi(abi: ast::Abi) -> Interned<str> {
-    // FIXME: Abi::abi() -> Option<SyntaxToken>?
-    match abi.syntax().last_token() {
-        Some(tok) if tok.kind() == SyntaxKind::STRING => {
-            // FIXME: Better way to unescape?
-            Interned::new_str(tok.text().trim_matches('"'))
-        }
-        _ => {
-            // `extern` default to be `extern "C"`.
-            Interned::new_str("C")
-        }
+    match abi.abi_string() {
+        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+        // `extern` default to be `extern "C"`.
+        _ => Interned::new_str("C"),
     }
 }
 
