@@ -50,9 +50,9 @@ pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
 /// # Panics
 ///
 /// This function will panic if StableMIR has not been properly initialized.
-pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T
+pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
 where
-    S: RustcInternal<'tcx>,
+    S: RustcInternal,
 {
     // The tcx argument ensures that the item won't outlive the type context.
     with_tables(|tables| item.internal(tables, tcx))
@@ -419,12 +419,7 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
 /// Trait used to translate a stable construct to its rustc counterpart.
 ///
 /// This is basically a mirror of [crate::rustc_smir::Stable].
-///
-/// # Safety
-///
-/// This trait is unsafe, and every implementation should ensure that their translation
-/// is lifted if necessary with the given type context (`tcx`).
-pub unsafe trait RustcInternal<'tcx> {
-    type T;
-    fn internal(&self, tables: &mut Tables<'tcx>, tcx: TyCtxt<'tcx>) -> Self::T;
+pub trait RustcInternal {
+    type T<'tcx>;
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx>;
 }
