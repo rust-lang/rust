@@ -2633,14 +2633,6 @@ impl<A: Allocator> ops::DerefMut for String<A> {
     }
 }
 
-/// A type alias for [`Infallible`].
-///
-/// This alias exists for backwards compatibility, and may be eventually deprecated.
-///
-/// [`Infallible`]: core::convert::Infallible "convert::Infallible"
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-pub type ParseError = core::convert::Infallible;
-
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
