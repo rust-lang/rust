@@ -236,7 +236,7 @@ fn generate_impl(
     ctx: &AssistContext<'_>,
     strukt: &Struct,
     field_ty: &ast::Type,
-    field_name: &String,
+    field_name: &str,
     delegee: &Delegee,
 ) -> Option<ast::Impl> {
     let delegate: ast::Impl;

@@ -946,7 +946,7 @@ impl InferenceContext<'_> {
         derefed_callee: &Ty,
         adjustments: &mut Vec<Adjustment>,
         callee_ty: &Ty,
-        params: &Vec<Ty>,
+        params: &[Ty],
         tgt_expr: ExprId,
     ) {
         match fn_x {
