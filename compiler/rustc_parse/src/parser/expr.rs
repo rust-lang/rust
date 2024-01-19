@@ -468,9 +468,51 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks if this expression is a successfully parsed statement.
+    ///
+    /// This determines whether to continue parsing more of an expression in a
+    /// match arm (false) vs continue to the next arm (true).
+    ///
+    /// ```ignore (illustrative)
+    /// match ... {
+    ///     // Is this calling $e as a function, or is it the start of a new arm
+    ///     // with a tuple pattern?
+    ///     _ => $e (
+    ///             ^                                                          )
+    ///
+    ///     // Is this an Index operation, or new arm with a slice pattern?
+    ///     _ => $e [
+    ///             ^                                                          ]
+    ///
+    ///     // Is this a binary operator, or leading vert in a new arm? Same for
+    ///     // other punctuation which can either be a binary operator in
+    ///     // expression or unary operator in pattern, such as `&` and `-`.
+    ///     _ => $e |
+    ///             ^
+    /// }
+    /// ```
+    ///
+    /// If $e is something like `path::to` or `(…)`, continue parsing the same
+    /// arm.
+    ///
+    /// If $e is something like `{}` or `if … {}`, then terminate the current
+    /// arm and parse a new arm.
     fn expr_is_complete(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR)
-            && !classify::expr_requires_semi_to_be_stmt(e)
+            && match e.kind {
+                // Surprising special case: even though braced macro calls like
+                // `m! {}` normally introduce a statement boundary when found at
+                // the head of a statement, in match arms they do not terminate
+                // the arm.
+                //
+                //     let _ = { m! {} () };  // macro call followed by unit
+                //
+                //     match ... {
+                //         _ => m! {} (),  // macro that expands to a function, which is then called
+                //     }
+                //
+                ExprKind::MacCall(_) => false,
+                _ => !classify::expr_requires_semi_to_be_stmt(e),
+            }
     }
 
     /// Parses `x..y`, `x..=y`, and `x..`/`x..=`.
@@ -2637,8 +2679,33 @@ impl<'a> Parser<'a> {
             let first_tok_span = self.token.span;
             match self.parse_expr() {
                 Ok(cond)
-                // If it's not a free-standing expression, and is followed by a block,
-                // then it's very likely the condition to an `else if`.
+                // Try to guess the difference between a "condition-like" vs
+                // "statement-like" expression.
+                //
+                // We are seeing the following code, in which $cond is neither
+                // ExprKind::Block nor ExprKind::If (the 2 cases wherein this
+                // would be valid syntax).
+                //
+                //     if ... {
+                //     } else $cond
+                //
+                // If $cond is "condition-like" such as ExprKind::Binary, we
+                // want to suggest inserting `if`.
+                //
+                //     if ... {
+                //     } else if a == b {
+                //            ^^
+                //     }
+                //
+                // If $cond is "statement-like" such as ExprKind::While then we
+                // want to suggest wrapping in braces.
+                //
+                //     if ... {
+                //     } else {
+                //            ^
+                //         while true {}
+                //     }
+                //     ^
                     if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
                         && classify::expr_requires_semi_to_be_stmt(&cond) =>
                 {
@@ -3062,8 +3129,21 @@ impl<'a> Parser<'a> {
                         err
                     })?;
 
-                let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
-                    && this.token != token::CloseDelim(Delimiter::Brace);
+                let require_comma = match expr.kind {
+                    // Special case: braced macro calls require comma in a match
+                    // arm, even though they do not require semicolon in a
+                    // statement.
+                    //
+                    //     m! {}  // okay without semicolon
+                    //
+                    //     match ... {
+                    //         _ => m! {},  // requires comma
+                    //         _ => ...
+                    //     }
+                    //
+                    ExprKind::MacCall(_) => true,
+                    _ => classify::expr_requires_semi_to_be_stmt(&expr),
+                } && this.token != token::CloseDelim(Delimiter::Brace);
 
                 if !require_comma {
                     arm_body = Some(expr);
