@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{get_parent_node, is_lint_allowed, peel_blocks};
+use clippy_utils::{any_parent_is_automatically_derived, get_parent_node, is_lint_allowed, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
@@ -150,12 +150,13 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
             && has_no_effect(cx, init)
             && let PatKind::Binding(_, _, ident, _) = local.pat.kind
             && ident.name.to_ident_string().starts_with('_')
+            && !any_parent_is_automatically_derived(cx.tcx, local.hir_id)
         {
             span_lint_hir(
                 cx,
                 NO_EFFECT_UNDERSCORE_BINDING,
                 init.hir_id,
-                stmt.span,
+                ident.span,
                 "binding to `_` prefixed variable with no side-effect",
             );
             return true;
