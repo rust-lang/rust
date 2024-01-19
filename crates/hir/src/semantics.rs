@@ -1253,7 +1253,7 @@ impl<'db> SemanticsImpl<'db> {
         assert!(root_node.parent().is_none());
         let mut cache = self.cache.borrow_mut();
         let prev = cache.insert(root_node, file_id);
-        assert!(prev == None || prev == Some(file_id))
+        assert!(prev.is_none() || prev == Some(file_id))
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
