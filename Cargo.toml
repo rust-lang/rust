@@ -167,7 +167,6 @@ enum_variant_names = "allow"
 new_ret_no_self = "allow"
 
 ## Following lints should be tackled at some point
-bind_instead_of_map = "allow"
 borrowed_box = "allow"
 borrow_deref_ref = "allow"
 collapsible_if = "allow"
