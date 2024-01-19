@@ -948,10 +948,11 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     // for binary operator, and use without adjust to simplify our conditions.
                     let lhs_ty = self.expr_ty_without_adjust(*lhs);
                     let rhs_ty = self.expr_ty_without_adjust(*rhs);
-                    if matches!(op, BinaryOp::CmpOp(syntax::ast::CmpOp::Eq { .. })) {
-                        if lhs_ty.as_raw_ptr().is_some() && rhs_ty.as_raw_ptr().is_some() {
-                            break 'b true;
-                        }
+                    if matches!(op, BinaryOp::CmpOp(syntax::ast::CmpOp::Eq { .. }))
+                        && lhs_ty.as_raw_ptr().is_some()
+                        && rhs_ty.as_raw_ptr().is_some()
+                    {
+                        break 'b true;
                     }
                     let builtin_inequal_impls = matches!(
                         op,

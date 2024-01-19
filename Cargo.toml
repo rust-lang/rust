@@ -169,7 +169,6 @@ new_ret_no_self = "allow"
 ## Following lints should be tackled at some point
 borrowed_box = "allow"
 borrow_deref_ref = "allow"
-collapsible_if = "allow"
 collapsible_match = "allow"
 clone_on_copy = "allow"
 derivable_impls = "allow"

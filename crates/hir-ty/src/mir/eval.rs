@@ -1842,10 +1842,10 @@ impl Evaluator<'_> {
             }
         }
         let layout = self.layout(ty);
-        if self.assert_placeholder_ty_is_unused {
-            if matches!(layout, Err(MirEvalError::LayoutError(LayoutError::HasPlaceholder, _))) {
-                return Ok(Some((0, 1)));
-            }
+        if self.assert_placeholder_ty_is_unused
+            && matches!(layout, Err(MirEvalError::LayoutError(LayoutError::HasPlaceholder, _)))
+        {
+            return Ok(Some((0, 1)));
         }
         let layout = layout?;
         Ok(layout

@@ -377,10 +377,8 @@ fn build_source_change(
         };
 
         // Insert `$0` only for last getter we generate
-        if i == record_fields_count - 1 {
-            if ctx.config.snippet_cap.is_some() {
-                getter_buf = getter_buf.replacen("fn ", "fn $0", 1);
-            }
+        if i == record_fields_count - 1 && ctx.config.snippet_cap.is_some() {
+            getter_buf = getter_buf.replacen("fn ", "fn $0", 1);
         }
 
         // For first element we do not merge with '\n', as
