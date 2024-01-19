@@ -2567,8 +2567,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     debug!(?param.ident, ?param.ident.span, ?use_span);
 
                     let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                    let deletion_span =
+                        if param.bounds.is_empty() { deletion_span() } else { None };
 
-                    let deletion_span = deletion_span();
                     self.r.lint_buffer.buffer_lint_with_diagnostic(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,
