@@ -289,7 +289,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     fn is_known_valid_scrutinee(&self, scrutinee: &Expr<'tcx>) -> bool {
         use ExprKind::*;
         match &scrutinee.kind {
-            // Both pointers and references can validly point to a place with invalid data.
+            // Pointers can validly point to a place with invalid data. It is undecided whether
+            // references can too, so we conservatively assume they can.
             Deref { .. } => false,
             // Inherit validity of the parent place, unless the parent is an union.
             Field { lhs, .. } => {
