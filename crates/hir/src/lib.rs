@@ -2404,10 +2404,10 @@ impl Const {
             }
         }
         if let Ok(s) = mir::render_const_using_debug_impl(db, self.id, &c) {
-            return Ok(s);
+            Ok(s)
+        } else {
+            Ok(format!("{}", c.display(db)))
         }
-        let r = format!("{}", c.display(db));
-        return Ok(r);
     }
 }
 
