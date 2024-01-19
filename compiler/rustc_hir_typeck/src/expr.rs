@@ -3250,7 +3250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && !self.tcx.features().offset_of_nested
         {
             rustc_session::parse::feature_err(
-                &self.tcx.sess.parse_sess,
+                &self.tcx.sess,
                 sym::offset_of_nested,
                 ident_2.span,
                 "only a single ident or integer is stable as the field in offset_of",
