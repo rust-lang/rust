@@ -720,7 +720,7 @@ impl Map {
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
     /// chosen is an implementation detail and may not be relied upon (other than that their type
     /// are scalars).
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, value_limit: Option<usize>) -> Self {
+    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place_limit: Option<usize>) -> Self {
         let mut map = Self {
             locals: IndexVec::new(),
             projections: FxHashMap::default(),
@@ -730,7 +730,7 @@ impl Map {
             inner_values_buffer: Vec::new(),
         };
         let exclude = excluded_locals(body);
-        map.register(tcx, body, exclude, value_limit);
+        map.register(tcx, body, exclude, place_limit);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -741,9 +741,9 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         exclude: BitSet<Local>,
-        value_limit: Option<usize>,
+        place_limit: Option<usize>,
     ) {
-        let mut worklist = VecDeque::with_capacity(value_limit.unwrap_or(body.local_decls.len()));
+        let mut worklist = VecDeque::with_capacity(place_limit.unwrap_or(body.local_decls.len()));
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
 
         // Start by constructing the places for each bare local.
@@ -766,8 +766,8 @@ impl Map {
         // `elem1` is either `Some(Variant(i))` or `None`.
         while let Some((mut place, elem1, elem2, ty)) = worklist.pop_front() {
             // The user requires a bound on the number of created values.
-            if let Some(value_limit) = value_limit
-                && self.value_count >= value_limit
+            if let Some(place_limit) = place_limit
+                && self.places.len() >= place_limit
             {
                 break;
             }
