@@ -509,7 +509,7 @@ impl Resolver {
             .map(|id| ExternCrateDeclData::extern_crate_decl_data_query(db, id).name.clone())
     }
 
-    pub fn extern_crates_in_scope<'a>(&'a self) -> impl Iterator<Item = (Name, ModuleId)> + 'a {
+    pub fn extern_crates_in_scope(&self) -> impl Iterator<Item = (Name, ModuleId)> + '_ {
         self.module_scope
             .def_map
             .extern_prelude()
