@@ -72,7 +72,7 @@
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
-//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstDataSrcBufDrop`] will handle dropping
 //! the already collected sink items (`U`) and freeing the allocation.
 //!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
@@ -158,11 +158,12 @@ use crate::alloc::{handle_alloc_error, Global};
 use core::alloc::Allocator;
 use core::alloc::Layout;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
+use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::num::NonZeroUsize;
 use core::ptr::{self, NonNull};
 
-use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZeroUsize>,
@@ -265,7 +266,7 @@ where
             );
         }
 
-        // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
+        // The ownership of the source allocation and the new `T` values is temporarily moved into `dst_guard`.
         // This is safe because
         // * `forget_allocation_drop_remaining` immediately forgets the allocation
         // before any panic can occur in order to avoid any double free, and then proceeds to drop
@@ -276,7 +277,8 @@ where
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documentation why this is ok anyway.
-        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
+        let dst_guard =
+            InPlaceDstDataSrcBufDrop { ptr: dst_buf, len, src_cap, src: PhantomData::<I::Src> };
         src.forget_allocation_drop_remaining();
 
         // Adjust the allocation if the source had a capacity in bytes that wasn't a multiple
