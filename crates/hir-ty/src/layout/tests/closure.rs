@@ -1,3 +1,5 @@
+#![allow(clippy::no_effect)]
+
 use crate::size_and_align_expr;
 
 #[test]
