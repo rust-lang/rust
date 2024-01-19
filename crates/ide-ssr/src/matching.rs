@@ -764,12 +764,7 @@ impl Iterator for PatternIterator {
     type Item = SyntaxElement;
 
     fn next(&mut self) -> Option<SyntaxElement> {
-        for element in &mut self.iter {
-            if !element.kind().is_trivia() {
-                return Some(element);
-            }
-        }
-        None
+        (&mut self.iter).find(|element| !element.kind().is_trivia())
     }
 }
 
