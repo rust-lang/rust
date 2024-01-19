@@ -102,7 +102,7 @@ jobs:
           update: false
           release: true
           path-type: inherit
-          install: "git dos2unix diffutils\n"
+          install: "make git dos2unix diffutils\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -492,7 +492,7 @@ jobs:
           update: false
           release: true
           path-type: inherit
-          install: "git dos2unix diffutils\n"
+          install: "make git dos2unix diffutils\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -628,7 +628,7 @@ jobs:
           update: false
           release: true
           path-type: inherit
-          install: "git dos2unix diffutils\n"
+          install: "make git dos2unix diffutils\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

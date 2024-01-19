@@ -132,10 +132,10 @@ x--expand-yaml-anchors--remove:
           # dirs placed in front. This lets us run Windows-native Python etc.
           path-type: inherit
           install: >
+            make
             git
             dos2unix
             diffutils
-          # make
           # pacboy: >
           #   cmake:p
       
