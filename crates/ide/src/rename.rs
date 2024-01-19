@@ -2636,7 +2636,7 @@ pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
 use lib::S$0;
 "#,
-            "error: Cannot rename a non-local definition. Set `renameExternalItems` to `true` to allow renaming for this item.",
+            "error: Cannot rename a non-local definition as the config for it is disabled",
             false,
         );
 
@@ -2663,7 +2663,7 @@ use core::hash::Hash;
 #[derive(H$0ash)]
 struct A;
             "#,
-            "error: Cannot rename a non-local definition. Set `renameExternalItems` to `true` to allow renaming for this item.",
+            "error: Cannot rename a non-local definition as the config for it is disabled",
             false,
         );
     }
