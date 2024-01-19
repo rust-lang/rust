@@ -136,8 +136,8 @@ x--expand-yaml-anchors--remove:
             git
             dos2unix
             diffutils
-          pacboy: >
-            cmake:p
+          # pacboy: >
+          #   cmake:p
       
       # - name: disable git crlf conversion
       #   run: src/ci/scripts/disable-git-crlf-conversion.sh
