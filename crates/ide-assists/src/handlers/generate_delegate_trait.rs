@@ -270,19 +270,16 @@ fn generate_impl(
                 make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
 
             let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
-            match bound_def.assoc_item_list() {
-                Some(ai) => {
-                    ai.assoc_items()
-                        .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
-                        .for_each(|item| {
-                            let assoc =
-                                process_assoc_item(item, qualified_path_type.clone(), field_name);
-                            if let Some(assoc) = assoc {
-                                delegate_assoc_items.add_item(assoc);
-                            }
-                        });
-                }
-                None => {}
+            if let Some(ai) = bound_def.assoc_item_list() {
+                ai.assoc_items()
+                    .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
+                    .for_each(|item| {
+                        let assoc =
+                            process_assoc_item(item, qualified_path_type.clone(), field_name);
+                        if let Some(assoc) = assoc {
+                            delegate_assoc_items.add_item(assoc);
+                        }
+                    });
             };
 
             let target_scope = ctx.sema.scope(strukt.strukt.syntax())?;
@@ -512,17 +509,14 @@ fn generate_args_for_impl(
     // form the substitution list
     let mut arg_substs = FxHashMap::default();
 
-    match field_ty {
-        field_ty @ ast::Type::PathType(_) => {
-            let field_args = field_ty.generic_arg_list().map(|gal| gal.generic_args());
-            let self_ty_args = self_ty.generic_arg_list().map(|gal| gal.generic_args());
-            if let (Some(field_args), Some(self_ty_args)) = (field_args, self_ty_args) {
-                self_ty_args.zip(field_args).for_each(|(self_ty_arg, field_arg)| {
-                    arg_substs.entry(self_ty_arg.to_string()).or_insert(field_arg);
-                })
-            }
+    if let field_ty @ ast::Type::PathType(_) = field_ty {
+        let field_args = field_ty.generic_arg_list().map(|gal| gal.generic_args());
+        let self_ty_args = self_ty.generic_arg_list().map(|gal| gal.generic_args());
+        if let (Some(field_args), Some(self_ty_args)) = (field_args, self_ty_args) {
+            self_ty_args.zip(field_args).for_each(|(self_ty_arg, field_arg)| {
+                arg_substs.entry(self_ty_arg.to_string()).or_insert(field_arg);
+            })
         }
-        _ => {}
     }
 
     let args = old_impl_args

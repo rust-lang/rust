@@ -142,13 +142,10 @@ impl HirPlace {
         mut current_capture: CaptureKind,
         len: usize,
     ) -> CaptureKind {
-        match current_capture {
-            CaptureKind::ByRef(BorrowKind::Mut { .. }) => {
-                if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
-                    current_capture = CaptureKind::ByRef(BorrowKind::Unique);
-                }
+        if let CaptureKind::ByRef(BorrowKind::Mut { .. }) = current_capture {
+            if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
+                current_capture = CaptureKind::ByRef(BorrowKind::Unique);
             }
-            _ => (),
         }
         current_capture
     }

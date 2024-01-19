@@ -339,11 +339,8 @@ fn push_mut_span(local: LocalId, span: MirSpan, result: &mut ArenaMap<LocalId, M
 }
 
 fn record_usage(local: LocalId, result: &mut ArenaMap<LocalId, MutabilityReason>) {
-    match &mut result[local] {
-        it @ MutabilityReason::Unused => {
-            *it = MutabilityReason::Not;
-        }
-        _ => (),
+    if let it @ MutabilityReason::Unused = &mut result[local] {
+        *it = MutabilityReason::Not;
     };
 }
 

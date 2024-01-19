@@ -567,10 +567,11 @@ impl GlobalState {
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {
             match ws {
-                Ok(data) => match data.error() {
-                    Some(stderr) => stdx::format_to!(buf, "{:#}\n", stderr),
-                    _ => (),
-                },
+                Ok(data) => {
+                    if let Some(stderr) = data.error() {
+                        stdx::format_to!(buf, "{:#}\n", stderr)
+                    }
+                }
                 // io errors
                 Err(err) => stdx::format_to!(buf, "{:#}\n", err),
             }

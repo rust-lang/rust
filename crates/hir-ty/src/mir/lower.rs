@@ -288,12 +288,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
         current: BasicBlockId,
     ) -> Result<Option<(Operand, BasicBlockId)>> {
         if !self.has_adjustments(expr_id) {
-            match &self.body.exprs[expr_id] {
-                Expr::Literal(l) => {
-                    let ty = self.expr_ty_without_adjust(expr_id);
-                    return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
-                }
-                _ => (),
+            if let Expr::Literal(l) = &self.body.exprs[expr_id] {
+                let ty = self.expr_ty_without_adjust(expr_id);
+                return Ok(Some((self.lower_literal_to_operand(ty, l)?, current)));
             }
         }
         let Some((p, current)) = self.lower_expr_as_place(current, expr_id, true)? else {
