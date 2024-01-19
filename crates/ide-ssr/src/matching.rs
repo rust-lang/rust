@@ -310,6 +310,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn check_constraint(
         &self,
         constraint: &Constraint,
