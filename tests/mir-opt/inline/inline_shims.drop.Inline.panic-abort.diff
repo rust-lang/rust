@@ -12,12 +12,80 @@
 +         scope 3 (inlined std::ptr::drop_in_place::<Vec<A>> - shim(Some(Vec<A>))) {
 +             let mut _6: &mut std::vec::Vec<A>;
 +             let mut _7: ();
++             scope 4 (inlined <Vec<A> as Drop>::drop) {
++                 debug self => _6;
++                 let mut _8: *mut [A];
++                 let mut _9: *mut A;
++                 let mut _10: usize;
++                 scope 5 {
++                     scope 6 (inlined Vec::<A>::as_mut_ptr) {
++                         debug self => _6;
++                         scope 7 (inlined alloc::raw_vec::RawVec::<A>::ptr) {
++                             debug (*(self: &alloc::raw_vec::RawVec<A>)) => ((*_6).0: alloc::raw_vec::RawVec<A>);
++                             let mut _17: std::ptr::NonNull<A>;
++                             scope 8 (inlined Unique::<A>::as_ptr) {
++                                 debug ((self: Unique<A>).0: std::ptr::NonNull<A>) => _17;
++                                 debug ((self: Unique<A>).1: std::marker::PhantomData<A>) => const ZeroSized: PhantomData<A>;
++                                 scope 9 (inlined NonNull::<A>::as_ptr) {
++                                     debug self => _17;
++                                     let mut _11: bool;
++                                     let mut _12: bool;
++                                     let mut _13: *const A;
++                                     scope 10 {
++                                         scope 11 (inlined std::ptr::const_ptr::<impl *const A>::is_null) {
++                                             debug self => _13;
++                                             let mut _14: *const u8;
++                                             scope 12 {
++                                                 scope 13 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
++                                                     debug ptr => _14;
++                                                     let mut _15: usize;
++                                                     scope 14 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
++                                                         debug self => _14;
++                                                         let mut _16: *const ();
++                                                         scope 15 {
++                                                             scope 16 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
++                                                                 debug self => _14;
++                                                             }
++                                                         }
++                                                     }
++                                                 }
++                                             }
++                                         }
++                                     }
++                                 }
++                             }
++                         }
++                     }
++                     scope 17 (inlined slice_from_raw_parts_mut::<A>) {
++                         debug data => _9;
++                         debug len => _10;
++                         let mut _18: *mut ();
++                         scope 18 (inlined std::ptr::mut_ptr::<impl *mut A>::cast::<()>) {
++                             debug self => _9;
++                         }
++                         scope 19 (inlined std::ptr::from_raw_parts_mut::<[A]>) {
++                             debug data_address => _18;
++                             debug metadata => _10;
++                             let mut _19: std::ptr::metadata::PtrRepr<[A]>;
++                             let mut _20: std::ptr::metadata::PtrComponents<[A]>;
++                             scope 20 {
++                             }
++                         }
++                     }
++                     scope 21 (inlined std::ptr::drop_in_place::<[A]> - shim(Some([A]))) {
++                         let mut _21: usize;
++                         let mut _22: usize;
++                         let mut _23: *mut A;
++                         let mut _24: bool;
++                     }
++                 }
++             }
 +         }
       }
       scope 2 {
-+         scope 4 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
-+             let mut _8: isize;
-+             let mut _9: isize;
++         scope 22 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
++             let mut _25: isize;
++             let mut _26: isize;
 +         }
       }
   
@@ -29,7 +97,50 @@
 +         StorageLive(_6);
 +         StorageLive(_7);
 +         _6 = &mut (*_4);
-+         _7 = <Vec<A> as Drop>::drop(move _6) -> [return: bb2, unwind unreachable];
++         StorageLive(_13);
++         StorageLive(_16);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_17);
++         _17 = ((((*_6).0: alloc::raw_vec::RawVec<A>).0: std::ptr::Unique<A>).0: std::ptr::NonNull<A>);
++         StorageLive(_11);
++         StorageLive(_12);
++         _13 = (_17.0: *const A);
++         StorageLive(_14);
++         _14 = _13 as *const u8 (PtrToPtr);
++         StorageLive(_15);
++         _16 = _13 as *const () (PtrToPtr);
++         _15 = _16 as usize (Transmute);
++         _12 = Eq(move _15, const 0_usize);
++         StorageDead(_15);
++         StorageDead(_14);
++         _11 = Not(move _12);
++         StorageDead(_12);
++         assume(move _11);
++         StorageDead(_11);
++         _9 = _13 as *mut A (PtrToPtr);
++         StorageDead(_17);
++         StorageLive(_10);
++         _10 = ((*_6).1: usize);
++         StorageLive(_18);
++         _18 = _13 as *mut () (PtrToPtr);
++         StorageLive(_19);
++         StorageLive(_20);
++         _20 = std::ptr::metadata::PtrComponents::<[A]> { data_address: _16, metadata: _10 };
++         _19 = std::ptr::metadata::PtrRepr::<[A]> { const_ptr: move _20 };
++         StorageDead(_20);
++         _8 = (_19.1: *mut [A]);
++         StorageDead(_19);
++         StorageDead(_18);
++         StorageDead(_10);
++         StorageDead(_9);
++         StorageLive(_21);
++         StorageLive(_22);
++         StorageLive(_23);
++         StorageLive(_24);
++         _21 = Len((*_8));
++         _22 = const 0_usize;
++         goto -> bb4;
       }
   
       bb1: {
@@ -40,25 +151,43 @@
           StorageLive(_5);
           _5 = _2;
 -         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind unreachable];
-+         StorageLive(_8);
-+         StorageLive(_9);
-+         _8 = discriminant((*_5));
-+         switchInt(move _8) -> [0: bb3, otherwise: bb4];
++         StorageLive(_25);
++         StorageLive(_26);
++         _25 = discriminant((*_5));
++         switchInt(move _25) -> [0: bb5, otherwise: bb6];
       }
   
       bb2: {
++         StorageDead(_24);
++         StorageDead(_23);
++         StorageDead(_22);
++         StorageDead(_21);
++         StorageDead(_8);
++         StorageDead(_16);
++         StorageDead(_13);
 +         drop(((*_4).0: alloc::raw_vec::RawVec<A>)) -> [return: bb1, unwind unreachable];
 +     }
 + 
 +     bb3: {
-+         StorageDead(_9);
-+         StorageDead(_8);
++         _23 = &raw mut (*_8)[_22];
++         _22 = Add(move _22, const 1_usize);
++         drop((*_23)) -> [return: bb4, unwind unreachable];
++     }
++ 
++     bb4: {
++         _24 = Eq(_22, _21);
++         switchInt(move _24) -> [0: bb3, otherwise: bb2];
++     }
++ 
++     bb5: {
++         StorageDead(_26);
++         StorageDead(_25);
           StorageDead(_5);
           return;
 +     }
 + 
-+     bb4: {
-+         drop((((*_5) as Some).0: B)) -> [return: bb3, unwind unreachable];
++     bb6: {
++         drop((((*_5) as Some).0: B)) -> [return: bb5, unwind unreachable];
       }
   }
   
