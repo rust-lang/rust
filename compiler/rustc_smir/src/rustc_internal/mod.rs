@@ -162,12 +162,12 @@ where
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R {
+pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let wrapper = ptr as *const TablesWrapper<'tcx>;
+        let wrapper = ptr as *const TablesWrapper<'_>;
         let mut tables = unsafe { (*wrapper).0.borrow_mut() };
         f(&mut *tables)
     })
