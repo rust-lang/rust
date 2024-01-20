@@ -16,6 +16,8 @@ extern crate rustc_middle;
 
 use rustc_middle::ty;
 
+// Please change the public `use` directives cautiously, as they might be used by external tools.
+// See issue #120130.
 pub use self::drop_flag_effects::{
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
