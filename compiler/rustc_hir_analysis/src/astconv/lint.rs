@@ -78,14 +78,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
-        let (hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Fn(sig, _),
-            generics,
-            ..
-        })) = tcx.hir_node_by_def_id(parent_id)
-        else {
-            return false;
+        let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
+                (sig, generics, None)
+            }
+            hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, _),
+                generics,
+                owner_id,
+                ..
+            }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
+            _ => return false,
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
             return false;
@@ -94,6 +97,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|o| match o.trait_ref.path.res {
+                    Res::Def(DefKind::Trait, id) if Some(id) == owner => {
+                        // When we're dealing with a recursive trait, we don't want to downgrade
+                        // the error, so we consider them to be object safe always. (#119652)
+                        true
+                    }
                     Res::Def(DefKind::Trait, id) => tcx.check_is_object_safe(id),
                     _ => false,
                 })
@@ -122,7 +130,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else {
+            } else if diag.is_error() {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -148,8 +156,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                // We'll emit the object safety error already, with a structured suggestion.
-                diag.downgrade_to_delayed_bug();
+                if diag.is_error() {
+                    // We'll emit the object safety error already, with a structured suggestion.
+                    diag.downgrade_to_delayed_bug();
+                }
             } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
