@@ -414,9 +414,8 @@ fn reference_to_node(
         reference.name.as_name_ref()?.syntax().parent().and_then(ast::PathSegment::cast)?;
 
     // filter out the reference in marco
-    let s_range = segment.syntax().text_range();
-    let origin_range = sema.original_range(segment.syntax()).range;
-    if s_range != origin_range {
+    let segment_range = segment.syntax().text_range();
+    if segment_range != reference.range {
         return None;
     }
 
