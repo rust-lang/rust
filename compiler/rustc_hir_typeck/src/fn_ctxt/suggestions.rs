@@ -1053,7 +1053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.can_coerce(found, ty) {
                 if let Some(node) = self.tcx.opt_hir_node(fn_id)
                     && let Some(owner_node) = node.as_owner()
-                    && let Some(span) = expr.span.find_ancestor_inside(owner_node.span())
+                    && let Some(span) = expr.span.find_ancestor_inside(*owner_node.span())
                 {
                     err.multipart_suggestion(
                         "you might have meant to return this value",

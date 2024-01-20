@@ -117,6 +117,13 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
+            Node::WhereBoundPredicate(pred) => {
+                self.print_formal_generic_params(pred.bound_generic_params);
+                self.print_type(pred.bounded_ty);
+                self.print_bounds(":", pred.bounds);
+            }
+            Node::ArrayLenInfer(_) => self.word("_"),
+            Node::Err(_) => self.word("/*ERROR*/"),
         }
     }
 }
