@@ -165,10 +165,12 @@ impl Hasher for FxHasher {
         self.add_to_hash(i);
     }
 
-    // Avoid hashing 0xFF sentinel; we don't need prefix-free hashes.
     #[inline]
     fn write_str(&mut self, s: &str) {
         self.write(s.as_bytes());
+        // FIXME: Not having this seems to add significant cost to Symbol::intern(?), but it's not
+        // very clear why. That's interning &str, so it's not obvious why this matters.
+        self.write_u8(0xFF);
     }
 
     // Avoid hashing length prefixes. For our purposes the actual data gives us plenty of entropy
