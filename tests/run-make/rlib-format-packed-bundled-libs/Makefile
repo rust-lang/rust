@@ -13,7 +13,7 @@ else
 NM = nm
 endif
 
-all: echo MAJAHA IS_WINDOWS: $(IS_WINDOWS) IS_MSVC: $(IS_MSVC)
+all: echo MAJAHA IS_WINDOWS $(IS_WINDOWS) IS_MSVC $(IS_MSVC)
 	$(call NATIVE_STATICLIB,native_dep_1) $(call NATIVE_STATICLIB,native_dep_2) $(call NATIVE_STATICLIB,native_dep_3)
 	$(RUSTC) rust_dep_up.rs --crate-type=rlib -Zpacked_bundled_libs
 	$(NM) $(TMPDIR)/librust_dep_up.rlib | $(CGREP) -e "U.*native_f2"
