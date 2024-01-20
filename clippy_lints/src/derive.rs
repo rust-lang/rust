@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
-use clippy_utils::{is_lint_allowed, match_def_path, paths};
+use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
@@ -11,8 +11,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, AdtDef, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate,
-    Ty, TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ImplPolarity, ParamEnv, ToPredicate, TraitPredicate, Ty,
+    TyCtxt,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -442,17 +442,6 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     }
 }
 
-fn has_non_exhaustive_attr(cx: &LateContext<'_>, adt: AdtDef<'_>) -> bool {
-    adt.is_variant_list_non_exhaustive()
-        || cx.tcx.has_attr(adt.did(), sym::non_exhaustive)
-        || adt.variants().iter().any(|variant_def| {
-            variant_def.is_field_list_non_exhaustive() || cx.tcx.has_attr(variant_def.def_id, sym::non_exhaustive)
-        })
-        || adt
-            .all_fields()
-            .any(|field_def| cx.tcx.has_attr(field_def.did, sym::non_exhaustive))
-}
-
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if let ty::Adt(adt, args) = ty.kind()
@@ -460,7 +449,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
-        && !has_non_exhaustive_attr(cx, *adt)
+        && !has_non_exhaustive_attr(cx.tcx, *adt)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, adt.did(),&[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
