@@ -228,8 +228,8 @@ pub struct ConstParamTyImplOnNonAdt {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_const_param_ty_impl_on_infringing_referee)]
-pub struct ConstParamTyImplOnInfringingReferee {
+#[diag(hir_analysis_const_param_ty_impl_on_infringing_inner_ty)]
+pub struct ConstParamTyImplOnInfringingInnerTy {
     #[primary_span]
     pub span: Span,
     #[label]

@@ -135,9 +135,9 @@ fn visit_implementation_of_const_param_ty(
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
-        Err(ConstParamTyImplementationError::InfringingReferee(def_id)) => {
+        Err(ConstParamTyImplementationError::InfringingInnerTy(def_id)) => {
             let def_span = tcx.def_span(def_id);
-            tcx.dcx().emit_err(errors::ConstParamTyImplOnInfringingReferee {
+            tcx.dcx().emit_err(errors::ConstParamTyImplOnInfringingInnerTy {
                 span,
                 def_span,
                 def_descr: tcx.def_descr(def_id),

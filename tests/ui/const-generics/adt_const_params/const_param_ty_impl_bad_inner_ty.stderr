@@ -1,0 +1,106 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:13:1
+   |
+LL | impl ConstParamTy for &[Foo] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^------
+   | |                     |
+   | |                     this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:17:1
+   |
+LL | impl ConstParamTy for [Foo; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^--------
+   | |                     |
+   | |                     this is not defined in the current crate because arrays are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:21:1
+   |
+LL | impl ConstParamTy for (Foo, i32, *const u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^---------------------
+   | |                     |
+   | |                     this is not defined in the current crate because tuples are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:10:23
+   |
+LL | struct Foo;
+   | ---------- this struct does not implement `ConstParamTy`
+LL |
+LL | impl ConstParamTy for &Foo {}
+   |                       ^^^^
+   |
+help: consider annotating this struct with `#[derive(ConstParamTy)]`
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct Foo;
+   |
+
+error: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:13:23
+   |
+LL | struct Foo;
+   | ---------- this struct does not implement `ConstParamTy`
+...
+LL | impl ConstParamTy for &[Foo] {}
+   |                       ^^^^^^
+   |
+help: consider annotating this struct with `#[derive(ConstParamTy)]`
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct Foo;
+   |
+
+error: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:17:23
+   |
+LL | struct Foo;
+   | ---------- this struct does not implement `ConstParamTy`
+...
+LL | impl ConstParamTy for [Foo; 4] {}
+   |                       ^^^^^^^^
+   |
+help: consider annotating this struct with `#[derive(ConstParamTy)]`
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct Foo;
+   |
+
+error: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:21:23
+   |
+LL | struct Foo;
+   | ---------- this struct does not implement `ConstParamTy`
+...
+LL | impl ConstParamTy for (Foo, i32, *const u8) {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider annotating this struct with `#[derive(ConstParamTy)]`
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct Foo;
+   |
+
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_inner_ty.rs:30:23
+   |
+LL | struct Wrapper(*const i32, usize);
+   |                ---------- this field does not implement `ConstParamTy`
+LL |
+LL | impl ConstParamTy for &Wrapper {}
+   |                       ^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0117, E0204.
+For more information about an error, try `rustc --explain E0117`.
