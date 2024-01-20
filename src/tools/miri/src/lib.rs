@@ -8,7 +8,6 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(round_ties_even)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(int_roundings)]
