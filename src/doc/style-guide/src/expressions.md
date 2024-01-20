@@ -330,7 +330,7 @@ than at other binary operators.
 
 If line-breaking a binary operator (including assignment operators) where the
 first operand spans multiple lines, use the base indentation of the *last*
-line of the first , and indent relative to that:
+line of the first operand, and indent relative to that:
 
 ```rust
 impl SomeType {
