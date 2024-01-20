@@ -93,10 +93,13 @@ pub struct QuerySideEffects {
 }
 
 impl QuerySideEffects {
+    /// Returns true if there might be side effects.
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub fn maybe_any(&self) -> bool {
         let QuerySideEffects { diagnostics } = self;
-        diagnostics.is_empty()
+        // Use `has_capacity` so that the destructor for `self.diagnostics` can be skipped
+        // if `maybe_any` is known to be false.
+        diagnostics.has_capacity()
     }
     pub fn append(&mut self, other: QuerySideEffects) {
         let QuerySideEffects { diagnostics } = self;
