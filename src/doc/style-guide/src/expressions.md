@@ -328,7 +328,7 @@ foo_bar
 Prefer line-breaking at an assignment operator (either `=` or `+=`, etc.) rather
 than at other binary operators.
 
-If line-breaking a binary operator (including assignment operators) where the
+If line-breaking at a binary operator (including assignment operators) where the
 first operand spans multiple lines, use the base indentation of the *last*
 line of the first operand, and indent relative to that:
 
