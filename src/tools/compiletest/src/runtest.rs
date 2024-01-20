@@ -3570,6 +3570,17 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rmake_test(&self) {
+        let test_dir = &self.testpaths.file;
+        if test_dir.join("rmake.rs").exists() {
+            self.run_rmake_v2_test();
+        } else if test_dir.join("Makefile").exists() {
+            self.run_rmake_legacy_test();
+        } else {
+            self.fatal("failed to find either `rmake.rs` or `Makefile`")
+        }
+    }
+
+    fn run_rmake_legacy_test(&self) {
         let cwd = env::current_dir().unwrap();
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
@@ -3735,6 +3746,238 @@ impl<'test> TestCx<'test> {
             }
         }
         fs::remove_dir(path)
+    }
+
+    fn run_rmake_v2_test(&self) {
+        // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
+        // (`rmake.rs`) to run the actual tests. The support library is already built as a tool
+        // dylib and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
+        //
+        // 1. We need to build the recipe `rmake.rs` and link in the support library.
+        // 2. We need to run the recipe to build and run the tests.
+        let cwd = env::current_dir().unwrap();
+        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
+        let src_root = cwd.join(&src_root);
+        let build_root = self.config.build_base.parent().unwrap().parent().unwrap();
+        let build_root = cwd.join(&build_root);
+
+        let tmpdir = cwd.join(self.output_base_name());
+        if tmpdir.exists() {
+            self.aggressive_rm_rf(&tmpdir).unwrap();
+        }
+        create_dir_all(&tmpdir).unwrap();
+
+        // HACK: assume stageN-target, we only want stageN.
+        let stage = self.config.stage_id.split('-').next().unwrap();
+
+        // First, we construct the path to the built support library.
+        let mut support_lib_path = PathBuf::new();
+        support_lib_path.push(&build_root);
+        support_lib_path.push(format!("{}-tools-bin", stage));
+        support_lib_path.push("librun_make_support.rlib");
+
+        let mut stage_std_path = PathBuf::new();
+        stage_std_path.push(&build_root);
+        stage_std_path.push(&stage);
+        stage_std_path.push("lib");
+
+        // Then, we need to build the recipe `rmake.rs` and link in the support library.
+        let recipe_bin =
+            tmpdir.join(if self.config.target.contains("windows") { "rmake.exe" } else { "rmake" });
+
+        let mut support_lib_deps = PathBuf::new();
+        support_lib_deps.push(&build_root);
+        support_lib_deps.push(format!("{}-tools", stage));
+        support_lib_deps.push(&self.config.host);
+        support_lib_deps.push("release");
+        support_lib_deps.push("deps");
+
+        let mut support_lib_deps_deps = PathBuf::new();
+        support_lib_deps_deps.push(&build_root);
+        support_lib_deps_deps.push(format!("{}-tools", stage));
+        support_lib_deps_deps.push("release");
+        support_lib_deps_deps.push("deps");
+
+        debug!(?support_lib_deps);
+        debug!(?support_lib_deps_deps);
+
+        let res = self.cmd2procres(
+            Command::new(&self.config.rustc_path)
+                .arg("-o")
+                .arg(&recipe_bin)
+                .arg(format!(
+                    "-Ldependency={}",
+                    &support_lib_path.parent().unwrap().to_string_lossy()
+                ))
+                .arg(format!("-Ldependency={}", &support_lib_deps.to_string_lossy()))
+                .arg(format!("-Ldependency={}", &support_lib_deps_deps.to_string_lossy()))
+                .arg("--extern")
+                .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+                .arg(&self.testpaths.file.join("rmake.rs"))
+                .env("TARGET", &self.config.target)
+                .env("PYTHON", &self.config.python)
+                .env("S", &src_root)
+                .env("RUST_BUILD_STAGE", &self.config.stage_id)
+                .env("RUSTC", cwd.join(&self.config.rustc_path))
+                .env("TMPDIR", &tmpdir)
+                .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+                .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+                .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+                .env("LLVM_COMPONENTS", &self.config.llvm_components)
+                // We for sure don't want these tests to run in parallel, so make
+                // sure they don't have access to these vars if we run via `make`
+                // at the top level
+                .env_remove("MAKEFLAGS")
+                .env_remove("MFLAGS")
+                .env_remove("CARGO_MAKEFLAGS"),
+        );
+        if !res.status.success() {
+            self.fatal_proc_rec("run-make test failed: could not build `rmake.rs` recipe", &res);
+        }
+
+        // Finally, we need to run the recipe binary to build and run the actual tests.
+        debug!(?recipe_bin);
+
+        let mut dylib_env_paths = String::new();
+        dylib_env_paths.push_str(&env::var(dylib_env_var()).unwrap());
+        dylib_env_paths.push(':');
+        dylib_env_paths.push_str(&support_lib_path.parent().unwrap().to_string_lossy());
+        dylib_env_paths.push(':');
+        dylib_env_paths.push_str(
+            &stage_std_path.join("rustlib").join(&self.config.host).join("lib").to_string_lossy(),
+        );
+
+        let mut target_rpath_env_path = String::new();
+        target_rpath_env_path.push_str(&tmpdir.to_string_lossy());
+        target_rpath_env_path.push(':');
+        target_rpath_env_path.push_str(&dylib_env_paths);
+
+        let mut cmd = Command::new(&recipe_bin);
+        cmd.current_dir(&self.testpaths.file)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
+            .env("TARGET_RPATH_ENV", &target_rpath_env_path)
+            .env(dylib_env_var(), &dylib_env_paths)
+            .env("TARGET", &self.config.target)
+            .env("PYTHON", &self.config.python)
+            .env("S", &src_root)
+            .env("RUST_BUILD_STAGE", &self.config.stage_id)
+            .env("RUSTC", cwd.join(&self.config.rustc_path))
+            .env("TMPDIR", &tmpdir)
+            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
+            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
+            .env("LLVM_COMPONENTS", &self.config.llvm_components)
+            // We for sure don't want these tests to run in parallel, so make
+            // sure they don't have access to these vars if we run via `make`
+            // at the top level
+            .env_remove("MAKEFLAGS")
+            .env_remove("MFLAGS")
+            .env_remove("CARGO_MAKEFLAGS");
+
+        if let Some(ref rustdoc) = self.config.rustdoc_path {
+            cmd.env("RUSTDOC", cwd.join(rustdoc));
+        }
+
+        if let Some(ref rust_demangler) = self.config.rust_demangler_path {
+            cmd.env("RUST_DEMANGLER", cwd.join(rust_demangler));
+        }
+
+        if let Some(ref node) = self.config.nodejs {
+            cmd.env("NODE", node);
+        }
+
+        if let Some(ref linker) = self.config.target_linker {
+            cmd.env("RUSTC_LINKER", linker);
+        }
+
+        if let Some(ref clang) = self.config.run_clang_based_tests_with {
+            cmd.env("CLANG", clang);
+        }
+
+        if let Some(ref filecheck) = self.config.llvm_filecheck {
+            cmd.env("LLVM_FILECHECK", filecheck);
+        }
+
+        if let Some(ref llvm_bin_dir) = self.config.llvm_bin_dir {
+            cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
+        }
+
+        if let Some(ref remote_test_client) = self.config.remote_test_client {
+            cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
+        }
+
+        // We don't want RUSTFLAGS set from the outside to interfere with
+        // compiler flags set in the test cases:
+        cmd.env_remove("RUSTFLAGS");
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            cmd.env("RUSTFLAGS", "-Ctarget-feature=-crt-static").env("IS_MUSL_HOST", "1");
+        }
+
+        if self.config.bless {
+            cmd.env("RUSTC_BLESS_TEST", "--bless");
+            // Assume this option is active if the environment variable is "defined", with _any_ value.
+            // As an example, a `Makefile` can use this option by:
+            //
+            //   ifdef RUSTC_BLESS_TEST
+            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
+            //   else
+            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
+            //   endif
+        }
+
+        if self.config.target.contains("msvc") && self.config.cc != "" {
+            // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
+            // and that `lib.exe` lives next to it.
+            let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
+
+            // MSYS doesn't like passing flags of the form `/foo` as it thinks it's
+            // a path and instead passes `C:\msys64\foo`, so convert all
+            // `/`-arguments to MSVC here to `-` arguments.
+            let cflags = self
+                .config
+                .cflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            let cxxflags = self
+                .config
+                .cxxflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            cmd.env("IS_MSVC", "1")
+                .env("IS_WINDOWS", "1")
+                .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
+                .env("CC", format!("'{}' {}", self.config.cc, cflags))
+                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
+        } else {
+            cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
+                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
+                .env("AR", &self.config.ar);
+
+            if self.config.target.contains("windows") {
+                cmd.env("IS_WINDOWS", "1");
+            }
+        }
+
+        let (Output { stdout, stderr, status }, truncated) =
+            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `rmake`"));
+        if !status.success() {
+            let res = ProcRes {
+                status,
+                stdout: String::from_utf8_lossy(&stdout).into_owned(),
+                stderr: String::from_utf8_lossy(&stderr).into_owned(),
+                truncated,
+                cmdline: format!("{:?}", cmd),
+            };
+            self.fatal_proc_rec("rmake recipe failed to complete", &res);
+        }
     }
 
     fn run_js_doc_test(&self) {
