@@ -1388,13 +1388,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_fn_sig(def_kind) {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             }
-            // FIXME: Some anonymous constants produced by `#[rustc_legacy_const_generics]`
-            // do not have corresponding HIR nodes, so some queries usually making sense for
-            // anonymous constants will not work on them and panic. It's not clear whether it
-            // can cause any observable issues or not.
-            let anon_const_without_hir = def_kind == DefKind::AnonConst
-                && tcx.opt_hir_node(tcx.local_def_id_to_hir_id(local_id)).is_none();
-            if should_encode_generics(def_kind) && !anon_const_without_hir {
+            if should_encode_generics(def_kind) {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
@@ -1408,7 +1402,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            if should_encode_type(tcx, local_id, def_kind) && !anon_const_without_hir {
+            if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
             if should_encode_constness(def_kind) {

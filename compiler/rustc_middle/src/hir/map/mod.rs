@@ -159,9 +159,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Retrieves the `hir::Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn opt_hir_node(self, id: HirId) -> Option<Node<'tcx>> {
-        let owner = self.hir_owner_nodes(id.owner);
-        let node = owner.nodes[id.local_id].as_ref()?;
-        Some(node.node)
+        Some(self.hir_owner_nodes(id.owner).nodes[id.local_id].node)
     }
 
     /// Retrieves the `hir::Node` corresponding to `id`, returning `None` if cannot be found.
@@ -233,7 +231,7 @@ impl<'hir> Map<'hir> {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner);
-            let node = owner.nodes[id.local_id].as_ref()?;
+            let node = &owner.nodes[id.local_id];
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
             // HIR indexing should have checked that.
             debug_assert_ne!(id.local_id, node.parent);
@@ -994,6 +992,9 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::Local(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
+            Node::WhereBoundPredicate(pred) => pred.span,
+            Node::ArrayLenInfer(inf) => inf.span,
+            Node::Err(span) => *span,
         }
     }
 
@@ -1255,6 +1256,9 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             format!("{id} (generic_param {})", path_str(param.def_id))
         }
         Some(Node::Crate(..)) => String::from("(root_crate)"),
+        Some(Node::WhereBoundPredicate(_)) => node_str("where bound predicate"),
+        Some(Node::ArrayLenInfer(_)) => node_str("array len infer"),
+        Some(Node::Err(_)) => node_str("error"),
         None => format!("{id} (unknown node)"),
     }
 }
