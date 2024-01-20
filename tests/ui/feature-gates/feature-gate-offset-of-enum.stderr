@@ -13,8 +13,9 @@ error[E0658]: using enums in offset_of is experimental
 LL |     offset_of!(Alpha, One);
    |                       ^^^
    |
-   = note: see issue #106655 <https://github.com/rust-lang/rust/issues/106655> for more information
+   = note: see issue #120141 <https://github.com/rust-lang/rust/issues/120141> for more information
    = help: add `#![feature(offset_of_enum)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
   --> $DIR/feature-gate-offset-of-enum.rs:12:23
@@ -28,8 +29,9 @@ error[E0658]: using enums in offset_of is experimental
 LL |     offset_of!(Alpha, Two.0);
    |                       ^^^
    |
-   = note: see issue #106655 <https://github.com/rust-lang/rust/issues/106655> for more information
+   = note: see issue #120141 <https://github.com/rust-lang/rust/issues/120141> for more information
    = help: add `#![feature(offset_of_enum)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 4 previous errors
 

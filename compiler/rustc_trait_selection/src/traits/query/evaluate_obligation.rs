@@ -87,10 +87,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
         } else {
             assert!(!self.intercrate);
-            let c_pred = self.canonicalize_query_keep_static(
-                param_env.and(obligation.predicate),
-                &mut _orig_values,
-            );
+            let c_pred =
+                self.canonicalize_query(param_env.and(obligation.predicate), &mut _orig_values);
             self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
         }
     }
@@ -118,11 +116,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                             r,
                         )
                     }
-                    OverflowError::ErrorReporting => EvaluationResult::EvaluatedToErr,
                     OverflowError::Error(_) => EvaluationResult::EvaluatedToErr,
                 })
             }
-            Err(OverflowError::ErrorReporting) => EvaluationResult::EvaluatedToErr,
             Err(OverflowError::Error(_)) => EvaluationResult::EvaluatedToErr,
         }
     }

@@ -8,13 +8,7 @@ LL |     let _x = println!("x");
    = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: this let-binding has unit value
-  --> $DIR/let_unit.rs:16:9
-   |
-LL |         let _a = ();
-   |         ^^^^^^^^^^^^ help: omit the `let` binding: `();`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:51:5
+  --> $DIR/let_unit.rs:60:5
    |
 LL | /     let _ = v
 LL | |         .into_iter()
@@ -37,45 +31,9 @@ LL +         .unwrap();
    |
 
 error: this let-binding has unit value
-  --> $DIR/let_unit.rs:78:5
+  --> $DIR/let_unit.rs:109:5
    |
-LL |     let x: () = f(); // Lint.
-   |     ^^^^-^^^^^^^^^^^
-   |         |
-   |         help: use a wild (`_`) binding: `_`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:81:5
-   |
-LL |     let x: () = f2(0i32); // Lint.
-   |     ^^^^-^^^^^^^^^^^^^^^^
-   |         |
-   |         help: use a wild (`_`) binding: `_`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:83:5
-   |
-LL |     let _: () = f3(()); // Lint
-   |     ^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f3(());`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:84:5
-   |
-LL |     let x: () = f3(()); // Lint
-   |     ^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `f3(());`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:100:5
-   |
-LL |     let x: () = if true { f() } else { f2(0) }; // Lint
-   |     ^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         help: use a wild (`_`) binding: `_`
-
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:111:5
-   |
-LL | /     let _: () = match Some(0) {
+LL | /     let x = match Some(0) {
 LL | |         None => f2(1),
 LL | |         Some(0) => f(),
 LL | |         Some(1) => f2(3),
@@ -93,11 +51,5 @@ LL +         Some(_) => (),
 LL +     };
    |
 
-error: this let-binding has unit value
-  --> $DIR/let_unit.rs:158:13
-   |
-LL |             let _: () = z;
-   |             ^^^^^^^^^^^^^^ help: omit the `let` binding: `z;`
-
-error: aborting due to 10 previous errors
+error: aborting due to 3 previous errors
 

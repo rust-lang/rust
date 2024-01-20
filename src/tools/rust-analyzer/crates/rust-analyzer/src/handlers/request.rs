@@ -12,8 +12,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
+    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -103,7 +103,6 @@ pub(crate) fn handle_analyzer_status(
                 .collect::<Vec<&AbsPath>>()
         );
     }
-    format_to!(buf, "\nVfs memory usage: {}\n", profile::Bytes::new(snap.vfs_memory_usage() as _));
     buf.push_str("\nAnalysis:\n");
     buf.push_str(
         &snap
@@ -453,12 +452,11 @@ pub(crate) fn handle_document_symbol(
 pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
     params: WorkspaceSymbolParams,
-) -> anyhow::Result<Option<Vec<SymbolInformation>>> {
+) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = profile::span("handle_workspace_symbol");
 
     let config = snap.config.workspace_symbol();
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
-    let limit = config.search_limit;
 
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
@@ -469,17 +467,14 @@ pub(crate) fn handle_workspace_symbol(
         if libs {
             q.libs();
         }
-        q.limit(limit);
         q
     };
-    let mut res = exec_query(&snap, query)?;
+    let mut res = exec_query(&snap, query, config.search_limit)?;
     if res.is_empty() && !all_symbols {
-        let mut query = Query::new(params.query);
-        query.limit(limit);
-        res = exec_query(&snap, query)?;
+        res = exec_query(&snap, Query::new(params.query), config.search_limit)?;
     }
 
-    return Ok(Some(res));
+    return Ok(Some(lsp_types::WorkspaceSymbolResponse::Nested(res)));
 
     fn decide_search_scope_and_kind(
         params: &WorkspaceSymbolParams,
@@ -519,13 +514,13 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(
         snap: &GlobalStateSnapshot,
         query: Query,
-    ) -> anyhow::Result<Vec<SymbolInformation>> {
+        limit: usize,
+    ) -> anyhow::Result<Vec<lsp_types::WorkspaceSymbol>> {
         let mut res = Vec::new();
-        for nav in snap.analysis.symbol_search(query)? {
+        for nav in snap.analysis.symbol_search(query, limit)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
 
-            #[allow(deprecated)]
-            let info = SymbolInformation {
+            let info = lsp_types::WorkspaceSymbol {
                 name: match &nav.alias {
                     Some(alias) => format!("{} (alias for {})", alias, nav.name),
                     None => format!("{}", nav.name),
@@ -534,10 +529,11 @@ pub(crate) fn handle_workspace_symbol(
                     .kind
                     .map(to_proto::symbol_kind)
                     .unwrap_or(lsp_types::SymbolKind::VARIABLE),
+                // FIXME: Set deprecation
                 tags: None,
-                location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
-                deprecated: None,
+                location: lsp_types::OneOf::Left(to_proto::location_from_nav(snap, nav)?),
+                data: None,
             };
             res.push(info);
         }
@@ -801,7 +797,7 @@ pub(crate) fn handle_runnables(
             }
         }
         None => {
-            if !snap.config.linked_projects().is_empty() {
+            if !snap.config.linked_or_discovered_projects().is_empty() {
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_string(),
                     location: None,
@@ -1409,7 +1405,7 @@ pub(crate) fn handle_inlay_hints(
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
-            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
+            .inlay_hints(&inlay_hints_config, file_id, Some(RangeLimit::Fixed(range)))?
             .into_iter()
             .map(|it| {
                 to_proto::inlay_hint(
@@ -1440,22 +1436,13 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let range = from_proto::text_range(
-        &line_index,
-        lsp_types::Range { start: original_hint.position, end: original_hint.position },
-    )?;
-    let range_start = range.start();
-    let range_end = range.end();
-    let large_range = TextRange::new(
-        range_start.checked_sub(1.into()).unwrap_or(range_start),
-        range_end.checked_add(1.into()).unwrap_or(range_end),
-    );
+    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(large_range),
+        Some(RangeLimit::NearestParent(hint_position)),
     )?;
 
     let mut resolved_hints = resolve_hints

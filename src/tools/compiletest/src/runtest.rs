@@ -19,7 +19,6 @@ use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -575,6 +574,8 @@ impl<'test> TestCx<'test> {
                 cmd.arg("--object");
                 cmd.arg(bin);
             }
+
+            cmd.args(&self.props.llvm_cov_flags);
         });
         if !proc_res.status.success() {
             self.fatal_proc_rec("llvm-cov show failed!", &proc_res);
@@ -723,7 +724,7 @@ impl<'test> TestCx<'test> {
 
     /// Replace line numbers in coverage reports with the placeholder `LL`,
     /// so that the tests are less sensitive to lines being added/removed.
-    fn anonymize_coverage_line_numbers(coverage: &str) -> Cow<'_, str> {
+    fn anonymize_coverage_line_numbers(coverage: &str) -> String {
         // The coverage reporter prints line numbers at the start of a line.
         // They are truncated or left-padded to occupy exactly 5 columns.
         // (`LineNumberColumnWidth` in `SourceCoverageViewText.cpp`.)
@@ -731,9 +732,28 @@ impl<'test> TestCx<'test> {
         //
         // Line numbers that appear inside expansion/instantiation subviews
         // have an additional prefix of `  |` for each nesting level.
+        //
+        // Branch views also include the relevant line number, so we want to
+        // redact those too. (These line numbers don't have padding.)
+        //
+        // Note: The pattern `(?m:^)` matches the start of a line.
+
+        // `    1|` => `   LL|`
+        // `   10|` => `   LL|`
+        // `  100|` => `   LL|`
+        // `  | 1000|`    => `  |   LL|`
+        // `  |  | 1000|` => `  |  |   LL|`
         static LINE_NUMBER_RE: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
-        LINE_NUMBER_RE.replace_all(coverage, "$prefix   LL|")
+        let coverage = LINE_NUMBER_RE.replace_all(&coverage, "${prefix}   LL|");
+
+        // `  |  Branch (1:`     => `  |  Branch (LL:`
+        // `  |  |  Branch (10:` => `  |  |  Branch (LL:`
+        static BRANCH_LINE_NUMBER_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)+  Branch \()[0-9]+:").unwrap());
+        let coverage = BRANCH_LINE_NUMBER_RE.replace_all(&coverage, "${prefix}LL:");
+
+        coverage.into_owned()
     }
 
     /// Coverage reports can describe multiple source files, separated by
@@ -2445,6 +2465,7 @@ impl<'test> TestCx<'test> {
                     "-Copt-level=1",
                     &zdump_arg,
                     "-Zvalidate-mir",
+                    "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
@@ -3976,23 +3997,29 @@ impl<'test> TestCx<'test> {
             proc_res.status,
             self.props.error_patterns
         );
+
+        let check_patterns = should_run == WillExecute::No
+            && (!self.props.error_patterns.is_empty()
+                || !self.props.regex_error_patterns.is_empty());
         if !explicit && self.config.compare_mode.is_none() {
-            let check_patterns = should_run == WillExecute::No
-                && (!self.props.error_patterns.is_empty()
-                    || !self.props.regex_error_patterns.is_empty());
-
             let check_annotations = !check_patterns || !expected_errors.is_empty();
-
-            if check_patterns {
-                // "// error-pattern" comments
-                let output_to_check = self.get_output(&proc_res);
-                self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-            }
 
             if check_annotations {
                 // "//~ERROR comments"
                 self.check_expected_errors(expected_errors, &proc_res);
             }
+        } else if explicit && !expected_errors.is_empty() {
+            let msg = format!(
+                "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
+                expected_errors[0].line_num,
+                expected_errors[0].kind.unwrap_or(ErrorKind::Error),
+            );
+            self.fatal(&msg);
+        }
+        if check_patterns {
+            // "// error-pattern" comments
+            let output_to_check = self.get_output(&proc_res);
+            self.check_all_error_patterns(&output_to_check, &proc_res, pm);
         }
 
         if self.props.run_rustfix && self.config.compare_mode.is_none() {

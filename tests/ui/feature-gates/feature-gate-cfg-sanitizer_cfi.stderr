@@ -1,0 +1,23 @@
+error[E0658]: `cfg(sanitizer_cfi_generalize_pointers)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-sanitizer_cfi.rs:1:7
+   |
+LL | #[cfg(sanitizer_cfi_generalize_pointers)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89653 <https://github.com/rust-lang/rust/issues/89653> for more information
+   = help: add `#![feature(cfg_sanitizer_cfi)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(sanitizer_cfi_normalize_integers)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-sanitizer_cfi.rs:5:7
+   |
+LL | #[cfg(sanitizer_cfi_normalize_integers)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89653 <https://github.com/rust-lang/rust/issues/89653> for more information
+   = help: add `#![feature(cfg_sanitizer_cfi)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -154,7 +154,11 @@ class StdVecDequeProvider(printer_base):
         self._valobj = valobj
         self._head = int(valobj["head"])
         self._size = int(valobj["len"])
-        self._cap = int(valobj["buf"]["cap"])
+        # BACKCOMPAT: rust 1.75
+        cap = valobj["buf"]["cap"]
+        if cap.type.code != gdb.TYPE_CODE_INT:
+            cap = cap[ZERO_FIELD]
+        self._cap = int(cap)
         self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
 
     def to_string(self):

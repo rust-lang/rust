@@ -1,0 +1,24 @@
+error: expected unsuffixed literal, found `foo`
+  --> $DIR/attr-unquoted-ident.rs:5:15
+   |
+LL |     #[cfg(key=foo)]
+   |               ^^^
+   |
+help: surround the identifier with quotation marks to parse it as a string
+   |
+LL |     #[cfg(key="foo")]
+   |               +   +
+
+error: expected unsuffixed literal, found `foo`
+  --> $DIR/attr-unquoted-ident.rs:11:15
+   |
+LL |     #[cfg(key=foo bar baz)]
+   |               ^^^
+   |
+help: surround the identifier with quotation marks to parse it as a string
+   |
+LL |     #[cfg(key="foo bar baz")]
+   |               +           +
+
+error: aborting due to 2 previous errors
+

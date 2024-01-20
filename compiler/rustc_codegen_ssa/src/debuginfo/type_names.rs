@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{CoroutineKind, CoroutineSource, Mutability};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -93,7 +93,7 @@ fn push_debuginfo_type_name<'tcx>(
                     Err(e) => {
                         // Computing the layout can still fail here, e.g. if the target architecture
                         // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
-                        tcx.sess.emit_fatal(e.into_diagnostic());
+                        tcx.dcx().emit_fatal(e.into_diagnostic());
                     }
                 }
             } else {
@@ -560,16 +560,32 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
     match coroutine_kind {
-        Some(CoroutineKind::Gen(CoroutineSource::Block)) => "gen_block",
-        Some(CoroutineKind::Gen(CoroutineSource::Closure)) => "gen_closure",
-        Some(CoroutineKind::Gen(CoroutineSource::Fn)) => "gen_fn",
-        Some(CoroutineKind::Async(CoroutineSource::Block)) => "async_block",
-        Some(CoroutineKind::Async(CoroutineSource::Closure)) => "async_closure",
-        Some(CoroutineKind::Async(CoroutineSource::Fn)) => "async_fn",
-        Some(CoroutineKind::AsyncGen(CoroutineSource::Block)) => "async_gen_block",
-        Some(CoroutineKind::AsyncGen(CoroutineSource::Closure)) => "async_gen_closure",
-        Some(CoroutineKind::AsyncGen(CoroutineSource::Fn)) => "async_gen_fn",
-        Some(CoroutineKind::Coroutine) => "coroutine",
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Block)) => {
+            "gen_block"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Closure)) => {
+            "gen_closure"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Fn)) => "gen_fn",
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) => {
+            "async_block"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)) => {
+            "async_closure"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)) => {
+            "async_fn"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Block)) => {
+            "async_gen_block"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Closure)) => {
+            "async_gen_closure"
+        }
+        Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Fn)) => {
+            "async_gen_fn"
+        }
+        Some(CoroutineKind::Coroutine(_)) => "coroutine",
         None => "closure",
     }
 }

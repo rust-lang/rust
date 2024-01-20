@@ -7,6 +7,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeStorageDead;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
+use std::borrow::Cow;
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
 
@@ -120,7 +121,7 @@ fn compute_replacement<'tcx>(
 
     // Compute `MaybeStorageDead` dataflow to check that we only replace when the pointee is
     // definitely live.
-    let mut maybe_dead = MaybeStorageDead::new(always_live_locals)
+    let mut maybe_dead = MaybeStorageDead::new(Cow::Owned(always_live_locals))
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);

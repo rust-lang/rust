@@ -5,13 +5,14 @@ mod sourcegen;
 use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
-    base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
+    base_db::{FileId, FileRange, SourceDatabaseExt},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
     RootDatabase, SnippetCap,
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{
@@ -504,16 +505,33 @@ pub fn test_some_range(a: int) -> bool {
                                 TextEdit {
                                     indels: [
                                         Indel {
-                                            insert: "let $0var_name = 5;\n    ",
-                                            delete: 45..45,
+                                            insert: "let",
+                                            delete: 45..47,
                                         },
                                         Indel {
                                             insert: "var_name",
-                                            delete: 59..60,
+                                            delete: 48..60,
+                                        },
+                                        Indel {
+                                            insert: "=",
+                                            delete: 61..81,
+                                        },
+                                        Indel {
+                                            insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
+                                            delete: 82..108,
                                         },
                                     ],
                                 },
-                                None,
+                                Some(
+                                    SnippetEdit(
+                                        [
+                                            (
+                                                0,
+                                                49..49,
+                                            ),
+                                        ],
+                                    ),
+                                ),
                             ),
                         },
                         file_system_edits: [],
@@ -566,16 +584,33 @@ pub fn test_some_range(a: int) -> bool {
                                 TextEdit {
                                     indels: [
                                         Indel {
-                                            insert: "let $0var_name = 5;\n    ",
-                                            delete: 45..45,
+                                            insert: "let",
+                                            delete: 45..47,
                                         },
                                         Indel {
                                             insert: "var_name",
-                                            delete: 59..60,
+                                            delete: 48..60,
+                                        },
+                                        Indel {
+                                            insert: "=",
+                                            delete: 61..81,
+                                        },
+                                        Indel {
+                                            insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
+                                            delete: 82..108,
                                         },
                                     ],
                                 },
-                                None,
+                                Some(
+                                    SnippetEdit(
+                                        [
+                                            (
+                                                0,
+                                                49..49,
+                                            ),
+                                        ],
+                                    ),
+                                ),
                             ),
                         },
                         file_system_edits: [],

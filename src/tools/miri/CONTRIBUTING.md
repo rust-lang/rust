@@ -109,7 +109,7 @@ to run the other checks while ignoring the ui output, use `MIRI_SKIP_UI_CHECKS=1
 
 For more info on how to configure ui tests see [the documentation on the ui test crate][ui_test]
 
-[ui_test]: ui_test/README.md
+[ui_test]: https://github.com/oli-obk/ui_test/blob/main/README.md
 
 ### Testing `cargo miri`
 

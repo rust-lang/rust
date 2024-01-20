@@ -222,7 +222,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
+                self.tcx().dcx().span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             }
             hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
                 self.tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(p.span, format!("unexpected generic param: {p:?}"));
             }
         }
@@ -473,7 +473,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
         let fcx_coercion_casts = fcx_typeck_results.coercion_casts().to_sorted_stable_ord();
-        for local_id in fcx_coercion_casts {
+        for &local_id in fcx_coercion_casts {
             self.typeck_results.set_coercion_cast(local_id);
         }
     }
@@ -497,15 +497,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err =
-                        self.tcx().sess.struct_span_err(span, format!("user args: {user_args:?}"));
-                    err.buffer(&mut errors_buffer);
+                        self.tcx().dcx().struct_span_err(span, format!("user args: {user_args:?}"));
+                    errors_buffer.push(err);
                 }
             }
 
             if !errors_buffer.is_empty() {
                 errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-                for diag in errors_buffer {
-                    self.tcx().sess.diagnostic().emit_diagnostic(diag);
+                for err in errors_buffer {
+                    err.emit();
                 }
             }
         }
@@ -753,7 +753,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        match self.fcx.tcx.sess.has_errors() {
+        match self.fcx.dcx().has_errors() {
             Some(e) => e,
             None => self
                 .fcx

@@ -142,15 +142,15 @@ pub fn intern_const_ref(
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.
             let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
-            ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
+            ConstScalar::Bytes(i.to_le_bytes()[0..size].into(), MemoryMap::default())
         }
         LiteralConstRef::UInt(i) => {
             let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
-            ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
+            ConstScalar::Bytes(i.to_le_bytes()[0..size].into(), MemoryMap::default())
         }
-        LiteralConstRef::Bool(b) => ConstScalar::Bytes(vec![*b as u8], MemoryMap::default()),
+        LiteralConstRef::Bool(b) => ConstScalar::Bytes(Box::new([*b as u8]), MemoryMap::default()),
         LiteralConstRef::Char(c) => {
-            ConstScalar::Bytes((*c as u32).to_le_bytes().to_vec(), MemoryMap::default())
+            ConstScalar::Bytes((*c as u32).to_le_bytes().into(), MemoryMap::default())
         }
         LiteralConstRef::Unknown => ConstScalar::Unknown,
     };

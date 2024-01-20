@@ -181,7 +181,7 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
             ctx.config.prefer_no_std,
             ctx.config.prefer_prelude,
         )?;
-        Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item, None)))
+        Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item)))
     };
     let mut res = Vec::with_capacity(requires.len());
     for import in requires {

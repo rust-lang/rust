@@ -48,7 +48,7 @@ struct TestsWithCustomClasses {
 
 impl crate::doctest::Tester for TestsWithCustomClasses {
     fn add_test(&mut self, _: String, config: LangString, _: usize) {
-        self.custom_classes_found.extend(config.added_classes.into_iter());
+        self.custom_classes_found.extend(config.added_classes);
     }
 }
 
@@ -65,9 +65,9 @@ pub(crate) fn look_for_custom_classes<'tcx>(cx: &DocContext<'tcx>, item: &Item) 
 
     if !tests.custom_classes_found.is_empty() {
         let span = item.attr_span(cx.tcx);
-        let sess = &cx.tcx.sess.parse_sess;
+        let sess = &cx.tcx.sess;
         let mut err = sess
-            .span_diagnostic
+            .dcx()
             .struct_span_warn(span, "custom classes in code blocks will change behaviour");
         add_feature_diagnostics_for_issue(
             &mut err,

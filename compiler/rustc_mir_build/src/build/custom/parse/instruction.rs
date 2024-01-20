@@ -2,6 +2,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
+use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -61,7 +62,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call(mir_drop, args) => {
                 Ok(TerminatorKind::Drop {
                     place: self.parse_place(args[0])?,
-                    target: self.parse_block(args[1])?,
+                    target: self.parse_return_to(args[1])?,
                     unwind: self.parse_unwind_action(args[2])?,
                     replace: false,
                 })
@@ -100,6 +101,14 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call(mir_unwind_cleanup, args) => {
                 Ok(UnwindAction::Cleanup(self.parse_block(args[0])?))
+            },
+        )
+    }
+
+    fn parse_return_to(&self, expr_id: ExprId) -> PResult<BasicBlock> {
+        parse_by_kind!(self, expr_id, _, "return block",
+            @call(mir_return_to, args) => {
+                self.parse_block(args[0])
             },
         )
     }
@@ -146,7 +155,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::Assign { lhs, rhs } => (*lhs, *rhs),
         );
         let destination = self.parse_place(destination)?;
-        let target = self.parse_block(args[1])?;
+        let target = self.parse_return_to(args[1])?;
         let unwind = self.parse_unwind_action(args[2])?;
 
         parse_by_kind!(self, call, _, "function call",
@@ -154,7 +163,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 let fun = self.parse_operand(*fun)?;
                 let args = args
                     .iter()
-                    .map(|arg| self.parse_operand(*arg))
+                    .map(|arg|
+                        Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
+                    )
                     .collect::<PResult<Vec<_>>>()?;
                 Ok(TerminatorKind::Call {
                     func: fun,

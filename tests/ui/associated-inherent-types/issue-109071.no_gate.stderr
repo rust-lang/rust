@@ -13,7 +13,7 @@ LL | impl<T> Windows {
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/issue-109071.rs:5:8
    |
-LL | struct Windows<T> {}
+LL | struct Windows<T> { t: T }
    |        ^^^^^^^ -
 help: add missing generic argument
    |
@@ -28,12 +28,20 @@ LL |     type Item = &[T];
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109071.rs:15:22
    |
 LL |     fn T() -> Option<Self::Item> {}
-   |                      ^^^^^^^^^^ help: use fully-qualified syntax: `<Windows<T> as IntoIterator>::Item`
+   |                      ^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

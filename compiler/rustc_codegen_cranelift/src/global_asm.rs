@@ -47,7 +47,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                         }
                         InlineAsmOperand::SymFn { anon_const } => {
                             if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.sess.span_err(
+                                tcx.dcx().span_err(
                                     item.span,
                                     "asm! and global_asm! sym operands are not yet supported",
                                 );
@@ -65,7 +65,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                         }
                         InlineAsmOperand::SymStatic { path: _, def_id } => {
                             if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.sess.span_err(
+                                tcx.dcx().span_err(
                                     item.span,
                                     "asm! and global_asm! sym operands are not yet supported",
                                 );
@@ -154,6 +154,8 @@ pub(crate) fn compile_global_asm(
         }
     } else {
         let mut child = Command::new(std::env::current_exe().unwrap())
+            // Avoid a warning about the jobserver fd not being passed
+            .env_remove("CARGO_MAKEFLAGS")
             .arg("--target")
             .arg(&config.target)
             .arg("--crate-type")

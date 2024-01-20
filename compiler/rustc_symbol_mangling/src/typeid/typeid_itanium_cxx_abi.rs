@@ -557,7 +557,7 @@ fn encode_ty<'tcx>(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
@@ -609,7 +609,7 @@ fn encode_ty<'tcx>(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
@@ -895,8 +895,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Coroutine(def_id, args, movability) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options), *movability);
+        ty::Coroutine(def_id, args) => {
+            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
         }
 
         ty::Ref(region, ty0, ..) => {

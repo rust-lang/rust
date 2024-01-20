@@ -39,20 +39,21 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
                             let mut _10: *const T;
+                            let mut _22: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _9;
+                                    debug ptr => _22;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _9;
-                                        let mut _22: *mut u8;
+                                        debug self => _22;
+                                        let mut _23: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _22;
+                                                debug ptr => _23;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _22;
+                                                    debug self => _23;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _22;
+                                                            debug self => _23;
                                                         }
                                                     }
                                                 }
@@ -121,8 +122,10 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
         StorageLive(_22);
+        StorageLive(_23);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
+        StorageDead(_23);
         StorageDead(_22);
         StorageDead(_10);
         StorageDead(_9);
@@ -134,7 +137,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_7);
         StorageDead(_4);
         StorageLive(_14);
-        _14 = move _13;
+        _14 = _13;
         goto -> bb4;
     }
 

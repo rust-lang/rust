@@ -65,7 +65,7 @@ pub struct FrameState {
     /// incremental updates of the global list of protected tags stored in the
     /// `stacked_borrows::GlobalState` upon function return, and if we attempt to pop a protected
     /// tag, to identify which call is responsible for protecting the tag.
-    /// See `Stack::item_popped` for more explanation.
+    /// See `Stack::item_invalidated` for more explanation.
     /// Tree Borrows also needs to know which allocation these tags
     /// belong to so that it can perform a read through them immediately before
     /// the frame gets popped.
@@ -76,8 +76,10 @@ pub struct FrameState {
 }
 
 impl VisitProvenance for FrameState {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // `protected_tags` are already recorded by `GlobalStateInner`.
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        for (id, tag) in &self.protected_tags {
+            visit(Some(*id), Some(*tag));
+        }
     }
 }
 
@@ -98,7 +100,7 @@ pub struct GlobalStateInner {
     /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
-    /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
+    /// `GlobalStateInner::end_call`. See `Stack::item_invalidated` for more details.
     protected_tags: FxHashMap<BorTag, ProtectorKind>,
     /// The pointer ids to trace
     tracked_pointer_tags: FxHashSet<BorTag>,
@@ -111,10 +113,8 @@ pub struct GlobalStateInner {
 }
 
 impl VisitProvenance for GlobalStateInner {
-    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        for &tag in self.protected_tags.keys() {
-            visit(None, Some(tag));
-        }
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // All the provenance in protected_tags is also stored in FrameState, and visited there.
         // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
         // GC the bottommost/root tag.
     }
@@ -343,7 +343,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => {
-                this.tcx.tcx.sess.warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
+                this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
                 Ok(())
             }
             BorrowTrackerMethod::TreeBorrows =>

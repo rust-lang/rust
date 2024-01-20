@@ -205,7 +205,7 @@ pub(super) fn check_meta_variables(
     rhses: &[TokenTree],
 ) -> bool {
     if lhses.len() != rhses.len() {
-        sess.span_diagnostic.span_bug(span, "length mismatch between LHSes and RHSes")
+        sess.dcx.span_bug(span, "length mismatch between LHSes and RHSes")
     }
     let mut valid = true;
     for (lhs, rhs) in iter::zip(lhses, rhses) {
@@ -244,7 +244,7 @@ fn check_binders(
         // MetaVar(fragment) and not as MetaVarDecl(y, fragment).
         TokenTree::MetaVar(span, name) => {
             if macros.is_empty() {
-                sess.span_diagnostic.span_bug(span, "unexpected MetaVar in lhs");
+                sess.dcx.span_bug(span, "unexpected MetaVar in lhs");
             }
             let name = MacroRulesNormalizedIdent::new(name);
             // There are 3 possibilities:
@@ -275,14 +275,13 @@ fn check_binders(
                 );
             }
             if !macros.is_empty() {
-                sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in nested lhs");
+                sess.dcx.span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
             let name = MacroRulesNormalizedIdent::new(name);
             if let Some(prev_info) = get_binder_info(macros, binders, name) {
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
-                sess.span_diagnostic
-                    .emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span });
+                sess.dcx.emit_err(errors::DuplicateMatcherBinding { span, prev: prev_info.span });
                 *valid = false;
             } else {
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
@@ -341,7 +340,7 @@ fn check_occurrences(
     match *rhs {
         TokenTree::Token(..) => {}
         TokenTree::MetaVarDecl(span, _name, _kind) => {
-            sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in rhs")
+            sess.dcx.span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
             let name = MacroRulesNormalizedIdent::new(name);

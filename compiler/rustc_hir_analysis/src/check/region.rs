@@ -18,6 +18,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
 
+use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
+
 use std::mem;
 
 #[derive(Debug, Copy, Clone)]
@@ -177,14 +179,24 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 }
 
 fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
+    fn has_let_expr(expr: &Expr<'_>) -> bool {
+        match &expr.kind {
+            hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+            hir::ExprKind::Let(..) => true,
+            _ => false,
+        }
+    }
+
     let prev_cx = visitor.cx;
 
-    visitor.enter_scope(Scope { id: arm.hir_id.local_id, data: ScopeData::Node });
+    visitor.terminating_scopes.insert(arm.hir_id.local_id);
+
+    visitor.enter_node_scope_with_dtor(arm.hir_id.local_id);
     visitor.cx.var_parent = visitor.cx.parent;
 
-    visitor.terminating_scopes.insert(arm.body.hir_id.local_id);
-
-    if let Some(hir::Guard::If(expr)) = arm.guard {
+    if let Some(expr) = arm.guard
+        && !has_let_expr(expr)
+    {
         visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
@@ -214,6 +226,8 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
+    maybe_stmt_static_mut(visitor.tcx, *stmt);
+
     // Every statement will clean up the temporaries created during
     // execution of that statement. Therefore each statement has an
     // associated destruction scope that represents the scope of the
@@ -231,6 +245,8 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
 
 fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
+
+    maybe_expr_static_mut(visitor.tcx, *expr);
 
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
@@ -665,7 +681,8 @@ fn resolve_local<'tcx>(
             | PatKind::Never
             | PatKind::Path(_)
             | PatKind::Lit(_)
-            | PatKind::Range(_, _, _) => false,
+            | PatKind::Range(_, _, _)
+            | PatKind::Err(_) => false,
         }
     }
 
@@ -822,10 +839,6 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
             resolve_local(self, None, Some(body.value));
-        }
-
-        if body.coroutine_kind.is_some() {
-            self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
         }
 
         // Restore context we had at the start.

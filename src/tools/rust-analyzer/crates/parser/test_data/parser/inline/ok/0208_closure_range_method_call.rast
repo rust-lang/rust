@@ -1,0 +1,49 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          METHOD_CALL_EXPR
+            CLOSURE_EXPR
+              PARAM_LIST
+                PIPE "|"
+                PIPE "|"
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+            WHITESPACE " "
+            DOT "."
+            NAME_REF
+              IDENT "method"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          FIELD_EXPR
+            CLOSURE_EXPR
+              PARAM_LIST
+                PIPE "|"
+                PIPE "|"
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+            WHITESPACE " "
+            DOT "."
+            NAME_REF
+              IDENT "field"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

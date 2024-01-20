@@ -1,22 +1,22 @@
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closures.rs:8:19
    |
 LL |         F: ~const FnOnce() -> u8,
    |                   ^^^^^^^^^^^^^^
 
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closures.rs:9:19
    |
 LL |         F: ~const FnMut() -> u8,
    |                   ^^^^^^^^^^^^^
 
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closures.rs:10:19
    |
 LL |         F: ~const Fn() -> u8,
    |                   ^^^^^^^^^^
 
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closures.rs:23:27
    |
 LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {

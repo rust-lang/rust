@@ -9,10 +9,11 @@ use crate::{
     db::ExpandDatabase,
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
-    span::SpanMapRef,
+    span_map::SpanMapRef,
 };
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use smallvec::SmallVec;
+use span::SyntaxContextId;
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

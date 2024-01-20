@@ -90,7 +90,7 @@ The target intends to match the corresponding Clang target for its `"C"` ABI.
 
 ## Platform requirements
 
-The runtime should support the same set of APIs as any other supported wasi target for interacting with the host environment through the WASI standard. The runtime also should have implemetation of [wasi-threads proposal](https://github.com/WebAssembly/wasi-threads).
+The runtime should support the same set of APIs as any other supported wasi target for interacting with the host environment through the WASI standard. The runtime also should have implementation of [wasi-threads proposal](https://github.com/WebAssembly/wasi-threads).
 
 This target is not a stable target. This means that there are a few engines
 which implement the `wasi-threads` feature and if they do they're likely behind a

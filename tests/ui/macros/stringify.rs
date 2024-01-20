@@ -204,6 +204,16 @@ fn test_expr() {
         } ],
         "match self { Ok => 1, Err => 0, }"
     );
+    macro_rules! c2_match_arm {
+        ([ $expr:expr ], $expr_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2!(expr, [ match () { _ => $expr } ], $expr_expected, $tokens_expected);
+        };
+    }
+    c2_match_arm!(
+        [ { 1 } - 1 ],
+        "match () { _ => ({ 1 }) - 1, }",
+        "match() { _ => { 1 } - 1 }",
+    );
 
     // ExprKind::Closure
     c1!(expr, [ || {} ], "|| {}");
@@ -651,6 +661,16 @@ fn test_stmt() {
         "let (a, b): (u32, u32) = (1, 2);",
         "let(a, b): (u32, u32) = (1, 2)" // FIXME
     );
+    macro_rules! c2_let_expr_minus_one {
+        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2!(stmt, [ let _ = $expr - 1 ], $stmt_expected, $tokens_expected);
+        };
+    }
+    c2_let_expr_minus_one!(
+        [ match void {} ],
+        "let _ = match void {} - 1;",
+        "let _ = match void {} - 1",
+    );
 
     // StmtKind::Item
     c1!(stmt, [ struct S; ], "struct S;");
@@ -661,6 +681,46 @@ fn test_stmt() {
 
     // StmtKind::Semi
     c2!(stmt, [ 1 + 1 ], "1 + 1;", "1 + 1");
+    macro_rules! c2_expr_as_stmt {
+        // Parse as expr, then reparse as stmt.
+        //
+        // The c2_minus_one macro below can't directly call `c2!(stmt, ...)`
+        // because `$expr - 1` cannot be parsed directly as a stmt. A statement
+        // boundary occurs after the `match void {}`, after which the `-` token
+        // hits "no rules expected this token in macro call".
+        //
+        // The unwanted statement boundary is exactly why the pretty-printer is
+        // injecting parentheses around the subexpression, which is the behavior
+        // we are interested in testing.
+        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2!(stmt, [ $expr ], $stmt_expected, $tokens_expected);
+        };
+    }
+    macro_rules! c2_minus_one {
+        ([ $expr:expr ], $stmt_expected:expr, $tokens_expected:expr $(,)?) => {
+            c2_expr_as_stmt!([ $expr - 1 ], $stmt_expected, $tokens_expected);
+        };
+    }
+    c2_minus_one!(
+        [ match void {} ],
+        "(match void {}) - 1;",
+        "match void {} - 1",
+    );
+    c2_minus_one!(
+        [ match void {}() ],
+        "(match void {})() - 1;",
+        "match void {}() - 1",
+    );
+    c2_minus_one!(
+        [ match void {}[0] ],
+        "(match void {})[0] - 1;",
+        "match void {}[0] - 1",
+    );
+    c2_minus_one!(
+        [ loop { break 1; } ],
+        "(loop { break 1; }) - 1;",
+        "loop { break 1; } - 1",
+    );
 
     // StmtKind::Empty
     c1!(stmt, [ ; ], ";");

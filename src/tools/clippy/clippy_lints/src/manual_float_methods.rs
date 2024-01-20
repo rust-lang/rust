@@ -105,7 +105,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // case somebody does that for some reason
             && (is_infinity(const_1) && is_neg_infinity(const_2)
                 || is_neg_infinity(const_1) && is_infinity(const_2))
-            && !is_from_proc_macro(cx, expr)
             && let Some(local_snippet) = snippet_opt(cx, first.span)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
@@ -113,6 +112,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                 (BinOpKind::And, BinOpKind::Ne, BinOpKind::Ne) => Variant::ManualIsFinite,
                 _ => return,
             };
+            if is_from_proc_macro(cx, expr) {
+                return;
+            }
 
             span_lint_and_then(cx, variant.lint(), expr.span, variant.msg(), |diag| {
                 match variant {

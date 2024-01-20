@@ -4,7 +4,7 @@ use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
 use crate::Expectation;
 use rustc_ast as ast;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -47,7 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
                 if self
                     .lookup_op_method(
-                        lhs_deref_ty,
+                        (lhs, lhs_deref_ty),
                         Some((rhs, rhs_ty)),
                         Op::Binary(op, IsAssign::Yes),
                         expected,
@@ -58,7 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // emitted a better suggestion during error handling in check_overloaded_binop.
                     if self
                         .lookup_op_method(
-                            lhs_ty,
+                            (lhs, lhs_ty),
                             Some((rhs, rhs_ty)),
                             Op::Binary(op, IsAssign::Yes),
                             expected,
@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         let result = self.lookup_op_method(
-            lhs_ty,
+            (lhs_expr, lhs_ty),
             Some((rhs_expr, rhs_ty_var)),
             Op::Binary(op, is_assign),
             expected,
@@ -306,8 +306,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
                 let (mut err, output_def_id) = match is_assign {
                     IsAssign::Yes => {
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
+                        let mut err = struct_span_code_err!(
+                            self.dcx(),
                             expr.span,
                             E0368,
                             "binary assignment operation `{}=` cannot be applied to type `{}`",
@@ -318,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_expr.span,
                             format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
                         );
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        self.note_unmet_impls_on_type(&mut err, errors, false);
                         (err, None)
                     }
                     IsAssign::No => {
@@ -370,12 +370,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                                 .cloned()
                         });
-                        let mut err = struct_span_err!(self.tcx.sess, op.span, E0369, "{message}");
+                        let mut err =
+                            struct_span_code_err!(self.dcx(), op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
                             err.span_label(lhs_expr.span, lhs_ty.to_string());
                             err.span_label(rhs_expr.span, rhs_ty.to_string());
                         }
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
+                        self.note_unmet_impls_on_type(&mut err, errors, suggest_derive);
                         (err, output_def_id)
                     }
                 };
@@ -384,14 +386,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::ExprKind::Assign(..) = expr.kind
                 {
                     // We defer to the later error produced by `check_lhs_assignable`.
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
 
                 let suggest_deref_binop =
                     |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
                         if self
                             .lookup_op_method(
-                                lhs_deref_ty,
+                                (lhs_expr, lhs_deref_ty),
                                 Some((rhs_expr, rhs_ty)),
                                 Op::Binary(op, is_assign),
                                 expected,
@@ -424,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                      rhs_new_mutbl: Option<ast::Mutability>| {
                         if self
                             .lookup_op_method(
-                                lhs_adjusted_ty,
+                                (lhs_expr, lhs_adjusted_ty),
                                 Some((rhs_expr, rhs_adjusted_ty)),
                                 Op::Binary(op, is_assign),
                                 expected,
@@ -479,7 +481,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let is_compatible_after_call = |lhs_ty, rhs_ty| {
                     self.lookup_op_method(
-                        lhs_ty,
+                        (lhs_expr, lhs_ty),
                         Some((rhs_expr, rhs_ty)),
                         Op::Binary(op, is_assign),
                         expected,
@@ -578,7 +580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // suggestion for the user.
                         let errors = self
                             .lookup_op_method(
-                                lhs_ty,
+                                (lhs_expr, lhs_ty),
                                 Some((rhs_expr, rhs_ty)),
                                 Op::Binary(op, is_assign),
                                 expected,
@@ -779,7 +781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method(operand_ty, None, Op::Unary(op, ex.span), expected) {
+        match self.lookup_op_method((ex, operand_ty), None, Op::Unary(op, ex.span), expected) {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(ex.hir_id, ex.span, method);
                 method.sig.output()
@@ -787,8 +789,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
+                    let mut err = struct_span_code_err!(
+                        self.dcx(),
                         ex.span,
                         E0600,
                         "cannot apply unary operator `{}` to type `{}`",
@@ -852,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
                             Ref(_, lty, _) if *lty.kind() == Str => {}
                             _ => {
-                                self.note_unmet_impls_on_type(&mut err, errors);
+                                self.note_unmet_impls_on_type(&mut err, errors, true);
                             }
                         }
                     }
@@ -865,7 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn lookup_op_method(
         &self,
-        lhs_ty: Ty<'tcx>,
+        (lhs_expr, lhs_ty): (&'tcx hir::Expr<'tcx>, Ty<'tcx>),
         opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
         op: Op,
         expected: Expectation<'tcx>,
@@ -898,8 +900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
-            self.tcx
-                .sess
+            self.dcx()
                 .span_delayed_bug(span, "operator didn't have the right number of generic args");
             return Err(vec![]);
         }
@@ -910,8 +911,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cause = self.cause(
             span,
             traits::BinOp {
+                lhs_hir_id: lhs_expr.hir_id,
+                rhs_hir_id: opt_rhs_expr.map(|expr| expr.hir_id),
                 rhs_span: opt_rhs_expr.map(|expr| expr.span),
-                is_lit: opt_rhs_expr.is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                rhs_is_lit: opt_rhs_expr
+                    .is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 output_ty: expected.only_has_type(self),
             },
         );
@@ -933,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This path may do some inference, so make sure we've really
                 // doomed compilation so as to not accidentally stabilize new
                 // inference or something here...
-                self.tcx.sess.span_delayed_bug(span, "this path really should be doomed...");
+                self.dcx().span_delayed_bug(span, "this path really should be doomed...");
                 // Guide inference for the RHS expression if it's provided --
                 // this will allow us to better error reporting, at the expense
                 // of making some error messages a bit more specific.

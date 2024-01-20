@@ -52,7 +52,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -60,6 +60,7 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::traits::ObligationInspector;
 use rustc_middle::query::Providers;
 use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -71,8 +72,8 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {
-    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
-        let mut err = rustc_errors::struct_span_err!($session, $span, $code, $($message)*);
+    ($dcx:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        let mut err = rustc_errors::struct_span_code_err!($dcx, $span, $code, $($message)*);
 
         if $typ.references_error() {
             err.downgrade_to_delayed_bug();
@@ -139,7 +140,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback)
+    typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
 /// Used only to get `TypeckResults` for type inference during error recovery.
@@ -149,14 +150,28 @@ fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::T
         let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
         Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
     };
-    typeck_with_fallback(tcx, def_id, fallback)
+    typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
-#[instrument(level = "debug", skip(tcx, fallback), ret)]
+/// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
+/// Inspecting obligations only works with the new trait solver.
+/// This function is *only to be used* by external tools, it should not be
+/// called from within rustc. Note, this is not a query, and thus is not cached.
+pub fn inspect_typeck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    inspect: ObligationInspector<'tcx>,
+) -> &'tcx ty::TypeckResults<'tcx> {
+    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
+    typeck_with_fallback(tcx, def_id, fallback, Some(inspect))
+}
+
+#[instrument(level = "debug", skip(tcx, fallback, inspector), ret)]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     fallback: impl Fn() -> Ty<'tcx> + 'tcx,
+    inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
     // as they are part of the same "inference environment".
@@ -178,10 +193,13 @@ fn typeck_with_fallback<'tcx>(
     let param_env = tcx.param_env(def_id);
 
     let inh = Inherited::new(tcx, def_id);
+    if let Some(inspector) = inspector {
+        inh.infcx.attach_obligation_inspector(inspector);
+    }
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
-        let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
+        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
             fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
@@ -193,7 +211,7 @@ fn typeck_with_fallback<'tcx>(
         let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
         let fn_sig = fcx.normalize(body.value.span, fn_sig);
 
-        check_fn(&mut fcx, fn_sig, decl, def_id, body, None, tcx.features().unsized_fn_params);
+        check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
             Some(fcx.next_ty_var(TypeVariableOrigin {
@@ -295,18 +313,13 @@ fn typeck_with_fallback<'tcx>(
 /// When `check_fn` is invoked on a coroutine (i.e., a body that
 /// includes yield), it returns back some information about the yield
 /// points.
+#[derive(Debug, PartialEq, Copy, Clone)]
 struct CoroutineTypes<'tcx> {
     /// Type of coroutine argument / values returned by `yield`.
     resume_ty: Ty<'tcx>,
 
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
-
-    /// Types that are captured (see `CoroutineInterior` for more).
-    interior: Ty<'tcx>,
-
-    /// Indicates if the coroutine is movable or static (immovable).
-    movability: hir::Movability,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -371,18 +384,17 @@ fn report_unexpected_variant_res(
         _ => res.descr(),
     };
     let path_str = rustc_hir_pretty::qpath_to_string(qpath);
-    let mut err = tcx.sess.struct_span_err_with_code(
-        span,
-        format!("expected {expected}, found {res_descr} `{path_str}`"),
-        DiagnosticId::Error(err_code.into()),
-    );
+    let err = tcx
+        .dcx()
+        .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
+        .with_code(err_code.into());
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
             let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
-            err.span_label(span, "`fn` calls are not allowed in patterns");
-            err.help(format!("for more information, visit {patterns_url}"))
+            err.with_span_label(span, "`fn` calls are not allowed in patterns")
+                .with_help(format!("for more information, visit {patterns_url}"))
         }
-        _ => err.span_label(span, format!("not a {expected}")),
+        _ => err.with_span_label(span, format!("not a {expected}")),
     }
     .emit()
 }
@@ -412,24 +424,25 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-fn fatally_break_rust(tcx: TyCtxt<'_>) {
-    let handler = tcx.sess.diagnostic();
-    handler.span_bug_no_panic(
-        MultiSpan::new(),
+fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
+    let dcx = tcx.dcx();
+    let mut diag = dcx.struct_span_bug(
+        span,
         "It looks like you're trying to break rust; would you like some ICE?",
     );
-    handler.note("the compiler expectedly panicked. this is a feature.");
-    handler.note(
+    diag.note("the compiler expectedly panicked. this is a feature.");
+    diag.note(
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    handler.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
+    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
-        handler.note(format!("compiler flags: {}", flags.join(" ")));
+        diag.note(format!("compiler flags: {}", flags.join(" ")));
         if excluded_cargo_defaults {
-            handler.note("some of the compiler flags provided by cargo are hidden");
+            diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
+    diag.emit()
 }
 
 /// `expected` here is the expected number of explicit generic arguments on the trait.

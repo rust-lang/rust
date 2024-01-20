@@ -59,8 +59,11 @@ mod tests;
 
 use std::{cmp::Ord, ops::Deref};
 
-use base_db::{CrateId, Edition, FileId, ProcMacroKind};
-use hir_expand::{ast_id_map::FileAstId, name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
+use base_db::{CrateId, Edition, FileId};
+use hir_expand::{
+    ast_id_map::FileAstId, name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId,
+    MacroDefId,
+};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -76,7 +79,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    visibility::Visibility,
+    visibility::{Visibility, VisibilityExplicity},
     AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, LocalModuleId, Lookup,
     MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
@@ -97,7 +100,7 @@ pub struct DefMap {
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
-    modules: Arena<ModuleData>,
+    pub modules: Arena<ModuleData>,
     krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
@@ -329,7 +332,10 @@ impl DefMap {
         // NB: we use `None` as block here, which would be wrong for implicit
         // modules declared by blocks with items. At the moment, we don't use
         // this visibility for anything outside IDE, so that's probably OK.
-        let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
+        let visibility = Visibility::Module(
+            ModuleId { krate, local_id, block: None },
+            VisibilityExplicity::Implicit,
+        );
         let module_data = ModuleData::new(
             ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },
             visibility,
@@ -623,8 +629,9 @@ impl DefMap {
         self.diagnostics.as_slice()
     }
 
-    pub fn recursion_limit(&self) -> Option<u32> {
-        self.data.recursion_limit
+    pub fn recursion_limit(&self) -> u32 {
+        // 128 is the default in rustc
+        self.data.recursion_limit.unwrap_or(128)
     }
 }
 

@@ -4506,3 +4506,50 @@ fn ttt() {
 "#,
     );
 }
+
+#[test]
+fn infer_borrow() {
+    check_types(
+        r#"
+//- minicore: index
+pub struct SomeMap<K>;
+
+pub trait Borrow<Borrowed: ?Sized> {
+    fn borrow(&self) -> &Borrowed;
+}
+
+impl<T: ?Sized> Borrow<T> for T {
+    fn borrow(&self) -> &T {
+        self
+    }
+}
+
+impl<T: ?Sized> Borrow<T> for &T {
+    fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+impl<K, KB: Borrow<K>> core::ops::Index<KB> for SomeMap<K> {
+    type Output = ();
+
+    fn index(&self, _: KB) -> &() {
+        &()
+    }
+}
+
+impl<K> core::ops::IndexMut<K> for SomeMap<K> {
+    fn index_mut(&mut self, _: K) -> &mut () {
+        &mut ()
+    }
+}
+
+fn foo() {
+    let mut map = SomeMap;
+    map["a"] = ();
+    map;
+  //^^^ SomeMap<&str>
+}
+"#,
+    );
+}

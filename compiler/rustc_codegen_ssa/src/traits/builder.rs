@@ -296,7 +296,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         order: AtomicOrdering,
         failure_order: AtomicOrdering,
         weak: bool,
-    ) -> Self::Value;
+    ) -> (Self::Value, Self::Value);
     fn atomic_rmw(
         &mut self,
         op: AtomicRmwBinOp,

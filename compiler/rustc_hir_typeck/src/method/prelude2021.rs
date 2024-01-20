@@ -122,8 +122,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("disambiguate the method call with `({self_adjusted})`",),
                         );
                     }
-
-                    lint
                 },
             );
         } else {
@@ -187,8 +185,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                         );
                     }
-
-                    lint
                 },
             );
         }
@@ -307,8 +303,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!("<{} as {}>::{}", self_ty_name, trait_name, method_name.name,),
                     Applicability::MachineApplicable,
                 );
-
-                lint
             },
         );
     }

@@ -391,7 +391,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
         self.pat_binding_modes().get(id).copied().or_else(|| {
-            s.span_delayed_bug(sp, "missing binding mode");
+            s.dcx().span_delayed_bug(sp, "missing binding mode");
             None
         })
     }
@@ -527,7 +527,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 
     pub fn items_in_stable_order(&self) -> Vec<(ItemLocalId, &'a V)> {
-        self.data.to_sorted_stable_ord()
+        self.data.items().map(|(&k, v)| (k, v)).into_sorted_stable_ord_by_key(|(k, _)| k)
     }
 }
 

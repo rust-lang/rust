@@ -22,6 +22,7 @@
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate pulldown_cmark;
+extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
@@ -50,6 +51,8 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
+use std::collections::BTreeMap;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 
@@ -74,7 +77,7 @@ mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
-mod blocks_in_if_conditions;
+mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_to_int_with_if;
 mod booleans;
@@ -112,7 +115,7 @@ mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
-mod empty_structs_with_brackets;
+mod empty_with_brackets;
 mod endian_bytes;
 mod entry;
 mod enum_clike;
@@ -153,6 +156,7 @@ mod implied_bounds_in_impls;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
+mod ineffective_open_options;
 mod infinite_iter;
 mod inherent_impl;
 mod inherent_to_string;
@@ -268,6 +272,7 @@ mod permissions_set_readonly_false;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
+mod pub_underscore_fields;
 mod pub_use;
 mod question_mark;
 mod question_mark_used;
@@ -289,6 +294,7 @@ mod ref_option_ref;
 mod ref_patterns;
 mod reference;
 mod regex;
+mod repeat_vec_with_capacity;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
@@ -317,14 +323,17 @@ mod swap_ptr_to_ref;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod tests_outside_test_module;
+mod thread_local_initializer_can_be_made_const;
 mod to_digit_is_some;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
 mod tuple_array_conversions;
 mod types;
+mod unconditional_recursion;
 mod undocumented_unsafe_blocks;
 mod unicode;
+mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
@@ -564,6 +573,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         verbose_bit_mask_threshold,
         warn_on_all_wildcard_imports,
         check_private_items,
+        pub_underscore_fields_behavior,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -653,7 +663,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
     store.register_late_pass(|_| Box::new(len_zero::LenZero));
     store.register_late_pass(|_| Box::new(attrs::Attributes));
-    store.register_late_pass(|_| Box::new(blocks_in_if_conditions::BlocksInIfConditions));
+    store.register_late_pass(|_| Box::new(blocks_in_conditions::BlocksInConditions));
     store.register_late_pass(|_| Box::new(unicode::Unicode));
     store.register_late_pass(|_| Box::new(uninit_vec::UninitVec));
     store.register_late_pass(|_| Box::new(unit_return_expecting_ord::UnitReturnExpectingOrd));
@@ -722,6 +732,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(vec::UselessVec {
             too_large_for_stack,
             msrv: msrv(),
+            span_to_lint_map: BTreeMap::new(),
         })
     });
     store.register_late_pass(|_| Box::new(panic_unimplemented::PanicUnimplemented));
@@ -939,7 +950,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
-    store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
+    store.register_early_pass(|| Box::new(empty_with_brackets::EmptyWithBrackets));
     store.register_late_pass(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|_| Box::new(format_push_string::FormatPushString));
@@ -1069,6 +1080,18 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
+    store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
+    store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
+    store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
+    store.register_late_pass(|_| Box::<unconditional_recursion::UnconditionalRecursion>::default());
+    store.register_late_pass(move |_| {
+        Box::new(pub_underscore_fields::PubUnderscoreFields {
+            behavior: pub_underscore_fields_behavior,
+        })
+    });
+    store.register_late_pass(move |_| {
+        Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -1,12 +1,12 @@
 use crate::fluent_generated as fluent;
 use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
-    error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
+    error_code, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
-use rustc_pattern_analysis::{cx::MatchCheckCtxt, errors::Uncovered};
+use rustc_pattern_analysis::{errors::Uncovered, rustc::RustcMatchCheckCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -454,23 +454,24 @@ pub enum UnusedUnsafeEnclosing {
 }
 
 pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
-    pub cx: &'m MatchCheckCtxt<'p, 'tcx>,
+    pub cx: &'m RustcMatchCheckCtxt<'p, 'tcx>,
     pub expr_span: Span,
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
             fluent::mir_build_non_exhaustive_patterns_type_not_empty,
-            error_code!(E0004),
         );
-
+        diag.span(self.span);
+        diag.code(error_code!(E0004));
         let peeled_ty = self.ty.peel_refs();
-        diag.set_arg("ty", self.ty);
-        diag.set_arg("peeled_ty", peeled_ty);
+        diag.arg("ty", self.ty);
+        diag.arg("peeled_ty", peeled_ty);
 
         if let ty::Adt(def, _) = peeled_ty.kind() {
             let def_span = self
@@ -787,6 +788,16 @@ pub struct FloatPattern;
 #[diag(mir_build_pointer_pattern)]
 pub struct PointerPattern;
 
+#[derive(Diagnostic)]
+#[diag(mir_build_non_empty_never_pattern)]
+#[note]
+pub struct NonEmptyNeverPattern<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(mir_build_indirect_structural_match)]
 #[note(mir_build_type_not_structural_tip)]
@@ -854,7 +865,7 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("ty", self.ty);
+        diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 
         for Variant { span } in self.variants {

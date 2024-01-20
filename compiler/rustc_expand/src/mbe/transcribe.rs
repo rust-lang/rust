@@ -4,28 +4,37 @@ use crate::errors::{
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
-use crate::mbe::{self, MetaVarExpr};
+use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::DiagnosticBuilder;
 use rustc_errors::{pluralize, PResult};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
 // A Marker adds the given mark to the syntax context.
-struct Marker(LocalExpnId, Transparency);
+struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
 
 impl MutVisitor for Marker {
     const VISIT_TOKENS: bool = true;
 
     fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0.to_expn_id(), self.1)
+        // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
+        // by itself. All tokens in a macro body typically have the same syntactic context, unless
+        // it's some advanced case with macro-generated macros. So if we cache the marked version
+        // of that context once, we'll typically have a 100% cache hit rate after that.
+        let Marker(expn_id, transparency, ref mut cache) = *self;
+        let data = span.data();
+        let marked_ctxt = *cache
+            .entry(data.ctxt)
+            .or_insert_with(|| data.ctxt.apply_mark(expn_id.to_expn_id(), transparency));
+        *span = data.with_ctxt(marked_ctxt);
     }
 }
 
@@ -42,6 +51,7 @@ enum Frame<'a> {
         tts: &'a [mbe::TokenTree],
         idx: usize,
         sep: Option<Token>,
+        kleene_op: KleeneOp,
     },
 }
 
@@ -122,7 +132,7 @@ pub(super) fn transcribe<'a>(
     // again, and we are done transcribing.
     let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut marker = Marker(cx.current_expansion.id, transparency);
+    let mut marker = Marker(cx.current_expansion.id, transparency, Default::default());
 
     loop {
         // Look at the last frame on the stack.
@@ -185,7 +195,9 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, delimited) => {
                 match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
+                        return Err(cx
+                            .dcx()
+                            .create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
                     LockstepIterSize::Contradiction(msg) => {
@@ -193,7 +205,9 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
+                        return Err(cx
+                            .dcx()
+                            .create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -203,11 +217,13 @@ pub(super) fn transcribe<'a>(
 
                         // Is the repetition empty?
                         if len == 0 {
-                            if seq.kleene.op == mbe::KleeneOp::OneOrMore {
+                            if seq.kleene.op == KleeneOp::OneOrMore {
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx.create_err(MustRepeatOnce { span: sp.entire() }));
+                                return Err(cx
+                                    .dcx()
+                                    .create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repetitions so far). `len`
@@ -221,6 +237,7 @@ pub(super) fn transcribe<'a>(
                                 idx: 0,
                                 sep: seq.separator.clone(),
                                 tts: &delimited.tts,
+                                kleene_op: seq.kleene.op,
                             });
                         }
                     }
@@ -237,7 +254,7 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            result.push(tt.clone());
+                            result.push(maybe_use_metavar_location(cx, &stack, sp, tt));
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
@@ -249,7 +266,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
+                            return Err(cx.dcx().create_err(VarStillRepeating { span: sp, ident }));
                         }
                     }
                 } else {
@@ -298,6 +315,62 @@ pub(super) fn transcribe<'a>(
 
             // There should be no meta-var declarations in the invocation of a macro.
             mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl`"),
+        }
+    }
+}
+
+/// Usually metavariables `$var` produce interpolated tokens, which have an additional place for
+/// keeping both the original span and the metavariable span. For `tt` metavariables that's not the
+/// case however, and there's no place for keeping a second span. So we try to give the single
+/// produced span a location that would be most useful in practice (the hygiene part of the span
+/// must not be changed).
+///
+/// Different locations are useful for different purposes:
+/// - The original location is useful when we need to report a diagnostic for the original token in
+///   isolation, without combining it with any surrounding tokens. This case occurs, but it is not
+///   very common in practice.
+/// - The metavariable location is useful when we need to somehow combine the token span with spans
+///   of its surrounding tokens. This is the most common way to use token spans.
+///
+/// So this function replaces the original location with the metavariable location in all cases
+/// except these two:
+/// - The metavariable is an element of undelimited sequence `$($tt)*`.
+///   These are typically used for passing larger amounts of code, and tokens in that code usually
+///   combine with each other and not with tokens outside of the sequence.
+/// - The metavariable span comes from a different crate, then we prefer the more local span.
+///
+/// FIXME: Find a way to keep both original and metavariable spans for all tokens without
+/// regressing compilation time too much. Several experiments for adding such spans were made in
+/// the past (PR #95580, #118517, #118671) and all showed some regressions.
+fn maybe_use_metavar_location(
+    cx: &ExtCtxt<'_>,
+    stack: &[Frame<'_>],
+    metavar_span: Span,
+    orig_tt: &TokenTree,
+) -> TokenTree {
+    let undelimited_seq = matches!(
+        stack.last(),
+        Some(Frame::Sequence {
+            tts: [_],
+            sep: None,
+            kleene_op: KleeneOp::ZeroOrMore | KleeneOp::OneOrMore,
+            ..
+        })
+    );
+    if undelimited_seq || cx.source_map().is_imported(metavar_span) {
+        return orig_tt.clone();
+    }
+
+    match orig_tt {
+        TokenTree::Token(Token { kind, span }, spacing) => {
+            let span = metavar_span.with_ctxt(span.ctxt());
+            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+        }
+        TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
+            let open = metavar_span.shrink_to_lo().with_ctxt(dspan.open.ctxt());
+            let close = metavar_span.shrink_to_hi().with_ctxt(dspan.close.ctxt());
+            let dspan = DelimSpan::from_pair(open, close);
+            TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
         }
     }
 }
@@ -501,7 +574,7 @@ fn count_repetitions<'a>(
     }
 
     if let MatchedTokenTree(_) | MatchedNonterminal(_) = matched {
-        return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
+        return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
     count(cx, depth_user, depth_max, matched, sp)
@@ -518,7 +591,7 @@ where
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| cx.create_err(MetaVarExprUnrecognizedVar { span, key }))
+    interp.get(&key).ok_or_else(|| cx.dcx().create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
@@ -528,7 +601,7 @@ fn out_of_bounds_err<'a>(
     max: usize,
     span: Span,
     ty: &str,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'a> {
     let msg = if max == 0 {
         format!(
             "meta-variable expression `{ty}` with depth parameter \
@@ -540,7 +613,7 @@ fn out_of_bounds_err<'a>(
              must be less than {max}"
         )
     };
-    cx.struct_span_err(span, msg)
+    cx.dcx().struct_span_err(span, msg)
 }
 
 fn transcribe_metavar_expr<'a>(

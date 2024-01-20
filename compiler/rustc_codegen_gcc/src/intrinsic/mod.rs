@@ -262,7 +262,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
+                                tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
                                 return;
                             }
                         }

@@ -48,3 +48,75 @@ fn normalize_platform_differences() {
         r#"println!("test\ntest")"#,
     );
 }
+
+/// Test for anonymizing line numbers in coverage reports, especially for
+/// branch regions.
+///
+/// FIXME(#119681): This test can be removed when we have examples of branch
+/// coverage in the actual coverage test suite.
+#[test]
+fn anonymize_coverage_line_numbers() {
+    let anon = |coverage| TestCx::anonymize_coverage_line_numbers(coverage);
+
+    let input = r#"
+    6|      3|fn print_size<T>() {
+    7|      3|    if std::mem::size_of::<T>() > 4 {
+  ------------------
+  |  Branch (7:8): [True: 0, False: 1]
+  |  Branch (7:8): [True: 0, False: 1]
+  |  Branch (7:8): [True: 1, False: 0]
+  ------------------
+    8|      1|        println!("size > 4");
+"#;
+
+    let expected = r#"
+   LL|      3|fn print_size<T>() {
+   LL|      3|    if std::mem::size_of::<T>() > 4 {
+  ------------------
+  |  Branch (LL:8): [True: 0, False: 1]
+  |  Branch (LL:8): [True: 0, False: 1]
+  |  Branch (LL:8): [True: 1, False: 0]
+  ------------------
+   LL|      1|        println!("size > 4");
+"#;
+
+    assert_eq!(anon(input), expected);
+
+    //////////
+
+    let input = r#"
+   12|      3|}
+  ------------------
+  | branch_generics::print_size::<()>:
+  |    6|      1|fn print_size<T>() {
+  |    7|      1|    if std::mem::size_of::<T>() > 4 {
+  |  ------------------
+  |  |  Branch (7:8): [True: 0, False: 1]
+  |  ------------------
+  |    8|      0|        println!("size > 4");
+  |    9|      1|    } else {
+  |   10|      1|        println!("size <= 4");
+  |   11|      1|    }
+  |   12|      1|}
+  ------------------
+"#;
+
+    let expected = r#"
+   LL|      3|}
+  ------------------
+  | branch_generics::print_size::<()>:
+  |   LL|      1|fn print_size<T>() {
+  |   LL|      1|    if std::mem::size_of::<T>() > 4 {
+  |  ------------------
+  |  |  Branch (LL:8): [True: 0, False: 1]
+  |  ------------------
+  |   LL|      0|        println!("size > 4");
+  |   LL|      1|    } else {
+  |   LL|      1|        println!("size <= 4");
+  |   LL|      1|    }
+  |   LL|      1|}
+  ------------------
+"#;
+
+    assert_eq!(anon(input), expected);
+}

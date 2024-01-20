@@ -11,8 +11,10 @@ use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
+    ted, NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
+
+use super::{RangeItem, RangeOp};
 
 impl ast::Lifetime {
     pub fn text(&self) -> TokenText<'_> {
@@ -275,13 +277,24 @@ impl ast::Path {
         successors(Some(self.clone()), ast::Path::qualifier).last().unwrap()
     }
 
+    pub fn first_qualifier(&self) -> Option<ast::Path> {
+        successors(self.qualifier(), ast::Path::qualifier).last()
+    }
+
     pub fn first_segment(&self) -> Option<ast::PathSegment> {
         self.first_qualifier_or_self().segment()
     }
 
     pub fn segments(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
-        successors(self.first_segment(), |p| {
-            p.parent_path().parent_path().and_then(|p| p.segment())
+        let path_range = self.syntax().text_range();
+        successors(self.first_segment(), move |p| {
+            p.parent_path().parent_path().and_then(|p| {
+                if path_range.contains_range(p.syntax().text_range()) {
+                    p.segment()
+                } else {
+                    None
+                }
+            })
         })
     }
 
@@ -310,6 +323,10 @@ impl ast::UseTree {
     pub fn is_simple_path(&self) -> bool {
         self.use_tree_list().is_none() && self.star_token().is_none()
     }
+
+    pub fn parent_use_tree_list(&self) -> Option<ast::UseTreeList> {
+        self.syntax().parent().and_then(ast::UseTreeList::cast)
+    }
 }
 
 impl ast::UseTreeList {
@@ -326,6 +343,34 @@ impl ast::UseTreeList {
             .filter_map(|it| it.into_token())
             .find_map(ast::Comment::cast)
             .is_some()
+    }
+
+    pub fn comma(&self) -> impl Iterator<Item = SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token().filter(|it| it.kind() == T![,]))
+    }
+
+    /// Remove the unnecessary braces in current `UseTreeList`
+    pub fn remove_unnecessary_braces(mut self) {
+        let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
+            let use_tree_count = u.use_trees().count();
+            if use_tree_count == 1 {
+                u.l_curly_token().map(ted::remove);
+                u.r_curly_token().map(ted::remove);
+                u.comma().for_each(ted::remove);
+            }
+        };
+
+        // take `use crate::{{{{A}}}}` for example
+        // the below remove the innermost {}, got `use crate::{{{A}}}`
+        remove_brace_in_use_tree_list(&self);
+
+        // the below remove othe unnecessary {}, got `use crate::A`
+        while let Some(parent_use_tree_list) = self.parent_use_tree().parent_use_tree_list() {
+            remove_brace_in_use_tree_list(&parent_use_tree_list);
+            self = parent_use_tree_list;
+        }
     }
 }
 
@@ -569,6 +614,16 @@ impl ast::Variant {
 impl ast::Item {
     pub fn generic_param_list(&self) -> Option<ast::GenericParamList> {
         ast::AnyHasGenericParams::cast(self.syntax().clone())?.generic_param_list()
+    }
+}
+
+impl ast::Type {
+    pub fn generic_arg_list(&self) -> Option<ast::GenericArgList> {
+        if let ast::Type::PathType(path_type) = self {
+            path_type.path()?.segment()?.generic_arg_list()
+        } else {
+            None
+        }
     }
 }
 
@@ -820,8 +875,10 @@ impl ast::Module {
     }
 }
 
-impl ast::RangePat {
-    pub fn start(&self) -> Option<ast::Pat> {
+impl RangeItem for ast::RangePat {
+    type Bound = ast::Pat;
+
+    fn start(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
             .take_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
@@ -829,12 +886,36 @@ impl ast::RangePat {
             .find_map(ast::Pat::cast)
     }
 
-    pub fn end(&self) -> Option<ast::Pat> {
+    fn end(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
             .skip_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
+    }
+
+    fn op_token(&self) -> Option<SyntaxToken> {
+        self.syntax().children_with_tokens().find_map(|it| {
+            let token = it.into_token()?;
+
+            match token.kind() {
+                T![..] => Some(token),
+                T![..=] => Some(token),
+                _ => None,
+            }
+        })
+    }
+
+    fn op_kind(&self) -> Option<RangeOp> {
+        self.syntax().children_with_tokens().find_map(|it| {
+            let token = it.into_token()?;
+
+            match token.kind() {
+                T![..] => Some(RangeOp::Exclusive),
+                T![..=] => Some(RangeOp::Inclusive),
+                _ => None,
+            }
+        })
     }
 }
 

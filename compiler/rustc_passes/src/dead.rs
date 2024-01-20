@@ -4,7 +4,6 @@
 // is dead.
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
-use itertools::Itertools;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
+use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::FieldIdx;
 use std::mem;
@@ -57,7 +57,7 @@ struct MarkSymbolVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     live_symbols: LocalDefIdSet,
-    repr_has_repr_c: bool,
+    repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
@@ -128,7 +128,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let Some(def_id) = self.typeck_results().type_dependent_def_id(id) {
             self.check_def_id(def_id);
         } else {
-            bug!("no type-dependent def for method");
+            assert!(
+                self.typeck_results().tainted_by_errors.is_some(),
+                "no type-dependent def for method"
+            );
         }
     }
 
@@ -362,15 +365,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             return;
         }
 
-        let had_repr_c = self.repr_has_repr_c;
+        let unconditionally_treated_fields_as_live =
+            self.repr_unconditionally_treats_fields_as_live;
         let had_repr_simd = self.repr_has_repr_simd;
-        self.repr_has_repr_c = false;
+        self.repr_unconditionally_treats_fields_as_live = false;
         self.repr_has_repr_simd = false;
         match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(item.owner_id);
-                    self.repr_has_repr_c = def.repr().c();
+                    self.repr_unconditionally_treats_fields_as_live =
+                        def.repr().c() || def.repr().transparent();
                     self.repr_has_repr_simd = def.repr().simd();
 
                     intravisit::walk_item(self, item)
@@ -408,7 +413,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ => {}
         }
         self.repr_has_repr_simd = had_repr_simd;
-        self.repr_has_repr_c = had_repr_c;
+        self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
     }
 
     fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
@@ -432,11 +437,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) {
         let tcx = self.tcx;
-        let has_repr_c = self.repr_has_repr_c;
+        let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
         let has_repr_simd = self.repr_has_repr_simd;
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
-            if has_repr_c || (f.is_positional() && has_repr_simd) {
+            if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
             if !tcx.visibility(f.hir_id.owner.def_id).is_public() {
@@ -738,7 +743,7 @@ fn live_symbols_and_ignored_derived_traits(
         tcx,
         maybe_typeck_results: None,
         live_symbols: Default::default(),
-        repr_has_repr_c: false,
+        repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd: false,
         in_pat: false,
         ignore_variant_stack: vec![],
@@ -762,8 +767,14 @@ struct DeadVisitor<'tcx> {
 }
 
 enum ShouldWarnAboutField {
-    Yes(bool), // positional?
+    Yes,
     No,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum ReportOn {
+    TupleField,
+    NamedField,
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
@@ -784,7 +795,12 @@ impl<'tcx> DeadVisitor<'tcx> {
         {
             return ShouldWarnAboutField::No;
         }
-        ShouldWarnAboutField::Yes(is_positional)
+        ShouldWarnAboutField::Yes
+    }
+
+    fn def_lint_level(&self, id: LocalDefId) -> lint::Level {
+        let hir_id = self.tcx.local_def_id_to_hir_id(id);
+        self.tcx.lint_level_at_node(DEAD_CODE, hir_id).0
     }
 
     // # Panics
@@ -795,38 +811,33 @@ impl<'tcx> DeadVisitor<'tcx> {
     // since those methods group by lint level before calling this method.
     fn lint_at_single_level(
         &self,
-        dead_codes: &[LocalDefId],
+        dead_codes: &[&DeadItem],
         participle: &str,
         parent_item: Option<LocalDefId>,
-        is_positional: bool,
+        report_on: ReportOn,
     ) {
-        let Some(&first_id) = dead_codes.first() else {
+        let Some(&first_item) = dead_codes.first() else {
             return;
         };
         let tcx = self.tcx;
 
-        let first_hir_id = tcx.local_def_id_to_hir_id(first_id);
-        let first_lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, first_hir_id).0;
-        assert!(dead_codes.iter().skip(1).all(|id| {
-            let hir_id = tcx.local_def_id_to_hir_id(*id);
-            let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
-            level == first_lint_level
-        }));
+        let first_lint_level = first_item.level;
+        assert!(dead_codes.iter().skip(1).all(|item| item.level == first_lint_level));
 
-        let names: Vec<_> =
-            dead_codes.iter().map(|&def_id| tcx.item_name(def_id.to_def_id())).collect();
+        let names: Vec<_> = dead_codes.iter().map(|item| item.name).collect();
         let spans: Vec<_> = dead_codes
             .iter()
-            .map(|&def_id| match tcx.def_ident_span(def_id) {
-                Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
-                None => tcx.def_span(def_id),
+            .map(|item| match tcx.def_ident_span(item.def_id) {
+                Some(s) => s.with_ctxt(tcx.def_span(item.def_id).ctxt()),
+                None => tcx.def_span(item.def_id),
             })
             .collect();
 
-        let descr = tcx.def_descr(first_id.to_def_id());
+        let descr = tcx.def_descr(first_item.def_id.to_def_id());
         // `impl` blocks are "batched" and (unlike other batching) might
         // contain different kinds of associated items.
-        let descr = if dead_codes.iter().any(|did| tcx.def_descr(did.to_def_id()) != descr) {
+        let descr = if dead_codes.iter().any(|item| tcx.def_descr(item.def_id.to_def_id()) != descr)
+        {
             "associated item"
         } else {
             descr
@@ -834,12 +845,6 @@ impl<'tcx> DeadVisitor<'tcx> {
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
-
-        let lint = if is_positional {
-            lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
-        } else {
-            lint::builtin::DEAD_CODE
-        };
 
         let parent_info = if let Some(parent_item) = parent_item {
             let parent_descr = tcx.def_descr(parent_item.to_def_id());
@@ -853,7 +858,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             None
         };
 
-        let encl_def_id = parent_item.unwrap_or(first_id);
+        let encl_def_id = parent_item.unwrap_or(first_item.def_id);
         let ignored_derived_impls =
             if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
                 let trait_list = ign_traits
@@ -870,8 +875,8 @@ impl<'tcx> DeadVisitor<'tcx> {
                 None
             };
 
-        let diag = if is_positional {
-            MultipleDeadCodes::UnusedTupleStructFields {
+        let diag = match report_on {
+            ReportOn::TupleField => MultipleDeadCodes::UnusedTupleStructFields {
                 multiple,
                 num,
                 descr,
@@ -880,9 +885,9 @@ impl<'tcx> DeadVisitor<'tcx> {
                 change_fields_suggestion: ChangeFieldsToBeOfUnitType { num, spans: spans.clone() },
                 parent_info,
                 ignored_derived_impls,
-            }
-        } else {
-            MultipleDeadCodes::DeadCodes {
+            },
+
+            ReportOn::NamedField => MultipleDeadCodes::DeadCodes {
                 multiple,
                 num,
                 descr,
@@ -890,10 +895,11 @@ impl<'tcx> DeadVisitor<'tcx> {
                 name_list,
                 parent_info,
                 ignored_derived_impls,
-            }
+            },
         };
 
-        self.tcx.emit_spanned_lint(lint, first_hir_id, MultiSpan::from_spans(spans), diag);
+        let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
+        self.tcx.emit_spanned_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_multiple(
@@ -901,7 +907,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         def_id: LocalDefId,
         participle: &str,
         dead_codes: Vec<DeadItem>,
-        is_positional: bool,
+        report_on: ReportOn,
     ) {
         let mut dead_codes = dead_codes
             .iter()
@@ -911,18 +917,18 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         dead_codes.sort_by_key(|v| v.level);
-        for (_, group) in &dead_codes.into_iter().group_by(|v| v.level) {
-            self.lint_at_single_level(
-                &group.map(|v| v.def_id).collect::<Vec<_>>(),
-                participle,
-                Some(def_id),
-                is_positional,
-            );
+        for group in dead_codes[..].group_by(|a, b| a.level == b.level) {
+            self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }
 
     fn warn_dead_code(&mut self, id: LocalDefId, participle: &str) {
-        self.lint_at_single_level(&[id], participle, None, false);
+        let item = DeadItem {
+            def_id: id,
+            name: self.tcx.item_name(id.to_def_id()),
+            level: self.def_lint_level(id),
+        };
+        self.lint_at_single_level(&[&item], participle, None, ReportOn::NamedField);
     }
 
     fn check_definition(&mut self, def_id: LocalDefId) {
@@ -969,13 +975,12 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 let def_id = item.id.owner_id.def_id;
                 if !visitor.is_live_code(def_id) {
                     let name = tcx.item_name(def_id.to_def_id());
-                    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+                    let level = visitor.def_lint_level(def_id);
 
                     dead_items.push(DeadItem { def_id, name, level })
                 }
             }
-            visitor.warn_multiple(item.owner_id.def_id, "used", dead_items, false);
+            visitor.warn_multiple(item.owner_id.def_id, "used", dead_items, ReportOn::NamedField);
         }
 
         if !live_symbols.contains(&item.owner_id.def_id) {
@@ -997,43 +1002,38 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 let def_id = variant.def_id.expect_local();
                 if !live_symbols.contains(&def_id) {
                     // Record to group diagnostics.
-                    let hir_id = tcx.local_def_id_to_hir_id(def_id);
-                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+                    let level = visitor.def_lint_level(def_id);
                     dead_variants.push(DeadItem { def_id, name: variant.name, level });
                     continue;
                 }
 
-                let mut is_positional = false;
+                let is_positional = variant.fields.raw.first().map_or(false, |field| {
+                    field.name.as_str().starts_with(|c: char| c.is_ascii_digit())
+                });
+                let report_on =
+                    if is_positional { ReportOn::TupleField } else { ReportOn::NamedField };
                 let dead_fields = variant
                     .fields
                     .iter()
                     .filter_map(|field| {
                         let def_id = field.did.expect_local();
-                        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-                        if let ShouldWarnAboutField::Yes(is_pos) =
-                            visitor.should_warn_about_field(field)
-                        {
-                            let level = tcx
-                                .lint_level_at_node(
-                                    if is_pos {
-                                        is_positional = true;
-                                        lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
-                                    } else {
-                                        lint::builtin::DEAD_CODE
-                                    },
-                                    hir_id,
-                                )
-                                .0;
+                        if let ShouldWarnAboutField::Yes = visitor.should_warn_about_field(field) {
+                            let level = visitor.def_lint_level(def_id);
                             Some(DeadItem { def_id, name: field.name, level })
                         } else {
                             None
                         }
                     })
                     .collect();
-                visitor.warn_multiple(def_id, "read", dead_fields, is_positional);
+                visitor.warn_multiple(def_id, "read", dead_fields, report_on);
             }
 
-            visitor.warn_multiple(item.owner_id.def_id, "constructed", dead_variants, false);
+            visitor.warn_multiple(
+                item.owner_id.def_id,
+                "constructed",
+                dead_variants,
+                ReportOn::NamedField,
+            );
         }
     }
 

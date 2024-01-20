@@ -322,12 +322,13 @@ impl Evaluator<'_> {
                     let hir_def::resolver::ValueNs::FunctionId(format_fn) = format_fn else {
                         not_supported!("std::fmt::format is not a function")
                     };
-                    let message_string = self.interpret_mir(
+                    let interval = self.interpret_mir(
                         self.db
                             .mir_body(format_fn.into())
                             .map_err(|e| MirEvalError::MirLowerError(format_fn, e))?,
                         args.map(|x| IntervalOrOwned::Owned(x.clone())),
                     )?;
+                    let message_string = interval.get(self)?;
                     let addr =
                         Address::from_bytes(&message_string[self.ptr_size()..2 * self.ptr_size()])?;
                     let size = from_bytes!(usize, message_string[2 * self.ptr_size()..]);

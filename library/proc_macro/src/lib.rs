@@ -45,6 +45,7 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -1351,6 +1352,13 @@ impl Literal {
         Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 
+    /// C string literal.
+    #[unstable(feature = "proc_macro_c_str_literals", issue = "119750")]
+    pub fn c_string(string: &CStr) -> Literal {
+        let string = string.to_bytes().escape_ascii().to_string();
+        Literal::new(bridge::LitKind::CStr, &string, None)
+    }
+
     /// Returns the span encompassing this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
@@ -1503,7 +1511,8 @@ pub mod tracked_env {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = env::var(key);
+        let value = crate::bridge::client::FreeFunctions::injected_env_var(key)
+            .map_or_else(|| env::var(key), Ok);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }

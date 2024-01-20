@@ -35,7 +35,7 @@ pub mod mod1 {
 pub mod mod2 {
     // @has - '//code' 'pub use tag::Portability;'
     // @!has - '//span' 'Experimental'
-    // @has - '//span' 'sync'
+    // @!has - '//span' 'sync'
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use tag::Portability;
 }
@@ -45,7 +45,7 @@ pub mod mod2 {
 pub mod mod3 {
     // @has - '//code' 'pub use tag::Both;'
     // @has - '//span' 'Experimental'
-    // @has - '//span' 'sync'
+    // @!has - '//span' 'sync'
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use tag::Both;
 }

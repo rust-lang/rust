@@ -4,10 +4,10 @@
 //! 1. instantiate substs,
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
 use rustc_middle::ty;
 
-use super::EvalCtxt;
+use crate::solve::EvalCtxt;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_inherent_associated_type(
@@ -38,7 +38,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         .expect("expected goal term to be fully unconstrained");
 
         // Check both where clauses on the impl and IAT
+        //
+        // FIXME(-Znext-solver=coinductive): I think this should be split
+        // and we tag the impl bounds with `GoalSource::ImplWhereBound`?
+        // Right not this includes both the impl and the assoc item where bounds,
+        // and I don't think the assoc item where-bounds are allowed to be coinductive.
         self.add_goals(
+            GoalSource::Misc,
             tcx.predicates_of(inherent.def_id)
                 .instantiate(tcx, inherent_substs)
                 .into_iter()

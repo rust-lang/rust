@@ -539,7 +539,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         let ty::Adt(adt_def, _) = ty.kind() else {
             self.tcx()
-                .sess
+                .dcx()
                 .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
             return Err(());
         };
@@ -574,7 +574,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
                 Err(())
             }
@@ -588,7 +588,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => {
-                self.tcx().sess.span_delayed_bug(span, "tuple pattern not applied to a tuple");
+                self.tcx().dcx().span_delayed_bug(span, "tuple pattern not applied to a tuple");
                 Err(())
             }
         }
@@ -767,7 +767,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | PatKind::Lit(..)
             | PatKind::Range(..)
             | PatKind::Never
-            | PatKind::Wild => {
+            | PatKind::Wild
+            | PatKind::Err(_) => {
                 // always ok
             }
         }

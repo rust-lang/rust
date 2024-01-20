@@ -74,7 +74,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             // we have some type like `&<Ty as Trait>::Assoc`, since users of
             // autoderef expect this type to have been structurally normalized.
             if self.infcx.next_trait_solver()
-                && let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = ty.kind()
+                && let ty::Alias(..) = ty.kind()
             {
                 let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
                 self.state.obligations.extend(obligations);
@@ -249,7 +249,7 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    tcx.sess.emit_err(AutoDerefReachedRecursionLimit {
+    tcx.dcx().emit_err(AutoDerefReachedRecursionLimit {
         span,
         ty,
         suggested_limit,

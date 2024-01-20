@@ -82,7 +82,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: self.lower_span(f.span),
                             }
                         }));
-                        break hir::PatKind::Struct(qpath, fs, *etc);
+                        break hir::PatKind::Struct(qpath, fs, *etc == ast::PatFieldsRest::Rest);
                     }
                     PatKind::Tuple(pats) => {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
@@ -109,6 +109,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // return inner to be processed in next loop
                     PatKind::Paren(inner) => pattern = inner,
                     PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
+                    PatKind::Err(guar) => break hir::PatKind::Err(*guar),
                 }
             };
 
@@ -140,7 +141,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // This is not allowed as a sub-tuple pattern
                 PatKind::Ident(_, ident, Some(sub)) if sub.is_rest() => {
                     let sp = pat.span;
-                    self.tcx.sess.emit_err(SubTupleBinding {
+                    self.dcx().emit_err(SubTupleBinding {
                         span: sp,
                         ident_name: ident.name,
                         ident: *ident,
@@ -289,12 +290,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
     pub(crate) fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
-        self.tcx.sess.emit_err(ExtraDoubleDot { span: sp, prev_span: prev_sp, ctx });
+        self.dcx().emit_err(ExtraDoubleDot { span: sp, prev_span: prev_sp, ctx });
     }
 
     /// Used to ban the `..` pattern in places it shouldn't be semantically.
     fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind<'hir> {
-        self.tcx.sess.emit_err(MisplacedDoubleDot { span: sp });
+        self.dcx().emit_err(MisplacedDoubleDot { span: sp });
 
         // We're not in a list context so `..` can be reasonably treated
         // as `_` because it should always be valid and roughly matches the
@@ -334,7 +335,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
-                let guar = self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
+                let guar = self.dcx().emit_err(ArbitraryExpressionInPattern { span: expr.span });
                 return self.arena.alloc(self.expr_err(expr.span, guar));
             }
         }

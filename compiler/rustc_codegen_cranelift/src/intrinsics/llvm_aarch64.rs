@@ -7,7 +7,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     _args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
 ) {
@@ -309,7 +309,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
         }
         */
         _ => {
-            fx.tcx.sess.warn(format!(
+            fx.tcx.dcx().warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
                 intrinsic
             ));

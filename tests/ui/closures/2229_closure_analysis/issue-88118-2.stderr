@@ -1,8 +1,8 @@
 warning: irrefutable `if let` guard pattern
-  --> $DIR/issue-88118-2.rs:10:29
+  --> $DIR/issue-88118-2.rs:10:25
    |
 LL |             Registry if let _ = registry.try_find_description() => { }
-   |                             ^
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm

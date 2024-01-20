@@ -20,25 +20,37 @@ LL |     if let Ready(_) = Ready(42) {
    |     -------^^^^^^^^------------ help: try: `if Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:25:15
+  --> $DIR/redundant_pattern_matching_poll.rs:26:8
+   |
+LL |     if matches!(Ready(42), Ready(_)) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Ready(42).is_ready()`
+
+error: redundant pattern matching, consider using `is_pending()`
+  --> $DIR/redundant_pattern_matching_poll.rs:29:8
+   |
+LL |     if matches!(Pending::<()>, Pending) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Pending::<()>.is_pending()`
+
+error: redundant pattern matching, consider using `is_ready()`
+  --> $DIR/redundant_pattern_matching_poll.rs:31:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |     ----------^^^^^^^^------------ help: try: `while Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:27:15
+  --> $DIR/redundant_pattern_matching_poll.rs:33:15
    |
 LL |     while let Pending = Ready(42) {}
    |     ----------^^^^^^^------------ help: try: `while Ready(42).is_pending()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:29:15
+  --> $DIR/redundant_pattern_matching_poll.rs:35:15
    |
 LL |     while let Pending = Pending::<()> {}
    |     ----------^^^^^^^---------------- help: try: `while Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:35:5
+  --> $DIR/redundant_pattern_matching_poll.rs:41:5
    |
 LL | /     match Ready(42) {
 LL | |         Ready(_) => true,
@@ -47,7 +59,7 @@ LL | |     };
    | |_____^ help: try: `Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:40:5
+  --> $DIR/redundant_pattern_matching_poll.rs:46:5
    |
 LL | /     match Pending::<()> {
 LL | |         Ready(_) => false,
@@ -56,7 +68,7 @@ LL | |     };
    | |_____^ help: try: `Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:45:13
+  --> $DIR/redundant_pattern_matching_poll.rs:51:13
    |
 LL |       let _ = match Pending::<()> {
    |  _____________^
@@ -66,49 +78,49 @@ LL | |     };
    | |_____^ help: try: `Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:51:20
+  --> $DIR/redundant_pattern_matching_poll.rs:57:20
    |
 LL |     let _ = if let Ready(_) = poll { true } else { false };
    |             -------^^^^^^^^------- help: try: `if poll.is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:55:20
+  --> $DIR/redundant_pattern_matching_poll.rs:61:20
    |
 LL |     let _ = if let Ready(_) = gen_poll() {
    |             -------^^^^^^^^------------- help: try: `if gen_poll().is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:57:19
+  --> $DIR/redundant_pattern_matching_poll.rs:63:19
    |
 LL |     } else if let Pending = gen_poll() {
    |            -------^^^^^^^------------- help: try: `if gen_poll().is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:73:12
+  --> $DIR/redundant_pattern_matching_poll.rs:79:12
    |
 LL |     if let Ready(_) = Ready(42) {}
    |     -------^^^^^^^^------------ help: try: `if Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:75:12
+  --> $DIR/redundant_pattern_matching_poll.rs:81:12
    |
 LL |     if let Pending = Pending::<()> {}
    |     -------^^^^^^^---------------- help: try: `if Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:77:15
+  --> $DIR/redundant_pattern_matching_poll.rs:83:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |     ----------^^^^^^^^------------ help: try: `while Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:79:15
+  --> $DIR/redundant_pattern_matching_poll.rs:85:15
    |
 LL |     while let Pending = Pending::<()> {}
    |     ----------^^^^^^^---------------- help: try: `while Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_poll.rs:81:5
+  --> $DIR/redundant_pattern_matching_poll.rs:87:5
    |
 LL | /     match Ready(42) {
 LL | |         Ready(_) => true,
@@ -117,7 +129,7 @@ LL | |     };
    | |_____^ help: try: `Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_poll.rs:86:5
+  --> $DIR/redundant_pattern_matching_poll.rs:92:5
    |
 LL | /     match Pending::<()> {
 LL | |         Ready(_) => false,
@@ -125,5 +137,5 @@ LL | |         Pending => true,
 LL | |     };
    | |_____^ help: try: `Pending::<()>.is_pending()`
 
-error: aborting due to 18 previous errors
+error: aborting due to 20 previous errors
 

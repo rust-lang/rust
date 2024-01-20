@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -26,60 +26,68 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
+        let sized_def_id = tcx.lang_items().sized_trait();
+        let mut seen_negative_sized_bound = false;
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for ab in ast_bounds {
-                if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
-                    unbounds.push(ptr)
+                let hir::GenericBound::Trait(ptr, modifier) = ab else {
+                    continue;
+                };
+                match modifier {
+                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
+                    hir::TraitBoundModifier::Negative => {
+                        if let Some(sized_def_id) = sized_def_id
+                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+                        {
+                            seen_negative_sized_bound = true;
+                        }
+                    }
+                    _ => {}
                 }
             }
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty.to_def_id()) {
-                        search_bounds(pred.bounds);
-                    }
+                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                    && pred.is_param_bound(self_ty.to_def_id())
+                {
+                    search_bounds(pred.bounds);
                 }
             }
         }
 
         if unbounds.len() > 1 {
-            tcx.sess.emit_err(errors::MultipleRelaxedDefaultBounds {
+            tcx.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
                 spans: unbounds.iter().map(|ptr| ptr.span).collect(),
             });
         }
 
-        let sized_def_id = tcx.lang_items().sized_trait();
-
         let mut seen_sized_unbound = false;
         for unbound in unbounds {
-            if let Some(sized_def_id) = sized_def_id {
-                if unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id) {
-                    seen_sized_unbound = true;
-                    continue;
-                }
+            if let Some(sized_def_id) = sized_def_id
+                && unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+            {
+                seen_sized_unbound = true;
+                continue;
             }
             // There was a `?Trait` bound, but it was not `?Sized`; warn.
-            tcx.sess.span_warn(
+            tcx.dcx().span_warn(
                 unbound.span,
                 "relaxing a default bound only does something for `?Sized`; \
                 all other traits are not bound by default",
             );
         }
 
-        // If the above loop finished there was no `?Sized` bound; add implicitly sized if `Sized` is available.
-        if sized_def_id.is_none() {
-            // No lang item for `Sized`, so we can't add it as a bound.
-            return;
-        }
-        if seen_sized_unbound {
-            // There was in fact a `?Sized` bound, return without doing anything
-        } else {
-            // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
+        if seen_sized_unbound || seen_negative_sized_bound {
+            // There was in fact a `?Sized` or `!Sized` bound;
+            // we don't need to do anything.
+        } else if sized_def_id.is_some() {
+            // There was no `?Sized` or `!Sized` bound;
+            // add `Sized` if it's available.
             bounds.push_sized(tcx, self_ty, span);
         }
     }
@@ -112,6 +120,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let (constness, polarity) = match modifier {
+                        hir::TraitBoundModifier::Const => {
+                            (ty::BoundConstness::Const, ty::ImplPolarity::Positive)
+                        }
                         hir::TraitBoundModifier::MaybeConst => {
                             (ty::BoundConstness::ConstIfConst, ty::ImplPolarity::Positive)
                         }
@@ -131,17 +142,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         param_ty,
                         bounds,
                         false,
-                        only_self_bounds,
-                    );
-                }
-                &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
-                    self.instantiate_lang_item_trait_ref(
-                        lang_item,
-                        span,
-                        hir_id,
-                        args,
-                        param_ty,
-                        bounds,
                         only_self_bounds,
                     );
                 }
@@ -300,13 +300,15 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .expect("missing associated item");
 
         if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            tcx.sess
+            let reported = tcx
+                .dcx()
                 .struct_span_err(
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, format!("private {}", assoc_item.kind))
+                .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
+            self.set_tainted_by_errors(reported);
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
 
@@ -314,7 +316,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             dup_bindings
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    tcx.sess.emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                    tcx.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
@@ -343,7 +345,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
                             if !emitted_bad_param_err {
-                                tcx.sess.emit_err(
+                                tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -363,7 +365,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         ty::GenericParamDefKind::Const { .. } => {
                             if !emitted_bad_param_err {
-                                tcx.sess.emit_err(
+                                tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -396,7 +398,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             {
                 alias_ty
             } else {
-                return Err(self.tcx().sess.emit_err(
+                return Err(self.tcx().dcx().emit_err(
                     crate::errors::ReturnTypeNotationOnNonRpitit {
                         span: binding.span,
                         ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
@@ -462,8 +464,8 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     late_bound_in_trait_ref,
                     late_bound_in_ty,
                     |br_name| {
-                        struct_span_err!(
-                            tcx.sess,
+                        struct_span_code_err!(
+                            tcx.dcx(),
                             binding.span,
                             E0582,
                             "binding for associated type `{}` references {}, \
@@ -478,7 +480,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         match binding.kind {
             ConvertedBindingKind::Equality(..) if let ty::AssocKind::Fn = assoc_kind => {
-                return Err(self.tcx().sess.emit_err(
+                return Err(self.tcx().dcx().emit_err(
                     crate::errors::ReturnTypeNotationEqualityBound { span: binding.span },
                 ));
             }

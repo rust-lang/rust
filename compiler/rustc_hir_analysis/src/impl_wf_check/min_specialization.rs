@@ -82,10 +82,14 @@ use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_args_with_cause, wf, ObligationCtxt};
 
-pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
+pub(super) fn check_min_specialization(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
-        check_always_applicable(tcx, impl_def_id, node);
+        check_always_applicable(tcx, impl_def_id, node)?;
     }
+    Ok(())
 }
 
 fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Option<Node> {
@@ -109,42 +113,58 @@ fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Opti
 
 /// Check that `impl1` is a sound specialization
 #[instrument(level = "debug", skip(tcx))]
-fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node) {
+fn check_always_applicable(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: LocalDefId,
+    impl2_node: Node,
+) -> Result<(), ErrorGuaranteed> {
     let span = tcx.def_span(impl1_def_id);
-    check_has_items(tcx, impl1_def_id, impl2_node, span);
+    let mut res = check_has_items(tcx, impl1_def_id, impl2_node, span);
 
-    if let Ok((impl1_args, impl2_args)) = get_impl_args(tcx, impl1_def_id, impl2_node) {
-        let impl2_def_id = impl2_node.def_id();
-        debug!(?impl2_def_id, ?impl2_args);
+    let (impl1_args, impl2_args) = get_impl_args(tcx, impl1_def_id, impl2_node)?;
+    let impl2_def_id = impl2_node.def_id();
+    debug!(?impl2_def_id, ?impl2_args);
 
-        let parent_args = if impl2_node.is_from_trait() {
-            impl2_args.to_vec()
-        } else {
-            unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
-        };
+    let parent_args = if impl2_node.is_from_trait() {
+        impl2_args.to_vec()
+    } else {
+        unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
+    };
 
-        check_constness(tcx, impl1_def_id, impl2_node, span);
-        check_static_lifetimes(tcx, &parent_args, span);
-        check_duplicate_params(tcx, impl1_args, &parent_args, span);
-        check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span);
-    }
+    res = res.and(check_constness(tcx, impl1_def_id, impl2_node, span));
+    res = res.and(check_static_lifetimes(tcx, &parent_args, span));
+    res = res.and(check_duplicate_params(tcx, impl1_args, &parent_args, span));
+    res = res.and(check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span));
+
+    res
 }
 
-fn check_has_items(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, span: Span) {
+fn check_has_items(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: LocalDefId,
+    impl2_node: Node,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     if let Node::Impl(impl2_id) = impl2_node
         && tcx.associated_item_def_ids(impl1_def_id).is_empty()
     {
         let base_impl_span = tcx.def_span(impl2_id);
-        tcx.sess.emit_err(errors::EmptySpecialization { span, base_impl_span });
+        return Err(tcx.dcx().emit_err(errors::EmptySpecialization { span, base_impl_span }));
     }
+    Ok(())
 }
 
 /// Check that the specializing impl `impl1` is at least as const as the base
 /// impl `impl2`
-fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, span: Span) {
+fn check_constness(
+    tcx: TyCtxt<'_>,
+    impl1_def_id: LocalDefId,
+    impl2_node: Node,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     if impl2_node.is_from_trait() {
         // This isn't a specialization
-        return;
+        return Ok(());
     }
 
     let impl1_constness = tcx.constness(impl1_def_id.to_def_id());
@@ -152,9 +172,10 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 
     if let hir::Constness::Const = impl2_constness {
         if let hir::Constness::NotConst = impl1_constness {
-            tcx.sess.emit_err(errors::ConstSpecialize { span });
+            return Err(tcx.dcx().emit_err(errors::ConstSpecialize { span }));
         }
     }
+    Ok(())
 }
 
 /// Given a specializing impl `impl1`, and the base impl `impl2`, returns two
@@ -202,12 +223,12 @@ fn get_impl_args(
         return Err(guar);
     }
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, &assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
-        let guar = tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+        let guar = tcx.dcx().emit_err(SubstsOnOverriddenImpl { span });
         return Err(guar);
     };
     Ok((impl1_args, impl2_args))
@@ -290,15 +311,17 @@ fn check_duplicate_params<'tcx>(
     impl1_args: GenericArgsRef<'tcx>,
     parent_args: &Vec<GenericArg<'tcx>>,
     span: Span,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let mut base_params = cgp::parameters_for(parent_args, true);
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
-        tcx.sess
+        return Err(tcx
+            .dcx()
             .struct_span_err(span, format!("specializing impl repeats parameter `{param}`"))
-            .emit();
+            .emit());
     }
+    Ok(())
 }
 
 /// Check that `'static` lifetimes are not introduced by the specializing impl.
@@ -313,10 +336,11 @@ fn check_static_lifetimes<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent_args: &Vec<GenericArg<'tcx>>,
     span: Span,
-) {
+) -> Result<(), ErrorGuaranteed> {
     if tcx.any_free_region_meets(parent_args, |r| r.is_static()) {
-        tcx.sess.emit_err(errors::StaticSpecialize { span });
+        return Err(tcx.dcx().emit_err(errors::StaticSpecialize { span }));
     }
+    Ok(())
 }
 
 /// Check whether predicates on the specializing impl (`impl1`) are allowed.
@@ -337,7 +361,7 @@ fn check_predicates<'tcx>(
     impl2_node: Node,
     impl2_args: GenericArgsRef<'tcx>,
     span: Span,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let impl1_predicates: Vec<_> = traits::elaborate(
         tcx,
         tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_args).into_iter(),
@@ -399,14 +423,16 @@ fn check_predicates<'tcx>(
     }
     impl2_predicates.extend(traits::elaborate(tcx, always_applicable_traits));
 
+    let mut res = Ok(());
     for (clause, span) in impl1_predicates {
         if !impl2_predicates
             .iter()
             .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
         {
-            check_specialization_on(tcx, clause, span)
+            res = res.and(check_specialization_on(tcx, clause, span))
         }
     }
+    res
 }
 
 /// Checks if some predicate on the specializing impl (`predicate1`) is the same
@@ -443,19 +469,26 @@ fn trait_predicates_eq<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, span: Span) {
+fn check_specialization_on<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    clause: ty::Clause<'tcx>,
+    span: Span,
+) -> Result<(), ErrorGuaranteed> {
     match clause.kind().skip_binder() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
-        _ if clause.is_global() => (),
+        _ if clause.is_global() => Ok(()),
         // We allow specializing on explicitly marked traits with no associated
         // items.
         ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
-            if !matches!(
+            if matches!(
                 trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
             ) {
-                tcx.sess
+                Ok(())
+            } else {
+                Err(tcx
+                    .dcx()
                     .struct_span_err(
                         span,
                         format!(
@@ -463,17 +496,16 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
                             tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
-                    .emit();
+                    .emit())
             }
         }
-        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
-            tcx.sess
-                .struct_span_err(
-                    span,
-                    format!("cannot specialize on associated type `{projection_ty} == {term}`",),
-                )
-                .emit();
-        }
+        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => Err(tcx
+            .dcx()
+            .struct_span_err(
+                span,
+                format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+            )
+            .emit()),
         ty::ClauseKind::ConstArgHasType(..) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
@@ -483,12 +515,12 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
             // While we do not support constructs like `<T, const N: T>` there is probably no risk of
             // soundness bugs, but when we support generic const parameter types this will need to be
             // revisited.
+            Ok(())
         }
-        _ => {
-            tcx.sess
-                .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
-                .emit();
-        }
+        _ => Err(tcx
+            .dcx()
+            .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
+            .emit()),
     }
 }
 

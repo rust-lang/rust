@@ -146,7 +146,7 @@ impl<'a> pprust_ast::PpAnn for AstHygieneAnn<'a> {
             }
             pprust_ast::AnnNode::Crate(_) => {
                 s.s.hardbreak();
-                let verbose = self.sess.verbose();
+                let verbose = self.sess.verbose_internals();
                 s.synth_comment(rustc_span::hygiene::debug_hygiene_data(verbose));
                 s.s.hardbreak_if_not_bol();
             }

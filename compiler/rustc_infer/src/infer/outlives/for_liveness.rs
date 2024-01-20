@@ -84,7 +84,6 @@ where
                         } else {
                             test_type_match::extract_verify_if_eq(
                                 tcx,
-                                param_env,
                                 &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
                                     VerifyIfEq { ty, bound }
                                 }),

@@ -1,6 +1,8 @@
-//! Our mmap/munmap support is a thin wrapper over Interpcx::allocate_ptr. Since the underlying
-//! layer has much more UB than munmap does, we need to be sure we throw an unsupported error here.
+//! The man pages for mmap/munmap suggest that it is possible to partly unmap a previously-mapped
+//! region of address space, but to LLVM that would be partial deallocation, which LLVM does not
+//! support. So even though the man pages say this sort of use is possible, we must report UB.
 //@ignore-target-windows: No libc on Windows
+//@normalize-stderr-test: "size [0-9]+ and alignment" -> "size SIZE and alignment"
 
 fn main() {
     unsafe {
@@ -13,6 +15,6 @@ fn main() {
             0,
         );
         libc::munmap(ptr, 1);
-        //~^ ERROR: unsupported operation
+        //~^ ERROR: Undefined Behavior
     }
 }

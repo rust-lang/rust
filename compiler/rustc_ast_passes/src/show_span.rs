@@ -31,37 +31,37 @@ impl FromStr for Mode {
 }
 
 struct ShowSpanVisitor<'a> {
-    span_diagnostic: &'a rustc_errors::Handler,
+    dcx: &'a rustc_errors::DiagCtxt,
     mode: Mode,
 }
 
 impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         if let Mode::Expression = self.mode {
-            self.span_diagnostic.emit_warning(errors::ShowSpan { span: e.span, msg: "expression" });
+            self.dcx.emit_warn(errors::ShowSpan { span: e.span, msg: "expression" });
         }
         visit::walk_expr(self, e);
     }
 
     fn visit_pat(&mut self, p: &'a ast::Pat) {
         if let Mode::Pattern = self.mode {
-            self.span_diagnostic.emit_warning(errors::ShowSpan { span: p.span, msg: "pattern" });
+            self.dcx.emit_warn(errors::ShowSpan { span: p.span, msg: "pattern" });
         }
         visit::walk_pat(self, p);
     }
 
     fn visit_ty(&mut self, t: &'a ast::Ty) {
         if let Mode::Type = self.mode {
-            self.span_diagnostic.emit_warning(errors::ShowSpan { span: t.span, msg: "type" });
+            self.dcx.emit_warn(errors::ShowSpan { span: t.span, msg: "type" });
         }
         visit::walk_ty(self, t);
     }
 }
 
-pub fn run(span_diagnostic: &rustc_errors::Handler, mode: &str, krate: &ast::Crate) {
+pub fn run(dcx: &rustc_errors::DiagCtxt, mode: &str, krate: &ast::Crate) {
     let Ok(mode) = mode.parse() else {
         return;
     };
-    let mut v = ShowSpanVisitor { span_diagnostic, mode };
+    let mut v = ShowSpanVisitor { dcx, mode };
     visit::walk_crate(&mut v, krate);
 }

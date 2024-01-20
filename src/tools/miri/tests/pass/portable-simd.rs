@@ -1,6 +1,8 @@
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(portable_simd, platform_intrinsics, adt_const_params, inline_const)]
+#![feature(portable_simd, platform_intrinsics, adt_const_params, inline_const, core_intrinsics)]
 #![allow(incomplete_features, internal_features)]
+use std::intrinsics::simd as intrinsics;
+use std::ptr;
 use std::simd::{prelude::*, StdFloat};
 
 fn simd_ops_f32() {
@@ -421,6 +423,40 @@ fn simd_gather_scatter() {
     let idxs = Simd::from_array([9, 3, 0, 0]);
     Simd::from_array([-27, 82, -41, 124]).scatter(&mut vec, idxs);
     assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
+
+    // We call the intrinsics directly to experiment with dangling pointers and masks.
+    let val = 42u8;
+    let ptrs: Simd<*const u8, 4> =
+        Simd::from_array([ptr::null(), ptr::addr_of!(val), ptr::addr_of!(val), ptr::addr_of!(val)]);
+    let default = u8x4::splat(0);
+    let mask = i8x4::from_array([0, !0, 0, !0]);
+    let vals = unsafe { intrinsics::simd_gather(default, ptrs, mask) };
+    assert_eq!(vals, u8x4::from_array([0, 42, 0, 42]),);
+
+    let mut val1 = 0u8;
+    let mut val2 = 0u8;
+    let ptrs: Simd<*mut u8, 4> = Simd::from_array([
+        ptr::null_mut(),
+        ptr::addr_of_mut!(val1),
+        ptr::addr_of_mut!(val1),
+        ptr::addr_of_mut!(val2),
+    ]);
+    let vals = u8x4::from_array([1, 2, 3, 4]);
+    unsafe { intrinsics::simd_scatter(vals, ptrs, mask) };
+    assert_eq!(val1, 2);
+    assert_eq!(val2, 4);
+
+    // Also check what happens when `scatter` has multiple overlapping pointers.
+    let mut val = 0u8;
+    let ptrs: Simd<*mut u8, 4> = Simd::from_array([
+        ptr::addr_of_mut!(val),
+        ptr::addr_of_mut!(val),
+        ptr::addr_of_mut!(val),
+        ptr::addr_of_mut!(val),
+    ]);
+    let vals = u8x4::from_array([1, 2, 3, 4]);
+    unsafe { intrinsics::simd_scatter(vals, ptrs, mask) };
+    assert_eq!(val, 4);
 }
 
 fn simd_round() {
@@ -460,14 +496,11 @@ fn simd_round() {
 }
 
 fn simd_intrinsics() {
+    use intrinsics::*;
     extern "platform-intrinsic" {
-        fn simd_eq<T, U>(x: T, y: T) -> U;
-        fn simd_reduce_any<T>(x: T) -> bool;
-        fn simd_reduce_all<T>(x: T) -> bool;
-        fn simd_select<M, T>(m: M, yes: T, no: T) -> T;
         fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-        fn simd_shuffle<T, IDX, U>(x: T, y: T, idx: IDX) -> U;
     }
+
     unsafe {
         // Make sure simd_eq returns all-1 for `true`
         let a = i32x4::splat(10);
@@ -503,6 +536,29 @@ fn simd_intrinsics() {
     }
 }
 
+fn simd_masked_loadstore() {
+    // The buffer is deliberarely too short, so reading the last element would be UB.
+    let buf = [3i32; 3];
+    let default = i32x4::splat(0);
+    let mask = i32x4::from_array([!0, !0, !0, 0]);
+    let vals = unsafe { intrinsics::simd_masked_load(mask, buf.as_ptr(), default) };
+    assert_eq!(vals, i32x4::from_array([3, 3, 3, 0]));
+    // Also read in a way that the *first* element is OOB.
+    let mask2 = i32x4::from_array([0, !0, !0, !0]);
+    let vals =
+        unsafe { intrinsics::simd_masked_load(mask2, buf.as_ptr().wrapping_sub(1), default) };
+    assert_eq!(vals, i32x4::from_array([0, 3, 3, 3]));
+
+    // The buffer is deliberarely too short, so writing the last element would be UB.
+    let mut buf = [42i32; 3];
+    let vals = i32x4::from_array([1, 2, 3, 4]);
+    unsafe { intrinsics::simd_masked_store(mask, buf.as_mut_ptr(), vals) };
+    assert_eq!(buf, [1, 2, 3]);
+    // Also write in a way that the *first* element is OOB.
+    unsafe { intrinsics::simd_masked_store(mask2, buf.as_mut_ptr().wrapping_sub(1), vals) };
+    assert_eq!(buf, [2, 3, 4]);
+}
+
 fn main() {
     simd_mask();
     simd_ops_f32();
@@ -513,4 +569,5 @@ fn main() {
     simd_gather_scatter();
     simd_round();
     simd_intrinsics();
+    simd_masked_loadstore();
 }

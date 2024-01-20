@@ -18,6 +18,8 @@ pub fn check_async() {
 
     // if passes_ident!(async) == 1 {} // ERROR, reserved
     if passes_ident!(r#async) == 1 {} // OK
+    // if passes_tt!(async) == 1 {} // ERROR, reserved
+    if passes_tt!(r#async) == 1 {} // OK
     // one_async::async(); // ERROR, reserved
     // one_async::r#async(); // ERROR, unresolved name
     // two_async::async(); // ERROR, reserved

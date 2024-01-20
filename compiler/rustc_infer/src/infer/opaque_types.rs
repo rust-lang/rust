@@ -157,7 +157,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
-                        self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
+                        self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
                             hidden_type: self.tcx.def_span(b_def_id),
                             opaque_type: self.tcx.def_span(def_id),
@@ -456,7 +456,7 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
@@ -631,13 +631,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 ct_op: |ct| ct,
             });
 
-            if let ty::ClauseKind::Projection(projection) = predicate.kind().skip_binder() {
-                if projection.term.references_error() {
-                    // No point on adding any obligations since there's a type error involved.
-                    obligations.clear();
-                    return;
-                }
-            }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
             obligations.push(traits::Obligation::new(

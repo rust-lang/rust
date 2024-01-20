@@ -9,11 +9,21 @@ use url::Url;
 use crate::doc::DOC_MARKDOWN;
 
 pub fn check(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
-    for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
+    for orig_word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
         // Or even as in `_foo bar_` which is emphasized. Also preserve `::` as a prefix/suffix.
-        let mut word = word.trim_matches(|c: char| !c.is_alphanumeric() && c != ':');
+        let trim_pattern = |c: char| !c.is_alphanumeric() && c != ':';
+        let mut word = orig_word.trim_end_matches(trim_pattern);
+
+        // If word is immediately followed by `()`, claw it back.
+        if let Some(tmp_word) = orig_word.get(..word.len() + 2)
+            && tmp_word.ends_with("()")
+        {
+            word = tmp_word;
+        }
+
+        word = word.trim_start_matches(trim_pattern);
 
         // Remove leading or trailing single `:` which may be part of a sentence.
         if word.starts_with(':') && !word.starts_with("::") {
@@ -84,7 +94,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
         return;
     }
 
-    if has_underscore(word) || word.contains("::") || is_camel_case(word) {
+    if has_underscore(word) || word.contains("::") || is_camel_case(word) || word.ends_with("()") {
         let mut applicability = Applicability::MachineApplicable;
 
         span_lint_and_then(

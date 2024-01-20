@@ -293,12 +293,16 @@ impl<'tcx> InstanceDef<'tcx> {
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: &Instance<'_>,
-    type_length: rustc_session::Limit,
+    type_length: Option<rustc_session::Limit>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let args = tcx.lift(instance.args).expect("could not lift for printing");
 
-        let mut cx = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length);
+        let mut cx = if let Some(type_length) = type_length {
+            FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+        } else {
+            FmtPrinter::new(tcx, Namespace::ValueNS)
+        };
         cx.print_def_path(instance.def_id(), args)?;
         let s = cx.into_buffer();
         f.write_str(&s)
@@ -324,13 +328,13 @@ pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
 
 impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
     }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
+        fmt_instance(f, self, None)
     }
 }
 
@@ -426,7 +430,10 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
-        assert!(!tcx.is_closure(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
+        assert!(
+            !tcx.is_closure_or_coroutine(def_id),
+            "Called `resolve_for_fn_ptr` on closure: {def_id:?}"
+        );
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -488,7 +495,7 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            if tcx.is_closure(def) {
+                            if tcx.is_closure_or_coroutine(def) {
                                 debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
                                        def, def_id, args);
 
@@ -658,12 +665,10 @@ fn polymorphize<'tcx>(
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let def_id = instance.def_id();
-    let upvars_ty = if tcx.is_closure(def_id) {
-        Some(args.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).skip_binder().is_coroutine() {
-        Some(args.as_coroutine().tupled_upvars_ty())
-    } else {
-        None
+    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
+        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
+        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
@@ -689,13 +694,13 @@ fn polymorphize<'tcx>(
                         Ty::new_closure(self.tcx, def_id, polymorphized_args)
                     }
                 }
-                ty::Coroutine(def_id, args, movability) => {
+                ty::Coroutine(def_id, args) => {
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceDef::Item(def_id), args);
                     if args == polymorphized_args {
                         ty
                     } else {
-                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args, movability)
+                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args)
                     }
                 }
                 _ => ty.super_fold_with(self),

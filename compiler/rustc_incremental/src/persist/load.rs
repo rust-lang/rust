@@ -38,25 +38,26 @@ impl<T: Default> LoadResult<T> {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
-                sess.emit_fatal(errors::AssertNotLoaded);
+                sess.dcx().emit_fatal(errors::AssertNotLoaded);
             }
             (
                 Some(IncrementalStateAssertion::Loaded),
                 LoadResult::LoadDepGraph(..) | LoadResult::DataOutOfDate,
             ) => {
-                sess.emit_fatal(errors::AssertLoaded);
+                sess.dcx().emit_fatal(errors::AssertLoaded);
             }
             _ => {}
         };
 
         match self {
             LoadResult::LoadDepGraph(path, err) => {
-                sess.emit_warning(errors::LoadDepGraph { path, err });
+                sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
                 Default::default()
             }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
+                    sess.dcx()
+                        .emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
                 }
                 Default::default()
             }

@@ -64,7 +64,7 @@ fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: u
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
-                    sess.emit_err(LimitInvalid { span: attr.span, value_span, error_str });
+                    sess.dcx().emit_err(LimitInvalid { span: attr.span, value_span, error_str });
                 }
             }
         }

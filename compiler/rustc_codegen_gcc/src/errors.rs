@@ -1,5 +1,6 @@
 use rustc_errors::{
-    DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, IntoDiagnosticArg,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    IntoDiagnosticArg, Level,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -110,16 +111,20 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help(codegen_gcc_missing_features)]
 pub(crate) struct MissingFeatures;
 
-impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::codegen_gcc_target_feature_disable_or_enable);
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
+            fluent::codegen_gcc_target_feature_disable_or_enable
+        );
         if let Some(span) = self.span {
-            diag.set_span(span);
+            diag.span(span);
         };
         if let Some(missing_features) = self.missing_features {
             diag.subdiagnostic(missing_features);
         }
-        diag.set_arg("features", self.features.join(", "));
+        diag.arg("features", self.features.join(", "));
         diag
     }
 }

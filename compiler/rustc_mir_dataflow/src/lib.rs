@@ -34,6 +34,7 @@ mod errors;
 mod framework;
 pub mod impls;
 pub mod move_paths;
+pub mod points;
 pub mod rustc_peek;
 pub mod storage;
 pub mod un_derefer;

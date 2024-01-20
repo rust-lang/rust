@@ -38,10 +38,11 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -50,7 +51,7 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{ExpnId, ExpnKind, Span};
+use rustc_span::{hygiene, ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -75,7 +76,7 @@ pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
+    CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{Const, ConstData, ConstInt, Expr, ScalarInt, UnevaluatedConst, ValTree};
@@ -152,7 +153,7 @@ pub struct ResolverOutputs {
 
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
-    pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
@@ -192,7 +193,7 @@ pub struct ResolverAstLowering {
 
     pub next_node_id: ast::NodeId,
 
-    pub node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
     pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
@@ -201,6 +202,10 @@ pub struct ResolverAstLowering {
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
+
+    /// Information about functions signatures for delegation items expansion
+    pub has_self: LocalDefIdSet,
+    pub fn_parameter_counts: LocalDefIdMap<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -309,23 +314,22 @@ impl Visibility {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
-    /// `T: Trait`
+    /// `Type: Trait`
     NotConst,
-    /// `T: ~const Trait`
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
     ConstIfConst,
 }
 
 impl BoundConstness {
-    /// Reduce `self` and `constness` to two possible combined states instead of four.
-    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
-        match (constness, self) {
-            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
-            (_, this) => {
-                *this = BoundConstness::NotConst;
-                hir::Constness::NotConst
-            }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotConst => "",
+            Self::Const => "const",
+            Self::ConstIfConst => "~const",
         }
     }
 }
@@ -334,7 +338,8 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotConst => f.write_str("normal"),
-            Self::ConstIfConst => f.write_str("`~const`"),
+            Self::Const => f.write_str("const"),
+            Self::ConstIfConst => f.write_str("~const"),
         }
     }
 }
@@ -473,7 +478,7 @@ impl<'tcx> IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
-        self.kind().clone()
+        *self.kind()
     }
 }
 
@@ -655,7 +660,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
+    pub predicates: DefIdMap<&'tcx [(Clause<'tcx>, Span)]>,
 }
 
 impl<'tcx> Clause<'tcx> {
@@ -1481,10 +1486,10 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         if let Some(diag) = tcx
             .sess
-            .diagnostic()
+            .dcx()
             .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
         {
             diag.cancel();
@@ -1495,7 +1500,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.sess.create_err(OpaqueHiddenTypeMismatch {
+        tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
@@ -1772,9 +1777,10 @@ pub struct Destructor {
     pub constness: hir::Constness,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct VariantFlags(u8);
 bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct VariantFlags: u8 {
+    impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
@@ -1783,6 +1789,7 @@ bitflags! {
         const IS_RECOVERED = 1 << 1;
     }
 }
+rustc_data_structures::external_bitflags_debug! { VariantFlags }
 
 /// Definition of a variant -- a struct's fields or an enum variant.
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]
@@ -2515,21 +2522,20 @@ impl<'tcx> TyCtxt<'tcx> {
         (ident, scope)
     }
 
-    /// Returns `true` if the debuginfo for `span` should be collapsed to the outermost expansion
-    /// site. Only applies when `Span` is the result of macro expansion.
+    /// Returns corrected span if the debuginfo for `span` should be collapsed to the outermost
+    /// expansion site (with collapse_debuginfo attribute if the corresponding feature enabled).
+    /// Only applies when `Span` is the result of macro expansion.
     ///
     /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a macro definition is annotated with `#[collapse_debuginfo]`.
+    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
     /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
     ///
     /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
-    pub fn should_collapse_debuginfo(self, span: Span) -> bool {
-        !self.sess.opts.unstable_opts.debug_macros
-            && if self.features().collapse_debuginfo {
-                span.in_macro_expansion_with_collapse_debuginfo()
-            } else {
-                span.from_expansion()
-            }
+    pub fn collapsed_debuginfo(self, span: Span, upto: Span) -> Span {
+        if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
+            return span;
+        }
+        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]
@@ -2656,7 +2662,7 @@ pub fn provide(providers: &mut Providers) {
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
     pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
-    pub incoherent_impls: FxHashMap<SimplifiedType, Vec<LocalDefId>>,
+    pub incoherent_impls: UnordMap<SimplifiedType, Vec<LocalDefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]

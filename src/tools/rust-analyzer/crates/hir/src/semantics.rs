@@ -13,15 +13,14 @@ use either::Either;
 use hir_def::{
     hir::Expr,
     lower::LowerCtx,
-    macro_id_to_def_id,
     nameres::MacroSubNs,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, InMacroFile, MacroCallId,
-    MacroFileId, MacroFileIdExt,
+    attrs::collect_attrs, db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo,
+    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,7 +28,7 @@ use smallvec::{smallvec, SmallVec};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasDocComments, HasGenericParams, HasLoopBody, IsString as _},
+    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
     match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
     TextRange, TextSize,
 };
@@ -40,8 +39,8 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
     DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
-    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, ToolModule, Trait, Type,
-    TypeAlias, TypeParam, VariantDef,
+    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Struct, ToolModule, Trait,
+    TupleField, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 pub enum DescendPreference {
@@ -229,6 +228,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.imp.to_module_def(file)
     }
+
+    pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
+        self.imp.to_def(s).map(Struct::from)
+    }
+
+    pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
+        self.imp.to_def(i).map(Impl::from)
+    }
 }
 
 impl<'db> SemanticsImpl<'db> {
@@ -341,9 +348,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = InFile::new(file_id, actual_macro_call);
         let krate = resolver.krate();
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            resolver
-                .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|(it, _)| macro_id_to_def_id(self.db.upcast(), it))
+            resolver.resolve_path_as_macro_def(self.db.upcast(), &path, Some(MacroSubNs::Bang))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -423,7 +428,7 @@ impl<'db> SemanticsImpl<'db> {
         if let Some(original_string) = ast::String::cast(original_token.clone()) {
             if let Some(quote) = original_string.open_quote_text_range() {
                 return self
-                    .descend_into_macros(DescendPreference::SameText, original_token.clone())
+                    .descend_into_macros(DescendPreference::SameText, original_token)
                     .into_iter()
                     .find_map(|token| {
                         self.resolve_offset_in_format_args(
@@ -512,8 +517,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with. If `offset` points into the token's range, it will
-    /// be considered for the mapping in case of inline format args.
+    /// expansion that it is associated with.
     pub fn descend_into_macros(
         &self,
         mode: DescendPreference,
@@ -673,11 +677,22 @@ impl<'db> SemanticsImpl<'db> {
                             }
                             _ => 0,
                         };
+                        // FIXME: here, the attribute's text range is used to strip away all
+                        // entries from the start of the attribute "list" up the invoking
+                        // attribute. But in
+                        // ```
+                        // mod foo {
+                        //     #![inner]
+                        // }
+                        // ```
+                        // we don't wanna strip away stuff in the `mod foo {` range, that is
+                        // here if the id corresponds to an inner attribute we got strip all
+                        // text ranges of the outer ones, and then all of the inner ones up
+                        // to the invoking attribute so that the inbetween is ignored.
                         let text_range = item.syntax().text_range();
-                        let start = item
-                            .doc_comments_and_attrs()
+                        let start = collect_attrs(&item)
                             .nth(attr_id)
-                            .map(|attr| match attr {
+                            .map(|attr| match attr.1 {
                                 Either::Left(it) => it.syntax().text_range().start(),
                                 Either::Right(it) => it.syntax().text_range().start(),
                             })
@@ -839,7 +854,7 @@ impl<'db> SemanticsImpl<'db> {
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+        self.wrap_node_infile(node).original_ast_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id.into());
                 value
@@ -937,10 +952,10 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
         let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
-        let ty = hir_ty::TyLoweringContext::new(
+        let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
-            analyze.resolver.module().into(),
+            analyze.resolver.type_owner(),
         )
         .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
@@ -1070,14 +1085,14 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }
 
-    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Either<Field, TupleField>> {
         self.analyze(field.syntax())?.resolve_field(self.db, field)
     }
 
     pub fn resolve_field_fallback(
         &self,
         field: &ast::FieldExpr,
-    ) -> Option<Either<Field, Function>> {
+    ) -> Option<Either<Either<Field, TupleField>, Function>> {
         self.analyze(field.syntax())?.resolve_field_fallback(self.db, field)
     }
 

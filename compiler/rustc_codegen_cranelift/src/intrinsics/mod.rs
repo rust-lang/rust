@@ -5,7 +5,7 @@ macro_rules! intrinsic_args {
     ($fx:expr, $args:expr => ($($arg:tt),*); $intrinsic:expr) => {
         #[allow(unused_parens)]
         let ($($arg),*) = if let [$($arg),*] = $args {
-            ($(codegen_operand($fx, $arg)),*)
+            ($(codegen_operand($fx, &($arg).node)),*)
         } else {
             $crate::intrinsics::bug_on_incorrect_arg_count($intrinsic);
         };
@@ -22,6 +22,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::GenericArgsRef;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
@@ -37,7 +38,7 @@ fn report_atomic_type_validation_error<'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) {
-    fx.tcx.sess.span_err(
+    fx.tcx.dcx().span_err(
         span,
         format!(
             "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
@@ -263,7 +264,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
 pub(crate) fn codegen_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     destination: CPlace<'tcx>,
     target: Option<BasicBlock>,
     source_info: mir::SourceInfo,
@@ -301,7 +302,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 fn codegen_float_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
@@ -353,18 +354,21 @@ fn codegen_float_intrinsic_call<'tcx>(
     let (a, b, c);
     let args = match args {
         [x] => {
-            a = [codegen_operand(fx, x).load_scalar(fx)];
+            a = [codegen_operand(fx, &x.node).load_scalar(fx)];
             &a as &[_]
         }
         [x, y] => {
-            b = [codegen_operand(fx, x).load_scalar(fx), codegen_operand(fx, y).load_scalar(fx)];
+            b = [
+                codegen_operand(fx, &x.node).load_scalar(fx),
+                codegen_operand(fx, &y.node).load_scalar(fx),
+            ];
             &b
         }
         [x, y, z] => {
             c = [
-                codegen_operand(fx, x).load_scalar(fx),
-                codegen_operand(fx, y).load_scalar(fx),
-                codegen_operand(fx, z).load_scalar(fx),
+                codegen_operand(fx, &x.node).load_scalar(fx),
+                codegen_operand(fx, &y.node).load_scalar(fx),
+                codegen_operand(fx, &z.node).load_scalar(fx),
             ];
             &c
         }
@@ -422,7 +426,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     instance: Instance<'tcx>,
     intrinsic: Symbol,
     generic_args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     destination: Option<BasicBlock>,
     source_info: mir::SourceInfo,
@@ -487,13 +491,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let size = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                size
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64)
+                None
             };
+            let (size, _align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         }
         sym::min_align_of_val => {
@@ -502,13 +505,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let align = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                align
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
+                None
             };
+            let (_size, align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 
@@ -688,7 +690,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             }
                         })
                     });
-                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, Some(source_info.span));
                     return;
                 }
             }
@@ -787,7 +789,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -818,7 +820,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -1247,7 +1249,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // FIXME implement variadics in cranelift
         sym::va_copy | sym::va_arg | sym::va_end => {
-            fx.tcx.sess.span_fatal(
+            fx.tcx.dcx().span_fatal(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
             );
@@ -1255,7 +1257,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .span_fatal(source_info.span, format!("unsupported intrinsic {}", intrinsic));
         }
     }

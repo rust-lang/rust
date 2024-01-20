@@ -1,11 +1,8 @@
 use base_db::{SourceDatabase, SourceDatabaseExt};
+use test_fixture::WithFixture;
 use triomphe::Arc;
 
-use crate::{
-    db::DefDatabase,
-    nameres::tests::{TestDB, WithFixture},
-    AdtId, ModuleDefId,
-};
+use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
 
 fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: &str) {
     let (mut db, pos) = TestDB::with_position(ra_fixture_initial);

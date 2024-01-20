@@ -146,7 +146,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
             self.cx.include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
-                    self.cx.shared.tcx.sess.span_err(
+                    self.cx.shared.tcx.dcx().span_err(
                         span,
                         format!(
                             "failed to render source code for `{filename}`: {e}",

@@ -215,7 +215,7 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("expr", self.expr.as_deref().unwrap_or("NONE"));
+        diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
         if self.expr_span.between(self.fru_span).is_empty() {
@@ -573,13 +573,13 @@ impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
     {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to);
                 diag.span_label(span, msg);
-                let msg = f(diag, crate::fluent_generated::hir_typeck_note.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_note);
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from);
                 diag.span_label(span, msg);
             }
         }

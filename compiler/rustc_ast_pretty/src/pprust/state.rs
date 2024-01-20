@@ -17,7 +17,7 @@ use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
 use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
-use rustc_ast::{GenericArg, GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::{GenericArg, GenericBound, SelfKind};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
@@ -1096,14 +1096,22 @@ impl<'a> State<'a> {
             ast::StmtKind::Item(item) => self.print_item(item),
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                self.print_expr_outer_attr_style(
+                    expr,
+                    false,
+                    FixupContext { stmt: true, ..FixupContext::default() },
+                );
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.word(";");
                 }
             }
             ast::StmtKind::Semi(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                self.print_expr_outer_attr_style(
+                    expr,
+                    false,
+                    FixupContext { stmt: true, ..FixupContext::default() },
+                );
                 self.word(";");
             }
             ast::StmtKind::Empty => {
@@ -1155,7 +1163,11 @@ impl<'a> State<'a> {
                 ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                    self.print_expr_outer_attr_style(
+                        expr,
+                        false,
+                        FixupContext { stmt: true, ..FixupContext::default() },
+                    );
                     self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
                 }
                 _ => self.print_stmt(st),
@@ -1427,7 +1439,7 @@ impl<'a> State<'a> {
                 }
                 self.nbsp();
                 self.word("{");
-                let empty = fields.is_empty() && !etc;
+                let empty = fields.is_empty() && *etc == ast::PatFieldsRest::None;
                 if !empty {
                     self.space();
                 }
@@ -1445,7 +1457,7 @@ impl<'a> State<'a> {
                     },
                     |f| f.pat.span,
                 );
-                if *etc {
+                if *etc == ast::PatFieldsRest::Rest {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
@@ -1507,6 +1519,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::MacCall(m) => self.print_mac(m),
+            PatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }
@@ -1559,26 +1576,20 @@ impl<'a> State<'a> {
 
             match bound {
                 GenericBound::Trait(tref, modifier) => {
-                    match modifier {
-                        TraitBoundModifier::None => {}
-                        TraitBoundModifier::Negative => {
-                            self.word("!");
-                        }
-                        TraitBoundModifier::Maybe => {
-                            self.word("?");
-                        }
-                        TraitBoundModifier::MaybeConst(_) => {
-                            self.word_space("~const");
-                        }
-                        TraitBoundModifier::MaybeConstNegative => {
-                            self.word_space("~const");
-                            self.word("!");
-                        }
-                        TraitBoundModifier::MaybeConstMaybe => {
-                            self.word_space("~const");
-                            self.word("?");
+                    match modifier.constness {
+                        ast::BoundConstness::Never => {}
+                        ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
+                            self.word_space(modifier.constness.as_str());
                         }
                     }
+
+                    match modifier.polarity {
+                        ast::BoundPolarity::Positive => {}
+                        ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+                            self.word(modifier.polarity.as_str());
+                        }
+                    }
+
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => self.print_lifetime(*lt),
@@ -1597,7 +1608,9 @@ impl<'a> State<'a> {
             }
             match bound {
                 ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
-                _ => panic!(),
+                _ => {
+                    panic!("expected a lifetime bound, found a trait bound")
+                }
             }
         }
     }

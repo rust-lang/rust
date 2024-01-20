@@ -4,7 +4,6 @@ use clippy_utils::{def_path_def_ids, trait_ref_of_method};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::query::Key;
 use rustc_middle::ty::{Adt, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -166,7 +165,7 @@ impl MutableKeyType {
             // Determines if a type contains interior mutability which would affect its implementation of
             // [`Hash`] or [`Ord`].
             if is_interior_mut_ty(cx, subst_ty)
-                && !matches!(subst_ty.ty_adt_id(), Some(adt_id) if self.ignore_mut_def_ids.contains(&adt_id))
+                && !matches!(subst_ty.ty_adt_def(), Some(adt) if self.ignore_mut_def_ids.contains(&adt.did()))
             {
                 span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
             }

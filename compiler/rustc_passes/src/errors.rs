@@ -6,8 +6,8 @@ use std::{
 use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
-    error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticSymbolList, ErrorGuaranteed,
-    IntoDiagnostic, MultiSpan,
+    error_code, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    DiagnosticSymbolList, EmissionGuarantee, IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -813,6 +813,12 @@ pub struct UnknownExternLangItem {
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
+#[diag(passes_panic_unwind_without_std)]
+#[help]
+#[note]
+pub struct PanicUnwindWithoutStd;
+
+#[derive(Diagnostic)]
 #[diag(passes_missing_lang_item)]
 #[note]
 #[help]
@@ -863,15 +869,13 @@ pub struct ItemFollowingInnerAttr {
     pub kind: &'static str,
 }
 
-impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidAttrAtCrateLevel {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'_ rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::passes_invalid_attr_at_crate_level);
-        diag.set_span(self.span);
-        diag.set_arg("name", self.name);
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag =
+            DiagnosticBuilder::new(dcx, level, fluent::passes_invalid_attr_at_crate_level);
+        diag.span(self.span);
+        diag.arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
         // of the attribute span
         if let Some(span) = self.sugg_span {
@@ -879,11 +883,11 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
                 span,
                 fluent::passes_suggestion,
                 String::new(),
-                rustc_errors::Applicability::MachineApplicable,
+                Applicability::MachineApplicable,
             );
         }
         if let Some(item) = self.item {
-            diag.set_arg("kind", item.kind);
+            diag.arg("kind", item.kind);
             diag.span_label(item.span, fluent::passes_invalid_attr_at_crate_level_item);
         }
         diag
@@ -1016,18 +1020,13 @@ pub struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::passes_break_non_loop,
-            error_code!(E0571),
-        );
-        diag.set_arg("kind", self.kind);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_break_non_loop);
+        diag.span(self.span);
+        diag.code(error_code!(E0571));
+        diag.arg("kind", self.kind);
         diag.span_label(self.span, fluent::passes_label);
         if let Some(head) = self.head {
             diag.span_label(head, fluent::passes_label2);
@@ -1047,7 +1046,7 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
                     // This error is redundant, we will have already emitted a
                     // suggestion to use the label when `segment` wasn't found
                     // (hence the `Res::Err` check).
-                    diag.delay_as_bug();
+                    diag.downgrade_to_delayed_bug();
                 }
                 _ => {
                     diag.span_suggestion(
@@ -1165,17 +1164,12 @@ pub struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::passes_naked_functions_asm_block,
-            error_code!(E0787),
-        );
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_naked_functions_asm_block);
+        diag.span(self.span);
+        diag.code(error_code!(E0787));
         for span in self.multiple_asms.iter() {
             diag.span_label(*span, fluent::passes_label_multiple_asm);
         }
@@ -1281,20 +1275,15 @@ pub struct NoMainErr {
     pub add_teach_note: bool,
 }
 
-impl<'a> IntoDiagnostic<'a> for NoMainErr {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for NoMainErr {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            DUMMY_SP,
-            fluent::passes_no_main_function,
-            error_code!(E0601),
-        );
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("filename", self.filename);
-        diag.set_arg("has_filename", self.has_filename);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_no_main_function);
+        diag.span(DUMMY_SP);
+        diag.code(error_code!(E0601));
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("filename", self.filename);
+        diag.arg("has_filename", self.has_filename);
         let note = if !self.non_main_fns.is_empty() {
             for &span in &self.non_main_fns {
                 diag.span_note(span, fluent::passes_here_is_main);
@@ -1311,7 +1300,7 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
         if self.file_empty {
             diag.note(note);
         } else {
-            diag.set_span(self.sp.shrink_to_hi());
+            diag.span(self.sp.shrink_to_hi());
             diag.span_label(self.sp.shrink_to_hi(), note);
         }
 
@@ -1344,29 +1333,28 @@ pub struct DuplicateLangItem {
     pub(crate) duplicate: Duplicate,
 }
 
-impl IntoDiagnostic<'_> for DuplicateLangItem {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err_with_code(
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
             match self.duplicate {
                 Duplicate::Plain => fluent::passes_duplicate_lang_item,
                 Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
                 Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
             },
-            error_code!(E0152),
         );
-        diag.set_arg("lang_item_name", self.lang_item_name);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("dependency_of", self.dependency_of);
-        diag.set_arg("path", self.path);
-        diag.set_arg("orig_crate_name", self.orig_crate_name);
-        diag.set_arg("orig_dependency_of", self.orig_dependency_of);
-        diag.set_arg("orig_path", self.orig_path);
+        diag.code(error_code!(E0152));
+        diag.arg("lang_item_name", self.lang_item_name);
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("dependency_of", self.dependency_of);
+        diag.arg("path", self.path);
+        diag.arg("orig_crate_name", self.orig_crate_name);
+        diag.arg("orig_dependency_of", self.orig_dependency_of);
+        diag.arg("orig_path", self.orig_path);
         if let Some(span) = self.local_span {
-            diag.set_span(span);
+            diag.span(span);
         }
         if let Some(span) = self.first_defined_span {
             diag.span_note(span, fluent::passes_first_defined_span);

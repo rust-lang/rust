@@ -5,11 +5,11 @@
 mod block;
 
 use rowan::Direction;
-use rustc_dependencies::lexer::unescape::{self, unescape_literal, Mode};
+use rustc_lexer::unescape::{self, unescape_literal, Mode};
 
 use crate::{
     algo,
-    ast::{self, HasAttrs, HasVisibility, IsString},
+    ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
@@ -105,6 +105,9 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
         }
         EE::NonAsciiCharInByte  => {
             "Byte literals must not contain non-ASCII characters"
+        }
+        EE::NulInCStr  => {
+            "C strings literals must not contain null characters"
         }
         EE::UnskippedWhitespaceWarning => "Whitespace after this escape is not skipped",
         EE::MultipleSkippedLinesWarning => "Multiple lines are skipped by this escape",

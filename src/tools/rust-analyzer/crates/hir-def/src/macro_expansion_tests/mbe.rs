@@ -1218,8 +1218,10 @@ m! {
 macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " Single Line Doc 1"]
-#[doc = "\n        MultiLines Doc\n    "] fn bar() {}
+#[doc = r" Single Line Doc 1"]
+#[doc = r"
+        MultiLines Doc
+    "] fn bar() {}
 "##]],
     );
 }
@@ -1260,8 +1262,10 @@ m! {
 macro_rules! m {
     ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " 錦瑟無端五十弦，一弦一柱思華年。"]
-#[doc = "\n        莊生曉夢迷蝴蝶，望帝春心託杜鵑。\n    "] fn bar() {}
+#[doc = r" 錦瑟無端五十弦，一弦一柱思華年。"]
+#[doc = r"
+        莊生曉夢迷蝴蝶，望帝春心託杜鵑。
+    "] fn bar() {}
 "##]],
     );
 }
@@ -1281,7 +1285,7 @@ m! {
 macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " \\ \" \'"] fn bar() {}
+#[doc = r#" \ " '"#] fn bar() {}
 "##]],
     );
 }

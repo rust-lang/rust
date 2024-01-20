@@ -2,11 +2,11 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{ast_id_map::AstIdMap, span::SpanMapRef, HirFileId};
+use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef, HirFileId};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
-    generics::{GenericParams, TypeParamData, TypeParamProvenance},
+    generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
     type_ref::{LifetimeRef, TraitBoundModifier, TraitRef},
     LocalLifetimeParamId, LocalTypeOrConstParamId,
 };
@@ -386,17 +386,16 @@ impl<'a> Ctx<'a> {
             flags |= FnFlags::HAS_UNSAFE_KW;
         }
 
-        let mut res = Function {
+        let res = Function {
             name,
             visibility,
-            explicit_generic_params: Interned::new(GenericParams::default()),
+            explicit_generic_params: self.lower_generic_params(HasImplicitSelf::No, func),
             abi,
             params,
             ret_type: Interned::new(ret_type),
             ast_id,
             flags,
         };
-        res.explicit_generic_params = self.lower_generic_params(HasImplicitSelf::No, func);
 
         Some(id(self.data().functions.alloc(res)))
     }
@@ -549,7 +548,7 @@ impl<'a> Ctx<'a> {
             path,
             ast_id,
             expand_to,
-            call_site: span_map.span_for_range(m.syntax().text_range()).ctx,
+            call_site: span_map.span_for_range(m.syntax().text_range()),
         };
         Some(id(self.data().macro_calls.alloc(res)))
     }
@@ -562,13 +561,13 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().macro_rules.alloc(res)))
     }
 
-    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<MacroDef>> {
+    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<Macro2>> {
         let name = m.name().map(|it| it.as_name())?;
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
-        let res = MacroDef { name, ast_id, visibility };
+        let res = Macro2 { name, ast_id, visibility };
         Some(id(self.data().macro_defs.alloc(res)))
     }
 
@@ -604,7 +603,7 @@ impl<'a> Ctx<'a> {
         has_implicit_self: HasImplicitSelf,
         node: &dyn ast::HasGenericParams,
     ) -> Interned<GenericParams> {
-        let mut generics = GenericParams::default();
+        let mut generics = GenericParamsCollector::default();
 
         if let HasImplicitSelf::Yes(bounds) = has_implicit_self {
             // Traits and trait aliases get the Self type as an implicit first type parameter.
@@ -642,8 +641,7 @@ impl<'a> Ctx<'a> {
         };
         generics.fill(&self.body_ctx, node, add_param_attrs);
 
-        generics.shrink_to_fit();
-        Interned::new(generics)
+        Interned::new(generics.finish())
     }
 
     fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Box<[Interned<TypeBound>]> {

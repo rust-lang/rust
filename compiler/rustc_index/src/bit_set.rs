@@ -9,7 +9,8 @@ use std::slice;
 use arrayvec::ArrayVec;
 use smallvec::{smallvec, SmallVec};
 
-use rustc_macros::{Decodable, Encodable};
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
 
 use crate::{Idx, IndexVec};
 
@@ -111,7 +112,8 @@ macro_rules! bit_relations_inherent_impls {
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-#[derive(Eq, PartialEq, Hash, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[derive(Eq, PartialEq, Hash)]
 pub struct BitSet<T> {
     domain_size: usize,
     words: SmallVec<[Word; 2]>,
@@ -491,10 +493,22 @@ impl<T: Idx> ChunkedBitSet<T> {
         match *chunk {
             Zeros(chunk_domain_size) => {
                 if chunk_domain_size > 1 {
-                    // We take some effort to avoid copying the words.
-                    let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
-                    // SAFETY: `words` can safely be all zeroes.
-                    let mut words = unsafe { words.assume_init() };
+                    #[cfg(feature = "nightly")]
+                    let mut words = {
+                        // We take some effort to avoid copying the words.
+                        let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        unsafe { words.assume_init() }
+                    };
+                    #[cfg(not(feature = "nightly"))]
+                    let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
+                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        let words = unsafe { words.assume_init() };
+                        // Unfortunate possibly-large copy
+                        Rc::new(words)
+                    };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 
                     let (word_index, mask) = chunk_word_index_and_mask(elem);
@@ -545,10 +559,22 @@ impl<T: Idx> ChunkedBitSet<T> {
             Zeros(_) => false,
             Ones(chunk_domain_size) => {
                 if chunk_domain_size > 1 {
-                    // We take some effort to avoid copying the words.
-                    let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
-                    // SAFETY: `words` can safely be all zeroes.
-                    let mut words = unsafe { words.assume_init() };
+                    #[cfg(feature = "nightly")]
+                    let mut words = {
+                        // We take some effort to avoid copying the words.
+                        let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        unsafe { words.assume_init() }
+                    };
+                    #[cfg(not(feature = "nightly"))]
+                    let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
+                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        let words = unsafe { words.assume_init() };
+                        // Unfortunate possibly-large copy
+                        Rc::new(words)
+                    };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 
                     // Set only the bits in use.
@@ -1564,7 +1590,8 @@ impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[derive(Clone, Eq, PartialEq, Hash, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
@@ -1672,14 +1699,15 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let (read_start, read_end) = self.range(read);
         let (write_start, write_end) = self.range(write);
         let words = &mut self.words[..];
-        let mut changed = false;
+        let mut changed = 0;
         for (read_index, write_index) in iter::zip(read_start..read_end, write_start..write_end) {
             let word = words[write_index];
             let new_word = word | words[read_index];
             words[write_index] = new_word;
-            changed |= word != new_word;
+            // See `bitwise` for the rationale.
+            changed |= word ^ new_word;
         }
-        changed
+        changed != 0
     }
 
     /// Adds the bits from `with` to the bits from row `write`, and
@@ -1688,14 +1716,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert!(write.index() < self.num_rows);
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
-        let mut changed = false;
-        for (read_index, write_index) in iter::zip(0..with.words.len(), write_start..write_end) {
-            let word = self.words[write_index];
-            let new_word = word | with.words[read_index];
-            self.words[write_index] = new_word;
-            changed |= word != new_word;
-        }
-        changed
+        bitwise(&mut self.words[write_start..write_end], &with.words, |a, b| a | b)
     }
 
     /// Sets every cell in `row` to true.
@@ -1993,7 +2014,8 @@ impl std::fmt::Debug for FiniteBitSet<u32> {
 
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
-#[derive(Copy, Clone, Eq, PartialEq, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
 
 impl<T: FiniteBitSetTy> FiniteBitSet<T> {

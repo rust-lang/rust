@@ -1,6 +1,7 @@
-use base_db::{fixture::WithFixture, FileId};
+use base_db::FileId;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
+use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{

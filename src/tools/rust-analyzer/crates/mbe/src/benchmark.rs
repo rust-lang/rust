@@ -20,7 +20,10 @@ fn benchmark_parse_macro_rules() {
     let rules = macro_rules_fixtures_tt();
     let hash: usize = {
         let _pt = bench("mbe parse macro rules");
-        rules.values().map(|it| DeclarativeMacro::parse_macro_rules(it, true).rules.len()).sum()
+        rules
+            .values()
+            .map(|it| DeclarativeMacro::parse_macro_rules(it, true, true).rules.len())
+            .sum()
     };
     assert_eq!(hash, 1144);
 }
@@ -38,7 +41,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt, |_| ());
+                let res = rules[&id].expand(&tt, |_| (), true, DUMMY);
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -50,7 +53,7 @@ fn benchmark_expand_macro_rules() {
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<DummyTestSpanData>> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true)))
+        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true, true)))
         .collect()
 }
 
@@ -64,8 +67,11 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let def_tt =
-                syntax_node_to_token_tree(rule.token_tree().unwrap().syntax(), DummyTestSpanMap);
+            let def_tt = syntax_node_to_token_tree(
+                rule.token_tree().unwrap().syntax(),
+                DummyTestSpanMap,
+                DUMMY,
+            );
             (id, def_tt)
         })
         .collect()
@@ -105,7 +111,7 @@ fn invocation_fixtures(
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
-                    if it.expand(&subtree, |_| ()).err.is_none() {
+                    if it.expand(&subtree, |_| (), true, DUMMY).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }
@@ -199,7 +205,7 @@ fn invocation_fixtures(
                 });
                 parent.token_trees.push(subtree.into());
             }
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. } => {}
         };
 
         // Simple linear congruential generator for deterministic result

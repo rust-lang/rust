@@ -83,7 +83,11 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
+            let env_ty = tcx.closure_env_ty(
+                Ty::new_closure(tcx, def_id, args),
+                args.as_closure().kind(),
+                env_region,
+            );
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
@@ -97,7 +101,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Coroutine(did, args, _) => {
+        ty::Coroutine(did, args) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();
 
@@ -114,14 +118,14 @@ fn fn_sig_for_fn_abi<'tcx>(
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_args = tcx.mk_args(&[env_ty.into()]);
             let env_ty = match coroutine_kind {
-                hir::CoroutineKind::Gen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // Iterator::next doesn't accept a pinned argument,
                     // unlike for all other coroutine kinds.
                     env_ty
                 }
-                hir::CoroutineKind::Async(_)
-                | hir::CoroutineKind::AsyncGen(_)
-                | hir::CoroutineKind::Coroutine => Ty::new_adt(tcx, pin_adt_ref, pin_args),
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
+                | hir::CoroutineKind::Coroutine(_) => Ty::new_adt(tcx, pin_adt_ref, pin_args),
             };
 
             // The `FnSig` and the `ret_ty` here is for a coroutines main
@@ -131,7 +135,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // or the `Iterator::next(...) -> Option` function in case this is a
             // special coroutine backing a gen construct.
             let (resume_ty, ret_ty) = match coroutine_kind {
-                hir::CoroutineKind::Async(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
                     // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                     assert_eq!(sig.yield_ty, tcx.types.unit);
 
@@ -156,7 +160,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (Some(context_mut_ref), ret_ty)
                 }
-                hir::CoroutineKind::Gen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // The signature should be `Iterator::next(_) -> Option<Yield>`
                     let option_did = tcx.require_lang_item(LangItem::Option, None);
                     let option_adt_ref = tcx.adt_def(option_did);
@@ -168,7 +172,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (None, ret_ty)
                 }
-                hir::CoroutineKind::AsyncGen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                     // The signature should be
                     // `AsyncIterator::poll_next(_, &mut Context<'_>) -> Poll<Option<Output>>`
                     assert_eq!(sig.return_ty, tcx.types.unit);
@@ -192,7 +196,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (Some(context_mut_ref), ret_ty)
                 }
-                hir::CoroutineKind::Coroutine => {
+                hir::CoroutineKind::Coroutine(_) => {
                     // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
                     let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                     let state_adt_ref = tcx.adt_def(state_did);
@@ -228,9 +232,9 @@ fn fn_sig_for_fn_abi<'tcx>(
 }
 
 #[inline]
-fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
+fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
-    match tcx.sess.target.adjust_abi(abi) {
+    match tcx.sess.target.adjust_abi(abi, c_variadic) {
         RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
@@ -488,7 +492,7 @@ fn fn_abi_new_uncached<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
 
-    let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
+    let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
     let extra_args = if sig.abi == RustCall {

@@ -215,7 +215,7 @@ fn emit_unused_generic_params_error<'tcx>(
         next_generics = generics.parent.map(|did| tcx.generics_of(did));
     }
 
-    tcx.sess.emit_err(UnusedGenericParamsHint { span: fn_span, param_spans, param_names });
+    tcx.dcx().emit_err(UnusedGenericParamsHint { span: fn_span, param_spans, param_names });
 }
 
 /// Visitor used to aggregate generic parameter uses.

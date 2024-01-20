@@ -19,7 +19,7 @@ use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 
@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
     pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
             let mut_let_span = lo.to(self.token.span);
-            self.sess.emit_err(errors::InvalidVariableDeclaration {
+            self.dcx().emit_err(errors::InvalidVariableDeclaration {
                 span: mut_let_span,
                 sub: errors::InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
             });
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.
-                self.sess.emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
+                self.dcx().emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
@@ -233,12 +233,12 @@ impl<'a> Parser<'a> {
             && let attrs @ [.., last] = &*attrs
         {
             if last.is_doc_comment() {
-                self.sess.emit_err(errors::DocCommentDoesNotDocumentAnything {
+                self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
                     span: last.span,
                     missing_comma: None,
                 });
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.sess.emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
+                self.dcx().emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
             }
         }
     }
@@ -258,7 +258,8 @@ impl<'a> Parser<'a> {
                     TrailingToken::None,
                 ))
             })?;
-        self.sess.emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
+        self.dcx()
+            .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
     }
 
@@ -286,7 +287,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
-            self.sess.emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
+            self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
             self.bump();
         }
 
@@ -385,10 +386,10 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
             if op.node.is_lazy() {
-                self.sess.emit_err(errors::InvalidExpressionInLetElse {
+                self.dcx().emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
-                    sugg: errors::WrapExpressionInParentheses {
+                    sugg: errors::WrapInParentheses::Expression {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
                     },
@@ -399,12 +400,19 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            self.sess.emit_err(errors::InvalidCurlyInLetElse {
-                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
-                sugg: errors::WrapExpressionInParentheses {
+            let sugg = match &trailing.kind {
+                ExprKind::MacCall(mac) => errors::WrapInParentheses::MacroArgs {
+                    left: mac.args.dspan.open,
+                    right: mac.args.dspan.close,
+                },
+                _ => errors::WrapInParentheses::Expression {
                     left: trailing.span.shrink_to_lo(),
                     right: trailing.span.shrink_to_hi(),
                 },
+            };
+            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
+                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                sugg,
             });
         }
     }
@@ -414,7 +422,7 @@ impl<'a> Parser<'a> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
                 // Recover `let x <op>= 1` as `let x = 1`
-                self.sess
+                self.dcx()
                     .emit_err(errors::CompoundAssignmentExpressionInLet { span: self.token.span });
                 self.bump();
                 true
@@ -442,9 +450,9 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace_msg(
         &mut self,
         msg: Cow<'static, str>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let sp = self.token.span;
-        let mut e = self.struct_span_err(sp, msg);
+        let mut e = self.dcx().struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like
@@ -662,7 +670,7 @@ impl<'a> Parser<'a> {
                     match expect_result {
                         // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
-                        Err(mut e) => {
+                        Err(e) => {
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
                                 e.delay_as_bug();
@@ -698,7 +706,7 @@ impl<'a> Parser<'a> {
                                         match self.parse_expr_labeled(label, false) {
                                             Ok(labeled_expr) => {
                                                 e.delay_as_bug();
-                                                self.sess.emit_err(MalformedLoopLabel {
+                                                self.dcx().emit_err(MalformedLoopLabel {
                                                     span: label.ident.span,
                                                     correct_label: label.ident,
                                                 });
@@ -715,7 +723,7 @@ impl<'a> Parser<'a> {
                                 _ => {}
                             }
 
-                            if let Err(mut e) =
+                            if let Err(e) =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
                             {
                                 if recover.no() {

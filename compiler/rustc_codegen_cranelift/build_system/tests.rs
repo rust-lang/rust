@@ -232,6 +232,13 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         if runner.is_native {
             let mut test_cmd = PORTABLE_SIMD.test(&runner.target_compiler, &runner.dirs);
             test_cmd.arg("-q");
+            // FIXME remove after portable-simd update
+            test_cmd
+                .arg("--")
+                .arg("--skip")
+                .arg("core_simd::swizzle::simd_swizzle")
+                .arg("--skip")
+                .arg("core_simd::vector::Simd<T,N>::lanes");
             spawn_and_wait(test_cmd);
         }
     }),

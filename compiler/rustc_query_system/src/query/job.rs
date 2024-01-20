@@ -4,9 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
-};
+use rustc_errors::{DiagCtxt, Diagnostic, DiagnosticBuilder, Level};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -558,10 +556,10 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 
 #[inline(never)]
 #[cold]
-pub(crate) fn report_cycle<'a>(
+pub fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: &CycleError,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'a> {
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);
@@ -604,18 +602,18 @@ pub(crate) fn report_cycle<'a>(
         note_span: (),
     };
 
-    cycle_diag.into_diagnostic(sess.diagnostic())
+    sess.dcx().create_err(cycle_diag)
 }
 
 pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
-    handler: &Handler,
+    dcx: &DiagCtxt,
     num_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
-    // a panic hook, which means that the global `Handler` may be in a weird
+    // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut count_printed = 0;
     let mut count_total = 0;
@@ -638,7 +636,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
                 ),
             );
             diag.span = query_info.job.span.into();
-            handler.force_print_diagnostic(diag);
+            dcx.force_print_diagnostic(diag);
             count_printed += 1;
         }
 

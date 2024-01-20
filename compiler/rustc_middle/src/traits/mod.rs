@@ -177,7 +177,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
-        // by using -Z verbose or just a CLI argument.
+        // by using -Z verbose-internals or just a CLI argument.
         self.code =
             variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self
@@ -289,7 +289,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType(Option<Span>),
+    SizedArgumentType(Option<hir::HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Yield type must be `Sized`.
@@ -429,8 +429,10 @@ pub enum ObligationCauseCode<'tcx> {
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
+        lhs_hir_id: hir::HirId,
+        rhs_hir_id: Option<hir::HirId>,
         rhs_span: Option<Span>,
-        is_lit: bool,
+        rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },
 
@@ -510,6 +512,21 @@ impl<'tcx> ObligationCauseCode<'tcx> {
         base_cause
     }
 
+    /// Returns the base obligation and the base trait predicate, if any, ignoring
+    /// derived obligations.
+    pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitPredicate<'tcx>>) {
+        let mut base_cause = self;
+        let mut base_trait_pred = None;
+        while let Some((parent_code, parent_pred)) = base_cause.parent() {
+            base_cause = parent_code;
+            if let Some(parent_pred) = parent_pred {
+                base_trait_pred = Some(parent_pred);
+            }
+        }
+
+        (base_cause, base_trait_pred)
+    }
+
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
         match self {
             FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
@@ -587,16 +604,13 @@ pub enum SelectionError<'tcx> {
     /// After a closure impl has selected, its "outputs" were evaluated
     /// (which for closures includes the "input" type params) and they
     /// didn't resolve. See `confirm_poly_trait_refs` for more.
-    OutputTypeParameterMismatch(Box<SelectionOutputTypeParameterMismatch<'tcx>>),
+    SignatureMismatch(Box<SignatureMismatchData<'tcx>>),
     /// The trait pointed by `DefId` is not object safe.
     TraitNotObjectSafe(DefId),
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
     Overflow(OverflowError),
-    /// Signaling that an error has already been emitted, to avoid
-    /// multiple errors being shown.
-    ErrorReporting,
     /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.
@@ -604,7 +618,7 @@ pub enum SelectionError<'tcx> {
 }
 
 #[derive(Clone, Debug, TypeVisitable)]
-pub struct SelectionOutputTypeParameterMismatch<'tcx> {
+pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::PolyTraitRef<'tcx>,
     pub expected_trait_ref: ty::PolyTraitRef<'tcx>,
     pub terr: ty::error::TypeError<'tcx>,

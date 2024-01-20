@@ -1,8 +1,7 @@
-use rustc_middle::mir;
 use rustc_span::Symbol;
-use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
+use super::{conditional_dot_product, round_all, round_first, test_bits_masked};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -104,41 +103,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert!(dest_len <= 4);
-
-                let imm = this.read_scalar(imm)?.to_u8()?;
-
-                let element_layout = left.layout.field(this, 0);
-
-                // Calculate dot product
-                // Elements are floating point numbers, but we can use `from_int`
-                // because the representation of 0.0 is all zero bits.
-                let mut sum = ImmTy::from_int(0u8, element_layout);
-                for i in 0..left_len {
-                    if imm & (1 << i.checked_add(4).unwrap()) != 0 {
-                        let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                        let right = this.read_immediate(&this.project_index(&right, i)?)?;
-
-                        let mul = this.wrapping_binary_op(mir::BinOp::Mul, &left, &right)?;
-                        sum = this.wrapping_binary_op(mir::BinOp::Add, &sum, &mul)?;
-                    }
-                }
-
-                // Write to destination (conditioned to imm)
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-
-                    if imm & (1 << i) != 0 {
-                        this.write_immediate(*sum, &dest)?;
-                    } else {
-                        this.write_scalar(Scalar::from_int(0u8, element_layout.size), &dest)?;
-                    }
-                }
+                conditional_dot_product(this, left, right, imm, dest)?;
             }
             // Used to implement the _mm_floor_ss, _mm_ceil_ss and _mm_round_ss
             // functions. Rounds the first element of `right` according to `rounding`
@@ -252,117 +217,23 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             // Used to implement the _mm_testz_si128, _mm_testc_si128
             // and _mm_testnzc_si128 functions.
-            // Tests `op & mask == 0`, `op & mask == mask` or
-            // `op & mask != 0 && op & mask != mask`
+            // Tests `(op & mask) == 0`, `(op & mask) == mask` or
+            // `(op & mask) != 0 && (op & mask) != mask`
             "ptestz" | "ptestc" | "ptestnzc" => {
                 let [op, mask] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (mask, mask_len) = this.operand_to_simd(mask)?;
-
-                assert_eq!(op_len, mask_len);
-
-                let f = match unprefixed_name {
-                    "ptestz" => |op, mask| op & mask == 0,
-                    "ptestc" => |op, mask| op & mask == mask,
-                    "ptestnzc" => |op, mask| op & mask != 0 && op & mask != mask,
+                let (all_zero, masked_set) = test_bits_masked(this, op, mask)?;
+                let res = match unprefixed_name {
+                    "ptestz" => all_zero,
+                    "ptestc" => masked_set,
+                    "ptestnzc" => !all_zero && !masked_set,
                     _ => unreachable!(),
                 };
 
-                let mut all_zero = true;
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_u64()?;
-                    let mask = this.read_scalar(&this.project_index(&mask, i)?)?.to_u64()?;
-                    all_zero &= f(op, mask);
-                }
-
-                this.write_scalar(Scalar::from_i32(all_zero.into()), dest)?;
+                this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }
         Ok(EmulateForeignItemResult::NeedsJumping)
-    }
-}
-
-// Rounds the first element of `right` according to `rounding`
-// and copies the remaining elements from `left`.
-fn round_first<'tcx, F: rustc_apfloat::Float>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    left: &OpTy<'tcx, Provenance>,
-    right: &OpTy<'tcx, Provenance>,
-    rounding: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = this.operand_to_simd(left)?;
-    let (right, right_len) = this.operand_to_simd(right)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    let rounding = rounding_from_imm(this.read_scalar(rounding)?.to_i32()?)?;
-
-    let op0: F = this.read_scalar(&this.project_index(&right, 0)?)?.to_float()?;
-    let res = op0.round_to_integral(rounding).value;
-    this.write_scalar(
-        Scalar::from_uint(res.to_bits(), Size::from_bits(F::BITS)),
-        &this.project_index(&dest, 0)?,
-    )?;
-
-    for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&left, i)?,
-            &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
-        )?;
-    }
-
-    Ok(())
-}
-
-// Rounds all elements of `op` according to `rounding`.
-fn round_all<'tcx, F: rustc_apfloat::Float>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    op: &OpTy<'tcx, Provenance>,
-    rounding: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, op_len);
-
-    let rounding = rounding_from_imm(this.read_scalar(rounding)?.to_i32()?)?;
-
-    for i in 0..dest_len {
-        let op: F = this.read_scalar(&this.project_index(&op, i)?)?.to_float()?;
-        let res = op.round_to_integral(rounding).value;
-        this.write_scalar(
-            Scalar::from_uint(res.to_bits(), Size::from_bits(F::BITS)),
-            &this.project_index(&dest, i)?,
-        )?;
-    }
-
-    Ok(())
-}
-
-/// Gets equivalent `rustc_apfloat::Round` from rounding mode immediate of
-/// `round.{ss,sd,ps,pd}` intrinsics.
-fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::Round> {
-    // The fourth bit of `rounding` only affects the SSE status
-    // register, which cannot be accessed from Miri (or from Rust,
-    // for that matter), so we can ignore it.
-    match rounding & !0b1000 {
-        // When the third bit is 0, the rounding mode is determined by the
-        // first two bits.
-        0b000 => Ok(rustc_apfloat::Round::NearestTiesToEven),
-        0b001 => Ok(rustc_apfloat::Round::TowardNegative),
-        0b010 => Ok(rustc_apfloat::Round::TowardPositive),
-        0b011 => Ok(rustc_apfloat::Round::TowardZero),
-        // When the third bit is 1, the rounding mode is determined by the
-        // SSE status register. Since we do not support modifying it from
-        // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
-        0b100..=0b111 => Ok(rustc_apfloat::Round::NearestTiesToEven),
-        rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
     }
 }

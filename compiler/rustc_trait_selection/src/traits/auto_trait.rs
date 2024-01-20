@@ -477,7 +477,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut vid_map: FxHashMap<RegionTarget<'cx>, RegionDeps<'cx>> = FxHashMap::default();
         let mut finished_map = FxHashMap::default();
 
-        for constraint in regions.constraints.keys() {
+        for (constraint, _) in &regions.constraints {
             match constraint {
                 &Constraint::VarSubVar(r1, r2) => {
                     {
@@ -787,7 +787,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let reported =
-                                        tcx.sess.emit_err(UnableToConstructConstantValue {
+                                        tcx.dcx().emit_err(UnableToConstructConstantValue {
                                             span: tcx.def_span(unevaluated.def),
                                             unevaluated: unevaluated,
                                         });

@@ -16,7 +16,6 @@ use hir_def::{
     hir::{BindingId, ExprId, Pat, PatId},
     lang_item::LangItem,
     lower::LowerCtx,
-    macro_id_to_def_id,
     nameres::MacroSubNs,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
@@ -51,7 +50,7 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
     BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
-    Struct, ToolModule, Trait, TraitAlias, Type, TypeAlias, Variant,
+    Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, Variant,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -298,7 +297,11 @@ impl SourceAnalyzer {
             Some((f_in_trait, substs)) => Some(Either::Left(
                 self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into(),
             )),
-            None => inference_result.field_resolution(expr_id).map(Into::into).map(Either::Right),
+            None => inference_result
+                .field_resolution(expr_id)
+                .and_then(Either::left)
+                .map(Into::into)
+                .map(Either::Right),
         }
     }
 
@@ -306,20 +309,28 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<Field> {
+    ) -> Option<Either<Field, TupleField>> {
+        let &(def, ..) = self.def.as_ref()?;
         let expr_id = self.expr_id(db, &field.clone().into())?;
-        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
+        self.infer.as_ref()?.field_resolution(expr_id).map(|it| {
+            it.map_either(Into::into, |f| TupleField { owner: def, tuple: f.tuple, index: f.index })
+        })
     }
 
     pub(crate) fn resolve_field_fallback(
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<Either<Field, Function>> {
+    ) -> Option<Either<Either<Field, TupleField>, Function>> {
+        let &(def, ..) = self.def.as_ref()?;
         let expr_id = self.expr_id(db, &field.clone().into())?;
         let inference_result = self.infer.as_ref()?;
         match inference_result.field_resolution(expr_id) {
-            Some(field) => Some(Either::Left(field.into())),
+            Some(field) => Some(Either::Left(field.map_either(Into::into, |f| TupleField {
+                owner: def,
+                tuple: f.tuple,
+                index: f.index,
+            }))),
             None => inference_result.method_resolution(expr_id).map(|(f, substs)| {
                 Either::Right(self.resolve_impl_method_or_trait_def(db, f, substs).into())
             }),
@@ -771,9 +782,7 @@ impl SourceAnalyzer {
     ) -> Option<MacroFileId> {
         let krate = self.resolver.krate();
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
-            self.resolver
-                .resolve_path_as_macro(db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|(it, _)| macro_id_to_def_id(db.upcast(), it))
+            self.resolver.resolve_path_as_macro_def(db.upcast(), &path, Some(MacroSubNs::Bang))
         })?;
         // why the 64?
         Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
@@ -1040,8 +1049,9 @@ fn resolve_hir_path_(
     let types = || {
         let (ty, unresolved) = match path.type_anchor() {
             Some(type_ref) => {
-                let (_, res) = TyLoweringContext::new(db, resolver, resolver.module().into())
-                    .lower_ty_ext(type_ref);
+                let (_, res) =
+                    TyLoweringContext::new_maybe_unowned(db, resolver, resolver.type_owner())
+                        .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
@@ -1162,9 +1172,40 @@ fn resolve_hir_path_qualifier(
     resolver: &Resolver,
     path: &Path,
 ) -> Option<PathResolution> {
-    resolver
-        .resolve_path_in_type_ns_fully(db.upcast(), &path)
-        .map(|ty| match ty {
+    (|| {
+        let (ty, unresolved) = match path.type_anchor() {
+            Some(type_ref) => {
+                let (_, res) =
+                    TyLoweringContext::new_maybe_unowned(db, resolver, resolver.type_owner())
+                        .lower_ty_ext(type_ref);
+                res.map(|ty_ns| (ty_ns, path.segments().first()))
+            }
+            None => {
+                let (ty, remaining_idx, _) = resolver.resolve_path_in_type_ns(db.upcast(), path)?;
+                match remaining_idx {
+                    Some(remaining_idx) => {
+                        if remaining_idx + 1 == path.segments().len() {
+                            Some((ty, path.segments().last()))
+                        } else {
+                            None
+                        }
+                    }
+                    None => Some((ty, None)),
+                }
+            }
+        }?;
+
+        // If we are in a TypeNs for a Trait, and we have an unresolved name, try to resolve it as a type
+        // within the trait's associated types.
+        if let (Some(unresolved), &TypeNs::TraitId(trait_id)) = (&unresolved, &ty) {
+            if let Some(type_alias_id) =
+                db.trait_data(trait_id).associated_type_by_name(unresolved.name)
+            {
+                return Some(PathResolution::Def(ModuleDefId::from(type_alias_id).into()));
+            }
+        }
+
+        let res = match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
@@ -1175,11 +1216,28 @@ fn resolve_hir_path_qualifier(
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
             TypeNs::TraitAliasId(it) => PathResolution::Def(TraitAlias::from(it).into()),
-        })
-        .or_else(|| {
-            resolver
-                .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
-                .take_types()
-                .map(|it| PathResolution::Def(it.into()))
-        })
+        };
+        match unresolved {
+            Some(unresolved) => resolver
+                .generic_def()
+                .and_then(|def| {
+                    hir_ty::associated_type_shorthand_candidates(
+                        db,
+                        def,
+                        res.in_type_ns()?,
+                        |name, id| (name == unresolved.name).then_some(id),
+                    )
+                })
+                .map(TypeAlias::from)
+                .map(Into::into)
+                .map(PathResolution::Def),
+            None => Some(res),
+        }
+    })()
+    .or_else(|| {
+        resolver
+            .resolve_module_path_in_items(db.upcast(), path.mod_path()?)
+            .take_types()
+            .map(|it| PathResolution::Def(it.into()))
+    })
 }

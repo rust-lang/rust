@@ -69,7 +69,7 @@ impl OngoingCodegen {
 
             let module_codegen_result = match module_codegen_result {
                 Ok(module_codegen_result) => module_codegen_result,
-                Err(err) => sess.fatal(err),
+                Err(err) => sess.dcx().fatal(err),
             };
             let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
                 module_codegen_result;
@@ -108,7 +108,7 @@ impl OngoingCodegen {
 
         self.concurrency_limiter.finished();
 
-        sess.abort_if_errors();
+        sess.dcx().abort_if_errors();
 
         (
             CodegenResults {
@@ -422,7 +422,7 @@ pub(crate) fn run_aot(
                                     backend_config.clone(),
                                     global_asm_config.clone(),
                                     cgu.name(),
-                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
+                                    concurrency_limiter.acquire(tcx.dcx()),
                                 ),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
@@ -455,7 +455,7 @@ pub(crate) fn run_aot(
             "allocator_shim".to_owned(),
         ) {
             Ok(allocator_module) => Some(allocator_module),
-            Err(err) => tcx.sess.fatal(err),
+            Err(err) => tcx.dcx().fatal(err),
         }
     } else {
         None
@@ -478,7 +478,7 @@ pub(crate) fn run_aot(
             let obj = create_compressed_metadata_file(tcx.sess, &metadata, &symbol_name);
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.sess.fatal(format!("error writing metadata object file: {}", err));
+                tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
             }
 
             (metadata_cgu_name, tmp_file)

@@ -220,7 +220,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         let sess = self.sess;
         match self.build_inner(output) {
             Ok(any_members) => any_members,
-            Err(e) => sess.emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(e) => sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
@@ -234,7 +234,7 @@ impl<'a> ArArchiveBuilder<'a> {
             "coff" => ArchiveKind::Coff,
             "aix_big" => ArchiveKind::AixBig,
             kind => {
-                self.sess.emit_fatal(UnknownArchiveKind { kind });
+                self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
             }
         };
 

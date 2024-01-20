@@ -4,7 +4,7 @@ use gccjit::OutputKind;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
-use rustc_errors::Handler;
+use rustc_errors::DiagCtxt;
 use rustc_fs_util::link_or_copy;
 use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
@@ -13,7 +13,7 @@ use rustc_target::spec::SplitDebuginfo;
 use crate::{GccCodegenBackend, GccContext};
 use crate::errors::CopyBitcode;
 
-pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &Handler, module: ModuleCodegen<GccContext>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
+pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, dcx: &DiagCtxt, module: ModuleCodegen<GccContext>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("GCC_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;
@@ -127,12 +127,12 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, diag_hand
             EmitObj::Bitcode => {
                 debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
                 if let Err(err) = link_or_copy(&bc_out, &obj_out) {
-                    diag_handler.emit_err(CopyBitcode { err });
+                    dcx.emit_err(CopyBitcode { err });
                 }
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);
-                    ensure_removed(diag_handler, &bc_out);
+                    ensure_removed(dcx, &bc_out);
                 }
             }
 
@@ -148,7 +148,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, diag_hand
     ))
 }
 
-pub(crate) fn link(_cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &Handler, mut _modules: Vec<ModuleCodegen<GccContext>>) -> Result<ModuleCodegen<GccContext>, FatalError> {
+pub(crate) fn link(_cgcx: &CodegenContext<GccCodegenBackend>, _dcx: &DiagCtxt, mut _modules: Vec<ModuleCodegen<GccContext>>) -> Result<ModuleCodegen<GccContext>, FatalError> {
     unimplemented!();
 }
 

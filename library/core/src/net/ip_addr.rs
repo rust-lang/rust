@@ -407,7 +407,7 @@ impl IpAddr {
     }
 
     /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
-    /// return `self` as-is.
+    /// returns `self` as-is.
     ///
     /// # Examples
     ///
@@ -771,7 +771,11 @@ impl Ipv4Addr {
             || self.is_loopback()
             || self.is_link_local()
             // addresses reserved for future protocols (`192.0.0.0/24`)
-            ||(self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0)
+            // .9 and .10 are documented as globally reachable so they're excluded
+            || (
+                self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
+                && self.octets()[3] != 9 && self.octets()[3] != 10
+            )
             || self.is_documentation()
             || self.is_benchmarking()
             || self.is_reserved()
@@ -1437,7 +1441,7 @@ impl Ipv6Addr {
     /// - The [unspecified address] ([`is_unspecified`](Ipv6Addr::is_unspecified))
     /// - The [loopback address] ([`is_loopback`](Ipv6Addr::is_loopback))
     /// - IPv4-mapped addresses
-    /// - Addresses reserved for benchmarking
+    /// - Addresses reserved for benchmarking ([`is_benchmarking`](Ipv6Addr::is_benchmarking))
     /// - Addresses reserved for documentation ([`is_documentation`](Ipv6Addr::is_documentation))
     /// - Unique local addresses ([`is_unique_local`](Ipv6Addr::is_unique_local))
     /// - Unicast addresses with link-local scope ([`is_unicast_link_local`](Ipv6Addr::is_unicast_link_local))
@@ -1515,8 +1519,12 @@ impl Ipv6Addr {
                     // AS112-v6 (`2001:4:112::/48`)
                     || matches!(self.segments(), [0x2001, 4, 0x112, _, _, _, _, _])
                     // ORCHIDv2 (`2001:20::/28`)
-                    || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x2F)
+                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)`
+                    || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x3F)
                 ))
+            // 6to4 (`2002::/16`) – it's not explicitly documented as globally reachable,
+            // IANA says N/A.
+            || matches!(self.segments(), [0x2002, _, _, _, _, _, _, _])
             || self.is_documentation()
             || self.is_unique_local()
             || self.is_unicast_link_local())

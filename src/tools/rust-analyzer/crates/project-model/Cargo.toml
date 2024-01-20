@@ -14,8 +14,8 @@ doctest = false
 [dependencies]
 anyhow.workspace = true
 cargo_metadata.workspace = true
-rustc-hash = "1.1.0"
-semver = "1.0.14"
+rustc-hash.workspace = true
+semver.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 tracing.workspace = true
@@ -33,3 +33,6 @@ toolchain.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
+
+[lints]
+workspace = true

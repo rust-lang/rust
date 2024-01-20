@@ -19,6 +19,7 @@
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
 #![feature(let_chains)]
+#![feature(option_take_if)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]

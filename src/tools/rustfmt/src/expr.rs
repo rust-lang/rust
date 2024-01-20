@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ast, ptr, token};
+use rustc_ast::{ast, ptr, token, ForLoopKind};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
@@ -134,7 +134,7 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
-        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::While(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
@@ -682,9 +682,15 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
                 expr.span,
             ))
         }
-        ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
-        }
+        ast::ExprKind::ForLoop {
+            ref pat,
+            ref iter,
+            ref body,
+            label,
+            kind,
+        } => Some(ControlFlow::new_for(
+            pat, iter, body, label, expr.span, kind,
+        )),
         ast::ExprKind::Loop(ref block, label, _) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
@@ -771,6 +777,7 @@ impl<'a> ControlFlow<'a> {
         block: &'a ast::Block,
         label: Option<ast::Label>,
         span: Span,
+        kind: ForLoopKind,
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
@@ -778,7 +785,10 @@ impl<'a> ControlFlow<'a> {
             else_block: None,
             label,
             pat: Some(pat),
-            keyword: "for",
+            keyword: match kind {
+                ForLoopKind::For => "for",
+                ForLoopKind::ForAwait => "for await",
+            },
             matcher: "",
             connector: " in",
             allow_single_line: false,
@@ -1364,7 +1374,7 @@ pub(crate) fn can_be_overflowed_expr(
                 || context.config.overflow_delimited_expr()
         }
         ast::ExprKind::If(..)
-        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::While(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
@@ -1937,7 +1947,7 @@ fn rewrite_unary_op(
 }
 
 pub(crate) enum RhsAssignKind<'ast> {
-    Expr(&'ast ast::ExprKind, Span),
+    Expr(&'ast ast::ExprKind, #[allow(dead_code)] Span),
     Bounds,
     Ty,
 }

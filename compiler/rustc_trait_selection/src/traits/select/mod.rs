@@ -14,9 +14,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
+    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
+    SelectionError, SelectionResult, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -239,20 +239,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    // Sets the `TreatInductiveCycleAs` mode temporarily in the selection context
-    pub fn with_treat_inductive_cycle_as<T>(
-        &mut self,
-        treat_inductive_cycle: TreatInductiveCycleAs,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn with_treat_inductive_cycle_as_ambig(
+        infcx: &'cx InferCtxt<'tcx>,
+    ) -> SelectionContext<'cx, 'tcx> {
         // Should be executed in a context where caching is disabled,
         // otherwise the cache is poisoned with the temporary result.
-        assert!(self.is_intercrate());
-        let treat_inductive_cycle =
-            std::mem::replace(&mut self.treat_inductive_cycle, treat_inductive_cycle);
-        let value = f(self);
-        self.treat_inductive_cycle = treat_inductive_cycle;
-        value
+        assert!(infcx.intercrate);
+        SelectionContext {
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
+            ..SelectionContext::new(infcx)
+        }
     }
 
     pub fn with_query_mode(
@@ -500,7 +496,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Ok(_) => Ok(None),
                 Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
@@ -1226,11 +1221,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
-                    && self.match_fresh_trait_refs(
-                        stack.fresh_trait_pred,
-                        prev.fresh_trait_pred,
-                        prev.obligation.param_env,
-                    )
+                    && self.match_fresh_trait_refs(stack.fresh_trait_pred, prev.fresh_trait_pred)
             })
         {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
@@ -1241,7 +1232,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
-            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -1865,7 +1855,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => DropVictim::Yes,
+            (FnPointerCandidate { .. }, FnPointerCandidate { fn_host_effect }) => {
+                DropVictim::drop_if(*fn_host_effect == self.tcx().consts.true_)
+            }
 
             (
                 ParamCandidate(ref other_cand),
@@ -1883,7 +1875,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate
                 | ObjectCandidate(_)
-                | ProjectionCandidate(..),
+                | ProjectionCandidate(_),
             ) => {
                 // We have a where clause so don't go around looking
                 // for impls. Arbitrarily give param candidates priority
@@ -1893,7 +1885,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // here (see issue #50825).
                 DropVictim::drop_if(!is_global(other_cand))
             }
-            (ObjectCandidate(_) | ProjectionCandidate(..), ParamCandidate(ref victim_cand)) => {
+            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref victim_cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
                 if is_global(victim_cand) { DropVictim::Yes } else { DropVictim::No }
@@ -1921,20 +1913,20 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 )
             }
 
-            (ProjectionCandidate(i, _), ProjectionCandidate(j, _))
+            (ProjectionCandidate(i), ProjectionCandidate(j))
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
                 DropVictim::drop_if(i < j && !has_non_region_infer)
             }
-            (ObjectCandidate(_), ProjectionCandidate(..))
-            | (ProjectionCandidate(..), ObjectCandidate(_)) => {
+            (ObjectCandidate(_), ProjectionCandidate(_))
+            | (ProjectionCandidate(_), ObjectCandidate(_)) => {
                 bug!("Have both object and projection candidate")
             }
 
             // Arbitrarily give projection and object candidates priority.
             (
-                ObjectCandidate(_) | ProjectionCandidate(..),
+                ObjectCandidate(_) | ProjectionCandidate(_),
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
@@ -1964,7 +1956,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate,
-                ObjectCandidate(_) | ProjectionCandidate(..),
+                ObjectCandidate(_) | ProjectionCandidate(_),
             ) => DropVictim::No,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
@@ -2178,7 +2170,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Coroutine(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2187,26 +2178,31 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Coroutine(_, args, hir::Movability::Movable) => {
-                if self.tcx().features().coroutine_clone {
-                    let resolved_upvars =
-                        self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                    let resolved_witness =
-                        self.infcx.shallow_resolve(args.as_coroutine().witness());
-                    if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
-                        // Not yet resolved.
-                        Ambiguous
-                    } else {
-                        let all = args
-                            .as_coroutine()
-                            .upvar_tys()
-                            .iter()
-                            .chain([args.as_coroutine().witness()])
-                            .collect::<Vec<_>>();
-                        Where(obligation.predicate.rebind(all))
+            ty::Coroutine(coroutine_def_id, args) => {
+                match self.tcx().coroutine_movability(coroutine_def_id) {
+                    hir::Movability::Static => None,
+                    hir::Movability::Movable => {
+                        if self.tcx().features().coroutine_clone {
+                            let resolved_upvars =
+                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                                // Not yet resolved.
+                                Ambiguous
+                            } else {
+                                let all = args
+                                    .as_coroutine()
+                                    .upvar_tys()
+                                    .iter()
+                                    .chain([args.as_coroutine().witness()])
+                                    .collect::<Vec<_>>();
+                                Where(obligation.predicate.rebind(all))
+                            }
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    None
                 }
             }
 
@@ -2309,7 +2305,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(vec![ty])
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
@@ -2428,7 +2424,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // the placeholder trait ref may fail due the Generalizer relation
                 // raising a CyclicalTy error due to a sub_root_var relation
                 // for a variable being generalized...
-                let guar = self.infcx.tcx.sess.span_delayed_bug(
+                let guar = self.infcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     format!(
                         "Impl {impl_def_id:?} was matchable against {obligation:?} but now is not"
@@ -2630,9 +2626,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         previous: ty::PolyTraitPredicate<'tcx>,
         current: ty::PolyTraitPredicate<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let mut matcher = MatchAgainstFreshVars::new(self.tcx(), param_env);
+        let mut matcher = MatchAgainstFreshVars::new(self.tcx());
         matcher.relate(previous, current).is_ok()
     }
 
@@ -2660,6 +2655,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         args: GenericArgsRef<'tcx>,
+        fn_host_effect: ty::Const<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         let closure_sig = args.as_closure().sig();
 
@@ -2680,6 +2676,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
+            fn_host_effect,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
     }

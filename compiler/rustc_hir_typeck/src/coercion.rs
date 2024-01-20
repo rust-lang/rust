@@ -36,9 +36,7 @@
 //! ```
 
 use crate::FnCtxt;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -706,7 +704,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
             feature_err(
-                &self.tcx.sess.parse_sess,
+                &self.tcx.sess,
                 sym::unsized_tuple_coercion,
                 self.cause.span,
                 "unsized tuple coercion is not stable enough for use and is subject to change",
@@ -1182,14 +1180,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.unsafety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                _ => unreachable!(),
+                _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.unsafety()))
                 }
                 ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
-                _ => unreachable!(),
+                _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
                 self.apply_adjustments(
@@ -1550,9 +1548,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // any superfluous errors we might encounter while trying to
                 // emit or provide suggestions on how to fix the initial error.
                 fcx.set_tainted_by_errors(
-                    fcx.tcx
-                        .sess
-                        .span_delayed_bug(cause.span, "coercion error but no error emitted"),
+                    fcx.dcx().span_delayed_bug(cause.span, "coercion error but no error emitted"),
                 );
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
@@ -1575,8 +1571,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 let mut visitor = CollectRetsVisitor { ret_exprs: vec![] };
                 match *cause.code() {
                     ObligationCauseCode::ReturnNoExpression => {
-                        err = struct_span_err!(
-                            fcx.tcx.sess,
+                        err = struct_span_code_err!(
+                            fcx.dcx(),
                             cause.span,
                             E0069,
                             "`return;` in a function whose return type is not `()`"
@@ -1772,7 +1768,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
         blk_id: Option<hir::HirId>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
         let parent_id = fcx.tcx.hir().parent_id(id);
@@ -1918,7 +1914,7 @@ where
 
 impl AsCoercionSite for ! {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
-        unreachable!()
+        *self
     }
 }
 

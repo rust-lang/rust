@@ -17,8 +17,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath, Stmt,
-    StmtKind, TyKind, WherePredicate,
+    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
+    Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
@@ -549,7 +549,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Coroutine(def_id, ..)
                     if matches!(
                         self.tcx.coroutine_kind(def_id),
-                        Some(CoroutineKind::Async(CoroutineSource::Closure))
+                        Some(CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Closure
+                        ))
                     ) =>
                 {
                     errors::SuggestBoxing::AsyncBody
@@ -825,9 +828,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty), ..
                     }) = self.tcx.hir_node(item_id.hir_id())
-                    && let [
-                        hir::GenericBound::LangItemTrait(hir::LangItem::Future, _, _, generic_args),
-                    ] = op_ty.bounds
+                    && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
+                    && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
+                        trait_ref.trait_ref.path.segments.last()
                     && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
                     && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } =
                         ty_binding.kind
@@ -1620,7 +1623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 if let Some(errors) =
-                    self.could_impl_trait(clone_trait_did, expected_ty, self.param_env)
+                    self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
                     match &errors[..] {
                         [] => {}
@@ -1645,7 +1648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     for error in errors {
-                        if let traits::FulfillmentErrorCode::CodeSelectionError(
+                        if let traits::FulfillmentErrorCode::SelectionError(
                             traits::SelectionError::Unimplemented,
                         ) = error.code
                             && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
@@ -2072,8 +2075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Fn) => ("(".to_owned(), ")"),
                     None => (format!(" {{ {field_name}: "), " }"),
 
-                    // unit variants don't have fields
-                    Some(CtorKind::Const) => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.
@@ -2441,7 +2443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
 
-                    // Suggest dereferencing the lhs for expressions such as `&T == T`
+                    // Suggest dereferencing the lhs for expressions such as `&T <= T`
                     if let Some(hir::Node::Expr(hir::Expr {
                         kind: hir::ExprKind::Binary(_, lhs, ..),
                         ..

@@ -131,7 +131,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
                 hir_id,
                 sp,
                 "missing code example in this documentation",
-                |lint| lint,
+                |_| {},
             );
         }
     } else if tests.found_tests > 0
@@ -142,7 +142,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
             hir_id,
             item.attr_span(cx.tcx),
             "documentation test in private item",
-            |lint| lint,
+            |_| {},
         );
     }
 }

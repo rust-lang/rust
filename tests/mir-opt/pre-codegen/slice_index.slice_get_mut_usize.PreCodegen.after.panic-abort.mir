@@ -20,7 +20,8 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
                     debug self => _2;
                     debug slice => _5;
                     let mut _6: *mut u32;
-                    let mut _9: &[&str];
+                    let mut _9: *mut [u32];
+                    let mut _10: &[&str];
                     scope 5 {
                         scope 10 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::as_mut_ptr) {
                             debug self => _5;
@@ -33,16 +34,16 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
                         }
                     }
                     scope 6 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
-                        debug self => _5;
-                        let mut _10: *const [u32];
+                        debug self => _9;
+                        let mut _11: *const [u32];
                         scope 7 (inlined std::ptr::metadata::<[u32]>) {
-                            debug ptr => _10;
+                            debug ptr => _11;
                             scope 8 {
                             }
                         }
                     }
                     scope 9 (inlined Arguments::<'_>::new_const) {
-                        debug pieces => _9;
+                        debug pieces => _10;
                     }
                 }
             }
@@ -71,10 +72,12 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
         _5 = &raw mut (*_1);
         StorageLive(_9);
         StorageLive(_10);
+        StorageLive(_11);
         StorageLive(_6);
         _6 = _5 as *mut u32 (PtrToPtr);
         _7 = Offset(_6, _2);
         StorageDead(_6);
+        StorageDead(_11);
         StorageDead(_10);
         StorageDead(_9);
         StorageDead(_5);

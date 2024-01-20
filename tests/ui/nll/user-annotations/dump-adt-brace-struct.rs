@@ -1,7 +1,7 @@
 // Unit test for the "user substitutions" that are annotated on each
 // node.
 
-// compile-flags:-Zverbose
+// compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

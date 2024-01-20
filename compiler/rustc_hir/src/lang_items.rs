@@ -307,6 +307,9 @@ language_item_table! {
     Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
+    AsyncIteratorPollNext,   sym::async_iterator_poll_next, async_iterator_poll_next, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
+    IntoAsyncIterIntoIter,   sym::into_async_iter_into_iter, into_async_iter_into_iter, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
+
     Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
     OptionNone,              sym::None,                option_none_variant,        Target::Variant,        GenericRequirement::None;
@@ -351,6 +354,33 @@ pub static OPERATORS: &'static [LangItem] = &[
     LangItem::Rem,
     LangItem::Neg,
     LangItem::Not,
+    LangItem::BitXor,
+    LangItem::BitAnd,
+    LangItem::BitOr,
+    LangItem::Shl,
+    LangItem::Shr,
+    LangItem::AddAssign,
+    LangItem::SubAssign,
+    LangItem::MulAssign,
+    LangItem::DivAssign,
+    LangItem::RemAssign,
+    LangItem::BitXorAssign,
+    LangItem::BitAndAssign,
+    LangItem::BitOrAssign,
+    LangItem::ShlAssign,
+    LangItem::ShrAssign,
+    LangItem::Index,
+    LangItem::IndexMut,
+    LangItem::PartialEq,
+    LangItem::PartialOrd,
+];
+
+pub static BINARY_OPERATORS: &'static [LangItem] = &[
+    LangItem::Add,
+    LangItem::Sub,
+    LangItem::Mul,
+    LangItem::Div,
+    LangItem::Rem,
     LangItem::BitXor,
     LangItem::BitAnd,
     LangItem::BitOr,

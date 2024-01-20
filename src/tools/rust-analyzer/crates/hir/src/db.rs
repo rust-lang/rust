@@ -15,8 +15,8 @@ pub use hir_def::db::{
     InternExternBlockQuery, InternExternCrateQuery, InternFunctionQuery, InternImplQuery,
     InternInTypeConstQuery, InternMacro2Query, InternMacroRulesQuery, InternProcMacroQuery,
     InternStaticQuery, InternStructQuery, InternTraitAliasQuery, InternTraitQuery,
-    InternTypeAliasQuery, InternUnionQuery, InternUseQuery, LangAttrQuery, LangItemQuery,
-    Macro2DataQuery, MacroRulesDataQuery, ProcMacroDataQuery, StaticDataQuery, StructDataQuery,
+    InternTypeAliasQuery, InternUnionQuery, InternUseQuery, LangItemQuery, Macro2DataQuery,
+    MacroRulesDataQuery, ProcMacroDataQuery, StaticDataQuery, StructDataQuery,
     StructDataWithDiagnosticsQuery, TraitAliasDataQuery, TraitDataQuery,
     TraitDataWithDiagnosticsQuery, TypeAliasDataQuery, UnionDataQuery,
     UnionDataWithDiagnosticsQuery, VariantsAttrsQuery, VariantsAttrsSourceMapQuery,
@@ -24,6 +24,6 @@ pub use hir_def::db::{
 pub use hir_expand::db::{
     AstIdMapQuery, DeclMacroExpanderQuery, ExpandDatabase, ExpandDatabaseStorage,
     ExpandProcMacroQuery, InternMacroCallQuery, InternSyntaxContextQuery, MacroArgQuery,
-    ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery, RealSpanMapQuery,
+    ParseMacroExpansionErrorQuery, ParseMacroExpansionQuery, ProcMacrosQuery, RealSpanMapQuery,
 };
 pub use hir_ty::db::*;

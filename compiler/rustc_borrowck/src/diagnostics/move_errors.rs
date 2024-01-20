@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
@@ -288,7 +288,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         place: Place<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -310,7 +310,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
@@ -329,15 +329,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
-                let mut err = self.cannot_move_out_of(
-                    span,
-                    &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
-                );
-                err.note(
-                    "variables bound in patterns cannot be moved from \
-                     until after the end of the pattern guard",
-                );
-                return err;
+                return self
+                    .cannot_move_out_of(
+                        span,
+                        &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
+                    )
+                    .with_note(
+                        "variables bound in patterns cannot be moved from \
+                         until after the end of the pattern guard",
+                    );
             } else if decl.is_ref_to_static() {
                 return self.report_cannot_move_from_static(move_place, span);
             }
@@ -381,15 +381,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     closure_kind_ty, closure_kind, place_description,
                 );
 
-                let mut diag = self.cannot_move_out_of(span, &place_description);
-
-                diag.span_label(upvar_span, "captured outer variable");
-                diag.span_label(
-                    self.infcx.tcx.def_span(def_id),
-                    format!("captured by this `{closure_kind}` closure"),
-                );
-
-                diag
+                self.cannot_move_out_of(span, &place_description)
+                    .with_span_label(upvar_span, "captured outer variable")
+                    .with_span_label(
+                        self.infcx.tcx.def_span(def_id),
+                        format!("captured by this `{closure_kind}` closure"),
+                    )
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);

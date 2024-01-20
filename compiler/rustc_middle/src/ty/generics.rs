@@ -326,7 +326,7 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
-        let verbose = tcx.sess.verbose();
+        let verbose = tcx.sess.verbose_internals();
 
         // Filter the default arguments.
         //
@@ -342,7 +342,7 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
-                // filter out trailing effect params, if we're not in `-Zverbose`.
+                // filter out trailing effect params, if we're not in `-Zverbose-internals`.
                 || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();

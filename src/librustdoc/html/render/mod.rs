@@ -58,7 +58,7 @@ use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
 };
-use serde::ser::{SerializeMap, SerializeSeq};
+use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
@@ -123,44 +123,58 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
     bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
 }
 
-impl Serialize for RenderType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let id = match &self.id {
+impl RenderType {
+    // Types are rendered as lists of lists, because that's pretty compact.
+    // The contents of the lists are always integers in self-terminating hex
+    // form, handled by `RenderTypeId::write_to_string`, so no commas are
+    // needed to separate the items.
+    pub fn write_to_string(&self, string: &mut String) {
+        fn write_optional_id(id: Option<RenderTypeId>, string: &mut String) {
             // 0 is a sentinel, everything else is one-indexed
-            None => 0,
-            // concrete type
-            Some(RenderTypeId::Index(idx)) if *idx >= 0 => idx + 1,
-            // generic type parameter
-            Some(RenderTypeId::Index(idx)) => *idx,
-            _ => panic!("must convert render types to indexes before serializing"),
-        };
-        if self.generics.is_some() || self.bindings.is_some() {
-            let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&id)?;
-            seq.serialize_element(self.generics.as_ref().map(Vec::as_slice).unwrap_or_default())?;
-            if self.bindings.is_some() {
-                seq.serialize_element(
-                    self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default(),
-                )?;
+            match id {
+                Some(id) => id.write_to_string(string),
+                None => string.push('`'),
             }
-            seq.end()
+        }
+        // Either just the type id, or `{type, generics, bindings?}`
+        // where generics is a list of types,
+        // and bindings is a list of `{id, typelist}` pairs.
+        if self.generics.is_some() || self.bindings.is_some() {
+            string.push('{');
+            write_optional_id(self.id, string);
+            string.push('{');
+            for generic in &self.generics.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                generic.write_to_string(string);
+            }
+            string.push('}');
+            if self.bindings.is_some() {
+                string.push('{');
+                for binding in &self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                    string.push('{');
+                    binding.0.write_to_string(string);
+                    string.push('{');
+                    for constraint in &binding.1[..] {
+                        constraint.write_to_string(string);
+                    }
+                    string.push_str("}}");
+                }
+                string.push('}');
+            }
+            string.push('}');
         } else {
-            id.serialize(serializer)
+            write_optional_id(self.id, string);
         }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
@@ -168,70 +182,122 @@ pub(crate) enum RenderTypeId {
     Index(isize),
 }
 
-impl Serialize for RenderTypeId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let id = match &self {
+impl RenderTypeId {
+    pub fn write_to_string(&self, string: &mut String) {
+        // (sign, value)
+        let (sign, id): (bool, u32) = match &self {
             // 0 is a sentinel, everything else is one-indexed
             // concrete type
-            RenderTypeId::Index(idx) if *idx >= 0 => idx + 1,
+            RenderTypeId::Index(idx) if *idx >= 0 => (false, (idx + 1isize).try_into().unwrap()),
             // generic type parameter
-            RenderTypeId::Index(idx) => *idx,
+            RenderTypeId::Index(idx) => (true, (-*idx).try_into().unwrap()),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        id.serialize(serializer)
+        // zig-zag encoding
+        let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
+        // Self-terminating hex use capital letters for everything but the
+        // least significant digit, which is lowercase. For example, decimal 17
+        // would be `` Aa `` if zig-zag encoding weren't used.
+        //
+        // Zig-zag encoding, however, stores the sign bit as the last bit.
+        // This means, in the last hexit, 1 is actually `c`, -1 is `b`
+        // (`a` is the imaginary -0), and, because all the bits are shifted
+        // by one, `` A` `` is actually 8 and `` Aa `` is -8.
+        //
+        // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
+        // describes the encoding in more detail.
+        let mut shift: u32 = 28;
+        let mut mask: u32 = 0xF0_00_00_00;
+        while shift < 32 {
+            let hexit = (value & mask) >> shift;
+            if hexit != 0 || shift == 0 {
+                let hex =
+                    char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
+                string.push(hex);
+            }
+            shift = shift.wrapping_sub(4);
+            mask = mask >> 4;
+        }
     }
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
     where_clause: Vec<Vec<RenderType>>,
 }
 
-impl Serialize for IndexItemFunctionType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        // If we couldn't figure out a type, just write `0`.
+impl IndexItemFunctionType {
+    pub fn write_to_string<'a>(
+        &'a self,
+        string: &mut String,
+        backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
+    ) {
+        assert!(backref_queue.len() <= 16);
+        // If we couldn't figure out a type, just write 0,
+        // which is encoded as `` ` `` (see RenderTypeId::write_to_string).
         let has_missing = self
             .inputs
             .iter()
             .chain(self.output.iter())
             .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
-            0.serialize(serializer)
+            string.push('`');
+        } else if let Some(idx) = backref_queue.iter().position(|other| *other == self) {
+            // The backref queue has 16 items, so backrefs use
+            // a single hexit, disjoint from the ones used for numbers.
+            string.push(
+                char::try_from('0' as u32 + u32::try_from(idx).unwrap())
+                    .expect("last possible value is '?'"),
+            );
         } else {
-            let mut seq = serializer.serialize_seq(None)?;
+            backref_queue.push_front(self);
+            if backref_queue.len() > 16 {
+                backref_queue.pop_back();
+            }
+            string.push('{');
             match &self.inputs[..] {
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
-                    seq.serialize_element(one)?
+                    one.write_to_string(string);
                 }
-                _ => seq.serialize_element(&self.inputs)?,
+                _ => {
+                    string.push('{');
+                    for item in &self.inputs[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
+                }
             }
             match &self.output[..] {
                 [] if self.where_clause.is_empty() => {}
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
-                    seq.serialize_element(one)?
+                    one.write_to_string(string);
                 }
-                _ => seq.serialize_element(&self.output)?,
+                _ => {
+                    string.push('{');
+                    for item in &self.output[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
+                }
             }
             for constraint in &self.where_clause {
                 if let [one] = &constraint[..]
                     && one.generics.is_none()
                     && one.bindings.is_none()
                 {
-                    seq.serialize_element(one)?;
+                    one.write_to_string(string);
                 } else {
-                    seq.serialize_element(constraint)?;
+                    string.push('{');
+                    for item in &constraint[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
                 }
             }
-            seq.end()
+            string.push('}');
         }
     }
 }
@@ -1141,15 +1207,29 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
+pub fn write_section_heading(
+    w: &mut impl fmt::Write,
+    title: &str,
+    id: &str,
+    extra_class: Option<&str>,
+    extra: impl fmt::Display,
+) {
+    let (extra_class, whitespace) = match extra_class {
+        Some(extra) => (extra, " "),
+        None => ("", ""),
+    };
     write!(
         w,
-        "<h2 id=\"{id}\" class=\"section-header\">\
+        "<h2 id=\"{id}\" class=\"{extra_class}{whitespace}section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
-         </h2>"
+         </h2>{extra}",
     )
     .unwrap();
+}
+
+fn write_impl_section_heading(w: &mut impl fmt::Write, title: &str, id: &str) {
+    write_section_heading(w, title, id, None, "")
 }
 
 pub(crate) fn render_all_impls(
@@ -2362,7 +2442,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             Ok(contents) => contents,
             Err(err) => {
                 let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
-                tcx.sess.span_err(span, format!("failed to read file {}: {err}", path.display()));
+                tcx.dcx().span_err(span, format!("failed to read file {}: {err}", path.display()));
                 return false;
             }
         };

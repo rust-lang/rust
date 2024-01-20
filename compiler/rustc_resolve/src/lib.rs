@@ -37,7 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -213,7 +213,7 @@ enum ResolutionError<'a> {
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
-        last_segment: Option<Symbol>,
+        segment: Option<Symbol>,
         label: String,
         suggestion: Option<Suggestion>,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -257,7 +257,7 @@ enum ResolutionError<'a> {
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
-        code: rustc_errors::DiagnosticId,
+        code: String,
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
@@ -265,6 +265,8 @@ enum ResolutionError<'a> {
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
     LowercaseSelf,
+    /// A never pattern has a binding.
+    BindingInNeverPattern,
 }
 
 enum VisResolutionError<'a> {
@@ -396,12 +398,14 @@ enum PathResult<'a> {
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
+        /// The segment name of target
+        segment_name: Symbol,
     },
 }
 
 impl<'a> PathResult<'a> {
     fn failed(
-        span: Span,
+        ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -409,7 +413,14 @@ impl<'a> PathResult<'a> {
     ) -> PathResult<'a> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
-        PathResult::Failed { span, label, suggestion, is_error_from_last_segment, module }
+        PathResult::Failed {
+            span: ident.span,
+            segment_name: ident.name,
+            label,
+            suggestion,
+            is_error_from_last_segment,
+            module,
+        }
     }
 }
 
@@ -704,7 +715,7 @@ struct PrivacyError<'a> {
 
 #[derive(Debug)]
 struct UseError<'a> {
-    err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+    err: DiagnosticBuilder<'a>,
     /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
     /// The `DefId` of the module to place the use-statements in.
@@ -1007,8 +1018,7 @@ pub struct Resolver<'a, 'tcx> {
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-    /// Visibilities in "lowered" form, for all entities that have them.
-    visibilities: FxHashMap<LocalDefId, ty::Visibility>,
+    visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1085,7 +1095,7 @@ pub struct Resolver<'a, 'tcx> {
 
     next_node_id: NodeId,
 
-    node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    node_id_to_def_id: NodeMap<LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
@@ -1102,6 +1112,8 @@ pub struct Resolver<'a, 'tcx> {
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+    /// Amount of parameters for each function in the crate.
+    fn_parameter_counts: LocalDefIdMap<usize>,
 
     main_def: Option<MainDefinition>,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1226,10 +1238,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let def_id = self.tcx.untracked().definitions.write().create_def(parent, data);
-
-        let feed = self.tcx.feed_local_def_id(def_id);
-        feed.def_kind(def_kind);
+        let def_id = self.tcx.create_def(parent, name, def_kind);
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1295,12 +1304,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &mut FxHashMap::default(),
         );
 
-        let mut visibilities = FxHashMap::default();
-        visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
-
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
-        let mut node_id_to_def_id = FxHashMap::default();
+        let mut node_id_to_def_id = NodeMap::default();
         node_id_to_def_id.insert(CRATE_NODE_ID, CRATE_DEF_ID);
 
         let mut invocation_parents = FxHashMap::default();
@@ -1363,7 +1369,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
-            visibilities,
+            visibilities_for_hashing: Default::default(),
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
@@ -1446,10 +1452,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
+            fn_parameter_counts: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
+        resolver.feed_visibility(CRATE_DEF_ID, ty::Visibility::Public);
 
         resolver
     }
@@ -1497,10 +1505,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         Default::default()
     }
 
+    fn feed_visibility(&mut self, def_id: LocalDefId, vis: ty::Visibility) {
+        self.tcx.feed_local_def_id(def_id).visibility(vis.to_def_id());
+        self.visibilities_for_hashing.push((def_id, vis));
+    }
+
     pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
-        let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
@@ -1517,7 +1529,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
-            visibilities,
+            visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
@@ -1544,6 +1556,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
+            has_self: self.has_self,
+            fn_parameter_counts: self.fn_parameter_counts,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }

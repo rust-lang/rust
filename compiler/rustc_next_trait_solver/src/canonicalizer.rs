@@ -242,16 +242,10 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
 
             ty::ReVar(vid) => {
                 assert_eq!(
-                    self.infcx.root_lt_var(vid),
-                    vid,
-                    "region vid should have been resolved fully before canonicalization"
-                );
-                assert_eq!(
-                    self.infcx.probe_lt_var(vid),
+                    self.infcx.opportunistic_resolve_lt_var(vid),
                     None,
                     "region vid should have been resolved fully before canonicalization"
                 );
-
                 match self.canonicalize_mode {
                     CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                     CanonicalizeMode::Response { .. } => {
@@ -339,7 +333,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)

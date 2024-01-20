@@ -11,7 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
@@ -26,9 +26,9 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    OutputTypeParameterMismatch, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, Unimplemented,
+    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause, PolyTraitObligation,
+    PredicateObligation, Selection, SelectionError, SignatureMismatch, TraitNotObjectSafe,
+    Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -71,7 +71,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            ProjectionCandidate(idx, _) => {
+            ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 ImplSource::Param(obligations)
             }
@@ -103,8 +103,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
             }
 
-            FnPointerCandidate { is_const } => {
-                let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
+            FnPointerCandidate { fn_host_effect } => {
+                let data = self.confirm_fn_pointer_candidate(obligation, fn_host_effect)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
@@ -558,7 +558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
 
             if !defs.params.is_empty() && !tcx.features().generic_associated_types_extended {
-                tcx.sess.span_delayed_bug(
+                tcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );
@@ -653,8 +653,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_fn_pointer_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        // FIXME(effects)
-        _is_const: bool,
+        fn_host_effect: ty::Const<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
@@ -675,6 +674,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self_ty,
             sig,
             util::TupleArgumentsFlag::Yes,
+            fn_host_effect,
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
@@ -730,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -768,7 +768,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -797,7 +797,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -826,7 +826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -860,7 +860,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
-        let trait_ref = self.closure_trait_ref_unnormalized(obligation, args);
+        let trait_ref =
+            self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_);
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
@@ -921,7 +922,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations
             })
             .map_err(|terr| {
-                OutputTypeParameterMismatch(Box::new(SelectionOutputTypeParameterMismatch {
+                SignatureMismatch(Box::new(SignatureMismatchData {
                     expected_trait_ref: obligation_trait_ref,
                     found_trait_ref: expected_trait_ref,
                     terr,
@@ -942,8 +943,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let a_ty = self.infcx.shallow_resolve(predicate.self_ty());
         let b_ty = self.infcx.shallow_resolve(predicate.trait_ref.args.type_at(1));
 
-        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else { bug!() };
-        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else { bug!() };
+        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+            bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
+        };
+        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+            bug!("expected `dyn` type in `confirm_trait_upcasting_unsize_candidate`")
+        };
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =
@@ -1293,7 +1298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Closure(_, args) => {
                     stack.push(args.as_closure().tupled_upvars_ty());
                 }
-                ty::Coroutine(_, args, _) => {
+                ty::Coroutine(_, args) => {
                     let coroutine = args.as_coroutine();
                     stack.extend([coroutine.tupled_upvars_ty(), coroutine.witness()]);
                 }
@@ -1309,7 +1314,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
                 ty::Alias(ty::Projection | ty::Inherent, ..) => {
-                    // FIXME(effects) this needs constness
                     let predicate = normalize_with_depth_to(
                         self,
                         obligation.param_env,
@@ -1340,7 +1344,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
-                    // FIXME(effects) this needs constness
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
                             self.tcx(),

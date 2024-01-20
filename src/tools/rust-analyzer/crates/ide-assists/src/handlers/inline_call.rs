@@ -315,17 +315,6 @@ fn inline(
     } else {
         fn_body.clone_for_update()
     };
-    if let Some(imp) = body.syntax().ancestors().find_map(ast::Impl::cast) {
-        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
-            if let Some(t) = imp.self_ty() {
-                body.syntax()
-                    .descendants_with_tokens()
-                    .filter_map(NodeOrToken::into_token)
-                    .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
-                    .for_each(|tok| ted::replace(tok, t.syntax()));
-            }
-        }
-    }
     let usages_for_locals = |local| {
         Definition::Local(local)
             .usages(sema)
@@ -378,6 +367,27 @@ fn inline(
                 .for_each(|usage| {
                     ted::replace(usage, &this());
                 });
+        }
+    }
+
+    // We should place the following code after last usage of `usages_for_locals`
+    // because `ted::replace` will change the offset in syntax tree, which makes
+    // `FileReference` incorrect
+    if let Some(imp) =
+        sema.ancestors_with_macros(fn_body.syntax().clone()).find_map(ast::Impl::cast)
+    {
+        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
+            if let Some(t) = imp.self_ty() {
+                while let Some(self_tok) = body
+                    .syntax()
+                    .descendants_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+                {
+                    let replace_with = t.clone_subtree().syntax().clone_for_update();
+                    ted::replace(self_tok, replace_with);
+                }
+            }
         }
     }
 
@@ -1509,5 +1519,107 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn inline_call_with_multiple_self_types_eq() {
+        check_assist(
+            inline_call,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Enum {
+    A,
+    B,
+}
+
+impl Enum {
+    fn a_or_b_eq(&self) -> bool {
+        self == &Self::A || self == &Self::B
+    }
+}
+
+fn a() -> bool {
+    Enum::A.$0a_or_b_eq()
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Enum {
+    A,
+    B,
+}
+
+impl Enum {
+    fn a_or_b_eq(&self) -> bool {
+        self == &Self::A || self == &Self::B
+    }
+}
+
+fn a() -> bool {
+    {
+        let ref this = Enum::A;
+        this == &Enum::A || this == &Enum::B
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type_in_macros() {
+        check_assist(
+            inline_call,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = <A as Trait<A>>::$0f(a);
+}
+"#,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = {
+        let a = a;
+      a as A
+    };
+}
+"#,
+        )
     }
 }

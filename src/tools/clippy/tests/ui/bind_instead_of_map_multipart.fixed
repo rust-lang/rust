@@ -1,5 +1,5 @@
 #![deny(clippy::bind_instead_of_map)]
-#![allow(clippy::blocks_in_if_conditions)]
+#![allow(clippy::blocks_in_conditions)]
 
 pub fn main() {
     let _ = Some("42").map(|s| if s.len() < 42 { 0 } else { s.len() });

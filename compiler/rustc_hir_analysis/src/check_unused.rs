@@ -45,7 +45,7 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
             item.hir_id(),
             path.span,
             msg,
-            |lint| lint,
+            |_| {},
         );
     }
 }

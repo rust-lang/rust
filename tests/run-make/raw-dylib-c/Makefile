@@ -17,7 +17,7 @@ else
 	$(CC) "$(TMPDIR)"/extern_1.obj -shared -o "$(TMPDIR)"/extern_1.dll
 	$(CC) "$(TMPDIR)"/extern_2.obj -shared -o "$(TMPDIR)"/extern_2.dll
 endif
-	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
+	"$(TMPDIR)"/driver | tr -d '\r' > "$(TMPDIR)"/output.txt
 	"$(TMPDIR)"/raw_dylib_test_bin > "$(TMPDIR)"/output_bin.txt
 
 ifdef RUSTC_BLESS_TEST

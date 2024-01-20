@@ -1,5 +1,5 @@
 use crate::msrvs::Msrv;
-use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, Rename};
+use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename};
 use crate::ClippyConfiguration;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::Session;
@@ -27,7 +27,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "OAuth", "GraphQL",
     "OCaml",
     "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
-    "WebGL",
+    "WebGL", "WebGL2", "WebGPU",
     "TensorFlow",
     "TrueType",
     "iOS", "macOS", "FreeBSD",
@@ -547,6 +547,11 @@ define_Conf! {
     ///
     /// Whether to also run the listed lints on private items.
     (check_private_items: bool = false),
+    /// Lint: PUB_UNDERSCORE_FIELDS
+    ///
+    /// Lint "public" fields in a struct that are prefixed with an underscore based on their
+    /// exported visibility, or whether they are marked as "pub".
+    (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PublicallyExported),
 }
 
 /// Search for the configuration file.
@@ -636,11 +641,12 @@ impl Conf {
         match path {
             Ok((_, warnings)) => {
                 for warning in warnings {
-                    sess.warn(warning.clone());
+                    sess.dcx().warn(warning.clone());
                 }
             },
             Err(error) => {
-                sess.err(format!("error finding Clippy's configuration file: {error}"));
+                sess.dcx()
+                    .err(format!("error finding Clippy's configuration file: {error}"));
             },
         }
 
@@ -652,7 +658,7 @@ impl Conf {
             Ok((Some(path), _)) => match sess.source_map().load_file(path) {
                 Ok(file) => deserialize(&file),
                 Err(error) => {
-                    sess.err(format!("failed to read `{}`: {error}", path.display()));
+                    sess.dcx().err(format!("failed to read `{}`: {error}", path.display()));
                     TryConf::default()
                 },
             },
@@ -663,14 +669,14 @@ impl Conf {
 
         // all conf errors are non-fatal, we just use the default conf in case of error
         for error in errors {
-            sess.span_err(
+            sess.dcx().span_err(
                 error.span,
                 format!("error reading Clippy's configuration file: {}", error.message),
             );
         }
 
         for warning in warnings {
-            sess.span_warn(
+            sess.dcx().span_warn(
                 warning.span,
                 format!("error reading Clippy's configuration file: {}", warning.message),
             );

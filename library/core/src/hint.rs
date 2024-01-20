@@ -106,6 +106,54 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     }
 }
 
+/// Makes a *soundness* promise to the compiler that `cond` holds.
+///
+/// This may allow the optimizer to simplify things,
+/// but it might also make the generated code slower.
+/// Either way, calling it will most likely make compilation take longer.
+///
+/// This is a situational tool for micro-optimization, and is allowed to do nothing.
+/// Any use should come with a repeatable benchmark to show the value
+/// and allow removing it later should the optimizer get smarter and no longer need it.
+///
+/// The more complicated the condition the less likely this is to be fruitful.
+/// For example, `assert_unchecked(foo.is_sorted())` is a complex enough value
+/// that the compiler is unlikely to be able to take advantage of it.
+///
+/// There's also no need to `assert_unchecked` basic properties of things.  For
+/// example, the compiler already knows the range of `count_ones`, so there's no
+/// benefit to `let n = u32::count_ones(x); assert_unchecked(n <= u32::BITS);`.
+///
+/// If ever you're tempted to write `assert_unchecked(false)`, then you're
+/// actually looking for [`unreachable_unchecked()`].
+///
+/// You may know this from other places
+/// as [`llvm.assume`](https://llvm.org/docs/LangRef.html#llvm-assume-intrinsic)
+/// or [`__builtin_assume`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-assume).
+///
+/// This promotes a correctness requirement to a soundness requirement.
+/// Don't do that without very good reason.
+///
+/// # Safety
+///
+/// `cond` must be `true`.  It's immediate UB to call this with `false`.
+///
+#[inline(always)]
+#[doc(alias = "assume")]
+#[track_caller]
+#[unstable(feature = "hint_assert_unchecked", issue = "119131")]
+#[rustc_const_unstable(feature = "const_hint_assert_unchecked", issue = "119131")]
+pub const unsafe fn assert_unchecked(cond: bool) {
+    // SAFETY: The caller promised `cond` is true.
+    unsafe {
+        intrinsics::assert_unsafe_precondition!(
+            "hint::assert_unchecked must never be called when the condition is false",
+            (cond: bool) => cond,
+        );
+        crate::intrinsics::assume(cond);
+    }
+}
+
 /// Emits a machine instruction to signal the processor that it is running in
 /// a busy-wait spin-loop ("spin lock").
 ///
@@ -239,7 +287,7 @@ pub fn spin_loop() {
 ///
 /// The compiler could theoretically make optimizations like the following:
 ///
-/// - `needle` and `haystack` are always the same, move the call to `contains` outside the loop and
+/// - The `needle` and `haystack` do not change, move the call to `contains` outside the loop and
 ///   delete the loop
 /// - Inline `contains`
 /// - `needle` and `haystack` have values known at compile time, `contains` is always true. Remove

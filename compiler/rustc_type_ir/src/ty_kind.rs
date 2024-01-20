@@ -4,6 +4,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
 
+use crate::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -158,7 +160,7 @@ pub enum TyKind<I: Interner> {
     Slice(I::Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(I::TypeAndMut),
+    RawPtr(TypeAndMut<I>),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
@@ -205,7 +207,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
-    Coroutine(I::DefId, I::GenericArgs, Movability),
+    Coroutine(I::DefId, I::GenericArgs),
 
     /// A type representing the types stored inside a coroutine.
     /// This should only appear as part of the `CoroutineArgs`.
@@ -315,7 +317,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Coroutine(_, _, _) => 16,
+        Coroutine(_, _) => 16,
         CoroutineWitness(_, _) => 17,
         Never => 18,
         Tuple(_) => 19,
@@ -354,9 +356,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                a_d == b_d && a_s == b_s && a_m == b_m
-            }
+            (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
             (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
@@ -410,8 +410,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
-            RawPtr(p) => {
-                let (ty, mutbl) = I::ty_and_mut_to_parts(*p);
+            RawPtr(TypeAndMut { ty, mutbl }) => {
                 match mutbl {
                     Mutability::Mut => write!(f, "*mut "),
                     Mutability::Not => write!(f, "*const "),
@@ -431,9 +430,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
-            Coroutine(d, s, m) => {
-                f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).field(m).finish()
-            }
+            Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
             CoroutineWitness(d, s) => {
                 f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
             }
@@ -829,5 +826,44 @@ impl<I: Interner> DebugWithInfcx<I> for InferTy {
             }
             _ => write!(f, "{:?}", this.data),
         }
+    }
+}
+
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialOrd(bound = ""),
+    Ord(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = ""),
+    Debug(bound = "")
+)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub struct TypeAndMut<I: Interner> {
+    pub ty: I::Ty,
+    pub mutbl: Mutability,
+}
+
+impl<I: Interner> TypeFoldable<I> for TypeAndMut<I>
+where
+    I::Ty: TypeFoldable<I>,
+{
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(TypeAndMut {
+            ty: self.ty.try_fold_with(folder)?,
+            mutbl: self.mutbl.try_fold_with(folder)?,
+        })
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for TypeAndMut<I>
+where
+    I::Ty: TypeVisitable<I>,
+{
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> std::ops::ControlFlow<V::BreakTy> {
+        self.ty.visit_with(visitor)?;
+        self.mutbl.visit_with(visitor)
     }
 }

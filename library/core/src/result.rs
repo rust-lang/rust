@@ -842,7 +842,7 @@ impl<T, E> Result<T, E> {
     ///     .expect("failed to parse number");
     /// ```
     #[inline]
-    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_inspect", since = "1.76.0")]
     pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
         if let Ok(ref t) = self {
             f(t);
@@ -864,7 +864,7 @@ impl<T, E> Result<T, E> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_inspect", since = "1.76.0")]
     pub fn inspect_err<F: FnOnce(&E)>(self, f: F) -> Self {
         if let Err(ref e) = self {
             f(e);
@@ -1061,7 +1061,7 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap(self) -> T

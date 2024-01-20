@@ -1,4 +1,4 @@
-interface JsonProject {
+export interface JsonProject {
     /// Path to the directory with *source code* of
     /// sysroot crates.
     ///
@@ -21,7 +21,7 @@ interface JsonProject {
     crates: Crate[];
 }
 
-interface Crate {
+export interface Crate {
     /// Optional crate name used for display purposes,
     /// without affecting semantics. See the `deps`
     /// key for semantically-significant crate names.
@@ -82,7 +82,7 @@ interface Crate {
     proc_macro_dylib_path?: string;
 }
 
-interface Dep {
+export interface Dep {
     /// Index of a crate in the `crates` array.
     crate: number;
     /// Name as should appear in the (implicit)

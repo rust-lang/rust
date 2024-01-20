@@ -1,4 +1,4 @@
-error[E0080]: could not evaluate static initializer
+error: internal compiler error[E0080]: could not evaluate static initializer
   --> $DIR/err.rs:11:21
    |
 LL | pub static C: u32 = 0 - 1;
@@ -8,5 +8,5 @@ error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `C`
-#1 [eval_to_allocation_raw] const-evaluating + checking `C`
+#1 [lint_mod] linting top-level module
 end of query stack

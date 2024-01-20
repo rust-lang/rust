@@ -89,12 +89,14 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let mut proposed_imports = import_assets.search_for_imports(
-        &ctx.sema,
-        ctx.config.insert_use.prefix_kind,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_no_std,
-    );
+    let mut proposed_imports: Vec<_> = import_assets
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_no_std,
+        )
+        .collect();
     if proposed_imports.is_empty() {
         return None;
     }
@@ -113,6 +115,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     )?;
 
     // we aren't interested in different namespaces
+    proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let current_node = match ctx.covering_element() {
@@ -281,11 +284,8 @@ mod tests {
     use super::*;
 
     use hir::Semantics;
-    use ide_db::{
-        assists::AssistResolveStrategy,
-        base_db::{fixture::WithFixture, FileRange},
-        RootDatabase,
-    };
+    use ide_db::{assists::AssistResolveStrategy, base_db::FileRange, RootDatabase};
+    use test_fixture::WithFixture;
 
     use crate::tests::{
         check_assist, check_assist_by_label, check_assist_not_applicable, check_assist_target,
@@ -1549,6 +1549,41 @@ mod bar {
 }
 use foo::Foo$0;
 ",
+        );
+    }
+
+    #[test]
+    fn considers_pub_crate() {
+        check_assist(
+            auto_import,
+            r#"
+mod foo {
+    pub struct Foo;
+}
+
+pub(crate) use self::foo::*;
+
+mod bar {
+    fn main() {
+        Foo$0;
+    }
+}
+"#,
+            r#"
+mod foo {
+    pub struct Foo;
+}
+
+pub(crate) use self::foo::*;
+
+mod bar {
+    use crate::Foo;
+
+    fn main() {
+        Foo;
+    }
+}
+"#,
         );
     }
 }

@@ -1,41 +1,24 @@
 // compile-flags: -Zmir-opt-level=0
-// known-bug: #110395
-// FIXME run-pass
+// run-pass
 
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 // Don't promote
 const fn nop<T>(x: T) -> T { x }
 
-// FIXME(const-hack): replace with PartialEq
-#[const_trait]
-trait MyEq<T> {
-    fn eq(self, b: T) -> bool;
-}
-
-impl const MyEq<bool> for bool {
-    fn eq(self, b: bool) -> bool {
-        self == b
-    }
-}
-
-impl const MyEq<NonDet> for bool {
-    fn eq(self, _: NonDet) -> bool {
+impl const PartialEq<NonDet> for bool {
+    fn eq(&self, _: &NonDet) -> bool {
         true
     }
-}
-
-const fn eq<A: ~const MyEq<B>, B>(x: A, y: B) -> bool {
-    x.eq(y)
 }
 
 macro_rules! const_assert {
     ($a:expr, $b:expr) => {
         {
-            const _: () = assert!(eq($a, $b));
-            assert!(eq(nop($a), nop($b)));
+            const _: () = assert!($a == $b);
+            assert!(nop($a) == nop($b));
         }
     };
 }

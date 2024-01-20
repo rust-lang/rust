@@ -9,6 +9,12 @@
 :root {
 	--nav-sub-mobile-padding: 8px;
 	--search-typename-width: 6.75rem;
+	/* DEFAULT_SIDEBAR_WIDTH
+	   see main.js for information on these values
+	   and on the RUSTDOC_MOBILE_BREAKPOINT */
+	--desktop-sidebar-width: 200px;
+	--src-sidebar-width: 300px;
+	--desktop-sidebar-z-index: 100;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -361,20 +367,10 @@ img {
 	max-width: 100%;
 }
 
-.sub-logo-container, .logo-container {
+.logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
 	display: block;
-}
-
-.sub-logo-container {
-	margin-right: 32px;
-}
-
-.sub-logo-container > img {
-	height: 60px;
-	width: 60px;
-	object-fit: contain;
 }
 
 .rust-logo {
@@ -383,43 +379,130 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	flex: 0 0 200px;
+	flex: 0 0 var(--desktop-sidebar-width);
+	width: var(--desktop-sidebar-width);
 	overflow-y: scroll;
 	overscroll-behavior: contain;
 	position: sticky;
 	height: 100vh;
 	top: 0;
 	left: 0;
+	z-index: var(--desktop-sidebar-z-index);
 }
 
 .rustdoc.src .sidebar {
 	flex-basis: 50px;
+	width: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
-	z-index: 1;
+}
+
+.hide-sidebar .sidebar,
+.hide-sidebar .sidebar-resizer {
+	display: none;
+}
+
+.sidebar-resizer {
+	touch-action: none;
+	width: 9px;
+	cursor: col-resize;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
+	position: fixed;
+	height: 100%;
+	/* make sure there's a 1px gap between the scrollbar and resize handle */
+	left: calc(var(--desktop-sidebar-width) + 1px);
+}
+
+.rustdoc.src .sidebar-resizer {
+	/* when closed, place resizer glow on top of the normal src sidebar border (no need to
+	worry about sidebar) */
+	left: 49px;
+}
+
+.src-sidebar-expanded .src .sidebar-resizer {
+	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
+	   to right of it */
+	left: var(--src-sidebar-width);
+}
+
+.sidebar-resizing {
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.sidebar-resizing * {
+	cursor: col-resize !important;
+}
+
+.sidebar-resizing .sidebar {
+	position: fixed;
+}
+.sidebar-resizing > body {
+	padding-left: var(--resizing-sidebar-width);
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active,
+.sidebar-resizer:focus,
+.sidebar-resizer.active {
+	width: 10px;
+	margin: 0;
+	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
+	   on top of, the scrollbar) */
+	left: var(--desktop-sidebar-width);
+	border-left: solid 1px var(--sidebar-resizer-hover);
+}
+
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:hover,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:active,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:focus,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer.active {
+	/* when active or hovered, place resizer glow on top of the normal src sidebar border */
+	left: calc(var(--src-sidebar-width) - 1px);
+}
+
+@media (pointer: coarse) {
+	.sidebar-resizer {
+		/* too easy to hit the resizer while trying to hit the [-] toggle */
+		display: none !important;
+	}
+}
+
+.sidebar-resizer.active {
+	/* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
+		while resizing */
+	padding: 0 140px;
+	width: 2px;
+	margin-left: -140px;
+	border-left: none;
+}
+.sidebar-resizer.active:before {
+	border-left: solid 2px var(--sidebar-resizer-active);
+	display: block;
+	height: 100%;
+	content: "";
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
-#src-sidebar-toggle, #src-sidebar {
+#src-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
-#src-sidebar-toggle > button:hover, #src-sidebar-toggle > button:focus {
-	background-color: var(--sidebar-background-color-hover);
-}
-
-.src .sidebar > *:not(#src-sidebar-toggle) {
+.src .sidebar > * {
 	visibility: hidden;
 }
 
 .src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
-	flex-basis: 300px;
+	flex-basis: var(--src-sidebar-width);
+	width: var(--src-sidebar-width);
 }
 
-.src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
+.src-sidebar-expanded .src .sidebar > * {
 	visibility: visible;
 }
 
@@ -477,6 +560,7 @@ ul.block, .block li {
 	display: block;
 	padding: 0.25rem; /* 4px */
 	margin-left: -0.25rem;
+	margin-right: 0.25rem;
 }
 
 .sidebar h2 {
@@ -765,17 +849,36 @@ nav.sub {
 h2.section-header > .anchor {
 	padding-right: 6px;
 }
+a.doc-anchor {
+	color: var(--main-color);
+	display: none;
+	position: absolute;
+	left: -17px;
+	/* We add this padding so that when the cursor moves from the heading's text to the anchor,
+	   the anchor doesn't disappear. */
+	padding-right: 5px;
+	/* And this padding is used to make the anchor larger and easier to click on. */
+	padding-left: 3px;
+}
+*:hover > .doc-anchor {
+	display: block;
+}
+/* If the first element of the top doc block is a heading, we don't want to ever display its anchor
+because of the `[-]` element which would overlap with it. */
+.top-doc > .docblock > *:first-child > .doc-anchor {
+	display: none !important;
+}
 
 .main-heading a:hover,
 .example-wrap .rust a:hover,
 .all-items a:hover,
-.docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
+.docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
 .docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
 .item-info a {
 	text-decoration: underline;
 }
 
-.crate.block a.current { font-weight: 500; }
+.crate.block li.current a { font-weight: 500; }
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
@@ -962,7 +1065,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	position: absolute;
 	top: 100%;
 	right: 0;
-	z-index: 2;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 	margin-top: 7px;
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
@@ -1270,6 +1373,9 @@ documentation. */
 	font-weight: bold;
 	font-size: 1.25rem;
 }
+.top-doc > .docblock >.warning:first-child::before {
+	top: 20px;
+}
 
 a.test-arrow {
 	visibility: hidden;
@@ -1431,27 +1537,9 @@ a.tooltip:hover::after {
 	font-weight: normal;
 }
 
-#src-sidebar-toggle {
-	position: sticky;
-	top: 0;
-	left: 0;
-	font-size: 1.25rem;
-	border-bottom: 1px solid;
-	display: flex;
-	height: 40px;
-	justify-content: stretch;
-	align-items: stretch;
-	z-index: 10;
-}
 #src-sidebar {
 	width: 100%;
 	overflow: auto;
-}
-#src-sidebar > .title {
-	font-size: 1.5rem;
-	text-align: center;
-	border-bottom: 1px solid var(--border-color);
-	margin-bottom: 6px;
 }
 #src-sidebar div.files > a:hover, details.dir-entry summary:hover,
 #src-sidebar div.files > a:focus, details.dir-entry summary:focus {
@@ -1460,25 +1548,44 @@ a.tooltip:hover::after {
 #src-sidebar div.files > a.selected {
 	background-color: var(--src-sidebar-background-selected);
 }
-#src-sidebar-toggle > button {
-	font-size: inherit;
-	font-weight: bold;
-	background: none;
-	color: inherit;
-	text-align: center;
-	border: none;
-	outline: none;
-	flex: 1 1;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
+
+.src-sidebar-title {
+	position: sticky;
+	top: 0;
+	display: flex;
+	padding: 8px 8px 0 48px;
+	margin-bottom: 7px;
+	background: var(--sidebar-background-color);
+	border-bottom: 1px solid var(--border-color);
 }
 
 #settings-menu, #help-button {
 	margin-left: 4px;
 	display: flex;
 }
-#settings-menu > a, #help-button > a {
+#sidebar-button {
+	display: none;
+	line-height: 0;
+}
+.hide-sidebar #sidebar-button,
+.src #sidebar-button {
+	display: flex;
+	margin-right: 4px;
+	position: fixed;
+	left: 6px;
+	height: 34px;
+	width: 34px;
+	background-color: var(--main-background-color);
+	z-index: 1;
+}
+.src #sidebar-button {
+	left: 8px;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
+}
+.hide-sidebar .src #sidebar-button {
+	position: static;
+}
+#settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1493,8 +1600,19 @@ a.tooltip:hover::after {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
+#help-button > a:hover, #help-button > a:focus,
+#sidebar-button > a:hover, #sidebar-button > a:focus {
 	border-color: var(--settings-button-border-focus);
+}
+
+#sidebar-button > a:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
+		fill="none" stroke="black">\
+		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
+	width: 22px;
+	height: 22px;
 }
 
 #copy-path {
@@ -1699,6 +1817,30 @@ However, it's not needed with smaller screen width because the doc/code block is
 	margin-top: 16px;
 }
 
+/* sidebar button opens modal
+	use hamburger button */
+.src #sidebar-button > a:before, .sidebar-menu-toggle:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		viewBox="0 0 22 22" fill="none" stroke="black">\
+		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
+	opacity: 0.75;
+}
+.sidebar-menu-toggle:hover:before,
+.sidebar-menu-toggle:active:before,
+.sidebar-menu-toggle:focus:before {
+	opacity: 1;
+}
+
+/* src sidebar button opens a folder view */
+.src #sidebar-button > a:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		viewBox="0 0 22 22" fill="none" stroke="black">\
+		<path d="M16,9v-4h-6v-1l-2,-2h-4l-2,2v16h13L21,9h-15L2,19" stroke-width="1.25"/>\
+		<path d="M15,7h-11v3" stroke-width="0.75"/>\
+		<path d="M3.75,10v1.25" stroke-width="0.375"/></svg>');
+	opacity: 0.75;
+}
+
 /* Media Queries */
 
 /* Make sure all the buttons line wrap at the same time */
@@ -1711,7 +1853,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in src-script.js
+in src-script.js and main.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -1750,7 +1892,8 @@ in src-script.js
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
 	.sidebar .logo-container,
-	.sidebar .location {
+	.sidebar .location,
+	.sidebar-resizer {
 		display: none;
 	}
 
@@ -1774,6 +1917,15 @@ in src-script.js
 		padding: 0;
 		height: 100vh;
 		border: 0;
+	}
+	.src .search-form {
+		margin-left: 40px;
+	}
+	.hide-sidebar .search-form {
+		margin-left: 32px;
+	}
+	.hide-sidebar .src .search-form {
+		margin-left: 0;
 	}
 
 	.sidebar.shown,
@@ -1818,13 +1970,18 @@ in src-script.js
 		top: 0;
 	}
 
+	.hide-sidebar .mobile-topbar {
+		display: none;
+	}
+
 	.sidebar-menu-toggle {
 		width: 45px;
-		/* Rare exception to specifying font sizes in rem. Since this is acting
-		   as an icon, it's okay to specify its sizes in pixels. */
-		font-size: 32px;
 		border: none;
-		color: var(--main-color);
+		line-height: 0;
+	}
+
+	.hide-sidebar .sidebar-menu-toggle {
+		display: none;
 	}
 
 	.sidebar-elems {
@@ -1840,34 +1997,26 @@ in src-script.js
 		left: -11px;
 	}
 
-	#src-sidebar-toggle {
-		position: fixed;
-		left: 1px;
-		top: 100px;
-		width: 30px;
-		font-size: 1.5rem;
-		padding: 0;
-		z-index: 10;
-		border-top-right-radius: 3px;
-		border-bottom-right-radius: 3px;
-		border: 1px solid;
-		border-left: 0;
-	}
-
-	.src-sidebar-expanded #src-sidebar-toggle {
-		left: unset;
-		top: unset;
-		width: unset;
-		border-top-right-radius: unset;
-		border-bottom-right-radius: unset;
-		position: sticky;
-		border: 0;
-		border-bottom: 1px solid;
-	}
-
 	/* We don't display these buttons on mobile devices. */
 	#copy-path, #help-button {
 		display: none;
+	}
+
+	/* sidebar button becomes topbar button */
+	#sidebar-button > a:before {
+		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+			viewBox="0 0 22 22" fill="none" stroke="black">\
+			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
+		width: 22px;
+		height: 22px;
+	}
+	.sidebar-menu-toggle:before {
+		filter: var(--mobile-sidebar-menu-filter);
+	}
+	.sidebar-menu-toggle:hover {
+		background: var(--main-background-color);
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -1895,8 +2044,12 @@ in src-script.js
 	}
 
 	.src-sidebar-expanded .src .sidebar {
+		position: fixed;
 		max-width: 100vw;
 		width: 100vw;
+	}
+	.src .src-sidebar-title {
+		padding-top: 0;
 	}
 
 	/* Position of the "[-]" element. */
@@ -1968,12 +2121,6 @@ in src-script.js
 
 	.search-form {
 		align-self: stretch;
-	}
-
-	.sub-logo-container > img {
-		height: 35px;
-		width: 35px;
-		margin-bottom: var(--nav-sub-mobile-padding);
 	}
 }
 
@@ -2196,6 +2343,7 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--mobile-sidebar-menu-filter: none;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2274,6 +2422,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+	--sidebar-resizer-hover: hsl(207, 90%, 66%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: light */
 
@@ -2298,6 +2448,7 @@ in src-script.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--mobile-sidebar-menu-filter: invert(100%);
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2379,6 +2530,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+	--sidebar-resizer-hover: hsl(207, 30%, 54%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: dark */
 
@@ -2407,6 +2560,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--mobile-sidebar-menu-filter: invert(100%);
 	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
@@ -2488,6 +2642,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
+	--sidebar-resizer-hover: hsl(34, 50%, 33%);
+	--sidebar-resizer-active: hsl(34, 100%, 66%);
 }
 
 :root[data-theme="ayu"] h1,
@@ -2496,8 +2652,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 :root[data-theme="ayu"] h4,
 :where(:root[data-theme="ayu"]) h1 a,
 :root[data-theme="ayu"] .sidebar h2 a,
-:root[data-theme="ayu"] .sidebar h3 a,
-:root[data-theme="ayu"] #source-sidebar > .title {
+:root[data-theme="ayu"] .sidebar h3 a {
 	color: #fff;
 }
 
@@ -2519,6 +2674,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 }
 
 :root[data-theme="ayu"] .sidebar .current,
+:root[data-theme="ayu"] .sidebar .current a,
 :root[data-theme="ayu"] .sidebar a:hover,
 :root[data-theme="ayu"] #src-sidebar div.files > a:hover,
 :root[data-theme="ayu"] details.dir-entry summary:hover,
@@ -2569,7 +2725,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-:root[data-theme="ayu"] #settings-menu > a img {
+:root[data-theme="ayu"] #settings-menu > a img,
+:root[data-theme="ayu"] #sidebar-button > a:before {
 	filter: invert(100);
 }
 /* End theme: ayu */

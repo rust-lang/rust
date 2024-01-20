@@ -9,6 +9,30 @@
     clippy::useless_vec
 )]
 
+use std::fmt::Display;
+use std::ops::{Neg, Shl};
+
+struct Cout;
+
+impl<T> Shl<T> for Cout
+where
+    T: Display,
+{
+    type Output = Self;
+    fn shl(self, rhs: T) -> Self::Output {
+        println!("{}", rhs);
+        self
+    }
+}
+
+impl Neg for Cout {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        println!("hello world");
+        self
+    }
+}
+
 struct Unit;
 struct Tuple(i32);
 struct Struct {
@@ -174,4 +198,11 @@ fn main() {
     GreetStruct1("world");
     GreetStruct2()("world");
     GreetStruct3 {}("world");
+
+    fn n() -> i32 {
+        42
+    }
+
+    Cout << 142;
+    -Cout;
 }

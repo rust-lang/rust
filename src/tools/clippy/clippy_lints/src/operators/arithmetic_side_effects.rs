@@ -132,7 +132,11 @@ impl ArithmeticSideEffects {
     }
 
     // Common entry-point to avoid code duplication.
-    fn issue_lint(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+    fn issue_lint<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if is_from_proc_macro(cx, expr) {
+            return;
+        }
+
         let msg = "arithmetic operation that can potentially result in unexpected side-effects";
         span_lint(cx, ARITHMETIC_SIDE_EFFECTS, expr.span, msg);
         self.expr_span = Some(expr.span);
@@ -160,10 +164,10 @@ impl ArithmeticSideEffects {
     fn manage_bin_ops<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
-        expr: &hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'_>,
         op: &Spanned<hir::BinOpKind>,
-        lhs: &hir::Expr<'tcx>,
-        rhs: &hir::Expr<'tcx>,
+        lhs: &'tcx hir::Expr<'_>,
+        rhs: &'tcx hir::Expr<'_>,
     ) {
         if constant_simple(cx, cx.typeck_results(), expr).is_some() {
             return;
@@ -236,10 +240,10 @@ impl ArithmeticSideEffects {
     /// provided input.
     fn manage_method_call<'tcx>(
         &mut self,
-        args: &[hir::Expr<'tcx>],
+        args: &'tcx [hir::Expr<'_>],
         cx: &LateContext<'tcx>,
-        ps: &hir::PathSegment<'tcx>,
-        receiver: &hir::Expr<'tcx>,
+        ps: &'tcx hir::PathSegment<'_>,
+        receiver: &'tcx hir::Expr<'_>,
     ) {
         let Some(arg) = args.first() else {
             return;
@@ -264,8 +268,8 @@ impl ArithmeticSideEffects {
     fn manage_unary_ops<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
-        expr: &hir::Expr<'tcx>,
-        un_expr: &hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'_>,
+        un_expr: &'tcx hir::Expr<'_>,
         un_op: hir::UnOp,
     ) {
         let hir::UnOp::Neg = un_op else {
@@ -287,14 +291,13 @@ impl ArithmeticSideEffects {
 
     fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
-            || is_from_proc_macro(cx, expr)
             || self.expr_span.is_some()
             || self.const_span.map_or(false, |sp| sp.contains(expr.span))
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if self.should_skip_expr(cx, expr) {
             return;
         }

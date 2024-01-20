@@ -529,7 +529,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -557,12 +557,12 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     } else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                    sess.emit_warning(unknown_feature);
+                    sess.dcx().emit_warn(unknown_feature);
                 } else if feature_state
                     .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
-                    sess.emit_warning(UnstableCTargetFeature { feature });
+                    sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                 }
             }
 
@@ -598,7 +598,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     features.extend(feats);
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.emit_err(TargetFeatureDisableOrEnable {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
             features: f,
             span: None,
             missing_features: None,

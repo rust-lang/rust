@@ -3,7 +3,7 @@
 //
 // check-pass
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 // aux-build: cross-crate.rs
 extern crate cross_crate;

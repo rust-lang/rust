@@ -9,6 +9,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{GenericArg, GenericArgsRef};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
+use rustc_query_system::query::DefIdCacheSelector;
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -40,7 +41,7 @@ pub trait Key: Sized {
         None
     }
 
-    fn ty_adt_id(&self) -> Option<DefId> {
+    fn ty_def_id(&self) -> Option<DefId> {
         None
     }
 }
@@ -152,7 +153,7 @@ impl Key for LocalDefId {
 }
 
 impl Key for DefId {
-    type CacheSelector = DefaultCacheSelector<Self>;
+    type CacheSelector = DefIdCacheSelector;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(*self)
@@ -406,9 +407,10 @@ impl<'tcx> Key for Ty<'tcx> {
         DUMMY_SP
     }
 
-    fn ty_adt_id(&self) -> Option<DefId> {
-        match self.kind() {
+    fn ty_def_id(&self) -> Option<DefId> {
+        match *self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
+            ty::Coroutine(def_id, ..) => Some(def_id),
             _ => None,
         }
     }
@@ -451,6 +453,10 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)
+    }
+
+    fn ty_def_id(&self) -> Option<DefId> {
+        self.value.ty_def_id()
     }
 }
 
@@ -550,7 +556,7 @@ impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
         DUMMY_SP
     }
 
-    fn ty_adt_id(&self) -> Option<DefId> {
+    fn ty_def_id(&self) -> Option<DefId> {
         match self.1.value.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
             _ => None,

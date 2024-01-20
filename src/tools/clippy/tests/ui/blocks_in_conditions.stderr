@@ -1,0 +1,57 @@
+error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> $DIR/blocks_in_conditions.rs:23:5
+   |
+LL | /     if {
+LL | |
+LL | |         let x = 3;
+LL | |         x == 3
+LL | |     } {
+   | |_____^
+   |
+   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
+help: try
+   |
+LL ~     let res = {
+LL +
+LL +         let x = 3;
+LL +         x == 3
+LL ~     }; if res {
+   |
+
+error: omit braces around single expression condition
+  --> $DIR/blocks_in_conditions.rs:35:8
+   |
+LL |     if { true } { 6 } else { 10 }
+   |        ^^^^^^^^ help: try: `true`
+
+error: this boolean expression can be simplified
+  --> $DIR/blocks_in_conditions.rs:41:8
+   |
+LL |     if true && x == 3 { 6 } else { 10 }
+   |        ^^^^^^^^^^^^^^ help: try: `x == 3`
+   |
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+
+error: in a `match` scrutinee, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
+  --> $DIR/blocks_in_conditions.rs:68:5
+   |
+LL | /     match {
+LL | |
+LL | |         let opt = Some(2);
+LL | |         opt
+LL | |     } {
+   | |_____^
+   |
+help: try
+   |
+LL ~     let res = {
+LL +
+LL +         let opt = Some(2);
+LL +         opt
+LL ~     }; match res {
+   |
+
+error: aborting due to 4 previous errors
+

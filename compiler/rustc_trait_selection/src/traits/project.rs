@@ -191,7 +191,9 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
                 match (current, candidate) {
                     (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
-                    (_, ParamEnv(..)) => unreachable!(),
+                    (_, ParamEnv(..)) => bug!(
+                        "should never prefer non-param-env candidates over param-env candidates"
+                    ),
                     (_, _) => convert_to_ambiguous = (),
                 }
             }
@@ -1367,7 +1369,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
     if !tcx.recursion_limit().value_within_limit(depth) {
         // Halt compilation because it is important that overflows never be masked.
-        tcx.sess.emit_fatal(InherentProjectionNormalizationOverflow {
+        tcx.dcx().emit_fatal(InherentProjectionNormalizationOverflow {
             span: cause.span,
             ty: alias_ty.to_string(),
         });
@@ -1469,7 +1471,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
     match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
         Ok(mut ok) => obligations.append(&mut ok.obligations),
         Err(_) => {
-            tcx.sess.span_delayed_bug(
+            tcx.dcx().span_delayed_bug(
                 cause.span,
                 format!(
                     "{self_ty:?} was a subtype of {impl_ty:?} during selection but now it is not"
@@ -1981,7 +1983,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
             | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                 // These traits have no associated types.
-                selcx.tcx().sess.span_delayed_bug(
+                selcx.tcx().dcx().span_delayed_bug(
                     obligation.cause.span,
                     format!("Cannot project an associated type from `{impl_source:?}`"),
                 );
@@ -2080,10 +2082,11 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args) = self_ty.kind() else {
+        unreachable!(
+            "expected coroutine self type for built-in coroutine candidate, found {self_ty}"
+        )
     };
     let coroutine_sig = args.as_coroutine().sig();
     let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
@@ -2113,7 +2116,10 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     } else if name == sym::Yield {
         yield_ty
     } else {
-        bug!()
+        span_bug!(
+            tcx.def_span(obligation.predicate.def_id),
+            "unexpected associated type: `Coroutine::{name}`"
+        );
     };
 
     let predicate = ty::ProjectionPredicate {
@@ -2131,10 +2137,11 @@ fn confirm_future_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args) = self_ty.kind() else {
+        unreachable!(
+            "expected coroutine self type for built-in async future candidate, found {self_ty}"
+        )
     };
     let coroutine_sig = args.as_coroutine().sig();
     let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
@@ -2174,10 +2181,9 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Coroutine(_, args) = self_ty.kind() else {
+        unreachable!("expected coroutine self type for built-in gen candidate, found {self_ty}")
     };
     let gen_sig = args.as_coroutine().sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
@@ -2217,8 +2223,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    let ty::Coroutine(_, args) = selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
     else {
         unreachable!()
     };
@@ -2321,8 +2326,9 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
+    let tcx = selcx.tcx();
     let fn_type = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let sig = fn_type.fn_sig(selcx.tcx());
+    let sig = fn_type.fn_sig(tcx);
     let Normalized { value: sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2331,9 +2337,24 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
         sig,
     );
 
-    confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
-        .with_addl_obligations(nested)
-        .with_addl_obligations(obligations)
+    let host_effect_param = match *fn_type.kind() {
+        ty::FnDef(def_id, args) => tcx
+            .generics_of(def_id)
+            .host_effect_index
+            .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
+        ty::FnPtr(_) => tcx.consts.true_,
+        _ => unreachable!("only expected FnPtr or FnDef in `confirm_fn_pointer_candidate`"),
+    };
+
+    confirm_callable_candidate(
+        selcx,
+        obligation,
+        sig,
+        util::TupleArgumentsFlag::Yes,
+        host_effect_param,
+    )
+    .with_addl_obligations(nested)
+    .with_addl_obligations(obligations)
 }
 
 fn confirm_closure_candidate<'cx, 'tcx>(
@@ -2341,9 +2362,9 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Closure(_, args) = selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
-    else {
-        unreachable!()
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+    let ty::Closure(_, args) = self_ty.kind() else {
+        unreachable!("expected closure self type for closure candidate, found {self_ty}")
     };
     let closure_sig = args.as_closure().sig();
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(
@@ -2356,9 +2377,16 @@ fn confirm_closure_candidate<'cx, 'tcx>(
 
     debug!(?obligation, ?closure_sig, ?obligations, "confirm_closure_candidate");
 
-    confirm_callable_candidate(selcx, obligation, closure_sig, util::TupleArgumentsFlag::No)
-        .with_addl_obligations(nested)
-        .with_addl_obligations(obligations)
+    confirm_callable_candidate(
+        selcx,
+        obligation,
+        closure_sig,
+        util::TupleArgumentsFlag::No,
+        // FIXME(effects): This doesn't handle const closures correctly!
+        selcx.tcx().consts.true_,
+    )
+    .with_addl_obligations(nested)
+    .with_addl_obligations(obligations)
 }
 
 fn confirm_callable_candidate<'cx, 'tcx>(
@@ -2366,6 +2394,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag,
+    fn_host_effect: ty::Const<'tcx>,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
@@ -2380,6 +2409,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         obligation.predicate.self_ty(),
         fn_sig,
         flag,
+        fn_host_effect,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
         projection_ty: ty::AliasTy::new(tcx, fn_once_output_def_id, trait_ref.args),
@@ -2436,7 +2466,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     debug!(?cache_projection, ?obligation_projection);
 
     match infcx.at(cause, param_env).eq(
-        DefineOpaqueTypes::No,
+        DefineOpaqueTypes::Yes,
         cache_projection,
         obligation_projection,
     ) {

@@ -320,7 +320,7 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::Infer => {
+            hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
         }
@@ -553,17 +553,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::OpaqueTy(opaque_ty) => {
                 self.print_item_type(item, opaque_ty.generics, |state| {
-                    let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
-                    for b in opaque_ty.bounds {
-                        if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                            state.space();
-                            state.word_space("for ?");
-                            state.print_trait_ref(&ptr.trait_ref);
-                        } else {
-                            real_bounds.push(b);
-                        }
-                    }
-                    state.print_bounds("= impl", real_bounds);
+                    state.print_bounds("= impl", opaque_ty.bounds)
                 });
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
@@ -625,17 +615,7 @@ impl<'a> State<'a> {
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds {
-                    if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
-                    }
-                }
-                self.print_bounds(":", real_bounds);
+                self.print_bounds(":", bounds);
                 self.print_where_clause(generics);
                 self.word(" ");
                 self.bopen();
@@ -741,7 +721,7 @@ impl<'a> State<'a> {
                 self.end();
                 self.end() // close the outer-box
             }
-            hir::VariantData::Struct(..) => {
+            hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
                 self.nbsp();
                 self.bopen();
@@ -1427,7 +1407,7 @@ impl<'a> State<'a> {
                 body,
                 fn_decl_span: _,
                 fn_arg_span: _,
-                movability: _,
+                kind: _,
                 def_id: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
@@ -1858,6 +1838,11 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, after, |s, p| s.print_pat(p));
                 self.word("]");
             }
+            PatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }
@@ -1894,17 +1879,9 @@ impl<'a> State<'a> {
         self.print_pat(arm.pat);
         self.space();
         if let Some(ref g) = arm.guard {
-            match *g {
-                hir::Guard::If(e) => {
-                    self.word_space("if");
-                    self.print_expr(e);
-                    self.space();
-                }
-                hir::Guard::IfLet(&hir::Let { pat, ty, init, .. }) => {
-                    self.word_nbsp("if");
-                    self.print_let(pat, ty, init);
-                }
-            }
+            self.word_space("if");
+            self.print_expr(g);
+            self.space();
         }
         self.word_space("=>");
 
@@ -2003,18 +1980,14 @@ impl<'a> State<'a> {
         });
         self.word("|");
 
-        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.word_space("->");
         match decl.output {
             hir::FnRetTy::Return(ty) => {
+                self.space_if_not_bol();
+                self.word_space("->");
                 self.print_type(ty);
                 self.maybe_print_comment(ty.span.lo());
             }
-            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::DefaultReturn(..) => {}
         }
     }
 
@@ -2087,11 +2060,6 @@ impl<'a> State<'a> {
                         self.word("?");
                     }
                     self.print_poly_trait_ref(tref);
-                }
-                GenericBound::LangItemTrait(lang_item, span, ..) => {
-                    self.word("#[lang = \"");
-                    self.print_ident(Ident::new(lang_item.name(), *span));
-                    self.word("\"]");
                 }
                 GenericBound::Outlives(lt) => {
                     self.print_lifetime(lt);
@@ -2179,7 +2147,7 @@ impl<'a> State<'a> {
                             GenericBound::Outlives(lt) => {
                                 self.print_lifetime(lt);
                             }
-                            _ => panic!(),
+                            _ => panic!("unexpected bound on lifetime param: {bound:?}"),
                         }
 
                         if i != 0 {
@@ -2216,16 +2184,14 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {
-        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.ibox(INDENT_UNIT);
-        self.word_space("->");
         match decl.output {
-            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
-            hir::FnRetTy::Return(ty) => self.print_type(ty),
+            hir::FnRetTy::Return(ty) => {
+                self.space_if_not_bol();
+                self.ibox(INDENT_UNIT);
+                self.word_space("->");
+                self.print_type(ty);
+            }
+            hir::FnRetTy::DefaultReturn(..) => return,
         }
         self.end();
 

@@ -1,4 +1,10 @@
-#![allow(clippy::needless_borrow, clippy::needless_borrows_for_generic_args, clippy::ptr_arg)]
+#![allow(
+    clippy::needless_borrow,
+    clippy::needless_borrows_for_generic_args,
+    clippy::ptr_arg,
+    clippy::manual_async_fn,
+    clippy::needless_lifetimes
+)]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
 use std::borrow::Cow;
@@ -504,5 +510,20 @@ mod issue_10033 {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "Foo")
         }
+    }
+}
+
+mod issue_11952 {
+    use core::future::{Future, IntoFuture};
+
+    fn foo<'a, T: AsRef<[u8]>>(x: T, y: &'a i32) -> impl 'a + Future<Output = Result<(), ()>> {
+        async move {
+            let _y = y;
+            Ok(())
+        }
+    }
+
+    fn bar() {
+        IntoFuture::into_future(foo([], &0));
     }
 }

@@ -6,6 +6,7 @@ import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
+import type { JsonProject } from "./rust_project";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 

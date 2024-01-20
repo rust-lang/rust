@@ -65,7 +65,7 @@ fn test_units() {
 /// OAuth GraphQL
 /// OCaml
 /// OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenDNS
-/// WebGL
+/// WebGL WebGL2 WebGPU
 /// TensorFlow
 /// TrueType
 /// iOS macOS FreeBSD
@@ -227,3 +227,6 @@ where [(); N.checked_next_power_of_two().unwrap()]: {
 
 /// this checks if the lowerCamelCase issue is fixed
 fn issue_11568() {}
+
+/// There is no try (do() or do_not()).
+fn parenthesized_word() {}

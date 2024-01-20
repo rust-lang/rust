@@ -4,8 +4,9 @@ mod macros;
 mod mod_resolution;
 mod primitives;
 
-use base_db::{fixture::WithFixture, SourceDatabase};
+use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
+use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::DefMap, test_db::TestDB};

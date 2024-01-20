@@ -316,10 +316,7 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
         is_const: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
-        }
+        type NestedFilter = rustc_hir::intravisit::nested_filter::None;
 
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if !self.is_const {

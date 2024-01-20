@@ -402,7 +402,7 @@ fn check_opaque_type_parameter_valid(
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
-            return Err(tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+            return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
                 span,
@@ -419,9 +419,9 @@ fn check_opaque_type_parameter_valid(
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
             return Err(tcx
-                .sess
+                .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(spans, format!("{descr} used multiple times"))
+                .with_span_note(spans, format!("{descr} used multiple times"))
                 .emit());
         }
     }

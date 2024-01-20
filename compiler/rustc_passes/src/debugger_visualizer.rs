@@ -17,19 +17,19 @@ impl DebuggerVisualizerCollector<'_> {
     fn check_for_debugger_visualizer(&mut self, attr: &Attribute) {
         if attr.has_name(sym::debugger_visualizer) {
             let Some(hints) = attr.meta_item_list() else {
-                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
 
             let hint = if hints.len() == 1 {
                 &hints[0]
             } else {
-                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
 
             let Some(meta_item) = hint.meta_item() else {
-                self.sess.emit_err(DebugVisualizerInvalid { span: attr.span });
+                self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };
 
@@ -40,19 +40,18 @@ impl DebuggerVisualizerCollector<'_> {
                         (DebuggerVisualizerType::GdbPrettyPrinter, value)
                     }
                     (_, _) => {
-                        self.sess.emit_err(DebugVisualizerInvalid { span: meta_item.span });
+                        self.sess.dcx().emit_err(DebugVisualizerInvalid { span: meta_item.span });
                         return;
                     }
                 };
 
-            let file =
-                match resolve_path(&self.sess.parse_sess, visualizer_path.as_str(), attr.span) {
-                    Ok(file) => file,
-                    Err(mut err) => {
-                        err.emit();
-                        return;
-                    }
-                };
+            let file = match resolve_path(&self.sess, visualizer_path.as_str(), attr.span) {
+                Ok(file) => file,
+                Err(err) => {
+                    err.emit();
+                    return;
+                }
+            };
 
             match std::fs::read(&file) {
                 Ok(contents) => {
@@ -63,7 +62,7 @@ impl DebuggerVisualizerCollector<'_> {
                     ));
                 }
                 Err(error) => {
-                    self.sess.emit_err(DebugVisualizerUnreadable {
+                    self.sess.dcx().emit_err(DebugVisualizerUnreadable {
                         span: meta_item.span,
                         file: &file,
                         error,

@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_err, DiagnosticMessage};
+use rustc_errors::{struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -29,8 +29,8 @@ fn equate_intrinsic_type<'tcx>(
             (own_counts, generics.span)
         }
         _ => {
-            struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
-                .span_label(it.span, "expected a function")
+            struct_span_code_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
+                .with_span_label(it.span, "expected a function")
                 .emit();
             return;
         }
@@ -38,7 +38,7 @@ fn equate_intrinsic_type<'tcx>(
 
     let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
         if found != expected {
-            tcx.sess.emit_err(WrongNumberOfGenericArgumentsToIntrinsic {
+            tcx.dcx().emit_err(WrongNumberOfGenericArgumentsToIntrinsic {
                 span,
                 found,
                 expected,
@@ -55,7 +55,7 @@ fn equate_intrinsic_type<'tcx>(
         && gen_count_ok(own_counts.consts, n_cts, "const")
     {
         let it_def_id = it.owner_id.def_id;
-        check_function_signature(
+        let _ = check_function_signature(
             tcx,
             ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType),
             it_def_id.into(),
@@ -117,7 +117,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
     };
 
     if has_safe_attr != is_in_list {
-        tcx.sess.struct_span_err(
+        tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
             DiagnosticMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
@@ -176,7 +176,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | "umin" => (1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
             "fence" | "singlethreadfence" => (0, Vec::new(), Ty::new_unit(tcx)),
             op => {
-                tcx.sess.emit_err(UnrecognizedAtomicOperation { span: it.span, op });
+                tcx.dcx().emit_err(UnrecognizedAtomicOperation { span: it.span, op });
                 return;
             }
         };
@@ -460,7 +460,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             other => {
-                tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
+                tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
                 return;
             }
         };
@@ -552,7 +552,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.sess.struct_span_err(it.span, msg).emit();
+            tcx.dcx().span_err(it.span, msg);
             return;
         }
     };

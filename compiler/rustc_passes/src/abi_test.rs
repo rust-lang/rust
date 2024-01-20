@@ -25,7 +25,7 @@ pub fn test_abi(tcx: TyCtxt<'_>) {
                     dump_abi_of_fn_type(tcx, id, attr);
                 }
                 _ => {
-                    tcx.sess.emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
+                    tcx.dcx().emit_err(AbiInvalidAttribute { span: tcx.def_span(id) });
                 }
             }
         }
@@ -40,7 +40,7 @@ fn unwrap_fn_abi<'tcx>(
     match abi {
         Ok(abi) => abi,
         Err(FnAbiError::Layout(layout_error)) => {
-            tcx.sess.emit_fatal(Spanned {
+            tcx.dcx().emit_fatal(Spanned {
                 node: layout_error.into_diagnostic(),
                 span: tcx.def_span(item_def_id),
             });
@@ -65,7 +65,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?
             let ty = tcx.type_of(item_def_id).instantiate_identity();
-            tcx.sess.emit_fatal(Spanned {
+            tcx.dcx().emit_fatal(Spanned {
                 node: LayoutError::Unknown(ty).into_diagnostic(),
 
                 span: tcx.def_span(item_def_id),
@@ -86,7 +86,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
         match meta_item.name_or_empty() {
             sym::debug => {
                 let fn_name = tcx.item_name(item_def_id.into());
-                tcx.sess.emit_err(AbiOf {
+                tcx.dcx().emit_err(AbiOf {
                     span: tcx.def_span(item_def_id),
                     fn_name,
                     // FIXME: using the `Debug` impl here isn't ideal.
@@ -95,7 +95,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
             }
 
             name => {
-                tcx.sess.emit_err(UnrecognizedField { span: meta_item.span(), name });
+                tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
             }
         }
     }
@@ -139,7 +139,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 );
 
                 let fn_name = tcx.item_name(item_def_id.into());
-                tcx.sess.emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
+                tcx.dcx().emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
             }
             sym::assert_eq => {
                 let ty::Tuple(fields) = ty.kind() else {
@@ -182,7 +182,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 );
 
                 if !test_abi_eq(abi1, abi2) {
-                    tcx.sess.emit_err(AbiNe {
+                    tcx.dcx().emit_err(AbiNe {
                         span,
                         left: format!("{:#?}", abi1),
                         right: format!("{:#?}", abi2),
@@ -190,7 +190,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 }
             }
             name => {
-                tcx.sess.emit_err(UnrecognizedField { span: meta_item.span(), name });
+                tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
             }
         }
     }

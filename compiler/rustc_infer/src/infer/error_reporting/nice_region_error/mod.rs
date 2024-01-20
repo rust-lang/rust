@@ -50,7 +50,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         self.cx.tcx
     }
 
-    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
         self.try_report_named_anon_conflict()
@@ -60,7 +60,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
 
     pub fn try_report(&self) -> Option<ErrorGuaranteed> {
         self.try_report_from_nll()
-            .map(|mut diag| diag.emit())
+            .map(|diag| diag.emit())
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_static_impl_trait())

@@ -233,7 +233,6 @@ impl InferenceContext<'_> {
         };
         let mut expectations_iter = expectations
             .iter()
-            .cloned()
             .map(|a| a.assert_ty_ref(Interner).clone())
             .chain(repeat_with(|| self.table.new_type_var()));
 
@@ -262,7 +261,7 @@ impl InferenceContext<'_> {
     fn infer_pat(&mut self, pat: PatId, expected: &Ty, mut default_bm: BindingMode) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
-        if is_non_ref_pat(self.body, pat) {
+        if self.is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(expected.clone());
@@ -336,7 +335,7 @@ impl InferenceContext<'_> {
             &Pat::Lit(expr) => {
                 // Don't emit type mismatches again, the expression lowering already did that.
                 let ty = self.infer_lit_pat(expr, &expected);
-                self.write_pat_ty(pat, ty.clone());
+                self.write_pat_ty(pat, ty);
                 return self.pat_ty_after_adjustment(pat);
             }
             Pat::Box { inner } => match self.resolve_boxed_box() {
@@ -496,24 +495,28 @@ impl InferenceContext<'_> {
 
         self.infer_expr(expr, &Expectation::has_type(expected.clone()))
     }
-}
 
-fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
-    match &body[pat] {
-        Pat::Tuple { .. }
-        | Pat::TupleStruct { .. }
-        | Pat::Record { .. }
-        | Pat::Range { .. }
-        | Pat::Slice { .. } => true,
-        Pat::Or(pats) => pats.iter().all(|p| is_non_ref_pat(body, *p)),
-        // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
-        Pat::Path(..) => true,
-        Pat::ConstBlock(..) => true,
-        Pat::Lit(expr) => !matches!(
-            body[*expr],
-            Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
-        ),
-        Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
+    fn is_non_ref_pat(&mut self, body: &hir_def::body::Body, pat: PatId) -> bool {
+        match &body[pat] {
+            Pat::Tuple { .. }
+            | Pat::TupleStruct { .. }
+            | Pat::Record { .. }
+            | Pat::Range { .. }
+            | Pat::Slice { .. } => true,
+            Pat::Or(pats) => pats.iter().all(|p| self.is_non_ref_pat(body, *p)),
+            Pat::Path(p) => {
+                let v = self.resolve_value_path_inner(p, pat.into());
+                v.is_some_and(|x| !matches!(x.0, hir_def::resolver::ValueNs::ConstId(_)))
+            }
+            Pat::ConstBlock(..) => false,
+            Pat::Lit(expr) => !matches!(
+                body[*expr],
+                Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
+            ),
+            Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => {
+                false
+            }
+        }
     }
 }
 

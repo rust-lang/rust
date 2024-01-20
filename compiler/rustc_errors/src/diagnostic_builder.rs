@@ -1,9 +1,9 @@
 use crate::diagnostic::IntoDiagnosticArg;
+use crate::{DiagCtxt, Level, MultiSpan, StashKey};
 use crate::{
-    Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed,
-    ExplicitBug, SubdiagnosticMessage,
+    Diagnostic, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed, ExplicitBug,
+    SubdiagnosticMessage,
 };
-use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 use rustc_span::source_map::Spanned;
 
@@ -15,13 +15,13 @@ use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
 
-/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// Trait implemented by error types. This is rarely implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
 #[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `Handler`.
+    /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G>;
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G>;
 }
 
 impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
@@ -29,296 +29,170 @@ where
     T: IntoDiagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
-        let mut diag = self.node.into_diagnostic(handler);
-        diag.set_span(self.span);
-        diag
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        self.node.into_diagnostic(dcx, level).with_span(self.span)
     }
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
+/// Each constructed `DiagnosticBuilder` must be consumed by a function such as
+/// `emit`, `cancel`, `delay_as_bug`, or `into_diagnostic`. A panic occurrs if a
+/// `DiagnosticBuilder` is dropped without being consumed by one of these
+/// functions.
 ///
 /// If there is some state in a downstream crate you would like to
 /// access in the methods of `DiagnosticBuilder` here, consider
-/// extending `HandlerFlags`, accessed via `self.handler.flags`.
+/// extending `DiagCtxtFlags`.
 #[must_use]
-#[derive(Clone)]
-pub struct DiagnosticBuilder<'a, G: EmissionGuarantee> {
-    inner: DiagnosticBuilderInner<'a>,
+pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
+    pub dcx: &'a DiagCtxt,
+
+    /// Why the `Option`? It is always `Some` until the `DiagnosticBuilder` is
+    /// consumed via `emit`, `cancel`, etc. At that point it is consumed and
+    /// replaced with `None`. Then `drop` checks that it is `None`; if not, it
+    /// panics because a diagnostic was built but not used.
+    ///
+    /// Why the Box? `Diagnostic` is a large type, and `DiagnosticBuilder` is
+    /// often used as a return value, especially within the frequently-used
+    /// `PResult` type. In theory, return value optimization (RVO) should avoid
+    /// unnecessary copying. In practice, it does not (at the time of writing).
+    diag: Option<Box<Diagnostic>>,
+
     _marker: PhantomData<G>,
 }
 
-/// This type exists only for `DiagnosticBuilder::forget_guarantee`, because it:
-/// 1. lacks the `G` parameter and therefore `DiagnosticBuilder<G1>` can be
-///    converted into `DiagnosticBuilder<G2>` while reusing the `inner` field
-/// 2. can implement the `Drop` "bomb" instead of `DiagnosticBuilder`, as it
-///    contains all of the data (`state` + `diagnostic`) of `DiagnosticBuilder`
-///
-/// The `diagnostic` field is not `Copy` and can't be moved out of whichever
-/// type implements the `Drop` "bomb", but because of the above two facts, that
-/// never needs to happen - instead, the whole `inner: DiagnosticBuilderInner`
-/// can be moved out of a `DiagnosticBuilder` and into another.
-#[must_use]
-#[derive(Clone)]
-struct DiagnosticBuilderInner<'a> {
-    state: DiagnosticBuilderState<'a>,
+// Cloning a `DiagnosticBuilder` is a recipe for a diagnostic being emitted
+// twice, which would be bad.
+impl<G> !Clone for DiagnosticBuilder<'_, G> {}
 
-    /// `Diagnostic` is a large type, and `DiagnosticBuilder` is often used as a
-    /// return value, especially within the frequently-used `PResult` type.
-    /// In theory, return value optimization (RVO) should avoid unnecessary
-    /// copying. In practice, it does not (at the time of writing).
-    diagnostic: Box<Diagnostic>,
-}
-
-#[derive(Clone)]
-enum DiagnosticBuilderState<'a> {
-    /// Initial state of a `DiagnosticBuilder`, before `.emit()` or `.cancel()`.
-    ///
-    /// The `Diagnostic` will be emitted through this `Handler`.
-    Emittable(&'a Handler),
-
-    /// State of a `DiagnosticBuilder`, after `.emit()` or *during* `.cancel()`.
-    ///
-    /// The `Diagnostic` will be ignored when calling `.emit()`, and it can be
-    /// assumed that `.emit()` was previously called, to end up in this state.
-    ///
-    /// While this is also used by `.cancel()`, this state is only observed by
-    /// the `Drop` `impl` of `DiagnosticBuilderInner`, as `.cancel()` takes
-    /// `self` by-value specifically to prevent any attempts to `.emit()`.
-    ///
-    // FIXME(eddyb) currently this doesn't prevent extending the `Diagnostic`,
-    // despite that being potentially lossy, if important information is added
-    // *after* the original `.emit()` call.
-    AlreadyEmittedOrDuringCancellation,
-}
-
-// `DiagnosticBuilderState` should be pointer-sized.
 rustc_data_structures::static_assert_size!(
-    DiagnosticBuilderState<'_>,
-    std::mem::size_of::<&Handler>()
+    DiagnosticBuilder<'_, ()>,
+    2 * std::mem::size_of::<usize>()
 );
 
 /// Trait for types that `DiagnosticBuilder::emit` can return as a "guarantee"
 /// (or "proof") token that the emission happened.
 pub trait EmissionGuarantee: Sized {
+    /// This exists so that bugs and fatal errors can both result in `!` (an
+    /// abort) when emitted, but have different aborting behaviour.
+    type EmitResult = Self;
+
     /// Implementation of `DiagnosticBuilder::emit`, fully controlled by each
     /// `impl` of `EmissionGuarantee`, to make it impossible to create a value
-    /// of `Self` without actually performing the emission.
+    /// of `Self::EmitResult` without actually performing the emission.
     #[track_caller]
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
-
-    /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
-    #[track_caller]
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self>;
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
 }
 
-impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
-    /// Discard the guarantee `.emit()` would return, in favor of having the
-    /// type `DiagnosticBuilder<'a, ()>`. This may be necessary whenever there
-    /// is a common codepath handling both errors and warnings.
-    pub fn forget_guarantee(self) -> DiagnosticBuilder<'a, ()> {
-        DiagnosticBuilder { inner: self.inner, _marker: PhantomData }
+impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
+    /// Takes the diagnostic. For use by methods that consume the
+    /// DiagnosticBuilder: `emit`, `cancel`, etc. Afterwards, `drop` is the
+    /// only code that will be run on `self`.
+    fn take_diag(&mut self) -> Diagnostic {
+        Box::into_inner(self.diag.take().unwrap())
+    }
+
+    /// Most `emit_producing_guarantee` functions use this as a starting point.
+    fn emit_producing_nothing(mut self) {
+        let diag = self.take_diag();
+        self.dcx.emit_diagnostic(diag);
+    }
+
+    /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
+    // FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
+    fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
+        let diag = self.take_diag();
+
+        // Only allow a guarantee if the `level` wasn't switched to a
+        // non-error. The field isn't `pub`, but the whole `Diagnostic` can be
+        // overwritten with a new one, thanks to `DerefMut`.
+        assert!(
+            diag.is_error(),
+            "emitted non-error ({:?}) diagnostic from `DiagnosticBuilder<ErrorGuaranteed>`",
+            diag.level,
+        );
+
+        let guar = self.dcx.emit_diagnostic(diag);
+        guar.unwrap()
     }
 }
 
-// FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
 impl EmissionGuarantee for ErrorGuaranteed {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                let guar = handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-
-                // Only allow a guarantee if the `level` wasn't switched to a
-                // non-error - the field isn't `pub`, but the whole `Diagnostic`
-                // can be overwritten with a new one, thanks to `DerefMut`.
-                assert!(
-                    db.inner.diagnostic.is_error(),
-                    "emitted non-error ({:?}) diagnostic \
-                     from `DiagnosticBuilder<ErrorGuaranteed>`",
-                    db.inner.diagnostic.level,
-                );
-                guar.unwrap()
-            }
-            // `.emit()` was previously called, disallowed from repeating it,
-            // but can take advantage of the previous `.emit()`'s guarantee
-            // still being applicable (i.e. as a form of idempotency).
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {
-                // Only allow a guarantee if the `level` wasn't switched to a
-                // non-error - the field isn't `pub`, but the whole `Diagnostic`
-                // can be overwritten with a new one, thanks to `DerefMut`.
-                assert!(
-                    db.inner.diagnostic.is_error(),
-                    "`DiagnosticBuilder<ErrorGuaranteed>`'s diagnostic \
-                     became non-error ({:?}), after original `.emit()`",
-                    db.inner.diagnostic.level,
-                );
-                #[allow(deprecated)]
-                ErrorGuaranteed::unchecked_claim_error_was_emitted()
-            }
-        }
-    }
-
-    #[track_caller]
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Error { lint: false }, msg)
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_error_guaranteed()
     }
 }
 
-// FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
 impl EmissionGuarantee for () {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-    }
-
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Warning(None), msg)
-    }
-}
-
-/// Marker type which enables implementation of `create_note` and `emit_note` functions for
-/// note-without-error struct diagnostics.
-#[derive(Copy, Clone)]
-pub struct Noted;
-
-impl EmissionGuarantee for Noted {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-
-        Noted
-    }
-
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Note, msg)
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
     }
 }
 
 /// Marker type which enables implementation of `create_bug` and `emit_bug` functions for
-/// bug struct diagnostics.
+/// bug diagnostics.
 #[derive(Copy, Clone)]
-pub struct Bug;
+pub struct BugAbort;
 
-impl EmissionGuarantee for Bug {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+impl EmissionGuarantee for BugAbort {
+    type EmitResult = !;
 
-                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then panic. No need to return the marker type.
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
         panic::panic_any(ExplicitBug);
-    }
-
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Bug, msg)
     }
 }
 
-impl EmissionGuarantee for ! {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+/// Marker type which enables implementation of `create_fatal` and `emit_fatal` functions for
+/// fatal diagnostics.
+#[derive(Copy, Clone)]
+pub struct FatalAbort;
 
-                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then fatally error, returning `!`
+impl EmissionGuarantee for FatalAbort {
+    type EmitResult = !;
+
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
         crate::FatalError.raise()
-    }
-
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Fatal, msg)
     }
 }
 
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then fatally error..
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
         rustc_span::fatal_error::FatalError
-    }
-
-    fn make_diagnostic_builder(
-        handler: &Handler,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Fatal, msg)
     }
 }
 
-/// In general, the `DiagnosticBuilder` uses deref to allow access to
-/// the fields and methods of the embedded `diagnostic` in a
-/// transparent way. *However,* many of the methods are intended to
-/// be used in a chained way, and hence ought to return `self`. In
-/// that case, we can't just naively forward to the method on the
-/// `diagnostic`, because the return type would be a `&Diagnostic`
-/// instead of a `&DiagnosticBuilder<'a>`. This `forward!` macro makes
-/// it easy to declare such methods on the builder.
+/// `DiagnosticBuilder` impls `DerefMut`, which allows access to the fields and
+/// methods of the embedded `Diagnostic`. However, that doesn't allow method
+/// chaining at the `DiagnosticBuilder` level. Each use of this macro defines
+/// two builder methods at that level, both of which wrap the equivalent method
+/// in `Diagnostic`.
+/// - A `&mut self -> &mut Self` method, with the same name as the underlying
+///   `Diagnostic` method. It is mostly to modify existing diagnostics, either
+///   in a standalone fashion, e.g. `err.code(code)`, or in a chained fashion
+///   to make multiple modifications, e.g. `err.code(code).span(span)`.
+/// - A `self -> Self` method, which has a `with_` prefix added.
+///   It is mostly used in a chained fashion when producing a new diagnostic,
+///   e.g. `let err = struct_err(msg).with_code(code)`, or when emitting a new
+///   diagnostic , e.g. `struct_err(msg).with_code(code).emit()`.
+///
+/// Although the latter method can be used to modify an existing diagnostic,
+/// e.g. `err = err.with_code(code)`, this should be avoided because the former
+/// method gives shorter code, e.g. `err.code(code)`.
 macro_rules! forward {
-    // Forward pattern for &mut self -> &mut Self
     (
-        $(#[$attrs:meta])*
-        pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
+        ($f:ident, $with_f:ident)($($name:ident: $ty:ty),* $(,)?)
     ) => {
-        $(#[$attrs])*
-        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
-            self.inner.diagnostic.$n($($name),*);
+        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
+        pub fn $f(&mut self, $($name: $ty),*) -> &mut Self {
+            self.diag.as_mut().unwrap().$f($($name),*);
+            self
+        }
+        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
+        pub fn $with_f(mut self, $($name: $ty),*) -> Self {
+            self.diag.as_mut().unwrap().$f($($name),*);
             self
         }
     };
@@ -328,49 +202,35 @@ impl<G: EmissionGuarantee> Deref for DiagnosticBuilder<'_, G> {
     type Target = Diagnostic;
 
     fn deref(&self) -> &Diagnostic {
-        &self.inner.diagnostic
+        self.diag.as_ref().unwrap()
     }
 }
 
 impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
     fn deref_mut(&mut self) -> &mut Diagnostic {
-        &mut self.inner.diagnostic
+        self.diag.as_mut().unwrap()
     }
 }
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
+    #[rustc_lint_diagnostics]
     #[track_caller]
-    pub(crate) fn new<M: Into<DiagnosticMessage>>(
-        handler: &'a Handler,
-        level: Level,
-        message: M,
-    ) -> Self {
-        let diagnostic = Diagnostic::new(level, message);
-        Self::new_diagnostic(handler, diagnostic)
+    pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+        Self::new_diagnostic(dcx, Diagnostic::new(level, message))
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     #[track_caller]
-    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diag: Diagnostic) -> Self {
         debug!("Created new diagnostic");
-        Self {
-            inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(diagnostic),
-            },
-            _marker: PhantomData,
-        }
+        Self { dcx, diag: Some(Box::new(diag)), _marker: PhantomData }
     }
 
-    /// Emit the diagnostic. Does not consume `self`, which may be surprising,
-    /// but there are various places that rely on continuing to use `self`
-    /// after calling `emit`.
+    /// Emit and consume the diagnostic.
     #[track_caller]
-    pub fn emit(&mut self) -> G {
-        G::diagnostic_builder_emit_producing_guarantee(self)
+    pub fn emit(self) -> G::EmitResult {
+        G::emit_producing_guarantee(self)
     }
 
     /// Emit the diagnostic unless `delay` is true,
@@ -378,80 +238,30 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(&mut self, delay: bool) -> G {
+    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }
         self.emit()
     }
 
-    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
+    /// Cancel and consume the diagnostic. (A diagnostic must either be emitted or
     /// cancelled or it will panic when dropped).
-    ///
-    /// This method takes `self` by-value to disallow calling `.emit()` on it,
-    /// which may be expected to *guarantee* the emission of an error, either
-    /// at the time of the call, or through a prior `.emit()` call.
     pub fn cancel(mut self) {
-        self.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+        self.diag = None;
         drop(self);
     }
 
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through [`Handler::steal_diagnostic()`].
-    ///
-    /// As with `buffer`, this is unless the handler has disabled such buffering.
+    /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
     pub fn stash(self, span: Span, key: StashKey) {
-        if let Some((diag, handler)) = self.into_diagnostic() {
-            handler.stash_diagnostic(span, key, diag);
-        }
+        self.dcx.stash_diagnostic(span, key, self.into_diagnostic());
     }
 
-    /// Converts the builder to a `Diagnostic` for later emission,
-    /// unless handler has disabled such buffering, or `.emit()` was called.
-    pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a Handler)> {
-        let handler = match self.inner.state {
-            // No `.emit()` calls, the `&Handler` is still available.
-            DiagnosticBuilderState::Emittable(handler) => handler,
-            // `.emit()` was previously called, nothing we can do.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {
-                return None;
-            }
-        };
-
-        if handler.inner.lock().flags.dont_buffer_diagnostics
-            || handler.inner.lock().flags.treat_err_as_bug.is_some()
-        {
-            self.emit();
-            return None;
-        }
-
-        // Take the `Diagnostic` by replacing it with a dummy.
-        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::from(""));
-        let diagnostic = std::mem::replace(&mut *self.inner.diagnostic, dummy);
-
-        // Disable the ICE on `Drop`.
-        self.cancel();
-
-        // Logging here is useful to help track down where in logs an error was
-        // actually emitted.
-        debug!("buffer: diagnostic={:?}", diagnostic);
-
-        Some((diagnostic, handler))
-    }
-
-    /// Retrieves the [`Handler`] if available
-    pub fn handler(&self) -> Option<&Handler> {
-        match self.inner.state {
-            DiagnosticBuilderState::Emittable(handler) => Some(handler),
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => None,
-        }
-    }
-
-    /// Buffers the diagnostic for later emission,
-    /// unless handler has disabled such buffering.
-    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
-        buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
+    /// Converts the builder to a `Diagnostic` for later emission.
+    pub fn into_diagnostic(mut self) -> Diagnostic {
+        self.take_diag()
     }
 
     /// Delay emission of this diagnostic as a bug.
@@ -465,211 +275,176 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) -> G {
+    pub fn delay_as_bug(mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
     }
 
-    forward!(
-        #[track_caller]
-        pub fn downgrade_to_delayed_bug(&mut self,) -> &mut Self
-    );
-
-    forward!(
-    /// Appends a labeled span to the diagnostic.
-    ///
-    /// Labels are used to convey additional context for the diagnostic's primary span. They will
-    /// be shown together with the original diagnostic's span, *not* with spans added by
-    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
-    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
-    /// either.
-    ///
-    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
-    /// the diagnostic was constructed. However, the label span is *not* considered a
-    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
-    /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self);
-
-    forward!(
-    /// Labels all the given spans with the provided label.
-    /// See [`Diagnostic::span_label()`] for more information.
-    pub fn span_labels(
-        &mut self,
+    forward!((span_label, with_span_label)(
+        span: Span,
+        label: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_labels, with_span_labels)(
         spans: impl IntoIterator<Item = Span>,
         label: &str,
-    ) -> &mut Self);
-
-    forward!(pub fn note_expected_found(
-        &mut self,
+    ));
+    forward!((note_expected_found, with_note_expected_found)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
-    ) -> &mut Self);
-
-    forward!(pub fn note_expected_found_extra(
-        &mut self,
+    ));
+    forward!((note_expected_found_extra, with_note_expected_found_extra)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
-    ) -> &mut Self);
-
-    forward!(pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_note(
-        &mut self,
+    ));
+    forward!((note, with_note)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((note_once, with_note_once)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_note, with_span_note)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn span_note_once(
-        &mut self,
+    ));
+    forward!((span_note_once, with_span_note_once)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_warn(
-        &mut self,
+    ));
+    forward!((warn, with_warn)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_warn, with_span_warn)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_help(
-        &mut self,
+    ));
+    forward!((help, with_help)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((help_once, with_help_once)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_help, with_span_help_once)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
-
-    forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
-
-    forward!(pub fn multipart_suggestion(
-        &mut self,
+    ));
+    forward!((multipart_suggestion, with_multipart_suggestion)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn multipart_suggestion_verbose(
-        &mut self,
+    ));
+    forward!((multipart_suggestion_verbose, with_multipart_suggestion_verbose)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn tool_only_multipart_suggestion(
-        &mut self,
+    ));
+    forward!((tool_only_multipart_suggestion, with_tool_only_multipart_suggestion)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion(
-        &mut self,
+    ));
+    forward!((span_suggestion, with_span_suggestion)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestions(
-        &mut self,
+    ));
+    forward!((span_suggestions, with_span_suggestions)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn multipart_suggestions(
-        &mut self,
+    ));
+    forward!((multipart_suggestions, with_multipart_suggestions)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_short(
-        &mut self,
+    ));
+    forward!((span_suggestion_short, with_span_suggestion_short)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_verbose(
-        &mut self,
+    ));
+    forward!((span_suggestion_verbose, with_span_suggestion_verbose)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_hidden(
-        &mut self,
+    ));
+    forward!((span_suggestion_hidden, with_span_suggestion_hidden)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn tool_only_span_suggestion(
-        &mut self,
+    ));
+    forward!((tool_only_span_suggestion, with_tool_only_span_suggestion)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-
-    forward!(pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
-    forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
-    forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
-    forward!(pub fn set_arg(
-        &mut self,
-        name: impl Into<Cow<'static, str>>,
-        arg: impl IntoDiagnosticArg,
-    ) -> &mut Self);
-
-    forward!(pub fn subdiagnostic(
-        &mut self,
-        subdiagnostic: impl crate::AddToDiagnostic
-    ) -> &mut Self);
+    ));
+    forward!((primary_message, with_primary_message)(
+        msg: impl Into<DiagnosticMessage>,
+    ));
+    forward!((span, with_span)(
+        sp: impl Into<MultiSpan>,
+    ));
+    forward!((is_lint, with_is_lint)(
+        name: String, has_future_breakage: bool,
+    ));
+    forward!((code, with_code)(
+        s: String,
+    ));
+    forward!((arg, with_arg)(
+        name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
+    ));
+    forward!((subdiagnostic, with_subdiagnostic)(
+        subdiagnostic: impl crate::AddToDiagnostic,
+    ));
+    forward!((eager_subdiagnostic, with_eager_subdiagnostic)(
+        dcx: &DiagCtxt,
+        subdiagnostic: impl crate::AddToDiagnostic,
+    ));
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.diagnostic.fmt(f)
+        self.diag.fmt(f)
     }
 }
 
-/// Destructor bomb - a `DiagnosticBuilder` must be either emitted or cancelled
-/// or we emit a bug.
-impl Drop for DiagnosticBuilderInner<'_> {
+/// Destructor bomb: every `DiagnosticBuilder` must be consumed (emitted,
+/// cancelled, etc.) or we emit a bug.
+impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
     fn drop(&mut self) {
-        match self.state {
-            // No `.emit()` or `.cancel()` calls.
-            DiagnosticBuilderState::Emittable(handler) => {
-                if !panicking() {
-                    handler.emit_diagnostic(Diagnostic::new(
-                        Level::Bug,
-                        DiagnosticMessage::from(
-                            "the following error was constructed but not emitted",
-                        ),
-                    ));
-                    handler.emit_diagnostic_without_consuming(&mut self.diagnostic);
-                    panic!("error was constructed but not emitted");
-                }
+        match self.diag.take() {
+            Some(diag) if !panicking() => {
+                self.dcx.emit_diagnostic(Diagnostic::new(
+                    Level::Bug,
+                    DiagnosticMessage::from("the following error was constructed but not emitted"),
+                ));
+                self.dcx.emit_diagnostic(*diag);
+                panic!("error was constructed but not emitted");
             }
-            // `.emit()` was previously called, or maybe we're during `.cancel()`.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
+            _ => {}
         }
     }
 }
 
 #[macro_export]
-macro_rules! struct_span_err {
-    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
-        $session.struct_span_err_with_code(
-            $span,
-            format!($($message)*),
-            $crate::error_code!($code),
-        )
+macro_rules! struct_span_code_err {
+    ($dcx:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+        $dcx.struct_span_err($span, format!($($message)*)).with_code($crate::error_code!($code))
     })
 }
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
+    ($code:ident) => {{ stringify!($code).to_owned() }};
 }

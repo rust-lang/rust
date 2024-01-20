@@ -9,9 +9,12 @@
 // CHECK-LABEL: define {{(dso_local )?}}void @string_new
 #[no_mangle]
 pub fn string_new() -> String {
-    // CHECK: store ptr inttoptr
+    // CHECK-NOT: load i8
+    // CHECK: store i{{32|64}}
     // CHECK-NEXT: getelementptr
-    // CHECK-NEXT: call void @llvm.memset
+    // CHECK-NEXT: store ptr
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store i{{32|64}}
     // CHECK-NEXT: ret void
     String::new()
 }
@@ -19,9 +22,12 @@ pub fn string_new() -> String {
 // CHECK-LABEL: define {{(dso_local )?}}void @empty_to_string
 #[no_mangle]
 pub fn empty_to_string() -> String {
-    // CHECK: store ptr inttoptr
+    // CHECK-NOT: load i8
+    // CHECK: store i{{32|64}}
     // CHECK-NEXT: getelementptr
-    // CHECK-NEXT: call void @llvm.memset
+    // CHECK-NEXT: store ptr
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store i{{32|64}}
     // CHECK-NEXT: ret void
     "".to_string()
 }
@@ -32,9 +38,12 @@ pub fn empty_to_string() -> String {
 // CHECK-LABEL: @empty_vec
 #[no_mangle]
 pub fn empty_vec() -> Vec<u8> {
-    // CHECK: store ptr inttoptr
+    // CHECK: store i{{32|64}}
+    // CHECK-NOT: load i8
     // CHECK-NEXT: getelementptr
-    // CHECK-NEXT: call void @llvm.memset
+    // CHECK-NEXT: store ptr
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store i{{32|64}}
     // CHECK-NEXT: ret void
     vec![]
 }
@@ -42,9 +51,12 @@ pub fn empty_vec() -> Vec<u8> {
 // CHECK-LABEL: @empty_vec_clone
 #[no_mangle]
 pub fn empty_vec_clone() -> Vec<u8> {
-    // CHECK: store ptr inttoptr
+    // CHECK: store i{{32|64}}
+    // CHECK-NOT: load i8
     // CHECK-NEXT: getelementptr
-    // CHECK-NEXT: call void @llvm.memset
+    // CHECK-NEXT: store ptr
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store i{{32|64}}
     // CHECK-NEXT: ret void
     vec![].clone()
 }

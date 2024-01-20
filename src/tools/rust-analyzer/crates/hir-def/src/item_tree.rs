@@ -29,6 +29,9 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
+//!
+//! Note that we cannot store [`span::Span`]s inside of this, as typing in an item invalidates its
+//! encompassing span!
 
 mod lower;
 mod pretty;
@@ -42,7 +45,7 @@ use std::{
 };
 
 use ast::{AstNode, HasName, StructKind};
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
@@ -55,6 +58,7 @@ use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use span::Span;
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;
@@ -65,7 +69,7 @@ use crate::{
     generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
-    visibility::RawVisibility,
+    visibility::{RawVisibility, VisibilityExplicity},
     BlockId, Lookup,
 };
 
@@ -74,8 +78,9 @@ pub struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
     pub const PUB: Self = RawVisibilityId(u32::max_value());
-    pub const PRIV: Self = RawVisibilityId(u32::max_value() - 1);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 2);
+    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::max_value() - 1);
+    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::max_value() - 2);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
@@ -83,7 +88,7 @@ impl fmt::Debug for RawVisibilityId {
         let mut f = f.debug_tuple("RawVisibilityId");
         match *self {
             Self::PUB => f.field(&"pub"),
-            Self::PRIV => f.field(&"pub(self)"),
+            Self::PRIV_IMPLICIT | Self::PRIV_EXPLICIT => f.field(&"pub(self)"),
             Self::PUB_CRATE => f.field(&"pub(crate)"),
             _ => f.field(&self.0),
         };
@@ -106,11 +111,6 @@ impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("file_item_tree_query").detail(|| format!("{file_id:?}"));
         let syntax = db.parse_or_expand(file_id);
-        if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax)
-        {
-            // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
-            return Default::default();
-        }
 
         let ctx = lower::Ctx::new(db, file_id);
         let mut top_attrs = None;
@@ -129,6 +129,9 @@ impl ItemTree {
                     ctx.lower_macro_stmts(stmts)
                 },
                 _ => {
+                    if never!(syntax.kind() == SyntaxKind::ERROR, "{:?} from {:?} {}", file_id, syntax, syntax) {
+                        return Default::default();
+                    }
                     panic!("cannot create item tree for file {file_id:?} from {syntax:?} {syntax}");
                 },
             }
@@ -247,19 +250,30 @@ impl ItemVisibilities {
     fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path) if path.segments().is_empty() => match &path.kind {
-                PathKind::Super(0) => RawVisibilityId::PRIV,
-                PathKind::Crate => RawVisibilityId::PUB_CRATE,
-                _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-            },
+            RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
+                match (&path.kind, explicitiy) {
+                    (PathKind::Super(0), VisibilityExplicity::Explicit) => {
+                        RawVisibilityId::PRIV_EXPLICIT
+                    }
+                    (PathKind::Super(0), VisibilityExplicity::Implicit) => {
+                        RawVisibilityId::PRIV_IMPLICIT
+                    }
+                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
+                    _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+                }
+            }
             _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
         }
     }
 }
 
 static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)));
-static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Crate));
+static VIS_PRIV_IMPLICIT: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit);
+static VIS_PRIV_EXPLICIT: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Explicit);
+static VIS_PUB_CRATE: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicity::Explicit);
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
@@ -282,7 +296,7 @@ struct ItemTreeData {
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
     macro_rules: Arena<MacroRules>,
-    macro_defs: Arena<MacroDef>,
+    macro_defs: Arena<Macro2>,
 
     vis: ItemVisibilities,
 }
@@ -515,7 +529,7 @@ mod_items! {
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
     MacroRules in macro_rules -> ast::MacroRules,
-    MacroDef in macro_defs -> ast::MacroDef,
+    Macro2 in macro_defs -> ast::MacroDef,
 }
 
 macro_rules! impl_index {
@@ -538,7 +552,8 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         match index {
-            RawVisibilityId::PRIV => &VIS_PRIV,
+            RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
+            RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
             RawVisibilityId::PUB => &VIS_PUB,
             RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
             _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
@@ -748,7 +763,8 @@ pub struct MacroCall {
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
-    pub call_site: SyntaxContextId,
+    // FIXME: We need to move this out. It invalidates the item tree when typing inside the macro call.
+    pub call_site: Span,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -760,7 +776,7 @@ pub struct MacroRules {
 
 /// "Macros 2.0" macro definition.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MacroDef {
+pub struct Macro2 {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
@@ -919,7 +935,7 @@ impl ModItem {
             | ModItem::Impl(_)
             | ModItem::Mod(_)
             | ModItem::MacroRules(_)
-            | ModItem::MacroDef(_) => None,
+            | ModItem::Macro2(_) => None,
             ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
             ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
             ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
@@ -945,7 +961,7 @@ impl ModItem {
             ModItem::Mod(it) => tree[it.index()].ast_id().upcast(),
             ModItem::MacroCall(it) => tree[it.index()].ast_id().upcast(),
             ModItem::MacroRules(it) => tree[it.index()].ast_id().upcast(),
-            ModItem::MacroDef(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Macro2(it) => tree[it.index()].ast_id().upcast(),
         }
     }
 }

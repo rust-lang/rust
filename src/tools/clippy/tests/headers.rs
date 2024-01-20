@@ -12,7 +12,12 @@ fn old_test_headers() {
 
     for entry in WalkDir::new("tests") {
         let entry = entry.unwrap();
-        if !entry.file_type().is_file() {
+        let is_hidden_file = entry
+            .file_name()
+            .to_str()
+            .expect("non-UTF-8 file name")
+            .starts_with('.');
+        if is_hidden_file || !entry.file_type().is_file() {
             continue;
         }
 

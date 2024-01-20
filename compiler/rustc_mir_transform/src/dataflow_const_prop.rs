@@ -496,7 +496,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Elem(scalar) => {
                 let ty = op.ty(self.local_decls, self.tcx);
                 self.tcx.layout_of(self.param_env.and(ty)).map_or(FlatSet::Top, |layout| {
-                    FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout))
+                    FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
                 })
             }
             FlatSet::Bottom => FlatSet::Bottom,

@@ -26,7 +26,8 @@ pub fn expand_deriving_partial_eq(
             |cx, fold| match fold {
                 CsFold::Single(field) => {
                     let [other_expr] = &field.other_selflike_exprs[..] else {
-                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
+                        cx.dcx()
+                            .span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
                     };
 
                     // We received arguments of type `&T`. Convert them to type `T` by stripping

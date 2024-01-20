@@ -9,7 +9,7 @@
 #![allow(clippy::never_loop)]
 #![allow(clippy::needless_if)]
 #![warn(clippy::excessive_nesting)]
-#![allow(clippy::collapsible_if)]
+#![allow(clippy::collapsible_if, clippy::blocks_in_conditions)]
 
 #[macro_use]
 extern crate proc_macros;

@@ -36,6 +36,8 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
     (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
     (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
+    (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
+    (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -467,7 +469,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // `#[collapse_debuginfo]`
     gated!(
-        collapse_debuginfo, Normal, template!(Word), WarnFollowing,
+        collapse_debuginfo, Normal, template!(Word, List: "no|external|yes"), ErrorFollowing,
         experimental!(collapse_debuginfo)
     ),
 

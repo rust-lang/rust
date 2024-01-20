@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose
+// compile-flags: -Zverbose-internals
 
 #![feature(coroutines, coroutine_trait)]
 

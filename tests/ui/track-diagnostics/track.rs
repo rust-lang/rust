@@ -1,5 +1,7 @@
 // compile-flags: -Z track-diagnostics
 // error-pattern: created at
+// rustc-env:RUST_BACKTRACE=0
+// failure-status: 101
 
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.

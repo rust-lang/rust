@@ -41,7 +41,33 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.canonicalize_query_with_mode(value, query_state, &CanonicalizeAllFreeRegions)
+        let (param_env, value) = value.into_parts();
+        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+            self.tcx,
+            param_env,
+            query_state,
+            |tcx, param_env, query_state| {
+                // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
+                // `param_env` beacause they are treated differently by trait selection.
+                Canonicalizer::canonicalize(
+                    param_env,
+                    None,
+                    tcx,
+                    &CanonicalizeFreeRegionsOtherThanStatic,
+                    query_state,
+                )
+            },
+        );
+
+        Canonicalizer::canonicalize_with_base(
+            param_env,
+            value,
+            Some(self),
+            self.tcx,
+            &CanonicalizeAllFreeRegions,
+            query_state,
+        )
+        .unchecked_map(|(param_env, value)| param_env.and(value))
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
@@ -95,61 +121,6 @@ impl<'tcx> InferCtxt<'tcx> {
             &CanonicalizeUserTypeAnnotation,
             &mut query_state,
         )
-    }
-
-    /// A variant of `canonicalize_query` that does not
-    /// canonicalize `'static`. This is useful when
-    /// the query implementation can perform more efficient
-    /// handling of `'static` regions (e.g. trait evaluation).
-    pub fn canonicalize_query_keep_static<V>(
-        &self,
-        value: ty::ParamEnvAnd<'tcx, V>,
-        query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
-    where
-        V: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.canonicalize_query_with_mode(
-            value,
-            query_state,
-            &CanonicalizeFreeRegionsOtherThanStatic,
-        )
-    }
-
-    fn canonicalize_query_with_mode<V>(
-        &self,
-        value: ty::ParamEnvAnd<'tcx, V>,
-        query_state: &mut OriginalQueryValues<'tcx>,
-        canonicalize_region_mode: &dyn CanonicalizeMode,
-    ) -> Canonical<'tcx, ty::ParamEnvAnd<'tcx, V>>
-    where
-        V: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        let (param_env, value) = value.into_parts();
-        let base = self.tcx.canonical_param_env_cache.get_or_insert(
-            self.tcx,
-            param_env,
-            query_state,
-            |tcx, param_env, query_state| {
-                Canonicalizer::canonicalize(
-                    param_env,
-                    None,
-                    tcx,
-                    &CanonicalizeFreeRegionsOtherThanStatic,
-                    query_state,
-                )
-            },
-        );
-
-        Canonicalizer::canonicalize_with_base(
-            base,
-            value,
-            Some(self),
-            self.tcx,
-            canonicalize_region_mode,
-            query_state,
-        )
-        .unchecked_map(|(param_env, value)| param_env.and(value))
     }
 }
 
@@ -221,10 +192,10 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 // rust-lang/rust#57464: `impl Trait` can leak local
                 // scopes (in manner violating typeck). Therefore, use
                 // `span_delayed_bug` to allow type error over an ICE.
-                canonicalizer.tcx.sess.span_delayed_bug(
-                    rustc_span::DUMMY_SP,
-                    format!("unexpected region in query response: `{r:?}`"),
-                );
+                canonicalizer
+                    .tcx
+                    .dcx()
+                    .delayed_bug(format!("unexpected region in query response: `{r:?}`"));
                 r
             }
         }

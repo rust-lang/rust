@@ -70,4 +70,16 @@ self::m!(); self::m2!();
 "#,
         );
     }
+
+    #[test]
+    fn regression_panic_with_inner_attribute_in_presence_of_unresolved_crate() {
+        check_diagnostics(
+            r#"
+    mod _test_inner {
+        #![empty_attr]
+      //^^^^^^^^^^^^^^ error: unresolved macro `empty_attr`
+    }
+"#,
+        );
+    }
 }

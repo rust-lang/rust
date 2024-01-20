@@ -5,7 +5,9 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource, Node};
+use rustc_hir::{
+    intravisit as hir_visit, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, ExprKind, Node,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -63,11 +65,11 @@ impl<'tcx> Visitor<'tcx> for ReturnVisitor {
 /// Checks if the body is owned by an async closure.
 /// Returns true for `async || whatever_expression`, but false for `|| async { whatever_expression
 /// }`.
-fn is_async_closure(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
+fn is_async_closure(body: &hir::Body<'_>) -> bool {
     if let hir::ExprKind::Closure(innermost_closure_generated_by_desugar) = body.value.kind
-        && let desugared_inner_closure_body = cx.tcx.hir().body(innermost_closure_generated_by_desugar.body)
         // checks whether it is `async || whatever_expression`
-        && let Some(CoroutineKind::Async(CoroutineSource::Closure)) = desugared_inner_closure_body.coroutine_kind
+        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure))
+            = innermost_closure_generated_by_desugar.kind
     {
         true
     } else {
@@ -103,7 +105,7 @@ fn find_innermost_closure<'tcx>(
         data = Some((
             body.value,
             closure.fn_decl,
-            if is_async_closure(cx, body) {
+            if is_async_closure(body) {
                 ty::Asyncness::Yes
             } else {
                 ty::Asyncness::No
@@ -166,10 +168,22 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                         if coroutine_kind.is_async()
                             && let hir::ExprKind::Closure(closure) = body.kind
                         {
-                            let async_closure_body = cx.tcx.hir().body(closure.body);
+                            // Like `async fn`, async closures are wrapped in an additional block
+                            // to move all of the closure's arguments into the future.
+
+                            let async_closure_body = cx.tcx.hir().body(closure.body).value;
+                            let ExprKind::Block(block, _) = async_closure_body.kind else {
+                                return;
+                            };
+                            let Some(block_expr) = block.expr else {
+                                return;
+                            };
+                            let ExprKind::DropTemps(body_expr) = block_expr.kind else {
+                                return;
+                            };
 
                             // `async x` is a syntax error, so it becomes `async { x }`
-                            if !matches!(async_closure_body.value.kind, hir::ExprKind::Block(_, _)) {
+                            if !matches!(body_expr.kind, hir::ExprKind::Block(_, _)) {
                                 hint = hint.blockify();
                             }
 

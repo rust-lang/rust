@@ -226,7 +226,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
         // Therefore they are not some form of constructor `C`,
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
-        Ident(.., None) | Lit(_) | Wild | Never | Path(..) | Range(..) | Rest | MacCall(_)
+        Ident(.., None) | Lit(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.
@@ -293,7 +293,7 @@ fn extend_with_struct_pat(
     qself1: &Option<P<ast::QSelf>>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
-    rest1: bool,
+    rest1: ast::PatFieldsRest,
     start: usize,
     alternatives: &mut ThinVec<P<Pat>>,
 ) -> bool {

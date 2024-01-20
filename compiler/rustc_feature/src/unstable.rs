@@ -204,13 +204,13 @@ declare_features! (
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None),
     /// Changes `impl Trait` to capture all lifetimes in scope.
-    (unstable, lifetime_capture_rules_2024, "CURRENT_RUSTC_VERSION", None),
+    (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
     (unstable, multiple_supertrait_upcastable, "1.69.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
-    (incomplete, negative_bounds, "1.71.0", None),
+    (internal, negative_bounds, "1.71.0", None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Allows using `#[prelude_import]` on glob `use` items.
@@ -357,6 +357,8 @@ declare_features! (
     (unstable, async_closure, "1.37.0", Some(62290)),
     /// Allows `#[track_caller]` on async functions.
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
+    /// Allows `for await` loops.
+    (unstable, async_for_loop, "CURRENT_RUSTC_VERSION", Some(118898)),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680)),
     /// Treat `extern "C"` function as nounwind.
@@ -369,6 +371,8 @@ declare_features! (
     (unstable, cfg_relocation_model, "1.73.0", Some(114929)),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (unstable, cfg_sanitize, "1.41.0", Some(39699)),
+    /// Allows `cfg(sanitizer_cfi_generalize_pointers)` and `cfg(sanitizer_cfi_normalize_integers)`.
+    (unstable, cfg_sanitizer_cfi, "CURRENT_RUSTC_VERSION", Some(89653)),
     /// Allows `cfg(target_abi = "...")`.
     (unstable, cfg_target_abi, "1.55.0", Some(80970)),
     /// Allows `cfg(target(abi = "..."))`.
@@ -446,7 +450,7 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
-    // Uses generic effect parameters for ~const bounds
+    /// Uses generic effect parameters for ~const bounds
     (unstable, effects, "1.72.0", Some(102090)),
     /// Allows `X..Y` patterns.
     (unstable, exclusive_range_pattern, "1.11.0", Some(37854)),
@@ -468,7 +472,7 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
-    (incomplete, fn_delegation, "CURRENT_RUSTC_VERSION", Some(118212)),
+    (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.
@@ -505,7 +509,7 @@ declare_features! (
     (unstable, let_chains, "1.37.0", Some(53667)),
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
-    (unstable, link_arg_attribute, "CURRENT_RUSTC_VERSION", Some(99427)),
+    (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (unstable, lint_reasons, "1.31.0", Some(54503)),
     /// Give access to additional metadata about declarative macro meta-variables.
@@ -521,13 +525,13 @@ declare_features! (
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows using `#[naked]` on functions.
-    (unstable, naked_functions, "1.9.0", Some(32408)),
+    (unstable, naked_functions, "1.9.0", Some(90957)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318)),
     /// Allows the `!` pattern.
-    (incomplete, never_patterns, "CURRENT_RUSTC_VERSION", Some(118155)),
+    (incomplete, never_patterns, "1.76.0", Some(118155)),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
     (unstable, never_type, "1.13.0", Some(35121)),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
@@ -545,7 +549,9 @@ declare_features! (
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
-    (unstable, offset_of_enum, "1.75.0", Some(106655)),
+    (unstable, offset_of_enum, "1.75.0", Some(120141)),
+    /// Allows using multiple nested field accesses in offset_of!
+    (unstable, offset_of_nested, "CURRENT_RUSTC_VERSION", Some(120140)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows macro attributes on expressions, statements and non-inline modules.

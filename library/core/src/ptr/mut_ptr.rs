@@ -2199,7 +2199,7 @@ impl<T> *mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*mut T) -> bool {
         *self == *other
     }
@@ -2211,7 +2211,7 @@ impl<T: ?Sized> Eq for *mut T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Ord for *mut T {
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*mut T) -> Ordering {
         if self < other {
             Less
@@ -2231,25 +2231,25 @@ impl<T: ?Sized> PartialOrd for *mut T {
     }
 
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn lt(&self, other: &*mut T) -> bool {
         *self < *other
     }
 
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn le(&self, other: &*mut T) -> bool {
         *self <= *other
     }
 
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn gt(&self, other: &*mut T) -> bool {
         *self > *other
     }
 
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn ge(&self, other: &*mut T) -> bool {
         *self >= *other
     }

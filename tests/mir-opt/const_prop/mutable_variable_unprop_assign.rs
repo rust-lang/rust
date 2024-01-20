@@ -1,7 +1,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: ConstProp
+// unit-test: GVN
 
-// EMIT_MIR mutable_variable_unprop_assign.main.ConstProp.diff
+// EMIT_MIR mutable_variable_unprop_assign.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug a => [[a:_.*]];
@@ -10,10 +10,9 @@ fn main() {
     // CHECK: debug z => [[z:_.*]];
     // CHECK: [[a]] = foo()
     // CHECK: [[x]] = const (1_i32, 2_i32);
-    // CHECK: [[tmp:_.*]] = [[a]];
-    // CHECK: ([[x]].1: i32) = move [[tmp]];
+    // CHECK: ([[x]].1: i32) = [[a]];
     // CHECK: [[y]] = ([[x]].1: i32);
-    // CHECK: [[z]] = const 1_i32;
+    // CHECK: [[z]] = ([[x]].0: i32);
     let a = foo();
     let mut x: (i32, i32) = (1, 2);
     x.1 = a;

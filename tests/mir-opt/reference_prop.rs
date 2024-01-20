@@ -1,3 +1,4 @@
+// compile-flags: -Zlint-mir=no
 // unit-test: ReferencePropagation
 // needs-unwind
 
@@ -695,7 +696,7 @@ fn multiple_storage() {
             // As there are multiple `StorageLive` statements for `x`, we cannot know if this `z`'s
             // pointer address is the address of `x`, so do nothing.
             let y = *z;
-            Call(RET = opaque(y), retblock, UnwindContinue())
+            Call(RET = opaque(y), ReturnTo(retblock), UnwindContinue())
         }
 
         retblock = {
@@ -723,7 +724,7 @@ fn dominate_storage() {
         }
         bb1 = {
             let c = *r;
-            Call(RET = opaque(c), bb2, UnwindContinue())
+            Call(RET = opaque(c), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
             StorageDead(x);
@@ -759,18 +760,18 @@ fn maybe_dead(m: bool) {
         bb1 = {
             StorageDead(x);
             StorageDead(y);
-            Call(RET = opaque(u), bb2, UnwindContinue())
+            Call(RET = opaque(u), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
             // As `x` may be `StorageDead`, `a` may be dangling, so we do nothing.
             let z = *a;
-            Call(RET = opaque(z), bb3, UnwindContinue())
+            Call(RET = opaque(z), ReturnTo(bb3), UnwindContinue())
         }
         bb3 = {
             // As `y` may be `StorageDead`, `b` may be dangling, so we do nothing.
             // This implies that we also do not substitute `b` in `bb0`.
             let t = *b;
-            Call(RET = opaque(t), retblock, UnwindContinue())
+            Call(RET = opaque(t), ReturnTo(retblock), UnwindContinue())
         }
         retblock = {
             Return()

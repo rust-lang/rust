@@ -39,7 +39,6 @@ use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::CrtObjects;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -592,7 +591,7 @@ impl LinkSelfContainedDefault {
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Clone, Copy, PartialEq, Eq, Default)]
     /// The `-C link-self-contained` components that can individually be enabled or disabled.
     pub struct LinkSelfContainedComponents: u8 {
         /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
@@ -609,6 +608,7 @@ bitflags::bitflags! {
         const MINGW       = 1 << 5;
     }
 }
+rustc_data_structures::external_bitflags_debug! { LinkSelfContainedComponents }
 
 impl LinkSelfContainedComponents {
     /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
@@ -664,19 +664,6 @@ impl LinkSelfContainedComponents {
     /// Returns whether `LinkSelfContainedComponents::CRT_OBJECTS` is enabled.
     pub fn is_crt_objects_enabled(self) -> bool {
         self.contains(LinkSelfContainedComponents::CRT_OBJECTS)
-    }
-}
-
-impl IntoIterator for LinkSelfContainedComponents {
-    type Item = LinkSelfContainedComponents;
-    type IntoIter = std::vec::IntoIter<LinkSelfContainedComponents>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        LinkSelfContainedComponents::all_components()
-            .into_iter()
-            .filter(|&s| self.contains(s))
-            .collect::<Vec<_>>()
-            .into_iter()
     }
 }
 
@@ -1219,9 +1206,10 @@ impl ToJson for StackProbeType {
     }
 }
 
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct SanitizerSet(u16);
 bitflags::bitflags! {
-    #[derive(Default, Encodable, Decodable)]
-    pub struct SanitizerSet: u16 {
+    impl SanitizerSet: u16 {
         const ADDRESS = 1 << 0;
         const LEAK    = 1 << 1;
         const MEMORY  = 1 << 2;
@@ -1235,6 +1223,7 @@ bitflags::bitflags! {
         const SAFESTACK = 1 << 10;
     }
 }
+rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
     /// Return sanitizer's name
@@ -1271,38 +1260,6 @@ impl fmt::Display for SanitizerSet {
             first = false;
         }
         Ok(())
-    }
-}
-
-impl IntoIterator for SanitizerSet {
-    type Item = SanitizerSet;
-    type IntoIter = std::vec::IntoIter<SanitizerSet>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        [
-            SanitizerSet::ADDRESS,
-            SanitizerSet::CFI,
-            SanitizerSet::KCFI,
-            SanitizerSet::LEAK,
-            SanitizerSet::MEMORY,
-            SanitizerSet::MEMTAG,
-            SanitizerSet::SHADOWCALLSTACK,
-            SanitizerSet::THREAD,
-            SanitizerSet::HWADDRESS,
-            SanitizerSet::KERNELADDRESS,
-            SanitizerSet::SAFESTACK,
-        ]
-        .iter()
-        .copied()
-        .filter(|&s| self.contains(s))
-        .collect::<Vec<_>>()
-        .into_iter()
-    }
-}
-
-impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.bits().hash_stable(ctx, hasher);
     }
 }
 
@@ -1493,6 +1450,7 @@ supported_targets! {
     ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
     ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
+    ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
@@ -1578,6 +1536,7 @@ supported_targets! {
     ("armv7k-apple-watchos", armv7k_apple_watchos),
     ("arm64_32-apple-watchos", arm64_32_apple_watchos),
     ("x86_64-apple-watchos-sim", x86_64_apple_watchos_sim),
+    ("aarch64-apple-watchos", aarch64_apple_watchos),
     ("aarch64-apple-watchos-sim", aarch64_apple_watchos_sim),
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
@@ -1589,6 +1548,7 @@ supported_targets! {
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
+    ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
@@ -1641,6 +1601,8 @@ supported_targets! {
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
+    ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
+
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
@@ -2439,10 +2401,14 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi) -> Abi {
+    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
         match abi {
             Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" => {
+
+            // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
+            // `__stdcall` only applies on x86 and on non-variadic functions:
+            // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
+            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
@@ -3434,19 +3400,22 @@ impl Hash for TargetTriple {
 impl<S: Encoder> Encodable<S> for TargetTriple {
     fn encode(&self, s: &mut S) {
         match self {
-            TargetTriple::TargetTriple(triple) => s.emit_enum_variant(0, |s| s.emit_str(triple)),
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => s
-                .emit_enum_variant(1, |s| {
-                    s.emit_str(triple);
-                    s.emit_str(contents)
-                }),
+            TargetTriple::TargetTriple(triple) => {
+                s.emit_u8(0);
+                s.emit_str(triple);
+            }
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+                s.emit_u8(1);
+                s.emit_str(triple);
+                s.emit_str(contents);
+            }
         }
     }
 }
 
 impl<D: Decoder> Decodable<D> for TargetTriple {
     fn decode(d: &mut D) -> Self {
-        match d.read_usize() {
+        match d.read_u8() {
             0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
             1 => TargetTriple::TargetJson {
                 path_for_rustdoc: PathBuf::new(),

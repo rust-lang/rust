@@ -13,13 +13,15 @@ use std::hash::{Hash, Hasher};
 
 use hir::def_id::LocalDefId;
 use rustc_hir as hir;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
-pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
+use crate::infer::InferCtxt;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
@@ -117,6 +119,11 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 
 pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 
+/// A callback that can be provided to `inspect_typeck`. Invoked on evaluation
+/// of root obligations.
+pub type ObligationInspector<'tcx> =
+    fn(&InferCtxt<'tcx>, &PredicateObligation<'tcx>, Result<Certainty, NoSolution>);
+
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -129,12 +136,12 @@ pub struct FulfillmentError<'tcx> {
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
-    CodeCycle(Vec<PredicateObligation<'tcx>>),
-    CodeSelectionError(SelectionError<'tcx>),
-    CodeProjectionError(MismatchedProjectionTypes<'tcx>),
-    CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    CodeAmbiguity {
+    Cycle(Vec<PredicateObligation<'tcx>>),
+    SelectionError(SelectionError<'tcx>),
+    ProjectionError(MismatchedProjectionTypes<'tcx>),
+    SubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    ConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
+    Ambiguity {
         /// Overflow reported from the new solver `-Znext-solver`, which will
         /// be reported as an regular error as opposed to a fatal error.
         overflow: bool,

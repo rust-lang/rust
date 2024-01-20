@@ -1,0 +1,29 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:6:16
+   |
+LL |             if #[deny(unused_mut)]
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:5:14
+   |
+LL |         Some(!)
+   |              ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: a guard on a never pattern will never be run
+  --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:7:13
+   |
+LL |             false
+   |             ^^^^^ help: remove this guard
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

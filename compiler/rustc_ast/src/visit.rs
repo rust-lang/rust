@@ -375,6 +375,15 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ItemKind::MacroDef(ts) => visitor.visit_mac_def(ts, item.id),
+        ItemKind::Delegation(box Delegation { id: _, qself, path, body }) => {
+            if let Some(qself) = qself {
+                visitor.visit_ty(&qself.ty);
+            }
+            walk_path(visitor, path);
+            if let Some(body) = body {
+                visitor.visit_block(body);
+            }
+        }
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -559,7 +568,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never | PatKind::Err(_) => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             walk_list!(visitor, visit_pat, elems);
         }
@@ -704,6 +713,15 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
         AssocItemKind::MacCall(mac) => {
             visitor.visit_mac_call(mac);
         }
+        AssocItemKind::Delegation(box Delegation { id: _, qself, path, body }) => {
+            if let Some(qself) = qself {
+                visitor.visit_ty(&qself.ty);
+            }
+            walk_path(visitor, path);
+            if let Some(body) = body {
+                visitor.visit_block(body);
+            }
+        }
     }
 }
 
@@ -844,11 +862,11 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
-        ExprKind::ForLoop(pattern, subexpression, block, opt_label) => {
-            walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_pat(pattern);
-            visitor.visit_expr(subexpression);
-            visitor.visit_block(block);
+        ExprKind::ForLoop { pat, iter, body, label, kind: _ } => {
+            walk_list!(visitor, visit_label, label);
+            visitor.visit_pat(pat);
+            visitor.visit_expr(iter);
+            visitor.visit_block(body);
         }
         ExprKind::Loop(block, opt_label, _) => {
             walk_list!(visitor, visit_label, opt_label);

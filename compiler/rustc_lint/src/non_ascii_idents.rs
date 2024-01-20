@@ -4,7 +4,8 @@ use crate::lints::{
 };
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_span::symbol::Symbol;
 
 declare_lint! {
@@ -174,6 +175,8 @@ impl EarlyLintPass for NonAsciiIdents {
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
 
@@ -192,8 +195,8 @@ impl EarlyLintPass for NonAsciiIdents {
         }
 
         if has_non_ascii_idents && check_confusable_idents {
-            let mut skeleton_map: FxHashMap<Symbol, (Symbol, Span, bool)> =
-                FxHashMap::with_capacity_and_hasher(symbols.len(), Default::default());
+            let mut skeleton_map: UnordMap<Symbol, (Symbol, Span, bool)> =
+                UnordMap::with_capacity(symbols.len());
             let mut skeleton_buf = String::new();
 
             for (&symbol, &sp) in symbols.iter() {
@@ -246,8 +249,8 @@ impl EarlyLintPass for NonAsciiIdents {
                 Verified,
             }
 
-            let mut script_states: FxHashMap<AugmentedScriptSet, ScriptSetUsage> =
-                FxHashMap::default();
+            let mut script_states: FxIndexMap<AugmentedScriptSet, ScriptSetUsage> =
+                Default::default();
             let latin_augmented_script_set = AugmentedScriptSet::for_char('A');
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);
 
@@ -287,6 +290,8 @@ impl EarlyLintPass for NonAsciiIdents {
             }
 
             if has_suspicious {
+                // The end result is put in `lint_reports` which is sorted.
+                #[allow(rustc::potential_query_instability)]
                 let verified_augmented_script_sets = script_states
                     .iter()
                     .flat_map(|(k, v)| match v {
@@ -299,6 +304,8 @@ impl EarlyLintPass for NonAsciiIdents {
                 let mut lint_reports: BTreeMap<(Span, Vec<char>), AugmentedScriptSet> =
                     BTreeMap::new();
 
+                // The end result is put in `lint_reports` which is sorted.
+                #[allow(rustc::potential_query_instability)]
                 'outerloop: for (augment_script_set, usage) in script_states {
                     let ScriptSetUsage::Suspicious(mut ch_list, sp) = usage else { continue };
 

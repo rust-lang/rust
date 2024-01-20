@@ -1,0 +1,60 @@
+error[E0658]: const closures are experimental
+  --> $DIR/ice-112822-expected-type-for-param.rs:5:5
+   |
+LL |     const move || {
+   |     ^^^^^
+   |
+   = note: see issue #106003 <https://github.com/rust-lang/rust/issues/106003> for more information
+   = help: add `#![feature(const_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:32
+   |
+LL | const fn test() -> impl ~const Fn() {
+   |                                ^^^^
+
+error[E0277]: can't compare `&u8` with `&u8`
+  --> $DIR/ice-112822-expected-type-for-param.rs:10:17
+   |
+LL |                 assert_eq!(first, &b'f');
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&u8 == &u8`
+   |
+   = help: the trait `~const PartialEq<&u8>` is not implemented for `&u8`
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0391]: cycle detected when computing type of opaque `test::{opaque#0}`
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
+   |
+LL | const fn test() -> impl ~const Fn() {
+   |                    ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires borrow-checking `test`...
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
+   |
+LL | const fn test() -> impl ~const Fn() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `test`...
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
+   |
+LL | const fn test() -> impl ~const Fn() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const checking `test`...
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:1
+   |
+LL | const fn test() -> impl ~const Fn() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing whether `test::{opaque#0}` is freeze...
+   = note: ...which requires evaluating trait selection obligation `test::{opaque#0}: core::marker::Freeze`...
+   = note: ...which again requires computing type of opaque `test::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `test::{opaque#0}`
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:20
+   |
+LL | const fn test() -> impl ~const Fn() {
+   |                    ^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0391, E0658.
+For more information about an error, try `rustc --explain E0277`.

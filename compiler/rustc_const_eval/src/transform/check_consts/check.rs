@@ -1,21 +1,19 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::traits::BuiltinImplSource;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{TraitRef, TypeVisitableExt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
+use rustc_middle::ty::{Instance, InstanceDef, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 
 use std::mem;
@@ -216,7 +214,7 @@ pub struct Checker<'mir, 'tcx> {
     local_has_storage_dead: Option<BitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
-    secondary_errors: Vec<Diagnostic>,
+    secondary_errors: Vec<DiagnosticBuilder<'tcx>>,
 }
 
 impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
@@ -246,7 +244,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
         if self.ccx.is_async() || body.coroutine.is_some() {
-            tcx.sess.span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
+            tcx.dcx().span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
 
@@ -274,14 +272,17 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
-        // "secondary" errors if they occurred.
+        // "secondary" errors if they occurred. Otherwise, cancel the "secondary" errors.
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.tcx.sess.diagnostic().emit_diagnostic(error);
+                error.emit();
             }
         } else {
-            assert!(self.tcx.sess.has_errors().is_some());
+            assert!(self.tcx.dcx().has_errors().is_some());
+            for error in secondary_errors {
+                error.cancel();
+            }
         }
     }
 
@@ -340,7 +341,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        let mut err = op.build_error(self.ccx, span);
+        let err = op.build_error(self.ccx, span);
         assert!(err.is_error());
 
         match op.importance() {
@@ -349,14 +350,14 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
+            ops::DiagnosticImportance::Secondary => self.secondary_errors.push(err),
         }
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx
-                .sess
+                .dcx()
                 .span_delayed_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
@@ -464,8 +465,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
-                    && let Some(coroutine_kind @ hir::CoroutineKind::Async(..)) =
-                        self.tcx.coroutine_kind(def_id)
+                    && let Some(
+                        coroutine_kind @ hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Async,
+                            _,
+                        ),
+                    ) = self.tcx.coroutine_kind(def_id)
                 {
                     self.check_op(ops::Coroutine(coroutine_kind));
                 }
@@ -752,142 +757,42 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     infcx.err_ctxt().report_fulfillment_errors(errors);
                 }
 
+                let mut is_trait = false;
                 // Attempting to call a trait method?
-                // FIXME(effects) do we need this?
-                if let Some(trait_id) = tcx.trait_of_item(callee) {
+                if tcx.trait_of_item(callee).is_some() {
                     trace!("attempting to call a trait method");
-                    if !self.tcx.features().const_trait_impl {
+                    // trait method calls are only permitted when `effects` is enabled.
+                    // we don't error, since that is handled by typeck. We try to resolve
+                    // the trait into the concrete method, and uses that for const stability
+                    // checks.
+                    // FIXME(effects) we might consider moving const stability checks to typeck as well.
+                    if tcx.features().effects {
+                        is_trait = true;
+
+                        if let Ok(Some(instance)) =
+                            Instance::resolve(tcx, param_env, callee, fn_args)
+                            && let InstanceDef::Item(def) = instance.def
+                        {
+                            // Resolve a trait method call to its concrete implementation, which may be in a
+                            // `const` trait impl. This is only used for the const stability check below, since
+                            // we want to look at the concrete impl's stability.
+                            fn_args = instance.args;
+                            callee = def;
+                        }
+                    } else {
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
                             args: fn_args,
                             span: *fn_span,
                             call_source: *call_source,
-                            feature: Some(sym::const_trait_impl),
+                            feature: Some(if tcx.features().const_trait_impl {
+                                sym::effects
+                            } else {
+                                sym::const_trait_impl
+                            }),
                         });
                         return;
-                    }
-
-                    let trait_ref = TraitRef::from_method(tcx, trait_id, fn_args);
-                    let obligation =
-                        Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
-
-                    let implsrc = {
-                        let infcx = tcx.infer_ctxt().build();
-                        let mut selcx = SelectionContext::new(&infcx);
-                        selcx.select(&obligation)
-                    };
-
-                    match implsrc {
-                        Ok(Some(ImplSource::Param(_))) if tcx.features().effects => {
-                            debug!(
-                                "const_trait_impl: provided {:?} via where-clause in {:?}",
-                                trait_ref, param_env
-                            );
-                            return;
-                        }
-                        // Closure: Fn{Once|Mut}
-                        Ok(Some(ImplSource::Builtin(BuiltinImplSource::Misc, _)))
-                            if trait_ref.self_ty().is_closure()
-                                && tcx.fn_trait_kind_from_def_id(trait_id).is_some() =>
-                        {
-                            let ty::Closure(closure_def_id, fn_args) = *trait_ref.self_ty().kind()
-                            else {
-                                unreachable!()
-                            };
-                            if !tcx.is_const_fn_raw(closure_def_id) {
-                                self.check_op(ops::FnCallNonConst {
-                                    caller,
-                                    callee,
-                                    args: fn_args,
-                                    span: *fn_span,
-                                    call_source: *call_source,
-                                    feature: None,
-                                });
-
-                                return;
-                            }
-                        }
-                        Ok(Some(ImplSource::UserDefined(data))) => {
-                            let callee_name = tcx.item_name(callee);
-
-                            if let hir::Constness::NotConst = tcx.constness(data.impl_def_id) {
-                                self.check_op(ops::FnCallNonConst {
-                                    caller,
-                                    callee,
-                                    args: fn_args,
-                                    span: *fn_span,
-                                    call_source: *call_source,
-                                    feature: None,
-                                });
-                                return;
-                            }
-
-                            if let Some(&did) = tcx
-                                .associated_item_def_ids(data.impl_def_id)
-                                .iter()
-                                .find(|did| tcx.item_name(**did) == callee_name)
-                            {
-                                // using internal args is ok here, since this is only
-                                // used for the `resolve` call below
-                                fn_args = GenericArgs::identity_for_item(tcx, did);
-                                callee = did;
-                            }
-                        }
-                        _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is in a trait
-                            // marked with #[const_trait], and the callee is in the same trait.
-                            let mut nonconst_call_permission = false;
-                            if let Some(callee_trait) = tcx.trait_of_item(callee)
-                                && tcx.has_attr(callee_trait, sym::const_trait)
-                                && Some(callee_trait) == tcx.trait_of_item(caller.to_def_id())
-                                // Can only call methods when it's `<Self as TheTrait>::f`.
-                                && tcx.types.self_param == fn_args.type_at(0)
-                            {
-                                nonconst_call_permission = true;
-                            }
-
-                            if !nonconst_call_permission {
-                                let obligation = Obligation::new(
-                                    tcx,
-                                    ObligationCause::dummy_with_span(*fn_span),
-                                    param_env,
-                                    trait_ref,
-                                );
-
-                                // improve diagnostics by showing what failed. Our requirements are stricter this time
-                                // as we are going to error again anyways.
-                                let infcx = tcx.infer_ctxt().build();
-                                if let Err(e) = implsrc {
-                                    infcx.err_ctxt().report_selection_error(
-                                        obligation.clone(),
-                                        &obligation,
-                                        &e,
-                                    );
-                                }
-
-                                self.check_op(ops::FnCallNonConst {
-                                    caller,
-                                    callee,
-                                    args: fn_args,
-                                    span: *fn_span,
-                                    call_source: *call_source,
-                                    feature: None,
-                                });
-                                return;
-                            }
-                        }
-                        _ => {}
-                    }
-
-                    // Resolve a trait method call to its concrete implementation, which may be in a
-                    // `const` trait impl.
-                    let instance = Instance::resolve(tcx, param_env, callee, fn_args);
-                    debug!("Resolving ({:?}) -> {:?}", callee, instance);
-                    if let Ok(Some(func)) = instance {
-                        if let InstanceDef::Item(def) = func.def {
-                            callee = def;
-                        }
                     }
                 }
 
@@ -899,7 +804,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of the `begin_panic` fn assumes the argument is `&str`
                 if Some(callee) == tcx.lang_items().begin_panic_fn() {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => return,
                         _ => self.check_op(ops::PanicNonStr),
                     }
@@ -907,7 +812,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                         {
                             return;
@@ -921,21 +826,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                if !tcx.is_const_fn_raw(callee) {
-                    if !tcx.is_const_default_method(callee) {
-                        // To get to here we must have already found a const impl for the
-                        // trait, but for it to still be non-const can be that the impl is
-                        // using default method bodies.
-                        self.check_op(ops::FnCallNonConst {
-                            caller,
-                            callee,
-                            args: fn_args,
-                            span: *fn_span,
-                            call_source: *call_source,
-                            feature: None,
-                        });
-                        return;
-                    }
+                if !tcx.is_const_fn_raw(callee) && !is_trait {
+                    self.check_op(ops::FnCallNonConst {
+                        caller,
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source: *call_source,
+                        feature: None,
+                    });
+                    return;
                 }
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
@@ -1041,8 +941,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Coroutine(hir::CoroutineKind::Coroutine))
+            TerminatorKind::Yield { .. } => self.check_op(ops::Coroutine(
+                self.tcx
+                    .coroutine_kind(self.body.source.def_id())
+                    .expect("Only expected to have a yield in a coroutine"),
+            )),
+
+            TerminatorKind::CoroutineDrop => {
+                span_bug!(
+                    self.body.source_info(location).span,
+                    "We should not encounter TerminatorKind::CoroutineDrop after coroutine transform"
+                );
             }
 
             TerminatorKind::UnwindTerminate(_) => {
@@ -1097,5 +1006,5 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.tcx.sess.emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
+    ccx.dcx().emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
 }

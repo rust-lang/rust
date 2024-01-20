@@ -1,5 +1,5 @@
 use hir::ExprKind;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -711,7 +711,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn construct_mut_suggestion_for_local_binding_patterns(
         &self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut DiagnosticBuilder<'_>,
         local: Local,
     ) {
         let local_decl = &self.body.local_decls[local];
@@ -1025,13 +1025,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_using_iter_mut(&self, err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>) {
+    fn suggest_using_iter_mut(&self, err: &mut DiagnosticBuilder<'_>) {
         let source = self.body.source;
         let hir = self.infcx.tcx.hir();
         if let InstanceDef::Item(def_id) = source.instance
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
-            && let ExprKind::Closure(closure) = kind
-            && closure.movability == None
+            && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
             && let Some(Node::Expr(expr)) = hir.find_parent(*hir_id)
         {
             let mut cur_expr = expr;
@@ -1067,12 +1066,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_make_local_mut(
-        &self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-        local: Local,
-        name: Symbol,
-    ) {
+    fn suggest_make_local_mut(&self, err: &mut DiagnosticBuilder<'_>, local: Local, name: Symbol) {
         let local_decl = &self.body.local_decls[local];
 
         let (pointer_sigil, pointer_desc) =
@@ -1223,19 +1217,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         match self
                             .infcx
-                            .could_impl_trait(clone_trait, ty.peel_refs(), self.param_env)
+                            .type_implements_trait_shallow(
+                                clone_trait,
+                                ty.peel_refs(),
+                                self.param_env,
+                            )
                             .as_deref()
                         {
                             Some([]) => {
-                                // The type implements Clone.
-                                err.span_help(
-                                    expr.span,
-                                    format!(
-                                        "you can `clone` the `{}` value and consume it, but this \
-                                         might not be your desired behavior",
-                                        ty.peel_refs(),
-                                    ),
-                                );
+                                // FIXME: This error message isn't useful, since we're just
+                                // vaguely suggesting to clone a value that already
+                                // implements `Clone`.
+                                //
+                                // A correct suggestion here would take into account the fact
+                                // that inference may be affected by missing types on bindings,
+                                // etc., to improve "tests/ui/borrowck/issue-91206.stderr", for
+                                // example.
                             }
                             None => {
                                 if let hir::ExprKind::MethodCall(segment, _rcvr, [], span) =
@@ -1294,7 +1291,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                                 // The type doesn't implement Clone because of unmet obligations.
                                 for error in errors {
-                                    if let traits::FulfillmentErrorCode::CodeSelectionError(
+                                    if let traits::FulfillmentErrorCode::SelectionError(
                                         traits::SelectionError::Unimplemented,
                                     ) = error.code
                                         && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(

@@ -6,13 +6,13 @@ use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy, TupleArgumentsFlag,
+    struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy,
+    TupleArgumentsFlag,
 };
+use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan, StashKey,
-};
+use rustc_errors::{pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -204,8 +204,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    struct_span_err!(
-                        tcx.sess,
+                    struct_span_code_err!(
+                        tcx.dcx(),
                         call_span,
                         E0059,
                         "cannot use call notation; the first type parameter \
@@ -229,11 +229,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
-
-        let is_const_eval_select = matches!(fn_def_id, Some(def_id) if
-            self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
-            && self.tcx.is_intrinsic(def_id)
-            && self.tcx.item_name(def_id) == sym::const_eval_select);
 
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
@@ -267,30 +262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);
-            }
-
-            // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
-            // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
-            // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
-            //
-            // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
-            if is_const_eval_select && (1..=2).contains(&idx) {
-                if let ty::FnDef(def_id, args) = *checked_ty.kind() {
-                    if idx == 1 {
-                        if !self.tcx.is_const_fn_raw(def_id) {
-                            self.tcx.sess.emit_err(errors::ConstSelectMustBeConst {
-                                span: provided_arg.span,
-                            });
-                        } else {
-                            self.enforce_context_effects(provided_arg.span, def_id, args)
-                        }
-                    }
-                } else {
-                    self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {
-                        span: provided_arg.span,
-                        ty: checked_ty,
-                    });
-                }
             }
 
             // 3. Check if the formal type is a supertype of the checked one
@@ -449,7 +420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys
                     .iter()
                     .copied()
-                    .zip(expected_input_tys.iter().copied())
+                    .zip_eq(expected_input_tys.iter().copied())
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
@@ -517,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
         self.set_tainted_by_errors(
-            tcx.sess.span_delayed_bug(call_span, "no errors reported for args"),
+            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
         );
 
         // Get the argument span in the context of the call span so that
@@ -693,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.sess.struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -705,8 +676,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 potentially_plural_count(provided_args.len(), "argument"),
                                 pluralize!("was", provided_args.len())
                             ),
-                            DiagnosticId::Error(err_code.to_owned()),
                         );
+                        err.code(err_code.to_owned());
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
@@ -750,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.sess.emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
             return;
         }
@@ -836,26 +807,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
-            struct_span_err!(
-                tcx.sess,
+            struct_span_code_err!(
+                tcx.dcx(),
                 full_call_span,
                 E0308,
                 "arguments to this {} are incorrect",
                 call_name,
             )
         } else {
-            tcx.sess.struct_span_err_with_code(
-                full_call_span,
-                format!(
-                    "this {} takes {}{} but {} {} supplied",
-                    call_name,
-                    if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
-                    potentially_plural_count(provided_args.len(), "argument"),
-                    pluralize!("was", provided_args.len())
-                ),
-                DiagnosticId::Error(err_code.to_owned()),
-            )
+            tcx.dcx()
+                .struct_span_err(
+                    full_call_span,
+                    format!(
+                        "this {} takes {}{} but {} {} supplied",
+                        call_name,
+                        if c_variadic { "at least " } else { "" },
+                        potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
+                        potentially_plural_count(provided_args.len(), "argument"),
+                        pluralize!("was", provided_args.len())
+                    ),
+                )
+                .with_code(err_code.to_owned())
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion
@@ -993,7 +965,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) {
                         match e {
                             Error::Missing(expected_idx) => missing_idxs.push(expected_idx),
-                            _ => unreachable!(),
+                            _ => unreachable!(
+                                "control flow ensures that we should always get an `Error::Missing`"
+                            ),
                         }
                     }
 
@@ -1285,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
             && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
@@ -1361,7 +1335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let variant = match def {
             Res::Err => {
                 let guar =
-                    self.tcx.sess.span_delayed_bug(path_span, "`Res::Err` but no error emitted");
+                    self.dcx().span_delayed_bug(path_span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }
@@ -1404,14 +1378,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // (issue #88844).
                     guar
                 }
-                _ => struct_span_err!(
-                    self.tcx.sess,
+                _ => struct_span_code_err!(
+                    self.dcx(),
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
                     ty.normalized.sort_string(self.tcx)
                 )
-                .span_label(path_span, "not a struct")
+                .with_span_label(path_span, "not a struct")
                 .emit(),
             })
         }
@@ -1486,8 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
-            if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            if let Some(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
                 err.emit();
             }
@@ -1849,8 +1822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
     ) {
         for (span, code) in errors_causecode {
-            let Some(mut diag) =
-                self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::MaybeForgetReturn)
+            let Some(mut diag) = self.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
             else {
                 continue;
             };
@@ -2018,7 +1990,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let new_def_id = self.probe(|_| {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
-                            call_kind.to_def_id(self.tcx),
+                            self.tcx.fn_trait_kind_to_def_id(call_kind)?,
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {

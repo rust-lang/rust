@@ -97,11 +97,16 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                 Some((FeatureStability::AcceptedSince(prev_since), _)),
             ) => {
                 if prev_since != since {
-                    self.tcx.sess.emit_err(FeatureStableTwice { span, feature, since, prev_since });
+                    self.tcx.dcx().emit_err(FeatureStableTwice {
+                        span,
+                        feature,
+                        since,
+                        prev_since,
+                    });
                 }
             }
             (FeatureStability::AcceptedSince(_), Some((FeatureStability::Unstable, _))) => {
-                self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
                     declared: "stable",
@@ -109,7 +114,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                 });
             }
             (FeatureStability::Unstable, Some((FeatureStability::AcceptedSince(_), _))) => {
-                self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
                     declared: "unstable",

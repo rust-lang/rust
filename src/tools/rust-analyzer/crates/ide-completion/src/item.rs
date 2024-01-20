@@ -152,6 +152,8 @@ pub struct CompletionRelevance {
     pub is_local: bool,
     /// This is set when trait items are completed in an impl of that trait.
     pub is_item_from_trait: bool,
+    /// This is set for when trait items are from traits with `#[doc(notable_trait)]`
+    pub is_item_from_notable_trait: bool,
     /// This is set when an import is suggested whose name is already imported.
     pub is_name_already_imported: bool,
     /// This is set for completions that will insert a `use` item.
@@ -228,6 +230,7 @@ impl CompletionRelevance {
             is_private_editable,
             postfix_match,
             is_definite,
+            is_item_from_notable_trait,
         } = self;
 
         // lower rank private things
@@ -264,6 +267,9 @@ impl CompletionRelevance {
             score += 1;
         }
         if is_item_from_trait {
+            score += 1;
+        }
+        if is_item_from_notable_trait {
             score += 1;
         }
         if is_definite {
@@ -458,13 +464,11 @@ impl Builder {
         }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
-            if let Some(original_path) = import_edit.original_path.as_ref() {
-                label_detail.replace(SmolStr::from(format!(
-                    "{} (use {})",
-                    label_detail.as_deref().unwrap_or_default(),
-                    original_path.display(db)
-                )));
-            }
+            label_detail.replace(SmolStr::from(format!(
+                "{} (use {})",
+                label_detail.as_deref().unwrap_or_default(),
+                import_edit.import_path.display(db)
+            )));
         } else if let Some(trait_name) = self.trait_name {
             label_detail.replace(SmolStr::from(format!(
                 "{} (as {trait_name})",

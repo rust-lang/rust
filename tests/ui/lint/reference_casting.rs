@@ -1,7 +1,5 @@
 // check-fail
 
-#![feature(ptr_from_ref)]
-
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.
@@ -113,6 +111,13 @@ unsafe fn assign_to_ref() {
     *((&std::cell::UnsafeCell::new(0)) as *const _ as *mut i32) = 5;
     //~^ ERROR assigning to `&T` is undefined behavior
 
+    let value = num as *const i32 as *mut i32;
+    *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
+    let value = num as *const i32;
+    let value = value as *mut i32;
+    *value = 1;
+    //~^ ERROR assigning to `&T` is undefined behavior
     let value = num as *const i32 as *mut i32;
     *value = 1;
     //~^ ERROR assigning to `&T` is undefined behavior

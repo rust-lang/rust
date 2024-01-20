@@ -42,7 +42,10 @@ fn test_iterator_chain_advance_by() {
             let mut iter = Unfuse::new(xs).chain(Unfuse::new(ys));
             assert_eq!(iter.advance_by(xs.len() + i), Ok(()));
             assert_eq!(iter.next(), Some(&ys[i]));
-            assert_eq!(iter.advance_by(100), Err(NonZeroUsize::new(100 - (ys.len() - i - 1)).unwrap()));
+            assert_eq!(
+                iter.advance_by(100),
+                Err(NonZeroUsize::new(100 - (ys.len() - i - 1)).unwrap())
+            );
             assert_eq!(iter.advance_by(0), Ok(()));
         }
 
@@ -71,7 +74,10 @@ fn test_iterator_chain_advance_back_by() {
             let mut iter = Unfuse::new(xs).chain(Unfuse::new(ys));
             assert_eq!(iter.advance_back_by(i), Ok(()));
             assert_eq!(iter.next_back(), Some(&ys[ys.len() - i - 1]));
-            assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (len - i - 1)).unwrap()));
+            assert_eq!(
+                iter.advance_back_by(100),
+                Err(NonZeroUsize::new(100 - (len - i - 1)).unwrap())
+            );
             assert_eq!(iter.advance_back_by(0), Ok(()));
         }
 
@@ -79,7 +85,10 @@ fn test_iterator_chain_advance_back_by() {
             let mut iter = Unfuse::new(xs).chain(Unfuse::new(ys));
             assert_eq!(iter.advance_back_by(ys.len() + i), Ok(()));
             assert_eq!(iter.next_back(), Some(&xs[xs.len() - i - 1]));
-            assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(100 - (xs.len() - i - 1)).unwrap()));
+            assert_eq!(
+                iter.advance_back_by(100),
+                Err(NonZeroUsize::new(100 - (xs.len() - i - 1)).unwrap())
+            );
             assert_eq!(iter.advance_back_by(0), Ok(()));
         }
 

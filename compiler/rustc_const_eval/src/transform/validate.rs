@@ -8,9 +8,6 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
-use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
@@ -51,12 +48,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
         };
 
-        let always_live_locals = always_storage_live_locals(body);
-        let storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
-
         let can_unwind = if mir_phase <= MirPhase::Runtime(RuntimePhase::Initial) {
             // In this case `AbortUnwindingCalls` haven't yet been executed.
             true
@@ -83,8 +74,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
-            storage_liveness,
-            place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
             can_unwind,
         };
@@ -116,8 +105,6 @@ struct CfgChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
-    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
-    place_cache: FxHashSet<PlaceRef<'tcx>>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
@@ -130,7 +117,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
         let span = self.body.source_info(location).span;
         // We use `span_delayed_bug` as we might see broken MIR when other errors have already
         // occurred.
-        self.tcx.sess.diagnostic().span_delayed_bug(
+        self.tcx.dcx().span_delayed_bug(
             span,
             format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
@@ -294,45 +281,17 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
-    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, _context: PlaceContext, location: Location) {
         if self.body.local_decls.get(local).is_none() {
             self.fail(
                 location,
                 format!("local {local:?} has no corresponding declaration in `body.local_decls`"),
             );
         }
-
-        if self.reachable_blocks.contains(location.block) && context.is_use() {
-            // We check that the local is live whenever it is used. Technically, violating this
-            // restriction is only UB and not actually indicative of not well-formed MIR. This means
-            // that an optimization which turns MIR that already has UB into MIR that fails this
-            // check is not necessarily wrong. However, we have no such optimizations at the moment,
-            // and so we include this check anyway to help us catch bugs. If you happen to write an
-            // optimization that might cause this to incorrectly fire, feel free to remove this
-            // check.
-            self.storage_liveness.seek_after_primary_effect(location);
-            let locals_with_storage = self.storage_liveness.get();
-            if !locals_with_storage.contains(local) {
-                self.fail(location, format!("use of local {local:?}, which has no storage here"));
-            }
-        }
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
-                    }
-                }
-            }
             StatementKind::AscribeUserType(..) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -367,26 +326,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
-            StatementKind::StorageLive(local) => {
-                // We check that the local is not live when entering a `StorageLive` for it.
-                // Technically, violating this restriction is only UB and not actually indicative
-                // of not well-formed MIR. This means that an optimization which turns MIR that
-                // already has UB into MIR that fails this check is not necessarily wrong. However,
-                // we have no such optimizations at the moment, and so we include this check anyway
-                // to help us catch bugs. If you happen to write an optimization that might cause
-                // this to incorrectly fire, feel free to remove this check.
-                if self.reachable_blocks.contains(location.block) {
-                    self.storage_liveness.seek_before_primary_effect(location);
-                    let locals_with_storage = self.storage_liveness.get();
-                    if locals_with_storage.contains(*local) {
-                        self.fail(
-                            location,
-                            format!("StorageLive({local:?}) which already has storage here"),
-                        );
-                    }
-                }
-            }
-            StatementKind::StorageDead(_)
+            StatementKind::Assign(..)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
@@ -448,10 +390,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
 
                 // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping
-                // and cannot be packed. Currently this simply checks for duplicate places.
-                self.place_cache.clear();
-                self.place_cache.insert(destination.as_ref());
+                // passed by a reference to the callee. Consequently they cannot be packed.
                 if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
                     // This is bad! The callee will expect the memory to be aligned.
                     self.fail(
@@ -462,10 +401,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                let mut has_duplicates = false;
                 for arg in args {
-                    if let Operand::Move(place) = arg {
-                        has_duplicates |= !self.place_cache.insert(place.as_ref());
+                    if let Operand::Move(place) = &arg.node {
                         if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
                             // This is bad! The callee will expect the memory to be aligned.
                             self.fail(
@@ -477,16 +414,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
-                }
-
-                if has_duplicates {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
-                            terminator.kind,
-                        ),
-                    );
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
@@ -571,7 +498,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
         if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.sess.diagnostic().span_delayed_bug(
+            self.tcx.dcx().span_delayed_bug(
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
@@ -738,7 +665,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args, _) => {
+                    &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body
@@ -1154,17 +1081,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             location,
                             "`CopyForDeref` should only be used for dereferenceable types",
                         )
-                    }
-                }
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
                     }
                 }
             }

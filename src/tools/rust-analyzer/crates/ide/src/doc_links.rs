@@ -219,6 +219,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
+        | Definition::TupleField(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_)
@@ -492,7 +493,7 @@ fn get_doc_base_urls(
     let Some(krate) = def.krate(db) else { return Default::default() };
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
-    let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
+    let channel = crate_data.channel().unwrap_or(ReleaseChannel::Nightly).as_str();
 
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
@@ -639,6 +640,7 @@ fn filename_and_frag_for_def(
         }
         Definition::Local(_)
         | Definition::GenericParam(_)
+        | Definition::TupleField(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)

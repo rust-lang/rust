@@ -220,7 +220,38 @@ fn smoke_resume_arg() {
     });
 }
 
+fn uninit_fields() {
+    // Test that uninhabited saved local doesn't make the entire variant uninhabited.
+    // (https://github.com/rust-lang/rust/issues/115145, https://github.com/rust-lang/rust/pull/118871)
+    fn conjure<T>() -> T {
+        loop {}
+    }
+
+    fn run<T>(x: bool, y: bool) {
+        let mut c = || {
+            if x {
+                let _a: T;
+                if y {
+                    _a = conjure::<T>();
+                }
+                yield ();
+            } else {
+                let _a: T;
+                if y {
+                    _a = conjure::<T>();
+                }
+                yield ();
+            }
+        };
+        assert!(matches!(Pin::new(&mut c).resume(()), CoroutineState::Yielded(())));
+        assert!(matches!(Pin::new(&mut c).resume(()), CoroutineState::Complete(())));
+    }
+
+    run::<!>(false, false);
+}
+
 fn main() {
     basic();
     smoke_resume_arg();
+    uninit_fields();
 }

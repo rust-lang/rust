@@ -80,7 +80,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         let span = cx.tcx
             .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        cx.tcx.sess.create_err(TiedTargetFeatures {
+        cx.tcx.dcx().create_err(TiedTargetFeatures {
             features: features.join(", "),
             span,
         })

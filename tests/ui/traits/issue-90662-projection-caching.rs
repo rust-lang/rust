@@ -1,7 +1,15 @@
+// revisions: old next
+//[next] compile-flags: -Znext-solver=coherence
 // check-pass
 
 // Regression test for issue #90662
-// Tests that projection caching does not cause a spurious error
+// Tests that projection caching does not cause a spurious error.
+// Coherence relies on the following overflowing goal to still constrain
+// `?0` to `dyn Service`.
+//
+//     Projection(<ServiceImpl as Provider<TestModule>>::Interface. ?0)
+//
+// cc https://github.com/rust-lang/trait-system-refactor-initiative/issues/70.
 
 trait HasProvider<T: ?Sized> {}
 trait Provider<M> {

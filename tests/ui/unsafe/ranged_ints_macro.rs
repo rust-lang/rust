@@ -1,6 +1,4 @@
 // build-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
 
 #![feature(rustc_attrs)]
 

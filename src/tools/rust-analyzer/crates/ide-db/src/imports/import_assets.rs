@@ -1,14 +1,14 @@
 //! Look up accessible paths for items.
+
 use hir::{
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, ModPath, Module, ModuleDef,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, ModPath, Module, ModuleDef, Name,
     PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
-use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use itertools::{EitherOrBoth, Itertools};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    utils::path_to_string_stripping_turbo_fish,
-    AstNode, SyntaxNode,
+    AstNode, SmolStr, SyntaxNode,
 };
 
 use crate::{
@@ -51,16 +51,9 @@ pub struct TraitImportCandidate {
 #[derive(Debug)]
 pub struct PathImportCandidate {
     /// Optional qualifier before name.
-    pub qualifier: Option<FirstSegmentUnresolved>,
+    pub qualifier: Option<Vec<SmolStr>>,
     /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
-}
-
-/// A qualifier that has a first segment and it's unresolved.
-#[derive(Debug)]
-pub struct FirstSegmentUnresolved {
-    fist_segment: ast::NameRef,
-    full_qualifier: ast::Path,
 }
 
 /// A name that will be used during item lookups.
@@ -195,18 +188,11 @@ pub struct LocatedImport {
     /// the original item is the associated constant, but the import has to be a trait that
     /// defines this constant.
     pub original_item: ItemInNs,
-    /// A path of the original item.
-    pub original_path: Option<ModPath>,
 }
 
 impl LocatedImport {
-    pub fn new(
-        import_path: ModPath,
-        item_to_import: ItemInNs,
-        original_item: ItemInNs,
-        original_path: Option<ModPath>,
-    ) -> Self {
-        Self { import_path, item_to_import, original_item, original_path }
+    pub fn new(import_path: ModPath, item_to_import: ItemInNs, original_item: ItemInNs) -> Self {
+        Self { import_path, item_to_import, original_item }
     }
 }
 
@@ -221,7 +207,7 @@ impl ImportAssets {
         prefix_kind: PrefixKind,
         prefer_no_std: bool,
         prefer_prelude: bool,
-    ) -> Vec<LocatedImport> {
+    ) -> impl Iterator<Item = LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
         self.search_for(sema, Some(prefix_kind), prefer_no_std, prefer_prelude)
     }
@@ -232,7 +218,7 @@ impl ImportAssets {
         sema: &Semantics<'_, RootDatabase>,
         prefer_no_std: bool,
         prefer_prelude: bool,
-    ) -> Vec<LocatedImport> {
+    ) -> impl Iterator<Item = LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None, prefer_no_std, prefer_prelude)
     }
@@ -273,9 +259,15 @@ impl ImportAssets {
         prefixed: Option<PrefixKind>,
         prefer_no_std: bool,
         prefer_prelude: bool,
-    ) -> Vec<LocatedImport> {
+    ) -> impl Iterator<Item = LocatedImport> {
         let _p = profile::span("import_assets::search_for");
 
+        let scope = match sema.scope(&self.candidate_node) {
+            Some(it) => it,
+            None => return <FxHashSet<_>>::default().into_iter(),
+        };
+
+        let krate = self.module_with_candidate.krate();
         let scope_definitions = self.scope_definitions(sema);
         let mod_path = |item| {
             get_mod_path(
@@ -286,30 +278,30 @@ impl ImportAssets {
                 prefer_no_std,
                 prefer_prelude,
             )
-        };
-
-        let krate = self.module_with_candidate.krate();
-        let scope = match sema.scope(&self.candidate_node) {
-            Some(it) => it,
-            None => return Vec::new(),
+            .filter(|path| path.len() > 1)
         };
 
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => {
-                path_applicable_imports(sema, krate, path_candidate, mod_path)
+                path_applicable_imports(sema, krate, path_candidate, mod_path, |item_to_import| {
+                    !scope_definitions.contains(&ScopeDef::from(item_to_import))
+                })
             }
-            ImportCandidate::TraitAssocItem(trait_candidate) => {
-                trait_applicable_items(sema, krate, &scope, trait_candidate, true, mod_path)
-            }
-            ImportCandidate::TraitMethod(trait_candidate) => {
-                trait_applicable_items(sema, krate, &scope, trait_candidate, false, mod_path)
-            }
+            ImportCandidate::TraitAssocItem(trait_candidate)
+            | ImportCandidate::TraitMethod(trait_candidate) => trait_applicable_items(
+                sema,
+                krate,
+                &scope,
+                trait_candidate,
+                matches!(self.import_candidate, ImportCandidate::TraitAssocItem(_)),
+                mod_path,
+                |trait_to_import| {
+                    !scope_definitions
+                        .contains(&ScopeDef::ModuleDef(ModuleDef::Trait(trait_to_import)))
+                },
+            ),
         }
         .into_iter()
-        .filter(|import| import.import_path.len() > 1)
-        .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import)))
-        .sorted_by(|a, b| a.import_path.cmp(&b.import_path))
-        .collect()
     }
 
     fn scope_definitions(&self, sema: &Semantics<'_, RootDatabase>) -> FxHashSet<ScopeDef> {
@@ -329,6 +321,7 @@ fn path_applicable_imports(
     current_crate: Crate,
     path_candidate: &PathImportCandidate,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
+    scope_filter: impl Fn(ItemInNs) -> bool + Copy,
 ) -> FxHashSet<LocatedImport> {
     let _p = profile::span("import_assets::path_applicable_imports");
 
@@ -347,68 +340,83 @@ fn path_applicable_imports(
                 //
                 // see also an ignored test under FIXME comment in the qualify_path.rs module
                 AssocSearchMode::Exclude,
-                Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
             )
             .filter_map(|item| {
+                if !scope_filter(item) {
+                    return None;
+                }
                 let mod_path = mod_path(item)?;
-                Some(LocatedImport::new(mod_path.clone(), item, item, Some(mod_path)))
+                Some(LocatedImport::new(mod_path, item, item))
             })
+            .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
             .collect()
         }
-        Some(first_segment_unresolved) => {
-            let unresolved_qualifier =
-                path_to_string_stripping_turbo_fish(&first_segment_unresolved.full_qualifier);
-            let unresolved_first_segment = first_segment_unresolved.fist_segment.text();
-            items_locator::items_with_name(
-                sema,
-                current_crate,
-                path_candidate.name.clone(),
-                AssocSearchMode::Include,
-                Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
-            )
-            .filter_map(|item| {
-                import_for_item(
-                    sema.db,
-                    mod_path,
-                    &unresolved_first_segment,
-                    &unresolved_qualifier,
-                    item,
-                )
-            })
-            .collect()
-        }
+        Some(qualifier) => items_locator::items_with_name(
+            sema,
+            current_crate,
+            path_candidate.name.clone(),
+            AssocSearchMode::Include,
+        )
+        .filter_map(|item| import_for_item(sema.db, mod_path, &qualifier, item, scope_filter))
+        .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
+        .collect(),
     }
 }
 
 fn import_for_item(
     db: &RootDatabase,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
-    unresolved_first_segment: &str,
-    unresolved_qualifier: &str,
+    unresolved_qualifier: &[SmolStr],
     original_item: ItemInNs,
+    scope_filter: impl Fn(ItemInNs) -> bool,
 ) -> Option<LocatedImport> {
     let _p = profile::span("import_assets::import_for_item");
+    let [first_segment, ..] = unresolved_qualifier else { return None };
 
-    let original_item_candidate = item_for_path_search(db, original_item)?;
-    let import_path_candidate = mod_path(original_item_candidate)?;
-    let import_path_string = import_path_candidate.display(db).to_string();
+    let item_as_assoc = item_as_assoc(db, original_item);
 
-    let expected_import_end = if item_as_assoc(db, original_item).is_some() {
-        unresolved_qualifier.to_string()
-    } else {
-        format!("{unresolved_qualifier}::{}", item_name(db, original_item)?.display(db))
+    let (original_item_candidate, trait_item_to_import) = match item_as_assoc {
+        Some(assoc_item) => match assoc_item.container(db) {
+            AssocItemContainer::Trait(trait_) => {
+                let trait_ = ItemInNs::from(ModuleDef::from(trait_));
+                (trait_, Some(trait_))
+            }
+            AssocItemContainer::Impl(impl_) => {
+                (ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)), None)
+            }
+        },
+        None => (original_item, None),
     };
-    if !import_path_string.contains(unresolved_first_segment)
-        || !import_path_string.ends_with(&expected_import_end)
-    {
+    let import_path_candidate = mod_path(original_item_candidate)?;
+
+    let mut import_path_candidate_segments = import_path_candidate.segments().iter().rev();
+    let predicate = |it: EitherOrBoth<&SmolStr, &Name>| match it {
+        // segments match, check next one
+        EitherOrBoth::Both(a, b) if b.as_str() == Some(&**a) => None,
+        // segments mismatch / qualifier is longer than the path, bail out
+        EitherOrBoth::Both(..) | EitherOrBoth::Left(_) => Some(false),
+        // all segments match and we have exhausted the qualifier, proceed
+        EitherOrBoth::Right(_) => Some(true),
+    };
+    if item_as_assoc.is_none() {
+        let item_name = item_name(db, original_item)?.as_text()?;
+        let last_segment = import_path_candidate_segments.next()?;
+        if last_segment.as_str() != Some(&*item_name) {
+            return None;
+        }
+    }
+    let ends_with = unresolved_qualifier
+        .iter()
+        .rev()
+        .zip_longest(import_path_candidate_segments)
+        .find_map(predicate)
+        .unwrap_or(true);
+    if !ends_with {
         return None;
     }
 
-    let segment_import =
-        find_import_for_segment(db, original_item_candidate, unresolved_first_segment)?;
-    let trait_item_to_import = item_as_assoc(db, original_item)
-        .and_then(|assoc| assoc.containing_trait(db))
-        .map(|trait_| ItemInNs::from(ModuleDef::from(trait_)));
+    let segment_import = find_import_for_segment(db, original_item_candidate, first_segment)?;
+
     Some(match (segment_import == original_item_candidate, trait_item_to_import) {
         (true, Some(_)) => {
             // FIXME we should be able to import both the trait and the segment,
@@ -416,39 +424,35 @@ fn import_for_item(
             // especially in case of lazy completion edit resolutions.
             return None;
         }
-        (false, Some(trait_to_import)) => LocatedImport::new(
-            mod_path(trait_to_import)?,
-            trait_to_import,
-            original_item,
-            mod_path(original_item),
-        ),
-        (true, None) => LocatedImport::new(
-            import_path_candidate,
-            original_item_candidate,
-            original_item,
-            mod_path(original_item),
-        ),
-        (false, None) => LocatedImport::new(
-            mod_path(segment_import)?,
-            segment_import,
-            original_item,
-            mod_path(original_item),
-        ),
+        (false, Some(trait_to_import)) if scope_filter(trait_to_import) => {
+            LocatedImport::new(mod_path(trait_to_import)?, trait_to_import, original_item)
+        }
+        (true, None) if scope_filter(original_item_candidate) => {
+            LocatedImport::new(import_path_candidate, original_item_candidate, original_item)
+        }
+        (false, None) if scope_filter(segment_import) => {
+            LocatedImport::new(mod_path(segment_import)?, segment_import, original_item)
+        }
+        _ => return None,
     })
 }
 
 pub fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
     Some(match item {
         ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
-            Some(assoc_item) => match assoc_item.container(db) {
-                AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
-                AssocItemContainer::Impl(impl_) => {
-                    ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?))
-                }
-            },
+            Some(assoc_item) => item_for_path_search_assoc(db, assoc_item)?,
             None => item,
         },
         ItemInNs::Macros(_) => item,
+    })
+}
+
+fn item_for_path_search_assoc(db: &RootDatabase, assoc_item: AssocItem) -> Option<ItemInNs> {
+    Some(match assoc_item.container(db) {
+        AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+        AssocItemContainer::Impl(impl_) => {
+            ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?))
+        }
     })
 }
 
@@ -498,6 +502,7 @@ fn trait_applicable_items(
     trait_candidate: &TraitImportCandidate,
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
+    scope_filter: impl Fn(hir::Trait) -> bool,
 ) -> FxHashSet<LocatedImport> {
     let _p = profile::span("import_assets::trait_applicable_items");
 
@@ -508,26 +513,29 @@ fn trait_applicable_items(
     let related_traits = inherent_traits.chain(env_traits).collect::<FxHashSet<_>>();
 
     let mut required_assoc_items = FxHashSet::default();
-    let trait_candidates = items_locator::items_with_name(
+    let trait_candidates: FxHashSet<_> = items_locator::items_with_name(
         sema,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
         AssocSearchMode::AssocItemsOnly,
-        Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
     .filter_map(|input| item_as_assoc(db, input))
     .filter_map(|assoc| {
+        if !trait_assoc_item && matches!(assoc, AssocItem::Const(_) | AssocItem::TypeAlias(_)) {
+            return None;
+        }
+
         let assoc_item_trait = assoc.containing_trait(db)?;
         if related_traits.contains(&assoc_item_trait) {
-            None
-        } else {
-            required_assoc_items.insert(assoc);
-            Some(assoc_item_trait.into())
+            return None;
         }
+        required_assoc_items.insert(assoc);
+        Some(assoc_item_trait.into())
     })
     .collect();
 
     let mut located_imports = FxHashSet::default();
+    let mut trait_import_paths = FxHashMap::default();
 
     if trait_assoc_item {
         trait_candidate.receiver_ty.iterate_path_candidates(
@@ -538,19 +546,17 @@ fn trait_applicable_items(
             None,
             |assoc| {
                 if required_assoc_items.contains(&assoc) {
-                    if let AssocItem::Function(f) = assoc {
-                        if f.self_param(db).is_some() {
-                            return None;
-                        }
-                    }
-                    let located_trait = assoc.containing_trait(db)?;
+                    let located_trait =
+                        assoc.containing_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
-                    let original_item = assoc_to_item(assoc);
+                    let import_path = trait_import_paths
+                        .entry(trait_item)
+                        .or_insert_with(|| mod_path(trait_item))
+                        .clone()?;
                     located_imports.insert(LocatedImport::new(
-                        mod_path(trait_item)?,
+                        import_path,
                         trait_item,
-                        original_item,
-                        mod_path(original_item),
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>
@@ -566,14 +572,17 @@ fn trait_applicable_items(
             |function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
-                    let located_trait = assoc.containing_trait(db)?;
+                    let located_trait =
+                        assoc.containing_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
-                    let original_item = assoc_to_item(assoc);
+                    let import_path = trait_import_paths
+                        .entry(trait_item)
+                        .or_insert_with(|| mod_path(trait_item))
+                        .clone()?;
                     located_imports.insert(LocatedImport::new(
-                        mod_path(trait_item)?,
+                        import_path,
                         trait_item,
-                        original_item,
-                        mod_path(original_item),
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>
@@ -671,18 +680,12 @@ fn path_import_candidate(
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             None => {
-                let qualifier_start =
-                    qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
-                let qualifier_start_path =
-                    qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
-                if sema.resolve_path(&qualifier_start_path).is_none() {
-                    ImportCandidate::Path(PathImportCandidate {
-                        qualifier: Some(FirstSegmentUnresolved {
-                            fist_segment: qualifier_start,
-                            full_qualifier: qualifier,
-                        }),
-                        name,
-                    })
+                if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
+                    let qualifier = qualifier
+                        .segments()
+                        .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))
+                        .collect::<Option<Vec<_>>>()?;
+                    ImportCandidate::Path(PathImportCandidate { qualifier: Some(qualifier), name })
                 } else {
                     return None;
                 }

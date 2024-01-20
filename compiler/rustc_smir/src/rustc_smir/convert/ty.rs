@@ -12,12 +12,11 @@ use crate::rustc_smir::{alloc, Stable, Tables};
 impl<'tcx> Stable<'tcx> for ty::AliasKind {
     type T = stable_mir::ty::AliasKind;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_middle::ty::AliasKind::*;
         match self {
-            Projection => stable_mir::ty::AliasKind::Projection,
-            Inherent => stable_mir::ty::AliasKind::Inherent,
-            Opaque => stable_mir::ty::AliasKind::Opaque,
-            Weak => stable_mir::ty::AliasKind::Weak,
+            ty::Projection => stable_mir::ty::AliasKind::Projection,
+            ty::Inherent => stable_mir::ty::AliasKind::Inherent,
+            ty::Opaque => stable_mir::ty::AliasKind::Opaque,
+            ty::Weak => stable_mir::ty::AliasKind::Weak,
         }
     }
 }
@@ -34,10 +33,9 @@ impl<'tcx> Stable<'tcx> for ty::DynKind {
     type T = stable_mir::ty::DynKind;
 
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_middle::ty::DynKind;
         match self {
-            DynKind::Dyn => stable_mir::ty::DynKind::Dyn,
-            DynKind::DynStar => stable_mir::ty::DynKind::DynStar,
+            ty::Dyn => stable_mir::ty::DynKind::Dyn,
+            ty::DynStar => stable_mir::ty::DynKind::DynStar,
         }
     }
 }
@@ -386,10 +384,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables),
             )),
-            ty::Coroutine(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Coroutine(
+            ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables),
-                movability.stable(tables),
+                tables.tcx.coroutine_movability(*def_id).stable(tables),
             )),
             ty::Never => TyKind::RigidTy(RigidTy::Never),
             ty::Tuple(fields) => {

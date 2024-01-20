@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(noop_waker)]
 
 use std::future::Future;
 
@@ -57,19 +58,25 @@ async fn hello_world() {
     read_exact(&mut reader, &mut marker).await.unwrap();
 }
 
-fn run_fut<T>(fut: impl Future<Output = T>) -> T {
-    use std::sync::Arc;
-    use std::task::{Context, Poll, Wake, Waker};
+// This example comes from https://github.com/rust-lang/rust/issues/115145
+async fn uninhabited_variant() {
+    async fn unreachable(_: Never) {}
 
-    struct MyWaker;
-    impl Wake for MyWaker {
-        fn wake(self: Arc<Self>) {
-            unimplemented!()
+    let c = async {};
+    match None::<Never> {
+        None => {
+            c.await;
+        }
+        Some(r) => {
+            unreachable(r).await;
         }
     }
+}
 
-    let waker = Waker::from(Arc::new(MyWaker));
-    let mut context = Context::from_waker(&waker);
+fn run_fut<T>(fut: impl Future<Output = T>) -> T {
+    use std::task::{Context, Poll, Waker};
+
+    let mut context = Context::from_waker(Waker::noop());
 
     let mut pinned = Box::pin(fut);
     loop {
@@ -87,4 +94,5 @@ fn main() {
     assert_eq!(run_fut(includes_never(false, 4)), 16);
     assert_eq!(run_fut(partial_init(4)), 8);
     run_fut(hello_world());
+    run_fut(uninhabited_variant());
 }

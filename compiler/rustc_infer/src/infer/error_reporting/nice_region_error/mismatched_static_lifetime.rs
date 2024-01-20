@@ -116,7 +116,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 .unwrap_or(DoesNotOutliveStaticFromImpl::Unspanned),
             implicit_static_lifetimes,
         };
-        let reported = self.tcx().sess.emit_err(err);
+        let reported = self.tcx().dcx().emit_err(err);
         Some(reported)
     }
 }

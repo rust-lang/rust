@@ -197,7 +197,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Continue(..)
             | ast::ExprKind::Yield(..)
             | ast::ExprKind::Field(..)
-            | ast::ExprKind::ForLoop(..)
+            | ast::ExprKind::ForLoop { .. }
             | ast::ExprKind::Index(..)
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::OffsetOf(..)

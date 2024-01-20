@@ -16,9 +16,9 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
-    FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
+    FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
+    SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -61,13 +61,13 @@ impl HumanReadableErrorType {
         self,
         mut dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
         if !dst.supports_color() && color {
             dst = Box::new(Ansi::new(dst));
         }
-        EmitterWriter::new(dst, fallback_bundle).short_message(short)
+        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -196,13 +196,15 @@ pub trait Emitter: Translate {
     fn emit_diagnostic(&mut self, diag: &Diagnostic);
 
     /// Emit a notification that an artifact has been output.
-    /// This is currently only supported for the JSON format,
-    /// other formats can, and will, simply ignore it.
+    /// Currently only supported for the JSON format.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
+    /// Emit a report about future breakage.
+    /// Currently only supported for the JSON format.
     fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
 
-    /// Emit list of unused externs
+    /// Emit list of unused externs.
+    /// Currently only supported for the JSON format.
     fn emit_unused_externs(
         &mut self,
         _lint_level: rustc_lint_defs::Level,
@@ -350,9 +352,8 @@ pub trait Emitter: Translate {
 
                 children.push(SubDiagnostic {
                     level: Level::Note,
-                    message: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
+                    messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
-                    render_span: None,
                 });
             }
         }
@@ -502,7 +503,7 @@ pub trait Emitter: Translate {
     }
 }
 
-impl Translate for EmitterWriter {
+impl Translate for HumanEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
@@ -512,7 +513,7 @@ impl Translate for EmitterWriter {
     }
 }
 
-impl Emitter for EmitterWriter {
+impl Emitter for HumanEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.sm.as_ref()
     }
@@ -533,7 +534,7 @@ impl Emitter for EmitterWriter {
 
         self.emit_messages_default(
             &diag.level,
-            &diag.message,
+            &diag.messages,
             &fluent_args,
             &diag.code,
             &primary_span,
@@ -553,10 +554,10 @@ impl Emitter for EmitterWriter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_handler` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fatal_handler: Handler,
+    pub fatal_dcx: DiagCtxt,
     pub fatal_note: Option<String>,
 }
 
@@ -581,7 +582,7 @@ impl Emitter for SilentEmitter {
             if let Some(ref note) = self.fatal_note {
                 d.note(note.clone());
             }
-            self.fatal_handler.emit_diagnostic(d);
+            self.fatal_dcx.emit_diagnostic(d);
         }
     }
 }
@@ -623,7 +624,7 @@ impl ColorConfig {
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 #[derive(Setters)]
-pub struct EmitterWriter {
+pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
     sm: Option<Lrc<SourceMap>>,
@@ -648,14 +649,14 @@ pub struct FileWithAnnotatedLines {
     multiline_depth: usize,
 }
 
-impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
+impl HumanEmitter {
+    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         let dst = from_stderr(color_config);
         Self::create(dst, fallback_bundle)
     }
 
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
-        EmitterWriter {
+    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+        HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
             fluent_bundle: None,
@@ -674,7 +675,7 @@ impl EmitterWriter {
     pub fn new(
         dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         Self::create(dst, fallback_bundle)
     }
 
@@ -1228,10 +1229,10 @@ impl EmitterWriter {
 
     /// Adds a left margin to every line but the first, given a padding length and the label being
     /// displayed, keeping the provided highlighting.
-    fn msg_to_buffer(
+    fn msgs_to_buffer(
         &self,
         buffer: &mut StyledBuffer,
-        msg: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
         padding: usize,
         label: &str,
@@ -1267,7 +1268,7 @@ impl EmitterWriter {
 
         // Provided the following diagnostic message:
         //
-        //     let msg = vec![
+        //     let msgs = vec![
         //       ("
         //       ("highlighted multiline\nstring to\nsee how it ", Style::NoStyle),
         //       ("looks", Style::Highlight),
@@ -1284,7 +1285,7 @@ impl EmitterWriter {
         //                see how it *looks* with
         //                very *weird* formats
         //                see?
-        for (text, style) in msg.iter() {
+        for (text, style) in msgs.iter() {
             let text = self.translate_message(text, args).map_err(Report::new).unwrap();
             let text = &normalize_whitespace(&text);
             let lines = text.split('\n').collect::<Vec<_>>();
@@ -1303,12 +1304,12 @@ impl EmitterWriter {
     }
 
     #[instrument(level = "trace", skip(self, args), ret)]
-    fn emit_message_default(
+    fn emit_messages_default_inner(
         &mut self,
         msp: &MultiSpan,
-        msg: &[(DiagnosticMessage, Style)],
+        msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<String>,
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
@@ -1327,7 +1328,7 @@ impl EmitterWriter {
                 buffer.append(0, level.to_str(), Style::MainHeaderMsg);
                 buffer.append(0, ": ", Style::NoStyle);
             }
-            self.msg_to_buffer(&mut buffer, msg, args, max_line_num_len, "note", None);
+            self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
         } else {
             let mut label_width = 0;
             // The failure note level itself does not provide any useful diagnostic information
@@ -1335,14 +1336,13 @@ impl EmitterWriter {
                 buffer.append(0, level.to_str(), Style::Level(*level));
                 label_width += level.to_str().len();
             }
-            // only render error codes, not lint codes
-            if let Some(DiagnosticId::Error(ref code)) = *code {
+            if let Some(code) = code {
                 buffer.append(0, "[", Style::Level(*level));
                 let code = if let TerminalUrl::Yes = self.terminal_url {
                     let path = "https://doc.rust-lang.org/error_codes";
-                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
+                    Cow::Owned(format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07"))
                 } else {
-                    code.clone()
+                    Cow::Borrowed(code)
                 };
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
@@ -1360,7 +1360,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
                 label_width += 2;
             }
-            for (text, _) in msg.iter() {
+            for (text, _) in msgs.iter() {
                 let text = self.translate_message(text, args).map_err(Report::new).unwrap();
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {
@@ -1747,7 +1747,7 @@ impl EmitterWriter {
         buffer.append(0, level.to_str(), Style::Level(*level));
         buffer.append(0, ": ", Style::HeaderMsg);
 
-        self.msg_to_buffer(
+        self.msgs_to_buffer(
             &mut buffer,
             &[(suggestion.msg.to_owned(), Style::NoStyle)],
             args,
@@ -2074,9 +2074,9 @@ impl EmitterWriter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        message: &[(DiagnosticMessage, Style)],
+        messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<String>,
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
@@ -2089,9 +2089,9 @@ impl EmitterWriter {
             num_decimal_digits(n)
         };
 
-        match self.emit_message_default(
+        match self.emit_messages_default_inner(
             span,
-            message,
+            messages,
             args,
             code,
             level,
@@ -2118,10 +2118,10 @@ impl EmitterWriter {
                 }
                 if !self.short_message {
                     for child in children {
-                        let span = child.render_span.as_ref().unwrap_or(&child.span);
-                        if let Err(err) = self.emit_message_default(
+                        let span = &child.span;
+                        if let Err(err) = self.emit_messages_default_inner(
                             span,
-                            &child.message,
+                            &child.messages,
                             args,
                             &None,
                             &child.level,
@@ -2138,7 +2138,7 @@ impl EmitterWriter {
                                 // do not display this suggestion, it is meant only for tools
                             }
                             SuggestionStyle::HideCodeAlways => {
-                                if let Err(e) = self.emit_message_default(
+                                if let Err(e) = self.emit_messages_default_inner(
                                     &MultiSpan::new(),
                                     &[(sugg.msg.to_owned(), Style::HeaderMsg)],
                                     args,
@@ -2677,10 +2677,7 @@ fn from_stderr(color: ColorConfig) -> Destination {
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
 ///
 /// See #36178.
-#[cfg(windows)]
-const BRIGHT_BLUE: Color = Color::Cyan;
-#[cfg(not(windows))]
-const BRIGHT_BLUE: Color = Color::Blue;
+const BRIGHT_BLUE: Color = if cfg!(windows) { Color::Cyan } else { Color::Blue };
 
 impl Style {
     fn color_spec(&self, lvl: Level) -> ColorSpec {

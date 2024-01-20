@@ -5,6 +5,7 @@
 
 use std::cell::Cell;
 
+use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
@@ -15,8 +16,8 @@ use crate::ty::{
     TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
-    mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
-    TraitDecls,
+    mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
+    Symbol, TraitDecls,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
@@ -31,8 +32,10 @@ pub trait Context {
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool;
     fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls;
     fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls;
     fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
     fn generics_of(&self, def_id: DefId) -> Generics;
     fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
@@ -71,6 +74,9 @@ pub trait Context {
 
     /// Returns whether this ADT is simd.
     fn adt_is_simd(&self, def: AdtDef) -> bool;
+
+    /// Returns whether this definition is a C string.
+    fn adt_is_cstr(&self, def: AdtDef) -> bool;
 
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
@@ -121,6 +127,9 @@ pub trait Context {
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
+    /// Get the instantiation types.
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs;
+
     /// Get the instance.
     fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
@@ -170,6 +179,15 @@ pub trait Context {
 
     /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;
+
+    /// Get an instance ABI.
+    fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error>;
+
+    /// Get the layout of a type.
+    fn ty_layout(&self, ty: Ty) -> Result<Layout, Error>;
+
+    /// Get the layout shape.
+    fn layout_shape(&self, id: Layout) -> LayoutShape;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

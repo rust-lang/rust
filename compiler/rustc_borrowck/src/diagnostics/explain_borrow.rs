@@ -315,7 +315,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             let mut failed = false;
 
             let elaborated_args = std::iter::zip(*args, &generics.params).map(|(arg, param)| {
-                if let Some(ty::Dynamic(obj, _, ty::DynKind::Dyn)) = arg.as_type().map(Ty::kind) {
+                if let Some(ty::Dynamic(obj, _, ty::Dyn)) = arg.as_type().map(Ty::kind) {
                     let default = tcx.object_lifetime_default(param.def_id);
 
                     let re_static = tcx.lifetimes.re_static;
@@ -339,7 +339,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                     has_dyn = true;
 
-                    Ty::new_dynamic(tcx, obj, implied_region, ty::DynKind::Dyn).into()
+                    Ty::new_dynamic(tcx, obj, implied_region, ty::Dyn).into()
                 } else {
                     arg
                 }
@@ -691,7 +691,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if one of the arguments to this function is the target place.
                         let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg {
+                            if let Operand::Move(place) = arg.node {
                                 if let Some(potential) = place.as_local() {
                                     potential == target
                                 } else {

@@ -12,10 +12,13 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 fst = "0.4.7"
 indexmap.workspace = true
 nohash-hasher.workspace = true
 
 paths.workspace = true
 stdx.workspace = true
+
+[lints]
+workspace = true

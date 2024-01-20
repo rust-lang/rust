@@ -2,7 +2,7 @@
 /* global srcIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
+/* global addClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage, getVar */
 
 "use strict";
@@ -71,53 +71,34 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
-function toggleSidebar() {
-    const child = this.parentNode.children[0];
-    if (child.innerText === ">") {
-        addClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = "<";
-        updateLocalStorage("source-sidebar-show", "true");
+window.rustdocCloseSourceSidebar = () => {
+    removeClass(document.documentElement, "src-sidebar-expanded");
+    updateLocalStorage("source-sidebar-show", "false");
+};
+
+window.rustdocShowSourceSidebar = () => {
+    addClass(document.documentElement, "src-sidebar-expanded");
+    updateLocalStorage("source-sidebar-show", "true");
+};
+
+window.rustdocToggleSrcSidebar = () => {
+    if (document.documentElement.classList.contains("src-sidebar-expanded")) {
+        window.rustdocCloseSourceSidebar();
     } else {
-        removeClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = ">";
-        updateLocalStorage("source-sidebar-show", "false");
+        window.rustdocShowSourceSidebar();
     }
-}
-
-function createSidebarToggle() {
-    const sidebarToggle = document.createElement("div");
-    sidebarToggle.id = "src-sidebar-toggle";
-
-    const inner = document.createElement("button");
-
-    if (getCurrentValue("source-sidebar-show") === "true") {
-        inner.innerText = "<";
-    } else {
-        inner.innerText = ">";
-    }
-    inner.onclick = toggleSidebar;
-
-    sidebarToggle.appendChild(inner);
-    return sidebarToggle;
-}
+};
 
 // This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSrcSidebar() {
     const container = document.querySelector("nav.sidebar");
 
-    const sidebarToggle = createSidebarToggle();
-    container.insertBefore(sidebarToggle, container.firstChild);
-
     const sidebar = document.createElement("div");
     sidebar.id = "src-sidebar";
 
     let hasFoundFile = false;
 
-    const title = document.createElement("div");
-    title.className = "title";
-    title.innerText = "Files";
-    sidebar.appendChild(title);
     for (const [key, source] of srcIndex) {
         source[NAME_OFFSET] = key;
         hasFoundFile = createDirEntry(source, sidebar, "", hasFoundFile);
@@ -131,12 +112,8 @@ function createSrcSidebar() {
     }
 }
 
-const lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
-
-function highlightSrcLines(match) {
-    if (typeof match === "undefined") {
-        match = window.location.hash.match(lineNumbersRegex);
-    }
+function highlightSrcLines() {
+    const match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
     if (!match) {
         return;
     }
@@ -218,12 +195,7 @@ const handleSrcHighlight = (function() {
     };
 }());
 
-window.addEventListener("hashchange", () => {
-    const match = window.location.hash.match(lineNumbersRegex);
-    if (match) {
-        return highlightSrcLines(match);
-    }
-});
+window.addEventListener("hashchange", highlightSrcLines);
 
 onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSrcHighlight);

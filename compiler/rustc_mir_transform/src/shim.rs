@@ -9,7 +9,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
 
-use rustc_span::Span;
+use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt;
@@ -69,7 +69,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Coroutine(coroutine_def_id, args, _)) = ty.map(Ty::kind) {
+            if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*coroutine_def_id).coroutine_drop().unwrap();
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
@@ -394,7 +394,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         _ if is_copy => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
-        ty::Coroutine(coroutine_def_id, args, hir::Movability::Movable) => {
+        ty::Coroutine(coroutine_def_id, args) => {
+            assert_eq!(tcx.coroutine_movability(*coroutine_def_id), hir::Movability::Movable);
             builder.coroutine_shim(dest, src, *coroutine_def_id, args.as_coroutine())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
@@ -525,7 +526,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             vec![statement],
             TerminatorKind::Call {
                 func,
-                args: vec![Operand::Move(ref_loc)],
+                args: vec![Spanned { node: Operand::Move(ref_loc), span: DUMMY_SP }],
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
@@ -810,6 +811,7 @@ fn build_call_shim<'tcx>(
     };
 
     // BB #0
+    let args = args.into_iter().map(|a| Spanned { node: a, span: DUMMY_SP }).collect::<Vec<_>>();
     block(
         &mut blocks,
         statements,

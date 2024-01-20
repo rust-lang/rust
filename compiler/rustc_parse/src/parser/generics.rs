@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
                     Ok(p) => {
                         if let TyKind::ImplTrait(_, bounds) = &p.kind {
                             let span = impl_span.to(self.token.span.shrink_to_lo());
-                            let mut err = self.struct_span_err(
+                            let mut err = self.dcx().struct_span_err(
                                 span,
                                 "expected trait bound, found `impl Trait` type",
                             );
@@ -77,7 +77,6 @@ impl<'a> Parser<'a> {
                                     Applicability::MachineApplicable,
                                 );
                             }
-                            err.emit();
                             return Err(err);
                         }
                     }
@@ -141,17 +140,18 @@ impl<'a> Parser<'a> {
         // Parse optional const generics default value.
         let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
 
-        let mut err = self.struct_span_err(
-            mistyped_const_ident.span,
-            format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
-        );
-        err.span_suggestion_verbose(
-            mistyped_const_ident.span,
-            "use the `const` keyword",
-            kw::Const.as_str(),
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.dcx()
+            .struct_span_err(
+                mistyped_const_ident.span,
+                format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
+            )
+            .with_span_suggestion_verbose(
+                mistyped_const_ident.span,
+                "use the `const` keyword",
+                kw::Const.as_str(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
 
         Ok(GenericParam {
             ident,
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
                     if this.eat_keyword_noexpect(kw::SelfUpper) {
                         // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
                         // as if `Self` never existed.
-                        this.sess.emit_err(UnexpectedSelfInGenericParameters {
+                        this.dcx().emit_err(UnexpectedSelfInGenericParameters {
                             span: this.prev_token.span,
                         });
 
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
                             this.bump(); // `=`
                             this.bump(); // `'lifetime`
                             let span = lo.to(this.prev_token.span);
-                            this.sess.emit_err(
+                            this.dcx().emit_err(
                                 UnexpectedDefaultValueForLifetimeInGenericParameters { span },
                             );
                         }
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                         let snapshot = this.create_snapshot_for_diagnostic();
                         match this.parse_ty_where_predicate() {
                             Ok(where_predicate) => {
-                                this.sess.emit_err(errors::BadAssocTypeBounds {
+                                this.dcx().emit_err(errors::BadAssocTypeBounds {
                                     span: where_predicate.span(),
                                 });
                                 // FIXME - try to continue parsing other generics?
@@ -242,10 +242,10 @@ impl<'a> Parser<'a> {
                         // Check for trailing attributes and stop parsing.
                         if !attrs.is_empty() {
                             if !params.is_empty() {
-                                this.sess
+                                this.dcx()
                                     .emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
                             } else {
-                                this.sess
+                                this.dcx()
                                     .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
                             }
                         }
@@ -334,7 +334,7 @@ impl<'a> Parser<'a> {
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath(0) {
             let generics = self.parse_generics()?;
-            self.sess.emit_err(errors::WhereOnGenerics { span: generics.span });
+            self.dcx().emit_err(errors::WhereOnGenerics { span: generics.span });
         }
 
         loop {
@@ -370,7 +370,7 @@ impl<'a> Parser<'a> {
             let ate_comma = self.eat(&token::Comma);
 
             if self.eat_keyword_noexpect(kw::Where) {
-                self.sess.emit_err(MultipleWhereClauses {
+                self.dcx().emit_err(MultipleWhereClauses {
                     span: self.token.span,
                     previous: pred_lo,
                     between: prev_token.shrink_to_hi().to(self.prev_token.span),
@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
                         let body_sp = pred_lo.to(snapshot.prev_token.span);
                         let map = self.sess.source_map();
 
-                        self.sess.emit_err(WhereClauseBeforeTupleStructBody {
+                        self.dcx().emit_err(WhereClauseBeforeTupleStructBody {
                             span: where_sp,
                             name: struct_name.span,
                             body: body_sp,

@@ -242,7 +242,7 @@
 //! Therefore `usefulness(tp_1, tp_2, tq)` returns the single witness-tuple `[Variant2(Some(true), 0)]`.
 //!
 //!
-//! Computing the set of constructors for a type is done in [`MatchCheckCtxt::ctors_for_ty`]. See
+//! Computing the set of constructors for a type is done in [`TypeCx::ctors_for_ty`]. See
 //! the following sections for more accurate versions of the algorithm and corresponding links.
 //!
 //!
@@ -297,6 +297,166 @@
 //!
 //! We call _constructor splitting_ the operation that computes such a minimal set of cases to try.
 //! This is done in [`ConstructorSet::split`] and explained in [`crate::constructor`].
+//!
+//!
+//!
+//! # `Missing` and relevancy
+//!
+//! ## Relevant values
+//!
+//! Take the following example:
+//!
+//! ```compile_fail,E0004
+//! # let foo = (true, true);
+//! match foo {
+//!     (true, _) => 1,
+//!     (_, true) => 2,
+//! };
+//! ```
+//!
+//! Consider the value `(true, true)`:
+//! - Row 2 does not distinguish `(true, true)` and `(false, true)`;
+//! - `false` does not show up in the first column of the match, so without knowing anything else we
+//!     can deduce that `(false, true)` matches the same or fewer rows than `(true, true)`.
+//!
+//! Using those two facts together, we deduce that `(true, true)` will not give us more usefulness
+//! information about row 2 than `(false, true)` would. We say that "`(true, true)` is made
+//! irrelevant for row 2 by `(false, true)`". We will use this idea to prune the search tree.
+//!
+//!
+//! ## Computing relevancy
+//!
+//! We now generalize from the above example to approximate relevancy in a simple way. Note that we
+//! will only compute an approximation: we can sometimes determine when a case is irrelevant, but
+//! computing this precisely is at least as hard as computing usefulness.
+//!
+//! Our computation of relevancy relies on the `Missing` constructor. As explained in
+//! [`crate::constructor`], `Missing` represents the constructors not present in a given column. For
+//! example in the following:
+//!
+//! ```compile_fail,E0004
+//! enum Direction { North, South, East, West }
+//! # let wind = (Direction::North, 0u8);
+//! match wind {
+//!     (Direction::North, _) => 1,
+//!     (_, 50..) => 2,
+//! };
+//! ```
+//!
+//! Here `South`, `East` and `West` are missing in the first column, and `0..50`  is missing in the
+//! second. Both of these sets are represented by `Constructor::Missing` in their corresponding
+//! column.
+//!
+//! We then compute relevancy as follows: during the course of the algorithm, for a row `r`:
+//! - if `r` has a wildcard in the first column;
+//! - and some constructors are missing in that column;
+//! - then any `c != Missing` is considered irrelevant for row `r`.
+//!
+//! By this we mean that continuing the algorithm by specializing with `c` is guaranteed not to
+//! contribute more information about the usefulness of row `r` than what we would get by
+//! specializing with `Missing`. The argument is the same as in the previous subsection.
+//!
+//! Once we've specialized by a constructor `c` that is irrelevant for row `r`, we're guaranteed to
+//! only explore values irrelevant for `r`. If we then ever reach a point where we're only exploring
+//! values that are irrelevant to all of the rows (including the virtual wildcard row used for
+//! exhaustiveness), we skip that case entirely.
+//!
+//!
+//! ## Example
+//!
+//! Let's go through a variation on the first example:
+//!
+//! ```compile_fail,E0004
+//! # let foo = (true, true, true);
+//! match foo {
+//!     (true, _, true) => 1,
+//!     (_, true, _) => 2,
+//! };
+//! ```
+//!
+//! ```text
+//!  ┐ Patterns:
+//!  │   1. `[(true, _, true)]`
+//!  │   2. `[(_, true, _)]`
+//!  │   3. `[_]` // virtual extra wildcard row
+//!  │
+//!  │ Specialize with `(,,)`:
+//!  ├─┐ Patterns:
+//!  │ │   1. `[true, _, true]`
+//!  │ │   2. `[_, true, _]`
+//!  │ │   3. `[_, _, _]`
+//!  │ │
+//!  │ │ There are missing constructors in the first column (namely `false`), hence
+//!  │ │ `true` is irrelevant for rows 2 and 3.
+//!  │ │
+//!  │ │ Specialize with `true`:
+//!  │ ├─┐ Patterns:
+//!  │ │ │   1. `[_, true]`
+//!  │ │ │   2. `[true, _]` // now exploring irrelevant cases
+//!  │ │ │   3. `[_, _]`    // now exploring irrelevant cases
+//!  │ │ │
+//!  │ │ │ There are missing constructors in the first column (namely `false`), hence
+//!  │ │ │ `true` is irrelevant for rows 1 and 3.
+//!  │ │ │
+//!  │ │ │ Specialize with `true`:
+//!  │ │ ├─┐ Patterns:
+//!  │ │ │ │   1. `[true]` // now exploring irrelevant cases
+//!  │ │ │ │   2. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │   3. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │
+//!  │ │ │ │ The current case is irrelevant for all rows: we backtrack immediately.
+//!  │ │ ├─┘
+//!  │ │ │
+//!  │ │ │ Specialize with `false`:
+//!  │ │ ├─┐ Patterns:
+//!  │ │ │ │   1. `[true]`
+//!  │ │ │ │   3. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │
+//!  │ │ │ │ Specialize with `true`:
+//!  │ │ │ ├─┐ Patterns:
+//!  │ │ │ │ │   1. `[]`
+//!  │ │ │ │ │   3. `[]`    // now exploring irrelevant cases
+//!  │ │ │ │ │
+//!  │ │ │ │ │ Row 1 is therefore useful.
+//!  │ │ │ ├─┘
+//! <etc...>
+//! ```
+//!
+//! Relevancy allowed us to skip the case `(true, true, _)` entirely. In some cases this pruning can
+//! give drastic speedups. The case this was built for is the following (#118437):
+//!
+//! ```ignore(illustrative)
+//! match foo {
+//!     (true, _, _, _, ..) => 1,
+//!     (_, true, _, _, ..) => 2,
+//!     (_, _, true, _, ..) => 3,
+//!     (_, _, _, true, ..) => 4,
+//!     ...
+//! }
+//! ```
+//!
+//! Without considering relevancy, we would explore all 2^n combinations of the `true` and `Missing`
+//! constructors. Relevancy tells us that e.g. `(true, true, false, false, false, ...)` is
+//! irrelevant for all the rows. This allows us to skip all cases with more than one `true`
+//! constructor, changing the runtime from exponential to linear.
+//!
+//!
+//! ## Relevancy and exhaustiveness
+//!
+//! For exhaustiveness, we do something slightly different w.r.t relevancy: we do not report
+//! witnesses of non-exhaustiveness that are irrelevant for the virtual wildcard row. For example,
+//! in:
+//!
+//! ```ignore(illustrative)
+//! match foo {
+//!     (true, true) => {}
+//! }
+//! ```
+//!
+//! we only report `(false, _)` as missing. This was a deliberate choice made early in the
+//! development of rust, for diagnostic and performance purposes. As showed in the previous section,
+//! ignoring irrelevant cases preserves usefulness, so this choice still correctly computes whether
+//! a match is exhaustive.
 //!
 //!
 //!
@@ -552,40 +712,48 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
-use rustc_data_structures::{captures::Captures, stack::ensure_sufficient_stack};
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, DUMMY_SP};
-
-use crate::constructor::{Constructor, ConstructorSet};
-use crate::cx::MatchCheckCtxt;
-use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::MatchArm;
+use crate::constructor::{Constructor, ConstructorSet, IntRange};
+use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
+use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
 use self::ValidityConstraint::*;
 
-#[derive(Copy, Clone)]
-pub(crate) struct PatCtxt<'a, 'p, 'tcx> {
-    pub(crate) cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    /// Type of the current column under investigation.
-    pub(crate) ty: Ty<'tcx>,
-    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
-    /// subpattern.
-    pub(crate) is_top_level: bool,
+#[cfg(feature = "rustc")]
+use rustc_data_structures::stack::ensure_sufficient_stack;
+#[cfg(not(feature = "rustc"))]
+pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
+    f()
 }
 
-impl<'a, 'p, 'tcx> PatCtxt<'a, 'p, 'tcx> {
-    /// A `PatCtxt` when code other than `is_useful` needs one.
-    pub(crate) fn new_dummy(cx: &'a MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        PatCtxt { cx, ty, is_top_level: false }
+/// Context that provides information local to a place under investigation.
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
+pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
+    #[derivative(Debug = "ignore")]
+    pub(crate) mcx: MatchCtxt<'a, Cx>,
+    /// Type of the place under investigation.
+    pub(crate) ty: Cx::Ty,
+}
+
+impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
+    /// A `PlaceCtxt` when code other than `is_useful` needs one.
+    #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
+    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: Cx::Ty) -> Self {
+        PlaceCtxt { mcx, ty }
     }
-}
 
-impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+    pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
+        self.mcx.tycx.ctor_arity(ctor, self.ty)
+    }
+    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<Cx>) -> &[Cx::Ty] {
+        self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
+    }
+    pub(crate) fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
+        self.mcx.tycx.ctors_for_ty(self.ty)
     }
 }
 
@@ -595,32 +763,18 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
 /// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
 ///     not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum ValidityConstraint {
+pub enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
-    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
-    /// `useful && !reachable` arms anyway.
-    MaybeInvalidButAllowOmittingArms,
 }
 
 impl ValidityConstraint {
-    fn from_bool(is_valid_only: bool) -> Self {
+    pub fn from_bool(is_valid_only: bool) -> Self {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
-    }
-
-    fn allow_omitting_side_effecting_arms(self) -> Self {
-        match self {
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => MaybeInvalidButAllowOmittingArms,
-            // There are no side-effecting empty arms here, nothing to do.
-            ValidOnly => ValidOnly,
-        }
     }
 
     fn is_known_valid(self) -> bool {
         matches!(self, ValidOnly)
-    }
-    fn allows_omitting_empty_arms(self) -> bool {
-        matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
     }
 
     /// If the place has validity given by `self` and we read that the value at the place has
@@ -629,12 +783,9 @@ impl ValidityConstraint {
     ///
     /// Pending further opsem decisions, the current behavior is: validity is preserved, except
     /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
-    fn specialize<'tcx>(self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn specialize<Cx: TypeCx>(self, ctor: &Constructor<Cx>) -> Self {
         // We preserve validity except when we go inside a reference or a union field.
-        if matches!(ctor, Constructor::Single)
-            && (matches!(pcx.ty.kind(), ty::Ref(..))
-                || matches!(pcx.ty.kind(), ty::Adt(def, ..) if def.is_union()))
-        {
+        if matches!(ctor, Constructor::Ref | Constructor::UnionField) {
             // Validity of `x: &T` does not imply validity of `*x: T`.
             MaybeInvalid
         } else {
@@ -647,22 +798,30 @@ impl fmt::Display for ValidityConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             ValidOnly => "✓",
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => "?",
+            MaybeInvalid => "?",
         };
         write!(f, "{s}")
     }
 }
 
 /// Represents a pattern-tuple under investigation.
-#[derive(Clone)]
-struct PatStack<'p, 'tcx> {
+// The three lifetimes are:
+// - 'p coming from the input
+// - Cx global compilation context
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
+struct PatStack<'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+    pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
+    /// Sometimes we know that as far as this row is concerned, the current case is already handled
+    /// by a different, more general, case. When the case is irrelevant for all rows this allows us
+    /// to skip a case entirely. This is purely an optimization. See at the top for details.
+    relevant: bool,
 }
 
-impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(pat: &'p DeconstructedPat<'p, 'tcx>) -> Self {
-        PatStack { pats: smallvec![pat] }
+impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
+    fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
+        PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
     }
 
     fn is_empty(&self) -> bool {
@@ -673,17 +832,17 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+    fn head(&self) -> PatOrWild<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter().copied()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'_> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -695,18 +854,23 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> PatStack<'p, 'tcx> {
+        ctor: &Constructor<Cx>,
+        ctor_arity: usize,
+        ctor_is_relevant: bool,
+    ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = self.head().specialize(pcx, ctor);
+        let mut new_pats = self.head().specialize(ctor, ctor_arity);
         new_pats.extend_from_slice(&self.pats[1..]);
-        PatStack { pats: new_pats }
+        // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
+        // row has a wildcard and `ctor` is relevant for wildcards.
+        let ctor_is_relevant =
+            !matches!(self.head().ctor(), Constructor::Wildcard) || ctor_is_relevant;
+        PatStack { pats: new_pats, relevant: self.relevant && ctor_is_relevant }
     }
 }
 
-impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+impl<'p, Cx: TypeCx> fmt::Debug for PatStack<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We pretty-print similarly to the `Debug` impl of `Matrix`.
         write!(f, "+")?;
@@ -719,9 +883,9 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 
 /// A row of the matrix.
 #[derive(Clone)]
-struct MatrixRow<'p, 'tcx> {
+struct MatrixRow<'p, Cx: TypeCx> {
     // The patterns in the row.
-    pats: PatStack<'p, 'tcx>,
+    pats: PatStack<'p, Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
@@ -732,9 +896,14 @@ struct MatrixRow<'p, 'tcx> {
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
     useful: bool,
+    /// Tracks which rows above this one have an intersection with this one, i.e. such that there is
+    /// a value that matches both rows.
+    /// Note: Because of relevancy we may miss some intersections. The intersections we do find are
+    /// correct.
+    intersects: BitSet<usize>,
 }
 
-impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
+impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     fn is_empty(&self) -> bool {
         self.pats.is_empty()
     }
@@ -743,22 +912,23 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+    fn head(&self) -> PatOrWild<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = MatrixRow<'p, 'tcx>> + Captures<'a> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
         self.pats.expand_or_pat().map(|patstack| MatrixRow {
             pats: patstack,
             parent_row: self.parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
+            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
         })
     }
 
@@ -766,20 +936,22 @@ impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
+        ctor: &Constructor<Cx>,
+        ctor_arity: usize,
+        ctor_is_relevant: bool,
         parent_row: usize,
-    ) -> MatrixRow<'p, 'tcx> {
+    ) -> MatrixRow<'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor),
+            pats: self.pats.pop_head_constructor(ctor, ctor_arity, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
+            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
         }
     }
 }
 
-impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
+impl<'p, Cx: TypeCx> fmt::Debug for MatrixRow<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.pats.fmt(f)
     }
@@ -796,122 +968,111 @@ impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
-struct Matrix<'p, 'tcx> {
+struct Matrix<'p, Cx: TypeCx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
-    rows: Vec<MatrixRow<'p, 'tcx>>,
-    /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
-    /// each column. This must obey the same invariants as the real rows.
-    wildcard_row: PatStack<'p, 'tcx>,
+    rows: Vec<MatrixRow<'p, Cx>>,
+    /// Track the type of each column/place.
+    place_ty: SmallVec<[Cx::Ty; 2]>,
     /// Track for each column/place whether it contains a known valid value.
     place_validity: SmallVec<[ValidityConstraint; 2]>,
+    /// Track whether the virtual wildcard row used to compute exhaustiveness is relevant. See top
+    /// of the file for details on relevancy.
+    wildcard_row_is_relevant: bool,
 }
 
-impl<'p, 'tcx> Matrix<'p, 'tcx> {
+impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, row: MatrixRow<'p, 'tcx>) {
+    fn expand_and_push(&mut self, mut row: MatrixRow<'p, Cx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
-            for new_row in row.expand_or_pat() {
+            for mut new_row in row.expand_or_pat() {
+                new_row.intersects = BitSet::new_empty(self.rows.len());
                 self.rows.push(new_row);
             }
         } else {
+            row.intersects = BitSet::new_empty(self.rows.len());
             self.rows.push(row);
         }
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new<'a>(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        arms: &[MatchArm<'p, 'tcx>],
-        scrut_ty: Ty<'tcx>,
+    fn new(
+        arms: &[MatchArm<'p, Cx>],
+        scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
-    ) -> Self
-    where
-        'p: 'a,
-    {
-        let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-        let wildcard_row = PatStack::from_pattern(wild_pattern);
+    ) -> Self {
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
-            wildcard_row,
+            place_ty: smallvec![scrut_ty],
             place_validity: smallvec![scrut_validity],
+            wildcard_row_is_relevant: true,
         };
         for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
-                parent_row: row_id, // dummy, we won't read it
+                parent_row: row_id, // dummy, we don't read it
                 is_under_guard: arm.has_guard,
                 useful: false,
+                intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
             };
             matrix.expand_and_push(v);
         }
         matrix
     }
 
-    fn head_ty(&self) -> Option<Ty<'tcx>> {
-        if self.column_count() == 0 {
-            return None;
-        }
-
-        let mut ty = self.wildcard_row.head().ty();
-        // If the type is opaque and it is revealed anywhere in the column, we take the revealed
-        // version. Otherwise we could encounter constructors for the revealed type and crash.
-        let is_opaque = |ty: Ty<'tcx>| matches!(ty.kind(), ty::Alias(ty::Opaque, ..));
-        if is_opaque(ty) {
-            for pat in self.heads() {
-                let pat_ty = pat.ty();
-                if !is_opaque(pat_ty) {
-                    ty = pat_ty;
-                    break;
-                }
-            }
-        }
-        Some(ty)
+    fn head_ty(&self) -> Option<Cx::Ty> {
+        self.place_ty.first().copied()
     }
     fn column_count(&self) -> usize {
-        self.wildcard_row.len()
+        self.place_ty.len()
     }
 
-    fn rows<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'a MatrixRow<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    fn rows(
+        &self,
+    ) -> impl Iterator<Item = &MatrixRow<'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
     }
-    fn rows_mut<'a>(
-        &'a mut self,
-    ) -> impl Iterator<Item = &'a mut MatrixRow<'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
+    fn rows_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Clone + Captures<'a> {
+    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + Captures<'_> {
         self.rows().map(|r| r.head())
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
-    ) -> Matrix<'p, 'tcx> {
-        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
-        let new_validity = self.place_validity[0].specialize(pcx, ctor);
-        let new_place_validity = std::iter::repeat(new_validity)
-            .take(ctor.arity(pcx))
+        pcx: &PlaceCtxt<'_, Cx>,
+        ctor: &Constructor<Cx>,
+        ctor_is_relevant: bool,
+    ) -> Matrix<'p, Cx> {
+        let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
+        let arity = ctor_sub_tys.len();
+        let specialized_place_ty =
+            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
+        let ctor_sub_validity = self.place_validity[0].specialize(ctor);
+        let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
+            .take(arity)
             .chain(self.place_validity[1..].iter().copied())
             .collect();
-        let mut matrix =
-            Matrix { rows: Vec::new(), wildcard_row, place_validity: new_place_validity };
+        let mut matrix = Matrix {
+            rows: Vec::new(),
+            place_ty: specialized_place_ty,
+            place_validity: specialized_place_validity,
+            wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
+        };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx, ctor, i);
+                let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }
@@ -929,7 +1090,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + _     + [_, _, tail @ ..] +
 /// | ✓     | ?                 | // column validity
 /// ```
-impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
+impl<'p, Cx: TypeCx> fmt::Debug for Matrix<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -1019,18 +1180,19 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 ///
 /// See the top of the file for more detailed explanations and examples.
-#[derive(Debug, Clone)]
-struct WitnessStack<'tcx>(Vec<WitnessPat<'tcx>>);
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+struct WitnessStack<Cx: TypeCx>(Vec<WitnessPat<Cx>>);
 
-impl<'tcx> WitnessStack<'tcx> {
+impl<Cx: TypeCx> WitnessStack<Cx> {
     /// Asserts that the witness contains a single pattern, and returns it.
-    fn single_pattern(self) -> WitnessPat<'tcx> {
+    fn single_pattern(self) -> WitnessPat<Cx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
 
     /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
-    fn push_pattern(&mut self, pat: WitnessPat<'tcx>) {
+    fn push_pattern(&mut self, pat: WitnessPat<Cx>) {
         self.0.push(pat);
     }
 
@@ -1048,7 +1210,7 @@ impl<'tcx> WitnessStack<'tcx> {
     /// pats: [(false, "foo"), _, true]
     /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
     /// ```
-    fn apply_constructor(&mut self, pcx: &PatCtxt<'_, '_, 'tcx>, ctor: &Constructor<'tcx>) {
+    fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, Cx>, ctor: &Constructor<Cx>) {
         let len = self.0.len();
         let arity = ctor.arity(pcx);
         let fields = self.0.drain((len - arity)..).rev().collect();
@@ -1066,10 +1228,11 @@ impl<'tcx> WitnessStack<'tcx> {
 ///
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
-#[derive(Debug, Clone)]
-struct WitnessMatrix<'tcx>(Vec<WitnessStack<'tcx>>);
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+struct WitnessMatrix<Cx: TypeCx>(Vec<WitnessStack<Cx>>);
 
-impl<'tcx> WitnessMatrix<'tcx> {
+impl<Cx: TypeCx> WitnessMatrix<Cx> {
     /// New matrix with no witnesses.
     fn empty() -> Self {
         WitnessMatrix(vec![])
@@ -1084,12 +1247,12 @@ impl<'tcx> WitnessMatrix<'tcx> {
         self.0.is_empty()
     }
     /// Asserts that there is a single column and returns the patterns in it.
-    fn single_column(self) -> Vec<WitnessPat<'tcx>> {
+    fn single_column(self) -> Vec<WitnessPat<Cx>> {
         self.0.into_iter().map(|w| w.single_pattern()).collect()
     }
 
     /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
-    fn push_pattern(&mut self, pat: WitnessPat<'tcx>) {
+    fn push_pattern(&mut self, pat: WitnessPat<Cx>) {
         for witness in self.0.iter_mut() {
             witness.push_pattern(pat.clone())
         }
@@ -1098,9 +1261,9 @@ impl<'tcx> WitnessMatrix<'tcx> {
     /// Reverses specialization by `ctor`. See the section on `unspecialize` at the top of the file.
     fn apply_constructor(
         &mut self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        missing_ctors: &[Constructor<'tcx>],
-        ctor: &Constructor<'tcx>,
+        pcx: &PlaceCtxt<'_, Cx>,
+        missing_ctors: &[Constructor<Cx>],
+        ctor: &Constructor<Cx>,
         report_individual_missing_ctors: bool,
     ) {
         if self.is_empty() {
@@ -1109,7 +1272,10 @@ impl<'tcx> WitnessMatrix<'tcx> {
         if matches!(ctor, Constructor::Missing) {
             // We got the special `Missing` constructor that stands for the constructors not present
             // in the match.
-            if !report_individual_missing_ctors {
+            if missing_ctors.is_empty() {
+                // Nothing to report.
+                *self = Self::empty();
+            } else if !report_individual_missing_ctors {
                 // Report `_` as missing.
                 let pat = WitnessPat::wild_from_ctor(pcx, Constructor::Wildcard);
                 self.push_pattern(pat);
@@ -1146,6 +1312,75 @@ impl<'tcx> WitnessMatrix<'tcx> {
     }
 }
 
+/// Collect ranges that overlap like `lo..=overlap`/`overlap..=hi`. Must be called during
+/// exhaustiveness checking, if we find a singleton range after constructor splitting. This reuses
+/// row intersection information to only detect ranges that truly overlap.
+///
+/// If two ranges overlapped, the split set will contain their intersection as a singleton.
+/// Specialization will then select rows that match the overlap, and exhaustiveness will compute
+/// which rows have an intersection that includes the overlap. That gives us all the info we need to
+/// compute overlapping ranges without false positives.
+///
+/// We can however get false negatives because exhaustiveness does not explore all cases. See the
+/// section on relevancy at the top of the file.
+fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
+    mcx: MatchCtxt<'_, Cx>,
+    overlap_range: IntRange,
+    matrix: &Matrix<'p, Cx>,
+    specialized_matrix: &Matrix<'p, Cx>,
+) {
+    let overlap = overlap_range.lo;
+    // Ranges that look like `lo..=overlap`.
+    let mut prefixes: SmallVec<[_; 1]> = Default::default();
+    // Ranges that look like `overlap..=hi`.
+    let mut suffixes: SmallVec<[_; 1]> = Default::default();
+    // Iterate on patterns that contained `overlap`. We iterate on `specialized_matrix` which
+    // contains only rows that matched the current `ctor` as well as accurate intersection
+    // information. It doesn't contain the column that contains the range; that can be found in
+    // `matrix`.
+    for (child_row_id, child_row) in specialized_matrix.rows().enumerate() {
+        let PatOrWild::Pat(pat) = matrix.rows[child_row.parent_row].head() else { continue };
+        let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+        // Don't lint when one of the ranges is a singleton.
+        if this_range.is_singleton() {
+            continue;
+        }
+        if this_range.lo == overlap {
+            // `this_range` looks like `overlap..=this_range.hi`; it overlaps with any
+            // ranges that look like `lo..=overlap`.
+            if !prefixes.is_empty() {
+                let overlaps_with: Vec<_> = prefixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
+                }
+            }
+            suffixes.push((child_row_id, pat))
+        } else if this_range.hi == overlap.plus_one() {
+            // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
+            // ranges that look like `overlap..=hi`.
+            if !suffixes.is_empty() {
+                let overlaps_with: Vec<_> = suffixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
+                }
+            }
+            prefixes.push((child_row_id, pat))
+        }
+    }
+}
+
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
@@ -1160,101 +1395,123 @@ impl<'tcx> WitnessMatrix<'tcx> {
 /// - unspecialization, where we lift the results from the previous step into results for this step
 ///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
-#[instrument(level = "debug", skip(cx, is_top_level), ret)]
-fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &mut Matrix<'p, 'tcx>,
+#[instrument(level = "debug", skip(mcx, is_top_level), ret)]
+fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
+    mcx: MatchCtxt<'a, Cx>,
+    matrix: &mut Matrix<'p, Cx>,
     is_top_level: bool,
-) -> WitnessMatrix<'tcx> {
+) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
+
+    if !matrix.wildcard_row_is_relevant && matrix.rows().all(|r| !r.pats.relevant) {
+        // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
+        // is purely an optimization: skipping this check doesn't affect correctness. See the top of
+        // the file for details.
+        return Ok(WitnessMatrix::empty());
+    }
 
     let Some(ty) = matrix.head_ty() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
-        for row in matrix.rows_mut() {
-            // All rows are useful until they're not.
-            row.useful = true;
-            // When there's an unguarded row, the match is exhaustive and any subsequent row is not
-            // useful.
-            if !row.is_under_guard {
-                return WitnessMatrix::empty();
-            }
+        let mut useful = true; // Whether the next row is useful.
+        for (i, row) in matrix.rows_mut().enumerate() {
+            row.useful = useful;
+            row.intersects.insert_range(0..i);
+            // The next rows stays useful if this one is under a guard.
+            useful &= row.is_under_guard;
         }
-        // No (unguarded) rows, so the match is not exhaustive. We return a new witness.
-        return WitnessMatrix::unit_witness();
+        return if useful && matrix.wildcard_row_is_relevant {
+            // The wildcard row is useful; the match is non-exhaustive.
+            Ok(WitnessMatrix::unit_witness())
+        } else {
+            // Either the match is exhaustive, or we choose not to report anything because of
+            // relevancy. See at the top for details.
+            Ok(WitnessMatrix::empty())
+        };
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, is_top_level };
+    let pcx = &PlaceCtxt { mcx, ty };
+    let ctors_for_ty = pcx.ctors_for_ty()?;
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
-    // For backwards compability we allow omitting some empty arms that we ideally shouldn't.
-    let place_validity = place_validity.allow_omitting_side_effecting_arms();
+    // We treat match scrutinees of type `!` or `EmptyEnum` differently.
+    let is_toplevel_exception =
+        is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
+    // Whether empty patterns can be omitted for exhaustiveness.
+    let can_omit_empty_arms = is_toplevel_exception || mcx.tycx.is_exhaustive_patterns_feature_on();
+    // Whether empty patterns are counted as useful or not.
+    let empty_arms_are_unreachable = place_validity.is_known_valid() && can_omit_empty_arms;
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let ctors_for_ty = &cx.ctors_for_ty(ty);
-    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
-    let split_set = ctors_for_ty.split(pcx, ctors);
+    let mut split_set = ctors_for_ty.split(ctors);
     let all_missing = split_set.present.is_empty();
-
     // Build the set of constructors we will specialize with. It must cover the whole type.
+    // We need to iterate over a full set of constructors, so we add `Missing` to represent the
+    // missing ones. This is explained under "Constructor Splitting" at the top of this file.
     let mut split_ctors = split_set.present;
-    if !split_set.missing.is_empty() {
-        // We need to iterate over a full set of constructors, so we add `Missing` to represent the
-        // missing ones. This is explained under "Constructor Splitting" at the top of this file.
-        split_ctors.push(Constructor::Missing);
-    } else if !split_set.missing_empty.is_empty() && !place_validity.is_known_valid() {
-        // The missing empty constructors are reachable if the place can contain invalid data.
+    if !(split_set.missing.is_empty()
+        && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
+    {
         split_ctors.push(Constructor::Missing);
     }
 
     // Decide what constructors to report.
+    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. });
     let always_report_all = is_top_level && !is_integers;
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
-    // split_ctors.contains(Missing)`. The converse usually holds except in the
-    // `MaybeInvalidButAllowOmittingArms` backwards-compatibility case.
+    // split_ctors.contains(Missing)`. The converse usually holds except when
+    // `!place_validity.is_known_valid()`.
     let mut missing_ctors = split_set.missing;
-    if !place_validity.allows_omitting_empty_arms() {
-        missing_ctors.extend(split_set.missing_empty);
+    if !can_omit_empty_arms {
+        missing_ctors.append(&mut split_set.missing_empty);
     }
 
     let mut ret = WitnessMatrix::empty();
     for ctor in split_ctors {
-        debug!("specialize({:?})", ctor);
         // Dig into rows that match `ctor`.
-        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
+        debug!("specialize({:?})", ctor);
+        // `ctor` is *irrelevant* if there's another constructor in `split_ctors` that matches
+        // strictly fewer rows. In that case we can sometimes skip it. See the top of the file for
+        // details.
+        let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
+        let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, false)
-        });
+            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
+        })?;
 
-        let counts_for_exhaustiveness = match ctor {
-            Constructor::Missing => !missing_ctors.is_empty(),
-            // If there are missing constructors we'll report those instead. Since `Missing` matches
-            // only the wildcard rows, it matches fewer rows than this constructor, and is therefore
-            // guaranteed to result in the same or more witnesses. So skipping this does not
-            // jeopardize correctness.
-            _ => missing_ctors.is_empty(),
-        };
-        if counts_for_exhaustiveness {
-            // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
-            witnesses.apply_constructor(
-                pcx,
-                &missing_ctors,
-                &ctor,
-                report_individual_missing_ctors,
-            );
-            // Accumulate the found witnesses.
-            ret.extend(witnesses);
+        // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
+        witnesses.apply_constructor(pcx, &missing_ctors, &ctor, report_individual_missing_ctors);
+        // Accumulate the found witnesses.
+        ret.extend(witnesses);
+
+        for child_row in spec_matrix.rows() {
+            let parent_row_id = child_row.parent_row;
+            let parent_row = &mut matrix.rows[parent_row_id];
+            // A parent row is useful if any of its children is.
+            parent_row.useful |= child_row.useful;
+            for child_intersection in child_row.intersects.iter() {
+                // Convert the intersecting ids into ids for the parent matrix.
+                let parent_intersection = spec_matrix.rows[child_intersection].parent_row;
+                // Note: self-intersection can happen with or-patterns.
+                if parent_intersection != parent_row_id {
+                    parent_row.intersects.insert(parent_intersection);
+                }
+            }
         }
 
-        // A parent row is useful if any of its children is.
-        for child_row in spec_matrix.rows() {
-            let parent_row = &mut matrix.rows[child_row.parent_row];
-            parent_row.useful = parent_row.useful || child_row.useful;
+        // Detect ranges that overlap on their endpoints.
+        if let Constructor::IntRange(overlap_range) = ctor {
+            if overlap_range.is_singleton()
+                && spec_matrix.rows.len() >= 2
+                && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
+            {
+                collect_overlapping_range_endpoints(mcx, overlap_range, matrix, &spec_matrix);
+            }
         }
     }
 
@@ -1265,40 +1522,41 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
         }
     }
 
-    ret
+    Ok(ret)
 }
 
 /// Indicates whether or not a given arm is useful.
 #[derive(Clone, Debug)]
-pub enum Usefulness {
+pub enum Usefulness<'p, Cx: TypeCx> {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
-    Useful(Vec<Span>),
+    Useful(Vec<&'p DeconstructedPat<'p, Cx>>),
     /// The arm is redundant and can be removed without changing the behavior of the match
     /// expression.
     Redundant,
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.
-pub struct UsefulnessReport<'p, 'tcx> {
+pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
-    pub arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness)>,
+    pub arm_usefulness: Vec<(MatchArm<'p, Cx>, Usefulness<'p, Cx>)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    pub non_exhaustiveness_witnesses: Vec<WitnessPat<'tcx>>,
+    pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
 #[instrument(skip(cx, arms), level = "debug")]
-pub(crate) fn compute_match_usefulness<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    arms: &[MatchArm<'p, 'tcx>],
-    scrut_ty: Ty<'tcx>,
-) -> UsefulnessReport<'p, 'tcx> {
-    let scrut_validity = ValidityConstraint::from_bool(cx.known_valid_scrutinee);
-    let mut matrix = Matrix::new(cx, arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
+pub fn compute_match_usefulness<'p, Cx: TypeCx>(
+    cx: MatchCtxt<'_, Cx>,
+    arms: &[MatchArm<'p, Cx>],
+    scrut_ty: Cx::Ty,
+    scrut_validity: ValidityConstraint,
+) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
+    let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
+    let non_exhaustiveness_witnesses =
+        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1308,12 +1566,13 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
             debug!(?arm);
             // We warn when a pattern is not useful.
             let usefulness = if arm.pat.is_useful() {
-                Usefulness::Useful(arm.pat.redundant_spans())
+                Usefulness::Useful(arm.pat.redundant_subpatterns())
             } else {
                 Usefulness::Redundant
             };
             (arm, usefulness)
         })
         .collect();
-    UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
+
+    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
 }

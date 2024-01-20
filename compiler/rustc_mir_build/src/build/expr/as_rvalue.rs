@@ -2,6 +2,7 @@
 
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
@@ -15,7 +16,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -27,10 +28,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_local_rvalue(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_rvalue(block, Some(local_scope), expr)
+        self.as_rvalue(block, Some(local_scope), expr_id)
     }
 
     /// Compile `expr`, yielding an rvalue.
@@ -38,11 +39,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
+        let this = self;
+        let expr = &this.thir[expr_id];
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
-        let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
@@ -50,9 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::ThreadLocalRef(did) => block.and(Rvalue::ThreadLocalRef(did)),
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| {
-                    this.as_rvalue(block, scope, &this.thir[value])
-                })
+                this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 if Some(0) == count.try_eval_target_usize(this.tcx, this.param_env) {
@@ -62,7 +62,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block = this.as_operand(
                             block,
                             scope,
-                            &this.thir[value],
+                            value,
                             LocalInfo::Boring,
                             NeedsTemporary::No
                         )
@@ -75,31 +75,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block = this.as_operand(
                         block,
                         scope,
-                        &this.thir[lhs],
+                        lhs,
                         LocalInfo::Boring,
                         NeedsTemporary::Maybe
                     )
                 );
                 let rhs = unpack!(
-                    block = this.as_operand(
-                        block,
-                        scope,
-                        &this.thir[rhs],
-                        LocalInfo::Boring,
-                        NeedsTemporary::No
-                    )
+                    block =
+                        this.as_operand(block, scope, rhs, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
-                    block = this.as_operand(
-                        block,
-                        scope,
-                        &this.thir[arg],
-                        LocalInfo::Boring,
-                        NeedsTemporary::No
-                    )
+                    block =
+                        this.as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
@@ -126,7 +116,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::UnaryOp(op, arg))
             }
             ExprKind::Box { value } => {
-                let value = &this.thir[value];
+                let value_ty = this.thir[value].ty;
                 let tcx = this.tcx;
 
                 // `exchange_malloc` is unsafe but box is safe, so need a new scope.
@@ -142,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     synth_info,
                     size,
-                    Rvalue::NullaryOp(NullOp::SizeOf, value.ty),
+                    Rvalue::NullaryOp(NullOp::SizeOf, value_ty),
                 );
 
                 let align = this.temp(tcx.types.usize, expr_span);
@@ -150,7 +140,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     synth_info,
                     align,
-                    Rvalue::NullaryOp(NullOp::AlignOf, value.ty),
+                    Rvalue::NullaryOp(NullOp::AlignOf, value_ty),
                 );
 
                 // malloc some memory of suitable size and align:
@@ -167,7 +157,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     synth_info,
                     TerminatorKind::Call {
                         func: exchange_malloc,
-                        args: vec![Operand::Move(size), Operand::Move(align)],
+                        args: vec![
+                            Spanned { node: Operand::Move(size), span: DUMMY_SP },
+                            Spanned { node: Operand::Move(align), span: DUMMY_SP },
+                        ],
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,
@@ -192,7 +185,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // Transmute `*mut u8` to the box (thus far, uninitialized):
-                let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value.ty);
+                let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value_ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
@@ -200,24 +193,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block = this.expr_into_dest(
                         this.tcx.mk_place_deref(Place::from(result)),
                         block,
-                        value
+                        value,
                     )
                 );
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
-                let source = &this.thir[source];
+                let source_expr = &this.thir[source];
 
                 // Casting an enum to an integer is equivalent to computing the discriminant and casting the
                 // discriminant. Previously every backend had to repeat the logic for this operation. Now we
                 // create all the steps directly in MIR with operations all backends need to support anyway.
-                let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind()
+                let (source, ty) = if let ty::Adt(adt_def, ..) = source_expr.ty.kind()
                     && adt_def.is_enum()
                 {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let layout = this.tcx.layout_of(this.param_env.and(source.ty));
-                    let discr = this.temp(discr_ty, source.span);
+                    let layout = this.tcx.layout_of(this.param_env.and(source_expr.ty));
+                    let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
                         block,
                         source_info,
@@ -296,7 +289,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     (op, ty)
                 } else {
-                    let ty = source.ty;
+                    let ty = source_expr.ty;
                     let source = unpack!(
                         block = this.as_operand(
                             block,
@@ -310,7 +303,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let from_ty = CastTy::from_ty(ty);
                 let cast_ty = CastTy::from_ty(expr.ty);
-                debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
+                debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty);
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
@@ -319,7 +312,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block = this.as_operand(
                         block,
                         scope,
-                        &this.thir[source],
+                        source,
                         LocalInfo::Boring,
                         NeedsTemporary::No
                     )
@@ -363,7 +356,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block = this.as_operand(
                                 block,
                                 scope,
-                                &this.thir[f],
+                                f,
                                 LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
@@ -384,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             block = this.as_operand(
                                 block,
                                 scope,
-                                &this.thir[f],
+                                f,
                                 LocalInfo::Boring,
                                 NeedsTemporary::Maybe
                             )
@@ -398,8 +391,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_id,
                 args,
                 ref upvars,
-                movability,
                 ref fake_reads,
+                movability: _,
             }) => {
                 // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
                 // and push the fake reads.
@@ -416,8 +409,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // ```
                 //
                 for (thir_place, cause, hir_id) in fake_reads.into_iter() {
-                    let place_builder =
-                        unpack!(block = this.as_place_builder(block, &this.thir[*thir_place]));
+                    let place_builder = unpack!(block = this.as_place_builder(block, *thir_place));
 
                     if let Some(mir_place) = place_builder.try_to_place(this) {
                         this.cfg.push_fake_read(
@@ -434,8 +426,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .into_iter()
                     .copied()
                     .map(|upvar| {
-                        let upvar = &this.thir[upvar];
-                        match Category::of(&upvar.kind) {
+                        let upvar_expr = &this.thir[upvar];
+                        match Category::of(&upvar_expr.kind) {
                             // Use as_place to avoid creating a temporary when
                             // moving a variable into a closure, so that
                             // borrowck knows which variables to mark as being
@@ -453,18 +445,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 // borrow captures when capturing an immutable
                                 // variable. This is sound because the mutation
                                 // that caused the capture will cause an error.
-                                match upvar.kind {
+                                match upvar_expr.kind {
                                     ExprKind::Borrow {
                                         borrow_kind:
                                             BorrowKind::Mut { kind: MutBorrowKind::Default },
                                         arg,
                                     } => unpack!(
                                         block = this.limit_capture_mutability(
-                                            upvar.span,
-                                            upvar.ty,
+                                            upvar_expr.span,
+                                            upvar_expr.ty,
                                             scope,
                                             block,
-                                            &this.thir[arg],
+                                            arg,
                                         )
                                     ),
                                     _ => {
@@ -486,10 +478,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let result = match args {
                     UpvarArgs::Coroutine(args) => {
-                        // We implicitly set the discriminant to 0. See
-                        // librustc_mir/transform/deaggregator.rs for details.
-                        let movability = movability.unwrap();
-                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args, movability))
+                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args))
                     }
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
@@ -498,7 +487,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                block = unpack!(this.stmt_expr(block, expr, None));
+                block = unpack!(this.stmt_expr(block, expr_id, None));
                 block.and(Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                     span: expr_span,
                     user_ty: None,
@@ -553,8 +542,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
                 let operand = unpack!(
-                    block =
-                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        expr_id,
+                        LocalInfo::Boring,
+                        NeedsTemporary::No,
+                    )
                 );
                 block.and(Rvalue::Use(operand))
             }
@@ -719,9 +713,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let this = self;
-        let value = &this.thir[value];
-        let elem_ty = value.ty;
-        if let Some(Category::Constant) = Category::of(&value.kind) {
+        let value_expr = &this.thir[value];
+        let elem_ty = value_expr.ty;
+        if let Some(Category::Constant) = Category::of(&value_expr.kind) {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
@@ -743,7 +737,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[value_operand]);
+            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
@@ -754,7 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         upvar_ty: Ty<'tcx>,
         temp_lifetime: Option<region::Scope>,
         mut block: BasicBlock,
-        arg: &Expr<'tcx>,
+        arg: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
 

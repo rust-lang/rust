@@ -1,5 +1,4 @@
-#![feature(const_trait_impl)]
-// known-bug: #110395
+#![feature(const_trait_impl, effects)]
 // revisions: yy yn ny nn
 
 #[cfg_attr(any(yy, yn), const_trait)]
@@ -9,12 +8,15 @@ trait Foo {
 
 #[cfg_attr(any(yy, ny), const_trait)]
 trait Bar: ~const Foo {}
-// FIXME [ny,nn]~^ ERROR: ~const can only be applied to `#[const_trait]`
-// FIXME [ny,nn]~| ERROR: ~const can only be applied to `#[const_trait]`
+//[ny,nn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
+//[ny,nn]~| ERROR: `~const` can only be applied to `#[const_trait]`
+//[ny,nn]~| ERROR: `~const` can only be applied to `#[const_trait]`
+//[yn,nn]~^^^^ ERROR: `~const` is not allowed here
 
 const fn foo<T: Bar>(x: &T) {
     x.a();
-    // FIXME [yn,yy]~^ ERROR the trait bound
+    //[yy,yn]~^ ERROR mismatched types
+    // FIXME(effects) diagnostic
 }
 
 fn main() {}

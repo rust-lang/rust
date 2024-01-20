@@ -3,7 +3,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
@@ -27,7 +27,7 @@ use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -84,7 +84,7 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.span_delayed_bug(DUMMY_SP, format!("{val:?}"));
+        self.1.sess.dcx().delayed_bug(format!("{val:?}"));
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {
@@ -202,7 +202,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // and the span which bounded to the trait for adding 'static lifetime suggestion
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
-        diag: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        diag: &mut DiagnosticBuilder<'_>,
         lower_bound: RegionVid,
     ) {
         let mut suggestions = vec![];
@@ -327,11 +327,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        let mut diag =
-                            self.infcx.tcx.sess.create_err(GenericDoesNotLiveLongEnough {
-                                kind: type_test.generic_kind.to_string(),
-                                span: type_test_span,
-                            });
+                        let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
+                            kind: type_test.generic_kind.to_string(),
+                            span: type_test_span,
+                        });
 
                         // Add notes and suggestions for the case of 'static lifetime
                         // implied but not specified when a generic associated types
@@ -349,7 +348,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    let mut diag = unexpected_hidden_region_diagnostic(
+                    let diag = unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
@@ -573,7 +572,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -596,7 +595,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
         };
 
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         if let ReturnConstraint::ClosureUpvar(upvar_field) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
@@ -645,7 +644,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -744,10 +743,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(
-        &self,
-        errci: &ErrorConstraintInfo<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,
@@ -761,7 +757,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         // In certain scenarios, such as the one described in issue #118021,
         // we might encounter a lifetime that cannot be named.
@@ -1045,11 +1041,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             hir::ExprKind::Closure(hir::Closure {
                 capture_clause: hir::CaptureBy::Ref,
-                body,
+                kind,
                 ..
             }) => {
-                let body = map.body(*body);
-                if !matches!(body.coroutine_kind, Some(hir::CoroutineKind::Async(..))) {
+                if !matches!(
+                    kind,
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        _
+                    ),)
+                ) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }
             }

@@ -32,6 +32,7 @@ pub enum SimplifiedType {
     CoroutineWitness(DefId),
     Function(usize),
     Placeholder,
+    Error,
 }
 
 /// Generic parameters are pretty much just bound variables, e.g.
@@ -128,7 +129,7 @@ pub fn simplify_type<'tcx>(
         },
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id)),
-        ty::Coroutine(def_id, _, _) => Some(SimplifiedType::Coroutine(def_id)),
+        ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id)),
         ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
@@ -153,7 +154,8 @@ pub fn simplify_type<'tcx>(
             TreatParams::ForLookup | TreatParams::AsCandidateKey => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id)),
-        ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
+        ty::Error(_) => Some(SimplifiedType::Error),
+        ty::Bound(..) | ty::Infer(_) => None,
     }
 }
 

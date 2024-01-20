@@ -55,6 +55,7 @@ macro_rules! with_api {
         $m! {
             FreeFunctions {
                 fn drop($self: $S::FreeFunctions);
+                fn injected_env_var(var: &str) -> Option<String>;
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;

@@ -29,8 +29,8 @@
 #  - A change in the default values
 #
 # If `change-id` does not match the version that is currently running,
-# `x.py` will prompt you to update it and check the related PR for more details.
-change-id = 118703
+# `x.py` will inform you about the changes made on bootstrap.
+#change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================
 # Tweaking how LLVM is compiled
@@ -323,6 +323,7 @@ change-id = 118703
 #    "rustdoc",
 #    "rustfmt",
 #    "rust-analyzer",
+#    "rust-analyzer-proc-macro-srv",
 #    "analysis",
 #    "src",
 #    "rust-demangler",  # if profiler = true
@@ -337,6 +338,14 @@ change-id = 118703
 # Build the profiler runtime (required when compiling with options that depend
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
+
+# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
+# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
+# sources are available.
+#
+# Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
+# order to run `x check`.
+#optimized-compiler-builtins = if rust.channel == "dev" { false } else { true }
 
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.
@@ -660,7 +669,7 @@ change-id = 118703
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
-#llvm-tools = false
+#llvm-tools = true
 
 # Whether to deny warnings in crates
 #deny-warnings = true

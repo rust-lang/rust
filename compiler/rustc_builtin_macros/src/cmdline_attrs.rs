@@ -18,16 +18,14 @@ pub fn inject(krate: &mut ast::Crate, parse_sess: &ParseSess, attrs: &[String]) 
         let start_span = parser.token.span;
         let AttrItem { path, args, tokens: _ } = match parser.parse_attr_item(false) {
             Ok(ai) => ai,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 continue;
             }
         };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
-            parse_sess
-                .span_diagnostic
-                .emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
+            parse_sess.dcx.emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
             continue;
         }
 

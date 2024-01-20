@@ -30,8 +30,8 @@ use rustc_parse::parser::{
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::parse::{feature_err, ParseSess};
-use rustc_session::Limit;
+use rustc_session::parse::feature_err;
+use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{FileName, LocalExpnId, Span};
 
@@ -41,132 +41,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{iter, mem};
 
-#[cfg(bootstrap)]
-macro_rules! ast_fragments {
-    (
-        $($Kind:ident($AstTy:ty) {
-            $kind_name:expr;
-            $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident($($args:tt)*);)?
-            fn $make_ast:ident;
-        })*
-    ) => {
-        /// A fragment of AST that can be produced by a single macro expansion.
-        /// Can also serve as an input and intermediate result for macro expansion operations.
-        pub enum AstFragment {
-            OptExpr(Option<P<ast::Expr>>),
-            MethodReceiverExpr(P<ast::Expr>),
-            $($Kind($AstTy),)*
-        }
-
-        /// "Discriminant" of an AST fragment.
-        #[derive(Copy, Clone, PartialEq, Eq)]
-        pub enum AstFragmentKind {
-            OptExpr,
-            MethodReceiverExpr,
-            $($Kind,)*
-        }
-
-        impl AstFragmentKind {
-            pub fn name(self) -> &'static str {
-                match self {
-                    AstFragmentKind::OptExpr => "expression",
-                    AstFragmentKind::MethodReceiverExpr => "expression",
-                    $(AstFragmentKind::$Kind => $kind_name,)*
-                }
-            }
-
-            fn make_from<'a>(self, result: Box<dyn MacResult + 'a>) -> Option<AstFragment> {
-                match self {
-                    AstFragmentKind::OptExpr =>
-                        result.make_expr().map(Some).map(AstFragment::OptExpr),
-                    AstFragmentKind::MethodReceiverExpr =>
-                        result.make_expr().map(AstFragment::MethodReceiverExpr),
-                    $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
-                }
-            }
-        }
-
-        impl AstFragment {
-            pub fn add_placeholders(&mut self, placeholders: &[NodeId]) {
-                if placeholders.is_empty() {
-                    return;
-                }
-                match self {
-                    $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
-                        ${ignore(flat_map_ast_elt)}
-                        placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
-                    })),)?)*
-                    _ => panic!("unexpected AST fragment kind")
-                }
-            }
-
-            pub fn make_opt_expr(self) -> Option<P<ast::Expr>> {
-                match self {
-                    AstFragment::OptExpr(expr) => expr,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
-                }
-            }
-
-            pub fn make_method_receiver_expr(self) -> P<ast::Expr> {
-                match self {
-                    AstFragment::MethodReceiverExpr(expr) => expr,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
-                }
-            }
-
-            $(pub fn $make_ast(self) -> $AstTy {
-                match self {
-                    AstFragment::$Kind(ast) => ast,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
-                }
-            })*
-
-            fn make_ast<T: InvocationCollectorNode>(self) -> T::OutputTy {
-                T::fragment_to_output(self)
-            }
-
-            pub fn mut_visit_with<F: MutVisitor>(&mut self, vis: &mut F) {
-                match self {
-                    AstFragment::OptExpr(opt_expr) => {
-                        visit_clobber(opt_expr, |opt_expr| {
-                            if let Some(expr) = opt_expr {
-                                vis.filter_map_expr(expr)
-                            } else {
-                                None
-                            }
-                        });
-                    }
-                    AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
-                    $($(AstFragment::$Kind(ast) =>
-                        ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)?)*
-                }
-            }
-
-            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
-                match self {
-                    AstFragment::OptExpr(Some(expr)) => visitor.visit_expr(expr),
-                    AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(expr) => visitor.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ast) => visitor.$visit_ast(ast),)?)*
-                    $($(AstFragment::$Kind(ast) => for ast_elt in &ast[..] {
-                        visitor.$visit_ast_elt(ast_elt, $($args)*);
-                    })?)*
-                }
-            }
-        }
-
-        impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a>>)
-                           -> Option<$AstTy> {
-                Some(self.make(AstFragmentKind::$Kind).$make_ast())
-            })*
-        }
-    }
-}
-
-#[cfg(not(bootstrap))]
 macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
@@ -561,7 +435,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invocations = mem::take(&mut undetermined_invocations);
                 force = !mem::replace(&mut progress, false);
                 if force && self.monotonic {
-                    self.cx.sess.span_delayed_bug(
+                    self.cx.dcx().span_delayed_bug(
                         invocations.last().unwrap().0.span(),
                         "expansion entered force mode without producing any errors",
                     );
@@ -639,7 +513,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {
-                        self.cx.span_bug(
+                        self.cx.dcx().span_bug(
                             invoc.span(),
                             "expansion entered force mode but is still stuck",
                         );
@@ -737,7 +611,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             limit => limit * 2,
         };
 
-        self.cx.emit_err(RecursionLimitReached {
+        self.cx.dcx().emit_err(RecursionLimitReached {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
@@ -750,7 +624,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+        self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
 
         self.cx.trace_macros_diag();
     }
@@ -828,7 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let AttrArgs::Eq(..) = attr_item.args {
-                        self.cx.emit_err(UnsupportedKeyValue { span });
+                        self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
@@ -855,13 +729,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
                             ) && items.is_empty()
                             {
-                                self.cx.emit_err(RemoveExprNotSupported { span });
+                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
                             }
                         }
-                        Err(mut err) => {
+                        Err(err) => {
                             err.emit();
                             fragment_kind.dummy(span)
                         }
@@ -926,7 +800,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return;
         }
         feature_err(
-            &self.cx.sess.parse_sess,
+            &self.cx.sess,
             sym::proc_macro_hygiene,
             span,
             format!("custom attributes cannot be applied to {kind}"),
@@ -936,7 +810,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
         struct GateProcMacroInput<'a> {
-            parse_sess: &'a ParseSess,
+            sess: &'a Session,
         }
 
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
@@ -946,7 +820,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
                         feature_err(
-                            self.parse_sess,
+                            self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
                             "non-inline modules in proc macro input are unstable",
@@ -961,8 +835,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if !self.cx.ecfg.features.proc_macro_hygiene {
-            annotatable
-                .visit_with(&mut GateProcMacroInput { parse_sess: &self.cx.sess.parse_sess });
+            annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
         }
     }
 
@@ -981,7 +854,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 if err.span.is_dummy() {
-                    err.set_span(span);
+                    err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
@@ -1083,7 +956,7 @@ pub fn ensure_complete_parse<'a>(
 
         let expands_to_match_arm = kind_name == "pattern" && parser.token == token::FatArrow;
 
-        parser.sess.emit_err(IncompleteParse {
+        parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
             token,
             label_span: span,
@@ -1176,7 +1049,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         _pos: usize,
         span: Span,
     ) {
-        collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+        collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
     /// All of the names (items) declared by this node.

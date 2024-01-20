@@ -200,9 +200,6 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
 // cargo invocation.
 fn cargo_extra_flags() -> Vec<String> {
     let mut flags = Vec::new();
-    // `-Zunstable-options` is required by `--config`.
-    flags.push("-Zunstable-options".to_string());
-
     // Forward `--config` flags.
     let config_flag = "--config";
     for arg in get_arg_flag_values(config_flag) {

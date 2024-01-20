@@ -1,6 +1,4 @@
-// revisions: mir thir
-// [mir]ignore-test This is currently broken
-// [thir]compile-flags: -Z thir-unsafeck
+// ignore-test This is currently broken
 
 #![allow(incomplete_features)]
 #![feature(inline_const_pat)]

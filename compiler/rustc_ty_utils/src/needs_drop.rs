@@ -116,7 +116,7 @@ where
             if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
-                tcx.sess.emit_err(NeedsDropOverflow { query_ty: self.query_ty });
+                tcx.dcx().emit_err(NeedsDropOverflow { query_ty: self.query_ty });
                 return Some(Err(AlwaysRequiresDrop));
             }
 
@@ -145,7 +145,7 @@ where
                     // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
-                    ty::Coroutine(_, args, _) => {
+                    ty::Coroutine(_, args) => {
                         if self.reveal_coroutine_witnesses {
                             queue_type(self, args.as_coroutine().witness());
                         } else {

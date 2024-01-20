@@ -53,14 +53,10 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                             && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)
+                    && let Some(snip) = snippet_opt(cx, param.span)
+                    && !(snip.starts_with("0o") || snip.starts_with("0b"))
                 {
-                    let Some(snip) = snippet_opt(cx, param.span) else {
-                        return;
-                    };
-
-                    if !snip.starts_with("0o") {
-                        show_error(cx, param);
-                    }
+                    show_error(cx, param);
                 }
             },
             ExprKind::Call(func, [param]) => {
@@ -70,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)
                     && let Some(snip) = snippet_opt(cx, param.span)
-                    && !snip.starts_with("0o")
+                    && !(snip.starts_with("0o") || snip.starts_with("0b"))
                 {
                     show_error(cx, param);
                 }

@@ -438,14 +438,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.at_least_rust_2018() {
-                    self.tcx.sess.emit_err(MethodCallOnUnknownRawPointee { span });
+                    self.dcx().emit_err(MethodCallOnUnknownRawPointee { span });
                 } else {
                     self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
                         "type annotations needed",
-                        |lint| lint,
+                        |_| {},
                     );
                 }
             } else {
@@ -711,14 +711,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
-        for &impl_def_id in self.tcx.incoherent_impls(simp) {
+        for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
     }
 
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
-        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id);
-        for &impl_def_id in impl_def_ids.iter() {
+        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter().flatten();
+        for &impl_def_id in impl_def_ids {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
     }
@@ -802,7 +802,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
             if new_trait_ref.has_non_region_bound_vars() {
-                this.tcx.sess.span_delayed_bug(
+                this.dcx().span_delayed_bug(
                     this.span,
                     "tried to select method from HRTB with non-lifetime bound vars",
                 );
@@ -1427,8 +1427,6 @@ impl<'tcx> Pick<'tcx> {
                         ));
                     }
                 }
-
-                lint
             },
         );
     }
@@ -1548,9 +1546,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
 
                     let candidate_obligations = impl_obligations
-                        .chain(norm_obligations.into_iter())
+                        .chain(norm_obligations)
                         .chain(ref_obligations.iter().cloned())
-                        .chain(normalization_obligations.into_iter());
+                        .chain(normalization_obligations);
 
                     // Evaluate those obligations to see if they might possibly hold.
                     for o in candidate_obligations {

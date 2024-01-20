@@ -593,9 +593,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "pattern: ", depth_lvl + 1);
         self.print_pat(pattern, depth_lvl + 2);
 
-        if let Some(guard) = guard {
+        if let Some(guard) = *guard {
             print_indented!(self, "guard: ", depth_lvl + 1);
-            self.print_guard(guard, depth_lvl + 2);
+            self.print_expr(guard, depth_lvl + 2);
         } else {
             print_indented!(self, "guard: None", depth_lvl + 1);
         }
@@ -758,27 +758,6 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             }
             PatKind::Error(_) => {
                 print_indented!(self, "Error", depth_lvl + 1);
-            }
-        }
-
-        print_indented!(self, "}", depth_lvl);
-    }
-
-    fn print_guard(&mut self, guard: &Guard<'tcx>, depth_lvl: usize) {
-        print_indented!(self, "Guard {", depth_lvl);
-
-        match guard {
-            Guard::If(expr_id) => {
-                print_indented!(self, "If (", depth_lvl + 1);
-                self.print_expr(*expr_id, depth_lvl + 2);
-                print_indented!(self, ")", depth_lvl + 1);
-            }
-            Guard::IfLet(pat, expr_id) => {
-                print_indented!(self, "IfLet (", depth_lvl + 1);
-                self.print_pat(pat, depth_lvl + 2);
-                print_indented!(self, ",", depth_lvl + 1);
-                self.print_expr(*expr_id, depth_lvl + 2);
-                print_indented!(self, ")", depth_lvl + 1);
             }
         }
 

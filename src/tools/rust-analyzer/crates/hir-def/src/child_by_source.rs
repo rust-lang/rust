@@ -5,8 +5,7 @@
 //! node for a *child*, and get its hir.
 
 use either::Either;
-use hir_expand::HirFileId;
-use syntax::ast::HasDocComments;
+use hir_expand::{attrs::collect_attrs, HirFileId};
 
 use crate::{
     db::DefDatabase,
@@ -93,7 +92,7 @@ impl ChildBySource for ItemScope {
         self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
         self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
         self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
-        self.unnamed_consts().for_each(|konst| {
+        self.unnamed_consts(db).for_each(|konst| {
             let loc = konst.lookup(db);
             if loc.id.file_id() == file_id {
                 res[keys::CONST].insert(loc.source(db).value, konst);
@@ -118,8 +117,8 @@ impl ChildBySource for ItemScope {
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db.upcast());
                 calls.for_each(|(attr_id, call_id, calls)| {
-                    if let Some(Either::Left(attr)) =
-                        adt.doc_comments_and_attrs().nth(attr_id.ast_index())
+                    if let Some((_, Either::Left(attr))) =
+                        collect_attrs(&adt).nth(attr_id.ast_index())
                     {
                         res[keys::DERIVE_MACRO_CALL].insert(attr, (attr_id, call_id, calls.into()));
                     }

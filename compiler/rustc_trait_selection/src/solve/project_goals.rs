@@ -1,3 +1,5 @@
+use crate::solve::GoalSource;
+
 use super::EvalCtxt;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty::{self, ProjectionPredicate};
@@ -22,14 +24,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             )
             .into(),
         };
-        self.add_goal(goal.with(
+        let goal = goal.with(
             tcx,
             ty::PredicateKind::AliasRelate(
                 projection_term,
                 goal.predicate.term,
                 ty::AliasRelationDirection::Equate,
             ),
-        ));
+        );
+        self.add_goal(GoalSource::Misc, goal);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

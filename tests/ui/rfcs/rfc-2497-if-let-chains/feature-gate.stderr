@@ -37,6 +37,7 @@ LL |     if true && let 0 = 1 {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:17:8
@@ -46,6 +47,7 @@ LL |     if let 0 = 1 && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:20:8
@@ -55,6 +57,7 @@ LL |     if let Range { start: _, end: _ } = (true..true) && false {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:23:8
@@ -64,6 +67,7 @@ LL |     if let 1 = 1 && let true = { true } && false {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:23:21
@@ -73,6 +77,7 @@ LL |     if let 1 = 1 && let true = { true } && false {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:32:19
@@ -82,6 +87,7 @@ LL |     while true && let 0 = 1 {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:35:11
@@ -91,6 +97,7 @@ LL |     while let 0 = 1 && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:38:11
@@ -100,6 +107,7 @@ LL |     while let Range { start: _, end: _ } = (true..true) && false {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 11 previous errors
 

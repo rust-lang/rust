@@ -2,7 +2,7 @@
 // trait, impl or associated fn.
 // run-rustfix
 
-struct Inv<'a>(Option<*mut &'a u8>);
+struct Inv<'a>(#[allow(dead_code)] Option<*mut &'a u8>);
 
 fn check_bound<'a, A: 'a>(_: A, _: Inv<'a>) {}
 

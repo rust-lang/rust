@@ -1153,3 +1153,75 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn generic_alias_with_qualified_path() {
+    check_types(
+        r#"
+type Wrap<T> = T;
+
+struct S;
+
+trait Schematic {
+    type Props;
+}
+
+impl Schematic for S {
+    type Props = X;
+}
+
+enum X {
+    A { cool: u32, stuff: u32 },
+    B,
+}
+
+fn main() {
+    let wrapped = Wrap::<<S as Schematic>::Props>::A {
+        cool: 100,
+        stuff: 100,
+    };
+
+    if let Wrap::<<S as Schematic>::Props>::A { cool, ..} = &wrapped {}
+                                              //^^^^ &u32
+}
+"#,
+    );
+}
+
+#[test]
+fn type_mismatch_pat_const_reference() {
+    check_no_mismatches(
+        r#"
+const TEST_STR: &'static str = "abcd";
+
+fn main() {
+    let s = "abcd";
+    match s {
+        TEST_STR => (),
+        _ => (),
+    }
+}
+
+            "#,
+    );
+    check(
+        r#"
+struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    const TEST_I32_REF: &'static i32 = &3;
+    const TEST_I32: i32 = 3;
+}
+
+fn main() {
+    match &6 {
+        Foo::<i32>::TEST_I32_REF => (),
+        Foo::<i32>::TEST_I32 => (),
+      //^^^^^^^^^^^^^^^^^^^^ expected &i32, got i32
+        _ => (),
+    }
+}
+
+            "#,
+    );
+}

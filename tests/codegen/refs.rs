@@ -13,9 +13,8 @@ pub fn helper(_: usize) {
 pub fn ref_dst(s: &[u8]) {
     // We used to generate an extra alloca and memcpy to ref the dst, so check that we copy
     // directly to the alloca for "x"
-// CHECK: [[X0:%[0-9]+]] = getelementptr inbounds { ptr, [[USIZE]] }, {{.*}}  %x, i32 0, i32 0
-// CHECK: store ptr %s.0, {{.*}} [[X0]]
-// CHECK: [[X1:%[0-9]+]] = getelementptr inbounds { ptr, [[USIZE]] }, {{.*}} %x, i32 0, i32 1
+// CHECK: store ptr %s.0, {{.*}} %x
+// CHECK: [[X1:%[0-9]+]] = getelementptr inbounds i8, {{.*}} %x, {{i32 4|i64 8}}
 // CHECK: store [[USIZE]] %s.1, {{.*}} [[X1]]
 
     let x = &*s;

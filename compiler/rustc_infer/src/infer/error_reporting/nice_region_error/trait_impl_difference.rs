@@ -121,7 +121,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             found,
         };
 
-        self.tcx().sess.emit_err(diag)
+        self.tcx().dcx().emit_err(diag)
     }
 }
 

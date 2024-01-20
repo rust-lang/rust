@@ -116,7 +116,8 @@ use rustc_hir::def::DefKind;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `aapcs`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_UNSTABLE: &str =
+        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
     const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
     const UNSTABLE_EXPLAIN: &str =
         "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
@@ -133,13 +134,8 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         // Using this ABI would be ok, if the feature for additional ABI support was enabled.
         // Return CONVENTIONS_STABLE, because we want the other error to look the same.
         (false, true) => {
-            feature_err(
-                &tcx.sess.parse_sess,
-                sym::extended_varargs_abi_support,
-                span,
-                UNSTABLE_EXPLAIN,
-            )
-            .emit();
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+                .emit();
             CONVENTIONS_STABLE
         }
 
@@ -147,7 +143,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         (true, false) => CONVENTIONS_UNSTABLE,
     };
 
-    tcx.sess.emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
+    tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -166,55 +162,41 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    // FIXME(matthewjasper) We shouldn't need to use `track_errors`.
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("type_collecting", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-        });
-    })?;
+    tcx.sess.time("type_collecting", || {
+        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
+    });
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
-        })?;
+        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
     }
 
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence_checking", || {
-            // Check impls constrain their parameters
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+    tcx.sess.time("coherence_checking", || {
+        // Check impls constrain their parameters
+        let res =
+            tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
 
+        // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
+        // or the compiler in general.
+        res.and(tcx.sess.track_errors(|| {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
-
-            // these queries are executed for side-effects (error reporting):
-            tcx.ensure().crate_inherent_impls(());
-            tcx.ensure().crate_inherent_impls_overlap_check(());
-        });
+        }))
+        // these queries are executed for side-effects (error reporting):
+        .and(tcx.ensure().crate_inherent_impls(()))
+        .and(tcx.ensure().crate_inherent_impls_overlap_check(()))
     })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-        })?;
+        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
     }
 
-    let errs = tcx.sess.time("wf_checking", || {
+    tcx.sess.time("wf_checking", || {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-    });
-
-    // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
-    });
-
-    // HACK: `check_mod_type_wf` may spuriously emit errors due to `span_delayed_bug`, even if
-    // those errors only actually get emitted in `check_mod_item_types`.
-    errs?;
+    })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
+        collect::test_opaque_hidden_types(tcx)?;
     }
 
     // Freeze definitions as we don't add new ones at this point. This improves performance by
@@ -234,7 +216,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.ensure().check_unused_traits(());
 
-    if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
+    if let Some(reported) = tcx.dcx().has_errors() { Err(reported) } else { Ok(()) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

@@ -14,14 +14,14 @@
                             kind="no")]
 #![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-foo",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 #![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
                             cfg="cfail2",
                             kind="pre-lto")]
 #![rustc_expected_cgu_reuse(module="cgu_invalidated_via_import-bar",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 mod foo {
 

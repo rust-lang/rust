@@ -16,6 +16,7 @@
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -34,6 +35,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
+use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
@@ -118,6 +120,7 @@ pub fn provide(providers: &mut Providers) {
 pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -181,7 +184,7 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
     kind: &'static str,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'tcx> {
     if placeholder_types.is_empty() {
         return bad_placeholder(tcx, additional_spans, kind);
     }
@@ -333,16 +336,16 @@ fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
     kind: &'static str,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'tcx> {
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
-    tcx.sess.create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
+    tcx.dcx().create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id }
+        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
     pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
@@ -355,6 +358,13 @@ impl<'tcx> ItemCtxt<'tcx> {
 
     pub fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
+    }
+
+    fn check_tainted_by_errors(&self) -> Result<(), ErrorGuaranteed> {
+        match self.tainted_by_errors.get() {
+            Some(err) => Err(err),
+            None => Ok(()),
+        }
     }
 }
 
@@ -476,7 +486,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
             }
             Ty::new_error(
                 self.tcx(),
-                self.tcx().sess.emit_err(errors::AssociatedTypeTraitUninferredGenericParams {
+                self.tcx().dcx().emit_err(errors::AssociatedTypeTraitUninferredGenericParams {
                     span,
                     inferred_sugg,
                     bound,
@@ -491,8 +501,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {
-        // There's no obvious place to track this, so just let it go.
+    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(err));
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
@@ -641,7 +651,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            if !is_suggestable_infer_ty(ty) {
+            if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
                 visitor.visit_item(it);
                 placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
@@ -672,8 +682,8 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
-            if !tcx.sess.diagnostic().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
-                && !(is_suggestable_infer_ty(ty) && body_id.is_some())
+            if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
+                && !(ty.is_suggestable_infer_ty() && body_id.is_some())
             {
                 // Account for `const C: _;`.
                 let mut visitor = HirPlaceholderCollector::default();
@@ -725,7 +735,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
         }
         hir::ImplItemKind::Const(ty, _) => {
             // Account for `const T: _ = ..;`
-            if !is_suggestable_infer_ty(ty) {
+            if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
                 visitor.visit_impl_item(impl_item);
                 placeholder_type_error(tcx, None, visitor.0, false, None, "associated constant");
@@ -756,7 +766,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
                 Some(discr)
             } else {
                 let span = tcx.def_span(variant.def_id);
-                tcx.sess.emit_err(errors::EnumDiscriminantOverflowed {
+                tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
                     span,
                     discr: prev_discr.unwrap().to_string(),
                     item_name: tcx.item_name(variant.def_id),
@@ -797,7 +807,7 @@ fn convert_variant(
         .map(|f| {
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
-                tcx.sess.emit_err(errors::FieldAlreadyDeclared {
+                tcx.dcx().emit_err(errors::FieldAlreadyDeclared {
                     field_name: f.ident,
                     span: f.span,
                     prev_span,
@@ -814,7 +824,7 @@ fn convert_variant(
         })
         .collect();
     let recovered = match def {
-        hir::VariantData::Struct(_, r) => *r,
+        hir::VariantData::Struct { recovered, .. } => *recovered,
         _ => false,
     };
     ty::VariantDef::new(
@@ -836,7 +846,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
     let Node::Item(item) = tcx.hir_node_by_def_id(def_id) else {
-        bug!();
+        bug!("expected ADT to be an item");
     };
 
     let repr = tcx.repr_options_of_def(def_id.to_def_id());
@@ -887,7 +897,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
             (adt_kind, variants)
         }
-        _ => bug!(),
+        _ => bug!("{:?} is not an ADT", item.owner_id.def_id),
     };
     tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
@@ -905,7 +915,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
-        tcx.sess.emit_err(errors::ParenSugarAttribute { span: item.span });
+        tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
@@ -925,7 +935,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         // and that they are all identifiers
         .and_then(|attr| match attr.meta_item_list() {
             Some(items) if items.len() < 2 => {
-                tcx.sess.emit_err(errors::MustImplementOneOfAttribute { span: attr.span });
+                tcx.dcx().emit_err(errors::MustImplementOneOfAttribute { span: attr.span });
 
                 None
             }
@@ -934,7 +944,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 .map(|item| item.ident().ok_or(item.span()))
                 .collect::<Result<Box<[_]>, _>>()
                 .map_err(|span| {
-                    tcx.sess.emit_err(errors::MustBeNameOfAssociatedFunction { span });
+                    tcx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span });
                 })
                 .ok()
                 .zip(Some(attr.span)),
@@ -950,7 +960,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
                         if !tcx.defaultness(item.id.owner_id).has_value() {
-                            tcx.sess.emit_err(errors::FunctionNotHaveDefaultImplementation {
+                            tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
                                 span: item.span,
                                 note_span: attr_span,
                             });
@@ -961,14 +971,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                         return None;
                     }
                     Some(item) => {
-                        tcx.sess.emit_err(errors::MustImplementNotFunction {
+                        tcx.dcx().emit_err(errors::MustImplementNotFunction {
                             span: item.span,
                             span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
                             note: errors::MustImplementNotFunctionNote {},
                         });
                     }
                     None => {
-                        tcx.sess.emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                        tcx.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
                     }
                 }
 
@@ -979,12 +989,12 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         })
         // Check for duplicates
         .and_then(|list| {
-            let mut set: FxHashMap<Symbol, Span> = FxHashMap::default();
+            let mut set: UnordMap<Symbol, Span> = Default::default();
             let mut no_dups = true;
 
             for ident in &*list {
                 if let Some(dup) = set.insert(ident.name, ident.span) {
-                    tcx.sess
+                    tcx.dcx()
                         .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
 
                     no_dups = false;
@@ -1005,7 +1015,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 && let Some(lit) = meta.name_value_literal()
             {
                 if seen_attr {
-                    tcx.sess.span_err(meta.span, "duplicated `implement_via_object` meta item");
+                    tcx.dcx().span_err(meta.span, "duplicated `implement_via_object` meta item");
                 }
                 seen_attr = true;
 
@@ -1017,7 +1027,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                         implement_via_object = false;
                     }
                     _ => {
-                        tcx.sess.span_err(
+                        tcx.dcx().span_err(
                             meta.span,
                             format!(
                                 "unknown literal passed to `implement_via_object` attribute: {}",
@@ -1027,14 +1037,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                     }
                 }
             } else {
-                tcx.sess.span_err(
+                tcx.dcx().span_err(
                     meta.span(),
                     format!("unknown meta item passed to `rustc_deny_explicit_impl` {meta:?}"),
                 );
             }
         }
         if !seen_attr {
-            tcx.sess.span_err(attr.span, "missing `implement_via_object` meta item");
+            tcx.dcx().span_err(attr.span, "missing `implement_via_object` meta item");
         }
     }
 
@@ -1051,48 +1061,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         implement_via_object,
         deny_explicit_impl,
     }
-}
-
-fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
-    generic_args.iter().any(|arg| match arg {
-        hir::GenericArg::Type(ty) => is_suggestable_infer_ty(ty),
-        hir::GenericArg::Infer(_) => true,
-        _ => false,
-    })
-}
-
-/// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
-/// use inference to provide suggestions for the appropriate type if possible.
-fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
-    debug!(?ty);
-    use hir::TyKind::*;
-    match &ty.kind {
-        Infer => true,
-        Slice(ty) => is_suggestable_infer_ty(ty),
-        Array(ty, length) => {
-            is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
-        }
-        Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
-        Ptr(mut_ty) | Ref(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
-        OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
-        Path(hir::QPath::TypeRelative(ty, segment)) => {
-            is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
-        }
-        Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
-            ty_opt.is_some_and(is_suggestable_infer_ty)
-                || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
-        }
-        _ => false,
-    }
-}
-
-pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
-    if let hir::FnRetTy::Return(ty) = output {
-        if is_suggestable_infer_ty(ty) {
-            return Some(*ty);
-        }
-    }
-    None
 }
 
 #[instrument(level = "debug", skip(tcx))]
@@ -1187,7 +1155,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 ) -> ty::PolyFnSig<'tcx> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    match get_infer_ret_ty(&sig.decl.output) {
+    match sig.decl.output.get_infer_ret_ty() {
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
@@ -1414,7 +1382,7 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
-    Some(tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+    Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: ast_trait_ref.path.span,
         trait_name,
         local_trait_span:
@@ -1435,7 +1403,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
         }) => {
             if is_rustc_reservation {
                 let span = span.to(of_trait.as_ref().map_or(*span, |t| t.path.span));
-                tcx.sess.span_err(span, "reservation impls can't be negative");
+                tcx.dcx().span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
@@ -1445,7 +1413,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
             ..
         }) => {
             if is_rustc_reservation {
-                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+                tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
@@ -1535,7 +1503,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .source_map()
                     .span_to_snippet(ast_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.sess.emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
+                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
@@ -1551,10 +1519,14 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 
 fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineKind> {
     match tcx.hir_node_by_def_id(def_id) {
-        Node::Expr(&rustc_hir::Expr {
-            kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
+        Node::Expr(&hir::Expr {
+            kind:
+                hir::ExprKind::Closure(&rustc_hir::Closure {
+                    kind: hir::ClosureKind::Coroutine(kind),
+                    ..
+                }),
             ..
-        }) => tcx.hir().body(body).coroutine_kind(),
+        }) => Some(kind),
         _ => None,
     }
 }

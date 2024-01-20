@@ -20,6 +20,8 @@ pub fn check_async() {
 
     if passes_ident!(async) == 1 {} // OK
     if passes_ident!(r#async) == 1 {} // OK
+    if passes_tt!(async) == 1 {} // OK
+    if passes_tt!(r#async) == 1 {} // OK
     // one_async::async(); // ERROR, unresolved name
     // one_async::r#async(); // ERROR, unresolved name
     two_async::async(); // OK

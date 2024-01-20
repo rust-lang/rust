@@ -274,11 +274,12 @@ fn do_mir_borrowck<'tcx>(
         // The first argument is the coroutine type passed by value
         if let Some(local) = body.local_decls.raw.get(1)
         // Get the interior types and args which typeck computed
-        && let ty::Coroutine(_, _, hir::Movability::Static) = local.ty.kind()
+        && let ty::Coroutine(def_id, _) = *local.ty.kind()
+        && tcx.coroutine_movability(def_id) == hir::Movability::Movable
     {
-        false
-    } else {
         true
+    } else {
+        false
     };
 
     for (idx, move_data) in promoted_move_data {
@@ -702,7 +703,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
             } => {
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {
-                    self.consume_operand(loc, (arg, span), flow_state);
+                    self.consume_operand(loc, (&arg.node, arg.span), flow_state);
                 }
                 self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }
@@ -1306,7 +1307,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.
                 match **aggregate_kind {
-                    AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) => {
+                    AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _) => {
                         let def_id = def_id.expect_local();
                         let BorrowCheckResult { used_mut_upvars, .. } =
                             self.infcx.tcx.mir_borrowck(def_id);
@@ -1612,7 +1613,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(_, _)
-                    | ty::Coroutine(_, _, _)
+                    | ty::Coroutine(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
@@ -1636,7 +1637,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             return;
                         }
                     }
-                    ty::Closure(_, _) | ty::Coroutine(_, _, _) | ty::Tuple(_) => (),
+                    ty::Closure(_, _) | ty::Coroutine(_, _) | ty::Tuple(_) => (),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)
@@ -2134,7 +2135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // dereferencing a non-Copy raw pointer *and* have `-Ztreat-err-as-bug`
                     // enabled. We don't want to ICE for that case, as other errors will have
                     // been emitted (#52262).
-                    self.infcx.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         span,
                         format!(
                             "Accessing `{place:?}` with the kind `{kind:?}` shouldn't be possible",
@@ -2398,18 +2399,19 @@ mod error {
         /// and we want only the best of those errors.
         ///
         /// The `report_use_of_moved_or_uninitialized` function checks this map and replaces the
-        /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of the
-        /// `Place` of the previous most diagnostic. This happens instead of buffering the error. Once
-        /// all move errors have been reported, any diagnostics in this map are added to the buffer
-        /// to be emitted.
+        /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of
+        /// the `Place` of the previous most diagnostic. This happens instead of buffering the
+        /// error. Once all move errors have been reported, any diagnostics in this map are added
+        /// to the buffer to be emitted.
         ///
         /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
-        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
-        /// Diagnostics to be reported buffer.
+            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
+        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx>, usize)>,
+        /// Buffer of diagnostics to be reported. Uses `Diagnostic` rather than `DiagnosticBuilder`
+        /// because it has a mixture of error diagnostics and non-error diagnostics.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
         tainted_by_errors: Option<ErrorGuaranteed>,
@@ -2426,18 +2428,18 @@ mod error {
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             if let None = self.tainted_by_errors {
-                self.tainted_by_errors = Some(self.tcx.sess.span_delayed_bug(
+                self.tainted_by_errors = Some(self.tcx.dcx().span_delayed_bug(
                     t.span.clone_ignoring_labels(),
                     "diagnostic buffered but not emitted",
                 ))
             }
-            t.buffer(&mut self.buffered);
+            self.buffered.push(t.into_diagnostic());
         }
 
         pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
-            t.buffer(&mut self.buffered);
+            self.buffered.push(t.into_diagnostic());
         }
 
         pub fn set_tainted_by_errors(&mut self, e: ErrorGuaranteed) {
@@ -2446,7 +2448,7 @@ mod error {
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             self.errors.buffer_error(t);
         }
 
@@ -2457,7 +2459,7 @@ mod error {
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>),
+            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2473,16 +2475,11 @@ mod error {
         pub fn get_buffered_mut_error(
             &mut self,
             span: Span,
-        ) -> Option<(DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)> {
+        ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
             self.errors.buffered_mut_errors.remove(&span)
         }
 
-        pub fn buffer_mut_error(
-            &mut self,
-            span: Span,
-            t: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-            count: usize,
-        ) {
+        pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
             self.errors.buffered_mut_errors.insert(span, (t, count));
         }
 
@@ -2490,20 +2487,21 @@ mod error {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                diag.buffer(&mut self.errors.buffered);
+                self.errors.buffered.push(diag.into_diagnostic());
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
                 if count > 10 {
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                diag.buffer(&mut self.errors.buffered);
+                self.errors.buffered.push(diag.into_diagnostic());
             }
 
             if !self.errors.buffered.is_empty() {
                 self.errors.buffered.sort_by_key(|diag| diag.sort_span);
 
+                let dcx = self.dcx();
                 for diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.diagnostic().emit_diagnostic(diag);
+                    dcx.emit_diagnostic(diag);
                 }
             }
 
@@ -2517,7 +2515,7 @@ mod error {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorGuaranteed>)> {
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx>)> {
             self.errors.buffered_move_errors.get(move_out_indices)
         }
     }

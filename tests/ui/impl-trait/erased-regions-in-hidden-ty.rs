@@ -1,5 +1,5 @@
 // revisions: current next
-// compile-flags: -Zverbose
+// compile-flags: -Zverbose-internals
 //[next] compile-flags: -Znext-solver
 // normalize-stderr-test "DefId\([^\)]+\)" -> "DefId(..)"
 

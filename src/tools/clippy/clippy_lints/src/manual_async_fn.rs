@@ -3,8 +3,9 @@ use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, Body, Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
-    ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
+    FnRetTy, GenericArg, GenericBound, ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind,
+    TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -172,15 +173,14 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
 }
 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
-    if let Some(block_expr) = block.expr
-        && let Expr {
-            kind: ExprKind::Closure(&Closure { body, .. }),
-            ..
-        } = block_expr
-        && let closure_body = cx.tcx.hir().body(body)
-        && closure_body.coroutine_kind == Some(CoroutineKind::Async(CoroutineSource::Block))
+    if let Some(Expr {
+        kind: ExprKind::Closure(&Closure { kind, body, .. }),
+        ..
+    }) = block.expr
+        && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
+            kind
     {
-        return Some(closure_body);
+        return Some(cx.tcx.hir().body(body));
     }
 
     None

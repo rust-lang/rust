@@ -6,6 +6,7 @@ LL |     type A: Iterator<Item: Copy>;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:16:22
@@ -15,6 +16,7 @@ LL |     type B: Iterator<Item: 'static>;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:20:20
@@ -24,6 +26,7 @@ LL | struct _St1<T: Tr1<As1: Tr2>> {
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:27:18
@@ -33,6 +36,7 @@ LL | enum _En1<T: Tr1<As1: Tr2>> {
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:34:19
@@ -42,6 +46,7 @@ LL | union _Un1<T: Tr1<As1: Tr2>> {
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:41:37
@@ -51,6 +56,7 @@ LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:44:22
@@ -60,6 +66,7 @@ LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:46:26
@@ -69,6 +76,7 @@ LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:49:24
@@ -78,6 +86,7 @@ LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:52:31
@@ -87,6 +96,7 @@ LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:55:23
@@ -96,6 +106,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:61:24
@@ -105,6 +116,7 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
   --> $DIR/feature-gate-associated_type_bounds.rs:68:21
@@ -114,24 +126,31 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    |
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in const types
+error[E0562]: `impl Trait` is not allowed in const types
   --> $DIR/feature-gate-associated_type_bounds.rs:55:14
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |              ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in const types
+error[E0562]: `impl Trait` is not allowed in static types
   --> $DIR/feature-gate-associated_type_bounds.rs:61:15
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |               ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in variable bindings
+error[E0562]: `impl Trait` is not allowed in the type of variable bindings
   --> $DIR/feature-gate-associated_type_bounds.rs:68:12
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0277]: the trait bound `<<Self as _Tr3>::A as Iterator>::Item: Copy` is not satisfied
   --> $DIR/feature-gate-associated_type_bounds.rs:12:28

@@ -1,6 +1,7 @@
 #![doc = include_str!("doc.md")]
 
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
+use rustc_data_structures::unord::UnordMap;
 
 use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
@@ -20,8 +21,6 @@ use crate::value::Value;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::Hash128;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
@@ -32,7 +31,9 @@ use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeVisitableExt};
 use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span};
+use rustc_span::{
+    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
+};
 use rustc_target::abi::Size;
 
 use libc::c_uint;
@@ -61,7 +62,7 @@ pub struct CodegenUnitDebugContext<'ll, 'tcx> {
     llcontext: &'ll llvm::Context,
     llmod: &'ll llvm::Module,
     builder: &'ll mut DIBuilder<'ll>,
-    created_files: RefCell<FxHashMap<Option<(Hash128, SourceFileHash)>, &'ll DIFile>>,
+    created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,

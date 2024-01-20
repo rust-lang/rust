@@ -59,6 +59,17 @@ impl<T, U> TupleExt for (T, U) {
     }
 }
 
+impl<T, U, V> TupleExt for (T, U, V) {
+    type Head = T;
+    type Tail = V;
+    fn head(self) -> Self::Head {
+        self.0
+    }
+    fn tail(self) -> Self::Tail {
+        self.2
+    }
+}
+
 pub fn to_lower_snake_case(s: &str) -> String {
     to_snake_case(s, char::to_lowercase)
 }

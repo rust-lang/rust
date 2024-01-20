@@ -10,5 +10,11 @@ error: `~const` may only modify trait bounds, not lifetime bounds
 LL |     T: ~const 'a,
    |        ^^^^^^
 
-error: aborting due to 2 previous errors
+error: `const` may only modify trait bounds, not lifetime bounds
+  --> $DIR/bounds-type.rs:16:8
+   |
+LL |     T: const 'a,
+   |        ^^^^^
+
+error: aborting due to 3 previous errors
 

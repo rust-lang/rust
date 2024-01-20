@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
             };
             match constructor_symbol {
                 sym::Some | sym::Ok if path.ident.name == rustc_span::sym::map => (),
-                sym::Err if path.ident.name == sym!(map_err) => (),
+                sym::Err if path.ident.name == sym::map_err => (),
                 _ => return,
             }
 

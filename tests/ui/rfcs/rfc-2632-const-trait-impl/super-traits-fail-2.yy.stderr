@@ -1,11 +1,12 @@
-error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
-  --> $DIR/super-traits-fail-2.rs:16:7
+error[E0308]: mismatched types
+  --> $DIR/super-traits-fail-2.rs:17:5
    |
 LL |     x.a();
-   |       ^^^
+   |     ^^^^^ expected `host`, found `true`
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: expected constant `host`
+              found constant `true`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0308`.

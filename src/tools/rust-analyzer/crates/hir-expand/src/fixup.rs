@@ -1,13 +1,10 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
 
-use base_db::{
-    span::{ErasedFileAstId, SpanAnchor, SpanData},
-    FileId,
-};
-use la_arena::RawIdx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
+use span::{ErasedFileAstId, Span, SpanAnchor, SpanData, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
@@ -16,7 +13,7 @@ use triomphe::Arc;
 use tt::Spacing;
 
 use crate::{
-    span::SpanMapRef,
+    span_map::SpanMapRef,
     tt::{Ident, Leaf, Punct, Subtree},
 };
 
@@ -41,27 +38,30 @@ impl SyntaxFixupUndoInfo {
     pub(crate) const NONE: Self = SyntaxFixupUndoInfo { original: None };
 }
 
-// censoring -> just don't convert the node
-// replacement -> censor + append
-// append -> insert a fake node, here we need to assemble some dummy span that we can figure out how
-// to remove later
+// We mark spans with `FIXUP_DUMMY_AST_ID` to indicate that they are fake.
+const FIXUP_DUMMY_AST_ID: ErasedFileAstId = FIXUP_ERASED_FILE_AST_ID_MARKER;
+const FIXUP_DUMMY_RANGE: TextRange = TextRange::empty(TextSize::new(0));
+// If the fake span has this range end, that means that the range start is an index into the
+// `original` list in `SyntaxFixupUndoInfo`.
+const FIXUP_DUMMY_RANGE_END: TextSize = TextSize::new(!0);
 
-pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> SyntaxFixups {
+pub(crate) fn fixup_syntax(
+    span_map: SpanMapRef<'_>,
+    node: &SyntaxNode,
+    call_site: Span,
+) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
     let mut remove = FxHashSet::<SyntaxNode>::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
-    let dummy_range = TextRange::empty(TextSize::new(0));
-    // we use a file id of `FileId(!0)` to signal a fake node, and the text range's start offset as
-    // the index into the replacement vec but only if the end points to !0
-    let dummy_anchor = SpanAnchor {
-        file_id: FileId::from_raw(!0),
-        ast_id: ErasedFileAstId::from_raw(RawIdx::from(!0)),
-    };
-    let fake_span = |range| SpanData {
-        range: dummy_range,
-        anchor: dummy_anchor,
-        ctx: span_map.span_for_range(range).ctx,
+    let dummy_range = FIXUP_DUMMY_RANGE;
+    let fake_span = |range| {
+        let span = span_map.span_for_range(range);
+        SpanData {
+            range: dummy_range,
+            anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
+            ctx: span.ctx,
+        }
     };
     while let Some(event) = preorder.next() {
         let syntax::WalkEvent::Enter(node) = event else { continue };
@@ -70,15 +70,16 @@ pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> Synta
         if can_handle_error(&node) && has_error_to_handle(&node) {
             remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
-            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map);
+            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site);
             let idx = original.len() as u32;
             original.push(original_tree);
+            let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
                 text: "__ra_fixup".into(),
                 span: SpanData {
-                    range: TextRange::new(TextSize::new(idx), TextSize::new(!0)),
-                    anchor: dummy_anchor,
-                    ctx: span_map.span_for_range(node_range).ctx,
+                    range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
+                    anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
+                    ctx: span.ctx,
                 },
             });
             append.insert(node.clone().into(), vec![replacement]);
@@ -299,6 +300,14 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
 pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
+    #[allow(deprecated)]
+    if never!(
+        tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+    ) {
+        tt.delimiter.close = SpanData::DUMMY;
+        tt.delimiter.open = SpanData::DUMMY;
+    }
     reverse_fixups_(tt, undo_info);
 }
 
@@ -310,17 +319,28 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
         .filter(|tt| match tt {
             tt::TokenTree::Leaf(leaf) => {
                 let span = leaf.span();
-                span.anchor.file_id != FileId::from_raw(!0) || span.range.end() == TextSize::new(!0)
+                let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
+                let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
+                is_real_leaf || is_replaced_node
             }
             tt::TokenTree::Subtree(_) => true,
         })
         .flat_map(|tt| match tt {
             tt::TokenTree::Subtree(mut tt) => {
+                if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+                    || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+                {
+                    // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
+                    // might copy them if the proc-macro asks for it, so we need to filter those out
+                    // here as well.
+                    return SmallVec::new_const();
+                }
                 reverse_fixups_(&mut tt, undo_info);
                 SmallVec::from_const([tt.into()])
             }
             tt::TokenTree::Leaf(leaf) => {
-                if leaf.span().anchor.file_id == FileId::from_raw(!0) {
+                if leaf.span().anchor.ast_id == FIXUP_DUMMY_AST_ID {
+                    // we have a fake node here, we need to replace it again with the original
                     let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
                     if original.delimiter.kind == tt::DelimiterKind::Invisible {
                         original.token_trees.into()
@@ -328,6 +348,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
                         SmallVec::from_const([original.into()])
                     }
                 } else {
+                    // just a normal leaf
                     SmallVec::from_const([leaf.into()])
                 }
             }
@@ -339,11 +360,12 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
 mod tests {
     use base_db::FileId;
     use expect_test::{expect, Expect};
+    use syntax::TextRange;
     use triomphe::Arc;
 
     use crate::{
         fixup::reverse_fixups,
-        span::{RealSpanMap, SpanMap},
+        span_map::{RealSpanMap, SpanMap},
         tt,
     };
 
@@ -376,12 +398,17 @@ mod tests {
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
-        let fixups = super::fixup_syntax(span_map.as_ref(), &parsed.syntax_node());
+        let fixups = super::fixup_syntax(
+            span_map.as_ref(),
+            &parsed.syntax_node(),
+            span_map.span_for_range(TextRange::empty(0.into())),
+        );
         let mut tt = mbe::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),
             span_map.as_ref(),
             fixups.append,
             fixups.remove,
+            span_map.span_for_range(TextRange::empty(0.into())),
         );
 
         let actual = format!("{tt}\n");
@@ -401,8 +428,11 @@ mod tests {
 
         // the fixed-up + reversed version should be equivalent to the original input
         // modulo token IDs and `Punct`s' spacing.
-        let original_as_tt =
-            mbe::syntax_node_to_token_tree(&parsed.syntax_node(), span_map.as_ref());
+        let original_as_tt = mbe::syntax_node_to_token_tree(
+            &parsed.syntax_node(),
+            span_map.as_ref(),
+            span_map.span_for_range(TextRange::empty(0.into())),
+        );
         assert!(
             check_subtree_eq(&tt, &original_as_tt),
             "different token tree:\n{tt:?}\n\n{original_as_tt:?}"

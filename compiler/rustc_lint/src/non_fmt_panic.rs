@@ -111,22 +111,23 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     let mut arg_span = arg.span;
     let mut arg_macro = None;
     while !span.contains(arg_span) {
-        let expn = arg_span.ctxt().outer_expn_data();
-        if expn.is_root() {
+        let ctxt = arg_span.ctxt();
+        if ctxt.is_root() {
             break;
         }
+        let expn = ctxt.outer_expn_data();
         arg_macro = expn.macro_def_id;
         arg_span = expn.call_site;
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
-        lint.set_arg("name", symbol);
+        lint.arg("name", symbol);
         lint.note(fluent::lint_note);
         lint.note(fluent::lint_more_info_note);
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
-            return lint;
+            return;
         }
         if arg_macro.is_some_and(|id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
@@ -180,7 +181,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     fmt_applicability,
                 );
             } else if suggest_debug {
-                lint.set_arg("ty", ty);
+                lint.arg("ty", ty);
                 lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
                     fluent::lint_debug_suggestion,
@@ -191,7 +192,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
             if suggest_panic_any {
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
-                    lint.set_arg("already_suggested", suggest_display || suggest_debug);
+                    lint.arg("already_suggested", suggest_display || suggest_debug);
                     lint.multipart_suggestion(
                         fluent::lint_panic_suggestion,
                         if del == '(' {
@@ -207,7 +208,6 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 }
             }
         }
-        lint
     });
 }
 

@@ -24,9 +24,10 @@ use std::str;
 
 use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+pub struct AdtFlags(u16);
 bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u16 {
+    impl AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
@@ -51,6 +52,7 @@ bitflags! {
         const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
+rustc_data_structures::external_bitflags_debug! { AdtFlags }
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
@@ -470,7 +472,7 @@ impl<'tcx> AdtDef<'tcx> {
                     Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    tcx.sess.emit_err(crate::error::ConstEvalNonIntError {
+                    tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
                         span: tcx.def_span(expr_did),
                     });
                     None
@@ -481,7 +483,7 @@ impl<'tcx> AdtDef<'tcx> {
                     ErrorHandled::Reported(..) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric(..) => "enum discriminant depends on generics",
                 };
-                tcx.sess.span_delayed_bug(tcx.def_span(expr_did), msg);
+                tcx.dcx().span_delayed_bug(tcx.def_span(expr_did), msg);
                 None
             }
         }

@@ -22,6 +22,14 @@ pub struct Body {
 
     /// Debug information pertaining to user variables, including captures.
     pub var_debug_info: Vec<VarDebugInfo>,
+
+    /// Mark an argument (which must be a tuple) as getting passed as its individual components.
+    ///
+    /// This is used for the "rust-call" ABI such as closures.
+    pub(super) spread_arg: Option<Local>,
+
+    /// The span that covers the entire function body.
+    pub span: Span,
 }
 
 pub type BasicBlockIdx = usize;
@@ -36,6 +44,8 @@ impl Body {
         locals: LocalDecls,
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo>,
+        spread_arg: Option<Local>,
+        span: Span,
     ) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
         // `ret_local`, `arg_locals`, and `inner_locals`.
@@ -43,7 +53,7 @@ impl Body {
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
-        Self { blocks, locals, arg_count, var_debug_info }
+        Self { blocks, locals, arg_count, var_debug_info, spread_arg, span }
     }
 
     /// Return local that holds this function's return value.
@@ -75,6 +85,11 @@ impl Body {
         self.locals.get(local)
     }
 
+    /// Get an iterator for all local declarations.
+    pub fn local_decls(&self) -> impl Iterator<Item = (Local, &LocalDecl)> {
+        self.locals.iter().enumerate()
+    }
+
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         writeln!(w, "{}", function_body(self))?;
         self.blocks
@@ -97,6 +112,10 @@ impl Body {
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(())
+    }
+
+    pub fn spread_arg(&self) -> Option<Local> {
+        self.spread_arg
     }
 }
 
@@ -248,6 +267,63 @@ pub enum AssertMessage {
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
+impl AssertMessage {
+    pub fn description(&self) -> Result<&'static str, Error> {
+        match self {
+            AssertMessage::Overflow(BinOp::Add, _, _) => Ok("attempt to add with overflow"),
+            AssertMessage::Overflow(BinOp::Sub, _, _) => Ok("attempt to subtract with overflow"),
+            AssertMessage::Overflow(BinOp::Mul, _, _) => Ok("attempt to multiply with overflow"),
+            AssertMessage::Overflow(BinOp::Div, _, _) => Ok("attempt to divide with overflow"),
+            AssertMessage::Overflow(BinOp::Rem, _, _) => {
+                Ok("attempt to calculate the remainder with overflow")
+            }
+            AssertMessage::OverflowNeg(_) => Ok("attempt to negate with overflow"),
+            AssertMessage::Overflow(BinOp::Shr, _, _) => Ok("attempt to shift right with overflow"),
+            AssertMessage::Overflow(BinOp::Shl, _, _) => Ok("attempt to shift left with overflow"),
+            AssertMessage::Overflow(op, _, _) => Err(error!("`{:?}` cannot overflow", op)),
+            AssertMessage::DivisionByZero(_) => Ok("attempt to divide by zero"),
+            AssertMessage::RemainderByZero(_) => {
+                Ok("attempt to calculate the remainder with a divisor of zero")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
+                Ok("coroutine resumed after completion")
+            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                _,
+            )) => Ok("`async fn` resumed after completion"),
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen,
+                _,
+            )) => Ok("`async gen fn` resumed after completion"),
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::AsyncGen,
+                _,
+            )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after completion"),
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
+                Ok("coroutine resumed after panicking")
+            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                _,
+            )) => Ok("`async fn` resumed after panicking"),
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen,
+                _,
+            )) => Ok("`async gen fn` resumed after panicking"),
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::AsyncGen,
+                _,
+            )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"),
+
+            AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
+            AssertMessage::MisalignedPointerDereference { .. } => {
+                Ok("misaligned pointer dereference")
+            }
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add,
@@ -322,9 +398,8 @@ pub enum UnOp {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineKind {
-    Async(CoroutineSource),
-    Coroutine,
-    Gen(CoroutineSource),
+    Desugared(CoroutineDesugaring, CoroutineSource),
+    Coroutine(Movability),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -332,6 +407,15 @@ pub enum CoroutineSource {
     Block,
     Closure,
     Fn,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CoroutineDesugaring {
+    Async,
+
+    Gen,
+
+    AsyncGen,
 }
 
 pub(crate) type LocalDefId = Opaque;
@@ -578,6 +662,7 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 
@@ -878,7 +963,7 @@ pub enum PointerCoercion {
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
 
-    /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
+    /// Go from a non-capturing closure to a fn pointer or an unsafe fn pointer.
     /// It cannot convert a closure that requires unsafe.
     ClosureFnPointer(Safety),
 
@@ -952,21 +1037,24 @@ impl Place {
     /// locals from the function body where this place originates from.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
         let start_ty = locals[self.local].ty;
-        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| {
-            let ty = place_ty?;
-            match elem {
-                ProjectionElem::Deref => Self::deref_ty(ty),
-                ProjectionElem::Field(_idx, fty) => Ok(*fty),
-                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                    Self::index_ty(ty)
-                }
-                ProjectionElem::Subslice { from, to, from_end } => {
-                    Self::subslice_ty(ty, from, to, from_end)
-                }
-                ProjectionElem::Downcast(_) => Ok(ty),
-                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
+        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| elem.ty(place_ty?))
+    }
+}
+
+impl ProjectionElem {
+    /// Get the expected type after applying this projection to a given place type.
+    pub fn ty(&self, place_ty: Ty) -> Result<Ty, Error> {
+        let ty = place_ty;
+        match &self {
+            ProjectionElem::Deref => Self::deref_ty(ty),
+            ProjectionElem::Field(_idx, fty) => Ok(*fty),
+            ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => Self::index_ty(ty),
+            ProjectionElem::Subslice { from, to, from_end } => {
+                Self::subslice_ty(ty, from, to, from_end)
             }
-        })
+            ProjectionElem::Downcast(_) => Ok(ty),
+            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
+        }
     }
 
     fn index_ty(ty: Ty) -> Result<Ty, Error> {

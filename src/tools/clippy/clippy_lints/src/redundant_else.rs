@@ -111,7 +111,7 @@ impl<'ast> Visitor<'ast> for BreakVisitor {
             ExprKind::If(_, ref then, Some(ref els)) => self.check_block(then) && self.check_expr(els),
             ExprKind::If(_, _, None)
             // ignore loops for simplicity
-            | ExprKind::While(..) | ExprKind::ForLoop(..) | ExprKind::Loop(..) => false,
+            | ExprKind::While(..) | ExprKind::ForLoop { .. } | ExprKind::Loop(..) => false,
             _ => {
                 walk_expr(self, expr);
                 return;

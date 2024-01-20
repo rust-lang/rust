@@ -39,7 +39,7 @@ impl<T> Foo for T {
     }
 }
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct S<T:?Sized>(u32, T);
 
 fn main() {

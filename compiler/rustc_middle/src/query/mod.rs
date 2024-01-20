@@ -57,11 +57,11 @@ use rustc_ast as ast;
 use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, DocLinkResMap};
@@ -69,7 +69,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
@@ -174,14 +174,6 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Gives access to the HIR node for the HIR owner `key`.
-    ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query hir_owner(key: hir::OwnerId) -> Option<crate::hir::Owner<'tcx>> {
-        desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key) }
-    }
-
     /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
     /// Definitions that were generated with no HIR, would be fed to return `None`.
@@ -264,7 +256,7 @@ rustc_queries! {
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
-        -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed>
+        -> Result<&'tcx DefIdMap<ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
         cache_on_disk_if { key.is_local() }
@@ -611,7 +603,7 @@ rustc_queries! {
         desc { "erasing regions from `{}`", ty }
     }
 
-    query wasm_import_module_map(_: CrateNum) -> &'tcx FxHashMap<DefId, String> {
+    query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
         arena_cache
         desc { "getting wasm import module map" }
     }
@@ -859,25 +851,24 @@ rustc_queries! {
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    query inherent_impls(key: DefId) -> &'tcx [DefId] {
+    query inherent_impls(key: DefId) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+    query incoherent_impls(key: SimplifiedType) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
-    /// The result of unsafety-checking this `LocalDefId`.
-    query unsafety_check_result(key: LocalDefId) -> &'tcx mir::UnsafetyCheckResult {
+    /// The result of unsafety-checking this `LocalDefId` with the old checker.
+    query mir_unsafety_check_result(key: LocalDefId) -> &'tcx mir::UnsafetyCheckResult {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
 
-    /// Unsafety-check this `LocalDefId` with THIR unsafeck. This should be
-    /// used with `-Zthir-unsafeck`.
-    query thir_check_unsafety(key: LocalDefId) {
+    /// Unsafety-check this `LocalDefId`.
+    query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
@@ -938,10 +929,6 @@ rustc_queries! {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_item_types(key: LocalModDefId) -> () {
-        desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
-    }
-
     query check_mod_privacy(key: LocalModDefId) -> () {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
@@ -966,8 +953,9 @@ rustc_queries! {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_impl_wf(key: LocalModDefId) -> () {
+    query check_mod_impl_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
+        ensure_forwards_result_if_red
     }
 
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
@@ -1016,15 +1004,16 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls(k: ()) -> &'tcx CrateInherentImpls {
-        arena_cache
+    query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
         desc { "finding all inherent impls defined in crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ()) -> () {
+    query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1299,8 +1288,7 @@ rustc_queries! {
         desc { |tcx| "finding trait impls of `{}`", tcx.def_path_str(trait_id) }
     }
 
-    query specialization_graph_of(trait_id: DefId) -> &'tcx specialization_graph::Graph {
-        arena_cache
+    query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
     }
@@ -1392,6 +1380,8 @@ rustc_queries! {
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
+        // we emit our own error during query cycle handling
+        cycle_delay_bug
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
@@ -1490,7 +1480,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
+        -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
         desc { "getting traits in scope at a block" }
     }
 
@@ -1542,7 +1532,7 @@ rustc_queries! {
     /// added or removed in any upstream crate. Instead use the narrower
     /// `upstream_monomorphizations_for`, `upstream_drop_glue_for`, or, even
     /// better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<FxHashMap<GenericArgsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgsRef<'tcx>, CrateNum>> {
         arena_cache
         desc { "collecting available upstream monomorphizations" }
     }
@@ -1555,7 +1545,7 @@ rustc_queries! {
     /// You likely want to call `Instance::upstream_monomorphization()`
     /// instead of invoking this query directly.
     query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx FxHashMap<GenericArgsRef<'tcx>, CrateNum>>
+        -> Option<&'tcx UnordMap<GenericArgsRef<'tcx>, CrateNum>>
     {
         desc { |tcx|
             "collecting available upstream monomorphizations for `{}`",
@@ -1649,7 +1639,7 @@ rustc_queries! {
     ///
     /// Do not call this directly, but instead use the `incoherent_impls` query.
     /// This query is only used to get the data necessary for that query.
-    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }
@@ -1667,7 +1657,7 @@ rustc_queries! {
         desc { "resolving lifetimes" }
     }
     query named_variable_map(_: hir::OwnerId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, ResolvedArg>> {
+        Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
@@ -1683,7 +1673,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(_: hir::OwnerId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
         desc { "looking up late bound vars" }
     }
 
@@ -1739,7 +1729,7 @@ rustc_queries! {
         separate_provide_extern
         arena_cache
     }
-    query stability_implications(_: CrateNum) -> &'tcx FxHashMap<Symbol, Symbol> {
+    query stability_implications(_: CrateNum) -> &'tcx UnordMap<Symbol, Symbol> {
         arena_cache
         desc { "calculating the implications between `#[unstable]` features defined in a crate" }
         separate_provide_extern
@@ -1791,7 +1781,7 @@ rustc_queries! {
     }
     /// Collects the "trimmed", shortest accessible paths to all items for diagnostics.
     /// See the [provider docs](`rustc_middle::ty::print::trimmed_def_paths`) for more info.
-    query trimmed_def_paths(_: ()) -> &'tcx FxHashMap<DefId, Symbol> {
+    query trimmed_def_paths(_: ()) -> &'tcx DefIdMap<Symbol> {
         arena_cache
         desc { "calculating trimmed def paths" }
     }
@@ -1953,13 +1943,22 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
-    query implied_outlives_bounds(
+    query implied_outlives_bounds_compat(
         goal: CanonicalTyGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{}`", goal.value.value }
+    }
+
+    query implied_outlives_bounds(
+        goal: CanonicalTyGoal<'tcx>
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
+        NoSolution,
+    > {
+        desc { "computing implied outlives bounds v2 for `{}`", goal.value.value }
     }
 
     /// Do not call this query directly:
@@ -2082,7 +2081,7 @@ rustc_queries! {
         desc { "computing autoderef types for `{}`", goal.value.value }
     }
 
-    query supported_target_features(_: CrateNum) -> &'tcx FxHashMap<String, Option<Symbol>> {
+    query supported_target_features(_: CrateNum) -> &'tcx UnordMap<String, Option<Symbol>> {
         arena_cache
         eval_always
         desc { "looking up supported target features" }

@@ -396,16 +396,16 @@ function loadSearchJS(doc_folder, resource_suffix) {
     const staticFiles = path.join(doc_folder, "static.files");
     const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
     const searchModule = require(path.join(staticFiles, searchJs));
-    const searchWords = searchModule.initSearch(searchIndex.searchIndex);
+    searchModule.initSearch(searchIndex.searchIndex);
 
     return {
         doSearch: function(queryStr, filterCrate, currentCrate) {
-            return searchModule.execQuery(searchModule.parseQuery(queryStr), searchWords,
+            return searchModule.execQuery(searchModule.parseQuery(queryStr),
                 filterCrate, currentCrate);
         },
         getCorrections: function(queryStr, filterCrate, currentCrate) {
             const parsedQuery = searchModule.parseQuery(queryStr);
-            searchModule.execQuery(parsedQuery, searchWords, filterCrate, currentCrate);
+            searchModule.execQuery(parsedQuery, filterCrate, currentCrate);
             return parsedQuery.correction;
         },
         parseQuery: searchModule.parseQuery,

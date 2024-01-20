@@ -4,16 +4,16 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, NextSolverConfig,
+    CollapseMacroDebuginfo, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry,
+    ExternLocation, Externs, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
+    InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig,
     OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
     ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, CompilerIO, EarlyErrorHandler, Session};
+use rustc_session::{build_session, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
@@ -25,11 +25,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
-    let mut early_handler = EarlyErrorHandler::new(ErrorOutputType::default());
-    early_handler.initialize_checked_jobserver();
+    let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
+    early_dcx.initialize_checked_jobserver();
 
     let registry = registry::Registry::new(&[]);
-    let sessopts = build_session_options(&mut early_handler, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches);
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
     let io = CompilerIO {
         input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -38,7 +38,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         temps_dir,
     };
     let sess = build_session(
-        early_handler,
+        early_dcx,
         sessopts,
         io,
         None,
@@ -52,7 +52,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         Arc::default(),
         Default::default(),
     );
-    let cfg = parse_cfg(&sess.diagnostic(), matches.opt_strs("cfg"));
+    let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
     (sess, cfg)
 }
 
@@ -143,20 +143,20 @@ fn test_can_print_warnings() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(!sess.diagnostic().can_emit_warnings());
+        assert!(!sess.dcx().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches =
             optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
+        assert!(sess.dcx().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
+        assert!(sess.dcx().can_emit_warnings());
     });
 }
 
@@ -301,36 +301,36 @@ fn test_search_paths_tracking_hash_different_order() {
     let mut v3 = Options::default();
     let mut v4 = Options::default();
 
-    let handler = EarlyErrorHandler::new(JSON);
+    let early_dcx = EarlyDiagCtxt::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
         json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
     };
 
     // Reference
-    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
-    v1.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
+    v1.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
 
-    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
-    v2.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
+    v2.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
 
-    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
-    v3.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
+    v3.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
 
-    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "all=mno"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "native=abc"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "crate=def"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "dependency=ghi"));
-    v4.search_paths.push(SearchPath::from_cli_opt(&handler, "framework=jkl"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "all=mno"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "native=abc"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "crate=def"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "dependency=ghi"));
+    v4.search_paths.push(SearchPath::from_cli_opt(&early_dcx, "framework=jkl"));
 
     assert_same_hash(&v1, &v2);
     assert_same_hash(&v1, &v3);
@@ -659,14 +659,12 @@ fn test_unstable_options_tracking_hash() {
     // tidy-alphabetical-start
     untracked!(assert_incr_state, Some(String::from("loaded")));
     untracked!(deduplicate_diagnostics, false);
-    untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
     untracked!(dump_mir, Some(String::from("abc")));
     untracked!(dump_mir_dataflow, true);
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
-    untracked!(dump_mir_spanview, Some(MirSpanview::Statement));
     untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
     untracked!(dump_mono_stats_format, DumpMonoStatsFormat::Json);
     untracked!(dylib_lto, true);
@@ -700,6 +698,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(query_dep_graph, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
     untracked!(self_profile_events, Some(vec![String::new()]));
+    untracked!(shell_argfiles, true);
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
@@ -714,7 +713,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(unpretty, Some("expanded".to_string()));
     untracked!(unstable_options, true);
     untracked!(validate_mir, true);
-    untracked!(verbose, true);
+    untracked!(verbose_internals, true);
     untracked!(write_long_types_to_disk, false);
     // tidy-alphabetical-end
 
@@ -743,6 +742,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
@@ -806,7 +806,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
-    tracked!(report_delayed_bugs, true);
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
@@ -822,7 +821,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(stack_protector, StackProtector::All);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
-    tracked!(thir_unsafeck, true);
+    tracked!(thir_unsafeck, false);
     tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(translate_remapped_path_to_local_path, false);
@@ -854,9 +853,9 @@ fn test_edition_parsing() {
     let options = Options::default();
     assert!(options.edition == DEFAULT_EDITION);
 
-    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
-    let sessopts = build_session_options(&mut handler, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches);
     assert!(sessopts.edition == Edition::Edition2018)
 }

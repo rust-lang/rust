@@ -17,14 +17,12 @@ use crate::errors;
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain).emit();
+            feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain)
-                .help($help)
-                .emit();
+            feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};
 }
@@ -33,7 +31,7 @@ macro_rules! gate {
 macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
+            feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
 }
@@ -45,7 +43,7 @@ macro_rules! gate_multi {
             let spans: Vec<_> =
                 $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
             if !spans.is_empty() {
-                feature_err(&$visitor.sess.parse_sess, sym::$feature, spans, $explain).emit();
+                feature_err(&$visitor.sess, sym::$feature, spans, $explain).emit();
             }
         }
     }};
@@ -55,7 +53,7 @@ macro_rules! gate_multi {
 macro_rules! gate_legacy {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_warn(&$visitor.sess.parse_sess, sym::$feature, $span, $explain);
+            feature_warn(&$visitor.sess, sym::$feature, $span, $explain);
         }
     }};
 }
@@ -91,18 +89,11 @@ impl<'a> PostExpansionVisitor<'a> {
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
             Err(abi::AbiDisabled::Unstable { feature, explain }) => {
-                feature_err_issue(
-                    &self.sess.parse_sess,
-                    feature,
-                    span,
-                    GateIssue::Language,
-                    explain,
-                )
-                .emit();
+                feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
-                    self.sess.diagnostic().span_delayed_bug(
+                    self.sess.dcx().span_delayed_bug(
                         span,
                         format!(
                             "unrecognized ABI not caught in lowering: {}",
@@ -152,8 +143,8 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 
     fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
-        // Check only lifetime parameters are present and that the lifetime
-        // parameters that are present have no bounds.
+        // Check only lifetime parameters are present and that the
+        // generic parameters that are present have no bounds.
         let non_lt_param_spans = params.iter().filter_map(|param| match param.kind {
             ast::GenericParamKind::Lifetime { .. } => None,
             _ => Some(param.ident.span),
@@ -164,10 +155,11 @@ impl<'a> PostExpansionVisitor<'a> {
             non_lt_param_spans,
             crate::fluent_generated::ast_passes_forbidden_non_lifetime_param
         );
+
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.emit_err(errors::ForbiddenLifetimeBound { spans });
+                self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
             }
         }
     }
@@ -225,7 +217,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 || attr.has_name(sym::rustc_const_stable)
                 || attr.has_name(sym::rustc_default_body_unstable)
             {
-                self.sess.emit_err(errors::StabilityOutsideStd { span: attr.span });
+                self.sess.dcx().emit_err(errors::StabilityOutsideStd { span: attr.span });
             }
         }
     }
@@ -526,6 +518,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
         closure_lifetime_binder,
         "`for<...>` binders for closures are experimental",
@@ -554,6 +547,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
+    gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
 
     if !visitor.features.never_patterns {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -568,16 +562,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 if let Ok(snippet) = sm.span_to_snippet(span)
                     && snippet == "!"
                 {
-                    feature_err(
-                        &sess.parse_sess,
-                        sym::never_patterns,
-                        span,
-                        "`!` patterns are experimental",
-                    )
-                    .emit();
+                    feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
+                        .emit();
                 } else {
                     let suggestion = span.shrink_to_hi();
-                    sess.emit_err(errors::MatchArmWithNoBody { span, suggestion });
+                    sess.dcx().emit_err(errors::MatchArmWithNoBody { span, suggestion });
                 }
             }
         }
@@ -585,7 +574,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
-            sess.emit_err(errors::NegativeBoundUnsupported { span });
+            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
         }
     }
 
@@ -654,7 +643,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
             if all_stable {
                 err.sugg = Some(attr.span);
             }
-            sess.diagnostic().emit_err(err);
+            sess.dcx().emit_err(err);
         }
     }
 }
@@ -675,7 +664,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
             if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
             {
                 let spans = vec![f1_span, f2_span];
-                sess.emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
+                sess.dcx().emit_err(errors::IncompatibleFeatures {
+                    spans,
+                    f1: f1_name,
+                    f2: f2_name,
+                });
             }
         }
     }

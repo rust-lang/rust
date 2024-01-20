@@ -276,7 +276,7 @@ fn error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: None,
         sub,
@@ -290,7 +290,7 @@ fn maybe_supported_error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: Some(()),
         sub,
@@ -379,7 +379,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a thir::Expr<'tcx>) {
         self.is_poly |= self.expr_is_poly(expr);
         if !self.is_poly {
             visit::walk_expr(self, expr)
@@ -387,7 +387,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'a thir::Pat<'tcx>) {
         self.is_poly |= self.pat_is_poly(pat);
         if !self.is_poly {
             visit::walk_pat(self, pat);

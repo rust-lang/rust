@@ -165,6 +165,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // We need to handle `extern static`.
         match self.tcx.try_get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
+                // Thread-local statics do not have a constant address. They *must* be accessed via
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
                 bug!("global memory cannot point to thread-local static")
             }
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
@@ -539,6 +541,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccessTest)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
+                // Thread-local statics do not have a constant address. They *must* be accessed via
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Notice that every static has two `AllocId` that will resolve to the same
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
@@ -740,6 +744,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
+                // Thread-local statics do not have a constant address. They *must* be accessed via
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
                 let ty = self
@@ -1203,21 +1209,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_ub_custom!(fluent::const_eval_copy_nonoverlapping_overlapping);
                     }
                 }
+            }
 
-                for i in 0..num_copies {
-                    ptr::copy(
-                        src_bytes,
-                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
-                        size.bytes_usize(),
-                    );
+            let size_in_bytes = size.bytes_usize();
+            // For particularly large arrays (where this is perf-sensitive) it's common that
+            // we're writing a single byte repeatedly. So, optimize that case to a memset.
+            if size_in_bytes == 1 && num_copies >= 1 {
+                // SAFETY: `src_bytes` would be read from anyway by copies below (num_copies >= 1).
+                // Since size_in_bytes = 1, then the `init.no_bytes_init()` check above guarantees
+                // that this read at type `u8` is OK -- it must be an initialized byte.
+                let value = *src_bytes;
+                dest_bytes.write_bytes(value, (size * num_copies).bytes_usize());
+            } else if src_alloc_id == dest_alloc_id {
+                let mut dest_ptr = dest_bytes;
+                for _ in 0..num_copies {
+                    ptr::copy(src_bytes, dest_ptr, size_in_bytes);
+                    dest_ptr = dest_ptr.add(size_in_bytes);
                 }
             } else {
-                for i in 0..num_copies {
-                    ptr::copy_nonoverlapping(
-                        src_bytes,
-                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
-                        size.bytes_usize(),
-                    );
+                let mut dest_ptr = dest_bytes;
+                for _ in 0..num_copies {
+                    ptr::copy_nonoverlapping(src_bytes, dest_ptr, size_in_bytes);
+                    dest_ptr = dest_ptr.add(size_in_bytes);
                 }
             }
         }

@@ -89,8 +89,9 @@ use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{Expr, LintLevel};
+use rustc_middle::thir::{ExprId, LintLevel};
 use rustc_session::lint::Level;
+use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -592,7 +593,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<&Expr<'tcx>>,
+        value: Option<ExprId>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -706,7 +707,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
         let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
@@ -960,7 +961,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // path, we only need to invalidate the cache for drops that happen on
         // the unwind or coroutine drop paths. This means that for
         // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.coroutine_kind.is_some();
+        let invalidate_caches = needs_drop || self.coroutine.is_some();
         for scope in self.scopes.scopes.iter_mut().rev() {
             if invalidate_caches {
                 scope.invalidate_cache();
@@ -1020,14 +1021,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
+    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand {
+        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
             Operand::Copy(_) | Operand::Constant(_) => None,
             Operand::Move(place) => place.as_local(),
         });
@@ -1073,7 +1074,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return cached_drop;
         }
 
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
                 if is_coroutine || drop.kind == DropKind::Value {
@@ -1318,7 +1319,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
@@ -1355,7 +1356,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
 
     /// Build the unwind and coroutine drop trees.
     pub(crate) fn build_drop_trees(&mut self) {
-        if self.coroutine_kind.is_some() {
+        if self.coroutine.is_some() {
             self.build_coroutine_drop_trees();
         } else {
             Self::build_unwind_tree(

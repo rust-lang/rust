@@ -26,6 +26,7 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
             self.sess()
+                .dcx()
                 .emit_fatal(SymbolAlreadyDefined { span: self.tcx.def_span(def_id), symbol_name })
         });
 

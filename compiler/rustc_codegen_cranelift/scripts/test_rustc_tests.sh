@@ -31,6 +31,7 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
 rm tests/ui/asm/may_unwind.rs
+rm tests/ui/stable-mir-print/basic_function.rs
 
 # extra warning about -Cpanic=abort for proc macros
 rm tests/ui/proc-macro/crt-static.rs
@@ -79,6 +80,7 @@ rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/issue-109934-lto-debuginfo
+rm -r tests/run-make/no-builtins-lto
 
 # optimization tests
 # ==================

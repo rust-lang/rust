@@ -30,6 +30,23 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
             }
         }
 
+        if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) =
+            key.value.predicate.kind().skip_binder()
+        {
+            match arg.as_type()?.kind() {
+                ty::Param(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Float(_)
+                | ty::Str
+                | ty::Uint(_) => {
+                    return Some(());
+                }
+                _ => {}
+            }
+        }
+
         None
     }
 

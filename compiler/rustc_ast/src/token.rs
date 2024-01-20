@@ -528,15 +528,6 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token can appear at the start of a generic bound.
-    pub fn can_begin_bound(&self) -> bool {
-        self.is_path_start()
-            || self.is_lifetime()
-            || self.is_keyword(kw::For)
-            || self == &Question
-            || self == &OpenDelim(Delimiter::Parenthesis)
-    }
-
     /// Returns `true` if the token can appear at the start of an item.
     pub fn can_begin_item(&self) -> bool {
         match self.kind {

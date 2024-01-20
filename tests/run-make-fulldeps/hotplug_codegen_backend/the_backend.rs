@@ -67,7 +67,7 @@ impl CodegenBackend for TheBackend {
         let crate_name = codegen_results.crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
-                sess.fatal(format!("Crate type is {:?}", crate_type));
+                sess.dcx().fatal(format!("Crate type is {:?}", crate_type));
             }
             let output_name = out_filename(sess, crate_type, &outputs, crate_name);
             match output_name {

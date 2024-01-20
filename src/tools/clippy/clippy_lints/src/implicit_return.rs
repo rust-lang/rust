@@ -225,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         _: LocalDefId,
     ) {
         if (!matches!(kind, FnKind::Closure) && matches!(decl.output, FnRetTy::DefaultReturn(_)))
-            || span.ctxt() != body.value.span.ctxt()
+            || !span.eq_ctxt(body.value.span)
             || in_external_macro(cx.sess(), span)
         {
             return;

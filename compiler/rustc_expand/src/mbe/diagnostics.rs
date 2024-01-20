@@ -34,7 +34,10 @@ pub(super) fn failed_to_match_macro<'cx>(
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
         // but for that it must have emitted an error already
-        tracker.cx.sess.span_delayed_bug(sp, "Macro matching returned a success on the second try");
+        tracker
+            .cx
+            .dcx()
+            .span_delayed_bug(sp, "Macro matching returned a success on the second try");
     }
 
     if let Some(result) = tracker.result {
@@ -49,7 +52,7 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.struct_span_err(span, parse_failure_msg(&token));
+    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
@@ -151,7 +154,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
-                self.cx.sess.span_delayed_bug(
+                self.cx.dcx().span_delayed_bug(
                     self.root_span,
                     "should not collect detailed info for successful macro match",
                 );
@@ -177,7 +180,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.struct_span_err(span, msg.clone()).emit();
+                self.cx.dcx().span_err(span, msg.clone());
                 self.result = Some(DummyResult::any(span));
             }
             ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),
@@ -215,7 +218,7 @@ impl<'matcher> Tracker<'matcher> for FailureForwarder {
 }
 
 pub(super) fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed>,
+    mut e: DiagnosticBuilder<'_>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
@@ -224,11 +227,11 @@ pub(super) fn emit_frag_parse_err(
 ) {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
-        && let DiagnosticMessage::Str(message) = &e.message[0].0
+        && let DiagnosticMessage::Str(message) = &e.messages[0].0
         && message.ends_with(", found `<eof>`")
     {
-        let msg = &e.message[0];
-        e.message[0] = (
+        let msg = &e.messages[0];
+        e.messages[0] = (
             DiagnosticMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
                 message.replace(", found `<eof>`", ""),

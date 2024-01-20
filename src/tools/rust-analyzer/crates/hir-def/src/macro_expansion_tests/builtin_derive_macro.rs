@@ -16,13 +16,12 @@ struct Foo;
 #[derive(Copy)]
 struct Foo;
 
-impl < > core::marker::Copy for Foo< > where {}"#]],
+impl < > $crate::marker::Copy for Foo< > where {}"#]],
     );
 }
 
 #[test]
 fn test_copy_expand_in_core() {
-    cov_mark::check!(test_copy_expand_in_core);
     check(
         r#"
 //- /lib.rs crate:core
@@ -41,7 +40,7 @@ macro Copy {}
 #[derive(Copy)]
 struct Foo;
 
-impl < > crate ::marker::Copy for Foo< > where {}"#]],
+impl < > $crate::marker::Copy for Foo< > where {}"#]],
     );
 }
 
@@ -57,7 +56,7 @@ struct Foo<A, B>;
 #[derive(Copy)]
 struct Foo<A, B>;
 
-impl <A: core::marker::Copy, B: core::marker::Copy, > core::marker::Copy for Foo<A, B, > where {}"#]],
+impl <A: $crate::marker::Copy, B: $crate::marker::Copy, > $crate::marker::Copy for Foo<A, B, > where {}"#]],
     );
 }
 
@@ -74,7 +73,7 @@ struct Foo<A, B, 'a, 'b>;
 #[derive(Copy)]
 struct Foo<A, B, 'a, 'b>;
 
-impl <A: core::marker::Copy, B: core::marker::Copy, > core::marker::Copy for Foo<A, B, > where {}"#]],
+impl <A: $crate::marker::Copy, B: $crate::marker::Copy, > $crate::marker::Copy for Foo<A, B, > where {}"#]],
     );
 }
 
@@ -98,7 +97,7 @@ enum Command<A, B> {
     Jump,
 }
 
-impl <A: core::clone::Clone, B: core::clone::Clone, > core::clone::Clone for Command<A, B, > where {
+impl <A: $crate::clone::Clone, B: $crate::clone::Clone, > $crate::clone::Clone for Command<A, B, > where {
     fn clone(&self ) -> Self {
         match self {
             Command::Move {
@@ -158,7 +157,7 @@ where
     generic: Vec<T::InGenericArg>,
 }
 
-impl <T: core::clone::Clone, > core::clone::Clone for Foo<T, > where T: Trait, T::InFieldShorthand: core::clone::Clone, T::InGenericArg: core::clone::Clone, {
+impl <T: $crate::clone::Clone, > $crate::clone::Clone for Foo<T, > where T: Trait, T::InFieldShorthand: $crate::clone::Clone, T::InGenericArg: $crate::clone::Clone, {
     fn clone(&self ) -> Self {
         match self {
             Foo {
@@ -186,7 +185,7 @@ struct Foo<const X: usize, T>(u32);
 #[derive(Clone)]
 struct Foo<const X: usize, T>(u32);
 
-impl <const X: usize, T: core::clone::Clone, > core::clone::Clone for Foo<X, T, > where {
+impl <const X: usize, T: $crate::clone::Clone, > $crate::clone::Clone for Foo<X, T, > where {
     fn clone(&self ) -> Self {
         match self {
             Foo(f0, )=>Foo(f0.clone(), ),
@@ -226,14 +225,14 @@ enum Bar {
     Bar,
 }
 
-impl < > core::default::Default for Foo< > where {
+impl < > $crate::default::Default for Foo< > where {
     fn default() -> Self {
         Foo {
-            field1: core::default::Default::default(), field2: core::default::Default::default(),
+            field1: $crate::default::Default::default(), field2: $crate::default::Default::default(),
         }
     }
 }
-impl < > core::default::Default for Bar< > where {
+impl < > $crate::default::Default for Bar< > where {
     fn default() -> Self {
         Bar::Bar
     }
@@ -261,7 +260,7 @@ enum Command {
     Jump,
 }
 
-impl < > core::cmp::PartialEq for Command< > where {
+impl < > $crate::cmp::PartialEq for Command< > where {
     fn eq(&self , other: &Self ) -> bool {
         match (self , other) {
             (Command::Move {
@@ -274,7 +273,7 @@ impl < > core::cmp::PartialEq for Command< > where {
         }
     }
 }
-impl < > core::cmp::Eq for Command< > where {}"#]],
+impl < > $crate::cmp::Eq for Command< > where {}"#]],
     );
 }
 
@@ -299,7 +298,7 @@ enum Command {
     Jump,
 }
 
-impl < > core::cmp::PartialEq for Command< > where {
+impl < > $crate::cmp::PartialEq for Command< > where {
     fn eq(&self , other: &Self ) -> bool {
         match (self , other) {
             (Command::Move {
@@ -312,7 +311,7 @@ impl < > core::cmp::PartialEq for Command< > where {
         }
     }
 }
-impl < > core::cmp::Eq for Command< > where {}"#]],
+impl < > $crate::cmp::Eq for Command< > where {}"#]],
     );
 }
 
@@ -336,10 +335,10 @@ enum Command {
     Jump,
 }
 
-impl < > core::cmp::PartialOrd for Command< > where {
-    fn partial_cmp(&self , other: &Self ) -> core::option::Option::Option<core::cmp::Ordering> {
-        match core::intrinsics::discriminant_value(self ).partial_cmp(&core::intrinsics::discriminant_value(other)) {
-            core::option::Option::Some(core::cmp::Ordering::Equal)=> {
+impl < > $crate::cmp::PartialOrd for Command< > where {
+    fn partial_cmp(&self , other: &Self ) -> $crate::option::Option::Option<$crate::cmp::Ordering> {
+        match $crate::intrinsics::discriminant_value(self ).partial_cmp(&$crate::intrinsics::discriminant_value(other)) {
+            $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
                 match (self , other) {
                     (Command::Move {
                         x: x_self, y: y_self,
@@ -348,10 +347,10 @@ impl < > core::cmp::PartialOrd for Command< > where {
                         x: x_other, y: y_other,
                     }
                     )=>match x_self.partial_cmp(&x_other) {
-                        core::option::Option::Some(core::cmp::Ordering::Equal)=> {
+                        $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
                             match y_self.partial_cmp(&y_other) {
-                                core::option::Option::Some(core::cmp::Ordering::Equal)=> {
-                                    core::option::Option::Some(core::cmp::Ordering::Equal)
+                                $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
+                                    $crate::option::Option::Some($crate::cmp::Ordering::Equal)
                                 }
                                 c=>return c,
                             }
@@ -359,22 +358,22 @@ impl < > core::cmp::PartialOrd for Command< > where {
                         c=>return c,
                     }
                     , (Command::Do(f0_self, ), Command::Do(f0_other, ))=>match f0_self.partial_cmp(&f0_other) {
-                        core::option::Option::Some(core::cmp::Ordering::Equal)=> {
-                            core::option::Option::Some(core::cmp::Ordering::Equal)
+                        $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
+                            $crate::option::Option::Some($crate::cmp::Ordering::Equal)
                         }
                         c=>return c,
                     }
-                    , (Command::Jump, Command::Jump)=>core::option::Option::Some(core::cmp::Ordering::Equal), _unused=>core::option::Option::Some(core::cmp::Ordering::Equal)
+                    , (Command::Jump, Command::Jump)=>$crate::option::Option::Some($crate::cmp::Ordering::Equal), _unused=>$crate::option::Option::Some($crate::cmp::Ordering::Equal)
                 }
             }
             c=>return c,
         }
     }
 }
-impl < > core::cmp::Ord for Command< > where {
-    fn cmp(&self , other: &Self ) -> core::cmp::Ordering {
-        match core::intrinsics::discriminant_value(self ).cmp(&core::intrinsics::discriminant_value(other)) {
-            core::cmp::Ordering::Equal=> {
+impl < > $crate::cmp::Ord for Command< > where {
+    fn cmp(&self , other: &Self ) -> $crate::cmp::Ordering {
+        match $crate::intrinsics::discriminant_value(self ).cmp(&$crate::intrinsics::discriminant_value(other)) {
+            $crate::cmp::Ordering::Equal=> {
                 match (self , other) {
                     (Command::Move {
                         x: x_self, y: y_self,
@@ -383,10 +382,10 @@ impl < > core::cmp::Ord for Command< > where {
                         x: x_other, y: y_other,
                     }
                     )=>match x_self.cmp(&x_other) {
-                        core::cmp::Ordering::Equal=> {
+                        $crate::cmp::Ordering::Equal=> {
                             match y_self.cmp(&y_other) {
-                                core::cmp::Ordering::Equal=> {
-                                    core::cmp::Ordering::Equal
+                                $crate::cmp::Ordering::Equal=> {
+                                    $crate::cmp::Ordering::Equal
                                 }
                                 c=>return c,
                             }
@@ -394,12 +393,12 @@ impl < > core::cmp::Ord for Command< > where {
                         c=>return c,
                     }
                     , (Command::Do(f0_self, ), Command::Do(f0_other, ))=>match f0_self.cmp(&f0_other) {
-                        core::cmp::Ordering::Equal=> {
-                            core::cmp::Ordering::Equal
+                        $crate::cmp::Ordering::Equal=> {
+                            $crate::cmp::Ordering::Equal
                         }
                         c=>return c,
                     }
-                    , (Command::Jump, Command::Jump)=>core::cmp::Ordering::Equal, _unused=>core::cmp::Ordering::Equal
+                    , (Command::Jump, Command::Jump)=>$crate::cmp::Ordering::Equal, _unused=>$crate::cmp::Ordering::Equal
                 }
             }
             c=>return c,
@@ -433,8 +432,8 @@ struct Foo {
     z: (i32, u64),
 }
 
-impl < > core::hash::Hash for Foo< > where {
-    fn hash<H: core::hash::Hasher>(&self , ra_expand_state: &mut H) {
+impl < > $crate::hash::Hash for Foo< > where {
+    fn hash<H: $crate::hash::Hasher>(&self , ra_expand_state: &mut H) {
         match self {
             Foo {
                 x: x, y: y, z: z,
@@ -471,9 +470,9 @@ enum Command {
     Jump,
 }
 
-impl < > core::hash::Hash for Command< > where {
-    fn hash<H: core::hash::Hasher>(&self , ra_expand_state: &mut H) {
-        core::mem::discriminant(self ).hash(ra_expand_state);
+impl < > $crate::hash::Hash for Command< > where {
+    fn hash<H: $crate::hash::Hasher>(&self , ra_expand_state: &mut H) {
+        $crate::mem::discriminant(self ).hash(ra_expand_state);
         match self {
             Command::Move {
                 x: x, y: y,
@@ -517,8 +516,8 @@ enum Command {
     Jump,
 }
 
-impl < > core::fmt::Debug for Command< > where {
-    fn fmt(&self , f: &mut core::fmt::Formatter) -> core::fmt::Result {
+impl < > $crate::fmt::Debug for Command< > where {
+    fn fmt(&self , f: &mut $crate::fmt::Formatter) -> $crate::fmt::Result {
         match self {
             Command::Move {
                 x: x, y: y,

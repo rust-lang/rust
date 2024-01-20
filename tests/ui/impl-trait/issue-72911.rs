@@ -15,6 +15,7 @@ fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> 
 
 fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
     //~^ ERROR: failed to resolve
+    //~| ERROR: `()` is not an iterator
     unimplemented!()
 }
 

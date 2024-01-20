@@ -36,6 +36,9 @@ impl flags::Metrics {
                     MeasurementType::Build => {
                         metrics.measure_build(sh)?;
                     }
+                    MeasurementType::RustcTests => {
+                        metrics.measure_rustc_tests(sh)?;
+                    }
                     MeasurementType::AnalyzeSelf => {
                         metrics.measure_analysis_stats_self(sh)?;
                     }
@@ -50,6 +53,7 @@ impl flags::Metrics {
             }
             None => {
                 metrics.measure_build(sh)?;
+                metrics.measure_rustc_tests(sh)?;
                 metrics.measure_analysis_stats_self(sh)?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeRipgrep.as_ref())?;
                 metrics.measure_analysis_stats(sh, MeasurementType::AnalyzeWebRender.as_ref())?;
@@ -78,6 +82,19 @@ impl Metrics {
         self.report("build", time.as_millis() as u64, "ms".into());
         Ok(())
     }
+
+    fn measure_rustc_tests(&mut self, sh: &Shell) -> anyhow::Result<()> {
+        eprintln!("\nMeasuring rustc tests");
+
+        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust").run()?;
+
+        let output = cmd!(sh, "./target/release/rust-analyzer rustc-tests ./rust").read()?;
+        for (metric, value, unit) in parse_metrics(&output) {
+            self.report(metric, value, unit.into());
+        }
+        Ok(())
+    }
+
     fn measure_analysis_stats_self(&mut self, sh: &Shell) -> anyhow::Result<()> {
         self.measure_analysis_stats_path(sh, "self", ".")
     }

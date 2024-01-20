@@ -111,6 +111,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(offset_of_nested))]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -119,7 +120,6 @@
 #![feature(const_arguments_as_str)]
 #![feature(const_array_from_ref)]
 #![feature(const_array_into_iter_constructors)]
-#![feature(const_assume)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_caller_location)]
@@ -168,7 +168,6 @@
 #![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
-#![feature(core_panic)]
 #![feature(coverage_attribute)]
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
@@ -178,8 +177,8 @@
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
-#![feature(offset_of)]
 #![feature(offset_of_enum)]
+#![feature(panic_internals)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
@@ -218,6 +217,7 @@
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
+#![feature(diagnostic_namespace)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]

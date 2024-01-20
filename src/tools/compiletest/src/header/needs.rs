@@ -238,7 +238,7 @@ impl CachedNeedsConditions {
             sanitizer_memtag: sanitizers.contains(&Sanitizer::Memtag),
             sanitizer_shadow_call_stack: sanitizers.contains(&Sanitizer::ShadowCallStack),
             sanitizer_safestack: sanitizers.contains(&Sanitizer::Safestack),
-            profiler_support: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
+            profiler_support: config.profiler_support,
             xray: config.target_cfg().xray,
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),

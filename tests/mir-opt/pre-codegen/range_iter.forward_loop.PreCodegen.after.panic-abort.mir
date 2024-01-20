@@ -49,7 +49,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb0: {
         _4 = std::ops::Range::<u32> { start: _1, end: _2 };
         StorageLive(_5);
-        _5 = move _4;
+        _5 = _4;
         goto -> bb1;
     }
 
@@ -75,7 +75,7 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb2: {
         StorageDead(_8);
         StorageDead(_7);
-        _12 = Option::<u32>::None;
+        _12 = const Option::<u32>::None;
         goto -> bb5;
     }
 
@@ -130,4 +130,8 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb10: {
         unreachable;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

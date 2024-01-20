@@ -128,10 +128,10 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                         ),
                     }
                 }
-                &AggregateKind::Closure(def_id, _) | &AggregateKind::Coroutine(def_id, _, _) => {
+                &AggregateKind::Closure(def_id, _) | &AggregateKind::Coroutine(def_id, _) => {
                     let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
-                        self.tcx.unsafety_check_result(def_id);
+                        self.tcx.mir_unsafety_check_result(def_id);
                     self.register_violations(violations, used_unsafe_blocks.items().copied());
                 }
             },
@@ -153,7 +153,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     if self.tcx.def_kind(def_id) == DefKind::InlineConst {
                         let local_def_id = def_id.expect_local();
                         let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
-                            self.tcx.unsafety_check_result(local_def_id);
+                            self.tcx.mir_unsafety_check_result(local_def_id);
                         self.register_violations(violations, used_unsafe_blocks.items().copied());
                     }
                 }
@@ -242,7 +242,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     if assigned_ty.needs_drop(self.tcx, self.param_env) {
                         // This would be unsafe, but should be outright impossible since we reject such unions.
-                        self.tcx.sess.span_delayed_bug(
+                        self.tcx.dcx().span_delayed_bug(
                             self.source_info.span,
                             format!("union fields that need dropping should be impossible: {assigned_ty}")
                         );
@@ -390,7 +390,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { unsafety_check_result, ..*providers };
+    *providers = Providers { mir_unsafety_check_result, ..*providers };
 }
 
 /// Context information for [`UnusedUnsafeVisitor`] traversal,
@@ -490,7 +490,7 @@ fn check_unused_unsafe(
     unused_unsafes
 }
 
-fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResult {
+fn mir_unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of
@@ -538,7 +538,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
+    let UnsafetyCheckResult { violations, unused_unsafes, .. } =
+        tcx.mir_unsafety_check_result(def_id);
     // Only suggest wrapping the entire function body in an unsafe block once
     let mut suggest_unsafe_block = true;
 
@@ -568,7 +569,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     None
                 };
-                tcx.sess.emit_err(errors::RequiresUnsafe {
+                tcx.dcx().emit_err(errors::RequiresUnsafe {
                     span: source_info.span,
                     enclosing,
                     details,

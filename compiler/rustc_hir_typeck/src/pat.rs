@@ -3,7 +3,7 @@ use crate::{errors, FnCtxt, RawTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan,
 };
 use rustc_hir as hir;
@@ -99,7 +99,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         let mut diag =
             self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
         if let Some(expr) = ti.origin_expr {
@@ -117,7 +117,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) {
-        if let Some(mut err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
+        if let Some(err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
             err.emit();
         }
     }
@@ -177,9 +177,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
 
         let ty = match pat.kind {
-            PatKind::Wild => expected,
-            // FIXME(never_patterns): check the type is uninhabited. If that is not possible within
-            // typeck, do that in a later phase.
+            PatKind::Wild | PatKind::Err(_) => expected,
+            // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
@@ -325,6 +324,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Ref(..) => AdjustMode::Reset,
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
+            // A malformed pattern doesn't have an expected type, so let's just accept any type.
+            | PatKind::Err(_)
             // Bindings also work with whatever the expected type is,
             // and moreover if we peel references off, that will give us the wrong binding type.
             // Also, we can have a subpattern `binding @ pat`.
@@ -441,7 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Some(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Some(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             err.emit_unless(
                 ti.span
                     .filter(|&s| {
@@ -546,8 +547,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (_, Some((true, _, sp))) => sp,
             _ => span_bug!(span, "emit_err_pat_range: no side failed or exists but still error?"),
         };
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.dcx(),
             span,
             E0029,
             "only `char` and numeric types are allowed in range patterns"
@@ -754,7 +755,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Box(..)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
-                        | PatKind::Range(..) => break 'block None,
+                        | PatKind::Range(..)
+                        | PatKind::Err(_) => break 'block None,
                     },
 
                     // Don't provide suggestions in other cases
@@ -837,8 +839,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is "x = SomeTrait" being reduced from
             // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
             let type_str = self.ty_to_string(expected);
-            let mut err = struct_span_err!(
-                self.tcx.sess,
+            let mut err = struct_span_code_err!(
+                self.dcx(),
                 span,
                 E0033,
                 "type `{}` cannot be dereferenced",
@@ -899,7 +901,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
-                let e = tcx.sess.span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
+                let e = tcx.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 return Ty::new_error(tcx, e);
             }
@@ -967,7 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn emit_bad_pat_path(
         &self,
-        mut e: DiagnosticBuilder<'_, ErrorGuaranteed>,
+        mut e: DiagnosticBuilder<'_>,
         pat: &hir::Pat<'tcx>,
         res: Res,
         pat_res: Res,
@@ -1068,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None);
         if res == Res::Err {
-            let e = tcx.sess.span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+            let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
             on_error(e);
             return Ty::new_error(tcx, e);
@@ -1084,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let variant = match res {
             Res::Err => {
-                let e = tcx.sess.span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+                let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 on_error(e);
                 return Ty::new_error(tcx, e);
@@ -1103,7 +1105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, ti);
-        let had_err = if let Some(mut err) = diag {
+        let had_err = if let Some(err) = diag {
             err.emit();
             true
         } else {
@@ -1171,8 +1173,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let last_field_def_span = *field_def_spans.last().unwrap();
 
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.dcx(),
             MultiSpan::from_spans(subpat_spans),
             E0023,
             "this pattern has {} field{}, but the corresponding {} has {} field{}",
@@ -1329,9 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
-        if let Some(mut err) =
-            self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info)
-        {
+        if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
@@ -1437,10 +1437,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Report an error if an incorrect number of fields was specified.
         if adt.is_union() {
             if fields.len() != 1 {
-                tcx.sess.emit_err(errors::UnionPatMultipleFields { span: pat.span });
+                tcx.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
             }
             if has_rest_pat {
-                tcx.sess.emit_err(errors::UnionPatDotDot { span: pat.span });
+                tcx.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
             }
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
@@ -1469,8 +1469,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
-            (Some(mut i), Some(mut u)) => {
-                if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+            (Some(i), Some(u)) => {
+                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     // We don't want to show the nonexistent fields error when this was
                     // `Foo { a, b }` when it should have been `Foo(a, b)`.
                     i.delay_as_bug();
@@ -1481,19 +1481,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     u.emit();
                 }
             }
-            (None, Some(mut u)) => {
-                if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+            (None, Some(u)) => {
+                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     u.delay_as_bug();
                     e.emit();
                 } else {
                     u.emit();
                 }
             }
-            (Some(mut err), None) => {
+            (Some(err), None) => {
                 err.emit();
             }
             (None, None)
-                if let Some(mut err) =
+                if let Some(err) =
                     self.error_tuple_variant_index_shorthand(variant, pat, fields) =>
             {
                 err.emit();
@@ -1508,7 +1508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'_>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1518,8 +1518,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
                 let path = rustc_hir_pretty::qpath_to_string(qpath);
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+                let mut err = struct_span_code_err!(
+                    self.dcx(),
                     pat.span,
                     E0769,
                     "tuple variant `{path}` written as struct variant",
@@ -1543,19 +1543,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
         let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
 
-        let mut err = struct_span_err!(
-            sess,
+        struct_span_code_err!(
+            self.dcx(),
             pat.span,
             E0638,
             "`..` required with {descr} marked as non-exhaustive",
-        );
-        err.span_suggestion_verbose(
+        )
+        .with_span_suggestion_verbose(
             sp_comma,
             "add `..` at the end of the field list to ignore all other fields",
             sugg,
             Applicability::MachineApplicable,
-        );
-        err.emit();
+        )
+        .emit();
     }
 
     fn error_field_already_bound(
@@ -1564,15 +1564,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ident: Ident,
         other_field: Span,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
-            self.tcx.sess,
+        struct_span_code_err!(
+            self.dcx(),
             span,
             E0025,
             "field `{}` bound multiple times in the pattern",
             ident
         )
-        .span_label(span, format!("multiple uses of `{ident}` in pattern"))
-        .span_label(other_field, format!("first use of `{ident}`"))
+        .with_span_label(span, format!("multiple uses of `{ident}` in pattern"))
+        .with_span_label(other_field, format!("first use of `{ident}`"))
         .emit()
     }
 
@@ -1584,7 +1584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
         args: &'tcx ty::List<ty::GenericArg<'tcx>>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if let [field] = inexistent_fields {
             (format!("a field named `{}`", field.ident), "this", "")
@@ -1603,8 +1603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         };
         let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
-        let mut err = struct_span_err!(
-            tcx.sess,
+        let mut err = struct_span_code_err!(
+            tcx.dcx(),
             spans,
             E0026,
             "{} `{}` does not have {}",
@@ -1689,7 +1689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         if let (Some(CtorKind::Fn), PatKind::Struct(qpath, pattern_fields, ..)) =
             (variant.ctor_kind(), &pat.kind)
         {
@@ -1700,8 +1700,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let path = rustc_hir_pretty::qpath_to_string(qpath);
-            let mut err = struct_span_err!(
-                self.tcx.sess,
+            let mut err = struct_span_code_err!(
+                self.dcx(),
                 pat.span,
                 E0769,
                 "tuple variant `{}` written as struct variant",
@@ -1775,10 +1775,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let mut err = self
-            .tcx
-            .sess
+            .dcx()
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
@@ -1820,7 +1819,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
             const LIMIT: usize = 3;
             match witnesses {
-                [] => bug!(),
+                [] => {
+                    unreachable!(
+                        "expected an uncovered pattern, otherwise why are we emitting an error?"
+                    )
+                }
                 [witness] => format!("`{witness}`"),
                 [head @ .., tail] if head.len() < LIMIT => {
                     let head: Vec<_> = head.iter().map(<_>::to_string).collect();
@@ -1845,8 +1848,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lint.note(format!(
             "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
         ));
-
-        lint
     });
     }
 
@@ -1865,7 +1866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if let [(_, field)] = unmentioned_fields {
             format!("field `{field}`{inaccessible}")
@@ -1877,8 +1878,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .join(", ");
             format!("fields {fields}{inaccessible}")
         };
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.dcx(),
             pat.span,
             E0027,
             "pattern does not mention {}",
@@ -2079,7 +2080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// If we're in an irrefutable pattern we prefer the array impl candidate given that
-    /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
+    /// the slice impl candidate would be rejected anyway (if no ambiguity existed).
     fn pat_is_irrefutable(&self, decl_origin: Option<DeclOrigin<'_>>) -> bool {
         match decl_origin {
             Some(DeclOrigin::LocalDecl { els: None }) => true,
@@ -2227,8 +2228,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_len: u64,
         size: u64,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
-            self.tcx.sess,
+        struct_span_code_err!(
+            self.dcx(),
             span,
             E0527,
             "pattern requires {} element{} but array has {}",
@@ -2236,7 +2237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, pluralize!(size)))
+        .with_span_label(span, format!("expected {} element{}", size, pluralize!(size)))
         .emit()
     }
 
@@ -2246,8 +2247,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_len: u64,
         size: u64,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
-            self.tcx.sess,
+        struct_span_code_err!(
+            self.dcx(),
             span,
             E0528,
             "pattern requires at least {} element{} but array has {}",
@@ -2255,7 +2256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label(
+        .with_span_label(
             span,
             format!("pattern cannot match array of {} element{}", size, pluralize!(size),),
         )
@@ -2263,8 +2264,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn error_scrutinee_unfixed_length(&self, span: Span) -> ErrorGuaranteed {
-        struct_span_err!(
-            self.tcx.sess,
+        struct_span_code_err!(
+            self.dcx(),
             span,
             E0730,
             "cannot pattern-match on an array without a fixed length",
@@ -2278,8 +2279,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.dcx(),
             span,
             E0529,
             "expected an array or slice, found `{expected_ty}`"

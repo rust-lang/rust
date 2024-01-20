@@ -3,7 +3,7 @@ macro_rules! uint_impl {
         Self = $SelfT:ty,
         ActualT = $ActualT:ident,
         SignedT = $SignedT:ident,
-        NonZeroT = $NonZeroT:ident,
+        NonZeroT = $NonZeroT:ty,
 
         // There are all for use *only* in doc comments.
         // As such, they're all passed as literals -- passing them as a string
@@ -842,6 +842,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog2(self) -> Option<u32> {
+            // FIXME: Simply use `NonZero::new` once it is actually generic.
             if let Some(x) = <$NonZeroT>::new(self) {
                 Some(x.ilog2())
             } else {
@@ -864,6 +865,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
+            // FIXME: Simply use `NonZero::new` once it is actually generic.
             if let Some(x) = <$NonZeroT>::new(self) {
                 Some(x.ilog10())
             } else {

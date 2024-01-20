@@ -4,7 +4,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(never_type)]
-// #![cfg_attr(precise, feature(const_precise_live_drops))]
+#![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::Destruct;
 
@@ -63,8 +63,7 @@ mod t {
         fn foo() {}
     }
 
-    // FIXME(effects): This should be a `const` bound instead of a `~const` one.
-    pub struct ConstDropWithBound<T: ~const SomeTrait>(pub core::marker::PhantomData<T>);
+    pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
 
     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {
@@ -101,7 +100,7 @@ implements_const_drop! {
 }
 
 fn main() {
-    struct HasDropGlue(#[allow(unused_tuple_struct_fields)] Box<u8>);
+    struct HasDropGlue(#[allow(dead_code)] Box<u8>);
     struct HasDropImpl;
     impl Drop for HasDropImpl {
         fn drop(&mut self) {

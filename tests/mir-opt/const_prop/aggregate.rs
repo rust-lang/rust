@@ -1,8 +1,8 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: ConstProp
+// unit-test: GVN
 // compile-flags: -O
 
-// EMIT_MIR aggregate.main.ConstProp.diff
+// EMIT_MIR aggregate.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];
@@ -15,7 +15,7 @@ fn main() {
 }
 
 // Verify that we still propagate if part of the aggregate is not known.
-// EMIT_MIR aggregate.foo.ConstProp.diff
+// EMIT_MIR aggregate.foo.GVN.diff
 fn foo(x: u8) {
     // CHECK-LABEL: fn foo(
     // CHECK: debug first => [[first:_.*]];

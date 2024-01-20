@@ -1,11 +1,13 @@
-use crate::{HashStableContext, Symbol};
+use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    Hash64, HashStable, StableHasher, StableOrd, ToStableHashKey,
+};
 use rustc_data_structures::unhash::Unhasher;
 use rustc_data_structures::AtomicRef;
 use rustc_index::Idx;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Encodable};
 use std::fmt;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
@@ -43,20 +45,6 @@ impl CrateNum {
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.as_u32(), f)
-    }
-}
-
-/// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
-/// Therefore, make sure to include the context when encode a `CrateNum`.
-impl<E: Encoder> Encodable<E> for CrateNum {
-    default fn encode(&self, s: &mut E) {
-        s.emit_u32(self.as_u32());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for CrateNum {
-    default fn decode(d: &mut D) -> CrateNum {
-        CrateNum::from_u32(d.read_u32())
     }
 }
 
@@ -114,8 +102,6 @@ impl DefPathHash {
     }
 
     /// Returns the crate-local part of the [DefPathHash].
-    ///
-    /// Used for tests.
     #[inline]
     pub fn local_hash(&self) -> Hash64 {
         self.0.split().1
@@ -132,6 +118,11 @@ impl Default for DefPathHash {
     fn default() -> Self {
         DefPathHash(Fingerprint::ZERO)
     }
+}
+
+// Safety: `DefPathHash` sort order is not affected (de)serialization.
+unsafe impl StableOrd for DefPathHash {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 
 /// A [`StableCrateId`] is a 64-bit hash of a crate name, together with all
@@ -219,18 +210,6 @@ rustc_index::newtype_index! {
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
         const CRATE_DEF_INDEX = 0;
-    }
-}
-
-impl<E: Encoder> Encodable<E> for DefIndex {
-    default fn encode(&self, _: &mut E) {
-        panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for DefIndex {
-    default fn decode(_: &mut D) -> DefIndex {
-        panic!("cannot decode `DefIndex` with `{}`", std::any::type_name::<D>());
     }
 }
 
@@ -349,19 +328,6 @@ impl From<LocalDefId> for DefId {
     }
 }
 
-impl<E: Encoder> Encodable<E> for DefId {
-    default fn encode(&self, s: &mut E) {
-        self.krate.encode(s);
-        self.index.encode(s);
-    }
-}
-
-impl<D: Decoder> Decodable<D> for DefId {
-    default fn decode(d: &mut D) -> DefId {
-        DefId { krate: Decodable::decode(d), index: Decodable::decode(d) }
-    }
-}
-
 pub fn default_def_id_debug(def_id: DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.debug_struct("DefId").field("krate", &def_id.krate).field("index", &def_id.index).finish()
 }
@@ -425,13 +391,13 @@ impl fmt::Debug for LocalDefId {
     }
 }
 
-impl<E: Encoder> Encodable<E> for LocalDefId {
+impl<E: SpanEncoder> Encodable<E> for LocalDefId {
     fn encode(&self, s: &mut E) {
         self.to_def_id().encode(s);
     }
 }
 
-impl<D: Decoder> Decodable<D> for LocalDefId {
+impl<D: SpanDecoder> Decodable<D> for LocalDefId {
     fn decode(d: &mut D) -> LocalDefId {
         DefId::decode(d).expect_local()
     }
@@ -489,6 +455,15 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefPathHash {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> DefPathHash {
+        *self
     }
 }
 

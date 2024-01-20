@@ -9,7 +9,7 @@ use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 /// A pass that seeks to optimize unnecessary moves of large enum types, if there is a large
 /// enough discrepancy between them.
 ///
-/// i.e. If there is are two variants:
+/// i.e. If there are two variants:
 /// ```
 /// enum Example {
 ///   Small,

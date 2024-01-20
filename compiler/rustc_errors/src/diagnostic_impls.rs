@@ -1,10 +1,12 @@
 use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
-use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
+use crate::{
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    IntoDiagnosticArg, Level,
+};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
-use rustc_lint_defs::Level;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
@@ -216,7 +218,7 @@ impl IntoDiagnosticArg for ast::Visibility {
     }
 }
 
-impl IntoDiagnosticArg for Level {
+impl IntoDiagnosticArg for rustc_lint_defs::Level {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
@@ -245,53 +247,45 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
     }
 }
 
-impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag;
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> {
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space)
+                    .with_arg("addr_space", addr_space)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits)
+                    .with_arg("kind", kind)
+                    .with_arg("bit", bit)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = handler.struct_fatal(fluent::errors_target_missing_alignment);
-                diag.set_arg("cause", cause);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment)
+                    .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err_kind", err.diag_ident());
-                diag.set_arg("align", err.align());
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment)
+                    .with_arg("cause", cause)
+                    .with_arg("err_kind", err.diag_ident())
+                    .with_arg("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = handler.struct_fatal(fluent::errors_target_inconsistent_architecture);
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_architecture)
+                    .with_arg("dl", dl)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = handler.struct_fatal(fluent::errors_target_inconsistent_pointer_width);
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
+                    .with_arg("pointer_size", pointer_size)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = handler.struct_fatal(fluent::errors_target_invalid_bits_size);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size)
+                    .with_arg("err", err)
             }
         }
     }
@@ -301,23 +295,11 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
 pub struct SingleLabelManySpans {
     pub spans: Vec<Span>,
     pub label: &'static str,
-    pub kind: LabelKind,
 }
 impl AddToDiagnostic for SingleLabelManySpans {
     fn add_to_diagnostic_with<F>(self, diag: &mut crate::Diagnostic, _: F) {
-        match self.kind {
-            LabelKind::Note => diag.span_note(self.spans, self.label),
-            LabelKind::Label => diag.span_labels(self.spans, self.label),
-            LabelKind::Help => diag.span_help(self.spans, self.label),
-        };
+        diag.span_labels(self.spans, self.label);
     }
-}
-
-/// The kind of label to attach when using [`SingleLabelManySpans`]
-pub enum LabelKind {
-    Note,
-    Label,
-    Help,
 }
 
 #[derive(Subdiagnostic)]
@@ -362,9 +344,9 @@ impl IntoDiagnosticArg for Backtrace {
 pub struct InvalidFlushedDelayedDiagnosticLevel {
     #[primary_span]
     pub span: Span,
-    pub level: rustc_errors::Level,
+    pub level: Level,
 }
-impl IntoDiagnosticArg for rustc_errors::Level {
+impl IntoDiagnosticArg for Level {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::from(self.to_string()))
     }
@@ -377,4 +359,10 @@ pub struct IndicateAnonymousLifetime {
     pub span: Span,
     pub count: usize,
     pub suggestion: String,
+}
+
+impl IntoDiagnosticArg for type_ir::ClosureKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(self.as_str().into())
+    }
 }

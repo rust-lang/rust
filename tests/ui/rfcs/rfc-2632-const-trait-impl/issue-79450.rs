@@ -1,5 +1,5 @@
 #![feature(const_fmt_arguments_new)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Tr {

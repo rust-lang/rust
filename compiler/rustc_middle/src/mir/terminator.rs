@@ -26,6 +26,7 @@ impl SwitchTargets {
     }
 
     /// Inverse of `SwitchTargets::static_if`.
+    #[inline]
     pub fn as_static_if(&self) -> Option<(u128, BasicBlock, BasicBlock)> {
         if let &[value] = &self.values[..]
             && let &[then, else_] = &self.targets[..]
@@ -37,6 +38,7 @@ impl SwitchTargets {
     }
 
     /// Returns the fallback target that is jumped to when none of the values match the operand.
+    #[inline]
     pub fn otherwise(&self) -> BasicBlock {
         *self.targets.last().unwrap()
     }
@@ -47,15 +49,18 @@ impl SwitchTargets {
     /// including the `otherwise` fallback target.
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
+    #[inline]
     pub fn iter(&self) -> SwitchTargetsIter<'_> {
         SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).
+    #[inline]
     pub fn all_targets(&self) -> &[BasicBlock] {
         &self.targets
     }
 
+    #[inline]
     pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
         &mut self.targets
     }
@@ -63,6 +68,7 @@ impl SwitchTargets {
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
     /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.
+    #[inline]
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
@@ -75,10 +81,12 @@ pub struct SwitchTargetsIter<'a> {
 impl<'a> Iterator for SwitchTargetsIter<'a> {
     type Item = (u128, BasicBlock);
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next().map(|(val, bb)| (*val, *bb))
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
@@ -147,20 +155,24 @@ impl<O> AssertKind<O> {
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             DivisionByZero(_) => "attempt to divide by zero",
             RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
-            ResumedAfterReturn(CoroutineKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterReturn(CoroutineKind::AsyncGen(_)) => {
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => "coroutine resumed after completion",
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                "`async fn` resumed after completion"
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 "`async gen fn` resumed after completion"
             }
-            ResumedAfterReturn(CoroutineKind::Gen(_)) => {
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 "`gen fn` should just keep returning `None` after completion"
             }
-            ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
-            ResumedAfterPanic(CoroutineKind::Async(_)) => "`async fn` resumed after panicking",
-            ResumedAfterPanic(CoroutineKind::AsyncGen(_)) => {
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                "`async fn` resumed after panicking"
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 "`async gen fn` resumed after panicking"
             }
-            ResumedAfterPanic(CoroutineKind::Gen(_)) => {
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 "`gen fn` should just keep returning `None` after panicking"
             }
 
@@ -249,18 +261,28 @@ impl<O> AssertKind<O> {
             OverflowNeg(_) => middle_assert_overflow_neg,
             DivisionByZero(_) => middle_assert_divide_by_zero,
             RemainderByZero(_) => middle_assert_remainder_by_zero,
-            ResumedAfterReturn(CoroutineKind::Async(_)) => middle_assert_async_resume_after_return,
-            ResumedAfterReturn(CoroutineKind::AsyncGen(_)) => todo!(),
-            ResumedAfterReturn(CoroutineKind::Gen(_)) => {
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                middle_assert_async_resume_after_return
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                todo!()
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
-            ResumedAfterReturn(CoroutineKind::Coroutine) => {
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_return
             }
-            ResumedAfterPanic(CoroutineKind::Async(_)) => middle_assert_async_resume_after_panic,
-            ResumedAfterPanic(CoroutineKind::AsyncGen(_)) => todo!(),
-            ResumedAfterPanic(CoroutineKind::Gen(_)) => middle_assert_gen_resume_after_panic,
-            ResumedAfterPanic(CoroutineKind::Coroutine) => {
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+                middle_assert_async_resume_after_panic
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
+                todo!()
+            }
+            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
+                middle_assert_gen_resume_after_panic
+            }
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
 
@@ -316,28 +338,34 @@ pub type SuccessorsMut<'a> =
     iter::Chain<std::option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
 impl<'tcx> Terminator<'tcx> {
+    #[inline]
     pub fn successors(&self) -> Successors<'_> {
         self.kind.successors()
     }
 
+    #[inline]
     pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
         self.kind.successors_mut()
     }
 
+    #[inline]
     pub fn unwind(&self) -> Option<&UnwindAction> {
         self.kind.unwind()
     }
 
+    #[inline]
     pub fn unwind_mut(&mut self) -> Option<&mut UnwindAction> {
         self.kind.unwind_mut()
     }
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
+    #[inline]
     pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
         TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
     }
 
+    #[inline]
     pub fn successors(&self) -> Successors<'_> {
         use self::TerminatorKind::*;
         match *self {
@@ -378,6 +406,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
         use self::TerminatorKind::*;
         match *self {
@@ -416,6 +445,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn unwind(&self) -> Option<&UnwindAction> {
         match *self {
             TerminatorKind::Goto { .. }
@@ -435,6 +465,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn unwind_mut(&mut self) -> Option<&mut UnwindAction> {
         match *self {
             TerminatorKind::Goto { .. }
@@ -454,6 +485,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_switch(&self) -> Option<(&Operand<'tcx>, &SwitchTargets)> {
         match self {
             TerminatorKind::SwitchInt { discr, targets } => Some((discr, targets)),
@@ -461,6 +493,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_goto(&self) -> Option<BasicBlock> {
         match self {
             TerminatorKind::Goto { target } => Some(*target),

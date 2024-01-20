@@ -537,28 +537,19 @@ impl Rewrite for ast::Lifetime {
 impl Rewrite for ast::GenericBound {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
-            ast::GenericBound::Trait(ref poly_trait_ref, trait_bound_modifier) => {
+            ast::GenericBound::Trait(ref poly_trait_ref, modifiers) => {
                 let snippet = context.snippet(self.span());
                 let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
-                let rewrite = match trait_bound_modifier {
-                    ast::TraitBoundModifier::None => poly_trait_ref.rewrite(context, shape),
-                    ast::TraitBoundModifier::Maybe => poly_trait_ref
-                        .rewrite(context, shape.offset_left(1)?)
-                        .map(|s| format!("?{}", s)),
-                    ast::TraitBoundModifier::MaybeConst(_) => poly_trait_ref
-                        .rewrite(context, shape.offset_left(7)?)
-                        .map(|s| format!("~const {}", s)),
-                    ast::TraitBoundModifier::MaybeConstMaybe => poly_trait_ref
-                        .rewrite(context, shape.offset_left(8)?)
-                        .map(|s| format!("~const ?{}", s)),
-                    ast::TraitBoundModifier::Negative => poly_trait_ref
-                        .rewrite(context, shape.offset_left(1)?)
-                        .map(|s| format!("!{}", s)),
-                    ast::TraitBoundModifier::MaybeConstNegative => poly_trait_ref
-                        .rewrite(context, shape.offset_left(8)?)
-                        .map(|s| format!("~const !{}", s)),
-                };
-                rewrite.map(|s| if has_paren { format!("({})", s) } else { s })
+                let mut constness = modifiers.constness.as_str().to_string();
+                if !constness.is_empty() {
+                    constness.push(' ');
+                }
+                let polarity = modifiers.polarity.as_str();
+                let shape = shape.offset_left(constness.len() + polarity.len())?;
+                poly_trait_ref
+                    .rewrite(context, shape)
+                    .map(|s| format!("{constness}{polarity}{s}"))
+                    .map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
         }

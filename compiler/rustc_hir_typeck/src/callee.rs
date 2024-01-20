@@ -51,7 +51,7 @@ pub fn check_legal_trait_for_method_call(
         } else {
             errors::ExplicitDestructorCallSugg::Empty(span)
         };
-        tcx.sess.emit_err(errors::ExplicitDestructorCall { span, sugg });
+        tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg });
     }
 }
 
@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         call_expr.span,
                         "input to overloaded call fn is not a self receiver",
                     );
@@ -259,7 +259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
-                        self.tcx.sess.span_delayed_bug(
+                        self.dcx().span_delayed_bug(
                             call_expr.span,
                             "input to call/call_mut is not a ref",
                         );
@@ -293,45 +293,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_node: &hir::ExprKind<'_>,
         callee_span: Span,
     ) {
+        let hir::ExprKind::Block(..) = callee_node else {
+            // Only calls on blocks suggested here.
+            return;
+        };
+
         let hir = self.tcx.hir();
-        let parent_hir_id = hir.parent_id(hir_id);
-        let parent_node = self.tcx.hir_node(parent_hir_id);
-        if let (
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, body, .. }),
+        let fn_decl_span = if let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
+            ..
+        }) = hir.get_parent(hir_id)
+        {
+            fn_decl_span
+        } else if let Some((
+            _,
+            hir::Node::Expr(&hir::Expr {
+                hir_id: parent_hir_id,
+                kind:
+                    hir::ExprKind::Closure(&hir::Closure {
+                        kind:
+                            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                                hir::CoroutineDesugaring::Async,
+                                hir::CoroutineSource::Closure,
+                            )),
+                        ..
+                    }),
                 ..
             }),
-            hir::ExprKind::Block(..),
-        ) = (parent_node, callee_node)
+        )) = hir.parent_iter(hir_id).nth(3)
         {
-            let fn_decl_span = if hir.body(body).coroutine_kind
-                == Some(hir::CoroutineKind::Async(hir::CoroutineSource::Closure))
+            // Actually need to unwrap one more layer of HIR to get to
+            // the _real_ closure...
+            let async_closure = hir.parent_id(parent_hir_id);
+            if let hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
+                ..
+            }) = self.tcx.hir_node(async_closure)
             {
-                // Actually need to unwrap one more layer of HIR to get to
-                // the _real_ closure...
-                let async_closure = hir.parent_id(parent_hir_id);
-                if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
-                    ..
-                }) = self.tcx.hir_node(async_closure)
-                {
-                    fn_decl_span
-                } else {
-                    return;
-                }
-            } else {
                 fn_decl_span
-            };
+            } else {
+                return;
+            }
+        } else {
+            return;
+        };
 
-            let start = fn_decl_span.shrink_to_lo();
-            let end = callee_span.shrink_to_hi();
-            err.multipart_suggestion(
-                "if you meant to create this closure and immediately call it, surround the \
+        let start = fn_decl_span.shrink_to_lo();
+        let end = callee_span.shrink_to_hi();
+        err.multipart_suggestion(
+            "if you meant to create this closure and immediately call it, surround the \
                 closure with parentheses",
-                vec![(start, "(".to_string()), (end, ")".to_string())],
-                Applicability::MaybeIncorrect,
-            );
-        }
+            vec![(start, "(".to_string()), (end, ")".to_string())],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// Give appropriate suggestion when encountering `[("a", 0) ("b", 1)]`, where the
@@ -393,13 +407,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             predicate,
                         );
                         let result = self.evaluate_obligation(&obligation);
-                        self.tcx
-                            .sess
+                        self.dcx()
                             .struct_span_err(
                                 callee_expr.span,
                                 format!("evaluate({predicate:?}) = {result:?}"),
                             )
-                            .span_label(predicate_span, "predicate")
+                            .with_span_label(predicate_span, "predicate")
                             .emit();
                     }
                 }
@@ -414,11 +427,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
-                    && let Some(mut diag) = self
-                        .tcx
-                        .sess
-                        .diagnostic()
-                        .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
+                    && let Some(mut diag) =
+                        self.dcx().steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
                     // Try suggesting `foo(a)` -> `a.foo()` if possible.
                     self.suggest_call_as_method(&mut diag, segment, arg_exprs, call_expr, expected);
@@ -467,7 +477,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.require_type_is_sized(ty, sp, traits::RustCall);
             } else {
-                self.tcx.sess.emit_err(errors::RustCallIncorrectArgs { span: sp });
+                self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
+            }
+        }
+
+        if let Some(def_id) = def_id
+            && self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
+            && self.tcx.is_intrinsic(def_id)
+            && self.tcx.item_name(def_id) == sym::const_eval_select
+        {
+            let fn_sig = self.resolve_vars_if_possible(fn_sig);
+            for idx in 0..=1 {
+                let arg_ty = fn_sig.inputs()[idx + 1];
+                let span = arg_exprs.get(idx + 1).map_or(call_expr.span, |arg| arg.span);
+                // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
+                // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
+                // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
+                //
+                // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
+                if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
+                    let fn_once_def_id =
+                        self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
+                    let fn_once_output_def_id =
+                        self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
+                    if self.tcx.has_host_param(fn_once_def_id) {
+                        let const_param: ty::GenericArg<'tcx> =
+                            ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
+                        self.register_predicate(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(span),
+                            self.param_env,
+                            ty::TraitRef::new(
+                                self.tcx,
+                                fn_once_def_id,
+                                [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
+                            ),
+                        ));
+
+                        self.register_predicate(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(span),
+                            self.param_env,
+                            ty::ProjectionPredicate {
+                                projection_ty: ty::AliasTy::new(
+                                    self.tcx,
+                                    fn_once_output_def_id,
+                                    [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
+                                ),
+                                term: fn_sig.output().into(),
+                            },
+                        ));
+
+                        self.select_obligations_where_possible(|_| {});
+                    } else if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                        self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
+                    }
+                } else {
+                    self.dcx().emit_err(errors::ConstSelectMustBeFn { span, ty: arg_ty });
+                }
             }
         }
 
@@ -596,7 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
-        let mut err = self.tcx.sess.create_err(errors::InvalidCallee {
+        let mut err = self.dcx().create_err(errors::InvalidCallee {
             span: callee_expr.span,
             ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
@@ -872,7 +939,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
             None => {
                 // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
                 // lang items are not defined (issue #86238).
-                fcx.inh.tcx.sess.emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
+                fcx.dcx().emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
             }
         }
     }

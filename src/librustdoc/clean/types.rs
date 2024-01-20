@@ -36,7 +36,7 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
-use crate::clean::external_path;
+use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
@@ -1012,7 +1012,7 @@ pub(crate) trait AttributesExt {
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => {
-                                    sess.span_err(e.span, e.msg);
+                                    sess.dcx().span_err(e.span, e.msg);
                                 }
                             }
                         }
@@ -1258,7 +1258,7 @@ impl GenericBound {
     fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-        let path = external_path(cx, did, false, ThinVec::new(), empty);
+        let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
     }
@@ -1862,7 +1862,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
             .copied()
     }
 
@@ -1870,7 +1870,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
             .copied()
     }
 

@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &hir::Expr<'_>,
     ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
         let ty = self.resolve_vars_if_possible(ty);
-        let mut err = self.tcx.sess.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             span,
             format!("negative integers cannot be used to index on a `{ty}`"),
         );
@@ -332,15 +332,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if inside_union
                             && source.ty_adt_def().is_some_and(|adt| adt.is_manually_drop())
                         {
-                            let mut err = self.tcx.sess.struct_span_err(
+                            self.dcx().struct_span_err(
                                 expr.span,
                                 "not automatically applying `DerefMut` on `ManuallyDrop` union field",
-                            );
-                            err.help(
+                            )
+                            .with_help(
                                 "writing to this reference calls the destructor for the old value",
-                            );
-                            err.help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor");
-                            err.emit();
+                            )
+                            .with_help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor")
+                            .emit();
                         }
                     }
                     source = adjustment.target;

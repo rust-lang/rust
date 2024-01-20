@@ -85,6 +85,9 @@ impl AsRef<str> for Foo {
     }
 }
 
+/// <div id="doc-warning-0" class="warning">I have warnings!</div>
+pub struct WarningStruct;
+
 /// Just a normal enum.
 ///
 /// # title!

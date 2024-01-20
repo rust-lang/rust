@@ -77,6 +77,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             CanonicalGoalEvaluationKind::CycleInStack => {
                 writeln!(self.f, "CYCLE IN STACK: {:?}", eval.result)
             }
+            CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
+                writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
+            }
             CanonicalGoalEvaluationKind::Evaluation { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}")?;
@@ -123,7 +126,13 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         self.nested(|this| {
             for step in &probe.steps {
                 match step {
-                    ProbeStep::AddGoal(goal) => writeln!(this.f, "ADDED GOAL: {goal:?}")?,
+                    ProbeStep::AddGoal(source, goal) => {
+                        let source = match source {
+                            GoalSource::Misc => "misc",
+                            GoalSource::ImplWhereBound => "impl where-bound",
+                        };
+                        writeln!(this.f, "ADDED GOAL ({source}): {goal:?}")?
+                    }
                     ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
                     ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
                     ProbeStep::CommitIfOkStart => writeln!(this.f, "COMMIT_IF_OK START")?,

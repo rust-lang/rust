@@ -9,7 +9,7 @@ unsafe auto trait AutoUnsafe {}
 impl !Auto for bool {}
 impl !AutoUnsafe for bool {}
 
-struct AutoBool(#[allow(unused_tuple_struct_fields)] bool);
+struct AutoBool(#[allow(dead_code)] bool);
 
 impl Auto for AutoBool {}
 unsafe impl AutoUnsafe for AutoBool {}

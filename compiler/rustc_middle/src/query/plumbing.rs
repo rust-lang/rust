@@ -53,7 +53,7 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], guar: ErrorGuaranteed) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 }
 
@@ -174,7 +174,7 @@ pub fn query_ensure<'tcx, Cache>(
 }
 
 #[inline]
-pub fn query_ensure_error_guaranteed<'tcx, Cache>(
+pub fn query_ensure_error_guaranteed<'tcx, Cache, T>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
@@ -182,14 +182,16 @@ pub fn query_ensure_error_guaranteed<'tcx, Cache>(
     check_cache: bool,
 ) -> Result<(), ErrorGuaranteed>
 where
-    Cache: QueryCache<Value = super::erase::Erase<Result<(), ErrorGuaranteed>>>,
+    Cache: QueryCache<Value = super::erase::Erase<Result<T, ErrorGuaranteed>>>,
+    Result<T, ErrorGuaranteed>: EraseType,
 {
     let key = key.into_query_param();
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
-        super::erase::restore(res)
+        super::erase::restore(res).map(drop)
     } else {
         execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
             .map(super::erase::restore)
+            .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
             // or we can just assume the query succeeded, because it was green in the
             // incremental cache. If it is green, that means that the previous compilation
@@ -205,7 +207,7 @@ macro_rules! query_ensure {
         query_ensure($($args)*)
     };
     ([(ensure_forwards_result_if_red) $($rest:tt)*]$($args:tt)*) => {
-        query_ensure_error_guaranteed($($args)*)
+        query_ensure_error_guaranteed($($args)*).map(|_| ())
     };
     ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
         query_ensure!([$($modifiers)*]$($args)*)
@@ -551,7 +553,7 @@ macro_rules! define_feedable {
                                 // We have an inconsistency. This can happen if one of the two
                                 // results is tainted by errors. In this case, delay a bug to
                                 // ensure compilation is doomed, and keep the `old` value.
-                                tcx.sess.span_delayed_bug(DUMMY_SP, format!(
+                                tcx.dcx().delayed_bug(format!(
                                     "Trying to feed an already recorded value for query {} key={key:?}:\n\
                                     old value: {old:?}\nnew value: {value:?}",
                                     stringify!($name),
@@ -666,6 +668,8 @@ mod sealed {
 }
 
 pub use sealed::IntoQueryParam;
+
+use super::erase::EraseType;
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);

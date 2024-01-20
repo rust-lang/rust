@@ -9,9 +9,9 @@ rules.
 	margin-left: 0 !important;
 }
 
-#copy-path {
+#copy-path, #sidebar-button, .sidebar-resizer {
 	/* It requires JS to work so no need to display it in this case. */
-	display: none;
+	display: none !important;
 }
 
 nav.sub {
@@ -54,6 +54,7 @@ nav.sub {
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--mobile-sidebar-menu-filter: none;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -132,6 +133,8 @@ nav.sub {
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+	--sidebar-resizer-hover: hsl(207, 90%, 66%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: light */
 
@@ -157,6 +160,7 @@ nav.sub {
 		--code-attribute-color: #999;
 		--toggles-color: #999;
 		--toggle-filter: invert(100%);
+		--mobile-sidebar-menu-filter: invert(100%);
 		--search-input-focused-border-color: #008dfd;
 		--copy-path-button-color: #999;
 		--copy-path-img-filter: invert(50%);
@@ -238,6 +242,8 @@ nav.sub {
 		--scrape-example-help-hover-color: #fff;
 		--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+		--sidebar-resizer-hover: hsl(207, 30%, 54%);
+		--sidebar-resizer-active: hsl(207, 90%, 54%);
 	}
 /* End theme: dark */
 }

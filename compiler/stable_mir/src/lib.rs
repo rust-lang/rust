@@ -31,8 +31,9 @@ pub use crate::error::*;
 use crate::mir::pretty::function_name;
 use crate::mir::Body;
 use crate::mir::Mutability;
-use crate::ty::{ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty};
+use crate::ty::{ImplDef, IndexedVal, Span, TraitDef, Ty};
 
+pub mod abi;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
@@ -85,11 +86,30 @@ pub struct Crate {
     pub is_local: bool,
 }
 
+impl Crate {
+    /// The list of traits declared in this crate.
+    pub fn trait_decls(&self) -> TraitDecls {
+        with(|cx| cx.trait_decls(self.id))
+    }
+
+    /// The list of trait implementations in this crate.
+    pub fn trait_impls(&self) -> ImplTraitDecls {
+        with(|cx| cx.trait_impls(self.id))
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ItemKind {
     Fn,
     Static,
     Const,
+    Ctor(CtorKind),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum CtorKind {
+    Const,
+    Fn,
 }
 
 pub type Filename = String;
@@ -161,16 +181,8 @@ pub fn all_trait_decls() -> TraitDecls {
     with(|cx| cx.all_trait_decls())
 }
 
-pub fn trait_decl(trait_def: &TraitDef) -> TraitDecl {
-    with(|cx| cx.trait_decl(trait_def))
-}
-
 pub fn all_trait_impls() -> ImplTraitDecls {
     with(|cx| cx.all_trait_impls())
-}
-
-pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
-    with(|cx| cx.trait_impl(trait_impl))
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.

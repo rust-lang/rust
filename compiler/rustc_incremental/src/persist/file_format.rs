@@ -55,18 +55,12 @@ where
             debug!("save: remove old file");
         }
         Err(err) if err.kind() == io::ErrorKind::NotFound => (),
-        Err(err) => {
-            sess.emit_err(errors::DeleteOld { name, path: path_buf, err });
-            return;
-        }
+        Err(err) => sess.dcx().emit_fatal(errors::DeleteOld { name, path: path_buf, err }),
     }
 
     let mut encoder = match FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
-        Err(err) => {
-            sess.emit_err(errors::CreateNew { name, path: path_buf, err });
-            return;
-        }
+        Err(err) => sess.dcx().emit_fatal(errors::CreateNew { name, path: path_buf, err }),
     };
 
     write_file_header(&mut encoder, sess);
@@ -80,9 +74,7 @@ where
             );
             debug!("save: data written to disk successfully");
         }
-        Err((path, err)) => {
-            sess.emit_err(errors::WriteNew { name, path, err });
-        }
+        Err((path, err)) => sess.dcx().emit_fatal(errors::WriteNew { name, path, err }),
     }
 }
 

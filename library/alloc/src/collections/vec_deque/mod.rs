@@ -491,12 +491,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // A [o o o o o o o . . . . . . . . . ]
         //        L H
         //   [o o o o o o o o ]
-        //          H           L
-        // B [. . . o o o o o o o . . . . . . ]
+        //          H             L
+        // B [. . . o o o o o o o o . . . . . ]
         //              L H
         //   [o o o o o o o o ]
-        //            L                   H
-        // C [o o o o o . . . . . . . . . o o ]
+        //              L                 H
+        // C [o o o o o o . . . . . . . . o o ]
 
         // can't use is_contiguous() because the capacity is already updated.
         if self.head <= old_capacity - self.len {

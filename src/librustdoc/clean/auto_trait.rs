@@ -195,7 +195,7 @@ where
         // into a map. Each RegionTarget (either a RegionVid or a Region) maps
         // to its smaller and larger regions. Note that 'larger' regions correspond
         // to sub-regions in Rust code (e.g., in 'a: 'b, 'a is the larger region).
-        for constraint in regions.constraints.keys() {
+        for (constraint, _) in &regions.constraints {
             match *constraint {
                 Constraint::VarSubVar(r1, r2) => {
                     {

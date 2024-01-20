@@ -59,6 +59,7 @@ use crate::marker::Tuple;
 use crate::mem;
 
 pub mod mir;
+pub mod simd;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
@@ -946,7 +947,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
+    #[rustc_const_stable(feature = "const_assume", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn assume(b: bool);
 
@@ -1782,27 +1783,39 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn truncf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     pub fn nearbyintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
@@ -2533,7 +2546,7 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
+    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr $(,)?) => {
         if cfg!(debug_assertions) {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]

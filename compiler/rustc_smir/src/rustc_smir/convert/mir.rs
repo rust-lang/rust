@@ -36,6 +36,8 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 .collect(),
             self.arg_count,
             self.var_debug_info.iter().map(|info| info.stable(tables)).collect(),
+            self.spread_arg.stable(tables),
+            self.span.stable(tables),
         )
     }
 }
@@ -529,11 +531,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     generic_arg.stable(tables),
                 )
             }
-            mir::AggregateKind::Coroutine(def_id, generic_arg, movability) => {
+            mir::AggregateKind::Coroutine(def_id, generic_arg) => {
                 stable_mir::mir::AggregateKind::Coroutine(
                     tables.coroutine_def(*def_id),
                     generic_arg.stable(tables),
-                    movability.stable(tables),
+                    tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
         }
@@ -607,7 +609,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 fn_span: _,
             } => TerminatorKind::Call {
                 func: func.stable(tables),
-                args: args.iter().map(|arg| arg.stable(tables)).collect(),
+                args: args.iter().map(|arg| arg.node.stable(tables)).collect(),
                 destination: destination.stable(tables),
                 target: target.map(|t| t.as_usize()),
                 unwind: unwind.stable(tables),

@@ -37,7 +37,6 @@ else
 fi
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
-export BOOTSTRAP_SKIP_TARGET_SANITY=1 # we don't need `cc` for these targets
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Only this branch runs in PR CI.
@@ -62,4 +61,3 @@ case $HOST_TARGET in
     exit 1
     ;;
 esac
-unset BOOTSTRAP_SKIP_TARGET_SANITY

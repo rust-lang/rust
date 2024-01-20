@@ -131,7 +131,7 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
             let len_bytes = &dot_rustc[8..16];
             let data_len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[16..data_len + 12], 17)
-         }
+        }
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

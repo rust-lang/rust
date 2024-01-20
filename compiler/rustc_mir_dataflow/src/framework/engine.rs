@@ -344,7 +344,7 @@ impl RustcMirAttrs {
                     match path.file_name() {
                         Some(_) => Ok(path),
                         None => {
-                            tcx.sess.emit_err(PathMustEndInFilename { span: attr.span() });
+                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
                             Err(())
                         }
                     }
@@ -353,7 +353,7 @@ impl RustcMirAttrs {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {
-                        tcx.sess.emit_err(UnknownFormatter { span: attr.span() });
+                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
                     }
                 })
@@ -374,7 +374,8 @@ impl RustcMirAttrs {
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.sess.emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx()
+                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
 
             return Err(());
         }
@@ -383,7 +384,8 @@ impl RustcMirAttrs {
             *field = Some(mapper(s)?);
             Ok(())
         } else {
-            tcx.sess.emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx()
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
             Err(())
         }
     }

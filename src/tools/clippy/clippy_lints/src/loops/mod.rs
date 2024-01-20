@@ -3,6 +3,7 @@ mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
 mod for_kv_map;
+mod infinite_loop;
 mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
@@ -635,6 +636,48 @@ declare_clippy_lint! {
     "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for infinite loops in a function where the return type is not `!`
+    /// and lint accordingly.
+    ///
+    /// ### Why is this bad?
+    /// A loop should be gently exited somewhere, or at least mark its parent function as
+    /// never return (`!`).
+    ///
+    /// ### Example
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// If infinite loops are as intended:
+    /// ```no_run,ignore
+    /// fn run_forever() -> ! {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// Otherwise add a `break` or `return` condition:
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///         if condition {
+    ///             break;
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub INFINITE_LOOP,
+    restriction,
+    "possibly unintended infinite loop"
+}
+
 pub struct Loops {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
@@ -669,6 +712,7 @@ impl_lint_pass!(Loops => [
     MANUAL_FIND,
     MANUAL_WHILE_LET_SOME,
     UNUSED_ENUMERATE_INDEX,
+    INFINITE_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -707,10 +751,11 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
-        if let ExprKind::Loop(block, _, LoopSource::Loop, _) = expr.kind {
+        if let ExprKind::Loop(block, label, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
             while_let_loop::check(cx, expr, block);
+            infinite_loop::check(cx, expr, block, label);
         }
 
         while_let_on_iterator::check(cx, expr);

@@ -29,7 +29,7 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
-                .map_err(|mut err| {
+                .map_err(|err| {
                     err.emit();
                 })
                 .ok();
@@ -56,7 +56,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = sess.span_diagnostic.struct_span_err(
+                                let mut err = sess.dcx.struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
@@ -89,7 +89,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = format!("attribute value must be a literal");
-                    let mut err = sess.span_diagnostic.struct_span_err(expr.span, msg);
+                    let mut err = sess.dcx.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
@@ -105,7 +105,7 @@ pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter)
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::MetaBadDelim {
+    sess.dcx.emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -115,7 +115,7 @@ pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimi
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::CfgAttrBadDelim {
+    sess.dcx.emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -139,7 +139,7 @@ pub fn check_builtin_attribute(
 ) {
     match parse_meta(sess, attr) {
         Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }
@@ -206,16 +206,16 @@ fn emit_malformed_attribute(
     if should_warn(name) {
         sess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
-        sess.span_diagnostic
+        sess.dcx
             .struct_span_err(span, error_msg)
-            .span_suggestions(
+            .with_span_suggestions(
                 span,
                 if suggestions.len() == 1 {
                     "must be of the form"
                 } else {
                     "the following are the possible correct uses"
                 },
-                suggestions.into_iter(),
+                suggestions,
                 Applicability::HasPlaceholders,
             )
             .emit();

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    Applicability, DecorateLint, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, Handler, IntoDiagnostic,
+    Applicability, DecorateLint, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder,
+    DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -62,16 +62,16 @@ pub(crate) struct RequiresUnsafe {
 // so we need to eagerly translate the label here, which isn't supported by the derive API
 // We could also exhaustively list out the primary messages for all unsafe violations,
 // but this would result in a lot of duplication.
-impl<'sess> IntoDiagnostic<'sess> for RequiresUnsafe {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for RequiresUnsafe {
     #[track_caller]
-    fn into_diagnostic(self, handler: &'sess Handler) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::mir_transform_requires_unsafe);
-        diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
-        diag.set_span(self.span);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::mir_transform_requires_unsafe);
+        diag.code("E0133".to_string());
+        diag.span(self.span);
         diag.span_label(self.span, self.details.label());
-        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
-        diag.set_arg("details", desc);
-        diag.set_arg("op_in_unsafe_fn_allowed", self.op_in_unsafe_fn_allowed);
+        let desc = dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
+        diag.arg("details", desc);
+        diag.arg("op_in_unsafe_fn_allowed", self.op_in_unsafe_fn_allowed);
         self.details.add_subdiagnostics(&mut diag);
         if let Some(sp) = self.enclosing {
             diag.span_label(sp, fluent::mir_transform_not_inherited);
@@ -122,16 +122,16 @@ impl RequiresUnsafeDetail {
             }
             CallToFunctionWith { ref missing, ref build_enabled } => {
                 diag.help(fluent::mir_transform_target_feature_call_help);
-                diag.set_arg(
+                diag.arg(
                     "missing_target_features",
                     DiagnosticArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
                     ),
                 );
-                diag.set_arg("missing_target_features_count", missing.len());
+                diag.arg("missing_target_features_count", missing.len());
                 if !build_enabled.is_empty() {
                     diag.note(fluent::mir_transform_target_feature_call_note);
-                    diag.set_arg(
+                    diag.arg(
                         "build_target_features",
                         DiagnosticArgValue::StrListSepByAnd(
                             build_enabled
@@ -140,7 +140,7 @@ impl RequiresUnsafeDetail {
                                 .collect(),
                         ),
                     );
-                    diag.set_arg("build_target_features_count", build_enabled.len());
+                    diag.arg("build_target_features_count", build_enabled.len());
                 }
             }
         }
@@ -180,13 +180,9 @@ pub(crate) struct UnsafeOpInUnsafeFn {
 
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
     #[track_caller]
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()> {
-        let handler = diag.handler().expect("lint should not yet be emitted");
-        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
-        diag.set_arg("details", desc);
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        let desc = diag.dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
+        diag.arg("details", desc);
         diag.span_label(self.details.span, self.details.label());
         self.details.add_subdiagnostics(diag);
 
@@ -198,8 +194,6 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
                 Applicability::MaybeIncorrect,
             );
         }
-
-        diag
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -213,19 +207,14 @@ pub(crate) enum AssertLint<P> {
 }
 
 impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
         let span = self.span();
         let assert_kind = self.panic();
         let message = assert_kind.diagnostic_message();
         assert_kind.add_args(&mut |name, value| {
-            diag.set_arg(name, value);
+            diag.arg(name, value);
         });
         diag.span_label(span, message);
-
-        diag
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -284,19 +273,15 @@ pub(crate) struct MustNotSupend<'tcx, 'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
             diag.subdiagnostic(reason);
         }
         diag.span_help(self.src_sp, fluent::_subdiag::help);
-        diag.set_arg("pre", self.pre);
-        diag.set_arg("def_path", self.tcx.def_path_str(self.def_id));
-        diag.set_arg("post", self.post);
-        diag
+        diag.arg("pre", self.pre);
+        diag.arg("def_path", self.tcx.def_path_str(self.def_id));
+        diag.arg("post", self.post);
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {

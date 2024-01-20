@@ -28,12 +28,12 @@ use rustc_span::{sym, Loc, Span, Symbol};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use std::collections::{BTreeSet, BinaryHeap};
-use std::fmt;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fmt};
 
 /// This is the json output file of the lint collector.
 const JSON_OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
@@ -415,7 +415,7 @@ fn get_lint_output(lint_name: &str, example: &[&mut String], clippy_project_root
 
     let prefixed_name = format!("{CLIPPY_LINT_GROUP_PREFIX}{lint_name}");
 
-    let mut cmd = Command::new("cargo");
+    let mut cmd = Command::new(env::var("CARGO").unwrap_or("cargo".into()));
 
     cmd.current_dir(clippy_project_root)
         .env("CARGO_INCREMENTAL", "0")

@@ -4,9 +4,7 @@ use std::path::Path;
 
 use crate::fluent_generated as fluent;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{
-    DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, FatalError, Handler, IntoDiagnostic,
-};
+use rustc_errors::{DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
@@ -101,16 +99,14 @@ pub(crate) struct DynamicLinkingWithLTO;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl IntoDiagnostic<'_, FatalError> for ParseTargetMachineConfig<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, FatalError> {
-        let diag: DiagnosticBuilder<'_, FatalError> = self.0.into_diagnostic(handler);
-        let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
-        let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_> {
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let diag: DiagnosticBuilder<'_, G> = self.0.into_diagnostic(dcx, level);
+        let (message, _) = diag.messages().first().expect("`LlvmError` with no message");
+        let message = dcx.eagerly_translate_to_string(message.clone(), diag.args());
 
-        let mut diag =
-            handler.struct_almost_fatal(fluent::codegen_llvm_parse_target_machine_config);
-        diag.set_arg("error", message);
-        diag
+        DiagnosticBuilder::new(dcx, level, fluent::codegen_llvm_parse_target_machine_config)
+            .with_arg("error", message)
     }
 }
 
@@ -124,16 +120,20 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help(codegen_llvm_missing_features)]
 pub(crate) struct MissingFeatures;
 
-impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable);
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
+            fluent::codegen_llvm_target_feature_disable_or_enable,
+        );
         if let Some(span) = self.span {
-            diag.set_span(span);
+            diag.span(span);
         };
         if let Some(missing_features) = self.missing_features {
             diag.subdiagnostic(missing_features);
         }
-        diag.set_arg("features", self.features.join(", "));
+        diag.arg("features", self.features.join(", "));
         diag
     }
 }
@@ -185,7 +185,7 @@ pub enum LlvmError<'a> {
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, G> {
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => fluent::codegen_llvm_write_output_with_llvm_err,
@@ -202,10 +202,10 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
         };
-        let mut diag = self.0.into_diagnostic(handler);
-        diag.set_primary_message(msg_with_llvm_err);
-        diag.set_arg("llvm_err", self.1);
-        diag
+        self.0
+            .into_diagnostic(dcx, level)
+            .with_primary_message(msg_with_llvm_err)
+            .with_arg("llvm_err", self.1)
     }
 }
 

@@ -554,7 +554,7 @@ fn ident_difference_expr_with_base_location(
         | (Closure(_), Closure(_))
         | (Match(_, _), Match(_, _))
         | (Loop(_, _, _), Loop(_, _, _))
-        | (ForLoop(_, _, _, _), ForLoop(_, _, _, _))
+        | (ForLoop { .. }, ForLoop { .. })
         | (While(_, _, _), While(_, _, _))
         | (If(_, _, _), If(_, _, _))
         | (Let(_, _, _, _), Let(_, _, _, _))

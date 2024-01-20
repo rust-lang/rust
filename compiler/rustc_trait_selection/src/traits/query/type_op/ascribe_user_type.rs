@@ -63,13 +63,16 @@ fn relate_mir_and_user_ty<'tcx>(
     user_ty: Ty<'tcx>,
 ) -> Result<(), NoSolution> {
     let cause = ObligationCause::dummy_with_span(span);
+    ocx.register_obligation(Obligation::new(
+        ocx.infcx.tcx,
+        cause.clone(),
+        param_env,
+        ty::ClauseKind::WellFormed(user_ty.into()),
+    ));
+
     let user_ty = ocx.normalize(&cause, param_env, user_ty);
     ocx.eq(&cause, param_env, mir_ty, user_ty)?;
 
-    // FIXME(#104764): We should check well-formedness before normalization.
-    let predicate =
-        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(user_ty.into())));
-    ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
     Ok(())
 }
 
@@ -113,31 +116,38 @@ fn relate_mir_and_user_args<'tcx>(
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
 
+    // Now prove the well-formedness of `def_id` with `substs`.
+    // Note for some items, proving the WF of `ty` is not sufficient because the
+    // well-formedness of an item may depend on the WF of gneneric args not present in the
+    // item's type. Currently this is true for associated consts, e.g.:
+    // ```rust
+    // impl<T> MyTy<T> {
+    //     const CONST: () = { /* arbitrary code that depends on T being WF */ };
+    // }
+    // ```
+    for arg in args {
+        ocx.register_obligation(Obligation::new(
+            tcx,
+            cause.clone(),
+            param_env,
+            ty::ClauseKind::WellFormed(arg),
+        ));
+    }
+
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+        ocx.register_obligation(Obligation::new(
+            tcx,
+            cause.clone(),
+            param_env,
+            ty::ClauseKind::WellFormed(self_ty.into()),
+        ));
+
         let self_ty = ocx.normalize(&cause, param_env, self_ty);
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args);
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
-        let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-            impl_self_ty.into(),
-        )));
-        ocx.register_obligation(Obligation::new(tcx, cause.clone(), param_env, predicate));
     }
 
-    // In addition to proving the predicates, we have to
-    // prove that `ty` is well-formed -- this is because
-    // the WF of `ty` is predicated on the args being
-    // well-formed, and we haven't proven *that*. We don't
-    // want to prove the WF of types from  `args` directly because they
-    // haven't been normalized.
-    //
-    // FIXME(nmatsakis): Well, perhaps we should normalize
-    // them?  This would only be relevant if some input
-    // type were ill-formed but did not appear in `ty`,
-    // which...could happen with normalization...
-    let predicate =
-        ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty.into())));
-    ocx.register_obligation(Obligation::new(tcx, cause, param_env, predicate));
     Ok(())
 }

@@ -36,6 +36,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Struct",
@@ -65,6 +66,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "mul1",
@@ -94,6 +96,7 @@
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "mul2",
@@ -123,6 +126,7 @@
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s1",
@@ -152,6 +156,7 @@
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s1",
@@ -181,6 +186,7 @@
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s2",
@@ -210,6 +216,7 @@
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
         ],
     ),

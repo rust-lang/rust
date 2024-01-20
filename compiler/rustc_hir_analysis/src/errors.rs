@@ -2,8 +2,8 @@
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
-    MultiSpan,
+    error_code, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -315,16 +315,14 @@ pub struct MissingTypeParams {
 }
 
 // Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
-impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for MissingTypeParams {
     #[track_caller]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err = handler.struct_span_err_with_code(
-            self.span,
-            fluent::hir_analysis_missing_type_params,
-            error_code!(E0393),
-        );
-        err.set_arg("parameterCount", self.missing_type_params.len());
-        err.set_arg(
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut err = DiagnosticBuilder::new(dcx, level, fluent::hir_analysis_missing_type_params);
+        err.span(self.span);
+        err.code(error_code!(E0393));
+        err.arg("parameterCount", self.missing_type_params.len());
+        err.arg(
             "parameters",
             self.missing_type_params
                 .iter()
@@ -410,6 +408,7 @@ pub struct ConstImplForNonConstTrait {
 pub struct ConstBoundForNonConstTrait {
     #[primary_span]
     pub span: Span,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -1410,4 +1409,105 @@ pub struct OnlyCurrentTraitsPointerSugg<'a> {
     pub struct_span: Span,
     pub mut_key: &'a str,
     pub ptr_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_static_mut_ref, code = "E0796")]
+#[note]
+pub struct StaticMutRef {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: StaticMutRefSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum StaticMutRefSugg {
+    #[suggestion(
+        hir_analysis_suggestion,
+        style = "verbose",
+        code = "addr_of!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Shared {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+    #[suggestion(
+        hir_analysis_suggestion_mut,
+        style = "verbose",
+        code = "addr_of_mut!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+}
+
+// STATIC_MUT_REF lint
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_static_mut_ref_lint)]
+#[note]
+pub struct RefOfMutStatic<'a> {
+    pub shared: &'a str,
+    #[note(hir_analysis_why_note)]
+    pub why_note: (),
+    #[subdiagnostic]
+    pub label: RefOfMutStaticLabel,
+    #[subdiagnostic]
+    pub sugg: RefOfMutStaticSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum RefOfMutStaticLabel {
+    #[label(hir_analysis_label)]
+    Shared {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(hir_analysis_label_mut)]
+    Mut {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum RefOfMutStaticSugg {
+    #[suggestion(
+        hir_analysis_suggestion,
+        style = "verbose",
+        code = "addr_of!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Shared {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+    #[suggestion(
+        hir_analysis_suggestion_mut,
+        style = "verbose",
+        code = "addr_of_mut!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_not_supported_delegation)]
+pub struct NotSupportedDelegation<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'a str,
+    #[label]
+    pub callee_span: Span,
 }

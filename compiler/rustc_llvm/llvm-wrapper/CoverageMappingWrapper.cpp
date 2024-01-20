@@ -139,6 +139,9 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
            RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
         fromRust(Region.Count), fromRust(Region.FalseCount),
+#if LLVM_VERSION_GE(18, 0)
+        coverage::CounterMappingRegion::MCDCParameters{},
+#endif
         Region.FileID, Region.ExpandedFileID,
         Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
         fromRust(Region.Kind));

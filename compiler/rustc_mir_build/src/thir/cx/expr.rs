@@ -2,6 +2,7 @@ use crate::errors;
 use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
+use itertools::Itertools;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -293,7 +294,7 @@ impl<'tcx> Cx<'tcx> {
                     let attrs = tcx.hir().attrs(expr.hir_id);
                     if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_box) {
                         if attrs.len() != 1 {
-                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                            tcx.dcx().emit_err(errors::RustcBoxAttributeError {
                                 span: attrs[0].span,
                                 reason: errors::RustcBoxAttrReason::Attributes,
                             });
@@ -312,13 +313,13 @@ impl<'tcx> Cx<'tcx> {
                                     kind: ExprKind::Box { value: self.mirror_expr(value) },
                                 };
                             } else {
-                                tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                                tcx.dcx().emit_err(errors::RustcBoxAttributeError {
                                     span: expr.span,
                                     reason: errors::RustcBoxAttrReason::NotBoxNew,
                                 });
                             }
                         } else {
-                            tcx.sess.emit_err(errors::RustcBoxAttributeError {
+                            tcx.dcx().emit_err(errors::RustcBoxAttributeError {
                                 span: attrs[0].span,
                                 reason: errors::RustcBoxAttrReason::MissingBox,
                             });
@@ -552,8 +553,8 @@ impl<'tcx> Cx<'tcx> {
                 let closure_ty = self.typeck_results().expr_ty(expr);
                 let (def_id, args, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
-                    ty::Coroutine(def_id, args, movability) => {
-                        (def_id, UpvarArgs::Coroutine(args), Some(movability))
+                    ty::Coroutine(def_id, args) => {
+                        (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
                     }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
@@ -565,7 +566,7 @@ impl<'tcx> Cx<'tcx> {
                     .tcx
                     .closure_captures(def_id)
                     .iter()
-                    .zip(args.upvar_tys())
+                    .zip_eq(args.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);
                         self.thir.exprs.push(upvars)
@@ -782,7 +783,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
-            hir::ExprKind::Err(_) => unreachable!(),
+            hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };
 
         Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }
@@ -855,13 +856,8 @@ impl<'tcx> Cx<'tcx> {
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
         let arm = Arm {
-            pattern: self.pattern_from_hir(arm.pat),
-            guard: arm.guard.as_ref().map(|g| match g {
-                hir::Guard::If(e) => Guard::If(self.mirror_expr(e)),
-                hir::Guard::IfLet(l) => {
-                    Guard::IfLet(self.pattern_from_hir(l.pat), self.mirror_expr(l.init))
-                }
-            }),
+            pattern: self.pattern_from_hir(&arm.pat),
+            guard: arm.guard.as_ref().map(|g| self.mirror_expr(g)),
             body: self.mirror_expr(arm.body),
             lint_level: LintLevel::Explicit(arm.hir_id),
             scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },

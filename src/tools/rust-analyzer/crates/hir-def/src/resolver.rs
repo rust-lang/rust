@@ -2,7 +2,10 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use hir_expand::name::{name, Name};
+use hir_expand::{
+    name::{name, Name},
+    MacroDefId,
+};
 use indexmap::IndexMap;
 use intern::Interned;
 use rustc_hash::FxHashSet;
@@ -239,7 +242,7 @@ impl Resolver {
         let within_impl =
             self.scopes().find(|scope| matches!(scope, Scope::ImplDefScope(_))).is_some();
         match visibility {
-            RawVisibility::Module(_) => {
+            RawVisibility::Module(_, _) => {
                 let (item_map, module) = self.item_scope();
                 item_map.resolve_visibility(db, module, visibility, within_impl)
             }
@@ -404,6 +407,15 @@ impl Resolver {
             .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
             .0
             .take_macros_import()
+    }
+
+    pub fn resolve_path_as_macro_def(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+        expected_macro_kind: Option<MacroSubNs>,
+    ) -> Option<MacroDefId> {
+        self.resolve_path_as_macro(db, path, expected_macro_kind).map(|(it, _)| db.macro_def(it))
     }
 
     /// Returns a set of names available in the current scope.
@@ -586,6 +598,16 @@ impl Resolver {
         self.scopes().find_map(|scope| match scope {
             Scope::ExprScope(it) => Some(it.owner),
             _ => None,
+        })
+    }
+
+    pub fn type_owner(&self) -> Option<TypeOwnerId> {
+        self.scopes().find_map(|scope| match scope {
+            Scope::BlockScope(_) => None,
+            &Scope::GenericParams { def, .. } => Some(def.into()),
+            &Scope::ImplDefScope(id) => Some(id.into()),
+            &Scope::AdtScope(adt) => Some(adt.into()),
+            Scope::ExprScope(it) => Some(it.owner.into()),
         })
     }
 
@@ -1079,7 +1101,6 @@ impl HasResolver for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.resolver(db),
             TypeOwnerId::ImplId(it) => it.resolver(db),
             TypeOwnerId::EnumVariantId(it) => it.resolver(db),
-            TypeOwnerId::ModuleId(it) => it.resolver(db),
         }
     }
 }

@@ -517,3 +517,13 @@ fn test_ascii_char_fmt() {
     check("\x07", "'\\x07'", Char::Bell);
     check("a", "'a'", Char::SmallA);
 }
+
+#[test]
+fn test_ascii_display() {
+    assert_eq!(b"foo'bar".escape_ascii().to_string(), r#"foo\'bar"#);
+    assert_eq!(b"\0\xff".escape_ascii().to_string(), r#"\x00\xff"#);
+    let mut it = b"\0fastpath\xffremainder\xff".escape_ascii();
+    let _ = it.advance_by(4);
+    let _ = it.advance_back_by(4);
+    assert_eq!(it.to_string(), r#"fastpath\xffremainder"#);
+}

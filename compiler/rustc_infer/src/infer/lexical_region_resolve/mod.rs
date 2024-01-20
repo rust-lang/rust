@@ -31,13 +31,12 @@ use super::outlives::test_type_match;
 /// all the variables as well as a set of errors that must be reported.
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
 pub(crate) fn resolve<'tcx>(
-    param_env: ty::ParamEnv<'tcx>,
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     let mut errors = vec![];
-    let mut resolver = LexicalResolver { param_env, region_rels, var_infos, data };
+    let mut resolver = LexicalResolver { region_rels, var_infos, data };
     let values = resolver.infer_variable_values(&mut errors);
     (values, errors)
 }
@@ -120,7 +119,6 @@ struct RegionAndOrigin<'tcx> {
 type RegionGraph<'tcx> = Graph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
-    param_env: ty::ParamEnv<'tcx>,
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
@@ -136,6 +134,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) -> LexicalRegionResolutions<'tcx> {
         let mut var_data = self.construct_var_data();
+
+        // Deduplicating constraints is shown to have a positive perf impact.
+        self.data.constraints.sort_by_key(|(constraint, _)| *constraint);
+        self.data.constraints.dedup_by_key(|(constraint, _)| *constraint);
 
         if cfg!(debug_assertions) {
             self.dump_constraints();
@@ -183,7 +185,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut constraints = IndexVec::from_elem(Vec::new(), &var_values.values);
         // Tracks the changed region vids.
         let mut changes = Vec::new();
-        for constraint in self.data.constraints.keys() {
+        for (constraint, _) in &self.data.constraints {
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);
@@ -678,7 +680,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let dummy_source = graph.add_node(());
         let dummy_sink = graph.add_node(());
 
-        for constraint in self.data.constraints.keys() {
+        for (constraint, _) in &self.data.constraints {
             match *constraint {
                 Constraint::VarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.index()), NodeIndex(b_id.index()), *constraint);
@@ -798,7 +800,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Errors in earlier passes can yield error variables without
         // resolution errors here; delay ICE in favor of those errors.
-        self.tcx().sess.span_delayed_bug(
+        self.tcx().dcx().span_delayed_bug(
             self.var_infos[node_idx].origin.span(),
             format!(
                 "collect_error_for_expanding_node() could not find \
@@ -885,9 +887,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     }
 
                     Constraint::RegSubVar(region, _) | Constraint::VarSubReg(_, region) => {
+                        let constraint_idx =
+                            this.constraints.binary_search_by(|(c, _)| c.cmp(&edge.data)).unwrap();
                         state.result.push(RegionAndOrigin {
                             region,
-                            origin: this.constraints.get(&edge.data).unwrap().clone(),
+                            origin: this.constraints[constraint_idx].1.clone(),
                         });
                     }
 
@@ -914,12 +918,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         match bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
                 let verify_if_eq_b = var_values.normalize(self.region_rels.tcx, *verify_if_eq_b);
-                match test_type_match::extract_verify_if_eq(
-                    self.tcx(),
-                    self.param_env,
-                    &verify_if_eq_b,
-                    generic_ty,
-                ) {
+                match test_type_match::extract_verify_if_eq(self.tcx(), &verify_if_eq_b, generic_ty)
+                {
                     Some(r) => {
                         self.bound_is_met(&VerifyBound::OutlivedBy(r), var_values, generic_ty, min)
                     }

@@ -96,8 +96,7 @@ fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> boo
                 ExprKind::Path(qpath) => cx
                     .qpath_res(qpath, fm_arg.hir_id)
                     .opt_def_id()
-                    .map(|did| match_def_path(cx, did, &paths::CORE_RESULT_OK_METHOD))
-                    .unwrap_or_default(),
+                    .is_some_and(|did| match_def_path(cx, did, &paths::CORE_RESULT_OK_METHOD)),
                 // Detect `|x| x.ok()`
                 ExprKind::Closure(Closure { body, .. }) => {
                     if let Body {

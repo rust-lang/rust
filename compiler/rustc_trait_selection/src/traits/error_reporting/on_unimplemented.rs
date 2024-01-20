@@ -6,15 +6,15 @@ use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::iter;
 
 use crate::errors::{
@@ -32,7 +32,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> Option<(DefId, GenericArgsRef<'tcx>)>;
 
     /*private*/
-    fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
+    fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str>;
 
     fn on_unimplemented_note(
         &self,
@@ -101,43 +101,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     /// Used to set on_unimplemented's `ItemContext`
     /// to be the enclosing (async) block/function/closure
-    fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str> {
-        let hir = self.tcx.hir();
-        let node = self.tcx.opt_hir_node(hir_id)?;
-        match &node {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
-                self.describe_coroutine(*body_id).or_else(|| {
-                    Some(match sig.header {
-                        hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => {
-                            "an async function"
-                        }
-                        _ => "a function",
-                    })
-                })
+    fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str> {
+        match self.tcx.opt_hir_node_by_def_id(def_id)? {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }) => Some("a function"),
+            hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. }) => {
+                Some("a trait method")
             }
-            hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)),
-                ..
-            }) => self.describe_coroutine(*body_id).or_else(|| Some("a trait method")),
-            hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, body_id),
-                ..
-            }) => self.describe_coroutine(*body_id).or_else(|| {
-                Some(match sig.header {
-                    hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => "an async method",
-                    _ => "a method",
-                })
-            }),
+            hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
+                Some("a method")
+            }
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(hir::Closure { body, movability, .. }),
+                kind: hir::ExprKind::Closure(hir::Closure { kind, .. }),
                 ..
-            }) => self.describe_coroutine(*body).or_else(|| {
-                Some(if movability.is_some() { "an async closure" } else { "a closure" })
-            }),
-            hir::Node::Expr(hir::Expr { .. }) => {
-                let parent_hid = hir.parent_id(hir_id);
-                if parent_hid != hir_id { self.describe_enclosure(parent_hid) } else { None }
-            }
+            }) => Some(self.describe_closure(*kind)),
             _ => None,
         }
     }
@@ -156,12 +132,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
         // that yet, though.
-        let enclosure =
-            if let Some(body_hir) = self.tcx.opt_local_def_id_to_hir_id(obligation.cause.body_id) {
-                self.describe_enclosure(body_hir).map(|s| s.to_owned())
-            } else {
-                None
-            };
+        let enclosure = self.describe_enclosure(obligation.cause.body_id).map(|t| t.to_owned());
         flags.push((sym::ItemContext, enclosure));
 
         match obligation.cause.code() {
@@ -434,10 +405,10 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| tcx.sess.emit_err(EmptyOnClauseInOnUnimplemented { span }))?
+                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item()
-                .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
-            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
+                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
+            attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
                     && let Err(guar) = parse_value(value, cfg.span)
                 {
@@ -528,7 +499,7 @@ impl<'tcx> OnUnimplementedDirective {
                 );
             } else {
                 // nothing found
-                tcx.sess.emit_err(NoValueInOnUnimplemented { span: item.span() });
+                tcx.dcx().emit_err(NoValueInOnUnimplemented { span: item.span() });
             }
         }
 
@@ -550,7 +521,7 @@ impl<'tcx> OnUnimplementedDirective {
     pub fn of_item(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<Option<Self>, ErrorGuaranteed> {
         if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
             return Self::parse_attribute(attr, false, tcx, item_def_id);
-        } else if tcx.features().diagnostic_namespace {
+        } else {
             tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, sym::on_unimplemented])
                 .filter_map(|attr| Self::parse_attribute(attr, true, tcx, item_def_id).transpose())
                 .try_fold(None, |aggr: Option<Self>, directive| {
@@ -621,8 +592,6 @@ impl<'tcx> OnUnimplementedDirective {
                         Ok(Some(directive))
                     }
                 })
-        } else {
-            Ok(None)
         }
     }
 
@@ -688,9 +657,7 @@ impl<'tcx> OnUnimplementedDirective {
 
             Ok(None)
         } else {
-            let reported = tcx
-                .sess
-                .span_delayed_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
+            let reported = tcx.dcx().delayed_bug("of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);
@@ -715,31 +682,22 @@ impl<'tcx> OnUnimplementedDirective {
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition
-                && !attr::eval_condition(
-                    condition,
-                    &tcx.sess.parse_sess,
-                    Some(tcx.features()),
-                    &mut |cfg| {
-                        let value = cfg.value.map(|v| {
-                            // `with_no_visible_paths` is also used when generating the options,
-                            // so we need to match it here.
-                            ty::print::with_no_visible_paths!(
-                                OnUnimplementedFormatString {
-                                    symbol: v,
-                                    span: cfg.span,
-                                    is_diagnostic_namespace_variant: false
-                                }
-                                .format(
-                                    tcx,
-                                    trait_ref,
-                                    &options_map
-                                )
-                            )
-                        });
+                && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
+                    let value = cfg.value.map(|v| {
+                        // `with_no_visible_paths` is also used when generating the options,
+                        // so we need to match it here.
+                        ty::print::with_no_visible_paths!(
+                            OnUnimplementedFormatString {
+                                symbol: v,
+                                span: cfg.span,
+                                is_diagnostic_namespace_variant: false
+                            }
+                            .format(tcx, trait_ref, &options_map)
+                        )
+                    });
 
-                        options.contains(&(cfg.name, value))
-                    },
-                )
+                    options.contains(&(cfg.name, value))
+                })
             {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;
@@ -828,8 +786,8 @@ impl<'tcx> OnUnimplementedFormatString {
                                         },
                                     );
                                 } else {
-                                    result = Err(struct_span_err!(
-                                        tcx.sess,
+                                    result = Err(struct_span_code_err!(
+                                        tcx.dcx(),
                                         self.span,
                                         E0230,
                                         "there is no parameter `{}` on {}",
@@ -847,8 +805,8 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
-                        let reported = struct_span_err!(
-                            tcx.sess,
+                        let reported = struct_span_code_err!(
+                            tcx.dcx(),
                             self.span,
                             E0231,
                             "only named substitution parameters are allowed"

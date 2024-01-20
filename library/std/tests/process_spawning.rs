@@ -1,4 +1,4 @@
-#![cfg(not(target_env="sgx"))]
+#![cfg(not(target_env = "sgx"))]
 
 use std::env;
 use std::fs;

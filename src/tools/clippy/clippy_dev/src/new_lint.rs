@@ -67,7 +67,7 @@ pub fn create(
     if pass == "early" {
         println!(
             "\n\
-            NOTE: Use a late pass unless you need something specific from\
+            NOTE: Use a late pass unless you need something specific from\n\
             an early pass, as they lack many features and utilities"
         );
     }

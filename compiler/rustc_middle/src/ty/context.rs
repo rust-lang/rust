@@ -28,7 +28,7 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
     PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    TypeAndMut, Visibility,
+    Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -44,7 +44,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
-    DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+    DecorateLint, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -88,7 +88,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Term = ty::Term<'tcx>;
 
     type Binder<T> = Binder<'tcx, T>;
-    type TypeAndMut = TypeAndMut<'tcx>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
@@ -127,12 +126,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
-
-    fn ty_and_mut_to_parts(
-        TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
-    ) -> (Self::Ty, ty::Mutability) {
-        (ty, mutbl)
-    }
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -754,7 +747,7 @@ impl<'tcx> TyCtxt<'tcx> {
             {
                 Bound::Included(a)
             } else {
-                self.sess.span_delayed_bug(
+                self.dcx().span_delayed_bug(
                     attr.span,
                     "invalid rustc_layout_scalar_valid_range attribute",
                 );
@@ -790,7 +783,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hooks: crate::hooks::Providers,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
-            s.emit_fatal(err);
+            s.dcx().emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners, s, &untracked);
@@ -854,25 +847,40 @@ impl<'tcx> TyCtxt<'tcx> {
         self.coroutine_kind(def_id).is_some()
     }
 
+    /// Returns the movability of the coroutine of `def_id`, or panics
+    /// if given a `def_id` that is not a coroutine.
+    pub fn coroutine_movability(self, def_id: DefId) -> hir::Movability {
+        self.coroutine_kind(def_id).expect("expected a coroutine").movability()
+    }
+
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for an async construct.
     pub fn coroutine_is_async(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Async(_)))
+        matches!(
+            self.coroutine_kind(def_id),
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
+        )
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
     /// This means it is neither an `async` or `gen` construct.
     pub fn is_general_coroutine(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine))
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine(_)))
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `gen` construct.
     pub fn coroutine_is_gen(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Gen(_)))
+        matches!(
+            self.coroutine_kind(def_id),
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
+        )
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `async gen` construct.
     pub fn coroutine_is_async_gen(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::AsyncGen(_)))
+        matches!(
+            self.coroutine_kind(def_id),
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _))
+        )
     }
 
     pub fn stability(self) -> &'tcx stability::Index {
@@ -1016,6 +1024,10 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
+
+    pub fn dcx(self) -> &'tcx DiagCtxt {
+        self.sess.dcx()
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -1046,17 +1058,34 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let data = def_kind.def_path_data(name);
-        let key = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = self.tcx.create_def(parent, name, def_kind);
 
-        let feed = TyCtxtFeed { tcx: self.tcx, key };
-        feed.def_kind(def_kind);
+        let feed = self.tcx.feed_local_def_id(def_id);
         feed.def_span(self.span);
         feed
     }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// `tcx`-dependent operations performed for every created definition.
+    pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
+        let data = def_kind.def_path_data(name);
+        let def_id = self.untracked.definitions.write().create_def(parent, data);
+
+        let feed = self.feed_local_def_id(def_id);
+        feed.def_kind(def_kind);
+        // Unique types created for closures participate in type privacy checking.
+        // They have visibilities inherited from the module they are defined in.
+        // Visibilities for opaque types are meaningless, but still provided
+        // so that all items have visibilities.
+        if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
+            let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
+            feed.visibility(ty::Visibility::Restricted(parent_mod));
+        }
+
+        def_id
+    }
+
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
@@ -2037,13 +2066,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
-            decorator.decorate_lint(diag)
+            decorator.decorate_lint(diag);
         })
     }
 
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -2054,9 +2081,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_id: HirId,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
@@ -2071,12 +2096,12 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, decorator.msg(), |diag| decorator.decorate_lint(diag))
+        self.struct_lint_node(lint, id, decorator.msg(), |diag| {
+            decorator.decorate_lint(diag);
+        })
     }
 
     /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -2086,9 +2111,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: HirId,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         struct_lint_level(self.sess, lint, level, src, None, msg, decorate);

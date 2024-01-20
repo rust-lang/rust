@@ -5,7 +5,7 @@ use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::DepNodeIndex;
-use crate::query::{QueryContext, QueryInfo, QueryState};
+use crate::query::{CycleError, QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
@@ -57,7 +57,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn value_from_cycle_error(
         self,
         tcx: Qcx::DepContext,
-        cycle: &[QueryInfo],
+        cycle_error: &CycleError,
         guar: ErrorGuaranteed,
     ) -> Self::Value;
 

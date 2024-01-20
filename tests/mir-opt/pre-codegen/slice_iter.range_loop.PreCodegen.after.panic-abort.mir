@@ -58,7 +58,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _4 = std::ops::Range::<usize> { start: const 0_usize, end: move _3 };
         StorageDead(_3);
         StorageLive(_5);
-        _5 = move _4;
+        _5 = _4;
         goto -> bb1;
     }
 
@@ -84,7 +84,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb2: {
         StorageDead(_8);
         StorageDead(_7);
-        _12 = Option::<usize>::None;
+        _12 = const Option::<usize>::None;
         goto -> bb5;
     }
 
@@ -146,4 +146,8 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb11: {
         unreachable;
     }
+}
+
+ALLOC0 (size: 16, align: 8) {
+    00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
 }

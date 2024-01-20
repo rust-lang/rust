@@ -1,5 +1,5 @@
-// unit-test: ConstProp
-// EMIT_MIR reify_fn_ptr.main.ConstProp.diff
+// unit-test: GVN
+// EMIT_MIR reify_fn_ptr.main.GVN.diff
 
 fn main() {
     // CHECK-LABEL: fn main(

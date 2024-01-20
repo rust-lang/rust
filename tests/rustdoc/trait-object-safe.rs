@@ -22,6 +22,6 @@ pub trait Safe {
 }
 
 // @has 'foo/struct.Foo.html'
-// @!has - '//*[@class="object-safety-info"]' ''
-// @!has - '//*[@id="object-safety"]' ''
+// @count - '//*[@class="object-safety-info"]' 0
+// @count - '//*[@id="object-safety"]' 0
 pub struct Foo;

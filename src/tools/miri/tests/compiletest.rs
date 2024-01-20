@@ -91,7 +91,7 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         mode,
         program,
         out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
-        edition: Some("2021".into()),
+        edition: Some("2021".into()), // keep in sync with `./miri run`
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()
             .map(|threads| NonZeroUsize::new(threads.parse().unwrap()).unwrap()),
@@ -111,6 +111,8 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ]);
         config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
+        // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+        config.dependency_builder.envs.push(("RUSTFLAGS".into(), None));
     }
     config
 }
@@ -190,13 +192,13 @@ regexes! {
     // erase thread caller ids
     r"call [0-9]+"                  => "call ID",
     // erase platform module paths
-    "sys::[a-z]+::"                  => "sys::PLATFORM::",
+    "sys::pal::[a-z]+::"                  => "sys::pal::PLATFORM::",
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
     "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
-    "sys/[a-z]+/"                    => "sys/PLATFORM/",
+    "sys/pal/[a-z]+/"                    => "sys/pal/PLATFORM/",
     // erase paths into the crate registry
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
 }

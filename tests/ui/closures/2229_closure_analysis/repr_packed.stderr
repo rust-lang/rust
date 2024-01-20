@@ -6,27 +6,30 @@ LL |     let mut c = #[rustc_capture_analysis]
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:44:17
+  --> $DIR/repr_packed.rs:45:17
    |
 LL |     let mut c = #[rustc_capture_analysis]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:79:13
+  --> $DIR/repr_packed.rs:81:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:17:5
+  --> $DIR/repr_packed.rs:18:5
    |
 LL | /     || {
 LL | |
@@ -38,18 +41,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> ImmBorrow
-  --> $DIR/repr_packed.rs:20:24
+  --> $DIR/repr_packed.rs:21:24
    |
 LL |         let z1: &u8 = &foo.x;
    |                        ^^^^^
 note: Capturing foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:22:32
+  --> $DIR/repr_packed.rs:23:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
    |                                ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:17:5
+  --> $DIR/repr_packed.rs:18:5
    |
 LL | /     || {
 LL | |
@@ -61,13 +64,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:22:32
+  --> $DIR/repr_packed.rs:23:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
    |                                ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:47:5
+  --> $DIR/repr_packed.rs:49:5
    |
 LL | /     || {
 LL | |
@@ -79,18 +82,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> ImmBorrow
-  --> $DIR/repr_packed.rs:50:28
+  --> $DIR/repr_packed.rs:52:28
    |
 LL |         let z1: &String = &foo.x;
    |                            ^^^^^
 note: Capturing foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:52:33
+  --> $DIR/repr_packed.rs:54:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:47:5
+  --> $DIR/repr_packed.rs:49:5
    |
 LL | /     || {
 LL | |
@@ -102,13 +105,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:52:33
+  --> $DIR/repr_packed.rs:54:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:82:5
+  --> $DIR/repr_packed.rs:85:5
    |
 LL | /     || {
 LL | |
@@ -120,18 +123,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> ImmBorrow
-  --> $DIR/repr_packed.rs:85:24
+  --> $DIR/repr_packed.rs:88:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^
 note: Capturing foo[(0, 0)] -> ByValue
-  --> $DIR/repr_packed.rs:89:18
+  --> $DIR/repr_packed.rs:92:18
    |
 LL |         let _z = foo.x;
    |                  ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:82:5
+  --> $DIR/repr_packed.rs:85:5
    |
 LL | /     || {
 LL | |
@@ -143,7 +146,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> ByValue
-  --> $DIR/repr_packed.rs:85:24
+  --> $DIR/repr_packed.rs:88:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^ foo[] used here

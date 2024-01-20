@@ -274,7 +274,7 @@ impl CargoWorkspace {
             other_options.append(
                 &mut targets
                     .into_iter()
-                    .flat_map(|target| ["--filter-platform".to_owned().to_string(), target])
+                    .flat_map(|target| ["--filter-platform".to_owned(), target])
                     .collect(),
             );
         }
@@ -330,6 +330,7 @@ impl CargoWorkspace {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
                 cargo_metadata::Edition::E2021 => Edition::Edition2021,
+                cargo_metadata::Edition::_E2024 => Edition::Edition2024,
                 _ => {
                     tracing::error!("Unsupported edition `{:?}`", edition);
                     Edition::CURRENT

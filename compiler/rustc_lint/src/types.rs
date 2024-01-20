@@ -29,7 +29,6 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use rustc_type_ir::DynKind;
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -675,7 +674,7 @@ fn lint_wide_pointer<'tcx>(
         }
         match ty.kind() {
             ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
-                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, DynKind::Dyn)))),
+                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
             _ => None,
         }
     };

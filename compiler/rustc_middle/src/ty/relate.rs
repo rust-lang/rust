@@ -23,8 +23,6 @@ pub enum Cause {
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
@@ -457,14 +455,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
-        (&ty::Coroutine(a_id, a_args, movability), &ty::Coroutine(b_id, b_args, _))
-            if a_id == b_id =>
-        {
+        (&ty::Coroutine(a_id, a_args), &ty::Coroutine(b_id, b_args)) if a_id == b_id => {
             // All Coroutine types with the same id represent
             // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine(tcx, a_id, args, movability))
+            Ok(Ty::new_coroutine(tcx, a_id, args))
         }
 
         (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))
@@ -505,13 +501,9 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
-                    //
-                    // It might seem dubious to eagerly evaluate these constants here,
-                    // we however cannot end up with errors in `Relate` during both
-                    // `type_of` and `predicates_of`. This means that evaluating the
-                    // constants should not cause cycle errors here.
-                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
-                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_a = sz_a.try_to_target_usize(tcx);
+                    let sz_b = sz_b.try_to_target_usize(tcx);
+
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
                             TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),

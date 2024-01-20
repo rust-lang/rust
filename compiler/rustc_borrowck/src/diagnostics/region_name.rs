@@ -620,7 +620,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ) => {
                     // HIR lowering sometimes doesn't catch this in erroneous
                     // programs, so we need to use span_delayed_bug here. See #82126.
-                    self.infcx.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         hir_arg.span(),
                         format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );
@@ -674,7 +674,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, .. }),
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, kind, fn_decl_span, .. }),
                 ..
             }) => {
                 let (mut span, mut hir_ty) = match fn_decl.output {
@@ -683,55 +683,86 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(body).coroutine_kind {
-                    Some(hir::CoroutineKind::Async(src)) => match src {
-                        hir::CoroutineSource::Block => " of async block",
-                        hir::CoroutineSource::Closure => " of async closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from async fn should be in fn")
-                                .output;
-                            span = output.span();
-                            if let hir::FnRetTy::Return(ret) = output {
-                                hir_ty = Some(self.get_future_inner_return_ty(*ret));
-                            }
-                            " of async function"
-                        }
-                    },
-                    Some(hir::CoroutineKind::Gen(src)) => match src {
-                        hir::CoroutineSource::Block => " of gen block",
-                        hir::CoroutineSource::Closure => " of gen closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from gen fn should be in fn")
-                                .output;
-                            span = output.span();
-                            " of gen function"
-                        }
-                    },
+                let mir_description = match kind {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Block,
+                    )) => " of async block",
 
-                    Some(hir::CoroutineKind::AsyncGen(src)) => match src {
-                        hir::CoroutineSource::Block => " of async gen block",
-                        hir::CoroutineSource::Closure => " of async gen closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from async gen fn should be in fn")
-                                .output;
-                            span = output.span();
-                            " of async gen function"
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Closure,
+                    )) => " of async closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from async fn should be in fn")
+                            .output;
+                        span = output.span();
+                        if let hir::FnRetTy::Return(ret) = output {
+                            hir_ty = Some(self.get_future_inner_return_ty(*ret));
                         }
-                    },
-                    Some(hir::CoroutineKind::Coroutine) => " of coroutine",
-                    None => " of closure",
+                        " of async function"
+                    }
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        hir::CoroutineSource::Block,
+                    )) => " of gen block",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        hir::CoroutineSource::Closure,
+                    )) => " of gen closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from gen fn should be in fn")
+                            .output;
+                        span = output.span();
+                        " of gen function"
+                    }
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        hir::CoroutineSource::Block,
+                    )) => " of async gen block",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        hir::CoroutineSource::Closure,
+                    )) => " of async gen closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from async gen fn should be in fn")
+                            .output;
+                        span = output.span();
+                        " of async gen function"
+                    }
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => {
+                        " of coroutine"
+                    }
+                    hir::ClosureKind::Closure => " of closure",
                 };
                 (span, mir_description, hir_ty)
             }
@@ -788,28 +819,18 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         };
         let opaque_ty = hir.item(id);
         if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-            bounds:
-                [
-                    hir::GenericBound::LangItemTrait(
-                        hir::LangItem::Future,
-                        _,
-                        _,
-                        hir::GenericArgs {
-                            bindings:
-                                [
-                                    hir::TypeBinding {
-                                        ident: Ident { name: sym::Output, .. },
-                                        kind:
-                                            hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
-                                        ..
-                                    },
-                                ],
-                            ..
-                        },
-                    ),
-                ],
+            bounds: [hir::GenericBound::Trait(trait_ref, _)],
             ..
         }) = opaque_ty.kind
+            && let Some(segment) = trait_ref.trait_ref.path.segments.last()
+            && let Some(args) = segment.args
+            && let [
+                hir::TypeBinding {
+                    ident: Ident { name: sym::Output, .. },
+                    kind: hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
+                    ..
+                },
+            ] = args.bindings
         {
             ty
         } else {

@@ -120,6 +120,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a433302f833baa830c0092100c481c7ea768c5981a3c36f549517a502f246dd"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -285,9 +295,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
+checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "block-buffer"
@@ -537,7 +547,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -565,7 +575,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -588,7 +598,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.4",
@@ -598,7 +608,7 @@ dependencies = [
  "itertools",
  "quine-mc_cluskey",
  "regex",
- "regex-syntax 0.7.2",
+ "regex-syntax 0.8.2",
  "rustc-semver",
  "semver",
  "serde",
@@ -613,7 +623,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -704,9 +714,9 @@ checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.103"
+version = "0.1.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3b73c3443a5fd2438d7ba4853c64e4c8efc2404a9e28a9234cc2d5eebc6c242"
+checksum = "3686cc48897ce1950aa70fd595bd2dc9f767a3c4cca4cd17b2cb52a2d37e6eb4"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -984,7 +994,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "itertools",
  "quote",
@@ -2179,16 +2189,6 @@ dependencies = [
 
 [[package]]
 name = "libloading"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
-dependencies = [
- "cfg-if",
- "winapi",
-]
-
-[[package]]
-name = "libloading"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c571b676ddfc9a8c12f1f3d3085a7b163966a8fd8098a90640953ce5f6170161"
@@ -2356,9 +2356,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "10.1.2"
+version = "11.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45e381dcdad44c3c435f8052b08c5c4a1449c48ab56f312345eae12d7a693dbe"
+checksum = "dfa4a40f09af7aa6faef38285402a78847d0d72bf8827006cd2a332e1e6e4a8d"
 dependencies = [
  "log",
  "memmap2",
@@ -2465,16 +2465,16 @@ dependencies = [
  "ctrlc",
  "env_logger",
  "getrandom",
+ "jemalloc-sys",
  "lazy_static",
  "libc",
  "libffi",
- "libloading 0.8.1",
+ "libloading",
  "log",
  "measureme",
  "rand",
  "regex",
  "rustc_version",
- "serde",
  "smallvec",
  "ui_test",
 ]
@@ -3196,6 +3196,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 
 [[package]]
+name = "regex-syntax"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+
+[[package]]
 name = "remote-test-client"
 version = "0.1.0"
 
@@ -3274,9 +3280,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.4.2"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed2a90dfa5232ed5ff21d53d4df655f315ab316ea06fc508f1c74bcedb1ce6c"
+checksum = "39dcf8d82b1f79a179bdb284dc44db440a9666eefa5a6df5ef282d6db930d544"
 dependencies = [
  "anyhow",
  "rustc_version",
@@ -3364,7 +3370,7 @@ dependencies = [
 name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "rand",
  "rand_xoshiro",
  "rustc_data_structures",
@@ -3395,7 +3401,7 @@ dependencies = [
 name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "memchr",
  "rustc_data_structures",
  "rustc_index",
@@ -3546,7 +3552,7 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "itertools",
  "libc",
  "measureme",
@@ -3581,7 +3587,7 @@ name = "rustc_codegen_ssa"
 version = "0.0.0"
 dependencies = [
  "ar_archive_writer",
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "cc",
  "itertools",
  "jobserver",
@@ -3648,7 +3654,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "elsa",
  "ena",
  "indexmap",
@@ -3732,6 +3738,7 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_ty_utils",
  "serde_json",
+ "shlex",
  "time",
  "tracing",
  "windows",
@@ -3764,7 +3771,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.10.1",
  "derive_setters",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3791,7 +3798,6 @@ dependencies = [
 name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
- "crossbeam-channel",
  "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",
@@ -3825,7 +3831,7 @@ dependencies = [
 name = "rustc_fluent_macro"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.10.1",
  "fluent-bundle",
  "fluent-syntax",
  "proc-macro2",
@@ -3863,6 +3869,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3871,6 +3878,7 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_lint_defs",
@@ -3900,6 +3908,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -3986,7 +3995,7 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "libloading 0.7.4",
+ "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_ast",
@@ -4115,8 +4124,8 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
- "libloading 0.7.4",
+ "bitflags 2.4.1",
+ "libloading",
  "odht",
  "rustc_ast",
  "rustc_attr",
@@ -4145,7 +4154,7 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "derive_more",
  "either",
  "field-offset",
@@ -4183,6 +4192,7 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "either",
+ "itertools",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4280,7 +4290,7 @@ dependencies = [
 name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -4334,6 +4344,8 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
+ "derivative",
+ "rustc-hash",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4416,7 +4428,7 @@ dependencies = [
 name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "pulldown-cmark",
  "rustc_arena",
  "rustc_ast",
@@ -4455,7 +4467,7 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "getopts",
  "libc",
  "rustc_ast",
@@ -4513,7 +4525,7 @@ dependencies = [
 name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "punycode",
  "rustc-demangle",
  "rustc_data_structures",
@@ -4531,7 +4543,7 @@ dependencies = [
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "object",
  "rustc_abi",
  "rustc_data_structures",
@@ -4555,6 +4567,8 @@ checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
+ "bitflags 2.4.1",
+ "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4629,12 +4643,13 @@ dependencies = [
 name = "rustc_type_ir"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "derivative",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_span",
  "smallvec",
 ]
 
@@ -4727,7 +4742,7 @@ dependencies = [
 name = "rustfmt-nightly"
 version = "1.7.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.9.1",
  "anyhow",
  "bytecount",
  "cargo_metadata 0.15.4",
@@ -4759,7 +4774,7 @@ version = "0.38.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "745ecfa778e66b2b63c88a61cb36e0eea109e803b0b86bf9879fbc77c70e86ed"
 dependencies = [
- "bitflags 2.4.0",
+ "bitflags 2.4.1",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -5197,9 +5212,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.29.2"
+version = "0.29.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9557d0845b86eea8182f7b10dff120214fb6cd9fd937b6f4917714e546a38695"
+checksum = "cd727fc423c2060f6c92d9534cef765c65a6ed3f428a03d7def74a8c4348e666"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -5711,7 +5726,7 @@ version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf4bf7c184b8dfc7a4d3b90df789b1eb992ee42811cd115f32a7a1eb781058d"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.9.1",
  "anyhow",
  "bstr",
  "cargo-platform",
@@ -5842,9 +5857,9 @@ checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",

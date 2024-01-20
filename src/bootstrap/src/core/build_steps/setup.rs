@@ -1,6 +1,7 @@
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
+use crate::utils::helpers::hex_encode;
 use crate::Config;
 use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
@@ -566,7 +567,7 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
     if let Ok(current) = fs::read_to_string(&vscode_settings) {
         let mut hasher = sha2::Sha256::new();
         hasher.update(&current);
-        let hash = hex::encode(hasher.finalize().as_slice());
+        let hash = hex_encode(hasher.finalize().as_slice());
         if hash == *current_hash {
             return Ok(true);
         } else if historical_hashes.contains(&hash.as_str()) {

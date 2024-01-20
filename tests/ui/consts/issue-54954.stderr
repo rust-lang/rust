@@ -2,7 +2,10 @@ error[E0379]: functions in traits cannot be declared const
   --> $DIR/issue-54954.rs:5:5
    |
 LL |     const fn const_val<T: Sized>() -> usize {
-   |     ^^^^^ functions in traits cannot be const
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/issue-54954.rs:1:24

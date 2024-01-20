@@ -96,7 +96,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         // in the value the dangling reference lies.
         // The `span_delayed_bug` ensures that we don't forget such a check in validation.
         if tcx.try_get_global_alloc(alloc_id).is_none() {
-            tcx.sess.span_delayed_bug(ecx.tcx.span, "tried to intern dangling pointer");
+            tcx.dcx().span_delayed_bug(ecx.tcx.span, "tried to intern dangling pointer");
         }
         // treat dangling pointers like other statics
         // just to stop trying to recurse into them
@@ -185,7 +185,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 } else {
                     // Validation will error (with a better message) on an invalid vtable pointer.
                     // Let validation show the error message, but make sure it *does* error.
-                    tcx.sess
+                    tcx.dcx()
                         .span_delayed_bug(tcx.span, "vtables pointers cannot be integer pointers");
                 }
             }
@@ -375,7 +375,7 @@ pub fn intern_const_alloc_recursive<
         match res {
             Ok(()) => {}
             Err(error) => {
-                ecx.tcx.sess.span_delayed_bug(
+                ecx.tcx.dcx().span_delayed_bug(
                     ecx.tcx.span,
                     format!(
                         "error during interning should later cause validation failure: {}",
@@ -424,7 +424,7 @@ pub fn intern_const_alloc_recursive<
                 // something that cannot be promoted, which in constants means values that have
                 // drop glue, such as the example above.
                 InternKind::Constant => {
-                    ecx.tcx.sess.emit_err(UnsupportedUntypedPointer { span: ecx.tcx.span });
+                    ecx.tcx.dcx().emit_err(UnsupportedUntypedPointer { span: ecx.tcx.span });
                     // For better errors later, mark the allocation as immutable.
                     alloc.mutability = Mutability::Not;
                 }
@@ -440,7 +440,7 @@ pub fn intern_const_alloc_recursive<
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
-            let reported = ecx.tcx.sess.emit_err(DanglingPtrInFinal { span: ecx.tcx.span });
+            let reported = ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span });
             return Err(reported);
         } else if ecx.tcx.try_get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't

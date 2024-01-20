@@ -12,6 +12,7 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
+#![feature(slice_group_by)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]

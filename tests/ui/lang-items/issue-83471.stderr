@@ -11,6 +11,7 @@ LL | #[lang = "sized"]
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: language items are subject to change
   --> $DIR/issue-83471.rs:11:1
@@ -19,6 +20,7 @@ LL | #[lang = "fn"]
    | ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/issue-83471.rs:15:13

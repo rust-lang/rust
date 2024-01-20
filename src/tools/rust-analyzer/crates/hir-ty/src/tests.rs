@@ -12,7 +12,7 @@ mod diagnostics;
 
 use std::{collections::HashMap, env};
 
-use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
+use base_db::{FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -30,6 +30,7 @@ use syntax::{
     ast::{self, AstNode, HasName},
     SyntaxNode,
 };
+use test_fixture::WithFixture;
 use tracing_subscriber::{layer::SubscriberExt, Registry};
 use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;

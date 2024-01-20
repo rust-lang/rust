@@ -1,6 +1,6 @@
 use rustc_errors::{
-    AddToDiagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, MultiSpan,
-    SingleLabelManySpans,
+    AddToDiagnostic, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level,
+    MultiSpan, SingleLabelManySpans,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -446,15 +446,15 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a> IntoDiagnostic<'a> for EnvNotDefinedWithUserMessage {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
         )]
-        let mut diag = handler.struct_err(self.msg_from_user.to_string());
-        diag.set_span(self.span);
+        let mut diag = DiagnosticBuilder::new(dcx, level, self.msg_from_user.to_string());
+        diag.span(self.span);
         diag
     }
 }
@@ -618,7 +618,7 @@ impl AddToDiagnostic for FormatUnusedArg {
             rustc_errors::SubdiagnosticMessage,
         ) -> rustc_errors::SubdiagnosticMessage,
     {
-        diag.set_arg("named", self.named);
+        diag.arg("named", self.named);
         let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
         diag.span_label(self.span, msg);
     }
@@ -801,23 +801,25 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a> IntoDiagnostic<'a> for AsmClobberNoReg {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag =
-            handler.struct_err(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
-        diag.set_span(self.spans.clone());
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         // eager translation as `span_labels` takes `AsRef<str>`
-        let lbl1 = handler.eagerly_translate_to_string(
+        let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,
             [].into_iter(),
         );
-        diag.span_labels(self.clobbers, &lbl1);
-        let lbl2 = handler.eagerly_translate_to_string(
+        let lbl2 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_outputs,
             [].into_iter(),
         );
-        diag.span_labels(self.spans, &lbl2);
-        diag
+        DiagnosticBuilder::new(
+            dcx,
+            level,
+            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
+        )
+        .with_span(self.spans.clone())
+        .with_span_labels(self.clobbers, &lbl1)
+        .with_span_labels(self.spans, &lbl2)
     }
 }
 

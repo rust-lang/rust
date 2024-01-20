@@ -23,12 +23,11 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, Node, PatKind};
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -882,7 +881,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
             } else {
                 error_msg.push_str("not in the table");
             }
-            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
+            self.tcx.dcx().emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }
@@ -967,7 +966,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         let hir_id = self.tcx.local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
-            self.tcx.sess.emit_err(FieldIsPrivate {
+            self.tcx.dcx().emit_err(FieldIsPrivate {
                 span,
                 field_name: field.name,
                 variant_descr: def.variant_descr(),
@@ -1101,7 +1100,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
+            self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
         }
         is_error
     }
@@ -1230,7 +1229,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     }
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(expr.span, "no type-dependent def for method call");
                 }
             }
@@ -1277,9 +1276,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 let sess = self.tcx.sess;
                 let _ = match name {
                     Some(name) => {
-                        sess.emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
+                        sess.dcx().emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
                     }
-                    None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
+                    None => sess.dcx().emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
             }
@@ -1435,7 +1434,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
 
-            self.tcx.sess.emit_err(InPublicInterface {
+            self.tcx.dcx().emit_err(InPublicInterface {
                 span,
                 vis_descr,
                 kind,
@@ -1766,62 +1765,11 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        visibility,
         effective_visibilities,
         check_private_in_public,
         check_mod_privacy,
         ..*providers
     };
-}
-
-fn visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility<DefId> {
-    local_visibility(tcx, def_id).to_def_id()
-}
-
-fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
-    match tcx.resolutions(()).visibilities.get(&def_id) {
-        Some(vis) => *vis,
-        None => {
-            let hir_id = tcx.local_def_id_to_hir_id(def_id);
-            match tcx.hir_node(hir_id) {
-                // Unique types created for closures participate in type privacy checking.
-                // They have visibilities inherited from the module they are defined in.
-                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure{..}, .. })
-                // - AST lowering creates dummy `use` items which don't
-                //   get their entries in the resolver's visibility table.
-                // - AST lowering also creates opaque type items with inherited visibilities.
-                //   Visibility on them should have no effect, but to avoid the visibility
-                //   query failing on some items, we provide it for opaque types as well.
-                | Node::Item(hir::Item {
-                    kind: hir::ItemKind::Use(_, hir::UseKind::ListStem)
-                        | hir::ItemKind::OpaqueTy(..),
-                    ..
-                }) => ty::Visibility::Restricted(tcx.parent_module(hir_id).to_local_def_id()),
-                // Visibilities of trait impl items are inherited from their traits
-                // and are not filled in resolve.
-                Node::ImplItem(impl_item) => {
-                    match tcx.hir_node_by_def_id(tcx.hir().get_parent_item(hir_id).def_id) {
-                        Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(tr), .. }),
-                            ..
-                        }) => tr.path.res.opt_def_id().map_or_else(
-                            || {
-                                tcx.sess.span_delayed_bug(tr.path.span, "trait without a def-id");
-                                ty::Visibility::Public
-                            },
-                            |def_id| tcx.visibility(def_id).expect_local(),
-                        ),
-                        _ => span_bug!(impl_item.span, "the parent is not a trait impl"),
-                    }
-                }
-                _ => span_bug!(
-                    tcx.def_span(def_id),
-                    "visibility table unexpectedly missing a def-id: {:?}",
-                    def_id,
-                ),
-            }
-        }
-    }
 }
 
 fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {

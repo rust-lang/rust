@@ -71,7 +71,7 @@ impl std::fmt::Debug for ConstInt {
                         (4, _) => write!(fmt, "_i32")?,
                         (8, _) => write!(fmt, "_i64")?,
                         (16, _) => write!(fmt, "_i128")?,
-                        _ => bug!(),
+                        (sz, _) => bug!("unexpected int size i{sz}"),
                     }
                 }
                 Ok(())
@@ -105,7 +105,7 @@ impl std::fmt::Debug for ConstInt {
                         (4, _) => write!(fmt, "_u32")?,
                         (8, _) => write!(fmt, "_u64")?,
                         (16, _) => write!(fmt, "_u128")?,
-                        _ => bug!(),
+                        (sz, _) => bug!("unexpected unsigned int size u{sz}"),
                     }
                 }
                 Ok(())

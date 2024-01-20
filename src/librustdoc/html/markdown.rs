@@ -530,7 +530,6 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
             for event in &mut self.inner {
                 match &event.0 {
                     Event::End(Tag::Heading(..)) => break,
-                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
                         self.buf.push_back(event);
@@ -549,12 +548,10 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
 
             let level =
                 std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
-            self.buf.push_back((Event::Html(format!("</a></h{level}>").into()), 0..0));
+            self.buf.push_back((Event::Html(format!("</h{level}>").into()), 0..0));
 
-            let start_tags = format!(
-                "<h{level} id=\"{id}\">\
-                    <a href=\"#{id}\">",
-            );
+            let start_tags =
+                format!("<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{id}\">§</a>");
             return Some((Event::Html(start_tags.into()), 0..0));
         }
         event
@@ -835,7 +832,7 @@ impl<'tcx> ExtraInfo<'tcx> {
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
-                |l| l,
+                |_| {},
             );
         }
     }
@@ -843,9 +840,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagnosticMessage>,
-        f: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
@@ -1296,7 +1291,7 @@ impl LangString {
                                     lint.help(format!(
                                         "there is an attribute with a similar name: `edition{}`",
                                         &x[4..],
-                                    ))
+                                    ));
                                 },
                             );
                         }
@@ -1350,7 +1345,7 @@ impl LangString {
                                         lint.help(format!(
                                             "there is an attribute with a similar name: `{flag}`"
                                         ))
-                                        .help(help)
+                                        .help(help);
                                     },
                                 );
                             }
@@ -1383,7 +1378,7 @@ impl LangString {
         };
 
         if custom_code_classes_in_docs {
-            call(&mut TagIterator::new(string, extra).into_iter())
+            call(&mut TagIterator::new(string, extra))
         } else {
             call(&mut tokens(string))
         }
@@ -2013,6 +2008,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("themeStyle".into(), 1);
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
+    map.insert("sidebar-button".into(), 1);
     map.insert("main-content".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);

@@ -1,0 +1,22 @@
+From a101a43b795431ce617e7782afb451f4853afc00 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Thu, 7 Dec 2023 14:51:35 +0000
+Subject: [PATCH] Enable the exposed_provenance feature
+
+---
+ crates/core_simd/tests/pointers.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crates/core_simd/tests/pointers.rs b/crates/core_simd/tests/pointers.rs
+index 0ae8f83..06620d6 100644
+--- a/crates/core_simd/tests/pointers.rs
++++ b/crates/core_simd/tests/pointers.rs
+@@ -1,4 +1,4 @@
+-#![feature(portable_simd, strict_provenance)]
++#![feature(exposed_provenance, portable_simd, strict_provenance)]
+ 
+ use core_simd::simd::{Simd, SimdConstPtr, SimdMutPtr};
+ 
+-- 
+2.34.1
+

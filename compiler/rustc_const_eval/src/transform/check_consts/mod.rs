@@ -5,6 +5,7 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_attr as attr;
+use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
@@ -44,6 +45,10 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
         ConstCx { body, tcx, param_env, const_kind }
     }
 
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
+    }
+
     pub fn def_id(&self) -> LocalDefId {
         self.body.source.def_id().expect_local()
     }
@@ -67,7 +72,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
 
     pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
         let did = self.def_id().to_def_id();
-        if self.tcx.is_closure(did) {
+        if self.tcx.is_closure_or_coroutine(did) {
             let ty = self.tcx.type_of(did).instantiate_identity();
             let ty::Closure(_, args) = ty.kind() else { bug!("type_of closure not ty::Closure") };
             args.as_closure().sig()
@@ -112,7 +117,7 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         None if is_parent_const_stable_trait(tcx, def_id) => {
             // Remove this when `#![feature(const_trait_impl)]` is stabilized,
             // returning `true` unconditionally.
-            tcx.sess.span_delayed_bug(
+            tcx.dcx().span_delayed_bug(
                 tcx.def_span(def_id),
                 "trait implementations cannot be const stable yet",
             );

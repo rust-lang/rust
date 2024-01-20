@@ -449,8 +449,8 @@ impl clean::GenericBound {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
                     hir::TraitBoundModifier::Negative => "!",
-                    // ~const is experimental; do not display those bounds in rustdoc
-                    hir::TraitBoundModifier::MaybeConst => "",
+                    // `const` and `~const` trait bounds are experimental; don't render them.
+                    hir::TraitBoundModifier::Const | hir::TraitBoundModifier::MaybeConst => "",
                 };
                 if f.alternate() {
                     write!(f, "{modifier_str}{ty:#}", ty = ty.print(cx))

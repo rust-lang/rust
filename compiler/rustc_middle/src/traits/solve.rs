@@ -233,6 +233,27 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
     }
 }
 
+/// Why a specific goal has to be proven.
+///
+/// This is necessary as we treat nested goals different depending on
+/// their source.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum GoalSource {
+    Misc,
+    /// We're proving a where-bound of an impl.
+    ///
+    /// FIXME(-Znext-solver=coinductive): Explain how and why this
+    /// changes whether cycles are coinductive.
+    ///
+    /// This also impacts whether we erase constraints on overflow.
+    /// Erasing constraints is generally very useful for perf and also
+    /// results in better error messages by avoiding spurious errors.
+    /// We do not erase overflow constraints in `normalizes-to` goals unless
+    /// they are from an impl where-clause. This is necessary due to
+    /// backwards compatability, cc trait-system-refactor-initiatitive#70.
+    ImplWhereBound,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 pub enum IsNormalizesToHack {
     Yes,

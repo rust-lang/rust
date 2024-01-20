@@ -212,11 +212,17 @@ where
     let cgu_name_cache = &mut FxHashMap::default();
 
     for mono_item in mono_items {
-        // Handle only root items directly here. Inlined items are handled at
-        // the bottom of the loop based on reachability.
+        // Handle only root (GloballyShared) items directly here. Inlined (LocalCopy) items
+        // are handled at the bottom of the loop based on reachability, with one exception.
+        // The #[lang = "start"] item is the program entrypoint, so there are no calls to it in MIR.
+        // So even if its mode is LocalCopy, we need to treat it like a root.
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
-            InstantiationMode::LocalCopy => continue,
+            InstantiationMode::LocalCopy => {
+                if Some(mono_item.def_id()) != cx.tcx.lang_items().start_fn() {
+                    continue;
+                }
+            }
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
@@ -1073,7 +1079,7 @@ where
                 (span1, span2) => span1.or(span2),
             };
 
-            tcx.sess.emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
+            tcx.dcx().emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
         }
     }
 }
@@ -1087,7 +1093,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 MonoItemCollectionMode::Eager
             } else {
                 if mode != "lazy" {
-                    tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
+                    tcx.dcx().emit_warn(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy
@@ -1104,7 +1110,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
 
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
@@ -1142,7 +1148,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         if let Err(err) =
             dump_mono_items_stats(tcx, codegen_units, path, tcx.crate_name(LOCAL_CRATE))
         {
-            tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
+            tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
     }
 

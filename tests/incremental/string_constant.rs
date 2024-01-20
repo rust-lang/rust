@@ -1,5 +1,5 @@
 // revisions: cfail1 cfail2
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -Copt-level=0
 // build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]

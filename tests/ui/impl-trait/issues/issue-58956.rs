@@ -5,9 +5,9 @@ impl Lam for B {}
 pub struct Wrap<T>(T);
 
 const _A: impl Lam = {
-    //~^ `impl Trait` only allowed in function and inherent method argument and return types
+    //~^ `impl Trait` is not allowed in const types
     let x: Wrap<impl Lam> = Wrap(B);
-    //~^ `impl Trait` only allowed in function and inherent method argument and return types
+    //~^ `impl Trait` is not allowed in the type of variable bindings
     x.0
 };
 

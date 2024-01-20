@@ -44,23 +44,18 @@ use rustc_type_ir::PredicateKind as IrPredicateKind;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
+use rustc_type_ir::TypeAndMut as IrTypeAndMut;
 
 use super::GenericParamDefKind;
 
-// Re-export the `TyKind` from `rustc_type_ir` here for convenience
+// Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct TypeAndMut<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub mutbl: hir::Mutability,
-}
+pub type TypeAndMut<'tcx> = IrTypeAndMut<TyCtxt<'tcx>>;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
@@ -246,38 +241,36 @@ pub struct ClosureArgs<'tcx> {
 }
 
 /// Struct returned by `split()`.
-pub struct ClosureArgsParts<'tcx, T> {
+pub struct ClosureArgsParts<'tcx> {
     pub parent_args: &'tcx [GenericArg<'tcx>],
-    pub closure_kind_ty: T,
-    pub closure_sig_as_fn_ptr_ty: T,
-    pub tupled_upvars_ty: T,
+    pub closure_kind_ty: Ty<'tcx>,
+    pub closure_sig_as_fn_ptr_ty: Ty<'tcx>,
+    pub tupled_upvars_ty: Ty<'tcx>,
 }
 
 impl<'tcx> ClosureArgs<'tcx> {
     /// Construct `ClosureArgs` from `ClosureArgsParts`, containing `Args`
     /// for the closure parent, alongside additional closure-specific components.
-    pub fn new(tcx: TyCtxt<'tcx>, parts: ClosureArgsParts<'tcx, Ty<'tcx>>) -> ClosureArgs<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, parts: ClosureArgsParts<'tcx>) -> ClosureArgs<'tcx> {
         ClosureArgs {
-            args: tcx.mk_args_from_iter(
-                parts.parent_args.iter().copied().chain(
-                    [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
-                        .iter()
-                        .map(|&ty| ty.into()),
-                ),
-            ),
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.closure_kind_ty.into(),
+                parts.closure_sig_as_fn_ptr_ty.into(),
+                parts.tupled_upvars_ty.into(),
+            ])),
         }
     }
 
     /// Divides the closure args into their respective components.
     /// The ordering assumed here must match that used by `ClosureArgs::new` above.
-    fn split(self) -> ClosureArgsParts<'tcx, GenericArg<'tcx>> {
+    fn split(self) -> ClosureArgsParts<'tcx> {
         match self.args[..] {
             [ref parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
                 ClosureArgsParts {
                     parent_args,
-                    closure_kind_ty,
-                    closure_sig_as_fn_ptr_ty,
-                    tupled_upvars_ty,
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    closure_sig_as_fn_ptr_ty: closure_sig_as_fn_ptr_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => bug!("closure args missing synthetics"),
@@ -290,7 +283,7 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle closure
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.args.len() >= 3 && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
+        self.args.len() >= 3 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the closure's parent.
@@ -314,14 +307,14 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// Returns the tuple type representing the upvars for this closure.
     #[inline]
     pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+        self.split().tupled_upvars_ty
     }
 
     /// Returns the closure kind for this closure; may return a type
     /// variable during inference. To get the closure kind during
     /// inference, use `infcx.closure_kind(args)`.
     pub fn kind_ty(self) -> Ty<'tcx> {
-        self.split().closure_kind_ty.expect_ty()
+        self.split().closure_kind_ty
     }
 
     /// Returns the `fn` pointer type representing the closure signature for this
@@ -330,7 +323,7 @@ impl<'tcx> ClosureArgs<'tcx> {
     // type is known at the time of the creation of `ClosureArgs`,
     // see `rustc_hir_analysis::check::closure`.
     pub fn sig_as_fn_ptr_ty(self) -> Ty<'tcx> {
-        self.split().closure_sig_as_fn_ptr_ty.expect_ty()
+        self.split().closure_sig_as_fn_ptr_ty
     }
 
     /// Returns the closure kind for this closure; only usable outside
@@ -362,51 +355,42 @@ pub struct CoroutineArgs<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-pub struct CoroutineArgsParts<'tcx, T> {
+pub struct CoroutineArgsParts<'tcx> {
     pub parent_args: &'tcx [GenericArg<'tcx>],
-    pub resume_ty: T,
-    pub yield_ty: T,
-    pub return_ty: T,
-    pub witness: T,
-    pub tupled_upvars_ty: T,
+    pub resume_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+    pub witness: Ty<'tcx>,
+    pub tupled_upvars_ty: Ty<'tcx>,
 }
 
 impl<'tcx> CoroutineArgs<'tcx> {
     /// Construct `CoroutineArgs` from `CoroutineArgsParts`, containing `Args`
     /// for the coroutine parent, alongside additional coroutine-specific components.
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        parts: CoroutineArgsParts<'tcx, Ty<'tcx>>,
-    ) -> CoroutineArgs<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
         CoroutineArgs {
-            args: tcx.mk_args_from_iter(
-                parts.parent_args.iter().copied().chain(
-                    [
-                        parts.resume_ty,
-                        parts.yield_ty,
-                        parts.return_ty,
-                        parts.witness,
-                        parts.tupled_upvars_ty,
-                    ]
-                    .iter()
-                    .map(|&ty| ty.into()),
-                ),
-            ),
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.resume_ty.into(),
+                parts.yield_ty.into(),
+                parts.return_ty.into(),
+                parts.witness.into(),
+                parts.tupled_upvars_ty.into(),
+            ])),
         }
     }
 
     /// Divides the coroutine args into their respective components.
     /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
-    fn split(self) -> CoroutineArgsParts<'tcx, GenericArg<'tcx>> {
+    fn split(self) -> CoroutineArgsParts<'tcx> {
         match self.args[..] {
             [ref parent_args @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
                 CoroutineArgsParts {
                     parent_args,
-                    resume_ty,
-                    yield_ty,
-                    return_ty,
-                    witness,
-                    tupled_upvars_ty,
+                    resume_ty: resume_ty.expect_ty(),
+                    yield_ty: yield_ty.expect_ty(),
+                    return_ty: return_ty.expect_ty(),
+                    witness: witness.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => bug!("coroutine args missing synthetics"),
@@ -419,7 +403,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle coroutine
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.args.len() >= 5 && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
+        self.args.len() >= 5 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the coroutine's parent.
@@ -433,7 +417,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The state transformation MIR pass may only produce layouts which mention types
     /// in this tuple. Upvars are not counted here.
     pub fn witness(self) -> Ty<'tcx> {
-        self.split().witness.expect_ty()
+        self.split().witness
     }
 
     /// Returns an iterator over the list of types of captured paths by the coroutine.
@@ -452,31 +436,32 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Returns the tuple type representing the upvars for this coroutine.
     #[inline]
     pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+        self.split().tupled_upvars_ty
     }
 
     /// Returns the type representing the resume type of the coroutine.
     pub fn resume_ty(self) -> Ty<'tcx> {
-        self.split().resume_ty.expect_ty()
+        self.split().resume_ty
     }
 
     /// Returns the type representing the yield type of the coroutine.
     pub fn yield_ty(self) -> Ty<'tcx> {
-        self.split().yield_ty.expect_ty()
+        self.split().yield_ty
     }
 
     /// Returns the type representing the return type of the coroutine.
     pub fn return_ty(self) -> Ty<'tcx> {
-        self.split().return_ty.expect_ty()
+        self.split().return_ty
     }
 
     /// Returns the "coroutine signature", which consists of its resume, yield
     /// and return types.
     pub fn sig(self) -> GenSig<'tcx> {
+        let parts = self.split();
         ty::GenSig {
-            resume_ty: self.resume_ty(),
-            yield_ty: self.yield_ty(),
-            return_ty: self.return_ty(),
+            resume_ty: parts.resume_ty,
+            yield_ty: parts.yield_ty,
+            return_ty: parts.return_ty,
         }
     }
 }
@@ -1240,7 +1225,7 @@ impl<'tcx> AliasTy<'tcx> {
 
     /// Whether this alias type is an opaque.
     pub fn is_opaque(self, tcx: TyCtxt<'tcx>) -> bool {
-        matches!(self.opt_kind(tcx), Some(ty::AliasKind::Opaque))
+        matches!(self.opt_kind(tcx), Some(ty::Opaque))
     }
 
     /// FIXME: rename `AliasTy` to `AliasTerm` and always handle
@@ -1562,7 +1547,7 @@ impl<'tcx> Region<'tcx> {
         span: S,
         msg: &'static str,
     ) -> Region<'tcx> {
-        let reported = tcx.sess.span_delayed_bug(span, msg);
+        let reported = tcx.dcx().span_delayed_bug(span, msg);
         Region::new_error(tcx, reported)
     }
 
@@ -2009,7 +1994,7 @@ impl<'tcx> Ty<'tcx> {
         span: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> Ty<'tcx> {
-        let reported = tcx.sess.span_delayed_bug(span, msg);
+        let reported = tcx.dcx().span_delayed_bug(span, msg);
         Ty::new(tcx, Error(reported))
     }
 
@@ -2173,14 +2158,13 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         coroutine_args: GenericArgsRef<'tcx>,
-        movability: hir::Movability,
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
             "coroutine constructed with incorrect number of substitutions"
         );
-        Ty::new(tcx, Coroutine(def_id, coroutine_args, movability))
+        Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
     #[inline]
@@ -2661,7 +2645,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn variant_range(self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Coroutine(def_id, args, _) => {
+            TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().variant_range(*def_id, tcx))
             }
             _ => None,
@@ -2682,7 +2666,7 @@ impl<'tcx> Ty<'tcx> {
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
-            TyKind::Coroutine(def_id, args, _) => {
+            TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
             }
             _ => None,
@@ -2693,7 +2677,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
-            ty::Coroutine(_, args, _) => args.as_coroutine().discr_ty(tcx),
+            ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -2761,7 +2745,7 @@ impl<'tcx> Ty<'tcx> {
             // Extern types have metadata = ().
             | ty::Foreign(..)
             // `dyn*` has no metadata
-            | ty::Dynamic(_, _, DynKind::DynStar)
+            | ty::Dynamic(_, _, ty::DynStar)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
@@ -2770,7 +2754,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Tuple(..) => (tcx.types.unit, false),
 
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
-            ty::Dynamic(_, _, DynKind::Dyn) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
             },
@@ -2815,6 +2799,15 @@ impl<'tcx> Ty<'tcx> {
             Error(_) => Some(ty::ClosureKind::Fn),
 
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
+        }
+    }
+
+    /// Inverse of [`Ty::to_opt_closure_kind`].
+    pub fn from_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn => tcx.types.i8,
+            ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
         }
     }
 
@@ -2979,7 +2972,7 @@ impl<'tcx> Ty<'tcx> {
             | FnPtr(_)
             | Dynamic(_, _, _)
             | Closure(_, _)
-            | Coroutine(_, _, _)
+            | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never
             | Tuple(_) => true,

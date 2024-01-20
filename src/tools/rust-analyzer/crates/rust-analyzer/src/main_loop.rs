@@ -571,13 +571,18 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
-            vfs::loader::Message::Loaded { files } => {
+            vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
+                    // if the file is in mem docs, it's managed by the client via notifications
+                    // so only set it if its not in there
                     if !self.mem_docs.contains(&path) {
-                        vfs.set_file_contents(path, contents);
+                        if is_changed || vfs.file_id(&path).is_none() {
+                            vfs.set_file_contents(path, contents);
+                        }
                     }
                 }
             }

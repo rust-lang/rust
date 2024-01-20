@@ -2,7 +2,9 @@
 #![allow(
     clippy::explicit_auto_deref,
     clippy::uninlined_format_args,
-    clippy::needless_pass_by_ref_mut
+    clippy::map_clone,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_closure
 )]
 
 use std::fmt::Debug;
@@ -130,6 +132,16 @@ fn generic_not_ok<T: AsMut<T> + AsRef<T> + Debug + ?Sized>(mrt: &mut T) {
 fn generic_ok<U: AsMut<T> + AsRef<T> + ?Sized, T: Debug + ?Sized>(mru: &mut U) {
     foo_mrt(mru.as_mut());
     foo_rt(mru.as_ref());
+}
+
+fn foo() {
+    let x = Some(String::new());
+    let z = x.as_ref().map(String::clone);
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| z.clone());
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| String::clone(z));
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
 }
 
 fn main() {

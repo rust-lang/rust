@@ -4,6 +4,6 @@
 pub fn hrlt<'b, 'c>()
 where
     for<'a: 'b + 'c> &'a (): std::fmt::Debug,
-    //~^ ERROR lifetime bounds cannot be used in this context
+    //~^ ERROR bounds cannot be used in this context
 {
 }

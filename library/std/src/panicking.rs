@@ -337,6 +337,8 @@ pub mod panic_count {
 #[doc(hidden)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[unstable(feature = "update_panic_count", issue = "none")]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_ref))]
 pub mod panic_count {
     use crate::cell::Cell;
     use crate::sync::atomic::{AtomicUsize, Ordering};
@@ -588,7 +590,7 @@ pub fn panicking() -> bool {
 }
 
 /// Entry point of panics from the core crate (`panic_impl` lang item).
-#[cfg(not(test))]
+#[cfg(not(any(test, doctest)))]
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct FormatStringPayload<'a> {
@@ -669,7 +671,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 /// panic!() and assert!(). In particular, this is the only entry point that supports
 /// arbitrary payloads, not just format strings.
 #[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
-#[cfg_attr(not(test), lang = "begin_panic")]
+#[cfg_attr(not(any(test, doctest)), lang = "begin_panic")]
 // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible

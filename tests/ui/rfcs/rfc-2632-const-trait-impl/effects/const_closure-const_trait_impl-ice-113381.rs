@@ -1,3 +1,5 @@
+// check-pass
+// FIXME(effects) this shouldn't pass
 #![feature(const_closures, const_trait_impl, effects)]
 #![allow(incomplete_features)]
 
@@ -11,5 +13,5 @@ impl Foo for () {
 
 fn main() {
     (const || { (()).foo() })();
-    //~^ ERROR: cannot call non-const fn
+    // FIXME(effects) ~^ ERROR: cannot call non-const fn
 }

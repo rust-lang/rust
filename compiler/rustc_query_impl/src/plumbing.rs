@@ -69,7 +69,7 @@ impl QueryContext for QueryCtxt<'_> {
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
             NonZeroU64::new(
-                self.query_system.jobs.fetch_add(1, rustc_data_structures::sync::Ordering::Relaxed),
+                self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             )
             .unwrap(),
         )
@@ -167,7 +167,7 @@ impl QueryContext for QueryCtxt<'_> {
             limit => limit * 2,
         };
 
-        self.sess.emit_fatal(QueryOverflow {
+        self.sess.dcx().emit_fatal(QueryOverflow {
             span,
             layout_of_depth,
             suggested_limit,
@@ -315,8 +315,11 @@ pub(crate) fn create_query_frame<
             ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
         )
     );
-    let description =
-        if tcx.sess.verbose() { format!("{description} [{name:?}]") } else { description };
+    let description = if tcx.sess.verbose_internals() {
+        format!("{description} [{name:?}]")
+    } else {
+        description
+    };
     let span = if kind == dep_graph::dep_kinds::def_span || with_no_queries() {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
@@ -339,9 +342,9 @@ pub(crate) fn create_query_frame<
             hasher.finish::<Hash64>()
         })
     };
-    let ty_adt_id = key.ty_adt_id();
+    let ty_def_id = key.ty_def_id();
 
-    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_adt_id, hash)
+    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_def_id, hash)
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(

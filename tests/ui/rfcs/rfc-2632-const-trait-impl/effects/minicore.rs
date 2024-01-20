@@ -1,12 +1,13 @@
 // check-pass
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
 #![feature(fundamental)]
 #![feature(const_trait_impl, effects, const_mut_refs)]
 #![allow(internal_features)]
 #![no_std]
 #![no_core]
+#![stable(feature = "minicore", since = "1.0.0")]
 
 #[lang = "sized"]
 trait Sized {}
@@ -39,7 +40,7 @@ const fn bar() {
 
 #[lang = "Try"]
 #[const_trait]
-trait Try: FromResidual {
+trait Try: FromResidual<Self::Residual> {
     type Output;
     type Residual;
 
@@ -52,7 +53,7 @@ trait Try: FromResidual {
 
 // FIXME
 // #[const_trait]
-trait FromResidual<R = <Self as Try>::Residual> {
+trait FromResidual<R = <Self as /* FIXME: ~const */ Try>::Residual> {
     #[lang = "from_residual"]
     fn from_residual(residual: R) -> Self;
 }
@@ -82,6 +83,7 @@ trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
 trait FnOnce<Args: Tuple> {
+    #[lang = "fn_once_output"]
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
@@ -93,7 +95,7 @@ struct ConstFnMutClosure<CapturedData, Function> {
 }
 
 #[lang = "tuple_trait"]
-pub trait Tuple {}
+trait Tuple {}
 
 macro_rules! impl_fn_mut_tuple {
     ($($var:ident)*) => {
@@ -509,3 +511,22 @@ trait StructuralPartialEq {}
 trait StructuralEq {}
 
 const fn drop<T: ~const Destruct>(_: T) {}
+
+extern "rust-intrinsic" {
+    #[rustc_const_stable(feature = "const_eval_select", since = "1.0.0")]
+    fn const_eval_select<ARG: Tuple, F, G, RET>(
+        arg: ARG,
+        called_in_const: F,
+        called_at_rt: G,
+    ) -> RET
+    where
+        F: const FnOnce<ARG, Output = RET>,
+        G: FnOnce<ARG, Output = RET>;
+}
+
+fn test_const_eval_select() {
+    const fn const_fn() {}
+    fn rt_fn() {}
+
+    unsafe { const_eval_select((), const_fn, rt_fn); }
+}

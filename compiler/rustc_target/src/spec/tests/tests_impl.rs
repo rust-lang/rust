@@ -116,7 +116,8 @@ impl Target {
 
         // Check dynamic linking stuff
         // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
-        if self.os == "none" && self.arch != "bpf" {
+        // hexagon: when targeting QuRT, that OS can load dynamic libraries.
+        if self.os == "none" && (self.arch != "bpf" && self.arch != "hexagon") {
             assert!(!self.dynamic_linking);
         }
         if self.only_cdylib

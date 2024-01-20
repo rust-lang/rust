@@ -4,62 +4,43 @@ error: expected one of `!`, `(`, `+`, `,`, `::`, or `<`, found `)`
 LL |     builtin # offset_of(NotEnoughArguments);
    |                                           ^ expected one of `!`, `(`, `+`, `,`, `::`, or `<`
 
-error: expected identifier, found `,`
-  --> $DIR/offset-of-builtin.rs:16:41
+error: expected expression, found `)`
+  --> $DIR/offset-of-builtin.rs:11:55
    |
-LL |     builtin # offset_of(Container, field, too many arguments);
-   |                                         ^
-   |                                         |
-   |                                         expected identifier
-   |                                         help: remove this comma
+LL |     builtin # offset_of(NotEnoughArgumentsWithAComma, );
+   |                                                       ^ expected expression
 
-error: expected one of `)` or `.`, found `,`
-  --> $DIR/offset-of-builtin.rs:16:41
+error: expected `)`, found `too`
+  --> $DIR/offset-of-builtin.rs:14:31
    |
-LL |     builtin # offset_of(Container, field, too many arguments);
-   |                                         ^
-   |                                         |
-   |                                         expected one of `)` or `.`
-   |                                         help: missing `.`
-
-error: expected one of `)` or `.`, found `many`
-  --> $DIR/offset-of-builtin.rs:16:47
+LL |     builtin # offset_of(S, f, too many arguments);
+   |                               ^^^ expected `)`
    |
-LL |     builtin # offset_of(Container, field, too many arguments);
-   |                                              -^^^^ expected one of `)` or `.`
-   |                                              |
-   |                                              help: missing `.`
+   = note: unexpected third argument to offset_of
 
-error: expected one of `)` or `.`, found `arguments`
-  --> $DIR/offset-of-builtin.rs:16:52
-   |
-LL |     builtin # offset_of(Container, field, too many arguments);
-   |                                                   -^^^^^^^^^ expected one of `)` or `.`
-   |                                                   |
-   |                                                   help: missing `.`
-
-error: expected identifier, found `)`
-  --> $DIR/offset-of-builtin.rs:30:30
+error: unexpected token: `)`
+  --> $DIR/offset-of-builtin.rs:20:30
    |
 LL |     builtin # offset_of(S, f.);
-   |                              ^ expected identifier
+   |                              ^
 
-error: expected identifier, found `,`
-  --> $DIR/offset-of-builtin.rs:33:30
+error: unexpected token: `,`
+  --> $DIR/offset-of-builtin.rs:23:30
    |
 LL |     builtin # offset_of(S, f.,);
-   |                              ^ expected identifier
+   |                              ^
 
-error: expected one of `)` or `.`, found `..`
-  --> $DIR/offset-of-builtin.rs:36:29
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-builtin.rs:26:28
    |
 LL |     builtin # offset_of(S, f..);
-   |                             ^^ expected one of `)` or `.`
-   |
-help: if you meant to bind the contents of the rest of the array pattern into `f`, use `@`
-   |
-LL |     builtin # offset_of(S, f @ ..);
-   |                              +
+   |                            ^^^
 
-error: aborting due to 8 previous errors
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-builtin.rs:29:28
+   |
+LL |     builtin # offset_of(S, f..,);
+   |                            ^^^
+
+error: aborting due to 7 previous errors
 

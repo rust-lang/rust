@@ -722,7 +722,7 @@ pub mod debuginfo {
     // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
         #[repr(transparent)]
-        #[derive(Default)]
+        #[derive(Clone, Copy, Default)]
         pub struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
@@ -751,7 +751,7 @@ pub mod debuginfo {
     // These values **must** match with LLVMRustDISPFlags!!
     bitflags! {
         #[repr(transparent)]
-        #[derive(Default)]
+        #[derive(Clone, Copy, Default)]
         pub struct DISPFlags: u32 {
             const SPFlagZero              = 0;
             const SPFlagVirtual           = 1;
@@ -2173,8 +2173,13 @@ extern "C" {
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
     ) -> *mut TargetMachine;
+
     pub fn LLVMRustDisposeTargetMachine(T: *mut TargetMachine);
-    pub fn LLVMRustAddLibraryInfo<'a>(PM: &PassManager<'a>, M: &'a Module);
+    pub fn LLVMRustAddLibraryInfo<'a>(
+        PM: &PassManager<'a>,
+        M: &'a Module,
+        DisableSimplifyLibCalls: bool,
+    );
     pub fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
         PM: &PassManager<'a>,
@@ -2196,6 +2201,7 @@ extern "C" {
         UnrollLoops: bool,
         SLPVectorize: bool,
         LoopVectorize: bool,
+        DisableSimplifyLibCalls: bool,
         EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,

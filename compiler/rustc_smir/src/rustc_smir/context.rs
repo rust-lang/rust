@@ -3,10 +3,19 @@
 //! This trait is currently the main interface between the Rust compiler,
 //! and the `stable_mir` crate.
 
+#![allow(rustc::usage_of_qualified_ty)]
+
+use rustc_abi::HasDataLayout;
 use rustc_middle::ty;
+use rustc_middle::ty::layout::{
+    FnAbiOf, FnAbiOfHelpers, HasParamEnv, HasTyCtxt, LayoutOf, LayoutOfHelpers,
+};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
-use rustc_middle::ty::{GenericPredicates, Instance, ParamEnv, ScalarInt, ValTree};
+use rustc_middle::ty::{
+    GenericPredicates, Instance, List, ParamEnv, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
+};
 use rustc_span::def_id::LOCAL_CRATE;
+use stable_mir::abi::{FnAbi, Layout, LayoutShape};
 use stable_mir::compiler_interface::Context;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{InstanceDef, StaticDef};
@@ -16,8 +25,9 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::{Crate, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
+use std::iter;
 
 use crate::rustc_internal::{internal, RustcInternal};
 use crate::rustc_smir::builder::BodyBuilder;
@@ -59,9 +69,14 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_decls(&self) -> stable_mir::TraitDecls {
         let mut tables = self.0.borrow_mut();
+        tables.tcx.all_traits().map(|trait_def_id| tables.trait_def(trait_def_id)).collect()
+    }
+
+    fn trait_decls(&self, crate_num: CrateNum) -> stable_mir::TraitDecls {
+        let mut tables = self.0.borrow_mut();
         tables
             .tcx
-            .traits(LOCAL_CRATE)
+            .traits(crate_num.internal(&mut *tables))
             .iter()
             .map(|trait_def_id| tables.trait_def(*trait_def_id))
             .collect()
@@ -76,9 +91,19 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_impls(&self) -> stable_mir::ImplTraitDecls {
         let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        iter::once(LOCAL_CRATE)
+            .chain(tables.tcx.crates(()).iter().copied())
+            .flat_map(|cnum| tcx.trait_impls_in_crate(cnum).iter())
+            .map(|impl_def_id| tables.impl_def(*impl_def_id))
+            .collect()
+    }
+
+    fn trait_impls(&self, crate_num: CrateNum) -> stable_mir::ImplTraitDecls {
+        let mut tables = self.0.borrow_mut();
         tables
             .tcx
-            .trait_impls_in_crate(LOCAL_CRATE)
+            .trait_impls_in_crate(crate_num.internal(&mut *tables))
             .iter()
             .map(|impl_def_id| tables.impl_def(*impl_def_id))
             .collect()
@@ -156,7 +181,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
                 let crate_name = tables.tcx.crate_name(*crate_num).to_string();
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
-            .into_iter()
             .flatten()
             .collect();
         crates
@@ -218,6 +242,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         def.internal(&mut *tables).repr().simd()
     }
 
+    fn adt_is_cstr(&self, def: AdtDef) -> bool {
+        let mut tables = self.0.borrow_mut();
+        let def_id = def.0.internal(&mut *tables);
+        tables.tcx.lang_items().c_str() == Some(def_id)
+    }
+
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.0.borrow_mut();
         let def_id = def.0.internal(&mut *tables);
@@ -273,7 +303,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.mk_ty_from_kind(internal_kind).stable(&mut *tables)
     }
 
-    #[allow(rustc::usage_of_qualified_ty)]
     fn new_box_ty(&self, ty: stable_mir::ty::Ty) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let inner = ty.internal(&mut *tables);
@@ -324,7 +353,20 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        instance.ty(tables.tcx, ParamEnv::empty()).stable(&mut *tables)
+        assert!(!instance.has_non_region_param(), "{instance:?} needs further substitution");
+        instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
+    }
+
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        instance.args.stable(&mut *tables)
+    }
+
+    fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error> {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        Ok(tables.fn_abi_of_instance(instance, List::empty())?.stable(&mut *tables))
     }
 
     fn instance_def_id(&self, def: InstanceDef) -> stable_mir::DefId {
@@ -465,6 +507,65 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             )
         }
     }
+
+    fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
+        let mut tables = self.0.borrow_mut();
+        let ty = ty.internal(&mut *tables);
+        let layout = tables.layout_of(ty)?.layout;
+        Ok(layout.stable(&mut *tables))
+    }
+
+    fn layout_shape(&self, id: Layout) -> LayoutShape {
+        let mut tables = self.0.borrow_mut();
+        id.internal(&mut *tables).0.stable(&mut *tables)
+    }
 }
 
 pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
+
+/// Implement error handling for extracting function ABI information.
+impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {
+    type FnAbiOfResult = Result<&'tcx rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>>, Error>;
+
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: ty::layout::FnAbiError<'tcx>,
+        _span: rustc_span::Span,
+        fn_abi_request: ty::layout::FnAbiRequest<'tcx>,
+    ) -> Error {
+        Error::new(format!("Failed to get ABI for `{fn_abi_request:?}`: {err:?}"))
+    }
+}
+
+impl<'tcx> LayoutOfHelpers<'tcx> for Tables<'tcx> {
+    type LayoutOfResult = Result<ty::layout::TyAndLayout<'tcx>, Error>;
+
+    #[inline]
+    fn handle_layout_err(
+        &self,
+        err: ty::layout::LayoutError<'tcx>,
+        _span: rustc_span::Span,
+        ty: ty::Ty<'tcx>,
+    ) -> Error {
+        Error::new(format!("Failed to get layout for `{ty}`: {err}"))
+    }
+}
+
+impl<'tcx> HasParamEnv<'tcx> for Tables<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::reveal_all()
+    }
+}
+
+impl<'tcx> HasTyCtxt<'tcx> for Tables<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl<'tcx> HasDataLayout for Tables<'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
+        self.tcx.data_layout()
+    }
+}

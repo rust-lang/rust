@@ -616,22 +616,6 @@ class RustBuild(object):
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
 
-    def _download_component_helper(
-        self, filename, pattern, tarball_suffix, rustc_cache,
-    ):
-        key = self.stage0_compiler.date
-
-        tarball = os.path.join(rustc_cache, filename)
-        if not os.path.exists(tarball):
-            get(
-                self.download_url,
-                "dist/{}/{}".format(key, filename),
-                tarball,
-                self.checksums_sha256,
-                verbose=self.verbose,
-            )
-        unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
-
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
         on NixOS or if config.toml has `build.patch-binaries-for-nix` set.
@@ -933,8 +917,24 @@ class RustBuild(object):
             if toml_val is not None:
                 env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
 
-        # preserve existing RUSTFLAGS
-        env.setdefault("RUSTFLAGS", "")
+        # In src/etc/rust_analyzer_settings.json, we configure rust-analyzer to
+        # pass RUSTC_BOOTSTRAP=1 to all cargo invocations because the standard
+        # library uses unstable Cargo features. Without RUSTC_BOOTSTRAP,
+        # rust-analyzer would fail to fetch workspace layout when the system's
+        # default toolchain is not nightly.
+        #
+        # But that setting has the collateral effect of rust-analyzer also
+        # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various overrideCommand).
+        # For compiling bootstrap that can cause spurious rebuilding of bootstrap when
+        # rust-analyzer x.py invocations are interleaved with handwritten ones on the
+        # command line.
+        #
+        # Set RUSTC_BOOTSTRAP=1 consistently.
+        env["RUSTC_BOOTSTRAP"] = "1"
+
+        default_rustflags = "" if env.get("RUSTFLAGS_BOOTSTRAP", "") else "-Zallow-features="
+
+        env.setdefault("RUSTFLAGS", default_rustflags)
 
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":

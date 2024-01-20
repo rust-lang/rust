@@ -85,7 +85,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        // not setting the `fallback_has_occured` field here because
+        // not setting the `fallback_has_occurred` field here because
         // that field is only used for type fallback diagnostics.
         for effect in unsolved_effects {
             let expected = self.tcx.consts.true_;

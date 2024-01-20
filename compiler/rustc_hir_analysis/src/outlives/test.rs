@@ -1,21 +1,30 @@
-use rustc_errors::struct_span_err;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::{symbol::sym, ErrorGuaranteed};
 
-pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
+pub fn test_inferred_outlives(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
+    let mut res = Ok(());
     for id in tcx.hir().items() {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
         if tcx.has_attr(id.owner_id, sym::rustc_outlives) {
-            let inferred_outlives_of = tcx.inferred_outlives_of(id.owner_id);
-            struct_span_err!(
-                tcx.sess,
-                tcx.def_span(id.owner_id),
-                E0640,
-                "{:?}",
-                inferred_outlives_of
-            )
-            .emit();
+            let predicates = tcx.inferred_outlives_of(id.owner_id);
+            let mut pred: Vec<String> = predicates
+                .iter()
+                .map(|(out_pred, _)| match out_pred.kind().skip_binder() {
+                    ty::ClauseKind::RegionOutlives(p) => p.to_string(),
+                    ty::ClauseKind::TypeOutlives(p) => p.to_string(),
+                    err => bug!("unexpected clause {:?}", err),
+                })
+                .collect();
+            pred.sort();
+
+            let span = tcx.def_span(id.owner_id);
+            let mut err = tcx.dcx().struct_span_err(span, "rustc_outlives");
+            for p in pred {
+                err.note(p);
+            }
+            res = Err(err.emit());
         }
     }
+    res
 }

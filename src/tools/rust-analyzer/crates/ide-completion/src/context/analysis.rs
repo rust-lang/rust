@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{HasSource, Semantics, Type, TypeInfo, Variant};
+use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
@@ -254,11 +254,13 @@ fn analyze(
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
                     .map_or(false, |it| T![:] == it.kind());
+
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
                         .parent_ancestors()
                         .find_map(ast::Attr::cast),
                     colon_prefix,
+                    extern_crate: p.ancestors().find_map(ast::ExternCrate::cast),
                 }
             } else {
                 return None;
@@ -359,7 +361,12 @@ fn expected_type_and_name(
                     let ty = it.pat()
                         .and_then(|pat| sema.type_of_pat(&pat))
                         .or_else(|| it.initializer().and_then(|it| sema.type_of_expr(&it)))
-                        .map(TypeInfo::original);
+                        .map(TypeInfo::original)
+                        .filter(|ty| {
+                            // don't infer the let type if the expr is a function,
+                            // preventing parenthesis from vanishing
+                            it.ty().is_some() || !ty.is_fn()
+                        });
                     let name = match it.pat() {
                         Some(ast::Pat::IdentPat(ident)) => ident.name().map(NameOrNameRef::Name),
                         Some(_) | None => None,
@@ -413,20 +420,16 @@ fn expected_type_and_name(
                     })().unwrap_or((None, None))
                 },
                 ast::RecordExprField(it) => {
+                    let field_ty = sema.resolve_record_field(&it).map(|(_, _, ty)| ty);
+                    let field_name = it.field_name().map(NameOrNameRef::NameRef);
                     if let Some(expr) = it.expr() {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        (
-                            sema.type_of_expr(&expr).map(TypeInfo::original),
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        let ty = field_ty
+                            .or_else(|| sema.type_of_expr(&expr).map(TypeInfo::original));
+                        (ty, field_name)
                     } else {
                         cov_mark::hit!(expected_type_struct_field_followed_by_comma);
-                        let ty = sema.resolve_record_field(&it)
-                            .map(|(_, _, ty)| ty);
-                        (
-                            ty,
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        (field_ty, field_name)
                     }
                 },
                 // match foo { $0 }
@@ -740,13 +743,13 @@ fn classify_name_ref(
                             match sema.resolve_path(&segment.parent_path().top_path())? {
                                 hir::PathResolution::Def(def) => match def {
                                     hir::ModuleDef::Function(func) => {
-                                        func.source(sema.db)?.value.generic_param_list()
+                                         sema.source(func)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Adt(adt) => {
-                                        adt.source(sema.db)?.value.generic_param_list()
+                                        sema.source(adt)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Variant(variant) => {
-                                        variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
+                                        sema.source(variant.parent_enum(sema.db))?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
                                         if let ast::GenericArg::AssocTypeArg(arg) = &arg {
@@ -772,14 +775,14 @@ fn classify_name_ref(
                                             return None;
                                         } else {
                                             in_trait = Some(trait_);
-                                            trait_.source(sema.db)?.value.generic_param_list()
+                                            sema.source(trait_)?.value.generic_param_list()
                                         }
                                     }
                                     hir::ModuleDef::TraitAlias(trait_) => {
-                                        trait_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(trait_)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::TypeAlias(ty_) => {
-                                        ty_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(ty_)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
@@ -788,7 +791,7 @@ fn classify_name_ref(
                         },
                         ast::MethodCallExpr(call) => {
                             let func = sema.resolve_method_call(&call)?;
-                            func.source(sema.db)?.value.generic_param_list()
+                            sema.source(func)?.value.generic_param_list()
                         },
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
@@ -805,7 +808,7 @@ fn classify_name_ref(
                                             },
                                             _ => None,
                                         })?;
-                                        assoc_ty.source(sema.db)?.value.generic_param_list()
+                                        sema.source(*assoc_ty)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },

@@ -10,28 +10,63 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
-pub use crate::msg::flat::{FlatTree, TokenId};
+pub use crate::msg::flat::{
+    deserialize_span_data_index_map, serialize_span_data_index_map, FlatTree, SpanDataIndexMap,
+    TokenId,
+};
 
 // The versions of the server protocol
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
 pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
 pub const HAS_GLOBAL_SPANS: u32 = 3;
+pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
 
-pub const CURRENT_API_VERSION: u32 = HAS_GLOBAL_SPANS;
+pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: PathBuf },
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(ExpandMacro),
+    /// Since [`VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    SetConfig(ServerConfig),
+}
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub enum SpanMode {
+    #[default]
+    Id,
+    RustAnalyzer,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
+    /// Since [`NO_VERSION_CHECK_VERSION`]
     ApiVersionCheck(u32),
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    SetConfig(ServerConfig),
+    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ServerConfig {
+    pub span_mode: SpanMode,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacroExtended {
+    pub tree: FlatTree,
+    pub span_data_table: Vec<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,9 +99,12 @@ pub struct ExpandMacro {
     #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
     #[serde(default)]
     pub has_global_spans: ExpnGlobals,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub span_data_table: Vec<u32>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
     #[serde(skip_serializing)]
     #[serde(default)]
@@ -136,29 +174,27 @@ fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::{
-        span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId},
-        FileId,
-    };
+    use base_db::FileId;
     use la_arena::RawIdx;
+    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
     use text_size::{TextRange, TextSize};
     use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
 
     use super::*;
 
-    fn fixture_token_tree() -> Subtree<SpanData> {
+    fn fixture_token_tree() -> Subtree<Span> {
         let anchor = SpanAnchor {
             file_id: FileId::from_raw(0),
             ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
         };
         let mut subtree = Subtree {
             delimiter: Delimiter {
-                open: SpanData {
+                open: Span {
                     range: TextRange::empty(TextSize::new(0)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
-                close: SpanData {
+                close: Span {
                     range: TextRange::empty(TextSize::new(13)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -170,7 +206,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(
             Ident {
                 text: "struct".into(),
-                span: SpanData {
+                span: Span {
                     range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -181,7 +217,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(
             Ident {
                 text: "Foo".into(),
-                span: SpanData {
+                span: Span {
                     range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -192,7 +228,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Literal(Literal {
             text: "Foo".into(),
 
-            span: SpanData {
+            span: Span {
                 range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
                 anchor,
                 ctx: SyntaxContextId::ROOT,
@@ -200,7 +236,7 @@ mod tests {
         })));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Punct(Punct {
             char: '@',
-            span: SpanData {
+            span: Span {
                 range: TextRange::at(TextSize::new(11), TextSize::of('@')),
                 anchor,
                 ctx: SyntaxContextId::ROOT,
@@ -209,12 +245,12 @@ mod tests {
         })));
         subtree.token_trees.push(TokenTree::Subtree(Subtree {
             delimiter: Delimiter {
-                open: SpanData {
+                open: Span {
                     range: TextRange::at(TextSize::new(12), TextSize::of('{')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
-                close: SpanData {
+                close: Span {
                     range: TextRange::at(TextSize::new(13), TextSize::of('}')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -243,6 +279,7 @@ mod tests {
                 call_site: 0,
                 mixed_site: 0,
             },
+            span_data_table: Vec::new(),
         };
 
         let json = serde_json::to_string(&task).unwrap();

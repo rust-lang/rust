@@ -84,7 +84,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             InlineAsmOperand::SymFn { ref value } => {
                 if cfg!(not(feature = "inline_asm_sym")) {
                     fx.tcx
-                        .sess
+                        .dcx()
                         .span_err(span, "asm! and global_asm! sym operands are not yet supported");
                 }
 
@@ -455,7 +455,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
             _ => self
                 .tcx
-                .sess
+                .dcx()
                 .fatal(format!("Unsupported binary format for inline asm: {binary_format:?}")),
         }
 
@@ -563,7 +563,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             BinaryFormat::Macho | BinaryFormat::Coff => {}
             _ => self
                 .tcx
-                .sess
+                .dcx()
                 .fatal(format!("Unsupported binary format for inline asm: {binary_format:?}")),
         }
 

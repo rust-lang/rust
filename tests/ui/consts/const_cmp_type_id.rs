@@ -1,6 +1,6 @@
 // known-bug: #110395
 #![feature(const_type_id)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 use std::any::TypeId;
 

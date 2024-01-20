@@ -149,8 +149,14 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("bootstrap-shims-dump"));
     rm_rf(&build.out.join("rustfmt.stamp"));
 
-    for host in &build.hosts {
-        let entries = match build.out.join(host.triple).read_dir() {
+    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t.triple)).collect();
+    // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
+    // might not get removed.
+    // Adding its path (linked one for easier accessibility) will solve this problem.
+    hosts.push(build.out.join("host"));
+
+    for host in hosts {
+        let entries = match host.read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };

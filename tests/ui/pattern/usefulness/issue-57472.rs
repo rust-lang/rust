@@ -1,4 +1,4 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![deny(unreachable_patterns)]
 
 mod test_struct {
@@ -26,10 +26,12 @@ mod test_union {
     }
 
     pub fn test(punned: Punned) {
-        match punned {
-            Punned { foo: [_] } => println!("foo"),
-            Punned { bar: [_] } => println!("bar"),
-            //~^ ERROR unreachable pattern [unreachable_patterns]
+        unsafe {
+            match punned {
+                Punned { foo: [_] } => println!("foo"),
+                Punned { bar: [_] } => println!("bar"),
+                //~^ ERROR unreachable pattern [unreachable_patterns]
+            }
         }
     }
 }

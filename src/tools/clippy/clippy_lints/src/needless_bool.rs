@@ -340,6 +340,12 @@ fn check_comparison<'a, 'tcx>(
         }
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
+            // Eliminate parentheses in `e` by using the lo pos of lhs and hi pos of rhs,
+            // calling `source_callsite` make sure macros are handled correctly, see issue #9907
+            let binop_span = left_side
+                .span
+                .source_callsite()
+                .with_hi(right_side.span.source_callsite().hi());
 
             if op.node == BinOpKind::Eq {
                 let expression_info = one_side_is_unary_not(left_side, right_side);
@@ -347,13 +353,23 @@ fn check_comparison<'a, 'tcx>(
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
-                        e.span,
+                        binop_span,
                         "this comparison might be written more concisely",
                         "try simplifying it as shown",
                         format!(
                             "{} != {}",
-                            snippet_with_applicability(cx, expression_info.left_span, "..", &mut applicability),
-                            snippet_with_applicability(cx, expression_info.right_span, "..", &mut applicability)
+                            snippet_with_applicability(
+                                cx,
+                                expression_info.left_span.source_callsite(),
+                                "..",
+                                &mut applicability
+                            ),
+                            snippet_with_applicability(
+                                cx,
+                                expression_info.right_span.source_callsite(),
+                                "..",
+                                &mut applicability
+                            )
                         ),
                         applicability,
                     );
@@ -362,16 +378,16 @@ fn check_comparison<'a, 'tcx>(
 
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Some(true), None) => left_true.map_or((), |(h, m)| {
-                    suggest_bool_comparison(cx, e, right_side, applicability, m, h);
+                    suggest_bool_comparison(cx, binop_span, right_side, applicability, m, h);
                 }),
                 (None, Some(true)) => right_true.map_or((), |(h, m)| {
-                    suggest_bool_comparison(cx, e, left_side, applicability, m, h);
+                    suggest_bool_comparison(cx, binop_span, left_side, applicability, m, h);
                 }),
                 (Some(false), None) => left_false.map_or((), |(h, m)| {
-                    suggest_bool_comparison(cx, e, right_side, applicability, m, h);
+                    suggest_bool_comparison(cx, binop_span, right_side, applicability, m, h);
                 }),
                 (None, Some(false)) => right_false.map_or((), |(h, m)| {
-                    suggest_bool_comparison(cx, e, left_side, applicability, m, h);
+                    suggest_bool_comparison(cx, binop_span, left_side, applicability, m, h);
                 }),
                 (None, None) => no_literal.map_or((), |(h, m)| {
                     let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
@@ -379,7 +395,7 @@ fn check_comparison<'a, 'tcx>(
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
-                        e.span,
+                        binop_span,
                         m,
                         "try simplifying it as shown",
                         h(left_side, right_side).to_string(),
@@ -394,17 +410,17 @@ fn check_comparison<'a, 'tcx>(
 
 fn suggest_bool_comparison<'a, 'tcx>(
     cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'_>,
+    span: Span,
     expr: &Expr<'_>,
     mut app: Applicability,
     message: &str,
     conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
-    let hint = Sugg::hir_with_context(cx, expr, e.span.ctxt(), "..", &mut app);
+    let hint = Sugg::hir_with_context(cx, expr, span.ctxt(), "..", &mut app);
     span_lint_and_sugg(
         cx,
         BOOL_COMPARISON,
-        e.span,
+        span,
         message,
         "try simplifying it as shown",
         conv_hint(hint).to_string(),

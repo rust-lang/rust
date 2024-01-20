@@ -12,6 +12,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
 use std::env;
@@ -27,7 +28,7 @@ use crate::{
     facts::{AllFacts, AllFactsExt, RustcFacts},
     location::LocationTable,
     polonius,
-    region_infer::{values::RegionValueElements, RegionInferenceContext},
+    region_infer::RegionInferenceContext,
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
@@ -98,7 +99,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(body));
+    let elements = &Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
@@ -187,7 +188,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(infcx.tcx.sess.span_delayed_bug(
+        infcx.set_tainted_by_errors(infcx.dcx().span_delayed_bug(
             body.span,
             "`compute_regions` tainted `infcx` with errors but did not emit any errors",
         ));
@@ -280,7 +281,7 @@ pub(super) fn dump_annotation<'tcx>(
 
     let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "external requirements");
+        let mut err = tcx.dcx().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -299,7 +300,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         err
     } else {
-        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "no external requirements");
+        let mut err = tcx.dcx().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

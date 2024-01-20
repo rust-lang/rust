@@ -207,6 +207,13 @@ impl Attrs {
         })
     }
 
+    pub fn has_doc_notable_trait(&self) -> bool {
+        self.by_key("doc").tt_values().any(|tt| {
+            tt.delimiter.kind == DelimiterKind::Parenthesis &&
+                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "notable_trait")
+        })
+    }
+
     pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
         self.by_key("doc").tt_values().map(DocExpr::parse)
     }
@@ -355,7 +362,7 @@ fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
 }
 
 impl AttrsWithOwner {
-    pub(crate) fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
+    pub fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
         Self { attrs: db.attrs(owner), owner }
     }
 
@@ -637,9 +644,12 @@ impl<'attr> AttrQuery<'attr> {
     }
 }
 
-fn any_has_attrs(
-    db: &dyn DefDatabase,
-    id: impl Lookup<Data = impl HasSource<Value = impl ast::HasAttrs>>,
+fn any_has_attrs<'db>(
+    db: &(dyn DefDatabase + 'db),
+    id: impl Lookup<
+        Database<'db> = dyn DefDatabase + 'db,
+        Data = impl HasSource<Value = impl ast::HasAttrs>,
+    >,
 ) -> InFile<ast::AnyHasAttrs> {
     id.lookup(db).source(db).map(ast::AnyHasAttrs::new)
 }
@@ -650,17 +660,17 @@ fn attrs_from_item_tree<N: ItemTreeNode>(db: &dyn DefDatabase, id: ItemTreeId<N>
     tree.raw_attrs(mod_item.into()).clone()
 }
 
-fn attrs_from_item_tree_loc<N: ItemTreeNode>(
-    db: &dyn DefDatabase,
-    lookup: impl Lookup<Data = ItemLoc<N>>,
+fn attrs_from_item_tree_loc<'db, N: ItemTreeNode>(
+    db: &(dyn DefDatabase + 'db),
+    lookup: impl Lookup<Database<'db> = dyn DefDatabase + 'db, Data = ItemLoc<N>>,
 ) -> RawAttrs {
     let id = lookup.lookup(db).id;
     attrs_from_item_tree(db, id)
 }
 
-fn attrs_from_item_tree_assoc<N: ItemTreeNode>(
-    db: &dyn DefDatabase,
-    lookup: impl Lookup<Data = AssocItemLoc<N>>,
+fn attrs_from_item_tree_assoc<'db, N: ItemTreeNode>(
+    db: &(dyn DefDatabase + 'db),
+    lookup: impl Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<N>>,
 ) -> RawAttrs {
     let id = lookup.lookup(db).id;
     attrs_from_item_tree(db, id)

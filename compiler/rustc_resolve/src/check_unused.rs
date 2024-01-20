@@ -20,7 +20,7 @@
 //    separate step to be able to collapse the adjacent spans that rustfix
 //    will remove
 //
-//  - `check_crate` finally emits the diagnostics based on the data generated
+//  - `check_unused` finally emits the diagnostics based on the data generated
 //    in the last step
 
 use crate::imports::ImportKind;

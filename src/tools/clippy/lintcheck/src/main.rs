@@ -367,7 +367,7 @@ impl Crate {
             //
             // The wrapper is set to the `lintcheck` so we can force enable linting and ignore certain crates
             // (see `crate::driver`)
-            let status = Command::new("cargo")
+            let status = Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .arg("check")
                 .arg("--quiet")
                 .current_dir(&self.path)
@@ -441,7 +441,7 @@ impl Crate {
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
-    let status = Command::new("cargo")
+    let status = Command::new(env::var("CARGO").unwrap_or("cargo".into()))
         .arg("build")
         .status()
         .expect("Failed to build clippy!");
@@ -816,7 +816,7 @@ fn lintcheck_test() {
         "--crates-toml",
         "lintcheck/test_sources.toml",
     ];
-    let status = std::process::Command::new("cargo")
+    let status = std::process::Command::new(env::var("CARGO").unwrap_or("cargo".into()))
         .args(args)
         .current_dir("..") // repo root
         .status();

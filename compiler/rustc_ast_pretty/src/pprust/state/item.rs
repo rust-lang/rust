@@ -5,7 +5,6 @@ use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
-use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
 
@@ -338,19 +337,9 @@ impl<'a> State<'a> {
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds.iter() {
-                    if let GenericBound::Trait(ptr, ast::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b.clone());
-                    }
-                }
-                if !real_bounds.is_empty() {
+                if !bounds.is_empty() {
                     self.word_nbsp(":");
-                    self.print_type_bounds(&real_bounds);
+                    self.print_type_bounds(bounds);
                 }
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
@@ -386,6 +375,9 @@ impl<'a> State<'a> {
                 self.print_mac_def(macro_def, &item.ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
+            }
+            ast::ItemKind::Delegation(box delegation) => {
+                self.print_delegation(delegation, &item.vis, &item.attrs)
             }
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -500,7 +492,7 @@ impl<'a> State<'a> {
                 self.end();
                 self.end(); // Close the outer-box.
             }
-            ast::VariantData::Struct(fields, ..) => {
+            ast::VariantData::Struct { fields, .. } => {
                 self.print_where_clause(&generics.where_clause);
                 self.print_record_struct_body(fields, span);
             }
@@ -565,8 +557,36 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
+            ast::AssocItemKind::Delegation(box delegation) => {
+                self.print_delegation(delegation, vis, &item.attrs)
+            }
         }
         self.ann.post(self, AnnNode::SubItem(id))
+    }
+
+    pub(crate) fn print_delegation(
+        &mut self,
+        delegation: &ast::Delegation,
+        vis: &ast::Visibility,
+        attrs: &[ast::Attribute],
+    ) {
+        if delegation.body.is_some() {
+            self.head("");
+        }
+        self.print_visibility(vis);
+        self.word_space("reuse");
+
+        if let Some(qself) = &delegation.qself {
+            self.print_qpath(&delegation.path, qself, false);
+        } else {
+            self.print_path(&delegation.path, false, 0);
+        }
+        if let Some(body) = &delegation.body {
+            self.nbsp();
+            self.print_block_with_attrs(body, attrs);
+        } else {
+            self.word(";");
+        }
     }
 
     fn print_fn_full(

@@ -1,3 +1,20 @@
+error[E0053]: method `dummy2` has an incompatible type for trait
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |               ------^^^^^^^
+   |               |     |
+   |               |     expected `&'a Bar<T>`, found `Bar<T>`
+   |               help: change the self-receiver type to match the trait: `&self`
+   |
+note: type in trait
+  --> $DIR/ufcs-explicit-self-bad.rs:31:15
+   |
+LL |     fn dummy2(&self);
+   |               ^^^^^
+   = note: expected signature `fn(&&'a Bar<_>)`
+              found signature `fn(&Bar<_>)`
+
 error[E0307]: invalid `self` parameter type: isize
   --> $DIR/ufcs-explicit-self-bad.rs:8:18
    |
@@ -100,23 +117,6 @@ note: ...does not necessarily outlive the anonymous lifetime defined here
    |
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                      ^^^^^^^
-
-error[E0053]: method `dummy2` has an incompatible type for trait
-  --> $DIR/ufcs-explicit-self-bad.rs:37:21
-   |
-LL |     fn dummy2(self: &Bar<T>) {}
-   |               ------^^^^^^^
-   |               |     |
-   |               |     expected `&'a Bar<T>`, found `Bar<T>`
-   |               help: change the self-receiver type to match the trait: `&self`
-   |
-note: type in trait
-  --> $DIR/ufcs-explicit-self-bad.rs:31:15
-   |
-LL |     fn dummy2(&self);
-   |               ^^^^^
-   = note: expected signature `fn(&&'a Bar<_>)`
-              found signature `fn(&Bar<_>)`
 
 error: aborting due to 8 previous errors
 

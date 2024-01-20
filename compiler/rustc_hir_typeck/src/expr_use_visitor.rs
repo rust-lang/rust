@@ -458,11 +458,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             needs_to_be_read = true;
                         }
                     }
-                    PatKind::Or(_) | PatKind::Box(_) | PatKind::Ref(..) | PatKind::Wild => {
+                    PatKind::Or(_)
+                    | PatKind::Box(_)
+                    | PatKind::Ref(..)
+                    | PatKind::Wild
+                    | PatKind::Err(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
                         // as these patterns contains subpatterns
-                        // If the PatKind is Wild, the decision is made based on the other patterns being
-                        // examined
+                        // If the PatKind is Wild or Err, the decision is made based on the other patterns
+                        // being examined
                     }
                 }
             })?
@@ -538,7 +542,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             // The struct path probably didn't resolve
             if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
-                self.tcx().sess.span_delayed_bug(field.span, "couldn't resolve index for field");
+                self.tcx().dcx().span_delayed_bug(field.span, "couldn't resolve index for field");
             }
         }
 
@@ -576,7 +580,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if self.tcx().sess.has_errors().is_none() {
+                if self.tcx().dcx().has_errors().is_none() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }
@@ -669,12 +673,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         );
         self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
-        match arm.guard {
-            Some(hir::Guard::If(e)) => self.consume_expr(e),
-            Some(hir::Guard::IfLet(l)) => {
-                self.walk_local(l.init, l.pat, None, |t| t.borrow_expr(l.init, ty::ImmBorrow))
-            }
-            None => {}
+        if let Some(ref e) = arm.guard {
+            self.consume_expr(e)
         }
 
         self.consume_expr(arm.body);

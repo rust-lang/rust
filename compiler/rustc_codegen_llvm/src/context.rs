@@ -145,6 +145,14 @@ pub unsafe fn create_module<'ll>(
                 .replace("-Fi64", "");
         }
     }
+    if llvm_version < (18, 0, 0) {
+        if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
+            // LLVM 18 adjusts i128 to be 128-bit aligned on x86 variants.
+            // Earlier LLVMs leave this as default alignment, so remove it.
+            // See https://reviews.llvm.org/D86310
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
@@ -1014,9 +1022,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
-            self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            self.tcx.sess.emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
+            self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }
     }
 }
@@ -1032,7 +1040,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().emit_fatal(Spanned { span, node: err })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

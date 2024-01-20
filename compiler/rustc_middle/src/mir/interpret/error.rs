@@ -2,14 +2,10 @@ use super::{AllocId, AllocRange, Pointer, Scalar};
 
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::query::TyCtxtAt;
 use crate::ty::{layout, tls, Ty, TyCtxt, ValTree};
 
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{
-    struct_span_err, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
-    IntoDiagnosticArg,
-};
+use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Span, DUMMY_SP};
@@ -47,7 +43,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.is_tainted_by_errors && !span.is_dummy() {
-                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -89,13 +85,6 @@ pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
 /// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
-
-pub fn struct_error<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
-    msg: &str,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
-}
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(InterpErrorInfo<'_>, 8);

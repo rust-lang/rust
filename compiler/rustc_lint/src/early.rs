@@ -45,13 +45,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.lookup_with_diagnostics(
-                lint_id.lint,
-                Some(span),
-                msg,
-                |lint| lint,
-                diagnostic,
-            );
+            self.context.lookup_with_diagnostics(lint_id.lint, Some(span), msg, |_| {}, diagnostic);
         }
     }
 
@@ -432,7 +426,7 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
-            sess.span_delayed_bug(
+            sess.dcx().span_delayed_bug(
                 early_lint.span,
                 format!(
                     "failed to process buffered lint here (dummy = {})",

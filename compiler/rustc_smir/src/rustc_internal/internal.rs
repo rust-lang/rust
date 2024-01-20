@@ -7,6 +7,7 @@
 use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
+use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::mir::{Mutability, Safety};
@@ -16,7 +17,7 @@ use stable_mir::ty::{
     GenericArgKind, GenericArgs, IndexedVal, IntTy, Movability, Region, RigidTy, Span, TermKind,
     TraitRef, Ty, UintTy, VariantDef, VariantIdx,
 };
-use stable_mir::{CrateItem, DefId};
+use stable_mir::{CrateItem, CrateNum, DefId};
 
 use super::RustcInternal;
 
@@ -24,6 +25,13 @@ impl<'tcx> RustcInternal<'tcx> for CrateItem {
     type T = rustc_span::def_id::DefId;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         self.0.internal(tables)
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for CrateNum {
+    type T = rustc_span::def_id::CrateNum;
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        rustc_span::def_id::CrateNum::from_usize(*self)
     }
 }
 
@@ -103,11 +111,9 @@ impl<'tcx> RustcInternal<'tcx> for RigidTy {
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables), args.internal(tables))
             }
-            RigidTy::Coroutine(def, args, mov) => rustc_ty::TyKind::Coroutine(
-                def.0.internal(tables),
-                args.internal(tables),
-                mov.internal(tables),
-            ),
+            RigidTy::Coroutine(def, args, _mov) => {
+                rustc_ty::TyKind::Coroutine(def.0.internal(tables), args.internal(tables))
+            }
             RigidTy::CoroutineWitness(def, args) => {
                 rustc_ty::TyKind::CoroutineWitness(def.0.internal(tables), args.internal(tables))
             }
@@ -457,6 +463,14 @@ impl<'tcx> RustcInternal<'tcx> for Span {
 
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables[*self]
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for Layout {
+    type T = rustc_target::abi::Layout<'tcx>;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.layouts[*self]
     }
 }
 

@@ -323,6 +323,10 @@ LL | ||     Output = <Self as SVec>::Item> as SVec>::Item,
 LL | |
 LL | |  > {
    | |__^ ...because it uses `Self` as a type parameter
+help: consider using an opaque type instead
+   |
+LL | pub fn next<'a, T>(s: &'a mut impl SVec<Item = T, Output = T>) {
+   |                               ~~~~
 
 error[E0107]: missing generics for associated type `SVec::Item`
   --> $DIR/issue-105742.rs:15:21

@@ -10,7 +10,7 @@ use ide_db::{
             debug::{DebugQueryTable, TableEntry},
             Query, QueryTable,
         },
-        CrateId, FileId, FileTextQuery, ParseQuery, SourceDatabase, SourceRootId,
+        CrateData, FileId, FileTextQuery, ParseQuery, SourceDatabase, SourceRootId,
     },
     symbol_index::ModuleSymbolsQuery,
 };
@@ -54,25 +54,54 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{} block def maps\n", collect_query_count(BlockDefMapQuery.in_db(db)));
 
     if let Some(file_id) = file_id {
-        format_to!(buf, "\nFile info:\n");
+        format_to!(buf, "\nCrates for file {}:\n", file_id.index());
         let crates = crate::parent_module::crates_for(db, file_id);
         if crates.is_empty() {
             format_to!(buf, "Does not belong to any crate");
         }
         let crate_graph = db.crate_graph();
-        for krate in crates {
-            let display_crate = |krate: CrateId| match &crate_graph[krate].display_name {
-                Some(it) => format!("{it}({})", krate.into_raw()),
-                None => format!("{}", krate.into_raw()),
-            };
-            format_to!(buf, "Crate: {}\n", display_crate(krate));
-            format_to!(buf, "Enabled cfgs: {:?}\n", crate_graph[krate].cfg_options);
-            let deps = crate_graph[krate]
-                .dependencies
+        for crate_id in crates {
+            let CrateData {
+                root_file_id,
+                edition,
+                version,
+                display_name,
+                cfg_options,
+                potential_cfg_options,
+                env,
+                dependencies,
+                origin,
+                is_proc_macro,
+                target_layout,
+                toolchain,
+            } = &crate_graph[crate_id];
+            format_to!(
+                buf,
+                "Crate: {}\n",
+                match display_name {
+                    Some(it) => format!("{it}({})", crate_id.into_raw()),
+                    None => format!("{}", crate_id.into_raw()),
+                }
+            );
+            format_to!(buf, "    Root module file id: {}\n", root_file_id.index());
+            format_to!(buf, "    Edition: {}\n", edition);
+            format_to!(buf, "    Version: {}\n", version.as_deref().unwrap_or("n/a"));
+            format_to!(buf, "    Enabled cfgs: {:?}\n", cfg_options);
+            format_to!(buf, "    Potential cfgs: {:?}\n", potential_cfg_options);
+            format_to!(buf, "    Env: {:?}\n", env);
+            format_to!(buf, "    Origin: {:?}\n", origin);
+            format_to!(buf, "    Is a proc macro crate: {}\n", is_proc_macro);
+            format_to!(buf, "    Workspace Target Layout: {:?}\n", target_layout);
+            format_to!(
+                buf,
+                "    Workspace Toolchain: {}\n",
+                toolchain.as_ref().map_or_else(|| "n/a".into(), |v| v.to_string())
+            );
+            let deps = dependencies
                 .iter()
-                .map(|dep| format!("{}={:?}", dep.name, dep.crate_id))
+                .map(|dep| format!("{}={}", dep.name, dep.crate_id.into_raw()))
                 .format(", ");
-            format_to!(buf, "Dependencies: {}\n", deps);
+            format_to!(buf, "    Dependencies: {}\n", deps);
         }
     }
 

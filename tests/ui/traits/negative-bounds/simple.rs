@@ -1,5 +1,4 @@
 #![feature(negative_bounds, negative_impls)]
-//~^ WARN the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
 
 fn not_copy<T: !Copy>() {}
 

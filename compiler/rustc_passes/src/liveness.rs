@@ -98,10 +98,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
-use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -317,35 +315,13 @@ impl<'tcx> IrMaps<'tcx> {
         // For struct patterns, take note of which fields used shorthand
         // (`x` rather than `x: x`).
         let mut shorthand_field_ids = HirIdSet::default();
-        let mut pats = VecDeque::new();
-        pats.push_back(pat);
 
-        while let Some(pat) = pats.pop_front() {
-            use rustc_hir::PatKind::*;
-            match &pat.kind {
-                Binding(.., inner_pat) => {
-                    pats.extend(inner_pat.iter());
-                }
-                Struct(_, fields, _) => {
-                    let (short, not_short): (Vec<hir::PatField<'_>>, _) =
-                        fields.iter().partition(|f| f.is_shorthand);
-                    shorthand_field_ids.extend(short.iter().map(|f| f.pat.hir_id));
-                    pats.extend(not_short.iter().map(|f| f.pat));
-                }
-                Ref(inner_pat, _) | Box(inner_pat) => {
-                    pats.push_back(inner_pat);
-                }
-                TupleStruct(_, inner_pats, _) | Tuple(inner_pats, _) | Or(inner_pats) => {
-                    pats.extend(inner_pats.iter());
-                }
-                Slice(pre_pats, inner_pat, post_pats) => {
-                    pats.extend(pre_pats.iter());
-                    pats.extend(inner_pat.iter());
-                    pats.extend(post_pats.iter());
-                }
-                _ => {}
+        pat.walk_always(|pat| {
+            if let hir::PatKind::Struct(_, fields, _) = pat.kind {
+                let short = fields.iter().filter(|f| f.is_shorthand);
+                shorthand_field_ids.extend(short.map(|f| f.pat.hir_id));
             }
-        }
+        });
 
         shorthand_field_ids
     }
@@ -374,10 +350,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.add_from_pat(arm.pat);
-        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
-            self.add_from_pat(let_expr.pat);
-        }
+        self.add_from_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
@@ -405,7 +378,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Res::Local(_var_hir_id) = path.res {
                     self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 }
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
@@ -425,12 +397,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                     }));
                 }
                 self.set_captures(expr.hir_id, call_caps);
-                intravisit::walk_expr(self, expr);
             }
 
             hir::ExprKind::Let(let_expr) => {
                 self.add_from_pat(let_expr.pat);
-                intravisit::walk_expr(self, expr);
             }
 
             // live nodes required for interesting control flow:
@@ -439,11 +409,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::Yield(..) => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
 
             // otherwise, live nodes are not required:
@@ -474,10 +442,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
-                intravisit::walk_expr(self, expr);
-            }
+            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {}
         }
+        intravisit::walk_expr(self, expr);
     }
 }
 
@@ -592,7 +559,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.successors[ln] {
             Some(successor) => self.assigned_on_entry(successor, var),
             None => {
-                self.ir.tcx.sess.span_delayed_bug(DUMMY_SP, "no successor");
+                self.ir.tcx.dcx().delayed_bug("no successor");
                 true
             }
         }
@@ -950,14 +917,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(arm.body, succ);
 
-                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
-                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
-                        hir::Guard::IfLet(let_expr) => {
-                            let let_bind = self.define_bindings_in_pat(let_expr.pat, body_succ);
-                            self.propagate_through_expr(let_expr.init, let_bind)
-                        }
-                    });
-                    let arm_succ = self.define_bindings_in_pat(arm.pat, guard_succ);
+                    let guard_succ = arm
+                        .guard
+                        .as_ref()
+                        .map_or(body_succ, |g| self.propagate_through_expr(g, body_succ));
+                    let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(e, ln)
@@ -1656,7 +1620,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     let from_macro = non_shorthands
                         .iter()
                         .find(|(_, pat_span, ident_span)| {
-                            pat_span.ctxt() != ident_span.ctxt() && pat_span.from_expansion()
+                            !pat_span.eq_ctxt(*ident_span) && pat_span.from_expansion()
                         })
                         .map(|(_, pat_span, _)| *pat_span);
                     let non_shorthands = non_shorthands

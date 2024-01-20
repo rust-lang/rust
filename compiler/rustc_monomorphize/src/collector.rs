@@ -176,6 +176,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
@@ -193,7 +194,7 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    self, EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
     TypeLengthLimit,
 };
 
@@ -370,7 +371,7 @@ fn collect_items_rec<'tcx>(
     // current step of mono items collection.
     //
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
-    let error_count = tcx.sess.diagnostic().err_count();
+    let error_count = tcx.dcx().err_count();
 
     match starting_item.node {
         MonoItem::Static(def_id) => {
@@ -458,12 +459,12 @@ fn collect_items_rec<'tcx>(
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
-    if tcx.sess.diagnostic().err_count() > error_count
+    if tcx.dcx().err_count() > error_count
         && starting_item.node.is_generic_fn(tcx)
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
-        tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
+        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
             span: starting_item.span,
             formatted_item,
         });
@@ -540,7 +541,7 @@ fn check_recursion_limit<'tcx>(
         } else {
             None
         };
-        tcx.sess.emit_fatal(RecursionLimit {
+        tcx.dcx().emit_fatal(RecursionLimit {
             span,
             shrunk,
             def_span,
@@ -583,7 +584,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         } else {
             None
         };
-        tcx.sess.emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
+        tcx.dcx().emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
     }
 }
 
@@ -613,8 +614,8 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
-        let limit = self.tcx.move_size_limit().0;
-        if limit == 0 {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
             return;
         }
 
@@ -626,48 +627,19 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             return;
         }
 
-        let limit = Size::from_bytes(limit);
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else { return };
-        if layout.size <= limit {
-            return;
-        }
-        debug!(?layout);
         let source_info = self.body.source_info(location);
         debug!(?source_info);
-        for span in &self.move_size_spans {
-            if span.overlaps(source_info.span) {
-                return;
-            }
-        }
-        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-        debug!(?lint_root);
-        let Some(lint_root) = lint_root else {
-            // This happens when the issue is in a function from a foreign crate that
-            // we monomorphized in the current crate. We can't get a `HirId` for things
-            // in other crates.
-            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-            // but correct span? This would make the lint at least accept crate-level lint attributes.
-            return;
+
+        if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
+            self.lint_large_assignment(limit.0, too_large_size, location, source_info.span);
         };
-        self.tcx.emit_spanned_lint(
-            LARGE_ASSIGNMENTS,
-            lint_root,
-            source_info.span,
-            LargeAssignmentsLint {
-                span: source_info.span,
-                size: layout.size.bytes(),
-                limit: limit.bytes(),
-            },
-        );
-        self.move_size_spans.push(source_info.span);
     }
 
     fn check_fn_args_move_size(
         &mut self,
         callee_ty: Ty<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[Spanned<mir::Operand<'tcx>>],
+        fn_span: Span,
         location: Location,
     ) {
         let limit = self.tcx.move_size_limit();
@@ -691,9 +663,64 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             return;
         }
 
+        debug!(?def_id, ?fn_span);
+
         for arg in args {
-            self.check_operand_move_size(arg, location);
+            if let Some(too_large_size) = self.operand_size_if_too_large(limit, &arg.node) {
+                self.lint_large_assignment(limit.0, too_large_size, location, arg.span);
+            };
         }
+    }
+
+    fn operand_size_if_too_large(
+        &mut self,
+        limit: Limit,
+        operand: &mir::Operand<'tcx>,
+    ) -> Option<Size> {
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
+            return None;
+        };
+        if layout.size.bytes_usize() > limit.0 {
+            debug!(?layout);
+            Some(layout.size)
+        } else {
+            None
+        }
+    }
+
+    fn lint_large_assignment(
+        &mut self,
+        limit: usize,
+        too_large_size: Size,
+        location: Location,
+        span: Span,
+    ) {
+        let source_info = self.body.source_info(location);
+        debug!(?source_info);
+        for reported_span in &self.move_size_spans {
+            if reported_span.overlaps(span) {
+                return;
+            }
+        }
+        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
+        debug!(?lint_root);
+        let Some(lint_root) = lint_root else {
+            // This happens when the issue is in a function from a foreign crate that
+            // we monomorphized in the current crate. We can't get a `HirId` for things
+            // in other crates.
+            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
+            // but correct span? This would make the lint at least accept crate-level lint attributes.
+            return;
+        };
+        self.tcx.emit_spanned_lint(
+            LARGE_ASSIGNMENTS,
+            lint_root,
+            span,
+            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
+        );
+        self.move_size_spans.push(span);
     }
 }
 
@@ -812,11 +839,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, .. } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                self.check_fn_args_move_size(callee_ty, args, location);
-                visit_fn_use(self.tcx, callee_ty, true, source, self.output)
+                self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -923,6 +950,21 @@ fn visit_instance_use<'tcx>(
         return;
     }
 
+    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+    // codegen a call to that function without generating code for the function itself.
+    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+        let name = tcx.item_name(def_id);
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let panic_instance = Instance::mono(tcx, def_id);
+            if should_codegen_locally(tcx, &panic_instance) {
+                output.push(create_fn_mono_item(tcx, panic_instance, source));
+            }
+        }
+    }
+
     match instance.def {
         ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
             if !is_direct_call {
@@ -981,7 +1023,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        tcx.sess.emit_fatal(NoOptimizedMir {
+        tcx.dcx().emit_fatal(NoOptimizedMir {
             span: tcx.def_span(def_id),
             crate_name: tcx.crate_name(def_id.krate),
         });
@@ -1103,7 +1145,10 @@ fn create_fn_mono_item<'tcx>(
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
     let def_id = instance.def_id();
-    if tcx.sess.opts.unstable_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id) {
+    if tcx.sess.opts.unstable_opts.profile_closures
+        && def_id.is_local()
+        && tcx.is_closure_or_coroutine(def_id)
+    {
         crate::util::dump_closure_profile(tcx, instance);
     }
 
@@ -1253,7 +1298,9 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
-        let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
+        let Some(start_def_id) = self.tcx.lang_items().start_fn() else {
+            self.tcx.dcx().emit_fatal(errors::StartNotFound);
+        };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
         // Given that `main()` has no arguments,
@@ -1386,7 +1433,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
 }
 
 fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id) {
+    for impl_def_id in tcx.inherent_impls(def_id).ok()? {
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
             tcx,
             fn_ident,

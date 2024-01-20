@@ -74,6 +74,7 @@ pub(super) fn get_hint_if_single_char_arg(
             match ch {
                 "'" => "\\'",
                 r"\" => "\\\\",
+                "\\\"" => "\"", // no need to escape `"` in `'"'`
                 _ => ch,
             }
         );

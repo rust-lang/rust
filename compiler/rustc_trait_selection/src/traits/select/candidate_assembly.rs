@@ -154,10 +154,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        // FIXME(effects) proper constness needed?
-        candidates.vec.extend(
-            result.into_iter().map(|idx| ProjectionCandidate(idx, ty::BoundConstness::NotConst)),
-        );
+        candidates.vec.extend(result.into_iter().map(|idx| ProjectionCandidate(idx)));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -266,7 +263,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args, _) = *self_ty.kind() {
+        if let ty::Coroutine(did, args) = *self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
@@ -358,17 +355,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Provide an impl, but only for suitable `fn` pointers.
             ty::FnPtr(sig) => {
                 if sig.is_fn_trait_compatible() {
-                    candidates.vec.push(FnPointerCandidate { is_const: false });
+                    candidates
+                        .vec
+                        .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
                 }
             }
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
-            ty::FnDef(def_id, _) => {
-                if self.tcx().fn_sig(def_id).skip_binder().is_fn_trait_compatible()
-                    && self.tcx().codegen_fn_attrs(def_id).target_features.is_empty()
+            ty::FnDef(def_id, args) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                 {
-                    candidates
-                        .vec
-                        .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
+                    candidates.vec.push(FnPointerCandidate {
+                        fn_host_effect: tcx
+                            .generics_of(def_id)
+                            .host_effect_index
+                            .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
+                    });
                 }
             }
             _ => {}
@@ -483,7 +486,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
                 | ty::Closure(_, _)
-                | ty::Coroutine(_, _, _)
+                | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -526,7 +529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().trait_is_auto(def_id) {
-            match self_ty.kind() {
+            match *self_ty.kind() {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -561,10 +564,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
-                ty::Coroutine(_, _, movability)
+                ty::Coroutine(coroutine_def_id, _)
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
-                    match movability {
+                    match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {
                             // Immovable coroutines are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
@@ -585,7 +588,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, _) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(..))) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //
@@ -961,12 +964,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     |impl_def_id| {
                         if let Some(old_impl_def_id) = relevant_impl {
                             self.tcx()
-                                .sess
+                                .dcx()
                                 .struct_span_err(
                                     self.tcx().def_span(impl_def_id),
                                     "multiple drop impls found",
                                 )
-                                .span_note(self.tcx().def_span(old_impl_def_id), "other impl here")
+                                .with_span_note(
+                                    self.tcx().def_span(old_impl_def_id),
+                                    "other impl here",
+                                )
                                 .delay_as_bug();
                         }
 
@@ -1020,7 +1026,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Alias(..)

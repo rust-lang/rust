@@ -591,7 +591,7 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         ast::ExprKind::If(..) => false,
         // We do not allow collapsing a block around expression with condition
         // to avoid it being cluttered with match arm.
-        ast::ExprKind::ForLoop(..) | ast::ExprKind::While(..) => false,
+        ast::ExprKind::ForLoop { .. } | ast::ExprKind::While(..) => false,
         ast::ExprKind::Loop(..)
         | ast::ExprKind::Match(..)
         | ast::ExprKind::Block(..)

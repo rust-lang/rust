@@ -20,6 +20,7 @@
 
 pub use crate::format::*;
 pub use crate::util::parser::ExprPrecedence;
+pub use rustc_span::AttrId;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
@@ -30,7 +31,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
@@ -286,41 +286,16 @@ impl ParenthesizedArgs {
 
 pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 
-/// A modifier on a bound, e.g., `?Trait` or `~const Trait`.
-///
-/// Negative bounds should also be handled here.
+/// Modifiers on a trait bound like `~const`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
-pub enum TraitBoundModifier {
-    /// No modifiers
-    None,
-
-    /// `!Trait`
-    Negative,
-
-    /// `?Trait`
-    Maybe,
-
-    /// `~const Trait`
-    MaybeConst(Span),
-
-    /// `~const !Trait`
-    //
-    // This parses but will be rejected during AST validation.
-    MaybeConstNegative,
-
-    /// `~const ?Trait`
-    //
-    // This parses but will be rejected during AST validation.
-    MaybeConstMaybe,
+pub struct TraitBoundModifiers {
+    pub constness: BoundConstness,
+    pub polarity: BoundPolarity,
 }
 
-impl TraitBoundModifier {
-    pub fn to_constness(self) -> Const {
-        match self {
-            Self::MaybeConst(span) => Const::Yes(span),
-            _ => Const::No,
-        }
-    }
+impl TraitBoundModifiers {
+    pub const NONE: Self =
+        Self { constness: BoundConstness::Never, polarity: BoundPolarity::Positive };
 }
 
 /// The AST represents all type param bounds as types.
@@ -329,7 +304,7 @@ impl TraitBoundModifier {
 /// detects `Copy`, `Send` and `Sync`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum GenericBound {
-    Trait(PolyTraitRef, TraitBoundModifier),
+    Trait(PolyTraitRef, TraitBoundModifiers),
     Outlives(Lifetime),
 }
 
@@ -650,7 +625,8 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::MacCall(_) => {}
+            | PatKind::MacCall(_)
+            | PatKind::Err(_) => {}
         }
     }
 
@@ -779,8 +755,7 @@ pub enum PatKind {
     Ident(BindingAnnotation, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
-    /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, PatFieldsRest),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Option<P<QSelf>>, Path, ThinVec<P<Pat>>),
@@ -835,6 +810,18 @@ pub enum PatKind {
 
     /// A macro pattern; pre-expansion.
     MacCall(P<MacCall>),
+
+    /// Placeholder for a pattern that wasn't syntactically well formed in some way.
+    Err(ErrorGuaranteed),
+}
+
+/// Whether the `..` is present in a struct fields pattern.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq)]
+pub enum PatFieldsRest {
+    /// `module::StructName { field, ..}`
+    Rest,
+    /// `module::StructName { field }`
+    None,
 }
 
 /// The kind of borrow in an `AddrOf` expression,
@@ -1193,7 +1180,7 @@ impl Expr {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
                 PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
-                TraitBoundModifier::None,
+                TraitBoundModifiers::NONE,
             )),
             _ => None,
         }
@@ -1274,7 +1261,7 @@ impl Expr {
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::While(..) => ExprPrecedence::While,
-            ExprKind::ForLoop(..) => ExprPrecedence::ForLoop,
+            ExprKind::ForLoop { .. } => ExprPrecedence::ForLoop,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
@@ -1436,10 +1423,10 @@ pub enum ExprKind {
     While(P<Expr>, P<Block>, Option<Label>),
     /// A `for` loop, with an optional label.
     ///
-    /// `'label: for pat in expr { block }`
+    /// `'label: for await? pat in iter { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Label>),
+    ForLoop { pat: P<Pat>, iter: P<Expr>, body: P<Block>, label: Option<Label>, kind: ForLoopKind },
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -1540,6 +1527,13 @@ pub enum ExprKind {
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
+}
+
+/// Used to differentiate between `for` loops and `for await` loops.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum ForLoopKind {
+    For,
+    ForAwait,
 }
 
 /// Used to differentiate between `async {}` blocks and `gen {}` blocks.
@@ -2181,9 +2175,10 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u16 {
+    impl InlineAsmOptions: u16 {
         const PURE            = 1 << 0;
         const NOMEM           = 1 << 1;
         const READONLY        = 1 << 2;
@@ -2193,6 +2188,12 @@ bitflags::bitflags! {
         const ATT_SYNTAX      = 1 << 6;
         const RAW             = 1 << 7;
         const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl std::fmt::Debug for InlineAsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
@@ -2516,7 +2517,9 @@ impl fmt::Debug for ImplPolarity {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+/// The polarity of a trait bound.
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum BoundPolarity {
     /// `Type: Trait`
     Positive,
@@ -2524,6 +2527,38 @@ pub enum BoundPolarity {
     Negative(Span),
     /// `Type: ?Trait`
     Maybe(Span),
+}
+
+impl BoundPolarity {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Positive => "",
+            Self::Negative(_) => "!",
+            Self::Maybe(_) => "?",
+        }
+    }
+}
+
+/// The constness of a trait bound.
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum BoundConstness {
+    /// `Type: Trait`
+    Never,
+    /// `Type: const Trait`
+    Always(Span),
+    /// `Type: ~const Trait`
+    Maybe(Span),
+}
+
+impl BoundConstness {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Never => "",
+            Self::Always(_) => "const",
+            Self::Maybe(_) => "~const",
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2651,22 +2686,6 @@ pub enum AttrStyle {
     Inner,
 }
 
-rustc_index::newtype_index! {
-    #[orderable]
-    #[debug_format = "AttrId({})"]
-    pub struct AttrId {}
-}
-
-impl<S: Encoder> Encodable<S> for AttrId {
-    fn encode(&self, _s: &mut S) {}
-}
-
-impl<D: Decoder> Decodable<D> for AttrId {
-    default fn decode(_: &mut D) -> AttrId {
-        panic!("cannot decode `AttrId` with `{}`", std::any::type_name::<D>());
-    }
-}
-
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
@@ -2788,7 +2807,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(ThinVec<FieldDef>, bool),
+    Struct {
+        fields: ThinVec<FieldDef>,
+        // FIXME: investigate making this a `Option<ErrorGuaranteed>`
+        recovered: bool,
+    },
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
@@ -2803,7 +2826,7 @@ impl VariantData {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &[FieldDef] {
         match self {
-            VariantData::Struct(fields, ..) | VariantData::Tuple(fields, _) => fields,
+            VariantData::Struct { fields, .. } | VariantData::Tuple(fields, _) => fields,
             _ => &[],
         }
     }
@@ -2811,7 +2834,7 @@ impl VariantData {
     /// Return the `NodeId` of this variant's constructor, if it has one.
     pub fn ctor_node_id(&self) -> Option<NodeId> {
         match *self {
-            VariantData::Struct(..) => None,
+            VariantData::Struct { .. } => None,
             VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),
         }
     }
@@ -2844,6 +2867,29 @@ impl Item {
     /// Return the span that encompasses the attributes.
     pub fn span_with_attributes(&self) -> Span {
         self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span))
+    }
+
+    pub fn opt_generics(&self) -> Option<&Generics> {
+        match &self.kind {
+            ItemKind::ExternCrate(_)
+            | ItemKind::Use(_)
+            | ItemKind::Mod(_, _)
+            | ItemKind::ForeignMod(_)
+            | ItemKind::GlobalAsm(_)
+            | ItemKind::MacCall(_)
+            | ItemKind::Delegation(_)
+            | ItemKind::MacroDef(_) => None,
+            ItemKind::Static(_) => None,
+            ItemKind::Const(i) => Some(&i.generics),
+            ItemKind::Fn(i) => Some(&i.generics),
+            ItemKind::TyAlias(i) => Some(&i.generics),
+            ItemKind::TraitAlias(generics, _)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics) => Some(&generics),
+            ItemKind::Trait(i) => Some(&i.generics),
+            ItemKind::Impl(i) => Some(&i.generics),
+        }
     }
 }
 
@@ -2979,6 +3025,15 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Delegation {
+    /// Path resolution id.
+    pub id: NodeId,
+    pub qself: Option<P<QSelf>>,
+    pub path: Path,
+    pub body: Option<P<Block>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ty: P<Ty>,
     pub mutability: Mutability,
@@ -3063,6 +3118,11 @@ pub enum ItemKind {
 
     /// A macro definition.
     MacroDef(MacroDef),
+
+    /// A delegation item (`reuse`).
+    ///
+    /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
+    Delegation(Box<Delegation>),
 }
 
 impl ItemKind {
@@ -3070,7 +3130,8 @@ impl ItemKind {
         use ItemKind::*;
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
+            | Delegation(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3094,6 +3155,7 @@ impl ItemKind {
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
+            ItemKind::Delegation(..) => "delegated function",
         }
     }
 
@@ -3135,6 +3197,8 @@ pub enum AssocItemKind {
     Type(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(P<MacCall>),
+    /// An associated delegation item.
+    Delegation(Box<Delegation>),
 }
 
 impl AssocItemKind {
@@ -3143,7 +3207,7 @@ impl AssocItemKind {
             Self::Const(box ConstItem { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
-            Self::MacCall(..) => Defaultness::Final,
+            Self::MacCall(..) | Self::Delegation(..) => Defaultness::Final,
         }
     }
 }
@@ -3155,6 +3219,7 @@ impl From<AssocItemKind> for ItemKind {
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
+            AssocItemKind::Delegation(delegation) => ItemKind::Delegation(delegation),
         }
     }
 }
@@ -3168,6 +3233,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
+            ItemKind::Delegation(d) => AssocItemKind::Delegation(d),
             _ => return Err(item_kind),
         })
     }
@@ -3233,14 +3299,18 @@ mod size_asserts {
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 64);
+    static_assert_size!(GenericBound, 72);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
-    static_assert_size!(LitKind, 24);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(LitKind, 32);
     static_assert_size!(Local, 72);
-    static_assert_size!(MetaItemLit, 40);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(MetaItemLit, 48);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
     static_assert_size!(Path, 24);

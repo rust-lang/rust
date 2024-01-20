@@ -337,7 +337,7 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
 ];
 
 pub(super) fn check_for_substitution(
-    reader: &StringReader<'_>,
+    reader: &StringReader<'_, '_>,
     pos: BytePos,
     ch: char,
     count: usize,
@@ -350,7 +350,7 @@ pub(super) fn check_for_substitution(
 
     let Some((_, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(s, _, _)| s == ascii_str) else {
         let msg = format!("substitution character not found for '{ch}'");
-        reader.sess.span_diagnostic.span_bug(span, msg);
+        reader.sess.dcx.span_bug(span, msg);
     };
 
     // special help suggestion for "directed" double quotes

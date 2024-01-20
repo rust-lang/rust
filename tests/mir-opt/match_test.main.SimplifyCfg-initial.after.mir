@@ -28,43 +28,43 @@ fn main() -> () {
         StorageLive(_3);
         PlaceMention(_1);
         _6 = Le(const 0_i32, _1);
-        switchInt(move _6) -> [0: bb4, otherwise: bb1];
+        switchInt(move _6) -> [0: bb3, otherwise: bb8];
     }
 
     bb1: {
-        _7 = Lt(_1, const 10_i32);
-        switchInt(move _7) -> [0: bb4, otherwise: bb2];
+        falseEdge -> [real: bb9, imaginary: bb4];
     }
 
     bb2: {
-        falseEdge -> [real: bb9, imaginary: bb6];
-    }
-
-    bb3: {
         _3 = const 3_i32;
         goto -> bb14;
     }
 
-    bb4: {
+    bb3: {
         _4 = Le(const 10_i32, _1);
-        switchInt(move _4) -> [0: bb7, otherwise: bb5];
+        switchInt(move _4) -> [0: bb5, otherwise: bb7];
+    }
+
+    bb4: {
+        falseEdge -> [real: bb12, imaginary: bb6];
     }
 
     bb5: {
-        _5 = Le(_1, const 20_i32);
-        switchInt(move _5) -> [0: bb7, otherwise: bb6];
+        switchInt(_1) -> [4294967295: bb6, otherwise: bb2];
     }
 
     bb6: {
-        falseEdge -> [real: bb12, imaginary: bb8];
+        falseEdge -> [real: bb13, imaginary: bb2];
     }
 
     bb7: {
-        switchInt(_1) -> [4294967295: bb8, otherwise: bb3];
+        _5 = Le(_1, const 20_i32);
+        switchInt(move _5) -> [0: bb5, otherwise: bb4];
     }
 
     bb8: {
-        falseEdge -> [real: bb13, imaginary: bb3];
+        _7 = Lt(_1, const 10_i32);
+        switchInt(move _7) -> [0: bb3, otherwise: bb1];
     }
 
     bb9: {
@@ -83,7 +83,7 @@ fn main() -> () {
 
     bb11: {
         StorageDead(_9);
-        falseEdge -> [real: bb3, imaginary: bb6];
+        falseEdge -> [real: bb2, imaginary: bb4];
     }
 
     bb12: {

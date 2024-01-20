@@ -1,7 +1,7 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty};
@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_pipe_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
+    ) -> DiagnosticBuilder<'tcx>;
 
     /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
     /// in that order, and returns the generic type corresponding to the
@@ -118,7 +118,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_arg_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
@@ -140,8 +140,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let expected_str = args_str(&expected_args, &found_args);
         let found_str = args_str(&found_args, &expected_args);
 
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.dcx(),
             span,
             E0593,
             "{} is expected to take {}, but it takes {}",

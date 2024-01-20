@@ -7,7 +7,7 @@ use std::mem;
 
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
+    CanonicalInput, Certainty, Goal, GoalSource, IsNormalizesToHack, QueryInput, QueryResult,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
@@ -118,6 +118,7 @@ pub(in crate::solve) enum WipGoalEvaluationKind<'tcx> {
 pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<'tcx> {
     Overflow,
     CycleInStack,
+    ProvisionalCacheHit,
     Interned { revisions: &'tcx [inspect::GoalEvaluationStep<'tcx>] },
 }
 
@@ -126,6 +127,7 @@ impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
         match self {
             Self::Overflow => write!(f, "Overflow"),
             Self::CycleInStack => write!(f, "CycleInStack"),
+            Self::ProvisionalCacheHit => write!(f, "ProvisionalCacheHit"),
             Self::Interned { revisions: _ } => f.debug_struct("Interned").finish_non_exhaustive(),
         }
     }
@@ -150,6 +152,9 @@ impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
             }
             WipCanonicalGoalEvaluationKind::CycleInStack => {
                 inspect::CanonicalGoalEvaluationKind::CycleInStack
+            }
+            WipCanonicalGoalEvaluationKind::ProvisionalCacheHit => {
+                inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit
             }
             WipCanonicalGoalEvaluationKind::Interned { revisions } => {
                 inspect::CanonicalGoalEvaluationKind::Evaluation { revisions }
@@ -216,7 +221,7 @@ impl<'tcx> WipProbe<'tcx> {
 
 #[derive(Eq, PartialEq, Debug)]
 enum WipProbeStep<'tcx> {
-    AddGoal(inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
     CommitIfOkStart,
@@ -226,7 +231,7 @@ enum WipProbeStep<'tcx> {
 impl<'tcx> WipProbeStep<'tcx> {
     fn finalize(self) -> inspect::ProbeStep<'tcx> {
         match self {
-            WipProbeStep::AddGoal(goal) => inspect::ProbeStep::AddGoal(goal),
+            WipProbeStep::AddGoal(source, goal) => inspect::ProbeStep::AddGoal(source, goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
             WipProbeStep::CommitIfOkStart => inspect::ProbeStep::CommitIfOkStart,
@@ -428,7 +433,11 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn add_goal(ecx: &mut EvalCtxt<'_, 'tcx>, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+    pub fn add_goal(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        source: GoalSource,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+    ) {
         // Can't use `if let Some(this) = ecx.inspect.as_mut()` here because
         // we have to immutably use the `EvalCtxt` for `make_canonical_state`.
         if ecx.inspect.is_noop() {
@@ -442,7 +451,9 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 evaluation: WipProbe { steps, .. },
                 ..
             })
-            | DebugSolver::Probe(WipProbe { steps, .. }) => steps.push(WipProbeStep::AddGoal(goal)),
+            | DebugSolver::Probe(WipProbe { steps, .. }) => {
+                steps.push(WipProbeStep::AddGoal(source, goal))
+            }
             s => unreachable!("tried to add {goal:?} to {s:?}"),
         }
     }

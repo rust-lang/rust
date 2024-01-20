@@ -177,7 +177,7 @@ declare_features! (
     /// Allows using the `#[register_attr]` attribute.
     (removed, register_attr, "1.65.0", Some(66080),
      Some("removed in favor of `#![register_tool]`")),
-    (removed, rust_2018_preview, "CURRENT_RUSTC_VERSION", None,
+    (removed, rust_2018_preview, "1.76.0", None,
      Some("2018 Edition preview is no longer relevant")),
     /// Allows using the macros:
     /// + `__diagnostic_used`

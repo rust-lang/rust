@@ -680,14 +680,20 @@ fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], start_pos
         })
         .filter(|(_, text)| !text.is_empty());
 
-    let Some((line_start, line)) = lines.next() else {
-        return None;
-    };
+    let (line_start, line) = lines.next()?;
+    let mut in_codeblock = false;
     // Check for a sequence of line comments.
     if line.starts_with("//") {
         let (mut line, mut line_start) = (line, line_start);
         loop {
-            if line.to_ascii_uppercase().contains("SAFETY:") {
+            // Don't lint if the safety comment is part of a codeblock in a doc comment.
+            // It may or may not be required, and we can't very easily check it (and we shouldn't, since
+            // the safety comment isn't referring to the node we're currently checking)
+            if line.trim_start_matches("///").trim_start().starts_with("```") {
+                in_codeblock = !in_codeblock;
+            }
+
+            if line.to_ascii_uppercase().contains("SAFETY:") && !in_codeblock {
                 return Some(start_pos + BytePos(u32::try_from(line_start).unwrap()));
             }
             match lines.next() {

@@ -260,6 +260,7 @@ pub fn pretty_assert_message(msg: &AssertMessage) -> String {
             );
             pretty
         }
+        AssertMessage::Overflow(op, _, _) => unreachable!("`{:?}` cannot overflow", op),
         AssertMessage::OverflowNeg(op) => {
             let pretty_op = pretty_operand(op);
             pretty.push_str(
@@ -279,17 +280,15 @@ pub fn pretty_assert_message(msg: &AssertMessage) -> String {
             );
             pretty
         }
-        AssertMessage::ResumedAfterReturn(_) => {
-            format!("attempt to resume a generator after completion")
-        }
-        AssertMessage::ResumedAfterPanic(_) => format!("attempt to resume a panicked generator"),
         AssertMessage::MisalignedPointerDereference { required, found } => {
             let pretty_required = pretty_operand(required);
             let pretty_found = pretty_operand(found);
             pretty.push_str(format!("\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\",{pretty_required}, {pretty_found}").as_str());
             pretty
         }
-        _ => todo!(),
+        AssertMessage::ResumedAfterReturn(_) | AssertMessage::ResumedAfterPanic(_) => {
+            msg.description().unwrap().to_string()
+        }
     }
 }
 

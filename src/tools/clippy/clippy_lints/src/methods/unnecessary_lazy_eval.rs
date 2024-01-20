@@ -19,10 +19,6 @@ pub(super) fn check<'tcx>(
     arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
 ) {
-    if is_from_proc_macro(cx, expr) {
-        return;
-    }
-
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
@@ -32,7 +28,7 @@ pub(super) fn check<'tcx>(
             let body = cx.tcx.hir().body(body);
             let body_expr = &body.value;
 
-            if usage::BindingUsageFinder::are_params_used(cx, body) {
+            if usage::BindingUsageFinder::are_params_used(cx, body) || is_from_proc_macro(cx, expr) {
                 return;
             }
 

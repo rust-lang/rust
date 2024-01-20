@@ -2,7 +2,7 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::is_copy;
+use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{expr_use_ctxt, peel_n_hir_expr_refs, DefinedTy, ExprUseNode};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -169,6 +169,7 @@ fn needless_borrow_count<'tcx>(
 ) -> usize {
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
+    let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
     let predicates = cx.tcx.param_env(fn_id).caller_bounds();
@@ -223,7 +224,14 @@ fn needless_borrow_count<'tcx>(
     // elements are modified each time `check_referent` is called.
     let mut args_with_referent_ty = callee_args.to_vec();
 
-    let mut check_reference_and_referent = |reference, referent| {
+    let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
+        if let ExprKind::Field(base, _) = &referent.kind {
+            let base_ty = cx.typeck_results().expr_ty(base);
+            if drop_trait_def_id.map_or(false, |id| implements_trait(cx, base_ty, id, &[])) {
+                return false;
+            }
+        }
+
         let referent_ty = cx.typeck_results().expr_ty(referent);
 
         if !is_copy(cx, referent_ty)

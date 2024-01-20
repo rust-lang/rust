@@ -25,7 +25,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
@@ -39,7 +38,6 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -330,6 +328,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("disjoint_capture_migration", "rust_2021_incompatible_closure_captures");
     store.register_renamed("or_patterns_back_compat", "rust_2021_incompatible_or_patterns");
     store.register_renamed("non_fmt_panic", "non_fmt_panics");
+    store.register_renamed("unused_tuple_struct_fields", "dead_code");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -508,6 +507,16 @@ fn register_builtins(store: &mut LintStore) {
         "invalid_alignment",
         "converted into hard error, see PR #104616 \
          <https://github.com/rust-lang/rust/pull/104616> for more information",
+    );
+    store.register_removed(
+        "implied_bounds_entailment",
+        "converted into hard error, see PR #117984 \
+        <https://github.com/rust-lang/rust/pull/117984> for more information",
+    );
+    store.register_removed(
+        "coinductive_overlap_in_coherence",
+        "converted into hard error, see PR #118649 \
+         <https://github.com/rust-lang/rust/pull/118649> for more information",
     );
 }
 

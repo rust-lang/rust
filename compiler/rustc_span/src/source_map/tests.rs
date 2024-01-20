@@ -18,7 +18,7 @@ impl SourceMap {
     ///    * the LHS span must start at or before the RHS span.
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
         // Ensure we're at the same expansion ID.
-        if sp_lhs.ctxt() != sp_rhs.ctxt() {
+        if !sp_lhs.eq_ctxt(sp_rhs) {
             return None;
         }
 
@@ -234,14 +234,14 @@ fn t10() {
         multibyte_chars,
         non_narrow_chars,
         normalized_pos,
-        name_hash,
+        stable_id,
         ..
     } = (*src_file).clone();
 
     let imported_src_file = sm.new_imported_source_file(
         name,
         src_hash,
-        name_hash,
+        stable_id,
         source_len.to_u32(),
         CrateNum::new(0),
         FreezeLock::new(lines.read().clone()),

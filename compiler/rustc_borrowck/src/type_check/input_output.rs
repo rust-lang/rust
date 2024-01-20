@@ -7,6 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
+use itertools::Itertools;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -22,7 +23,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
-        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
+        if !self.tcx().is_closure_or_coroutine(mir_def_id.to_def_id()) {
             return;
         }
         let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
@@ -39,9 +40,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig,
         );
 
-        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip(
-            // In MIR, closure args begin with an implicit `self`. Skip it!
-            body.args_iter().skip(1).map(|local| &body.local_decls[local]),
+        let is_coroutine_with_implicit_resume_ty = self.tcx().is_coroutine(mir_def_id.to_def_id())
+            && user_provided_sig.inputs().is_empty();
+
+        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip_eq(
+            // In MIR, closure args begin with an implicit `self`.
+            // Also, coroutines have a resume type which may be implicitly `()`.
+            body.args_iter()
+                .skip(1 + if is_coroutine_with_implicit_resume_ty { 1 } else { 0 })
+                .map(|local| &body.local_decls[local]),
         ) {
             self.ascribe_user_type_skip_wf(
                 arg_decl.ty,
@@ -76,7 +83,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             if argument_index + 1 >= body.local_decls.len() {
                 self.tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(body.span, "found more normalized_input_ty than local_decls");
                 break;
             }
@@ -94,31 +101,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        debug!(
-            "equate_inputs_and_outputs: body.yield_ty {:?}, universal_regions.yield_ty {:?}",
-            body.yield_ty(),
-            universal_regions.yield_ty
-        );
-
-        // We will not have a universal_regions.yield_ty if we yield (by accident)
-        // outside of a coroutine and return an `impl Trait`, so emit a span_delayed_bug
-        // because we don't want to panic in an assert here if we've already got errors.
-        if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
-            self.tcx().sess.span_delayed_bug(
-                body.span,
-                format!(
-                    "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
-                    body.yield_ty(),
-                    universal_regions.yield_ty,
-                ),
+        if let Some(mir_yield_ty) = body.yield_ty() {
+            let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
+            self.equate_normalized_input_or_output(
+                universal_regions.yield_ty.unwrap(),
+                mir_yield_ty,
+                yield_span,
             );
         }
 
-        if let (Some(mir_yield_ty), Some(ur_yield_ty)) =
-            (body.yield_ty(), universal_regions.yield_ty)
-        {
+        if let Some(mir_resume_ty) = body.resume_ty() {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
-            self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
+            self.equate_normalized_input_or_output(
+                universal_regions.resume_ty.unwrap(),
+                mir_resume_ty,
+                yield_span,
+            );
         }
 
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.

@@ -5,8 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::IntoDiagnostic;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
+use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -14,7 +13,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
+};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, InferConst};
@@ -42,8 +43,8 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> rustc_errors::DiagnosticId {
+impl Into<String> for TypeAnnotationNeeded {
+    fn into(self) -> String {
         match self {
             Self::E0282 => rustc_errors::error_code!(E0282),
             Self::E0283 => rustc_errors::error_code!(E0283),
@@ -179,16 +180,22 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    let const_getter = move |ct_vid| {
-        if infcx.probe_const_var(ct_vid).is_ok() {
+    let const_getter = move |ct_vid| match infcx
+        .inner
+        .borrow_mut()
+        .const_unification_table()
+        .probe_value(ct_vid)
+    {
+        ConstVariableValue::Known { value: _ } => {
             warn!("resolved const var in error message");
-        }
-        if let ConstVariableOriginKind::ConstParameterDefinition(name, _) =
-            infcx.inner.borrow_mut().const_unification_table().probe_value(ct_vid).origin.kind
-        {
-            return Some(name);
-        } else {
             None
+        }
+        ConstVariableValue::Unknown { origin, universe: _ } => {
+            if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
+                return Some(name);
+            } else {
+                None
+            }
         }
     };
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
@@ -232,7 +239,9 @@ fn ty_to_string<'tcx>(
 /// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
 fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let ty::Closure(_, args) = ty.kind() else { unreachable!() };
+    let ty::Closure(_, args) = ty.kind() else {
+        bug!("cannot convert non-closure to fn str in `closure_as_fn_str`")
+    };
     let fn_sig = args.as_closure().sig();
     let args = fn_sig
         .inputs()
@@ -302,7 +311,12 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
+                        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+                            ConstVariableValue::Known { value } => {
+                                bug!("resolved infer var: {vid:?} {value}")
+                            }
+                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                        };
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {
@@ -357,7 +371,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -365,7 +379,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let multi_suggestions = Vec::new();
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name,
@@ -373,9 +387,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -383,9 +396,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name,
@@ -393,8 +405,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            }),
         }
     }
 }
@@ -408,7 +419,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
@@ -572,7 +583,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
@@ -580,9 +591,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,
@@ -590,9 +600,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,
@@ -600,8 +609,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            }),
         }
     }
 }

@@ -1,7 +1,6 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_index::{Idx, IndexVec};
@@ -17,7 +16,7 @@ struct NodeCollector<'a, 'hir> {
 
     /// Outputs
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
-    parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    parenting: LocalDefIdMap<ItemLocalId>,
 
     /// The parent of this node
     parent_node: hir::ItemLocalId,
@@ -30,7 +29,7 @@ pub(super) fn index_hir<'hir>(
     tcx: TyCtxt<'hir>,
     item: hir::OwnerNode<'hir>,
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
-) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
+) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, LocalDefIdMap<ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
@@ -42,7 +41,7 @@ pub(super) fn index_hir<'hir>(
         parent_node: ItemLocalId::new(0),
         nodes,
         bodies,
-        parenting: FxHashMap::default(),
+        parenting: Default::default(),
     };
 
     match item {

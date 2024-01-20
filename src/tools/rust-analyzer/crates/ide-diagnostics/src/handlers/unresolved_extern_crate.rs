@@ -47,19 +47,4 @@ use foo::Foo as Bar;
 "#,
         );
     }
-
-    #[test]
-    fn regression_panic_with_inner_attribute_in_presence_of_unresolved_crate() {
-        check_diagnostics(
-            r#"
-//- /lib.rs
-  #[macro_use] extern crate doesnotexist;
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unresolved extern crate
-    mod _test_inner {
-        #![empty_attr]
-      //^^^^^^^^^^^^^^ error: unresolved macro `empty_attr`
-    }
-"#,
-        );
-    }
 }

@@ -3,6 +3,7 @@ use super::{
     mir::{Body, Mutability},
     with, DefId, Error, Symbol,
 };
+use crate::abi::Layout;
 use crate::crate_def::CrateDef;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::target::MachineInfo;
@@ -11,7 +12,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Ty(pub usize);
+pub struct Ty(usize);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -22,9 +23,7 @@ impl Debug for Ty {
 /// Constructors for `Ty`.
 impl Ty {
     /// Create a new type from a given kind.
-    ///
-    /// Note that not all types may be supported at this point.
-    fn from_rigid_kind(kind: RigidTy) -> Ty {
+    pub fn from_rigid_kind(kind: RigidTy) -> Ty {
         with(|cx| cx.new_rigid_ty(kind))
     }
 
@@ -77,6 +76,21 @@ impl Ty {
     pub fn bool_ty() -> Ty {
         Ty::from_rigid_kind(RigidTy::Bool)
     }
+
+    /// Create a type representing a signed integer.
+    pub fn signed_ty(inner: IntTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Int(inner))
+    }
+
+    /// Create a type representing an unsigned integer.
+    pub fn unsigned_ty(inner: UintTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(inner))
+    }
+
+    /// Get a type layout.
+    pub fn layout(self) -> Result<Layout, Error> {
+        with(|cx| cx.ty_layout(self))
+    }
 }
 
 impl Ty {
@@ -124,7 +138,7 @@ impl Const {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(pub usize);
+pub struct ConstId(usize);
 
 type Ident = Opaque;
 
@@ -309,6 +323,12 @@ impl TyKind {
     }
 
     #[inline]
+    pub fn is_cstr(&self) -> bool {
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else { return false };
+        with(|cx| cx.adt_is_cstr(*def))
+    }
+
+    #[inline]
     pub fn is_slice(&self) -> bool {
         matches!(self, TyKind::RigidTy(RigidTy::Slice(_)))
     }
@@ -440,6 +460,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
@@ -693,7 +714,14 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait's definition.
     pub TraitDef;
+}
+
+impl TraitDef {
+    pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
+        with(|cx| cx.trait_decl(trait_def))
+    }
 }
 
 crate_def! {
@@ -705,7 +733,15 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait impl definition.
     pub ImplDef;
+}
+
+impl ImplDef {
+    /// Retrieve information about this implementation.
+    pub fn trait_impl(&self) -> ImplTrait {
+        with(|cx| cx.trait_impl(self))
+    }
 }
 
 crate_def! {

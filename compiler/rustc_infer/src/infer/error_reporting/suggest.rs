@@ -668,26 +668,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
-                        match (left, right) {
-                            (
-                                hir::GenericBound::Trait(tl, ml),
-                                hir::GenericBound::Trait(tr, mr),
-                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
+                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
+                        left, right,
+                    ) {
+                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                            if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
                                 && ml == mr =>
-                            {
-                                true
-                            }
-                            (
-                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
-                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
-                                // FIXME: consider the bounds!
-                                debug!("{:?} {:?}", argsl, argsr);
-                                true
-                            }
-                            _ => false,
+                        {
+                            true
                         }
+                        _ => false,
                     }) =>
                     {
                         StatementAsExpression::NeedsBoxing

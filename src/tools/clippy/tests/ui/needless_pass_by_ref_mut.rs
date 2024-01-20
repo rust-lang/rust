@@ -307,6 +307,19 @@ fn filter_copy<T: Copy>(predicate: &mut impl FnMut(T) -> bool) -> impl FnMut(&T)
     move |&item| predicate(item)
 }
 
+// `is_from_proc_macro` stress tests
+fn _empty_tup(x: &mut (())) {}
+fn _single_tup(x: &mut ((i32,))) {}
+fn _multi_tup(x: &mut ((i32, u32))) {}
+fn _fn(x: &mut (fn())) {}
+#[rustfmt::skip]
+fn _extern_rust_fn(x: &mut extern "Rust" fn()) {}
+fn _extern_c_fn(x: &mut extern "C" fn()) {}
+fn _unsafe_fn(x: &mut unsafe fn()) {}
+fn _unsafe_extern_fn(x: &mut unsafe extern "C" fn()) {}
+fn _fn_with_arg(x: &mut unsafe extern "C" fn(i32)) {}
+fn _fn_with_ret(x: &mut unsafe extern "C" fn() -> (i32)) {}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];

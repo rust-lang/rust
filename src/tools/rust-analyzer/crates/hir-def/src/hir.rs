@@ -265,6 +265,7 @@ pub enum Expr {
     Index {
         base: ExprId,
         index: ExprId,
+        is_assignee_expr: bool,
     },
     Closure {
         args: Box<[PatId]>,
@@ -432,7 +433,7 @@ impl Expr {
                     f(rhs);
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, .. } => {
                 f(*base);
                 f(*index);
             }

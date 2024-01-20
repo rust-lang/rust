@@ -5,5 +5,7 @@
 // check-pass
 // compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers
 
+#![feature(cfg_sanitizer_cfi)]
+
 #[cfg(sanitizer_cfi_normalize_integers)]
 fn main() {}

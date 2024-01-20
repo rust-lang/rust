@@ -25,6 +25,7 @@
 //!     derive:
 //!     discriminant:
 //!     drop:
+//!     env: option
 //!     eq: sized
 //!     error: fmt
 //!     fmt: result, transmute, coerce_unsized
@@ -1381,6 +1382,7 @@ mod macros {
     // region:assert
     #[macro_export]
     #[rustc_builtin_macro]
+    #[allow_internal_unstable(core_panic, edition_panic, generic_assert_internals)]
     macro_rules! assert {
         ($($arg:tt)*) => {
             /* compiler built-in */
@@ -1389,6 +1391,7 @@ mod macros {
     // endregion:assert
 
     // region:fmt
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! const_format_args {
@@ -1396,6 +1399,7 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args {
@@ -1403,6 +1407,7 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args_nl {
@@ -1446,6 +1451,15 @@ mod macros {
     #[macro_export]
     macro_rules! concat {}
     // endregion:concat
+
+    // region:env
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! env {}
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! option_env {}
+    // endregion:env
 }
 
 // region:non_zero

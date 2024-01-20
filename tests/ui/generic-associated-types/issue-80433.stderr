@@ -14,6 +14,17 @@ help: add missing lifetime argument
 LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output<'a> = &'a mut f32>)
    |                                                     ++++
 
-error: aborting due to 1 previous error
+error: missing required bound on `Output`
+  --> $DIR/issue-80433.rs:7:5
+   |
+LL |     type Output<'a>;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

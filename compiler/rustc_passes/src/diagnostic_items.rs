@@ -45,7 +45,7 @@ fn report_duplicate_item(
 ) {
     let orig_span = tcx.hir().span_if_local(original_def_id);
     let duplicate_span = tcx.hir().span_if_local(item_def_id);
-    tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
+    tcx.dcx().emit_err(DuplicateDiagnosticItemInCrate {
         duplicate_span,
         orig_span,
         crate_name: tcx.crate_name(item_def_id.krate),
@@ -83,9 +83,6 @@ fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
 
     // Collect diagnostic items in other crates.
     for &cnum in tcx.crates(()).iter().chain(std::iter::once(&LOCAL_CRATE)) {
-        // We are collecting many DiagnosticItems hash maps into one
-        // DiagnosticItems hash map. The iteration order does not matter.
-        #[allow(rustc::potential_query_instability)]
         for (&name, &def_id) in &tcx.diagnostic_items(cnum).name_to_id {
             collect_item(tcx, &mut items, name, def_id);
         }
