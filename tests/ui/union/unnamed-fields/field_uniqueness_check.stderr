@@ -1,5 +1,5 @@
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:24:5
+  --> $DIR/field_uniqueness_check.rs:27:5
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -8,7 +8,7 @@ LL |     a: u8,
    |     ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:27:9
+  --> $DIR/field_uniqueness_check.rs:30:9
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -17,7 +17,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:28:9
+  --> $DIR/field_uniqueness_check.rs:31:9
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -26,7 +26,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:33:13
+  --> $DIR/field_uniqueness_check.rs:36:13
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -35,7 +35,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:37:5
+  --> $DIR/field_uniqueness_check.rs:40:5
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -44,13 +44,13 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:38:5
+  --> $DIR/field_uniqueness_check.rs:41:5
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -59,13 +59,13 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:41:9
+  --> $DIR/field_uniqueness_check.rs:44:9
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -74,13 +74,13 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:42:9
+  --> $DIR/field_uniqueness_check.rs:45:9
    |
 LL |     a: u8,
    |     ----- `a` first declared here
@@ -89,13 +89,13 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:54:9
+  --> $DIR/field_uniqueness_check.rs:58:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -104,7 +104,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:57:13
+  --> $DIR/field_uniqueness_check.rs:61:13
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -113,7 +113,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:62:17
+  --> $DIR/field_uniqueness_check.rs:66:17
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -122,7 +122,7 @@ LL |                 a: u8,
    |                 ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:66:9
+  --> $DIR/field_uniqueness_check.rs:70:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -131,13 +131,13 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:67:9
+  --> $DIR/field_uniqueness_check.rs:71:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -146,13 +146,13 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:70:13
+  --> $DIR/field_uniqueness_check.rs:74:13
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -161,13 +161,13 @@ LL |             _: Foo,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:71:13
+  --> $DIR/field_uniqueness_check.rs:75:13
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -176,13 +176,13 @@ LL |             _: Bar,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:76:5
+  --> $DIR/field_uniqueness_check.rs:80:5
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -191,7 +191,7 @@ LL |     a: u8,
    |     ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:79:9
+  --> $DIR/field_uniqueness_check.rs:83:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -200,7 +200,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:84:13
+  --> $DIR/field_uniqueness_check.rs:88:13
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -209,7 +209,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:88:5
+  --> $DIR/field_uniqueness_check.rs:92:5
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -218,13 +218,13 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:89:5
+  --> $DIR/field_uniqueness_check.rs:93:5
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -233,13 +233,13 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:92:9
+  --> $DIR/field_uniqueness_check.rs:96:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -248,13 +248,13 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:93:9
+  --> $DIR/field_uniqueness_check.rs:97:9
    |
 LL |         a: u8,
    |         ----- `a` first declared here
@@ -263,13 +263,13 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:106:13
+  --> $DIR/field_uniqueness_check.rs:111:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -278,7 +278,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:109:17
+  --> $DIR/field_uniqueness_check.rs:114:17
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -287,7 +287,7 @@ LL |                 a: u8,
    |                 ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:114:21
+  --> $DIR/field_uniqueness_check.rs:119:21
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -296,7 +296,7 @@ LL |                     a: u8,
    |                     ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:118:13
+  --> $DIR/field_uniqueness_check.rs:123:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -305,13 +305,13 @@ LL |             _: Foo,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:119:13
+  --> $DIR/field_uniqueness_check.rs:124:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -320,13 +320,13 @@ LL |             _: Bar,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:122:17
+  --> $DIR/field_uniqueness_check.rs:127:17
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -335,13 +335,13 @@ LL |                 _: Foo,
    |                 ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:123:17
+  --> $DIR/field_uniqueness_check.rs:128:17
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -350,13 +350,13 @@ LL |                 _: Bar,
    |                 ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:128:9
+  --> $DIR/field_uniqueness_check.rs:133:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -365,7 +365,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:131:13
+  --> $DIR/field_uniqueness_check.rs:136:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -374,7 +374,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:136:17
+  --> $DIR/field_uniqueness_check.rs:141:17
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -383,7 +383,7 @@ LL |                 a: u8,
    |                 ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:140:9
+  --> $DIR/field_uniqueness_check.rs:145:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -392,13 +392,13 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:141:9
+  --> $DIR/field_uniqueness_check.rs:146:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -407,13 +407,13 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:144:13
+  --> $DIR/field_uniqueness_check.rs:149:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -422,13 +422,13 @@ LL |             _: Foo,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:145:13
+  --> $DIR/field_uniqueness_check.rs:150:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -437,13 +437,13 @@ LL |             _: Bar,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:149:5
+  --> $DIR/field_uniqueness_check.rs:154:5
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -452,7 +452,7 @@ LL |     a: u8,
    |     ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:152:9
+  --> $DIR/field_uniqueness_check.rs:157:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -461,7 +461,7 @@ LL |         a: u8,
    |         ^^^^^ field already declared
 
 error[E0124]: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:157:13
+  --> $DIR/field_uniqueness_check.rs:162:13
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -470,7 +470,7 @@ LL |             a: u8,
    |             ^^^^^ field already declared
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:161:5
+  --> $DIR/field_uniqueness_check.rs:166:5
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -479,13 +479,13 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:162:5
+  --> $DIR/field_uniqueness_check.rs:167:5
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -494,13 +494,13 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:165:9
+  --> $DIR/field_uniqueness_check.rs:170:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -509,13 +509,13 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:166:9
+  --> $DIR/field_uniqueness_check.rs:171:9
    |
 LL |             a: u8,
    |             ----- `a` first declared here
@@ -524,13 +524,13 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:177:5
+  --> $DIR/field_uniqueness_check.rs:183:5
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -539,13 +539,13 @@ LL |     a: u8,
    |     ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:180:9
+  --> $DIR/field_uniqueness_check.rs:186:9
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -554,13 +554,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:185:13
+  --> $DIR/field_uniqueness_check.rs:191:13
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -569,13 +569,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:189:5
+  --> $DIR/field_uniqueness_check.rs:195:5
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -584,18 +584,18 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:190:5
+  --> $DIR/field_uniqueness_check.rs:196:5
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -604,18 +604,18 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:193:9
+  --> $DIR/field_uniqueness_check.rs:199:9
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -624,18 +624,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:194:9
+  --> $DIR/field_uniqueness_check.rs:200:9
    |
 LL |     _: Foo,
    |     ------ `a` first declared here in this unnamed field
@@ -644,18 +644,18 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:205:5
+  --> $DIR/field_uniqueness_check.rs:212:5
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -664,13 +664,13 @@ LL |     a: u8,
    |     ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:208:9
+  --> $DIR/field_uniqueness_check.rs:215:9
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -679,13 +679,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:213:13
+  --> $DIR/field_uniqueness_check.rs:220:13
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -694,13 +694,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:217:5
+  --> $DIR/field_uniqueness_check.rs:224:5
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -709,18 +709,18 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:218:5
+  --> $DIR/field_uniqueness_check.rs:225:5
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -729,18 +729,18 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:221:9
+  --> $DIR/field_uniqueness_check.rs:228:9
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -749,18 +749,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:222:9
+  --> $DIR/field_uniqueness_check.rs:229:9
    |
 LL |     _: Bar,
    |     ------ `a` first declared here in this unnamed field
@@ -769,18 +769,18 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:234:9
+  --> $DIR/field_uniqueness_check.rs:242:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -789,13 +789,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:237:13
+  --> $DIR/field_uniqueness_check.rs:245:13
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -804,13 +804,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:242:17
+  --> $DIR/field_uniqueness_check.rs:250:17
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -819,13 +819,13 @@ LL |                 a: u8,
    |                 ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:246:9
+  --> $DIR/field_uniqueness_check.rs:254:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -834,18 +834,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:247:9
+  --> $DIR/field_uniqueness_check.rs:255:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -854,18 +854,18 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:250:13
+  --> $DIR/field_uniqueness_check.rs:258:13
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -874,18 +874,18 @@ LL |             _: Foo,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:251:13
+  --> $DIR/field_uniqueness_check.rs:259:13
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -894,18 +894,18 @@ LL |             _: Bar,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:256:5
+  --> $DIR/field_uniqueness_check.rs:264:5
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -914,13 +914,13 @@ LL |     a: u8,
    |     ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:259:9
+  --> $DIR/field_uniqueness_check.rs:267:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -929,13 +929,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:264:13
+  --> $DIR/field_uniqueness_check.rs:272:13
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -944,13 +944,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:268:5
+  --> $DIR/field_uniqueness_check.rs:276:5
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -959,18 +959,18 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:269:5
+  --> $DIR/field_uniqueness_check.rs:277:5
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -979,18 +979,18 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:272:9
+  --> $DIR/field_uniqueness_check.rs:280:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -999,18 +999,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:273:9
+  --> $DIR/field_uniqueness_check.rs:281:9
    |
 LL |         _: Foo,
    |         ------ `a` first declared here in this unnamed field
@@ -1019,18 +1019,18 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:285:9
+  --> $DIR/field_uniqueness_check.rs:294:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1039,13 +1039,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:288:13
+  --> $DIR/field_uniqueness_check.rs:297:13
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1054,13 +1054,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:293:17
+  --> $DIR/field_uniqueness_check.rs:302:17
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1069,13 +1069,13 @@ LL |                 a: u8,
    |                 ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:297:9
+  --> $DIR/field_uniqueness_check.rs:306:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1084,18 +1084,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:298:9
+  --> $DIR/field_uniqueness_check.rs:307:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1104,18 +1104,18 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:301:13
+  --> $DIR/field_uniqueness_check.rs:310:13
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1124,18 +1124,18 @@ LL |             _: Foo,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:302:13
+  --> $DIR/field_uniqueness_check.rs:311:13
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1144,18 +1144,18 @@ LL |             _: Bar,
    |             ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:307:5
+  --> $DIR/field_uniqueness_check.rs:316:5
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1164,13 +1164,13 @@ LL |     a: u8,
    |     ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:310:9
+  --> $DIR/field_uniqueness_check.rs:319:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1179,13 +1179,13 @@ LL |         a: u8,
    |         ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:315:13
+  --> $DIR/field_uniqueness_check.rs:324:13
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1194,13 +1194,13 @@ LL |             a: u8,
    |             ^^^^^ field already declared
    |
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:319:5
+  --> $DIR/field_uniqueness_check.rs:328:5
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1209,18 +1209,18 @@ LL |     _: Foo,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:320:5
+  --> $DIR/field_uniqueness_check.rs:329:5
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1229,18 +1229,18 @@ LL |     _: Bar,
    |     ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:323:9
+  --> $DIR/field_uniqueness_check.rs:332:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1249,18 +1249,18 @@ LL |         _: Foo,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:6:5
+  --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 
 error: field `a` is already declared
-  --> $DIR/field_uniqueness_check.rs:324:9
+  --> $DIR/field_uniqueness_check.rs:333:9
    |
 LL |         _: Bar,
    |         ------ `a` first declared here in this unnamed field
@@ -1269,12 +1269,12 @@ LL |         _: Bar,
    |         ^^^^^^ field `a` declared in this unnamed field
    |
 note: field `a` declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
 note: field `a` first declared here
-  --> $DIR/field_uniqueness_check.rs:12:9
+  --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^

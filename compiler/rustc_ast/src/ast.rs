@@ -2161,6 +2161,10 @@ impl TyKind {
             None
         }
     }
+
+    pub fn is_anon_adt(&self) -> bool {
+        matches!(self, TyKind::AnonStruct(..) | TyKind::AnonUnion(..))
+    }
 }
 
 /// Syntax used to declare a trait object.

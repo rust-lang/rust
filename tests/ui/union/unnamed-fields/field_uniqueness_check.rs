@@ -1,11 +1,13 @@
 #![allow(incomplete_features)]
 #![feature(unnamed_fields)]
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct Foo {
     a: u8,
 }
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct Bar {
     _: union {
@@ -15,6 +17,7 @@ struct Bar {
 
 
 // duplicated with a normal field
+#[derive(Clone, Copy)]
 #[repr(C)]
 union A {
     // referent field
@@ -44,6 +47,7 @@ union A {
 }
 
 // duplicated with a nested field
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct B {
     _: union {
@@ -95,6 +99,7 @@ struct B {
 }
 
 // duplicated with a more nested field
+#[derive(Clone, Copy)]
 #[repr(C)]
 union C {
     _: struct {
@@ -168,6 +173,7 @@ union C {
 }
 
 // duplicated with a nested field in a named adt
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct D {
     // referent field `a`
@@ -196,6 +202,7 @@ struct D {
 }
 
 // duplicated with a nested field in a nested field of a named adt
+#[derive(Clone, Copy)]
 #[repr(C)]
 union D2 {
     // referent field `a`
@@ -224,6 +231,7 @@ union D2 {
 }
 
 // duplicated with a nested field in a named adt in an anonymous adt
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct E {
     _: struct {
@@ -276,6 +284,7 @@ struct E {
 
 // duplicated with a nested field in a named adt in an anonymous adt
 #[repr(C)]
+#[derive(Clone, Copy)]
 union E2 {
     _: struct {
         // referent field `a`
