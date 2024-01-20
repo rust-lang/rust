@@ -1,6 +1,5 @@
 // check-pass
 
-#![feature(offset_of)]
 #![warn(unused)]
 
 fn main() {

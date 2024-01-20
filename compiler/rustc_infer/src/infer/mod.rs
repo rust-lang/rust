@@ -13,7 +13,9 @@ use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
-use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
+use crate::traits::{
+    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine, TraitEngineExt,
+};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -334,6 +336,8 @@ pub struct InferCtxt<'tcx> {
     pub intercrate: bool,
 
     next_trait_solver: bool,
+
+    pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 }
 
 impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
@@ -708,6 +712,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
+            obligation_inspector: Cell::new(None),
         }
     }
 }
@@ -1717,6 +1722,15 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.probe_effect_var(v).is_some()
             }
         }
+    }
+
+    /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.
+    pub fn attach_obligation_inspector(&self, inspector: ObligationInspector<'tcx>) {
+        debug_assert!(
+            self.obligation_inspector.get().is_none(),
+            "shouldn't override a set obligation inspector"
+        );
+        self.obligation_inspector.set(Some(inspector));
     }
 }
 

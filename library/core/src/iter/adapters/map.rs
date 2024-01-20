@@ -69,6 +69,10 @@ impl<I, F> Map<I, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
     }
+
+    pub(crate) fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]

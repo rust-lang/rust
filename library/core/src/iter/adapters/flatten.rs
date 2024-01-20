@@ -24,6 +24,14 @@ impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
+
+    pub(crate) fn into_parts(self) -> (Option<U::IntoIter>, Option<I>, Option<U::IntoIter>) {
+        (
+            self.inner.frontiter,
+            self.inner.iter.into_inner().map(Map::into_inner),
+            self.inner.backiter,
+        )
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

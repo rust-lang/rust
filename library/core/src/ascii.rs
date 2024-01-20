@@ -96,6 +96,17 @@ pub fn escape_default(c: u8) -> EscapeDefault {
     EscapeDefault(escape::EscapeIterInner::new(data, range))
 }
 
+impl EscapeDefault {
+    pub(crate) fn empty() -> Self {
+        let data = [Char::Null; 4];
+        EscapeDefault(escape::EscapeIterInner::new(data, 0..0))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
