@@ -1,4 +1,5 @@
 {
+    "git.detectSubmodulesLimit": 20,
     "rust-analyzer.check.invocationLocation": "root",
     "rust-analyzer.check.invocationStrategy": "once",
     "rust-analyzer.check.overrideCommand": [
