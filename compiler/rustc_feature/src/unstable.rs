@@ -549,7 +549,9 @@ declare_features! (
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
-    (unstable, offset_of_enum, "1.75.0", Some(106655)),
+    (unstable, offset_of_enum, "1.75.0", Some(120141)),
+    /// Allows using multiple nested field accesses in offset_of!
+    (unstable, offset_of_nested, "CURRENT_RUSTC_VERSION", Some(120140)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows macro attributes on expressions, statements and non-inline modules.

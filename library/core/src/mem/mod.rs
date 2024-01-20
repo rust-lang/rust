@@ -1303,11 +1303,12 @@ impl<T> SizedTypeProperties for T {}
 /// Enum variants may be traversed as if they were fields. Variants themselves do
 /// not have an offset.
 ///
+/// However, on stable only a single field name is supported, which blocks the use of
+/// enum support.
+///
 /// Visibility is respected - all types and fields must be visible to the call site:
 ///
 /// ```
-/// #![feature(offset_of)]
-///
 /// mod nested {
 ///     #[repr(C)]
 ///     pub struct Struct {
@@ -1330,8 +1331,6 @@ impl<T> SizedTypeProperties for T {}
 /// not *identical*, e.g.:
 ///
 /// ```
-/// #![feature(offset_of)]
-///
 /// struct Wrapper<T, U>(T, U);
 ///
 /// type A = Wrapper<u8, u8>;
@@ -1359,8 +1358,7 @@ impl<T> SizedTypeProperties for T {}
 /// # Examples
 ///
 /// ```
-/// #![feature(offset_of)]
-/// # #![feature(offset_of_enum)]
+/// #![feature(offset_of_enum, offset_of_nested)]
 ///
 /// use std::mem;
 /// #[repr(C)]
@@ -1396,7 +1394,7 @@ impl<T> SizedTypeProperties for T {}
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
 #[cfg(not(bootstrap))]
-#[unstable(feature = "offset_of", issue = "106655")]
+#[stable(feature = "offset_of", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(builtin_syntax, hint_must_use)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
@@ -1404,7 +1402,7 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 }
 
 #[cfg(bootstrap)]
-#[unstable(feature = "offset_of", issue = "106655")]
+#[stable(feature = "offset_of", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(builtin_syntax, hint_must_use)]
 #[allow(missing_docs)]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
