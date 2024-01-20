@@ -1,6 +1,5 @@
 //! Handle syntactic aspects of merging UseTrees.
 use std::cmp::Ordering;
-use std::iter::empty;
 
 use itertools::{EitherOrBoth, Itertools};
 use parser::T;
@@ -184,59 +183,10 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
             }
             Err(insert_idx) => {
                 use_trees.insert(insert_idx, rhs_t.clone());
-                match lhs.use_tree_list() {
-                    // Creates a new use tree list with the item.
-                    None => lhs.get_or_create_use_tree_list().add_use_tree(rhs_t),
-                    // Recreates the use tree list with sorted items (see `use_tree_cmp` doc).
-                    Some(use_tree_list) => {
-                        if use_tree_list.l_curly_token().is_none() {
-                            ted::insert_raw(
-                                Position::first_child_of(use_tree_list.syntax()),
-                                make::token(T!['{']),
-                            );
-                        }
-                        if use_tree_list.r_curly_token().is_none() {
-                            ted::insert_raw(
-                                Position::last_child_of(use_tree_list.syntax()),
-                                make::token(T!['}']),
-                            );
-                        }
-
-                        let mut elements = Vec::new();
-                        for (idx, tree) in use_trees.iter().enumerate() {
-                            if idx > 0 {
-                                elements.push(make::token(T![,]).into());
-                                elements.push(make::tokens::single_space().into());
-                            }
-                            elements.push(tree.syntax().clone().into());
-                        }
-
-                        let start = use_tree_list
-                            .l_curly_token()
-                            .and_then(|l_curly| {
-                                algo::non_trivia_sibling(l_curly.into(), Direction::Next)
-                            })
-                            .filter(|it| it.kind() != T!['}']);
-                        let end = use_tree_list
-                            .r_curly_token()
-                            .and_then(|r_curly| {
-                                algo::non_trivia_sibling(r_curly.into(), Direction::Prev)
-                            })
-                            .filter(|it| it.kind() != T!['{']);
-                        if let Some((start, end)) = start.zip(end) {
-                            // Attempt to insert elements while preserving preceding and trailing trivia.
-                            ted::replace_all(start..=end, elements);
-                        } else {
-                            let new_use_tree_list = make::use_tree_list(empty()).clone_for_update();
-                            let trees_pos = match new_use_tree_list.l_curly_token() {
-                                Some(l_curly) => Position::after(l_curly),
-                                None => Position::last_child_of(new_use_tree_list.syntax()),
-                            };
-                            ted::insert_all_raw(trees_pos, elements);
-                            ted::replace(use_tree_list.syntax(), new_use_tree_list.syntax());
-                        }
-                    }
-                }
+                // We simply add the use tree to the end of tree list. Ordering of use trees
+                // and imports is done by the `try_normalize_*` functions. The sorted `use_trees`
+                // vec is only used for binary search.
+                lhs.get_or_create_use_tree_list().add_use_tree(rhs_t);
             }
         }
     }
@@ -594,7 +544,7 @@ fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
 /// and `crate` first, then identifier imports with lowercase ones first and upper snake case
 /// (e.g. UPPER_SNAKE_CASE) ones last, then glob imports, and at last list imports.
 ///
-/// Example foo::{self, foo, baz, Baz, Qux, FOO_BAZ, *, {Bar}}
+/// Example: `foo::{self, baz, foo, Baz, Qux, FOO_BAZ, *, {Bar}}`
 /// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
 pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
     let a_is_simple_path = a.is_simple_path() && a.rename().is_none();
