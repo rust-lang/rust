@@ -9,6 +9,6 @@ fn main() {
     // Propagating the overflow is ok as codegen will just skip emitting the panic.
 
     // CHECK: {{_.*}} = const (0_u8, true);
-    // CHECK-LABEL: assert(!const true,
+    // CHECK: assert(!const true,
     let _ = <u8 as std::ops::Add>::add(255, 1);
 }

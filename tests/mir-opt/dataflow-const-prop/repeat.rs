@@ -12,7 +12,7 @@ fn main() {
     // CHECK-NOT: {{_.*}} = Lt(
     // CHECK: {{_.*}} = const 8_usize;
     // CHECK: {{_.*}} = const true;
-    // CHECK-LABEL: assert(const true
+    // CHECK: assert(const true
 
     // CHECK-NOT: [[t:_.*]] = [[array_lit]][_
     // CHECK: [[t:_.*]] = [[array_lit]][2 of 3];

@@ -23,7 +23,7 @@ fn main() {
     // CHECK: debug a => [[a:_.*]];
     // We may check other inlined functions as well...
 
-    // CHECK-LABEL: _.* = Box::<[bool]>(
-    // FIXME: should be `_.* = const Box::<[bool]>`
+    // CHECK: {{_.*}} = Box::<[bool]>(
+    // FIXME: should be `{{_.*}} = const Box::<[bool]>`
     let a: A = A { foo: Box::default() };
 }

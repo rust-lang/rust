@@ -15,7 +15,7 @@ fn main() {
     // CHECK-NOT:   assert(move _
     // CHECK:       {{_.*}} = const 4_usize;
     // CHECK:       {{_.*}} = const true;
-    // CHECK-LABEL: assert(const true
+    // CHECK:       assert(const true
     // CHECK:       [[x]] = [[array_lit]][2 of 3];
     let x: u32 = [0, 1, 2, 3][2];
 }
