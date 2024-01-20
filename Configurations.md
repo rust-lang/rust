@@ -1050,14 +1050,24 @@ Max width for code snippets included in doc comments. Only used if [`format_code
 
 ## `format_generated_files`
 
-Format generated files. A file is considered generated
-if any of the first five lines contain a `@generated` comment marker.
+Format generated files. A file is considered generated if any of the first several lines contain a `@generated` comment marker. The number of lines to check is configured by `generated_marker_line_search_limit`.
+
 By default, generated files are reformatted, i. e. `@generated` marker is ignored.
 This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: [#5080](https://github.com/rust-lang/rustfmt/issues/5080))
+
+## `generated_marker_line_search_limit`
+
+Number of lines to check for a `@generated` pragma header, starting from the top of the file. Setting this value to `0` will treat all files as non-generated. When`format_generated_files` is `true`, this option has no effect.
+
+- **Default value**: `5`
+- **Possible values**: any positive integer
+- **Stable**: No (tracking issue: [#5080](https://github.com/rust-lang/rustfmt/issues/5080))
+
+See also [format_generated_files](#format_generated_files) link here.
 
 ## `format_macro_matchers`
 
