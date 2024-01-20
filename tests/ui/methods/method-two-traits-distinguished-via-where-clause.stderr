@@ -1,0 +1,10 @@
+warning: trait `A` is never used
+  --> $DIR/method-two-traits-distinguished-via-where-clause.rs:7:7
+   |
+LL | trait A {
+   |       ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

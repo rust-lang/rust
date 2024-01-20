@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 #![allow(unused_assignments)]
 // pretty-expanded FIXME #23616
 

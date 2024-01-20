@@ -1,5 +1,5 @@
 // run-pass
-trait Bar<T> {}
+trait Bar<T> {} //~ WARN trait `Bar` is never used
 impl<T> Bar<T> for [u8; 7] {}
 
 struct Foo<const N: usize> {}

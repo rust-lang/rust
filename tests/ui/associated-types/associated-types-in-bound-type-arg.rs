@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 // Test the case where we resolve `C::Result` and the trait bound
 // itself includes a `Self::Item` shorthand.
 //

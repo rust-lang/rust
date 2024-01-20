@@ -2,7 +2,7 @@
 static mut DROP_RAN: bool = false;
 
 trait Bar {
-    fn do_something(&mut self);
+    fn do_something(&mut self); //~ WARN method `do_something` is never used
 }
 
 struct BarImpl;

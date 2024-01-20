@@ -1,5 +1,5 @@
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/anon-params-deprecated.rs:9:12
+  --> $DIR/anon-params-deprecated.rs:10:12
    |
 LL |     fn foo(i32);
    |            ^^^ help: try naming the parameter or explicitly ignoring it: `_: i32`
@@ -13,7 +13,7 @@ LL | #![warn(anonymous_parameters)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/anon-params-deprecated.rs:12:30
+  --> $DIR/anon-params-deprecated.rs:13:30
    |
 LL |     fn bar_with_default_impl(String, String) {}
    |                              ^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: String`
@@ -22,7 +22,7 @@ LL |     fn bar_with_default_impl(String, String) {}
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/anon-params-deprecated.rs:12:38
+  --> $DIR/anon-params-deprecated.rs:13:38
    |
 LL |     fn bar_with_default_impl(String, String) {}
    |                                      ^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: String`

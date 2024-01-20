@@ -1,7 +1,7 @@
 // run-pass
 
 trait A {
-    fn foo_a(&self);
+    fn foo_a(&self); //~ WARN method `foo_a` is never used
 }
 
 trait B {
@@ -9,7 +9,7 @@ trait B {
 }
 
 trait C: A + B {
-    fn foo_c(&self);
+    fn foo_c(&self); //~ WARN method `foo_c` is never used
 }
 
 struct S(i32);

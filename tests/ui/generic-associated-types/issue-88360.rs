@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 
 trait GatTrait {
     type Gat<'a> where Self: 'a;
