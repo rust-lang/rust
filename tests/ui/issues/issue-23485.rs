@@ -17,7 +17,7 @@ trait Iterator {
 
     fn next(&mut self) -> Option<Self::Item>;
 
-    fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where
+    fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where //~ WARN method `clone_first` is never used
         Self: Sized,
         Self::Item: Deref,
         <Self::Item as Deref>::Target: Clone,

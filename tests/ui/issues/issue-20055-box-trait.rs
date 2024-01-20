@@ -8,7 +8,7 @@
 // statement surrounding the `match`.
 
 trait Boo {
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
 
 impl Boo for [i8; 1] { }

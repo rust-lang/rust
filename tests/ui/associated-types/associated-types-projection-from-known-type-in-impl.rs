@@ -6,7 +6,7 @@ trait Int
 {
     type T;
 
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
 
 trait NonZero

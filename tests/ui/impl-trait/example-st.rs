@@ -3,7 +3,7 @@
 struct State;
 type Error = ();
 
-trait Bind<F> {
+trait Bind<F> { //~ WARN trait `Bind` is never used
     type Output;
     fn bind(self, f: F) -> Self::Output;
 }

@@ -1,8 +1,8 @@
 // run-pass
 #![allow(non_camel_case_types)]
 
-trait methods {
-    fn to_bytes(&self) -> Vec<u8> ;
+trait methods { //~ WARN trait `methods` is never used
+    fn to_bytes(&self) -> Vec<u8>;
 }
 
 impl methods for () {
