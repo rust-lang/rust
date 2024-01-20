@@ -255,7 +255,7 @@ If you encounter merge conflicts or when a reviewer asks you to perform some
 changes, your PR will get marked as `S-waiting-on-author`. When you resolve
 them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
 
-    @rustbot label -S-waiting-on-author +S-waiting-on-review
+    @rustbot ready
 
 GitHub allows [closing issues using keywords][closing-keywords]. This feature
 should be used to keep the issue tracker tidy. However, it is generally preferred

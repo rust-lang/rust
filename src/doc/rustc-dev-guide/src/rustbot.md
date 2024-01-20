@@ -44,9 +44,12 @@ the `@rustbot` command will look like this:
     @rustbot label -S-waiting-on-author +S-waiting-on-review
 
 The syntax for this command is pretty loose, so there are other variants of this
-command invocation. For more details, see [the docs page about labeling][labeling].
+command invocation. There are also some shortcuts to update labels,
+for instance `@rustbot ready` will do the same thing with above command.
+For more details, see [the docs page about labeling][labeling] and [shortcuts][shortcuts].
 
 [labeling]: https://forge.rust-lang.org/triagebot/labeling.html
+[shortcuts]: https://forge.rust-lang.org/triagebot/shortcuts.html
 
 ## Other commands
 
