@@ -766,7 +766,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
-            IntRange(range) => return self.hoist_pat_range(range, pat.ty()),
+            IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
             Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
@@ -785,7 +785,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
-                        .list_variant_nonhidden_fields(pat.ty(), variant)
+                        .list_variant_nonhidden_fields(*pat.ty(), variant)
                         .zip(subpatterns)
                         .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                         .collect();
@@ -796,7 +796,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), pat.ty()),
+                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
             },
             // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
             // be careful to reconstruct the correct constant pattern here. However a string
@@ -961,21 +961,21 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         self.tcx.features().exhaustive_patterns
     }
 
-    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {
-        self.ctor_arity(ctor, ty)
+    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {
+        self.ctor_arity(ctor, *ty)
     }
     fn ctor_sub_tys(
         &self,
         ctor: &crate::constructor::Constructor<Self>,
-        ty: Self::Ty,
+        ty: &Self::Ty,
     ) -> &[Self::Ty] {
-        self.ctor_sub_tys(ctor, ty)
+        self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(
         &self,
-        ty: Self::Ty,
+        ty: &Self::Ty,
     ) -> Result<crate::constructor::ConstructorSet<Self>, Self::Error> {
-        self.ctors_for_ty(ty)
+        self.ctors_for_ty(*ty)
     }
 
     fn debug_pat(
@@ -994,7 +994,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         overlaps_on: IntRange,
         overlaps_with: &[&crate::pat::DeconstructedPat<'_, Self>],
     ) {
-        let overlap_as_pat = self.hoist_pat_range(&overlaps_on, pat.ty());
+        let overlap_as_pat = self.hoist_pat_range(&overlaps_on, *pat.ty());
         let overlaps: Vec<_> = overlaps_with
             .iter()
             .map(|pat| pat.data().unwrap().span)
