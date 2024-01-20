@@ -673,14 +673,14 @@ impl LocalWaker {
     /// #![feature(noop_waker)]
     ///
     /// use std::future::Future;
-    /// use std::task::{ContextBuilder, LocalWaker};
+    /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
     ///
-    /// let mut cx = task::ContextBuilder::from_waker(Waker::noop())
+    /// let mut cx = ContextBuilder::from_waker(Waker::noop())
     ///     .local_waker(LocalWaker::noop())
     ///     .build();
     ///
     /// let mut future = Box::pin(async { 10 });
-    /// assert_eq!(future.as_mut().poll(&mut cx), task::Poll::Ready(10));
+    /// assert_eq!(future.as_mut().poll(&mut cx), Poll::Ready(10));
     /// ```
     #[inline]
     #[must_use]

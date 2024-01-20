@@ -227,11 +227,11 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///             // we exit, since there are no more tasks remaining on the queue
 ///             return;
 ///         };
-///         let waker = Waker::noop();
+///
 ///         // cast the Rc<Task> into a `LocalWaker`
 ///         let local_waker: LocalWaker = task.clone().into();
 ///         // Build the context using `ContextBuilder`
-///         let mut cx = ContextBuilder::from_waker(&waker)
+///         let mut cx = ContextBuilder::from_waker(Waker::noop())
 ///             .local_waker(&local_waker)
 ///             .build();
 ///
