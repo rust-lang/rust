@@ -243,7 +243,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
                     if self_ty.span.can_be_used_for_suggestions() {
                         lint.multipart_suggestion_verbose(
-                            "use `dyn`",
+                            "if this is an object-safe trait, use `dyn`",
                             sugg,
                             Applicability::MachineApplicable,
                         );
