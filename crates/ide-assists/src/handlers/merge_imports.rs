@@ -201,7 +201,7 @@ use std::fmt$0::{Display, Debug};
 use std::fmt::{Display, Debug};
 ",
             r"
-use std::fmt::{Display, Debug};
+use std::fmt::{Debug, Display};
 ",
         );
 
@@ -214,7 +214,7 @@ use std::fmt::{Display, Debug};
         check_assist_import_one_variations!(
             "std::fmt$0::{Display, Debug}",
             "std::fmt::{Display, Debug}",
-            "use {std::fmt::{Display, Debug}};"
+            "use {std::fmt::{Debug, Display}};"
         );
     }
 
@@ -419,13 +419,13 @@ use std$0::{fmt::{Write, Display}};
 use std::{fmt::{self, Debug}};
 ",
             r"
-use std::{fmt::{self, Debug, Display, Write}};
+use std::fmt::{self, Debug, Display, Write};
 ",
         );
         check_assist_import_one_variations!(
             "std$0::{fmt::{Write, Display}}",
             "std::{fmt::{self, Debug}}",
-            "use {std::{fmt::{self, Debug, Display, Write}}};"
+            "use {std::fmt::{self, Debug, Display, Write}};"
         );
     }
 
@@ -438,13 +438,13 @@ use std$0::{fmt::{self, Debug}};
 use std::{fmt::{Write, Display}};
 ",
             r"
-use std::{fmt::{self, Debug, Display, Write}};
+use std::fmt::{self, Debug, Display, Write};
 ",
         );
         check_assist_import_one_variations!(
             "std$0::{fmt::{self, Debug}}",
             "std::{fmt::{Write, Display}}",
-            "use {std::{fmt::{self, Debug, Display, Write}}};"
+            "use {std::fmt::{self, Debug, Display, Write}};"
         );
     }
 
@@ -470,13 +470,13 @@ use foo::$0{bar::{self}};
 use foo::{bar};
 ",
             r"
-use foo::{bar::{self}};
+use foo::bar;
 ",
         );
         check_assist_import_one_variations!(
             "foo::$0{bar::{self}}",
             "foo::{bar}",
-            "use {foo::{bar::{self}}};"
+            "use {foo::bar};"
         );
     }
 
@@ -489,13 +489,13 @@ use foo::$0{bar};
 use foo::{bar::{self}};
 ",
             r"
-use foo::{bar::{self}};
+use foo::bar;
 ",
         );
         check_assist_import_one_variations!(
             "foo::$0{bar}",
             "foo::{bar::{self}}",
-            "use {foo::{bar::{self}}};"
+            "use {foo::bar};"
         );
     }
 
@@ -508,13 +508,13 @@ use std$0::{fmt::*};
 use std::{fmt::{self, Display}};
 ",
             r"
-use std::{fmt::{self, Display, *}};
+use std::fmt::{self, Display, *};
 ",
         );
         check_assist_import_one_variations!(
             "std$0::{fmt::*}",
             "std::{fmt::{self, Display}}",
-            "use {std::{fmt::{self, Display, *}}};"
+            "use {std::fmt::{self, Display, *}};"
         );
     }
 
