@@ -31,18 +31,18 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 use super::InferCtxt;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt};
+use std::collections::hash_map::Entry;
 
 pub struct TypeFreshener<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
-    ty_freshen_key_vec: Vec<ty::InferTy>,
-    ty_freshen_value_vec: Vec<Ty<'tcx>>,
-    const_freshen_key_vec: Vec<ty::InferConst>,
-    const_freshen_value_vec: Vec<ty::Const<'tcx>>,
+    ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
+    const_freshen_map: FxHashMap<ty::InferConst, ty::Const<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
@@ -51,10 +51,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             infcx,
             ty_freshen_count: 0,
             const_freshen_count: 0,
-            ty_freshen_key_vec: Vec::new(),
-            ty_freshen_value_vec: Vec::new(),
-            const_freshen_key_vec: Vec::new(),
-            const_freshen_value_vec: Vec::new(),
+            ty_freshen_map: Default::default(),
+            const_freshen_map: Default::default(),
         }
     }
 
@@ -66,15 +64,15 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             return ty.fold_with(self);
         }
 
-        if let Some(idx) = self.ty_freshen_key_vec.iter().position(|infty| *infty == key) {
-            unsafe { *self.ty_freshen_value_vec.get_unchecked(idx) }
-        } else {
-            let index = self.ty_freshen_count;
-            self.ty_freshen_count += 1;
-            let t = mk_fresh(index);
-            self.ty_freshen_key_vec.push(key);
-            self.ty_freshen_value_vec.push(t);
-            t
+        match self.ty_freshen_map.entry(key) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let index = self.ty_freshen_count;
+                self.ty_freshen_count += 1;
+                let t = mk_fresh(index);
+                entry.insert(t);
+                t
+            }
         }
     }
 
@@ -92,15 +90,15 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             return ct.fold_with(self);
         }
 
-        if let Some(idx) = self.const_freshen_key_vec.iter().position(|infty| *infty == key) {
-            unsafe { *self.const_freshen_value_vec.get_unchecked(idx) }
-        } else {
-            let index: u32 = self.const_freshen_count;
-            self.const_freshen_count += 1;
-            let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
-            self.const_freshen_key_vec.push(key);
-            self.const_freshen_value_vec.push(ct);
-            ct
+        match self.const_freshen_map.entry(key) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let index = self.const_freshen_count;
+                self.const_freshen_count += 1;
+                let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
+                entry.insert(ct);
+                ct
+            }
         }
     }
 }

@@ -1,4 +1,3 @@
-use crate::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
 use crate::sync::{Lock, LockGuard, Mode};
@@ -6,7 +5,7 @@ use crate::sync::{Lock, LockGuard, Mode};
 use itertools::Either;
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher, BuildHasherDefault};
 use std::iter;
 use std::mem;
 
@@ -158,7 +157,7 @@ pub fn shards() -> usize {
     1
 }
 
-pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
+pub type ShardedHashMap<K, V> = Sharded<ahash::AHashMap<K, V, BuildHasherDefault<ahash::AHasher>>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
     pub fn len(&self) -> usize {
@@ -224,7 +223,7 @@ impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
 
 #[inline]
 pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
-    let mut state = FxHasher::default();
+    let mut state = ahash::AHasher::default();
     val.hash(&mut state);
     state.finish()
 }
