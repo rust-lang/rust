@@ -316,7 +316,7 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    = note: `std::ptr::NonNull<i32>` must be non-null
    = note: raw pointers must be initialized
 
-error: the type `(NonZeroU32, i32)` does not permit zero-initialization
+error: the type `(NonZero<u32>, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:95:39
    |
 LL |         let _val: (NonZeroU32, i32) = mem::zeroed();
@@ -325,9 +325,9 @@ LL |         let _val: (NonZeroU32, i32) = mem::zeroed();
    |                                       this code causes undefined behavior when executed
    |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `std::num::NonZeroU32` must be non-null
+   = note: `std::num::NonZero<u32>` must be non-null
 
-error: the type `(NonZeroU32, i32)` does not permit being left uninitialized
+error: the type `(NonZero<u32>, i32)` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:96:39
    |
 LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
@@ -336,7 +336,7 @@ LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
    |                                       this code causes undefined behavior when executed
    |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `std::num::NonZeroU32` must be non-null
+   = note: `std::num::NonZero<u32>` must be non-null
    = note: integers must be initialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
@@ -417,7 +417,7 @@ LL |         let _val: OneFruitNonZero = mem::zeroed();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `OneFruitNonZero` must be non-null
-note: because `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
+note: because `std::num::NonZero<u32>` must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:39:12
    |
 LL |     Banana(NonZeroU32),
@@ -433,7 +433,7 @@ LL |         let _val: OneFruitNonZero = mem::uninitialized();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `OneFruitNonZero` must be non-null
-note: because `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
+note: because `std::num::NonZero<u32>` must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:39:12
    |
 LL |     Banana(NonZeroU32),
@@ -603,7 +603,7 @@ LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    |
    = note: references must be non-null
 
-error: the type `NonZeroU32` does not permit zero-initialization
+error: the type `NonZero<u32>` does not permit zero-initialization
   --> $DIR/invalid_value.rs:154:32
    |
 LL |         let _val: NonZeroU32 = mem::transmute(0);
@@ -612,7 +612,7 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    |                                this code causes undefined behavior when executed
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: `std::num::NonZeroU32` must be non-null
+   = note: `std::num::NonZero<u32>` must be non-null
 
 error: the type `NonNull<i32>` does not permit zero-initialization
   --> $DIR/invalid_value.rs:157:34
