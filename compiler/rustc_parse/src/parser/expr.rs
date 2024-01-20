@@ -33,7 +33,6 @@ use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Spanned};
-use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
@@ -642,26 +641,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `box expr` - this syntax has been removed, but we still parse this
-    /// for now to provide an automated way to fix usages of it
-    fn parse_expr_box(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let (span, expr) = self.parse_expr_prefix_common(lo)?;
-        let code = self.sess.source_map().span_to_snippet(span.with_lo(lo.hi())).unwrap();
-        self.dcx().emit_err(errors::BoxSyntaxRemoved { span, code: code.trim() });
-        // So typechecking works, parse `box <expr>` as `::std::boxed::Box::new(expr)`
-        let path = Path {
-            span,
-            segments: [
-                PathSegment::from_ident(Ident::with_dummy_span(PathRoot)),
-                PathSegment::from_ident(Ident::with_dummy_span(sym::std)),
-                PathSegment::from_ident(Ident::from_str("boxed")),
-                PathSegment::from_ident(Ident::from_str("Box")),
-                PathSegment::from_ident(Ident::with_dummy_span(sym::new)),
-            ]
-            .into(),
-            tokens: None,
-        };
-        let path = self.mk_expr(span, ExprKind::Path(None, path));
-        Ok((span, self.mk_call(path, ThinVec::from([expr]))))
+    /// for now to provide a more useful error
+    fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
+        let (span, _) = self.parse_expr_prefix_common(box_kw)?;
+        let inner_span = span.with_lo(box_kw.hi());
+        let code = self.sess.source_map().span_to_snippet(inner_span).unwrap();
+        self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
+        Ok((span, ExprKind::Err))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
