@@ -5,6 +5,7 @@ use crate::fmt::{self, Write};
 use crate::iter;
 use crate::mem;
 use crate::ops;
+use core::ascii::EscapeDefault;
 
 #[cfg(not(test))]
 impl [u8] {
@@ -253,7 +254,45 @@ impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Display for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.clone().try_for_each(|b| f.write_char(b as char))
+        // disassemble iterator, including front/back parts of flatmap in case it has been partially consumed
+        let (front, slice, back) = self.clone().inner.into_parts();
+        let front = front.unwrap_or(EscapeDefault::empty());
+        let mut bytes = slice.unwrap_or_default().as_slice();
+        let back = back.unwrap_or(EscapeDefault::empty());
+
+        // usually empty, so the formatter won't have to do any work
+        for byte in front {
+            f.write_char(byte as char)?;
+        }
+
+        fn needs_escape(b: u8) -> bool {
+            b > 0x7E || b < 0x20 || b == b'\\' || b == b'\'' || b == b'"'
+        }
+
+        while bytes.len() > 0 {
+            // fast path for the printable, non-escaped subset of ascii
+            let prefix = bytes.iter().take_while(|&&b| !needs_escape(b)).count();
+            // SAFETY: prefix length was derived by counting bytes in the same splice, so it's in-bounds
+            let (prefix, remainder) = unsafe { bytes.split_at_unchecked(prefix) };
+            // SAFETY: prefix is a valid utf8 sequence, as it's a subset of ASCII
+            let prefix = unsafe { crate::str::from_utf8_unchecked(prefix) };
+
+            f.write_str(prefix)?; // the fast part
+
+            bytes = remainder;
+
+            if let Some(&b) = bytes.first() {
+                // guaranteed to be non-empty, better to write it as a str
+                f.write_str(ascii::escape_default(b).as_str())?;
+                bytes = &bytes[1..];
+            }
+        }
+
+        // also usually empty
+        for byte in back {
+            f.write_char(byte as char)?;
+        }
+        Ok(())
     }
 }
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
