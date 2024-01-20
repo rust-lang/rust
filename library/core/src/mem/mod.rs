@@ -736,7 +736,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
         // tends to copy the whole thing to stack rather than doing it one part
         // at a time, so instead treat them as one-element slices and piggy-back
         // the slice optimizations that will split up the swaps.
-        if size_of::<T>() / align_of::<T>() > 4 {
+        if const { size_of::<T>() / align_of::<T>() > 2 } {
             // SAFETY: exclusive references always point to one non-overlapping
             // element and are non-null and properly aligned.
             return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
