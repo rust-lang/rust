@@ -60,6 +60,7 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::traits::ObligationInspector;
 use rustc_middle::query::Providers;
 use rustc_middle::traits;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -139,7 +140,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback)
+    typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
 /// Used only to get `TypeckResults` for type inference during error recovery.
@@ -149,14 +150,28 @@ fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::T
         let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
         Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
     };
-    typeck_with_fallback(tcx, def_id, fallback)
+    typeck_with_fallback(tcx, def_id, fallback, None)
 }
 
-#[instrument(level = "debug", skip(tcx, fallback), ret)]
+/// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
+/// Inspecting obligations only works with the new trait solver.
+/// This function is *only to be used* by external tools, it should not be
+/// called from within rustc. Note, this is not a query, and thus is not cached.
+pub fn inspect_typeck<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    inspect: ObligationInspector<'tcx>,
+) -> &'tcx ty::TypeckResults<'tcx> {
+    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
+    typeck_with_fallback(tcx, def_id, fallback, Some(inspect))
+}
+
+#[instrument(level = "debug", skip(tcx, fallback, inspector), ret)]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     fallback: impl Fn() -> Ty<'tcx> + 'tcx,
+    inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
     // as they are part of the same "inference environment".
@@ -178,6 +193,9 @@ fn typeck_with_fallback<'tcx>(
     let param_env = tcx.param_env(def_id);
 
     let inh = Inherited::new(tcx, def_id);
+    if let Some(inspector) = inspector {
+        inh.infcx.attach_obligation_inspector(inspector);
+    }
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
