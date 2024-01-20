@@ -14,7 +14,8 @@
    LL|       |
    LL|       |macro_rules! on_error {
    LL|       |    ($value:expr, $error_message:expr) => {
-   LL|       |        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
+   LL|       |        $value.or_else(|e| {
+   LL|       |            // FIXME(85000): no coverage in closure macros
    LL|       |            let message = format!($error_message, e);
    LL|       |            if message.len() > 0 {
    LL|       |                println!("{}", message);
