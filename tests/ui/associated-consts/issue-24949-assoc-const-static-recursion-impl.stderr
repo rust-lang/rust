@@ -9,11 +9,6 @@ note: ...which requires simplifying constant for the type system `IMPL_REF_BAR`.
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `IMPL_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
-   |
-LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:27
    |
