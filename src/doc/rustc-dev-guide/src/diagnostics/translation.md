@@ -1,8 +1,10 @@
 # Translation
+
 rustc's diagnostic infrastructure supports translatable diagnostics using
 [Fluent].
 
 ## Writing translatable diagnostics
+
 There are two ways of writing translatable diagnostics:
 
 1. For simple diagnostics, using a diagnostic (or subdiagnostic) derive
@@ -13,12 +15,17 @@ There are two ways of writing translatable diagnostics:
 2. Using typed identifiers with `DiagnosticBuilder` APIs (in
    `Diagnostic` implementations).
 
-When adding or changing a translatable diagnostic, you don't need to worry
-about the translations, only updating the original English message. Currently,
+When adding or changing a translatable diagnostic,
+you don't need to worry about the translations.
+Only updating the original English message is required.
+Currently,
 each crate which defines translatable diagnostics has its own Fluent resource,
-such as `parser.ftl` or `typeck.ftl`.
+which is a file named `messages.ftl`,
+located in the root of the crate
+(such as`compiler/rustc_expand/messages.ftl`).
 
 ## Fluent
+
 Fluent is built around the idea of "asymmetric localization", which aims to
 decouple the expressiveness of translations from the grammar of the source
 language (English in rustc's case). Prior to translation, rustc's diagnostics
@@ -68,6 +75,7 @@ You can consult the [Fluent] documentation for other usage examples of Fluent
 and its syntax.
 
 ### Guideline for message naming
+
 Usually, fluent uses `-` for separating words inside a message name. However,
 `_` is accepted by fluent as well. As `_` fits Rust's use cases better, due to
 the identifiers on the Rust side using `_` as well, inside rustc, `-` is not
@@ -75,6 +83,7 @@ allowed for separating words, and instead `_` is recommended. The only exception
 is for leading `-`s, for message names like `-passes_see_issue`.
 
 ### Guidelines for writing translatable messages
+
 For a message to be translatable into different languages, all of the
 information required by any language must be provided to the diagnostic as an
 argument (not just the information required in the English message).
@@ -86,10 +95,6 @@ excellent examples of translating messages into different locales and the
 information that needs to be provided by the code to do so.
 
 ### Compile-time validation and typed identifiers
-Currently, each crate which defines translatable diagnostics has its own
-Fluent resource in a file named `messages.ftl`, such as
-[`compiler/rustc_borrowck/messages.ftl`] and
-[`compiler/rustc_parse/messages.ftl`].
 
 rustc's `fluent_messages` macro performs compile-time validation of Fluent
 resources and generates code to make it easier to refer to Fluent messages in
@@ -100,60 +105,13 @@ from Fluent resources while building the compiler, preventing invalid Fluent
 resources from causing panics in the compiler. Compile-time validation also
 emits an error if multiple Fluent messages have the same identifier.
 
-In `rustc_error_messages`, `fluent_messages` also generates a constant for each
-Fluent message which can be used to refer to messages when emitting
-diagnostics and guarantee that the message exists.
-
-```rust
-fluent_messages! {
-    typeck => "../locales/en-US/typeck.ftl",
-}
-```
-
-For example, given the following Fluent...
-
-```fluent
-typeck_field_multiply_specified_in_initializer =
-    field `{$ident}` specified more than once
-    .label = used more than once
-    .label_previous_use = first use of `{$ident}`
-```
-
-...then the `fluent_messages` macro will generate:
-
-```rust
-pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] = &[
-    include_str!("../locales/en-US/typeck.ftl"),
-];
-
-mod fluent_generated {
-    pub const typeck_field_multiply_specified_in_initializer: DiagnosticMessage =
-        DiagnosticMessage::new("typeck_field_multiply_specified_in_initializer");
-    pub const label: SubdiagnosticMessage =
-        SubdiagnosticMessage::attr("label");
-    pub const label_previous_use: SubdiagnosticMessage =
-        SubdiagnosticMessage::attr("previous_use_label");
-}
-```
-
-`rustc_error_messages::fluent_generated` is re-exported and primarily used as
-`rustc_errors::fluent`.
-
-```rust
-use rustc_errors::fluent;
-let mut err = sess.struct_span_err(span, fluent::typeck_field_multiply_specified_in_initializer);
-err.span_label(span, fluent::label);
-err.span_label(previous_use_span, fluent::previous_use_label);
-err.emit();
-```
-
-When emitting a diagnostic, these constants can be used like shown above.
-
 ## Internals
+
 Various parts of rustc's diagnostic internals are modified in order to support
 translation.
 
 ### Messages
+
 All of rustc's traditional diagnostic APIs (e.g. `struct_span_err` or `note`)
 take any message that can be converted into a `DiagnosticMessage` (or
 `SubdiagnosticMessage`).
@@ -182,6 +140,7 @@ non-translatable diagnostics - this keeps all existing diagnostic calls
 working.
 
 ### Arguments
+
 Additional context for Fluent messages which are interpolated into message
 contents needs to be provided to translatable diagnostics.
 
@@ -191,13 +150,14 @@ additional context to a diagnostic.
 Arguments have both a name (e.g. "what" in the earlier example) and a value.
 Argument values are represented using the `DiagnosticArgValue` type, which is
 just a string or a number. rustc types can implement `IntoDiagnosticArg` with
-conversion into a string or a number, common types like `Ty<'tcx>` already
+conversion into a string or a number, and common types like `Ty<'tcx>` already
 have such implementations.
 
 `set_arg` calls are handled transparently by diagnostic derives but need to be
 added manually when using diagnostic builder APIs.
 
 ### Loading
+
 rustc makes a distinction between the "fallback bundle" for `en-US` that is used
 by default and when another locale is missing a message; and the primary fluent
 bundle which is requested by the user.
@@ -222,9 +182,8 @@ returned by `Emitter::fluent_bundle`. This bundle is used preferentially when
 translating messages, the fallback bundle is only used if the primary bundle is
 missing a message or not provided.
 
-As of <!-- date-check --> Jan 2023, there are no locale bundles
-distributed with the compiler, but mechanisms are implemented for loading
-bundles.
+There are no locale bundles distributed with the compiler,
+but mechanisms are implemented for loading them.
 
 - `-Ztranslate-additional-ftl` can be used to load a specific resource as the
   primary bundle for testing purposes.
