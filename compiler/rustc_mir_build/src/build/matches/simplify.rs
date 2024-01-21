@@ -38,16 +38,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
-        // repeatedly simplify match pairs until fixed point is reached
         debug!("{candidate:#?}");
-
-        // existing_bindings and new_bindings exists to keep the semantics in order.
+        // `original_bindings` and `new_bindings` exist to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
-        // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
+        // where it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`.
         //
         // To avoid this, the binding occurs in the following manner:
-        // * the bindings for one iteration of the following loop occurs in order (i.e. left to
-        // right)
+        // * the bindings for one iteration of the loop occurs in order (i.e. left to right)
         // * the bindings from the previous iteration of the loop is prepended to the bindings from
         // the current iteration (in the implementation this is done by mem::swap and extend)
         // * after all iterations, these new bindings are then appended to the bindings that were
@@ -59,8 +56,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // binding in iter 2: [6, 7]
         //
         // final binding: [1, 2, 3, 6, 7, 4, 5]
-        let mut existing_bindings = mem::take(&mut candidate.bindings);
+        //
+        // This is because we treat refutable and irrefutable bindings differently. The binding
+        // order should be right-to-left if there are more _irrefutable_ bindings after `@` to
+        // please the borrow checker (#69971)
+        // Ex
+        // struct NonCopyStruct {
+        //     copy_field: u32,
+        // }
+        //
+        // fn foo1(x: NonCopyStruct) {
+        //     let y @ NonCopyStruct { copy_field: z } = x;
+        //     // the above should turn into
+        //     let z = x.copy_field;
+        //     let y = x;
+        // }
+        //
+        // If however the bindings are refutable, i.e. under a test, then we keep the bindings
+        // left-to-right.
+        // Ex
+        // enum NonCopyEnum {
+        //     Variant { copy_field: u32 },
+        //     None,
+        // }
+        //
+        // fn foo2(x: NonCopyEnum) {
+        //     let y @ NonCopyEnum::Variant { copy_field: z } = x else { return };
+        //     // turns into
+        //     let y = x;
+        //     let z = (x as Variant).copy_field;
+        //     // and raises an error
+        // }
+        let mut original_bindings = mem::take(&mut candidate.bindings);
         let mut new_bindings = Vec::new();
+        // Repeatedly simplify match pairs until fixed point is reached
         loop {
             let mut changed = false;
             for match_pair in mem::take(&mut candidate.match_pairs) {
@@ -74,19 +103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            // Avoid issue #69971: the binding order should be right to left if there are more
-            // bindings after `@` to please the borrow checker
-            // Ex
-            // struct NonCopyStruct {
-            //     copy_field: u32,
-            // }
-            //
-            // fn foo1(x: NonCopyStruct) {
-            //     let y @ NonCopyStruct { copy_field: z } = x;
-            //     // the above should turn into
-            //     let z = x.copy_field;
-            //     let y = x;
-            // }
+            // This does: new_bindings = candidate.bindings.take() ++ new_bindings
             candidate.bindings.extend_from_slice(&new_bindings);
             mem::swap(&mut candidate.bindings, &mut new_bindings);
             candidate.bindings.clear();
@@ -97,8 +114,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        existing_bindings.extend_from_slice(&new_bindings);
-        mem::swap(&mut candidate.bindings, &mut existing_bindings);
+        // Restore original bindings and append the new ones.
+        // This does: candidate.bindings = original_bindings ++ new_bindings
+        mem::swap(&mut candidate.bindings, &mut original_bindings);
+        candidate.bindings.extend_from_slice(&new_bindings);
 
         let did_expand_or =
             if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
