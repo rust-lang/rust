@@ -321,6 +321,30 @@ mod issue12154 {
             *other == *self
         }
     }
+
+    // Issue #12181 but also fixed by the same PR
+    struct Foo;
+
+    impl Foo {
+        fn as_str(&self) -> &str {
+            "Foo"
+        }
+    }
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Self) -> bool {
+            self.as_str().eq(other.as_str())
+        }
+    }
+
+    impl<T> PartialEq<T> for Foo
+    where
+        for<'a> &'a str: PartialEq<T>,
+    {
+        fn eq(&self, other: &T) -> bool {
+            (&self.as_str()).eq(other)
+        }
+    }
 }
 
 fn main() {}
