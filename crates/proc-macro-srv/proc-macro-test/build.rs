@@ -100,7 +100,8 @@ fn main() {
             .current_dir(&staging_dir)
             .args(["pkgid", name])
             .output()
-            .unwrap().stdout,
+            .unwrap()
+            .stdout,
     )
     .unwrap();
     let pkgid = pkgid.trim();
@@ -109,7 +110,8 @@ fn main() {
     for message in Message::parse_stream(output.stdout.as_slice()) {
         if let Message::CompilerArtifact(artifact) = message.unwrap() {
             if artifact.target.kind.contains(&"proc-macro".to_string()) {
-                if artifact.package_id.repr.starts_with(&repr) || artifact.package_id.repr == pkgid {
+                if artifact.package_id.repr.starts_with(&repr) || artifact.package_id.repr == pkgid
+                {
                     artifact_path = Some(PathBuf::from(&artifact.filenames[0]));
                 }
             }
