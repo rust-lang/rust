@@ -702,6 +702,9 @@ lexer = [
     "@nnethercote",
     "@petrochenkov",
 ]
+arena = [
+    "@nnethercote",
+]
 mir = [
     "@davidtwco",
     "@oli-obk",
@@ -753,6 +756,7 @@ project-stable-mir = [
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
 "/Cargo.toml" =                              ["@Mark-Simulacrum"]
 "/compiler" =                                ["compiler"]
+"/compiler/rustc_arena" =                    ["compiler", "arena"]
 "/compiler/rustc_ast" =                      ["compiler", "parser"]
 "/compiler/rustc_ast_lowering" =             ["compiler", "ast_lowering"]
 "/compiler/rustc_hir_analysis" =             ["compiler", "types"]
