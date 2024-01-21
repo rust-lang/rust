@@ -1591,7 +1591,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Entry point to crate resolution.
-    pub fn resolve_crate(&mut self, krate: &Crate) {
+    pub fn resolve_crate(&mut self, krate: &mut Crate) {
         self.tcx.sess.time("resolve_crate", || {
             self.tcx.sess.time("finalize_imports", || self.finalize_imports());
             let exported_ambiguities = self.tcx.sess.time("compute_effective_visibilities", || {

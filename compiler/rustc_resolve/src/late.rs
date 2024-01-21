@@ -12,6 +12,7 @@ use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeB
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
@@ -4592,13 +4593,49 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
-    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
+    pub(crate) fn late_resolve_crate(&mut self, krate: &mut Crate) {
         visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
-        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
-        late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
-        visit::walk_crate(&mut late_resolution_visitor, krate);
-        for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
-            self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
+        {
+            let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+            late_resolution_visitor
+                .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
+            visit::walk_crate(&mut late_resolution_visitor, krate);
+            for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
+                self.lint_buffer.buffer_lint(
+                    lint::builtin::UNUSED_LABELS,
+                    *id,
+                    *span,
+                    "unused label",
+                );
+            }
+        }
+
+        {
+            let mut late_desugar_visitor = LateDesugarVisitor::new(self);
+            late_desugar_visitor.visit_crate(krate);
         }
     }
+}
+
+struct LateDesugarVisitor<'a, 'b, 'tcx> {
+    _r: &'b mut Resolver<'a, 'tcx>,
+}
+
+impl<'a, 'b, 'tcx> LateDesugarVisitor<'a, 'b, 'tcx> {
+    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> Self {
+        LateDesugarVisitor { _r: resolver }
+    }
+}
+
+impl MutVisitor for LateDesugarVisitor<'_, '_, '_> {
+    fn visit_item_kind(&mut self, i: &mut ItemKind) {
+        if is_axel_debug() {
+            eprintln!("[Desugar][ItemKind] {:?}", i);
+        }
+    }
+}
+
+fn is_axel_debug() -> bool {
+    use std::env;
+    env::var("AXEL_DEBUG").is_ok()
 }

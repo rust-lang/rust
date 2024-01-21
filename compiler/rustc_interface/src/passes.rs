@@ -273,7 +273,7 @@ fn configure_and_expand(
 
     // Done with macro expansion!
 
-    resolver.resolve_crate(&krate);
+    resolver.resolve_crate(&mut krate);
 
     krate
 }
