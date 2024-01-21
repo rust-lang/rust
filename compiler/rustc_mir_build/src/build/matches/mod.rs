@@ -947,12 +947,16 @@ struct Candidate<'pat, 'tcx> {
     has_guard: bool,
 
     /// All of these must be satisfied...
+    // Invariant: all the `MatchPair`s are recursively simplified.
+    // Invariant: or-patterns must be sorted at the end.
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
     /// ...these bindings established...
+    // Invariant: not mutated outside `Candidate::new()`.
     bindings: Vec<Binding<'tcx>>,
 
     /// ...and these types asserted...
+    // Invariant: not mutated outside `Candidate::new()`.
     ascriptions: Vec<Ascription<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
@@ -972,9 +976,9 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
         has_guard: bool,
-        cx: &Builder<'_, 'tcx>,
+        cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
-        Candidate {
+        let mut candidate = Candidate {
             span: pattern.span,
             has_guard,
             match_pairs: vec![MatchPair::new(place, pattern, cx)],
@@ -984,7 +988,15 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             next_candidate_pre_binding_block: None,
-        }
+        };
+
+        cx.simplify_match_pairs(
+            &mut candidate.match_pairs,
+            &mut candidate.bindings,
+            &mut candidate.ascriptions,
+        );
+
+        candidate
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1040,13 +1052,18 @@ struct Ascription<'tcx> {
     variance: ty::Variance,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
-    // this place...
+    // This place...
     place: PlaceBuilder<'tcx>,
 
     // ... must match this pattern.
+    // Invariant: after creation and simplification in `Candidate::new()`, all match pairs must be
+    // simplified, i.e. require a test.
     pattern: &'pat Pat<'tcx>,
+
+    /// Precomputed sub-match pairs of `pattern`.
+    subpairs: Vec<Self>,
 }
 
 /// See [`Test`] for more.
@@ -1163,16 +1180,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
-        // Start by simplifying candidates. Once this process is complete, all
-        // the match pairs which remain require some form of test, whether it
-        // be a switch or pattern comparison.
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
-            self.simplify_match_pairs(
-                &mut candidate.match_pairs,
-                &mut candidate.bindings,
-                &mut candidate.ascriptions,
-            );
             if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
                 &*candidate.match_pairs
             {

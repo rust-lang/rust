@@ -116,6 +116,6 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         if may_need_cast {
             place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
-        MatchPair { place, pattern }
+        MatchPair { place, pattern, subpairs: Vec::new() }
     }
 }

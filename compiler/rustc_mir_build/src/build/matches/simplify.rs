@@ -107,12 +107,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         pats.iter()
             .map(|box pat| {
                 let mut candidate = Candidate::new(place.clone(), pat, has_guard, self);
-                self.simplify_match_pairs(
-                    &mut candidate.match_pairs,
-                    &mut candidate.bindings,
-                    &mut candidate.ascriptions,
-                );
-
                 if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
                     &*candidate.match_pairs
                 {
@@ -132,11 +126,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// candidate.
     fn simplify_match_pair<'pat>(
         &mut self,
-        match_pair: MatchPair<'pat, 'tcx>,
+        mut match_pair: MatchPair<'pat, 'tcx>,
         bindings: &mut Vec<Binding<'tcx>>,
         ascriptions: &mut Vec<Ascription<'tcx>>,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
+        assert!(match_pair.subpairs.is_empty(), "mustn't simplify a match pair twice");
         match match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -249,6 +244,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.prefix_slice_suffix(match_pairs, &match_pair.place, prefix, slice, suffix);
                     Ok(())
                 } else {
+                    self.prefix_slice_suffix(
+                        &mut match_pair.subpairs,
+                        &match_pair.place,
+                        prefix,
+                        slice,
+                        suffix,
+                    );
+                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
                     Err(match_pair)
                 }
             }
@@ -270,6 +273,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     match_pairs.extend(self.field_match_pairs(place_builder, subpatterns));
                     Ok(())
                 } else {
+                    let downcast_place = match_pair.place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
+                    match_pair.subpairs = self.field_match_pairs(downcast_place, subpatterns);
+                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
                     Err(match_pair)
                 }
             }
