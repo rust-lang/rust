@@ -1267,8 +1267,7 @@ fn pattern_context_for(
     pat
         .syntax()
         .ancestors()
-        .skip_while(|it| ast::Pat::can_cast(it.kind()))
-        .next()
+        .find(|it| !ast::Pat::can_cast(it.kind()))
         .map_or((PatternRefutability::Irrefutable, false), |node| {
             let refutability = match_ast! {
                 match node {
