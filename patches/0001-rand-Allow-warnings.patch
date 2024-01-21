@@ -1,0 +1,24 @@
+From 8330c138c91f71ad43b38c026ee14b154f34a1b8 Mon Sep 17 00:00:00 2001
+From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
+Date: Sun, 21 Jan 2024 11:12:19 +0000
+Subject: [PATCH] Allow warnings
+
+---
+ rand_core/src/lib.rs | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/rand_core/src/lib.rs b/rand_core/src/lib.rs
+index a5a7fb1..6c84068 100644
+--- a/rand_core/src/lib.rs
++++ b/rand_core/src/lib.rs
+@@ -34,7 +34,6 @@
+ )]
+ #![deny(missing_docs)]
+ #![deny(missing_debug_implementations)]
+-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+ #![cfg_attr(doc_cfg, feature(doc_cfg))]
+ #![no_std]
+ 
+-- 
+2.34.1
+
