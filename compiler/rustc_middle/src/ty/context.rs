@@ -1416,6 +1416,7 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
+nop_lift! {layout; Layout<'a> => Layout<'tcx>}
 
 nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
@@ -1424,8 +1425,28 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
+macro_rules! nop_slice_lift {
+    ($ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<'tcx> for &'a [$ty] {
+            type Lifted = &'tcx [$lifted];
+            fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                if self.is_empty() {
+                    return Some(&[]);
+                }
+                tcx.interners
+                    .arena
+                    .dropless
+                    .contains_slice(self)
+                    .then(|| unsafe { mem::transmute(self) })
+            }
+        }
+    };
+}
+
+nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
+
 TrivialLiftImpls! {
-    ImplPolarity,
+    ImplPolarity, Promoted
 }
 
 macro_rules! sty_debug_print {
