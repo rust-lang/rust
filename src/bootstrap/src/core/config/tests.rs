@@ -1,4 +1,4 @@
-use super::{Config, Flags};
+use super::{flags::Flags, Config};
 use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;

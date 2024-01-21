@@ -3,7 +3,6 @@
 //! the bootstrap.
 
 #[cfg(test)]
-#[path = "../tests/change_tracker.rs"]
 mod tests;
 
 #[derive(Clone, Debug)]
