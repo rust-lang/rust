@@ -58,7 +58,7 @@ fn num_to_digit(_1: char) -> u32 {
         _0 = move ((_5 as Some).0: u32);
         StorageDead(_6);
         StorageDead(_5);
-        goto -> bb8;
+        return;
     }
 
     bb6: {
@@ -68,10 +68,6 @@ fn num_to_digit(_1: char) -> u32 {
     bb7: {
         StorageDead(_4);
         _0 = const 0_u32;
-        goto -> bb8;
-    }
-
-    bb8: {
         return;
     }
 }
