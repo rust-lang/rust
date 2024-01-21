@@ -6,7 +6,6 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
-use smallvec::SmallVec;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(
@@ -26,7 +25,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(crate) fn prefix_slice_suffix<'pat>(
         &mut self,
-        match_pairs: &mut SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
+        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
         place: &PlaceBuilder<'tcx>,
         prefix: &'pat [Box<Pat<'tcx>>],
         opt_slice: &'pat Option<Box<Pat<'tcx>>>,

@@ -22,8 +22,6 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
-use smallvec::{smallvec, SmallVec};
-
 // helper functions, broken out by category:
 mod simplify;
 mod test;
@@ -949,7 +947,7 @@ struct Candidate<'pat, 'tcx> {
     has_guard: bool,
 
     /// All of these must be satisfied...
-    match_pairs: SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
+    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
     /// ...these bindings established...
     bindings: Vec<Binding<'tcx>>,
@@ -979,7 +977,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         Candidate {
             span: pattern.span,
             has_guard,
-            match_pairs: smallvec![MatchPair::new(place, pattern, cx)],
+            match_pairs: vec![MatchPair::new(place, pattern, cx)],
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             subcandidates: Vec::new(),
