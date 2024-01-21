@@ -3,6 +3,7 @@
 /// descriptors.
 mod pal;
 
+pub mod os_str;
 mod personality;
 
 // FIXME(117276): remove this, move feature implementations into individual

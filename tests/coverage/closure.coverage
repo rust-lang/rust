@@ -5,6 +5,7 @@
    LL|       |// `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by
    LL|       |// <https://github.com/rust-lang/rust/pull/83666>.
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
    LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
    LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from

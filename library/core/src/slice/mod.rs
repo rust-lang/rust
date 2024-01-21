@@ -3957,23 +3957,36 @@ impl<T> [T] {
     where
         T: PartialOrd,
     {
-        self.is_sorted_by(|a, b| a.partial_cmp(b))
+        self.is_sorted_by(|a, b| a <= b)
     }
 
     /// Checks if the elements of this slice are sorted using the given comparator function.
     ///
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
-    /// function to determine the ordering of two elements. Apart from that, it's equivalent to
-    /// [`is_sorted`]; see its documentation for more information.
+    /// function to determine whether two elements are to be considered in sorted order.
     ///
-    /// [`is_sorted`]: slice::is_sorted
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_sorted)]
+    ///
+    /// assert!([1, 2, 2, 9].is_sorted_by(|a, b| a <= b));
+    /// assert!(![1, 2, 2, 9].is_sorted_by(|a, b| a < b));
+    ///
+    /// assert!([0].is_sorted_by(|a, b| true));
+    /// assert!([0].is_sorted_by(|a, b| false));
+    ///
+    /// let empty: [i32; 0] = [];
+    /// assert!(empty.is_sorted_by(|a, b| false));
+    /// assert!(empty.is_sorted_by(|a, b| true));
+    /// ```
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[must_use]
     pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
-        F: FnMut(&'a T, &'a T) -> Option<Ordering>,
+        F: FnMut(&'a T, &'a T) -> bool,
     {
-        self.array_windows().all(|[a, b]| compare(a, b).map_or(false, Ordering::is_le))
+        self.array_windows().all(|[a, b]| compare(a, b))
     }
 
     /// Checks if the elements of this slice are sorted using the given key extraction function.

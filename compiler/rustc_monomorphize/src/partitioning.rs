@@ -182,7 +182,7 @@ where
     }
 
     // Ensure CGUs are sorted by name, so that we get deterministic results.
-    if !codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))) {
+    if !codegen_units.is_sorted_by(|a, b| a.name().as_str() <= b.name().as_str()) {
         let mut names = String::new();
         for cgu in codegen_units.iter() {
             names += &format!("- {}\n", cgu.name());
@@ -317,7 +317,7 @@ fn merge_codegen_units<'tcx>(
     assert!(cx.tcx.sess.codegen_units().as_usize() >= 1);
 
     // A sorted order here ensures merging is deterministic.
-    assert!(codegen_units.is_sorted_by(|a, b| Some(a.name().as_str().cmp(b.name().as_str()))));
+    assert!(codegen_units.is_sorted_by(|a, b| a.name().as_str() <= b.name().as_str()));
 
     // This map keeps track of what got merged into what.
     let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
