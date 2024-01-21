@@ -14,8 +14,10 @@ mod version;
 use indexmap::IndexSet;
 use paths::AbsPathBuf;
 use span::Span;
-use std::{fmt, io, sync::Mutex};
-use triomphe::Arc;
+use std::{
+    fmt, io,
+    sync::{Arc, Mutex},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -81,9 +83,11 @@ impl PartialEq for ProcMacro {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ServerError {
     pub message: String,
-    pub io: Option<io::Error>,
+    // io::Error isn't Clone for some reason
+    pub io: Option<Arc<io::Error>>,
 }
 
 impl fmt::Display for ServerError {

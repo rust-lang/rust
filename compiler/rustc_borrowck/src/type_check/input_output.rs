@@ -7,6 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
+use itertools::Itertools;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -39,9 +40,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig,
         );
 
-        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip(
-            // In MIR, closure args begin with an implicit `self`. Skip it!
-            body.args_iter().skip(1).map(|local| &body.local_decls[local]),
+        let is_coroutine_with_implicit_resume_ty = self.tcx().is_coroutine(mir_def_id.to_def_id())
+            && user_provided_sig.inputs().is_empty();
+
+        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip_eq(
+            // In MIR, closure args begin with an implicit `self`.
+            // Also, coroutines have a resume type which may be implicitly `()`.
+            body.args_iter()
+                .skip(1 + if is_coroutine_with_implicit_resume_ty { 1 } else { 0 })
+                .map(|local| &body.local_decls[local]),
         ) {
             self.ascribe_user_type_skip_wf(
                 arg_decl.ty,

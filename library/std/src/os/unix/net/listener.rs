@@ -73,7 +73,12 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
-            #[cfg(any(target_os = "windows", target_os = "redox", target_os = "espidf"))]
+            #[cfg(any(
+                target_os = "windows",
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon"
+            ))]
             const backlog: libc::c_int = 128;
             #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
             const backlog: libc::c_int = -1;
@@ -83,7 +88,8 @@ impl UnixListener {
                 target_os = "linux",
                 target_os = "freebsd",
                 target_os = "openbsd",
-                target_os = "espidf"
+                target_os = "espidf",
+                target_os = "horizon"
             )))]
             const backlog: libc::c_int = libc::SOMAXCONN;
 

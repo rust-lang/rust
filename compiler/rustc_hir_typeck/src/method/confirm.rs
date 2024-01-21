@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &'tcx hir::PathSegment<'tcx>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -68,7 +68,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &hir::PathSegment<'tcx>,
     ) -> ConfirmResult<'tcx> {
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
         confirm_cx.skip_record_for_diagnostics = true;
@@ -90,7 +90,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &hir::PathSegment<'tcx>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, pick);
@@ -346,7 +346,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn instantiate_method_args(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        seg: &hir::PathSegment<'_>,
+        seg: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
         // Determine the values for the generic parameters of the method.
@@ -370,13 +370,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         struct MethodSubstsCtxt<'a, 'tcx> {
             cfcx: &'a ConfirmContext<'a, 'tcx>,
             pick: &'a probe::Pick<'tcx>,
-            seg: &'a hir::PathSegment<'a>,
+            seg: &'a hir::PathSegment<'tcx>,
         }
         impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for MethodSubstsCtxt<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
-            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+            ) -> (Option<&'a hir::GenericArgs<'tcx>>, bool) {
                 if def_id == self.pick.item.def_id {
                     if let Some(data) = self.seg.args {
                         return (Some(data), false);
@@ -388,7 +388,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             fn provided_kind(
                 &mut self,
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'_>,
+                arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {

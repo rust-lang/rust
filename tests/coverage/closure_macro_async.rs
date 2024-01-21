@@ -15,7 +15,8 @@ macro_rules! bail {
 
 macro_rules! on_error {
     ($value:expr, $error_message:expr) => {
-        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
+        $value.or_else(|e| {
+            // FIXME(85000): no coverage in closure macros
             let message = format!($error_message, e);
             if message.len() > 0 {
                 println!("{}", message);
@@ -53,8 +54,7 @@ mod executor {
     #[coverage(off)]
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
         let mut future = pin!(future);
-        let waker = Waker::noop();
-        let mut context = Context::from_waker(&waker);
+        let mut context = Context::from_waker(Waker::noop());
 
         loop {
             if let Poll::Ready(val) = future.as_mut().poll(&mut context) {

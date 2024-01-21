@@ -49,7 +49,14 @@ bitflags! {
                                  | ReprFlags::IS_LINEAR.bits();
     }
 }
-rustc_data_structures::external_bitflags_debug! { ReprFlags }
+
+// This is the same as `rustc_data_structures::external_bitflags_debug` but without the
+// `rustc_data_structures` to make it build on stable.
+impl std::fmt::Debug for ReprFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
+    }
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]

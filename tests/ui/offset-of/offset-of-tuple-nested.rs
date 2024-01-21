@@ -2,7 +2,7 @@
 // Test for issue #112204 -- make sure this goes through the entire compilation pipeline,
 // similar to why `offset-of-unsized.rs` is also build-pass
 
-#![feature(offset_of)]
+#![feature(offset_of_nested)]
 
 use std::mem::offset_of;
 

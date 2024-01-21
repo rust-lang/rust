@@ -218,7 +218,9 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             }
         }
 
-        if values.is_empty() && !values_any_specified && !any_specified {
+        if !values_specified && !any_specified {
+            // `cfg(name)` is equivalent to `cfg(name, values(none()))` so add
+            // an implicit `none()`
             values.insert(None);
         } else if !values.is_empty() && values_any_specified {
             error!(

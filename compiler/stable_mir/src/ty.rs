@@ -12,7 +12,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Ty(pub usize);
+pub struct Ty(usize);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -138,7 +138,7 @@ impl Const {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(pub usize);
+pub struct ConstId(usize);
 
 type Ident = Opaque;
 

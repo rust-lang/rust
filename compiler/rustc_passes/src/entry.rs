@@ -180,8 +180,8 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
         Default::default()
     });
     let main_def_opt = tcx.resolutions(()).main_def;
-    let diagnostic_id = error_code!(E0601);
-    let add_teach_note = tcx.sess.teach(&diagnostic_id);
+    let code = error_code!(E0601);
+    let add_teach_note = tcx.sess.teach(&code);
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.

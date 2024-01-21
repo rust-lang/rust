@@ -1,7 +1,5 @@
 use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, MultiSpan,
-};
+use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
@@ -1107,7 +1105,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         self.tcx.sess
     }
 
-    fn code(&self) -> DiagnosticId {
+    fn code(&self) -> String {
         rustc_errors::error_code!(E0107)
     }
 

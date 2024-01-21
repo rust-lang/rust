@@ -10,8 +10,8 @@
 //! information, source code snippets, etc.
 
 use crate::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
+use rustc_data_structures::unhash::UnhashMap;
 use std::fs;
 use std::io::{self, BorrowedBuf, Read};
 use std::path::{self};
@@ -70,7 +70,7 @@ mod monotonic {
     impl<T> !DerefMut for MonotonicVec<T> {}
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -164,7 +164,7 @@ impl FileLoader for RealFileLoader {
 #[derive(Default)]
 struct SourceMapFiles {
     source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
-    stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>,
+    stable_id_to_source_file: UnhashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
 
 pub struct SourceMap {

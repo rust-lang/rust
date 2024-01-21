@@ -169,6 +169,7 @@ impl EdgeHeader {
     }
 }
 
+#[inline]
 fn mask(bits: usize) -> usize {
     usize::MAX >> ((std::mem::size_of::<usize>() * 8) - bits)
 }

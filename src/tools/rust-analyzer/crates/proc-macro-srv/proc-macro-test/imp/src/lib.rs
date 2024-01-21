@@ -1,8 +1,5 @@
 //! Exports a few trivial procedural macros for testing.
 
-#![allow(unexpected_cfgs)]
-#![cfg(feature = "sysroot-abi")]
-#![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![feature(proc_macro_span, proc_macro_def_site)]
 

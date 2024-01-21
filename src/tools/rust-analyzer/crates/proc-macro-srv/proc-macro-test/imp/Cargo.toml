@@ -13,7 +13,4 @@ proc-macro = true
 # this crate should not have any dependencies, since it uses its own workspace,
 # and its own `Cargo.lock`
 
-[features]
-sysroot-abi = []
-
 [workspace]

@@ -30,7 +30,7 @@ extern crate tracing;
 extern crate self as rustc_errors;
 
 pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{
@@ -442,13 +442,13 @@ struct DiagCtxtInner {
     /// This is used for the `good_path_delayed_bugs` check.
     suppressed_expected_diag: bool,
 
-    /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
+    /// This set contains the code of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
     /// would be unnecessary repetition.
-    taught_diagnostics: FxHashSet<DiagnosticId>,
+    taught_diagnostics: FxHashSet<String>,
 
     /// Used to suggest rustc --explain `<error code>`
-    emitted_diagnostic_codes: FxIndexSet<DiagnosticId>,
+    emitted_diagnostic_codes: FxIndexSet<String>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
     /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
@@ -676,7 +676,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if diag.is_lint {
+            if diag.is_lint.is_some() {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
@@ -695,7 +695,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if diag.is_lint {
+            if diag.is_lint.is_some() {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
@@ -715,9 +715,7 @@ impl DiagCtxt {
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
-    /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
-    /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    /// An `emit` call on the builder will only emit if `can_emit_warnings` is `true`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_warn(
@@ -730,9 +728,7 @@ impl DiagCtxt {
 
     /// Construct a builder at the `Warning` level with the `msg`.
     ///
-    /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
-    /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    /// An `emit` call on the builder will only emit if `can_emit_warnings` is `true`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
@@ -1011,11 +1007,12 @@ impl DiagCtxt {
             let mut error_codes = inner
                 .emitted_diagnostic_codes
                 .iter()
-                .filter_map(|x| match &x {
-                    DiagnosticId::Error(s) if registry.try_find_description(s).is_ok() => {
-                        Some(s.clone())
+                .filter_map(|code| {
+                    if registry.try_find_description(code).is_ok().clone() {
+                        Some(code.clone())
+                    } else {
+                        None
                     }
-                    _ => None,
                 })
                 .collect::<Vec<_>>();
             if !error_codes.is_empty() {
@@ -1058,8 +1055,8 @@ impl DiagCtxt {
     ///
     /// Used to suppress emitting the same error multiple times with extended explanation when
     /// calling `-Zteach`.
-    pub fn must_teach(&self, code: &DiagnosticId) -> bool {
-        self.inner.borrow_mut().taught_diagnostics.insert(code.clone())
+    pub fn must_teach(&self, code: &str) -> bool {
+        self.inner.borrow_mut().taught_diagnostics.insert(code.to_string())
     }
 
     pub fn force_print_diagnostic(&self, db: Diagnostic) {
@@ -1231,7 +1228,7 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if diag.is_lint {
+                if diag.is_lint.is_some() {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
@@ -1363,7 +1360,7 @@ impl DiagCtxtInner {
                 self.has_printed = true;
             }
             if diagnostic.is_error() {
-                if diagnostic.is_lint {
+                if diagnostic.is_lint.is_some() {
                     self.lint_err_count += 1;
                 } else {
                     self.err_count += 1;

@@ -4,7 +4,6 @@
 mod macros;
 
 use crate::cmp;
-use crate::cmp::Ordering;
 use crate::fmt;
 use crate::intrinsics::assume;
 use crate::iter::{
@@ -12,7 +11,7 @@ use crate::iter::{
 };
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
-use crate::num::NonZeroUsize;
+use crate::num::{NonZero, NonZeroUsize};
 use crate::ptr::{self, invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
@@ -133,7 +132,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, as_ref, {
     fn is_sorted_by<F>(self, mut compare: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
     {
         self.as_slice().is_sorted_by(|a, b| compare(&a, &b))
     }
@@ -1305,12 +1304,12 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Windows<'a, T: 'a> {
     v: &'a [T],
-    size: NonZeroUsize,
+    size: NonZero<usize>,
 }
 
 impl<'a, T: 'a> Windows<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: NonZeroUsize) -> Self {
+    pub(super) fn new(slice: &'a [T], size: NonZero<usize>) -> Self {
         Self { v: slice, size }
     }
 }

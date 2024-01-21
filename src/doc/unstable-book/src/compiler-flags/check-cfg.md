@@ -44,15 +44,20 @@ To enable checking of values, but to provide an *none*/empty set of expected val
 
 ```bash
 rustc --check-cfg 'cfg(name)'
-rustc --check-cfg 'cfg(name, values())'
 rustc --check-cfg 'cfg(name, values(none()))'
 ```
 
-To enable checking of name but not values (i.e. unknown expected values), use this form:
+To enable checking of name but not values, use one of these forms:
 
-```bash
-rustc --check-cfg 'cfg(name, values(any()))'
-```
+  - No expected values (_will lint on every value_):
+    ```bash
+    rustc --check-cfg 'cfg(name, values())'
+    ```
+
+  - Unknown expected values (_will never lint_):
+    ```bash
+    rustc --check-cfg 'cfg(name, values(any()))'
+    ```
 
 To avoid repeating the same set of values, use this form:
 
@@ -114,18 +119,14 @@ as argument to `--check-cfg`.
 This table describe the equivalence of a `--cfg` argument to a `--check-cfg` argument.
 
 | `--cfg`                       | `--check-cfg`                                              |
-|-----------------------------|----------------------------------------------------------|
+|-------------------------------|------------------------------------------------------------|
 | *nothing*                     | *nothing* or `--check-cfg=cfg()` (to enable the checking)  |
-| `--cfg foo`                   | `--check-cfg=cfg(foo), --check-cfg=cfg(foo, values())` or `--check-cfg=cfg(foo, values(none()))`   |
+| `--cfg foo`                   | `--check-cfg=cfg(foo)` or `--check-cfg=cfg(foo, values(none()))` |
 | `--cfg foo=""`                | `--check-cfg=cfg(foo, values(""))`                         |
 | `--cfg foo="bar"`             | `--check-cfg=cfg(foo, values("bar"))`                      |
 | `--cfg foo="1" --cfg foo="2"` | `--check-cfg=cfg(foo, values("1", "2"))`                   |
 | `--cfg foo="1" --cfg bar="2"` | `--check-cfg=cfg(foo, values("1")) --check-cfg=cfg(bar, values("2"))` |
-| `--cfg foo --cfg foo="bar"`   | `--check-cfg=cfg(foo) --check-cfg=cfg(foo, values("bar"))` |
-
-NOTE: There is (currently) no way to express that a condition name is expected but no (!= none)
-values are expected. Passing an empty `values()` means *(none)* in the sense of `#[cfg(foo)]`
-with no value. Users are expected to NOT pass a `--check-cfg` with that condition name.
+| `--cfg foo --cfg foo="bar"`   | `--check-cfg=cfg(foo, values(none(), "bar"))`              |
 
 ### Example: Cargo-like `feature` example
 

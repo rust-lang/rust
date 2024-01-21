@@ -959,6 +959,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),
             ResolutionError::InvalidAsmSym => self.dcx().create_err(errs::InvalidAsmSym { span }),
             ResolutionError::LowercaseSelf => self.dcx().create_err(errs::LowercaseSelf { span }),
+            ResolutionError::BindingInNeverPattern => {
+                self.dcx().create_err(errs::BindingInNeverPattern { span })
+            }
         }
     }
 

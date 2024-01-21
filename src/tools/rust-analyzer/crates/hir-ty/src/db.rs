@@ -34,6 +34,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::infer::infer_query)]
     fn infer_query(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
+    // region:mir
+
     #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(crate::mir::mir_body_recover)]
     fn mir_body(&self, def: DefWithBodyId) -> Result<Arc<MirBody>, MirLowerError>;
@@ -61,20 +63,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::mir::borrowck_query)]
     fn borrowck(&self, def: DefWithBodyId) -> Result<Arc<[BorrowckResult]>, MirLowerError>;
 
-    #[salsa::invoke(crate::lower::ty_query)]
-    #[salsa::cycle(crate::lower::ty_recover)]
-    fn ty(&self, def: TyDefId) -> Binders<Ty>;
-
-    #[salsa::invoke(crate::lower::value_ty_query)]
-    fn value_ty(&self, def: ValueTyDefId) -> Binders<Ty>;
-
-    #[salsa::invoke(crate::lower::impl_self_ty_query)]
-    #[salsa::cycle(crate::lower::impl_self_ty_recover)]
-    fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
-
-    #[salsa::invoke(crate::lower::const_param_ty_query)]
-    fn const_param_ty(&self, def: ConstParamId) -> Ty;
-
     #[salsa::invoke(crate::consteval::const_eval_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
     fn const_eval(
@@ -91,6 +79,22 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(crate::consteval::const_eval_discriminant_recover)]
     fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
+
+    // endregion:mir
+
+    #[salsa::invoke(crate::lower::ty_query)]
+    #[salsa::cycle(crate::lower::ty_recover)]
+    fn ty(&self, def: TyDefId) -> Binders<Ty>;
+
+    #[salsa::invoke(crate::lower::value_ty_query)]
+    fn value_ty(&self, def: ValueTyDefId) -> Binders<Ty>;
+
+    #[salsa::invoke(crate::lower::impl_self_ty_query)]
+    #[salsa::cycle(crate::lower::impl_self_ty_recover)]
+    fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
+
+    #[salsa::invoke(crate::lower::const_param_ty_query)]
+    fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
@@ -158,7 +162,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_block_query)]
-    fn inherent_impls_in_block(&self, block: BlockId) -> Arc<InherentImpls>;
+    fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
 
     /// Collects all crates in the dependency graph that have impls for the
     /// given fingerprint. This is only used for primitive types and types
@@ -175,7 +179,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_block_query)]
-    fn trait_impls_in_block(&self, block: BlockId) -> Arc<TraitImpls>;
+    fn trait_impls_in_block(&self, block: BlockId) -> Option<Arc<TraitImpls>>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
     fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<[Arc<TraitImpls>]>;

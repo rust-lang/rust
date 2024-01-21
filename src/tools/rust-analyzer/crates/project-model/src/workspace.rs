@@ -1398,7 +1398,7 @@ fn sysroot_to_crate_graph(
     let public_deps = SysrootPublicDeps {
         deps: sysroot
             .public_deps()
-            .map(|(name, idx, prelude)| (name, sysroot_crates[&idx], prelude))
+            .filter_map(|(name, idx, prelude)| Some((name, *sysroot_crates.get(&idx)?, prelude)))
             .collect::<Vec<_>>(),
     };
 

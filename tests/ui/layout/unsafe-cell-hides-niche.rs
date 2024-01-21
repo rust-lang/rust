@@ -17,7 +17,7 @@ use std::sync::{Mutex, RwLock};
 struct Wrapper<T>(#[allow(dead_code)] T);
 
 #[repr(transparent)]
-struct Transparent<T>(#[allow(dead_code)] T);
+struct Transparent<T>(T);
 
 struct NoNiche<T>(UnsafeCell<T>);
 

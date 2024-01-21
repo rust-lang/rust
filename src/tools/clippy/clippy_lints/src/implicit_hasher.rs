@@ -210,7 +210,7 @@ enum ImplicitHasherType<'tcx> {
 
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a `BuildHasher`.
-    fn new(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> Option<Self> {
+    fn new(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Option<Self> {
         if let TyKind::Path(QPath::Resolved(None, path)) = hir_ty.kind {
             let params: Vec<_> = path
                 .segments

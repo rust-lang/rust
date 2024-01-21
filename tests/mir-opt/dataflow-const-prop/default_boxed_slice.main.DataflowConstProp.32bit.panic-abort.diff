@@ -25,20 +25,21 @@
                           scope 11 (inlined NonNull::<[bool; 0]>::new_unchecked) {
                               debug ptr => _6;
                               let mut _8: *const [bool; 0];
+                              let mut _9: *mut [bool; 0];
                               scope 12 {
                                   scope 13 (inlined NonNull::<T>::new_unchecked::runtime::<[bool; 0]>) {
-                                      debug ptr => _6;
+                                      debug ptr => _9;
                                       scope 14 (inlined std::ptr::mut_ptr::<impl *mut [bool; 0]>::is_null) {
-                                          debug self => _6;
-                                          let mut _9: *mut u8;
+                                          debug self => _9;
+                                          let mut _10: *mut u8;
                                           scope 15 {
                                               scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                  debug ptr => _9;
+                                                  debug ptr => _10;
                                                   scope 17 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                      debug self => _9;
+                                                      debug self => _10;
                                                       scope 18 {
                                                           scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                              debug self => _9;
+                                                              debug self => _10;
                                                           }
                                                       }
                                                   }
@@ -74,8 +75,10 @@
           StorageDead(_7);
           StorageLive(_8);
           StorageLive(_9);
+          StorageLive(_10);
           _8 = const {0x1 as *mut [bool; 0]} as *const [bool; 0] (PointerCoercion(MutToConstPointer));
           _5 = NonNull::<[bool; 0]> { pointer: _8 };
+          StorageDead(_10);
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_6);

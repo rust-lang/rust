@@ -25,7 +25,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode, HasGenericParams,
     },
-    match_ast, ted, SyntaxElement,
+    match_ast, ted, AstToken, SyntaxElement,
     SyntaxKind::{self, COMMENT},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
@@ -1733,8 +1733,23 @@ fn make_body(
                 ast::Expr::BlockExpr(block) => {
                     // If the extracted expression is itself a block, there is no need to wrap it inside another block.
                     let block = block.dedent(old_indent);
-                    // Recreate the block for formatting consistency with other extracted functions.
-                    make::block_expr(block.statements(), block.tail_expr())
+                    let elements = block.stmt_list().map_or_else(
+                        || Either::Left(iter::empty()),
+                        |stmt_list| {
+                            let elements = stmt_list.syntax().children_with_tokens().filter_map(
+                                |node_or_token| match &node_or_token {
+                                    syntax::NodeOrToken::Node(node) => {
+                                        ast::Stmt::cast(node.clone()).map(|_| node_or_token)
+                                    }
+                                    syntax::NodeOrToken::Token(token) => {
+                                        ast::Comment::cast(token.clone()).map(|_| node_or_token)
+                                    }
+                                },
+                            );
+                            Either::Right(elements)
+                        },
+                    );
+                    make::hacky_block_expr(elements, block.tail_expr())
                 }
                 _ => {
                     let expr = expr.dedent(old_indent).indent(IndentLevel(1));
@@ -5956,6 +5971,37 @@ fn $0fun_name() -> ControlFlow<()> {
         return ControlFlow::Break(());
     }
     ControlFlow::Continue(())
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn comments_in_block_expr() {
+        check_assist(
+            extract_function,
+            r#"
+fn f() {
+    let c = $0{
+        // comment 1
+        let a = 2 + 3;
+        // comment 2
+        let b = 5;
+        a + b
+    }$0;
+}
+"#,
+            r#"
+fn f() {
+    let c = fun_name();
+}
+
+fn $0fun_name() -> i32 {
+    // comment 1
+    let a = 2 + 3;
+    // comment 2
+    let b = 5;
+    a + b
 }
 "#,
         );

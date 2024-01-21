@@ -1,5 +1,5 @@
 // check-pass
-// Related to Bevy regression #118553
+// Found in a crater run on #118553
 
 pub trait QueryBase {
     type Db;
@@ -17,8 +17,7 @@ pub struct QueryTable<'me, Q, DB> {
     _marker: Option<&'me ()>,
 }
 
-impl<'me, Q> QueryTable<'me, Q, <Q as QueryBase>::Db>
-// projection is important
+impl<'me, Q> QueryTable<'me, Q, <Q as QueryBase>::Db> // projection is important
 //   ^^^ removing 'me (and in QueryTable) gives a different error
 where
     Q: for<'f> AsyncQueryFunction<'f>,

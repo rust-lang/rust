@@ -104,7 +104,7 @@ pub struct Diagnostic {
     pub(crate) level: Level,
 
     pub messages: Vec<(DiagnosticMessage, Style)>,
-    pub code: Option<DiagnosticId>,
+    pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
@@ -115,9 +115,9 @@ pub struct Diagnostic {
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
     pub sort_span: Span,
 
-    /// If diagnostic is from Lint, custom hash function ignores notes
-    /// otherwise hash is based on the all the fields
-    pub is_lint: bool,
+    /// If diagnostic is from Lint, custom hash function ignores children.
+    /// Otherwise hash is based on the all the fields.
+    pub is_lint: Option<IsLint>,
 
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
@@ -146,13 +146,11 @@ impl fmt::Display for DiagnosticLocation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagnosticId {
-    Error(String),
-    Lint {
-        name: String,
-        /// Indicates whether this lint should show up in cargo's future breakage report.
-        has_future_breakage: bool,
-    },
+pub struct IsLint {
+    /// The lint name.
+    pub(crate) name: String,
+    /// Indicates whether this lint should show up in cargo's future breakage report.
+    has_future_breakage: bool,
 }
 
 /// A "sub"-diagnostic attached to a parent diagnostic.
@@ -231,7 +229,7 @@ impl Diagnostic {
             suggestions: Ok(vec![]),
             args: Default::default(),
             sort_span: DUMMY_SP,
-            is_lint: false,
+            is_lint: None,
             emitted_at: DiagnosticLocation::caller(),
         }
     }
@@ -288,16 +286,13 @@ impl Diagnostic {
 
     /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub(crate) fn has_future_breakage(&self) -> bool {
-        match self.code {
-            Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
-            _ => false,
-        }
+        matches!(self.is_lint, Some(IsLint { has_future_breakage: true, .. }))
     }
 
     pub(crate) fn is_force_warn(&self) -> bool {
         match self.level {
             Level::ForceWarning(_) => {
-                assert!(self.is_lint);
+                assert!(self.is_lint.is_some());
                 true
             }
             _ => false,
@@ -893,12 +888,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn is_lint(&mut self) -> &mut Self {
-        self.is_lint = true;
+    pub fn is_lint(&mut self, name: String, has_future_breakage: bool) -> &mut Self {
+        self.is_lint = Some(IsLint { name, has_future_breakage });
         self
     }
 
-    pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
+    pub fn code(&mut self, s: String) -> &mut Self {
         self.code = Some(s);
         self
     }
@@ -908,8 +903,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn get_code(&self) -> Option<DiagnosticId> {
-        self.code.clone()
+    pub fn get_code(&self) -> Option<&str> {
+        self.code.as_deref()
     }
 
     pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
@@ -995,7 +990,8 @@ impl Diagnostic {
         &Level,
         &[(DiagnosticMessage, Style)],
         Vec<(&Cow<'static, str>, &DiagnosticArgValue<'static>)>,
-        &Option<DiagnosticId>,
+        &Option<String>,
+        &Option<IsLint>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
         Option<&[SubDiagnostic]>,
@@ -1005,9 +1001,10 @@ impl Diagnostic {
             &self.messages,
             self.args().collect(),
             &self.code,
+            &self.is_lint,
             &self.span,
             &self.suggestions,
-            (if self.is_lint { None } else { Some(&self.children) }),
+            (if self.is_lint.is_some() { None } else { Some(&self.children) }),
         )
     }
 }

@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -322,8 +322,6 @@ pub fn struct_lint_level(
             err.span(span);
         }
 
-        err.is_lint();
-
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
         // can do about it. We probably want to skip the lint entirely.
@@ -351,8 +349,7 @@ pub fn struct_lint_level(
         // suppressed the lint due to macros.
         err.primary_message(msg);
 
-        let name = lint.name_lower();
-        err.code(DiagnosticId::Lint { name, has_future_breakage });
+        err.is_lint(lint.name_lower(), has_future_breakage);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.

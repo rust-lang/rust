@@ -354,6 +354,15 @@ pub(super) fn builtin(
                         Applicability::MaybeIncorrect,
                     );
                 }
+            } else {
+                db.note(format!("no expected values for `{name}`"));
+
+                let sp = if let Some((_value, value_span)) = value {
+                    name_span.to(value_span)
+                } else {
+                    name_span
+                };
+                db.span_suggestion(sp, "remove the condition", "", Applicability::MaybeIncorrect);
             }
 
             // We don't want to suggest adding values to well known names
@@ -373,6 +382,8 @@ pub(super) fn builtin(
                 if name == sym::feature {
                     if let Some((value, _value_span)) = value {
                         db.help(format!("consider adding `{value}` as a feature in `Cargo.toml`"));
+                    } else {
+                        db.help("consider defining some features in `Cargo.toml`");
                     }
                 } else if !is_cfg_a_well_know_name {
                     db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));

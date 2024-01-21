@@ -6,6 +6,6 @@
    LL|       |#[allow(dead_code)]
    LL|      0|fn unused() {}
    LL|       |
-   LL|      1|#[test]
+   LL|       |#[test]
    LL|      1|fn my_test() {}
 

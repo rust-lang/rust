@@ -211,7 +211,7 @@ impl DiagnosticDeriveVariantBuilder {
 
                     let code = nested.parse::<syn::LitStr>()?;
                     tokens.extend(quote! {
-                        diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                        diag.code(#code.to_string());
                     });
                 } else {
                     span_err(path.span().unwrap(), "unknown argument")

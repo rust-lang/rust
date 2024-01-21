@@ -1,5 +1,6 @@
 #![allow(unused_assignments, unused_variables)]
 
+#[rustfmt::skip]
 fn main() {
     let result
         =

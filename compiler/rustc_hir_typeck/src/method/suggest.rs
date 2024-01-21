@@ -359,7 +359,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let ty::Adt(adt_def, _) = ty.kind() {
                         self.tcx
                             .inherent_impls(adt_def.did())
-                            .iter()
+                            .into_iter()
+                            .flatten()
                             .any(|def_id| self.associated_value(*def_id, item_name).is_some())
                     } else {
                         false
@@ -825,11 +826,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "auto trait is invoked with no method error, but no error reported?",
                         );
                     }
-                    Some(Node::Item(hir::Item {
-                        ident,
-                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
-                        ..
-                    })) => {
+                    Some(
+                        Node::Item(hir::Item {
+                            ident,
+                            kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                            ..
+                        })
+                        // We may also encounter unsatisfied GAT or method bounds
+                        | Node::TraitItem(hir::TraitItem { ident, .. })
+                        | Node::ImplItem(hir::ImplItem { ident, .. }),
+                    ) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
                         let entry = entry.or_insert_with(|| {
@@ -840,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
-                    Some(node) => unreachable!("encountered `{node:?}`"),
+                    Some(node) => unreachable!("encountered `{node:?}` due to `{cause:#?}`"),
                     None => (),
                 }
             }
@@ -1043,7 +1049,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut inherent_impls_candidate = self
                         .tcx
                         .inherent_impls(adt.did())
-                        .iter()
+                        .into_iter()
+                        .flatten()
                         .copied()
                         .filter(|def_id| {
                             if let Some(assoc) = self.associated_value(*def_id, item_name) {
@@ -1098,7 +1105,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "the {item_kind} was found for\n{type_candidates}{additional_types}"
                         ));
                     } else {
-                        'outer: for inherent_impl_did in self.tcx.inherent_impls(adt.did()) {
+                        'outer: for inherent_impl_did in
+                            self.tcx.inherent_impls(adt.did()).into_iter().flatten()
+                        {
                             for inherent_method in
                                 self.tcx.associated_items(inherent_impl_did).in_definition_order()
                             {
@@ -1452,9 +1461,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
-        let mut items = self
-            .tcx
-            .inherent_impls(adt_def.did())
+        // FIXME(oli-obk): try out bubbling this error up one level and cancelling the other error in that case.
+        let Ok(impls) = self.tcx.inherent_impls(adt_def.did()) else { return };
+        let mut items = impls
             .iter()
             .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers.
@@ -1818,7 +1827,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             simplify_type(tcx, ty, TreatParams::AsCandidateKey)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
-                        .iter()
+                        .into_iter()
+                        .flatten()
                         .find_map(|&id| self.associated_value(id, item_name))
                 })
                 .is_some()

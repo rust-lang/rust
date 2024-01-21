@@ -83,7 +83,11 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
+            let env_ty = tcx.closure_env_ty(
+                Ty::new_closure(tcx, def_id, args),
+                args.as_closure().kind(),
+                env_region,
+            );
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(

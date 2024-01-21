@@ -11,7 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
@@ -26,9 +26,9 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    OutputTypeParameterMismatch, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, Unimplemented,
+    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause, PolyTraitObligation,
+    PredicateObligation, Selection, SelectionError, SignatureMismatch, TraitNotObjectSafe,
+    Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -922,7 +922,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations
             })
             .map_err(|terr| {
-                OutputTypeParameterMismatch(Box::new(SelectionOutputTypeParameterMismatch {
+                SignatureMismatch(Box::new(SignatureMismatchData {
                     expected_trait_ref: obligation_trait_ref,
                     found_trait_ref: expected_trait_ref,
                     terr,

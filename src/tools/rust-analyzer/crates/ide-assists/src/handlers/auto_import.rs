@@ -1551,4 +1551,39 @@ use foo::Foo$0;
 ",
         );
     }
+
+    #[test]
+    fn considers_pub_crate() {
+        check_assist(
+            auto_import,
+            r#"
+mod foo {
+    pub struct Foo;
+}
+
+pub(crate) use self::foo::*;
+
+mod bar {
+    fn main() {
+        Foo$0;
+    }
+}
+"#,
+            r#"
+mod foo {
+    pub struct Foo;
+}
+
+pub(crate) use self::foo::*;
+
+mod bar {
+    use crate::Foo;
+
+    fn main() {
+        Foo;
+    }
+}
+"#,
+        );
+    }
 }

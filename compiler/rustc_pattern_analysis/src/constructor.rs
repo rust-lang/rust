@@ -155,13 +155,13 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
-use rustc_index::IndexVec;
+use rustc_index::bit_set::GrowableBitSet;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
+use crate::index;
 use crate::usefulness::PlaceCtxt;
 use crate::TypeCx;
 
@@ -718,7 +718,7 @@ impl<Cx: TypeCx> Constructor<Cx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, '_, Cx>) -> usize {
+    pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, Cx>) -> usize {
         pcx.ctor_arity(self)
     }
 
@@ -727,7 +727,7 @@ impl<Cx: TypeCx> Constructor<Cx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(crate) fn is_covered_by<'p>(&self, pcx: &PlaceCtxt<'_, 'p, Cx>, other: &Self) -> bool {
+    pub(crate) fn is_covered_by(&self, pcx: &PlaceCtxt<'_, Cx>, other: &Self) -> bool {
         match (self, other) {
             (Wildcard, _) => pcx
                 .mcx
@@ -804,7 +804,10 @@ pub enum ConstructorSet<Cx: TypeCx> {
     Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
-    Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
+    Variants {
+        variants: index::IdxContainer<Cx::VariantIdx, VariantVisibility>,
+        non_exhaustive: bool,
+    },
     /// The type is `&T`.
     Ref,
     /// The type is a union.
@@ -858,12 +861,14 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
+    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub(crate) fn split<'a>(
         &self,
-        pcx: &PlaceCtxt<'a, '_, Cx>,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> SplitConstructorSet<Cx> {
+    ) -> SplitConstructorSet<Cx>
+    where
+        Cx: 'a,
+    {
         let mut present: SmallVec<[_; 1]> = SmallVec::new();
         // Empty constructors found missing.
         let mut missing_empty = Vec::new();
@@ -904,7 +909,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set: BitSet<_> = BitSet::new_empty(variants.len());
+                let mut seen_set = index::IdxSet::new_empty(variants.len());
                 for idx in seen.iter().map(|c| c.as_variant().unwrap()) {
                     seen_set.insert(idx);
                 }
@@ -1001,17 +1006,6 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 // `ValidOnly`.
                 missing_empty.push(NonExhaustive);
             }
-        }
-
-        // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
-        // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
-        // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
-        if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
-            && !(pcx.is_scrutinee && matches!(self, Self::NoConstructors))
-        {
-            // Treat all missing constructors as nonempty.
-            // This clears `missing_empty`.
-            missing.append(&mut missing_empty);
         }
 
         SplitConstructorSet { present, missing, missing_empty }

@@ -276,10 +276,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         } else {
             // Check the pattern for some things unrelated to exhaustiveness.
             let refutable = if cx.refutable { Refutable } else { Irrefutable };
+            let mut err = Ok(());
             pat.walk_always(|pat| {
                 check_borrow_conflicts_in_at_patterns(self, pat);
                 check_for_bindings_named_same_as_variants(self, pat, refutable);
+                err = err.and(check_never_pattern(cx, pat));
             });
+            err?;
             Ok(cx.pattern_arena.alloc(cx.lower_pat(pat)))
         }
     }
@@ -289,7 +292,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     fn is_known_valid_scrutinee(&self, scrutinee: &Expr<'tcx>) -> bool {
         use ExprKind::*;
         match &scrutinee.kind {
-            // Both pointers and references can validly point to a place with invalid data.
+            // Pointers can validly point to a place with invalid data. It is undecided whether
+            // references can too, so we conservatively assume they can.
             Deref { .. } => false,
             // Inherit validity of the parent place, unless the parent is an union.
             Field { lhs, .. } => {
@@ -811,6 +815,19 @@ fn check_for_bindings_named_same_as_variants(
     }
 }
 
+/// Check that never patterns are only used on inhabited types.
+fn check_never_pattern<'tcx>(
+    cx: &MatchCheckCtxt<'_, 'tcx>,
+    pat: &Pat<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    if let PatKind::Never = pat.kind {
+        if !cx.is_uninhabited(pat.ty) {
+            return Err(cx.tcx.dcx().emit_err(NonEmptyNeverPattern { span: pat.span, ty: pat.ty }));
+        }
+    }
+    Ok(())
+}
+
 fn report_irrefutable_let_patterns(
     tcx: TyCtxt<'_>,
     id: HirId,
@@ -1113,7 +1130,7 @@ fn collect_non_exhaustive_tys<'tcx>(
         non_exhaustive_tys.insert(pat.ty().inner());
     }
     if let Constructor::IntRange(range) = pat.ctor() {
-        if cx.is_range_beyond_boundaries(range, pat.ty()) {
+        if cx.is_range_beyond_boundaries(range, *pat.ty()) {
             // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
             non_exhaustive_tys.insert(pat.ty().inner());
         }

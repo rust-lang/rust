@@ -25,6 +25,7 @@
 //!     derive:
 //!     discriminant:
 //!     drop:
+//!     env: option
 //!     eq: sized
 //!     error: fmt
 //!     fmt: result, transmute, coerce_unsized
@@ -1450,6 +1451,15 @@ mod macros {
     #[macro_export]
     macro_rules! concat {}
     // endregion:concat
+
+    // region:env
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! env {}
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! option_env {}
+    // endregion:env
 }
 
 // region:non_zero

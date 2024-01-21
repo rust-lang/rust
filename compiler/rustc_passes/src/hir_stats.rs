@@ -303,7 +303,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Ref,
                 Lit,
                 Range,
-                Slice
+                Slice,
+                Err
             ]
         );
         hir_visit::walk_pat(self, p)
@@ -576,7 +577,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Rest,
                 Never,
                 Paren,
-                MacCall
+                MacCall,
+                Err
             ]
         );
         ast_visit::walk_pat(self, p)

@@ -177,9 +177,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
 
         let ty = match pat.kind {
-            PatKind::Wild => expected,
-            // FIXME(never_patterns): check the type is uninhabited. If that is not possible within
-            // typeck, do that in a later phase.
+            PatKind::Wild | PatKind::Err(_) => expected,
+            // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
@@ -325,6 +324,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Ref(..) => AdjustMode::Reset,
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
+            // A malformed pattern doesn't have an expected type, so let's just accept any type.
+            | PatKind::Err(_)
             // Bindings also work with whatever the expected type is,
             // and moreover if we peel references off, that will give us the wrong binding type.
             // Also, we can have a subpattern `binding @ pat`.
@@ -754,7 +755,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Box(..)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
-                        | PatKind::Range(..) => break 'block None,
+                        | PatKind::Range(..)
+                        | PatKind::Err(_) => break 'block None,
                     },
 
                     // Don't provide suggestions in other cases
@@ -856,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
-        qpath: &hir::QPath<'_>,
+        qpath: &hir::QPath<'tcx>,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         expected: Ty<'tcx>,

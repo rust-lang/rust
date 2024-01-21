@@ -48,6 +48,8 @@ impl Foo {
 
 pub trait Pattern<'a> {}
 
+impl Pattern<'_> for () {}
+
 pub trait Trait<const N: usize> {}
 // @has async_fn/fn.const_generics.html
 // @has - '//pre[@class="rust item-decl"]' 'pub async fn const_generics<const N: usize>(_: impl Trait<N>)'
@@ -57,18 +59,18 @@ pub async fn const_generics<const N: usize>(_: impl Trait<N>) {}
 // regression test for #63037
 // @has async_fn/fn.elided.html
 // @has - '//pre[@class="rust item-decl"]' 'pub async fn elided(foo: &str) -> &str'
-pub async fn elided(foo: &str) -> &str {}
+pub async fn elided(foo: &str) -> &str { "" }
 // This should really be shown as written, but for implementation reasons it's difficult.
 // See `impl Clean for TyKind::Ref`.
 // @has async_fn/fn.user_elided.html
 // @has - '//pre[@class="rust item-decl"]' 'pub async fn user_elided(foo: &str) -> &str'
-pub async fn user_elided(foo: &'_ str) -> &str {}
+pub async fn user_elided(foo: &'_ str) -> &str { "" }
 // @has async_fn/fn.static_trait.html
 // @has - '//pre[@class="rust item-decl"]' 'pub async fn static_trait(foo: &str) -> Box<dyn Bar>'
-pub async fn static_trait(foo: &str) -> Box<dyn Bar> {}
+pub async fn static_trait(foo: &str) -> Box<dyn Bar> { Box::new(()) }
 // @has async_fn/fn.lifetime_for_trait.html
 // @has - '//pre[@class="rust item-decl"]' "pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_>"
-pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_> {}
+pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_> { Box::new(()) }
 // @has async_fn/fn.elided_in_input_trait.html
 // @has - '//pre[@class="rust item-decl"]' "pub async fn elided_in_input_trait(t: impl Pattern<'_>)"
 pub async fn elided_in_input_trait(t: impl Pattern<'_>) {}
@@ -78,10 +80,12 @@ struct AsyncFdReadyGuard<'a, T> { x: &'a T }
 impl Foo {
     // @has async_fn/struct.Foo.html
     // @has - '//*[@class="method"]' 'pub async fn complicated_lifetimes( &self, context: &impl Bar ) -> impl Iterator<Item = &usize>'
-    pub async fn complicated_lifetimes(&self, context: &impl Bar) -> impl Iterator<Item = &usize> {}
+    pub async fn complicated_lifetimes(&self, context: &impl Bar) -> impl Iterator<Item = &usize> {
+        [0].iter()
+    }
     // taken from `tokio` as an example of a method that was particularly bad before
     // @has - '//*[@class="method"]' "pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()>"
-    pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()> {}
+    pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()> { Err(()) }
     // @has - '//*[@class="method"]' "pub async fn mut_self(&mut self)"
     pub async fn mut_self(&mut self) {}
 }
@@ -89,7 +93,7 @@ impl Foo {
 // test named lifetimes, just in case
 // @has async_fn/fn.named.html
 // @has - '//pre[@class="rust item-decl"]' "pub async fn named<'a, 'b>(foo: &'a str) -> &'b str"
-pub async fn named<'a, 'b>(foo: &'a str) -> &'b str {}
+pub async fn named<'a, 'b>(foo: &'a str) -> &'b str { "" }
 // @has async_fn/fn.named_trait.html
 // @has - '//pre[@class="rust item-decl"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b>"
 pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b> {}

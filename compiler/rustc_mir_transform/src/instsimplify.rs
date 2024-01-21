@@ -215,7 +215,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
         // These types are easily available from locals, so check that before
         // doing DefId lookups to figure out what we're actually calling.
-        let arg_ty = args[0].ty(self.local_decls, self.tcx);
+        let arg_ty = args[0].node.ty(self.local_decls, self.tcx);
 
         let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 
@@ -238,7 +238,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
             return;
         }
 
-        let Some(arg_place) = args.pop().unwrap().place() else { return };
+        let Some(arg_place) = args.pop().unwrap().node.place() else { return };
 
         statements.push(Statement {
             source_info: terminator.source_info,

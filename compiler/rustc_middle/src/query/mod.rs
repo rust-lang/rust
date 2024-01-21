@@ -174,14 +174,6 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Gives access to the HIR node for the HIR owner `key`.
-    ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query hir_owner(key: hir::OwnerId) -> Option<crate::hir::Owner<'tcx>> {
-        desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key) }
-    }
-
     /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
     /// Definitions that were generated with no HIR, would be fed to return `None`.
@@ -859,13 +851,13 @@ rustc_queries! {
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    query inherent_impls(key: DefId) -> &'tcx [DefId] {
+    query inherent_impls(key: DefId) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+    query incoherent_impls(key: SimplifiedType) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
@@ -961,8 +953,9 @@ rustc_queries! {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_impl_wf(key: LocalModDefId) -> () {
+    query check_mod_impl_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
+        ensure_forwards_result_if_red
     }
 
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
@@ -1011,15 +1004,16 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls(k: ()) -> &'tcx CrateInherentImpls {
-        arena_cache
+    query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
         desc { "finding all inherent impls defined in crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ()) -> () {
+    query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1645,7 +1639,7 @@ rustc_queries! {
     ///
     /// Do not call this directly, but instead use the `incoherent_impls` query.
     /// This query is only used to get the data necessary for that query.
-    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }
@@ -1949,13 +1943,22 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
-    query implied_outlives_bounds(
+    query implied_outlives_bounds_compat(
         goal: CanonicalTyGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{}`", goal.value.value }
+    }
+
+    query implied_outlives_bounds(
+        goal: CanonicalTyGoal<'tcx>
+    ) -> Result<
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
+        NoSolution,
+    > {
+        desc { "computing implied outlives bounds v2 for `{}`", goal.value.value }
     }
 
     /// Do not call this query directly:

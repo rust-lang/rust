@@ -139,7 +139,7 @@ fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iter
 
 fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
     if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).iter().any(|&did| {
+        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
             cx.tcx
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)

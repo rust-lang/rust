@@ -625,7 +625,8 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::MacCall(_) => {}
+            | PatKind::MacCall(_)
+            | PatKind::Err(_) => {}
         }
     }
 
@@ -809,6 +810,9 @@ pub enum PatKind {
 
     /// A macro pattern; pre-expansion.
     MacCall(P<MacCall>),
+
+    /// Placeholder for a pattern that wasn't syntactically well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// Whether the `..` is present in a struct fields pattern.
@@ -3300,9 +3304,13 @@ mod size_asserts {
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 64);
-    static_assert_size!(LitKind, 24);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(LitKind, 32);
     static_assert_size!(Local, 72);
-    static_assert_size!(MetaItemLit, 40);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(MetaItemLit, 48);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 72);
     static_assert_size!(Path, 24);

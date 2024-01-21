@@ -16,9 +16,9 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticId,
-    DiagnosticMessage, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
+    FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
+    SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -1309,7 +1309,7 @@ impl HumanEmitter {
         msp: &MultiSpan,
         msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<String>,
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
@@ -1336,14 +1336,13 @@ impl HumanEmitter {
                 buffer.append(0, level.to_str(), Style::Level(*level));
                 label_width += level.to_str().len();
             }
-            // only render error codes, not lint codes
-            if let Some(DiagnosticId::Error(ref code)) = *code {
+            if let Some(code) = code {
                 buffer.append(0, "[", Style::Level(*level));
                 let code = if let TerminalUrl::Yes = self.terminal_url {
                     let path = "https://doc.rust-lang.org/error_codes";
-                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
+                    Cow::Owned(format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07"))
                 } else {
-                    code.clone()
+                    Cow::Borrowed(code)
                 };
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
@@ -2077,7 +2076,7 @@ impl HumanEmitter {
         level: &Level,
         messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<String>,
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],

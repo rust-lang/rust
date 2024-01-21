@@ -166,33 +166,29 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
     });
 
-    // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
-    // or the compiler in general.
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
-        })?;
+        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
     }
 
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence_checking", || {
-            // Check impls constrain their parameters
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+    tcx.sess.time("coherence_checking", || {
+        // Check impls constrain their parameters
+        let res =
+            tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
 
+        // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
+        // or the compiler in general.
+        res.and(tcx.sess.track_errors(|| {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
-
-            // these queries are executed for side-effects (error reporting):
-            tcx.ensure().crate_inherent_impls(());
-            tcx.ensure().crate_inherent_impls_overlap_check(());
-        });
+        }))
+        // these queries are executed for side-effects (error reporting):
+        .and(tcx.ensure().crate_inherent_impls(()))
+        .and(tcx.ensure().crate_inherent_impls_overlap_check(()))
     })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-        })?;
+        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
     }
 
     tcx.sess.time("wf_checking", || {
@@ -200,7 +196,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
+        collect::test_opaque_hidden_types(tcx)?;
     }
 
     // Freeze definitions as we don't add new ones at this point. This improves performance by
@@ -225,7 +221,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
-pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
+pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
@@ -236,7 +232,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
 
 pub fn hir_trait_to_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_trait: &hir::TraitRef<'_>,
+    hir_trait: &hir::TraitRef<'tcx>,
     self_ty: Ty<'tcx>,
 ) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"

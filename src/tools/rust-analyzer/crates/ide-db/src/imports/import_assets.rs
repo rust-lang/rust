@@ -681,11 +681,10 @@ fn path_import_candidate(
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             None => {
                 if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
-                    let mut qualifier = qualifier
-                        .segments_of_this_path_only_rev()
+                    let qualifier = qualifier
+                        .segments()
                         .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))
                         .collect::<Option<Vec<_>>>()?;
-                    qualifier.reverse();
                     ImportCandidate::Path(PathImportCandidate { qualifier: Some(qualifier), name })
                 } else {
                     return None;

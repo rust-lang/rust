@@ -35,7 +35,7 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
+use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, EarlyDiagCtxt, Session};
@@ -204,7 +204,7 @@ impl Callbacks for TimePassesCallbacks {
         //
         self.time_passes = (config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes)
             .then(|| config.opts.unstable_opts.time_passes_format);
-        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
+        config.opts.trimmed_def_paths = true;
     }
 }
 

@@ -104,7 +104,7 @@ impl Parse for Newtype {
                 #gate_rustc_only
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
                     fn encode(&self, e: &mut E) {
-                        e.emit_u32(self.private);
+                        e.emit_u32(self.as_u32());
                     }
                 }
             }
@@ -164,7 +164,7 @@ impl Parse for Newtype {
                         #[inline]
                         fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
                             if #max_val < u32::MAX {
-                                l.map(|i| i.private).unwrap_or(#max_val+1) == r.map(|i| i.private).unwrap_or(#max_val+1)
+                                l.map(|i| i.as_u32()).unwrap_or(#max_val+1) == r.map(|i| i.as_u32()).unwrap_or(#max_val+1)
                             } else {
                                 match (l, r) {
                                     (Some(l), Some(r)) => r == l,
@@ -188,7 +188,7 @@ impl Parse for Newtype {
             #[cfg_attr(#gate_rustc_only_cfg, rustc_layout_scalar_valid_range_end(#max))]
             #[cfg_attr(#gate_rustc_only_cfg, rustc_pass_by_value)]
             #vis struct #name {
-                private: u32,
+                private_use_as_methods_instead: u32,
             }
 
             #(#consts)*
@@ -238,7 +238,7 @@ impl Parse for Newtype {
                 /// Prefer using `from_u32`.
                 #[inline]
                 #vis const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                    Self { private: value }
+                    Self { private_use_as_methods_instead: value }
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -250,7 +250,7 @@ impl Parse for Newtype {
                 /// Extracts the value of this index as a `u32`.
                 #[inline]
                 #vis const fn as_u32(self) -> u32 {
-                    self.private
+                    self.private_use_as_methods_instead
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -263,6 +263,7 @@ impl Parse for Newtype {
             impl std::ops::Add<usize> for #name {
                 type Output = Self;
 
+                #[inline]
                 fn add(self, other: usize) -> Self {
                     Self::from_usize(self.index() + other)
                 }

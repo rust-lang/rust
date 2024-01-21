@@ -190,10 +190,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn errors_reported_since_creation(&self) -> bool {
         self.dcx().err_count() > self.err_count_on_creation
     }
-
-    pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        Ty::new_var(self.tcx, self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
-    }
 }
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
@@ -287,7 +283,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment<'_>,
+        item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(

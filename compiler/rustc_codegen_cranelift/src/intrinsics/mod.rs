@@ -5,7 +5,7 @@ macro_rules! intrinsic_args {
     ($fx:expr, $args:expr => ($($arg:tt),*); $intrinsic:expr) => {
         #[allow(unused_parens)]
         let ($($arg),*) = if let [$($arg),*] = $args {
-            ($(codegen_operand($fx, $arg)),*)
+            ($(codegen_operand($fx, &($arg).node)),*)
         } else {
             $crate::intrinsics::bug_on_incorrect_arg_count($intrinsic);
         };
@@ -22,6 +22,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::GenericArgsRef;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
@@ -263,7 +264,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
 pub(crate) fn codegen_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     destination: CPlace<'tcx>,
     target: Option<BasicBlock>,
     source_info: mir::SourceInfo,
@@ -301,7 +302,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 fn codegen_float_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty, clif_ty) = match intrinsic {
@@ -353,18 +354,21 @@ fn codegen_float_intrinsic_call<'tcx>(
     let (a, b, c);
     let args = match args {
         [x] => {
-            a = [codegen_operand(fx, x).load_scalar(fx)];
+            a = [codegen_operand(fx, &x.node).load_scalar(fx)];
             &a as &[_]
         }
         [x, y] => {
-            b = [codegen_operand(fx, x).load_scalar(fx), codegen_operand(fx, y).load_scalar(fx)];
+            b = [
+                codegen_operand(fx, &x.node).load_scalar(fx),
+                codegen_operand(fx, &y.node).load_scalar(fx),
+            ];
             &b
         }
         [x, y, z] => {
             c = [
-                codegen_operand(fx, x).load_scalar(fx),
-                codegen_operand(fx, y).load_scalar(fx),
-                codegen_operand(fx, z).load_scalar(fx),
+                codegen_operand(fx, &x.node).load_scalar(fx),
+                codegen_operand(fx, &y.node).load_scalar(fx),
+                codegen_operand(fx, &z.node).load_scalar(fx),
             ];
             &c
         }
@@ -422,7 +426,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     instance: Instance<'tcx>,
     intrinsic: Symbol,
     generic_args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     destination: Option<BasicBlock>,
     source_info: mir::SourceInfo,

@@ -524,7 +524,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         self.visit_operand(func, location);
                         for arg in args {
-                            self.visit_operand(arg, location);
+                            self.visit_operand(&$($mutability)? arg.node, location);
                         }
                         self.visit_place(
                             destination,

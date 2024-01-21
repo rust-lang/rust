@@ -295,7 +295,28 @@ help: consider dereferencing here
 LL |     _ = partial[..3] == *string_ref;
    |                         +
 
-error: aborting due to 22 previous errors
+error[E0277]: no implementation for `i32 & str`
+  --> $DIR/binary-op-suggest-deref.rs:78:17
+   |
+LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
+   |                 ^ no implementation for `i32 & str`
+   |
+   = help: the trait `BitAnd<str>` is not implemented for `i32`
+   = help: the following other types implement trait `BitAnd<Rhs>`:
+             <i32 as BitAnd>
+             <i32 as BitAnd<&i32>>
+             <&'a i32 as BitAnd<i32>>
+             <&i32 as BitAnd<&i32>>
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/binary-op-suggest-deref.rs:78:17
+   |
+LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
+   |                 ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+
+error: aborting due to 24 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0369.
 For more information about an error, try `rustc --explain E0277`.

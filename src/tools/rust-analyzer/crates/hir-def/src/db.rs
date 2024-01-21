@@ -210,12 +210,9 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
 
+    #[salsa::transparent]
     #[salsa::invoke(lang_item::lang_attr_query)]
     fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
-
-    #[salsa::transparent]
-    #[salsa::invoke(AttrsWithOwner::attrs_with_owner)]
-    fn attrs_with_owner(&self, def: AttrDefId) -> AttrsWithOwner;
 
     // endregion:attrs
 
@@ -240,7 +237,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     // endregion:visibilities
 
     #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
+    fn crate_lang_items(&self, krate: CrateId) -> Option<Arc<LangItems>>;
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 }

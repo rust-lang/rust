@@ -45,6 +45,7 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -1349,6 +1350,13 @@ impl Literal {
     pub fn byte_string(bytes: &[u8]) -> Literal {
         let string = bytes.escape_ascii().to_string();
         Literal::new(bridge::LitKind::ByteStr, &string, None)
+    }
+
+    /// C string literal.
+    #[unstable(feature = "proc_macro_c_str_literals", issue = "119750")]
+    pub fn c_string(string: &CStr) -> Literal {
+        let string = string.to_bytes().escape_ascii().to_string();
+        Literal::new(bridge::LitKind::CStr, &string, None)
     }
 
     /// Returns the span encompassing this literal.

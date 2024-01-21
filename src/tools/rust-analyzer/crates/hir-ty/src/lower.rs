@@ -1601,7 +1601,7 @@ fn implicitly_sized_clauses<'a>(
 pub(crate) fn generic_defaults_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<[Binders<chalk_ir::GenericArg<Interner>>]> {
+) -> Arc<[Binders<crate::GenericArg>]> {
     let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_type_param_mode(ParamLoweringMode::Variable);

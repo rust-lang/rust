@@ -87,7 +87,10 @@ impl LangItems {
     }
 
     /// Salsa query. This will look for lang items in a specific crate.
-    pub(crate) fn crate_lang_items_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<LangItems> {
+    pub(crate) fn crate_lang_items_query(
+        db: &dyn DefDatabase,
+        krate: CrateId,
+    ) -> Option<Arc<LangItems>> {
         let _p = profile::span("crate_lang_items_query");
 
         let mut lang_items = LangItems::default();
@@ -150,7 +153,11 @@ impl LangItems {
             }
         }
 
-        Arc::new(lang_items)
+        if lang_items.items.is_empty() {
+            None
+        } else {
+            Some(Arc::new(lang_items))
+        }
     }
 
     /// Salsa query. Look for a lang item, starting from the specified crate and recursively
@@ -161,9 +168,9 @@ impl LangItems {
         item: LangItem,
     ) -> Option<LangItemTarget> {
         let _p = profile::span("lang_item_query");
-        let lang_items = db.crate_lang_items(start_crate);
-        let start_crate_target = lang_items.items.get(&item);
-        if let Some(&target) = start_crate_target {
+        if let Some(target) =
+            db.crate_lang_items(start_crate).and_then(|it| it.items.get(&item).copied())
+        {
             return Some(target);
         }
         db.crate_graph()[start_crate]

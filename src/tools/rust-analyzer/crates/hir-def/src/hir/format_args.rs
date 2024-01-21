@@ -2,7 +2,7 @@
 use std::mem;
 
 use hir_expand::name::Name;
-use rustc_dependencies::parse_format as parse;
+use rustc_parse_format as parse;
 use stdx::TupleExt;
 use syntax::{
     ast::{self, IsString},

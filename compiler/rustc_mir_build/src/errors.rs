@@ -788,6 +788,16 @@ pub struct FloatPattern;
 #[diag(mir_build_pointer_pattern)]
 pub struct PointerPattern;
 
+#[derive(Diagnostic)]
+#[diag(mir_build_non_empty_never_pattern)]
+#[note]
+pub struct NonEmptyNeverPattern<'tcx> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(mir_build_indirect_structural_match)]
 #[note(mir_build_type_not_structural_tip)]
