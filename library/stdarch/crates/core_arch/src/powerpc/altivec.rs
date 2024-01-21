@@ -340,6 +340,13 @@ extern "C" {
     fn vsl(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
     #[link_name = "llvm.ppc.altivec.slo"]
     fn vslo(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.srab"]
+    fn vsrab(a: vector_signed_char, b: vector_unsigned_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.srah"]
+    fn vsrah(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.sraw"]
+    fn vsraw(a: vector_signed_int, b: vector_unsigned_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2705,6 +2712,14 @@ mod sealed {
     impl_vec_shift! { [VectorSr vec_sr] (vsrb, vsrh, vsrw) }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSra<Other> {
+        type Result;
+        unsafe fn vec_sra(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift! { [VectorSra vec_sra] (vsrab, vsrah, vsraw) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorSld {
         unsafe fn vec_sld<const UIMM4: i32>(self, b: Self) -> Self;
         unsafe fn vec_sldw<const UIMM2: i32>(self, b: Self) -> Self;
@@ -2984,6 +2999,17 @@ where
     T: sealed::VectorSr<U>,
 {
     a.vec_sr(b)
+}
+
+/// Vector Shift Right Algebraic
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sra<T, U>(a: T, b: U) -> <T as sealed::VectorSra<U>>::Result
+where
+    T: sealed::VectorSra<U>,
+{
+    a.vec_sra(b)
 }
 
 /// Vector Shift Left Double
