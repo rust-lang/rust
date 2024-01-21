@@ -352,6 +352,11 @@ extern "C" {
     fn vsr(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
     #[link_name = "llvm.ppc.altivec.sro"]
     fn vsro(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.slv"]
+    fn vslv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.srv"]
+    fn vsrv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
 }
 
 macro_rules! s_t_l {
@@ -3135,6 +3140,42 @@ where
     T: sealed::VectorSro<U>,
 {
     a.vec_sro(b)
+}
+
+/// Vector Shift Left Variable
+///
+/// ## Result value
+/// Let v be a 17-byte vector formed from a in bytes `[0:15]` and a zero byte in element 16.
+/// Then each byte element i of r is determined as follows. The start bit sb is
+/// obtained from bits 5:7 of byte element i of b. Then the contents of bits sb:sb+7 of the
+/// halfword in byte elements i:i+1 of v are placed into byte element i of r.
+///
+/// ## Endian considerations
+/// All bit and byte element numbers are specified in big-endian order. This intrinsic is not
+/// endian-neutral.
+#[inline]
+#[target_feature(enable = "power9-altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_slv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char {
+    vslv(a, b)
+}
+
+/// Vector Shift Right Variable
+///
+/// ## Result value
+/// Let v be a 17-byte vector formed from a zero byte in element 0 and the elements of
+/// a in bytes `[1:16]`. Then each byte element i of r is determined as follows. The start bit sb is
+/// obtained from bits 5:7 of byte element i of b. Then the contents of bits (8 – sb):(15 – sb) of
+/// the halfword in byte elements i:i+1 of v are placed into byte element i of r.
+///
+/// ## Endian considerations
+/// All bit and byte element numbers are specified in big-endian order. This intrinsic is not
+/// endian-neutral.
+#[inline]
+#[target_feature(enable = "power9-altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_srv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char {
+    vsrv(a, b)
 }
 
 /// Vector Load Indexed.
