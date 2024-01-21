@@ -1,10 +1,15 @@
 //! Handle syntactic aspects of merging UseTrees.
 use std::cmp::Ordering;
+use std::iter::empty;
 
 use itertools::{EitherOrBoth, Itertools};
+use parser::T;
+use stdx::is_upper_snake_case;
 use syntax::{
-    ast::{self, AstNode, HasAttrs, HasVisibility, PathSegmentKind},
-    ted,
+    algo,
+    ast::{self, make, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
+    ted::{self, Position},
+    Direction,
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -16,12 +21,15 @@ pub enum MergeBehavior {
     Crate,
     /// Merge imports from the same module into a single use statement.
     Module,
+    /// Merge all imports into a single use statement as long as they have the same visibility
+    /// and attributes.
+    One,
 }
 
 impl MergeBehavior {
     fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
         match self {
-            MergeBehavior::Crate => true,
+            MergeBehavior::Crate | MergeBehavior::One => true,
             // only simple single segment paths are allowed
             MergeBehavior::Module => {
                 tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
@@ -67,21 +75,26 @@ pub fn try_merge_trees(
 }
 
 fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
-    let lhs_path = lhs.path()?;
-    let rhs_path = rhs.path()?;
-
-    let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    if !(lhs.is_simple_path()
-        && rhs.is_simple_path()
-        && lhs_path == lhs_prefix
-        && rhs_path == rhs_prefix)
-    {
-        lhs.split_prefix(&lhs_prefix);
-        rhs.split_prefix(&rhs_prefix);
+    if merge == MergeBehavior::One {
+        lhs.wrap_in_tree_list();
+        rhs.wrap_in_tree_list();
     } else {
-        ted::replace(lhs.syntax(), rhs.syntax());
-        // we can safely return here, in this case `recursive_merge` doesn't do anything
-        return Some(());
+        let lhs_path = lhs.path()?;
+        let rhs_path = rhs.path()?;
+
+        let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
+        if !(lhs.is_simple_path()
+            && rhs.is_simple_path()
+            && lhs_path == lhs_prefix
+            && rhs_path == rhs_prefix)
+        {
+            lhs.split_prefix(&lhs_prefix);
+            rhs.split_prefix(&rhs_prefix);
+        } else {
+            ted::replace(lhs.syntax(), rhs.syntax());
+            // we can safely return here, in this case `recursive_merge` doesn't do anything
+            return Some(());
+        }
     }
     recursive_merge(lhs, rhs, merge)
 }
@@ -97,20 +110,19 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         // same as a `filter` op).
         .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
-    use_trees.sort_unstable_by(|a, b| path_cmp_for_sort(a.path(), b.path()));
+    // Sorts the use trees similar to rustfmt's algorithm for ordering imports
+    // (see `use_tree_cmp` doc).
+    use_trees.sort_unstable_by(use_tree_cmp);
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
         }
-        let rhs_path = rhs_t.path();
 
-        match use_trees
-            .binary_search_by(|lhs_t| path_cmp_bin_search(lhs_t.path(), rhs_path.as_ref()))
-        {
+        match use_trees.binary_search_by(|lhs_t| use_tree_cmp_bin_search(lhs_t, &rhs_t)) {
             Ok(idx) => {
                 let lhs_t = &mut use_trees[idx];
                 let lhs_path = lhs_t.path()?;
-                let rhs_path = rhs_path?;
+                let rhs_path = rhs_t.path()?;
                 let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
                 if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
                     let tree_is_self = |tree: &ast::UseTree| {
@@ -159,9 +171,61 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
             {
                 return None
             }
-            Err(idx) => {
-                use_trees.insert(idx, rhs_t.clone());
-                lhs.get_or_create_use_tree_list().add_use_tree(rhs_t);
+            Err(insert_idx) => {
+                use_trees.insert(insert_idx, rhs_t.clone());
+                match lhs.use_tree_list() {
+                    // Creates a new use tree list with the item.
+                    None => lhs.get_or_create_use_tree_list().add_use_tree(rhs_t),
+                    // Recreates the use tree list with sorted items (see `use_tree_cmp` doc).
+                    Some(use_tree_list) => {
+                        if use_tree_list.l_curly_token().is_none() {
+                            ted::insert_raw(
+                                Position::first_child_of(use_tree_list.syntax()),
+                                make::token(T!['{']),
+                            );
+                        }
+                        if use_tree_list.r_curly_token().is_none() {
+                            ted::insert_raw(
+                                Position::last_child_of(use_tree_list.syntax()),
+                                make::token(T!['}']),
+                            );
+                        }
+
+                        let mut elements = Vec::new();
+                        for (idx, tree) in use_trees.iter().enumerate() {
+                            if idx > 0 {
+                                elements.push(make::token(T![,]).into());
+                                elements.push(make::tokens::single_space().into());
+                            }
+                            elements.push(tree.syntax().clone().into());
+                        }
+
+                        let start = use_tree_list
+                            .l_curly_token()
+                            .and_then(|l_curly| {
+                                algo::non_trivia_sibling(l_curly.into(), Direction::Next)
+                            })
+                            .filter(|it| it.kind() != T!['}']);
+                        let end = use_tree_list
+                            .r_curly_token()
+                            .and_then(|r_curly| {
+                                algo::non_trivia_sibling(r_curly.into(), Direction::Prev)
+                            })
+                            .filter(|it| it.kind() != T!['{']);
+                        if let Some((start, end)) = start.zip(end) {
+                            // Attempt to insert elements while preserving preceding and trailing trivia.
+                            ted::replace_all(start..=end, elements);
+                        } else {
+                            let new_use_tree_list = make::use_tree_list(empty()).clone_for_update();
+                            let trees_pos = match new_use_tree_list.l_curly_token() {
+                                Some(l_curly) => Position::after(l_curly),
+                                None => Position::last_child_of(new_use_tree_list.syntax()),
+                            };
+                            ted::insert_all_raw(trees_pos, elements);
+                            ted::replace(use_tree_list.syntax(), new_use_tree_list.syntax());
+                        }
+                    }
+                }
             }
         }
     }
@@ -190,89 +254,177 @@ pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast
     }
 }
 
-/// Orders paths in the following way:
-/// the sole self token comes first, after that come uppercase identifiers, then lowercase identifiers
-// FIXME: rustfmt sorts lowercase idents before uppercase, in general we want to have the same ordering rustfmt has
-// which is `self` and `super` first, then identifier imports with lowercase ones first, then glob imports and at last list imports.
-// Example foo::{self, foo, baz, Baz, Qux, *, {Bar}}
-fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
-    match (a, b) {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
-        (Some(_), None) => Ordering::Greater,
-        (Some(ref a), Some(ref b)) => match (path_is_self(a), path_is_self(b)) {
+/// Use tree comparison func for binary searching for merging.
+fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
+    let lhs_is_simple_path = lhs.is_simple_path() && lhs.rename().is_none();
+    let rhs_is_simple_path = rhs.is_simple_path() && rhs.rename().is_none();
+    match (
+        lhs.path().as_ref().and_then(ast::Path::first_segment),
+        rhs.path().as_ref().and_then(ast::Path::first_segment),
+    ) {
+        (None, None) => match (lhs_is_simple_path, rhs_is_simple_path) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
-            (false, false) => path_cmp_short(a, b),
+            (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(lhs, rhs, false),
         },
-    }
-}
-
-/// Path comparison func for binary searching for merging.
-fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<&ast::Path>) -> Ordering {
-    match (lhs.as_ref().and_then(ast::Path::first_segment), rhs.and_then(ast::Path::first_segment))
-    {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
+        (Some(_), None) if !rhs_is_simple_path => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (Some(ref a), Some(ref b)) => path_segment_cmp(a, b),
+        (None, Some(_)) if !lhs_is_simple_path => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(a), Some(b)) => path_segment_cmp(&a, &b),
     }
 }
 
-/// Short circuiting comparison, if both paths are equal until one of them ends they are considered
-/// equal
-fn path_cmp_short(a: &ast::Path, b: &ast::Path) -> Ordering {
-    let a = a.segments();
-    let b = b.segments();
-    // cmp_by would be useful for us here but that is currently unstable
-    // cmp doesn't work due the lifetimes on text's return type
-    a.zip(b)
-        .find_map(|(a, b)| match path_segment_cmp(&a, &b) {
-            Ordering::Equal => None,
-            ord => Some(ord),
-        })
-        .unwrap_or(Ordering::Equal)
-}
-
-/// Compares two paths, if one ends earlier than the other the has_tl parameters decide which is
-/// greater as a path that has a tree list should be greater, while one that just ends without
-/// a tree list should be considered less.
-pub(super) fn use_tree_path_cmp(
-    a: &ast::Path,
-    a_has_tl: bool,
-    b: &ast::Path,
-    b_has_tl: bool,
-) -> Ordering {
-    let a_segments = a.segments();
-    let b_segments = b.segments();
-    // cmp_by would be useful for us here but that is currently unstable
-    // cmp doesn't work due the lifetimes on text's return type
-    a_segments
-        .zip_longest(b_segments)
-        .find_map(|zipped| match zipped {
-            EitherOrBoth::Both(ref a, ref b) => match path_segment_cmp(a, b) {
-                Ordering::Equal => None,
-                ord => Some(ord),
-            },
-            EitherOrBoth::Left(_) if !b_has_tl => Some(Ordering::Greater),
-            EitherOrBoth::Left(_) => Some(Ordering::Less),
-            EitherOrBoth::Right(_) if !a_has_tl => Some(Ordering::Less),
-            EitherOrBoth::Right(_) => Some(Ordering::Greater),
-        })
-        .unwrap_or(Ordering::Equal)
+/// Orders use trees following `rustfmt`'s algorithm for ordering imports, which is `self`, `super`
+/// and `crate` first, then identifier imports with lowercase ones first and upper snake case
+/// (e.g. UPPER_SNAKE_CASE) ones last, then glob imports, and at last list imports.
+///
+/// Example foo::{self, foo, baz, Baz, Qux, FOO_BAZ, *, {Bar}}
+/// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
+pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
+    let a_is_simple_path = a.is_simple_path() && a.rename().is_none();
+    let b_is_simple_path = b.is_simple_path() && b.rename().is_none();
+    match (a.path(), b.path()) {
+        (None, None) => match (a_is_simple_path, b_is_simple_path) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Less,
+            (false, true) => Ordering::Greater,
+            (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(a, b, true),
+        },
+        (Some(_), None) if !b_is_simple_path => Ordering::Less,
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) if !a_is_simple_path => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(a_path), Some(b_path)) => {
+            // cmp_by would be useful for us here but that is currently unstable
+            // cmp doesn't work due the lifetimes on text's return type
+            a_path
+                .segments()
+                .zip_longest(b_path.segments())
+                .find_map(|zipped| match zipped {
+                    EitherOrBoth::Both(a_segment, b_segment) => {
+                        match path_segment_cmp(&a_segment, &b_segment) {
+                            Ordering::Equal => None,
+                            ord => Some(ord),
+                        }
+                    }
+                    EitherOrBoth::Left(_) if b_is_simple_path => Some(Ordering::Greater),
+                    EitherOrBoth::Left(_) => Some(Ordering::Less),
+                    EitherOrBoth::Right(_) if a_is_simple_path => Some(Ordering::Less),
+                    EitherOrBoth::Right(_) => Some(Ordering::Greater),
+                })
+                .unwrap_or_else(|| use_tree_cmp_by_tree_list_glob_or_alias(a, b, true))
+        }
+    }
 }
 
 fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    let a = a.kind().and_then(|kind| match kind {
-        PathSegmentKind::Name(name_ref) => Some(name_ref),
-        _ => None,
-    });
-    let b = b.kind().and_then(|kind| match kind {
-        PathSegmentKind::Name(name_ref) => Some(name_ref),
-        _ => None,
-    });
-    a.as_ref().map(ast::NameRef::text).cmp(&b.as_ref().map(ast::NameRef::text))
+    match (a.kind(), b.kind()) {
+        (None, None) => Ordering::Equal,
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        // self
+        (Some(PathSegmentKind::SelfKw), Some(PathSegmentKind::SelfKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::SelfKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::SelfKw)) => Ordering::Greater,
+        // super
+        (Some(PathSegmentKind::SuperKw), Some(PathSegmentKind::SuperKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::SuperKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::SuperKw)) => Ordering::Greater,
+        // crate
+        (Some(PathSegmentKind::CrateKw), Some(PathSegmentKind::CrateKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::CrateKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::CrateKw)) => Ordering::Greater,
+        // identifiers (everything else is treated as an identifier).
+        _ => {
+            match (
+                a.name_ref().as_ref().map(ast::NameRef::text),
+                b.name_ref().as_ref().map(ast::NameRef::text),
+            ) {
+                (None, None) => Ordering::Equal,
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (Some(a_name), Some(b_name)) => {
+                    // snake_case < CamelCase < UPPER_SNAKE_CASE
+                    let a_text = a_name.as_str().trim_start_matches("r#");
+                    let b_text = b_name.as_str().trim_start_matches("r#");
+                    if a_text.starts_with(char::is_lowercase)
+                        && b_text.starts_with(char::is_uppercase)
+                    {
+                        return Ordering::Less;
+                    }
+                    if a_text.starts_with(char::is_uppercase)
+                        && b_text.starts_with(char::is_lowercase)
+                    {
+                        return Ordering::Greater;
+                    }
+                    if !is_upper_snake_case(a_text) && is_upper_snake_case(b_text) {
+                        return Ordering::Less;
+                    }
+                    if is_upper_snake_case(a_text) && !is_upper_snake_case(b_text) {
+                        return Ordering::Greater;
+                    }
+                    a_text.cmp(b_text)
+                }
+            }
+        }
+    }
+}
+
+/// Orders for use trees with equal paths (see `use_tree_cmp` for details about use tree ordering).
+///
+/// If the `strict` parameter is set to true and both trees have tree lists, the tree lists are
+/// ordered by calling `use_tree_cmp` on their "sub-tree" pairs until either the tie is broken
+/// or tree list equality is confirmed, otherwise (i.e. if either `strict` is false or at least
+/// one of the trees does *not* have tree list), this potentially recursive step is skipped,
+/// and only the presence of a glob pattern or an alias is used to determine the ordering.
+fn use_tree_cmp_by_tree_list_glob_or_alias(
+    a: &ast::UseTree,
+    b: &ast::UseTree,
+    strict: bool,
+) -> Ordering {
+    let cmp_by_glob_or_alias = || match (a.star_token().is_some(), b.star_token().is_some()) {
+        (true, false) => Ordering::Greater,
+        (false, true) => Ordering::Less,
+        _ => match (a.rename(), b.rename()) {
+            (None, None) => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a_rename), Some(b_rename)) => a_rename
+                .name()
+                .as_ref()
+                .map(ast::Name::text)
+                .as_ref()
+                .map_or("_", |a_name| a_name.as_str().trim_start_matches("r#"))
+                .cmp(
+                    b_rename
+                        .name()
+                        .as_ref()
+                        .map(ast::Name::text)
+                        .as_ref()
+                        .map_or("_", |b_name| b_name.as_str().trim_start_matches("r#")),
+                ),
+        },
+    };
+
+    match (a.use_tree_list(), b.use_tree_list()) {
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(a_list), Some(b_list)) if strict => a_list
+            .use_trees()
+            .zip_longest(b_list.use_trees())
+            .find_map(|zipped| match zipped {
+                EitherOrBoth::Both(a_tree, b_tree) => match use_tree_cmp(&a_tree, &b_tree) {
+                    Ordering::Equal => None,
+                    ord => Some(ord),
+                },
+                EitherOrBoth::Left(_) => Some(Ordering::Greater),
+                EitherOrBoth::Right(_) => Some(Ordering::Less),
+            })
+            .unwrap_or_else(cmp_by_glob_or_alias),
+        _ => cmp_by_glob_or_alias(),
+    }
 }
 
 pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {

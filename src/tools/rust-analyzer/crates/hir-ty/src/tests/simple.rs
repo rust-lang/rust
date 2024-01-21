@@ -236,14 +236,14 @@ fn test() {
         expect![[r#"
             71..153 '{     ...a.c; }': ()
             81..82 'c': C
-            85..86 'C': C(usize) -> C
+            85..86 'C': extern "rust-call" C(usize) -> C
             85..89 'C(1)': C
             87..88 '1': usize
             95..96 'B': B
             106..107 'a': A
             113..132 'A { b:...C(1) }': A
             120..121 'B': B
-            126..127 'C': C(usize) -> C
+            126..127 'C': extern "rust-call" C(usize) -> C
             126..130 'C(1)': C
             128..129 '1': usize
             138..139 'a': A
@@ -303,14 +303,14 @@ unsafe fn baz(u: MyUnion) {
             71..89 'MyUnio...o: 0 }': MyUnion
             86..87 '0': u32
             95..113 'unsafe...(u); }': ()
-            104..107 'baz': fn baz(MyUnion)
+            104..107 'baz': unsafe fn baz(MyUnion)
             104..110 'baz(u)': ()
             108..109 'u': MyUnion
             122..123 'u': MyUnion
             126..146 'MyUnio... 0.0 }': MyUnion
             141..144 '0.0': f32
             152..170 'unsafe...(u); }': ()
-            161..164 'baz': fn baz(MyUnion)
+            161..164 'baz': unsafe fn baz(MyUnion)
             161..167 'baz(u)': ()
             165..166 'u': MyUnion
             188..189 'u': MyUnion
@@ -625,12 +625,12 @@ impl E {
             86..107 '{     ...     }': ()
             96..100 'Self': S1
             134..158 '{     ...     }': ()
-            144..148 'Self': S2(isize) -> S2
+            144..148 'Self': extern "rust-call" S2(isize) -> S2
             144..151 'Self(1)': S2
             149..150 '1': isize
             184..230 '{     ...     }': ()
             194..202 'Self::V1': E
-            212..220 'Self::V2': V2(u32) -> E
+            212..220 'Self::V2': extern "rust-call" V2(u32) -> E
             212..223 'Self::V2(1)': E
             221..222 '1': u32
         "#]],
@@ -856,11 +856,11 @@ fn test() {
             256..277 'A::foo...42))))': &i32
             263..276 '&&B(B(A(42)))': &&B<B<A<i32>>>
             264..276 '&B(B(A(42)))': &B<B<A<i32>>>
-            265..266 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
+            265..266 'B': extern "rust-call" B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
             265..276 'B(B(A(42)))': B<B<A<i32>>>
-            267..268 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
+            267..268 'B': extern "rust-call" B<A<i32>>(A<i32>) -> B<A<i32>>
             267..275 'B(A(42))': B<A<i32>>
-            269..270 'A': A<i32>(i32) -> A<i32>
+            269..270 'A': extern "rust-call" A<i32>(i32) -> A<i32>
             269..274 'A(42)': A<i32>
             271..273 '42': i32
         "#]],
@@ -910,16 +910,16 @@ fn test(a: A<i32>) {
             253..254 'a': A<i32>
             264..310 '{     ...))); }': ()
             274..275 't': &i32
-            278..279 'A': A<i32>(*mut i32) -> A<i32>
+            278..279 'A': extern "rust-call" A<i32>(*mut i32) -> A<i32>
             278..292 'A(0 as *mut _)': A<i32>
             278..307 'A(0 as...B(a)))': &i32
             280..281 '0': i32
             280..291 '0 as *mut _': *mut i32
             297..306 '&&B(B(a))': &&B<B<A<i32>>>
             298..306 '&B(B(a))': &B<B<A<i32>>>
-            299..300 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
+            299..300 'B': extern "rust-call" B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
             299..306 'B(B(a))': B<B<A<i32>>>
-            301..302 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
+            301..302 'B': extern "rust-call" B<A<i32>>(A<i32>) -> B<A<i32>>
             301..305 'B(a)': B<A<i32>>
             303..304 'a': A<i32>
         "#]],
@@ -1273,16 +1273,16 @@ fn infer_tuple_struct_generics() {
         "#,
         expect![[r#"
             75..183 '{     ...one; }': ()
-            81..82 'A': A<i32>(i32) -> A<i32>
+            81..82 'A': extern "rust-call" A<i32>(i32) -> A<i32>
             81..86 'A(42)': A<i32>
             83..85 '42': i32
-            92..93 'A': A<u128>(u128) -> A<u128>
+            92..93 'A': extern "rust-call" A<u128>(u128) -> A<u128>
             92..101 'A(42u128)': A<u128>
             94..100 '42u128': u128
-            107..111 'Some': Some<&str>(&str) -> Option<&str>
+            107..111 'Some': extern "rust-call" Some<&str>(&str) -> Option<&str>
             107..116 'Some("x")': Option<&str>
             112..115 '"x"': &str
-            122..134 'Option::Some': Some<&str>(&str) -> Option<&str>
+            122..134 'Option::Some': extern "rust-call" Some<&str>(&str) -> Option<&str>
             122..139 'Option...e("x")': Option<&str>
             135..138 '"x"': &str
             145..149 'None': Option<{unknown}>
@@ -1568,7 +1568,7 @@ fn infer_type_alias() {
             204..207 'z.y': i8
             298..362 '{     ... &e; }': ()
             308..309 'e': Enum
-            312..325 'm::Alias::Foo': Foo(u8) -> Enum
+            312..325 'm::Alias::Foo': extern "rust-call" Foo(u8) -> Enum
             312..328 'm::Ali...Foo(0)': Enum
             326..327 '0': u8
             338..354 'm::Ali...Foo(x)': Enum
@@ -1949,11 +1949,11 @@ fn closure_return_inferred() {
 }
 
 #[test]
-fn generator_types_inferred() {
+fn coroutine_types_inferred() {
     check_infer(
         r#"
-//- minicore: generator, deref
-use core::ops::{Generator, GeneratorState};
+//- minicore: coroutine, deref
+use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 
 fn f(v: i64) {}
@@ -1966,8 +1966,8 @@ fn test() {
     };
 
     match Pin::new(&mut g).resume(0usize) {
-        GeneratorState::Yielded(y) => { f(y); }
-        GeneratorState::Complete(r) => {}
+        CoroutineState::Yielded(y) => { f(y); }
+        CoroutineState::Complete(r) => {}
     }
 }
         "#,
@@ -1992,17 +1992,17 @@ fn test() {
             225..360 'match ...     }': ()
             231..239 'Pin::new': fn new<&mut |usize| yields i64 -> &str>(&mut |usize| yields i64 -> &str) -> Pin<&mut |usize| yields i64 -> &str>
             231..247 'Pin::n...mut g)': Pin<&mut |usize| yields i64 -> &str>
-            231..262 'Pin::n...usize)': GeneratorState<i64, &str>
+            231..262 'Pin::n...usize)': CoroutineState<i64, &str>
             240..246 '&mut g': &mut |usize| yields i64 -> &str
             245..246 'g': |usize| yields i64 -> &str
             255..261 '0usize': usize
-            273..299 'Genera...ded(y)': GeneratorState<i64, &str>
+            273..299 'Corout...ded(y)': CoroutineState<i64, &str>
             297..298 'y': i64
             303..312 '{ f(y); }': ()
             305..306 'f': fn f(i64)
             305..309 'f(y)': ()
             307..308 'y': i64
-            321..348 'Genera...ete(r)': GeneratorState<i64, &str>
+            321..348 'Corout...ete(r)': CoroutineState<i64, &str>
             346..347 'r': &str
             352..354 '{}': ()
         "#]],
@@ -2010,11 +2010,11 @@ fn test() {
 }
 
 #[test]
-fn generator_resume_yield_return_unit() {
+fn coroutine_resume_yield_return_unit() {
     check_no_mismatches(
         r#"
-//- minicore: generator, deref
-use core::ops::{Generator, GeneratorState};
+//- minicore: coroutine, deref
+use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 fn test() {
     let mut g = || {
@@ -2022,8 +2022,8 @@ fn test() {
     };
 
     match Pin::new(&mut g).resume(()) {
-        GeneratorState::Yielded(()) => {}
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Yielded(()) => {}
+        CoroutineState::Complete(()) => {}
     }
 }
         "#,
@@ -2184,10 +2184,10 @@ fn main() {
             103..231 '{     ... }); }': ()
             109..161 'async ...     }': impl Future<Output = Result<(), ()>>
             125..139 'return Err(())': !
-            132..135 'Err': Err<(), ()>(()) -> Result<(), ()>
+            132..135 'Err': extern "rust-call" Err<(), ()>(()) -> Result<(), ()>
             132..139 'Err(())': Result<(), ()>
             136..138 '()': ()
-            149..151 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            149..151 'Ok': extern "rust-call" Ok<(), ()>(()) -> Result<(), ()>
             149..155 'Ok(())': Result<(), ()>
             152..154 '()': ()
             167..171 'test': fn test<(), (), impl Fn() -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(impl Fn() -> impl Future<Output = Result<(), ()>>)
@@ -2195,10 +2195,10 @@ fn main() {
             172..227 '|| asy...     }': impl Fn() -> impl Future<Output = Result<(), ()>>
             175..227 'async ...     }': impl Future<Output = Result<(), ()>>
             191..205 'return Err(())': !
-            198..201 'Err': Err<(), ()>(()) -> Result<(), ()>
+            198..201 'Err': extern "rust-call" Err<(), ()>(()) -> Result<(), ()>
             198..205 'Err(())': Result<(), ()>
             202..204 '()': ()
-            215..217 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            215..217 'Ok': extern "rust-call" Ok<(), ()>(()) -> Result<(), ()>
             215..221 'Ok(())': Result<(), ()>
             218..220 '()': ()
         "#]],
@@ -2227,7 +2227,7 @@ fn infer_generic_from_later_assignment() {
             94..127 '{     ...     }': ()
             104..107 'end': Option<bool>
             104..120 'end = ...(true)': ()
-            110..114 'Some': Some<bool>(bool) -> Option<bool>
+            110..114 'Some': extern "rust-call" Some<bool>(bool) -> Option<bool>
             110..120 'Some(true)': Option<bool>
             115..119 'true': bool
         "#]],
@@ -2262,7 +2262,7 @@ fn infer_loop_break_with_val() {
             111..121 'break None': !
             117..121 'None': Option<bool>
             142..158 'break ...(true)': !
-            148..152 'Some': Some<bool>(bool) -> Option<bool>
+            148..152 'Some': extern "rust-call" Some<bool>(bool) -> Option<bool>
             148..158 'Some(true)': Option<bool>
             153..157 'true': bool
         "#]],
@@ -2509,7 +2509,7 @@ fn generic_default_in_struct_literal() {
             254..281 'OtherT...1i32 }': OtherThing<i32>
             275..279 '1i32': i32
             291..292 'b': OtherThing<i32>
-            295..310 'OtherThing::Two': Two<i32>(i32) -> OtherThing<i32>
+            295..310 'OtherThing::Two': extern "rust-call" Two<i32>(i32) -> OtherThing<i32>
             295..316 'OtherT...(1i32)': OtherThing<i32>
             311..315 '1i32': i32
         "#]],
@@ -2984,7 +2984,7 @@ fn f() {
         expect![[r#"
             72..166 '{     ...   } }': ()
             78..164 'match ...     }': ()
-            84..92 'Foo::Bar': Bar(i32) -> Foo
+            84..92 'Foo::Bar': extern "rust-call" Bar(i32) -> Foo
             84..95 'Foo::Bar(3)': Foo
             93..94 '3': i32
             106..119 'Qux::Bar(bar)': Foo
@@ -3043,9 +3043,9 @@ fn main() {
             322..324 '{}': Foo<T>
             338..559 '{     ...r(); }': ()
             348..353 'boxed': Box<Foo<i32>>
-            356..359 'Box': Box<Foo<i32>>(Foo<i32>) -> Box<Foo<i32>>
+            356..359 'Box': extern "rust-call" Box<Foo<i32>>(Foo<i32>) -> Box<Foo<i32>>
             356..371 'Box(Foo(0_i32))': Box<Foo<i32>>
-            360..363 'Foo': Foo<i32>(i32) -> Foo<i32>
+            360..363 'Foo': extern "rust-call" Foo<i32>(i32) -> Foo<i32>
             360..370 'Foo(0_i32)': Foo<i32>
             364..369 '0_i32': i32
             382..386 'bad1': &i32

@@ -96,19 +96,19 @@ impl<S: Span> Bindings<S> {
                     | MetaVarKind::Expr
                     | MetaVarKind::Ident => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("missing"),
+                            text: SmolStr::new_static("missing"),
                             span,
                         })))
                     }
                     MetaVarKind::Lifetime => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("'missing"),
+                            text: SmolStr::new_static("'missing"),
                             span,
                         })))
                     }
                     MetaVarKind::Literal => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("\"missing\""),
+                            text: SmolStr::new_static("\"missing\""),
                             span,
                         })))
                     }
@@ -187,7 +187,7 @@ fn expand_subtree<S: Span>(
                 for punct in puncts {
                     arena.push(
                         tt::Leaf::from({
-                            let mut it = punct.clone();
+                            let mut it = *punct;
                             marker(&mut it.span);
                             it
                         })
@@ -282,9 +282,9 @@ fn expand_subtree<S: Span>(
                 }
 
                 let res = if ctx.new_meta_vars {
-                    count(ctx, binding, 0, depth.unwrap_or(0))
+                    count(binding, 0, depth.unwrap_or(0))
                 } else {
-                    count_old(ctx, binding, 0, *depth)
+                    count_old(binding, 0, *depth)
                 };
 
                 let c = match res {
@@ -537,7 +537,6 @@ fn fix_up_and_push_path_tt<S: Span>(
 /// Handles `${count(t, depth)}`. `our_depth` is the recursion depth and `count_depth` is the depth
 /// defined by the metavar expression.
 fn count<S>(
-    ctx: &ExpandCtx<'_, S>,
     binding: &Binding<S>,
     depth_curr: usize,
     depth_max: usize,
@@ -547,7 +546,7 @@ fn count<S>(
             if depth_curr == depth_max {
                 Ok(bs.len())
             } else {
-                bs.iter().map(|b| count(ctx, b, depth_curr + 1, depth_max)).sum()
+                bs.iter().map(|b| count(b, depth_curr + 1, depth_max)).sum()
             }
         }
         Binding::Empty => Ok(0),
@@ -556,16 +555,15 @@ fn count<S>(
 }
 
 fn count_old<S>(
-    ctx: &ExpandCtx<'_, S>,
     binding: &Binding<S>,
     our_depth: usize,
     count_depth: Option<usize>,
 ) -> Result<usize, CountError> {
     match binding {
         Binding::Nested(bs) => match count_depth {
-            None => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, None)).sum(),
+            None => bs.iter().map(|b| count_old(b, our_depth + 1, None)).sum(),
             Some(0) => Ok(bs.len()),
-            Some(d) => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, Some(d - 1))).sum(),
+            Some(d) => bs.iter().map(|b| count_old(b, our_depth + 1, Some(d - 1))).sum(),
         },
         Binding::Empty => Ok(0),
         Binding::Fragment(_) | Binding::Missing(_) => {

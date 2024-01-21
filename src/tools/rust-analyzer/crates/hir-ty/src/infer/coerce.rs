@@ -24,7 +24,7 @@ use crate::{
     },
     static_lifetime,
     utils::ClosureSubst,
-    Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner, Solution,
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Solution,
     Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
@@ -691,7 +691,7 @@ fn coerce_closure_fn_ty(closure_substs: &Substitution, safety: chalk_ir::Safety)
     match closure_sig.kind(Interner) {
         TyKind::Function(fn_ty) => TyKind::Function(FnPointer {
             num_binders: fn_ty.num_binders,
-            sig: FnSig { safety, ..fn_ty.sig },
+            sig: FnSig { safety, abi: FnAbi::Rust, variadic: fn_ty.sig.variadic },
             substitution: fn_ty.substitution.clone(),
         })
         .intern(Interner),

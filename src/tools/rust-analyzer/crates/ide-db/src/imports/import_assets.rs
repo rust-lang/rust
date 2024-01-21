@@ -357,7 +357,7 @@ fn path_applicable_imports(
             path_candidate.name.clone(),
             AssocSearchMode::Include,
         )
-        .filter_map(|item| import_for_item(sema.db, mod_path, &qualifier, item, scope_filter))
+        .filter_map(|item| import_for_item(sema.db, mod_path, qualifier, item, scope_filter))
         .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
         .collect(),
     }

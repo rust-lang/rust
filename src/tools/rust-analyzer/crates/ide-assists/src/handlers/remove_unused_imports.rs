@@ -54,7 +54,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
         .filter_map(|u| {
             // Find any uses trees that are unused
 
-            let use_module = ctx.sema.scope(&u.syntax()).map(|s| s.module())?;
+            let use_module = ctx.sema.scope(u.syntax()).map(|s| s.module())?;
             let scope = match search_scopes.entry(use_module) {
                 Entry::Occupied(o) => o.into_mut(),
                 Entry::Vacant(v) => v.insert(module_search_scope(ctx.db(), use_module)),
@@ -113,10 +113,8 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 {
                     return Some(u);
                 }
-            } else {
-                if !used_once_in_scope(ctx, def, &scope) {
-                    return Some(u);
-                }
+            } else if !used_once_in_scope(ctx, def, scope) {
+                return Some(u);
             }
 
             None
@@ -208,7 +206,7 @@ fn module_search_scope(db: &RootDatabase, module: hir::Module) -> Vec<SearchScop
             };
             let mut new_ranges = Vec::new();
             for old_range in ranges.iter_mut() {
-                let split = split_at_subrange(old_range.clone(), rng);
+                let split = split_at_subrange(*old_range, rng);
                 *old_range = split.0;
                 new_ranges.extend(split.1);
             }

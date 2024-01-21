@@ -36,7 +36,7 @@ impl<N: AstNode + std::fmt::Debug> std::fmt::Debug for AstPtr<N> {
 impl<N: AstNode> Copy for AstPtr<N> {}
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
-        AstPtr { raw: self.raw.clone(), _ty: PhantomData }
+        AstPtr { raw: self.raw, _ty: PhantomData }
     }
 }
 
@@ -65,7 +65,7 @@ impl<N: AstNode> AstPtr<N> {
     }
 
     pub fn syntax_node_ptr(&self) -> SyntaxNodePtr {
-        self.raw.clone()
+        self.raw
     }
 
     pub fn text_range(&self) -> TextRange {

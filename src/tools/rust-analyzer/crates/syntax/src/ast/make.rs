@@ -595,6 +595,9 @@ pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {expr}") } else { format!("&{expr}") })
 }
+pub fn expr_reborrow(expr: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("&mut *{expr}"))
+}
 pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr) -> ast::Expr {
     let params = pats.into_iter().join(", ");
     expr_from_text(&format!("|{params}| {expr}"))

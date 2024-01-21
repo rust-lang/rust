@@ -26,7 +26,7 @@ pub(crate) fn unresolved_module(
                 )
             }
         },
-        d.decl.clone().map(|it| it.into()),
+        d.decl.map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

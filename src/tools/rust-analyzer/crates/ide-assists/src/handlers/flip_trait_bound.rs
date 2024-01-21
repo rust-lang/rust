@@ -23,9 +23,7 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let plus = ctx.find_token_syntax_at_offset(T![+])?;
 
     // Make sure we're in a `TypeBoundList`
-    if ast::TypeBoundList::cast(plus.parent()?).is_none() {
-        return None;
-    }
+    ast::TypeBoundList::cast(plus.parent()?)?;
 
     let (before, after) = (
         non_trivia_sibling(plus.clone().into(), Direction::Prev)?,

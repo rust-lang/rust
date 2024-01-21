@@ -31,7 +31,7 @@ pub(crate) fn inactive_code(
     let res = Diagnostic::new(
         DiagnosticCode::Ra("inactive-code", Severity::WeakWarning),
         message,
-        ctx.sema.diagnostics_display_range(d.node.clone()),
+        ctx.sema.diagnostics_display_range(d.node),
     )
     .with_unused(true);
     Some(res)

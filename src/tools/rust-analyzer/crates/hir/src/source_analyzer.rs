@@ -197,10 +197,8 @@ impl SourceAnalyzer {
     ) -> Option<(Type, Option<Type>)> {
         let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced = infer
-            .pat_adjustments
-            .get(&pat_id)
-            .and_then(|adjusts| adjusts.last().map(|adjust| adjust.clone()));
+        let coerced =
+            infer.pat_adjustments.get(&pat_id).and_then(|adjusts| adjusts.last().cloned());
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
@@ -268,7 +266,7 @@ impl SourceAnalyzer {
     ) -> Option<Callable> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (func, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
-        let ty = db.value_ty(func.into()).substitute(Interner, &substs);
+        let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
         let ty = Type::new_with_resolver(db, &self.resolver, ty);
         let mut res = ty.as_callable(db)?;
         res.is_bound_method = true;
@@ -616,7 +614,7 @@ impl SourceAnalyzer {
             }
             None
         })();
-        if let Some(_) = resolved {
+        if resolved.is_some() {
             return resolved;
         }
 
@@ -661,7 +659,7 @@ impl SourceAnalyzer {
             if let Some(name_ref) = path.as_single_name_ref() {
                 let builtin =
                     BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text());
-                if let Some(_) = builtin {
+                if builtin.is_some() {
                     return builtin.map(PathResolution::BuiltinAttr);
                 }
 

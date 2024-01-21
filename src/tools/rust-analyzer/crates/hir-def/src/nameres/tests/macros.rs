@@ -1348,8 +1348,8 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
 
     let actual = def_map
         .macro_use_prelude
-        .iter()
-        .map(|(name, _)| name.display(&db).to_string())
+        .keys()
+        .map(|name| name.display(&db).to_string())
         .sorted()
         .join("\n");
 

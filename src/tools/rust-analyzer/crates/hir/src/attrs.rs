@@ -115,7 +115,7 @@ fn resolve_doc_path_on_(
         AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
         AttrDefId::AdtId(it) => it.resolver(db.upcast()),
         AttrDefId::FunctionId(it) => it.resolver(db.upcast()),
-        AttrDefId::EnumVariantId(it) => it.parent.resolver(db.upcast()),
+        AttrDefId::EnumVariantId(it) => it.resolver(db.upcast()),
         AttrDefId::StaticId(it) => it.resolver(db.upcast()),
         AttrDefId::ConstId(it) => it.resolver(db.upcast()),
         AttrDefId::TraitId(it) => it.resolver(db.upcast()),

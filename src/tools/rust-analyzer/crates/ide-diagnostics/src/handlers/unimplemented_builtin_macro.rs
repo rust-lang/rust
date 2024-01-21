@@ -11,6 +11,6 @@ pub(crate) fn unimplemented_builtin_macro(
         ctx,
         DiagnosticCode::Ra("unimplemented-builtin-macro", Severity::WeakWarning),
         "unimplemented built-in macro".to_string(),
-        d.node.clone(),
+        d.node,
     )
 }

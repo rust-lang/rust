@@ -310,6 +310,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn check_constraint(
         &self,
         constraint: &Constraint,
@@ -320,7 +321,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 kind.matches(code)?;
             }
             Constraint::Not(sub) => {
-                if self.check_constraint(&*sub, code).is_ok() {
+                if self.check_constraint(sub, code).is_ok() {
                     fail_match!("Constraint {:?} failed for '{}'", constraint, code.text());
                 }
             }
@@ -764,12 +765,7 @@ impl Iterator for PatternIterator {
     type Item = SyntaxElement;
 
     fn next(&mut self) -> Option<SyntaxElement> {
-        for element in &mut self.iter {
-            if !element.kind().is_trivia() {
-                return Some(element);
-            }
-        }
-        None
+        self.iter.find(|element| !element.kind().is_trivia())
     }
 }
 
