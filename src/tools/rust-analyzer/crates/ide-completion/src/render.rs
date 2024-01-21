@@ -1170,6 +1170,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -1196,6 +1197,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -1274,6 +1276,7 @@ fn foo() { A { the$0 } }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -2089,6 +2092,7 @@ fn foo() {
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -2438,5 +2442,82 @@ impl S {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn notable_traits_method_relevance() {
+        check_kinds(
+            r#"
+#[doc(notable_trait)]
+trait Write {
+    fn write(&self);
+    fn flush(&self);
+}
+
+struct Writer;
+
+impl Write for Writer {
+    fn write(&self) {}
+    fn flush(&self) {}
+}
+
+fn main() {
+    Writer.$0
+}
+"#,
+            &[
+                CompletionItemKind::Method,
+                CompletionItemKind::SymbolKind(SymbolKind::Field),
+                CompletionItemKind::SymbolKind(SymbolKind::Function),
+            ],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "flush()",
+                        source_range: 193..193,
+                        delete: 193..193,
+                        insert: "flush()$0",
+                        kind: Method,
+                        lookup: "flush",
+                        detail: "fn(&self)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: true,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                    CompletionItem {
+                        label: "write()",
+                        source_range: 193..193,
+                        delete: 193..193,
+                        insert: "write()$0",
+                        kind: Method,
+                        lookup: "write",
+                        detail: "fn(&self)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: true,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                ]
+            "#]],
+        );
     }
 }

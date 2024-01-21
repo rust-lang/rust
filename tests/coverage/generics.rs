@@ -1,18 +1,18 @@
 #![allow(unused_assignments)]
 // failure-status: 1
 
-struct Firework<T> where T: Copy + std::fmt::Display {
+struct Firework<T: Copy + std::fmt::Display> {
     strength: T,
 }
 
-impl<T> Firework<T> where T: Copy + std::fmt::Display {
+impl<T: Copy + std::fmt::Display> Firework<T> {
     #[inline(always)]
     fn set_strength(&mut self, new_strength: T) {
         self.strength = new_strength;
     }
 }
 
-impl<T> Drop for Firework<T> where T: Copy + std::fmt::Display {
+impl<T: Copy + std::fmt::Display> Drop for Firework<T> {
     #[inline(always)]
     fn drop(&mut self) {
         println!("BOOM times {}!!!", self.strength);

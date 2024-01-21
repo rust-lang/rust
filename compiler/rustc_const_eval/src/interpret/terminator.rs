@@ -9,7 +9,7 @@ use rustc_middle::{
         AdtDef, Instance, Ty,
     },
 };
-use rustc_span::sym;
+use rustc_span::{source_map::Spanned, sym};
 use rustc_target::abi::{self, FieldIdx};
 use rustc_target::abi::{
     call::{ArgAbi, FnAbi, PassMode},
@@ -242,13 +242,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Evaluate the arguments of a function call
     pub(super) fn eval_fn_call_arguments(
         &self,
-        ops: &[mir::Operand<'tcx>],
+        ops: &[Spanned<mir::Operand<'tcx>>],
     ) -> InterpResult<'tcx, Vec<FnArg<'tcx, M::Provenance>>> {
         ops.iter()
             .map(|op| {
-                Ok(match op {
+                Ok(match &op.node {
                     mir::Operand::Move(place) => FnArg::InPlace(self.eval_place(*place)?),
-                    _ => FnArg::Copy(self.eval_operand(op, None)?),
+                    _ => FnArg::Copy(self.eval_operand(&op.node, None)?),
                 })
             })
             .collect()

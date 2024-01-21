@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_span::source_map::Spanned;
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -248,7 +249,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let args: Vec<_> = args
                     .into_iter()
                     .copied()
-                    .map(|arg| unpack!(block = this.as_local_call_operand(block, arg)))
+                    .map(|arg| Spanned {
+                        node: unpack!(block = this.as_local_call_operand(block, arg)),
+                        span: this.thir.exprs[arg].span,
+                    })
                     .collect();
 
                 let success = this.cfg.start_new_block();

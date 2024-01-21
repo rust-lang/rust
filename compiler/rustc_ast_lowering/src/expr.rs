@@ -1,6 +1,6 @@
 use super::errors::{
-    AsyncCoroutinesNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
-    BaseExpressionDoubleDot, ClosureCannotBeStatic, CoroutineTooManyParameters,
+    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
+    ClosureCannotBeStatic, CoroutineTooManyParameters,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
     NeverPatternWithBody, NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure,
     UnderscoreExprLhsAssign,
@@ -13,7 +13,6 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::span_bug;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1028,28 +1027,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
-        let CoroutineKind::Async { closure_id: inner_closure_id, .. } = coroutine_kind else {
-            span_bug!(fn_decl_span, "`async gen` and `gen` closures are not supported, yet");
-        };
-
         if let &ClosureBinder::For { span, .. } = binder {
             self.dcx().emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let outer_decl =
-            FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
-
         let body = self.with_new_scopes(fn_decl_span, |this| {
-            // FIXME(cramertj): allow `async` non-`move` closures with arguments.
-            if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
-                this.dcx().emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
-            }
-
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
-            let body_id = this.lower_fn_body(&outer_decl, |this| {
+            let body_id = this.lower_body(|this| {
                 let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
                     let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
                     Some(hir::FnRetTy::Return(this.lower_ty(ty, &itctx)))
@@ -1057,21 +1044,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None
                 };
 
-                let async_body = this.make_desugared_coroutine_expr(
-                    capture_clause,
-                    inner_closure_id,
-                    async_ret_ty,
-                    body.span,
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Closure,
+                let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
+                    decl,
                     |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
+                    body.span,
+                    coroutine_kind,
+                    hir::CoroutineSource::Closure,
+                    async_ret_ty,
                 );
-                let hir_id = this.lower_node_id(inner_closure_id);
+
+                let hir_id = this.lower_node_id(coroutine_kind.closure_id());
                 this.maybe_forward_track_caller(body.span, closure_hir_id, hir_id);
-                hir::Expr { hir_id, kind: async_body, span: this.lower_span(body.span) }
+
+                (parameters, expr)
             });
             body_id
         });
+
+        let outer_decl =
+            FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // We need to lower the declaration outside the new scope, because we

@@ -681,7 +681,8 @@ fn resolve_local<'tcx>(
             | PatKind::Never
             | PatKind::Path(_)
             | PatKind::Lit(_)
-            | PatKind::Range(_, _, _) => false,
+            | PatKind::Range(_, _, _)
+            | PatKind::Err(_) => false,
         }
     }
 

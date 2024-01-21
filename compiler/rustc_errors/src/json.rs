@@ -15,10 +15,9 @@ use termcolor::{ColorSpec, WriteColor};
 use crate::emitter::{should_show_source_code, Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
-use crate::DiagnosticId;
 use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
-    TerminalUrl,
+    diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
+    SubDiagnostic, TerminalUrl,
 };
 use rustc_lint_defs::Applicability;
 
@@ -301,7 +300,8 @@ struct DiagnosticSpanMacroExpansion {
 
 #[derive(Serialize)]
 struct DiagnosticCode {
-    /// The code itself.
+    /// The error code (e.g. "E1234"), if the diagnostic has one. Or the lint
+    /// name, if it's a lint without an error code.
     code: String,
     /// An explanation for the code.
     explanation: Option<&'static str>,
@@ -399,9 +399,21 @@ impl Diagnostic {
         let output = String::from_utf8(output).unwrap();
 
         let translated_message = je.translate_messages(&diag.messages, &args);
+
+        let code = if let Some(code) = &diag.code {
+            Some(DiagnosticCode {
+                code: code.to_string(),
+                explanation: je.registry.as_ref().unwrap().try_find_description(&code).ok(),
+            })
+        } else if let Some(IsLint { name, .. }) = &diag.is_lint {
+            Some(DiagnosticCode { code: name.to_string(), explanation: None })
+        } else {
+            None
+        };
+
         Diagnostic {
             message: translated_message.to_string(),
-            code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
+            code,
             level: diag.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&diag.span, &args, je),
             children: diag
@@ -590,20 +602,5 @@ impl DiagnosticSpanLine {
                     .collect()
             })
             .unwrap_or_else(|_| vec![])
-    }
-}
-
-impl DiagnosticCode {
-    fn map_opt_string(s: Option<DiagnosticId>, je: &JsonEmitter) -> Option<DiagnosticCode> {
-        s.map(|s| {
-            let s = match s {
-                DiagnosticId::Error(s) => s,
-                DiagnosticId::Lint { name, .. } => name,
-            };
-            let je_result =
-                je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
-
-            DiagnosticCode { code: s, explanation: je_result.ok() }
-        })
     }
 }

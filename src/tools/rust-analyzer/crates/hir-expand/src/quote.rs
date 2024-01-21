@@ -4,6 +4,10 @@ use span::Span;
 
 use crate::name::Name;
 
+pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
+    tt::Ident { text: syntax::SmolStr::new_inline("$crate"), span }
+}
+
 // A helper macro quote macro
 // FIXME:
 // 1. Not all puncts are handled

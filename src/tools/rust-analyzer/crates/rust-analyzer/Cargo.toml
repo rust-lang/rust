@@ -49,7 +49,6 @@ flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
-rustc-dependencies.workspace = true
 ide-db.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
@@ -89,7 +88,6 @@ in-rust-tree = [
     "ide/in-rust-tree",
     "syntax/in-rust-tree",
     "parser/in-rust-tree",
-    "rustc-dependencies/in-rust-tree",
     "hir/in-rust-tree",
     "hir-def/in-rust-tree",
     "hir-ty/in-rust-tree",

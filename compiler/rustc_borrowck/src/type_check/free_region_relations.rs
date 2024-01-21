@@ -1,5 +1,6 @@
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
+use rustc_hir::def::DefKind;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -195,7 +196,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
-        let span = self.infcx.tcx.def_span(self.universal_regions.defining_ty.def_id());
+        let tcx = self.infcx.tcx;
+        let defining_ty_def_id = self.universal_regions.defining_ty.def_id().expect_local();
+        let span = tcx.def_span(defining_ty_def_id);
 
         // Insert the facts we know from the predicates. Why? Why not.
         let param_env = self.param_env;
@@ -273,6 +276,26 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             }
 
             normalized_inputs_and_output.push(norm_ty);
+        }
+
+        // Add implied bounds from impl header.
+        if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
+            for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
+                let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = self
+                    .param_env
+                    .and(type_op::normalize::Normalize::new(ty))
+                    .fully_perform(self.infcx, span)
+                else {
+                    tcx.dcx().span_delayed_bug(span, format!("failed to normalize {ty:?}"));
+                    continue;
+                };
+                constraints.extend(c);
+
+                // We currently add implied bounds from the normalized ty only.
+                // This is more conservative and matches wfcheck behavior.
+                let c = self.add_implied_bounds(norm_ty);
+                constraints.extend(c);
+            }
         }
 
         for c in constraints {

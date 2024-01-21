@@ -22,7 +22,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[hir::PolyTraitRef<'_>],
+        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
         borrowed: bool,
         representation: DynKind,

@@ -72,4 +72,12 @@ fn baz() {
     //~^ERROR can't compare `str` with `&String` [E0277]
 }
 
+fn qux() {
+    // Issue #119352
+    const FOO: i32 = 42;
+    let _ = FOO & (*"Sized".to_string().into_boxed_str());
+    //~^ ERROR the size for values of type `str` cannot be known at compilation time
+    //~| ERROR no implementation for `i32 & str` [E0277]
+}
+
 fn main() {}

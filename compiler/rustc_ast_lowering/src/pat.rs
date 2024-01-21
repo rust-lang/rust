@@ -109,6 +109,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // return inner to be processed in next loop
                     PatKind::Paren(inner) => pattern = inner,
                     PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
+                    PatKind::Err(guar) => break hir::PatKind::Err(*guar),
                 }
             };
 

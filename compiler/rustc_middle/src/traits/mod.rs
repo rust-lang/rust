@@ -604,7 +604,7 @@ pub enum SelectionError<'tcx> {
     /// After a closure impl has selected, its "outputs" were evaluated
     /// (which for closures includes the "input" type params) and they
     /// didn't resolve. See `confirm_poly_trait_refs` for more.
-    OutputTypeParameterMismatch(Box<SelectionOutputTypeParameterMismatch<'tcx>>),
+    SignatureMismatch(Box<SignatureMismatchData<'tcx>>),
     /// The trait pointed by `DefId` is not object safe.
     TraitNotObjectSafe(DefId),
     /// A given constant couldn't be evaluated.
@@ -618,7 +618,7 @@ pub enum SelectionError<'tcx> {
 }
 
 #[derive(Clone, Debug, TypeVisitable)]
-pub struct SelectionOutputTypeParameterMismatch<'tcx> {
+pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::PolyTraitRef<'tcx>,
     pub expected_trait_ref: ty::PolyTraitRef<'tcx>,
     pub terr: ty::error::TypeError<'tcx>,

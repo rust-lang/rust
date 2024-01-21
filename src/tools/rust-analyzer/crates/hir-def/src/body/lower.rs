@@ -965,11 +965,10 @@ impl ExprCollector<'_> {
 
         let res = match self.def_map.modules[module]
             .scope
-            .macro_invocations
-            .get(&InFile::new(outer_file, self.ast_id_map.ast_id_for_ptr(syntax_ptr)))
+            .macro_invoc(InFile::new(outer_file, self.ast_id_map.ast_id_for_ptr(syntax_ptr)))
         {
             // fast path, macro call is in a block module
-            Some(&call) => Ok(self.expander.enter_expand_id(self.db, call)),
+            Some(call) => Ok(self.expander.enter_expand_id(self.db, call)),
             None => self.expander.enter_expand(self.db, mcall, |path| {
                 self.def_map
                     .resolve_path(

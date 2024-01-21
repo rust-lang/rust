@@ -131,7 +131,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                 self.places.insert(destination.as_ref());
                 let mut has_duplicates = false;
                 for arg in args {
-                    if let Operand::Move(place) = arg {
+                    if let Operand::Move(place) = &arg.node {
                         has_duplicates |= !self.places.insert(place.as_ref());
                     }
                 }

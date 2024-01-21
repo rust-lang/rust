@@ -152,6 +152,8 @@ pub struct CompletionRelevance {
     pub is_local: bool,
     /// This is set when trait items are completed in an impl of that trait.
     pub is_item_from_trait: bool,
+    /// This is set for when trait items are from traits with `#[doc(notable_trait)]`
+    pub is_item_from_notable_trait: bool,
     /// This is set when an import is suggested whose name is already imported.
     pub is_name_already_imported: bool,
     /// This is set for completions that will insert a `use` item.
@@ -228,6 +230,7 @@ impl CompletionRelevance {
             is_private_editable,
             postfix_match,
             is_definite,
+            is_item_from_notable_trait,
         } = self;
 
         // lower rank private things
@@ -264,6 +267,9 @@ impl CompletionRelevance {
             score += 1;
         }
         if is_item_from_trait {
+            score += 1;
+        }
+        if is_item_from_notable_trait {
             score += 1;
         }
         if is_definite {

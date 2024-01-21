@@ -120,7 +120,7 @@ pub enum ConstVariableOriginKind {
 #[derive(Copy, Clone, Debug)]
 pub enum ConstVariableValue<'tcx> {
     Known { value: ty::Const<'tcx> },
-    Unknown { universe: ty::UniverseIndex },
+    Unknown { origin: ConstVariableOrigin, universe: ty::UniverseIndex },
 }
 
 impl<'tcx> ConstVariableValue<'tcx> {
@@ -132,12 +132,6 @@ impl<'tcx> ConstVariableValue<'tcx> {
             ConstVariableValue::Known { value } => Some(value),
         }
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct ConstVarValue<'tcx> {
-    pub origin: ConstVariableOrigin,
-    pub val: ConstVariableValue<'tcx>,
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -153,7 +147,7 @@ impl<'tcx> From<ty::ConstVid> for ConstVidKey<'tcx> {
 }
 
 impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
-    type Value = ConstVarValue<'tcx>;
+    type Value = ConstVariableValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
@@ -167,23 +161,23 @@ impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
     }
 }
 
-impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
+impl<'tcx> UnifyValue for ConstVariableValue<'tcx> {
     type Error = NoError;
 
     fn unify_values(&value1: &Self, &value2: &Self) -> Result<Self, Self::Error> {
-        Ok(match (value1.val, value2.val) {
+        match (value1, value2) {
             (ConstVariableValue::Known { .. }, ConstVariableValue::Known { .. }) => {
                 bug!("equating two const variables, both of which have known values")
             }
 
             // If one side is known, prefer that one.
-            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => value1,
-            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => value2,
+            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => Ok(value1),
+            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => Ok(value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
             (
-                ConstVariableValue::Unknown { universe: universe1 },
-                ConstVariableValue::Unknown { universe: universe2 },
+                ConstVariableValue::Unknown { origin, universe: universe1 },
+                ConstVariableValue::Unknown { origin: _, universe: universe2 },
             ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
@@ -191,12 +185,9 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
-                ConstVarValue {
-                    val: ConstVariableValue::Unknown { universe },
-                    origin: value1.origin,
-                }
+                Ok(ConstVariableValue::Unknown { origin, universe })
             }
-        })
+        }
     }
 }
 

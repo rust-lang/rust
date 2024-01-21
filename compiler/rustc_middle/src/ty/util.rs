@@ -604,19 +604,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// wrapped in a binder.
     pub fn closure_env_ty(
         self,
-        closure_def_id: DefId,
-        closure_args: GenericArgsRef<'tcx>,
+        closure_ty: Ty<'tcx>,
+        closure_kind: ty::ClosureKind,
         env_region: ty::Region<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        let closure_ty = Ty::new_closure(self, closure_def_id, closure_args);
-        let closure_kind_ty = closure_args.as_closure().kind_ty();
-        let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
-        let env_ty = match closure_kind {
+    ) -> Ty<'tcx> {
+        match closure_kind {
             ty::ClosureKind::Fn => Ty::new_imm_ref(self, env_region, closure_ty),
             ty::ClosureKind::FnMut => Ty::new_mut_ref(self, env_region, closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
-        };
-        Some(env_ty)
+        }
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.

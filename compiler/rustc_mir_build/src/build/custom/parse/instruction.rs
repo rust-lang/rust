@@ -2,6 +2,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_middle::{mir::*, thir::*, ty};
+use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -162,7 +163,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 let fun = self.parse_operand(*fun)?;
                 let args = args
                     .iter()
-                    .map(|arg| self.parse_operand(*arg))
+                    .map(|arg|
+                        Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
+                    )
                     .collect::<PResult<Vec<_>>>()?;
                 Ok(TerminatorKind::Call {
                     func: fun,

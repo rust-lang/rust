@@ -345,7 +345,7 @@ fn check_terminator<'tcx>(
                 check_operand(tcx, func, span, body)?;
 
                 for arg in args {
-                    check_operand(tcx, arg, span, body)?;
+                    check_operand(tcx, &arg.node, span, body)?;
                 }
                 Ok(())
             } else {

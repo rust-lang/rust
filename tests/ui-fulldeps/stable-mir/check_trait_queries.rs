@@ -11,14 +11,12 @@
 #![feature(assert_matches)]
 #![feature(control_flow_enum)]
 
-extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::CrateDef;
 use std::collections::HashSet;
@@ -83,7 +81,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, test_traits()).unwrap();
+    run!(args, test_traits).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

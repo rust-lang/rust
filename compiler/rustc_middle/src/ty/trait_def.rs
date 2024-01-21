@@ -254,16 +254,28 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 }
 
 /// Query provider for `incoherent_impls`.
-pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
+pub(super) fn incoherent_impls_provider(
+    tcx: TyCtxt<'_>,
+    simp: SimplifiedType,
+) -> Result<&[DefId], ErrorGuaranteed> {
     let mut impls = Vec::new();
 
+    let mut res = Ok(());
     for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
-        for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
+        let incoherent_impls = match tcx.crate_incoherent_impls((cnum, simp)) {
+            Ok(impls) => impls,
+            Err(e) => {
+                res = Err(e);
+                continue;
+            }
+        };
+        for &impl_def_id in incoherent_impls {
             impls.push(impl_def_id)
         }
     }
 
     debug!(?impls);
+    res?;
 
-    tcx.arena.alloc_slice(&impls)
+    Ok(tcx.arena.alloc_slice(&impls))
 }

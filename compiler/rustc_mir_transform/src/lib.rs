@@ -4,6 +4,7 @@
 #![feature(box_patterns)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
@@ -40,7 +41,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::sym;
+use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]
@@ -169,13 +170,13 @@ fn remap_mir_for_const_eval_select<'tcx>(
             {
                 let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
                     std::mem::take(args).try_into().unwrap();
-                let ty = tupled_args.ty(&body.local_decls, tcx);
+                let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
                 let func =
                     if context == hir::Constness::Const { called_in_const } else { called_at_rt };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
-                    match tupled_args {
+                    match tupled_args.node {
                         Operand::Constant(_) => {
                             // there is no good way of extracting a tuple arg from a constant (const generic stuff)
                             // so we just create a temporary and deconstruct that.
@@ -184,7 +185,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                                 source_info: SourceInfo::outermost(fn_span),
                                 kind: StatementKind::Assign(Box::new((
                                     local.into(),
-                                    Rvalue::Use(tupled_args.clone()),
+                                    Rvalue::Use(tupled_args.node.clone()),
                                 ))),
                             });
                             (Operand::Move, local.into())
@@ -199,11 +200,11 @@ fn remap_mir_for_const_eval_select<'tcx>(
                         place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
                         let projection = tcx.mk_place_elems(&place_elems);
                         let place = Place { local: place.local, projection };
-                        method(place)
+                        Spanned { node: method(place), span: DUMMY_SP }
                     })
                     .collect();
                 terminator.kind = TerminatorKind::Call {
-                    func,
+                    func: func.node,
                     args: arguments,
                     destination,
                     target,
@@ -595,24 +596,25 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
             &simplify::SimplifyLocals::BeforeConstProp,
-            &copy_prop::CopyProp,
+            &dead_store_elimination::DeadStoreElimination::Initial,
+            &gvn::GVN,
+            &simplify::SimplifyLocals::AfterGVN,
             // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
             // destroy the SSA property. It should still happen before const-propagation, so the
             // latter pass will leverage the created opportunities.
             &separate_const_switch::SeparateConstSwitch,
-            &gvn::GVN,
-            &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
-            &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
+            &copy_prop::CopyProp,
+            &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,

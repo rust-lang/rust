@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use std::fmt;
 use std::iter::once;
 
@@ -5,24 +6,21 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_index::Idx;
-use rustc_index::IndexVec;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, VariantDef};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
+use rustc_session::lint;
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
-use smallvec::SmallVec;
 
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::TypeCx;
+use crate::{errors, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -33,11 +31,9 @@ pub type ConstructorSet<'p, 'tcx> =
 pub type DeconstructedPat<'p, 'tcx> =
     crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type OverlappingRanges<'p, 'tcx> =
-    crate::usefulness::OverlappingRanges<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type PlaceCtxt<'a, 'p, 'tcx> =
-    crate::usefulness::PlaceCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+    crate::usefulness::PlaceCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type SplitConstructorSet<'p, 'tcx> =
     crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
@@ -80,7 +76,9 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     /// outside its module and should not be matchable with an empty match statement.
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
+    /// To allocate lowered patterns
     pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
     pub match_lint_level: HirId,
@@ -768,7 +766,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
-            IntRange(range) => return self.hoist_pat_range(range, pat.ty()),
+            IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
             Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
@@ -787,7 +785,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
-                        .list_variant_nonhidden_fields(pat.ty(), variant)
+                        .list_variant_nonhidden_fields(*pat.ty(), variant)
                         .zip(subpatterns)
                         .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                         .collect();
@@ -798,7 +796,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), pat.ty()),
+                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
             },
             // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
             // be careful to reconstruct the correct constant pattern here. However a string
@@ -963,21 +961,21 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         self.tcx.features().exhaustive_patterns
     }
 
-    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {
-        self.ctor_arity(ctor, ty)
+    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {
+        self.ctor_arity(ctor, *ty)
     }
     fn ctor_sub_tys(
         &self,
         ctor: &crate::constructor::Constructor<Self>,
-        ty: Self::Ty,
+        ty: &Self::Ty,
     ) -> &[Self::Ty] {
-        self.ctor_sub_tys(ctor, ty)
+        self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(
         &self,
-        ty: Self::Ty,
+        ty: &Self::Ty,
     ) -> Result<crate::constructor::ConstructorSet<Self>, Self::Error> {
-        self.ctors_for_ty(ty)
+        self.ctors_for_ty(*ty)
     }
 
     fn debug_pat(
@@ -988,6 +986,27 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     }
     fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
         span_bug!(self.scrut_span, "{}", fmt)
+    }
+
+    fn lint_overlapping_range_endpoints(
+        &self,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
+        overlaps_on: IntRange,
+        overlaps_with: &[&crate::pat::DeconstructedPat<'_, Self>],
+    ) {
+        let overlap_as_pat = self.hoist_pat_range(&overlaps_on, *pat.ty());
+        let overlaps: Vec<_> = overlaps_with
+            .iter()
+            .map(|pat| pat.data().unwrap().span)
+            .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
+            .collect();
+        let pat_span = pat.data().unwrap().span;
+        self.tcx.emit_spanned_lint(
+            lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
+            self.match_lint_level,
+            pat_span,
+            errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
+        );
     }
 }
 

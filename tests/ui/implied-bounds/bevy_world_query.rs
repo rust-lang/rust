@@ -1,11 +1,28 @@
-// aux-crate:bevy_ecs=bevy_ecs.rs
 // check-pass
-// Related to Bevy regression #118553
 
-extern crate bevy_ecs;
+// We currently special case bevy from erroring on incorrect implied bounds
+// from normalization (issue #109628).
+// Otherwise, we would expect this to hit that error.
 
-use bevy_ecs::*;
+pub trait WorldQuery {}
+impl WorldQuery for &u8 {}
 
-fn handler<'a>(_: ParamSet<Query<&'a u8>>) {}
+pub struct Query<Q: WorldQuery>(Q);
+
+pub trait SystemParam {
+    type State;
+}
+impl<Q: WorldQuery + 'static> SystemParam for Query<Q> {
+    type State = ();
+    // `Q: 'static` is required because we need the TypeId of Q ...
+}
+
+pub struct ParamSet<T: SystemParam>(T) where T::State: Sized;
+
+fn handler<'a>(x: ParamSet<Query<&'a u8>>) {
+    let _: ParamSet<_> = x;
+}
+
+fn ref_handler<'a>(_: &ParamSet<Query<&'a u8>>) {}
 
 fn main() {}

@@ -160,7 +160,7 @@ impl NotifyActor {
                                 Some((path, contents))
                             })
                             .collect();
-                        self.send(loader::Message::Loaded { files });
+                        self.send(loader::Message::Changed { files });
                     }
                 }
             }

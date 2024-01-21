@@ -2,6 +2,7 @@ use crate::errors;
 use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
+use itertools::Itertools;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -565,7 +566,7 @@ impl<'tcx> Cx<'tcx> {
                     .tcx
                     .closure_captures(def_id)
                     .iter()
-                    .zip(args.upvar_tys())
+                    .zip_eq(args.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);
                         self.thir.exprs.push(upvars)

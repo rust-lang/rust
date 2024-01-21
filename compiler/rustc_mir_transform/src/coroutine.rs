@@ -675,9 +675,9 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
     let terminator = bb_data.terminator.take().unwrap();
     if let TerminatorKind::Call { mut args, destination, target, .. } = terminator.kind {
         let arg = args.pop().unwrap();
-        let local = arg.place().unwrap().local;
+        let local = arg.node.place().unwrap().local;
 
-        let arg = Rvalue::Use(arg);
+        let arg = Rvalue::Use(arg.node);
         let assign = Statement {
             source_info: terminator.source_info,
             kind: StatementKind::Assign(Box::new((destination, arg))),
@@ -1865,7 +1865,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
                 self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {
-                        this.visit_operand(arg, location);
+                        this.visit_operand(&arg.node, location);
                     }
                 });
             }

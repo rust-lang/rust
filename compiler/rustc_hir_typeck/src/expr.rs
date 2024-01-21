@@ -26,7 +26,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
-    DiagnosticId, ErrorGuaranteed, StashKey,
+    ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -941,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
-        err.code(DiagnosticId::Error(err_code.into()));
+        err.code(err_code.into());
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {
@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &'tcx hir::PathSegment<'tcx>,
         rcvr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
@@ -1526,13 +1526,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
-        self.register_wf_obligation(
-            Ty::new_array_with_const_len(tcx, t, count).into(),
-            expr.span,
-            traits::WellFormed(None),
-        );
+        let ty = Ty::new_array_with_const_len(tcx, t, count);
 
-        Ty::new_array_with_const_len(tcx, t, count)
+        self.register_wf_obligation(ty.into(), expr.span, traits::WellFormed(None));
+
+        ty
     }
 
     fn check_repeat_element_needs_copy_bound(
@@ -1629,7 +1627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         expected: Expectation<'tcx>,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
@@ -2104,7 +2102,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut items = self
                 .tcx
                 .inherent_impls(def_id)
-                .iter()
+                .into_iter()
+                .flatten()
                 .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
                 // Only assoc fn with no receivers.
                 .filter(|item| {
@@ -3246,6 +3245,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let container = self.to_ty(container).normalized;
+
+        if let Some(ident_2) = fields.get(1)
+            && !self.tcx.features().offset_of_nested
+        {
+            rustc_session::parse::feature_err(
+                &self.tcx.sess,
+                sym::offset_of_nested,
+                ident_2.span,
+                "only a single ident or integer is stable as the field in offset_of",
+            )
+            .emit();
+        }
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;

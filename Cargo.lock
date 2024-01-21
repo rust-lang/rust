@@ -714,9 +714,9 @@ checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.104"
+version = "0.1.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c3f9035afc33f4358773239573f7d121099856753e1bbd2a6a5207098fc741"
+checksum = "3686cc48897ce1950aa70fd595bd2dc9f767a3c4cca4cd17b2cb52a2d37e6eb4"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -2189,16 +2189,6 @@ dependencies = [
 
 [[package]]
 name = "libloading"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b67380fd3b2fbe7527a606e18729d21c6f3951633d0500574c4dc22d2d638b9f"
-dependencies = [
- "cfg-if",
- "winapi",
-]
-
-[[package]]
-name = "libloading"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c571b676ddfc9a8c12f1f3d3085a7b163966a8fd8098a90640953ce5f6170161"
@@ -2366,9 +2356,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "10.1.2"
+version = "11.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45e381dcdad44c3c435f8052b08c5c4a1449c48ab56f312345eae12d7a693dbe"
+checksum = "dfa4a40f09af7aa6faef38285402a78847d0d72bf8827006cd2a332e1e6e4a8d"
 dependencies = [
  "log",
  "memmap2",
@@ -2479,7 +2469,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "libffi",
- "libloading 0.8.1",
+ "libloading",
  "log",
  "measureme",
  "rand",
@@ -3879,6 +3869,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3917,6 +3908,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4003,7 +3995,7 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "libloading 0.7.4",
+ "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_ast",
@@ -4133,7 +4125,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.1",
- "libloading 0.7.4",
+ "libloading",
  "odht",
  "rustc_ast",
  "rustc_attr",
@@ -4200,6 +4192,7 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "either",
+ "itertools",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4352,6 +4345,7 @@ name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
  "derivative",
+ "rustc-hash",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4366,7 +4360,6 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "tracing",
- "typed-arena",
 ]
 
 [[package]]
@@ -5351,9 +5344,9 @@ dependencies = [
 
 [[package]]
 name = "thin-vec"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac81b6fd6beb5884b0cf3321b8117e6e5d47ecb6fc89f414cfdcca8b2fe2dd8"
+checksum = "a38c90d48152c236a3ab59271da4f4ae63d678c5d7ad6b7714d7cb9760be5e4b"
 
 [[package]]
 name = "thiserror"
@@ -5704,12 +5697,6 @@ checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
 dependencies = [
  "rustc-hash",
 ]
-
-[[package]]
-name = "typed-arena"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6af6ae20167a9ece4bcb41af5b80f8a1f1df981f6391189ce00fd257af04126a"
 
 [[package]]
 name = "typenum"

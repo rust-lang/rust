@@ -12,3 +12,8 @@ fn test() -> Pointer<_> {
 fn main() {
     test();
 }
+
+extern "Rust" {
+    fn bar() -> Pointer<_>;
+    //~^ ERROR: the placeholder `_` is not allowed within types
+}

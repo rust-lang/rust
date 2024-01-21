@@ -668,7 +668,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     kind: ty::BrEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-                let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_closure(tcx, def_id, args),
+                    args.as_closure().kind(),
+                    env_region,
+                );
 
                 // The "inputs" of the closure in the
                 // signature appear as a tuple. The MIR side

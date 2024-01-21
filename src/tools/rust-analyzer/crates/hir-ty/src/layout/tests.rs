@@ -118,7 +118,7 @@ fn check_fail(ra_fixture: &str, e: LayoutError) {
 macro_rules! size_and_align {
     (minicore: $($x:tt),*;$($t:tt)*) => {
         {
-            #[allow(dead_code)]
+            #![allow(dead_code)]
             $($t)*
             check_size_and_align(
                 stringify!($($t)*),
@@ -130,7 +130,7 @@ macro_rules! size_and_align {
     };
     ($($t:tt)*) => {
         {
-            #[allow(dead_code)]
+            #![allow(dead_code)]
             $($t)*
             check_size_and_align(
                 stringify!($($t)*),

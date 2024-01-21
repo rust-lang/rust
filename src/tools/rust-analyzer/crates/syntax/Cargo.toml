@@ -23,7 +23,7 @@ indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
 
-rustc-dependencies.workspace = true
+ra-ap-rustc_lexer.workspace = true
 
 parser.workspace = true
 profile.workspace = true
@@ -41,7 +41,7 @@ test-utils.workspace = true
 sourcegen.workspace = true
 
 [features]
-in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+in-rust-tree = []
 
 [lints]
 workspace = true

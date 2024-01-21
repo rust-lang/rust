@@ -503,10 +503,9 @@ impl GlobalState {
                 match vfs.file_id(&vfs_path) {
                     Some(file_id) => Some(file_id),
                     None => {
-                        if !self.mem_docs.contains(&vfs_path) {
-                            let contents = loader.handle.load_sync(path);
-                            vfs.set_file_contents(vfs_path.clone(), contents);
-                        }
+                        // FIXME: Consider not loading this here?
+                        let contents = loader.handle.load_sync(path);
+                        vfs.set_file_contents(vfs_path.clone(), contents);
                         vfs.file_id(&vfs_path)
                     }
                 }

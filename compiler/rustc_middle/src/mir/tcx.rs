@@ -229,6 +229,18 @@ impl<'tcx> Operand<'tcx> {
             Operand::Constant(c) => c.const_.ty(),
         }
     }
+
+    pub fn span<D: ?Sized>(&self, local_decls: &D) -> Span
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        match self {
+            &Operand::Copy(ref l) | &Operand::Move(ref l) => {
+                local_decls.local_decls()[l.local].source_info.span
+            }
+            Operand::Constant(c) => c.span,
+        }
+    }
 }
 
 impl<'tcx> BinOp {
