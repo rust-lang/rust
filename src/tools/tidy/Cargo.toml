@@ -5,7 +5,7 @@ edition = "2021"
 autobins = false
 
 [dependencies]
-cargo_metadata = "0.15"
+cargo_metadata = "0.18"
 cargo-platform = "0.1.2"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
