@@ -74,7 +74,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
                 },
             )
         }
-        _ => return None,
+        _ => None,
     }
 }
 

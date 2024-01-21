@@ -70,7 +70,7 @@ pub use rowan::{
     api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
     TokenAtOffset, WalkEvent,
 };
-pub use smol_str::SmolStr;
+pub use smol_str::{format_smolstr, SmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

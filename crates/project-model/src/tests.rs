@@ -38,7 +38,7 @@ fn load_cargo_with_overrides(
     to_crate_graph(project_workspace)
 }
 
-fn load_cargo_with_sysroot(
+fn load_cargo_with_fake_sysroot(
     file_map: &mut FxHashMap<AbsPathBuf, FileId>,
     file: &str,
 ) -> (CrateGraph, ProcMacroPaths) {
@@ -106,7 +106,7 @@ fn replace_fake_sys_root(s: &mut String) {
     let fake_sysroot_path = get_test_path("fake-sysroot");
     let fake_sysroot_path = if cfg!(windows) {
         let normalized_path =
-            fake_sysroot_path.to_str().expect("expected str").replace(r#"\"#, r#"\\"#);
+            fake_sysroot_path.to_str().expect("expected str").replace('\\', r#"\\"#);
         format!(r#"{}\\"#, normalized_path)
     } else {
         format!("{}/", fake_sysroot_path.to_str().expect("expected str"))
@@ -125,7 +125,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, sysroot_src_dir)
+    Sysroot::load(sysroot_dir, sysroot_src_dir, false)
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -225,12 +225,12 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
 #[test]
 fn crate_graph_dedup_identical() {
     let (mut crate_graph, proc_macros) =
-        load_cargo_with_sysroot(&mut Default::default(), "regex-metadata.json");
+        load_cargo_with_fake_sysroot(&mut Default::default(), "regex-metadata.json");
     crate_graph.sort_deps();
 
     let (d_crate_graph, mut d_proc_macros) = (crate_graph.clone(), proc_macros.clone());
 
-    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros);
+    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros, |_| ());
     assert!(crate_graph.iter().eq(d_crate_graph.iter()));
     assert_eq!(proc_macros, d_proc_macros);
 }
@@ -239,14 +239,14 @@ fn crate_graph_dedup_identical() {
 fn crate_graph_dedup() {
     let path_map = &mut Default::default();
     let (mut crate_graph, _proc_macros) =
-        load_cargo_with_sysroot(path_map, "ripgrep-metadata.json");
+        load_cargo_with_fake_sysroot(path_map, "ripgrep-metadata.json");
     assert_eq!(crate_graph.iter().count(), 81);
     crate_graph.sort_deps();
     let (regex_crate_graph, mut regex_proc_macros) =
-        load_cargo_with_sysroot(path_map, "regex-metadata.json");
+        load_cargo_with_fake_sysroot(path_map, "regex-metadata.json");
     assert_eq!(regex_crate_graph.iter().count(), 60);
 
-    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros);
+    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros, |_| ());
     assert_eq!(crate_graph.iter().count(), 118);
 }
 
@@ -254,12 +254,12 @@ fn crate_graph_dedup() {
 fn test_deduplicate_origin_dev() {
     let path_map = &mut Default::default();
     let (mut crate_graph, _proc_macros) =
-        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_A.json");
+        load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_A.json");
     crate_graph.sort_deps();
     let (crate_graph_1, mut _proc_macros_2) =
-        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_B.json");
+        load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_B.json");
 
-    crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_| ());
 
     let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {
@@ -280,12 +280,12 @@ fn test_deduplicate_origin_dev() {
 fn test_deduplicate_origin_dev_rev() {
     let path_map = &mut Default::default();
     let (mut crate_graph, _proc_macros) =
-        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_B.json");
+        load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_B.json");
     crate_graph.sort_deps();
     let (crate_graph_1, mut _proc_macros_2) =
-        load_cargo_with_sysroot(path_map, "deduplication_crate_graph_A.json");
+        load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_A.json");
 
-    crate_graph.extend(crate_graph_1, &mut _proc_macros_2);
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_| ());
 
     let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {
@@ -300,4 +300,41 @@ fn test_deduplicate_origin_dev_rev() {
     assert!(crates_named_p2.len() == 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
+}
+
+#[test]
+fn smoke_test_real_sysroot_cargo() {
+    if std::env::var("SYSROOT_CARGO_METADATA").is_err() {
+        return;
+    }
+    let file_map = &mut FxHashMap::<AbsPathBuf, FileId>::default();
+    let meta = get_test_json_file("hello-world-metadata.json");
+
+    let cargo_workspace = CargoWorkspace::new(meta);
+    let sysroot = Ok(Sysroot::discover(
+        AbsPath::assert(Path::new(env!("CARGO_MANIFEST_DIR"))),
+        &Default::default(),
+        true,
+    )
+    .unwrap());
+
+    let project_workspace = ProjectWorkspace::Cargo {
+        cargo: cargo_workspace,
+        build_scripts: WorkspaceBuildScripts::default(),
+        sysroot,
+        rustc: Err(None),
+        rustc_cfg: Vec::new(),
+        cfg_overrides: Default::default(),
+        toolchain: None,
+        target_layout: Err("target_data_layout not loaded".into()),
+    };
+    project_workspace.to_crate_graph(
+        &mut {
+            |path| {
+                let len = file_map.len();
+                Some(*file_map.entry(path.to_path_buf()).or_insert(FileId::from_raw(len as u32)))
+            }
+        },
+        &Default::default(),
+    );
 }

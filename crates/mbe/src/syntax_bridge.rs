@@ -775,7 +775,7 @@ where
             self.punct_offset = Some((curr.clone(), 0.into()));
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));
-            (SynToken::Punct { token: curr, offset: 0 as usize }, range)
+            (SynToken::Punct { token: curr, offset: 0_usize }, range)
         } else {
             self.punct_offset = None;
             let range = curr.text_range();
@@ -799,7 +799,7 @@ where
         }
 
         let token = if curr.kind().is_punct() {
-            SynToken::Punct { token: curr, offset: 0 as usize }
+            SynToken::Punct { token: curr, offset: 0_usize }
         } else {
             SynToken::Ordinary(curr)
         };

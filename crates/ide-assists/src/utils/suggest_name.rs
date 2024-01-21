@@ -185,10 +185,10 @@ fn normalize(name: &str) -> Option<String> {
 }
 
 fn is_valid_name(name: &str) -> bool {
-    match ide_db::syntax_helpers::LexedStr::single_token(name) {
-        Some((syntax::SyntaxKind::IDENT, _error)) => true,
-        _ => false,
-    }
+    matches!(
+        ide_db::syntax_helpers::LexedStr::single_token(name),
+        Some((syntax::SyntaxKind::IDENT, _error))
+    )
 }
 
 fn is_useless_method(method: &ast::MethodCallExpr) -> bool {

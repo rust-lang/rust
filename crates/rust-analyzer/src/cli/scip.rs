@@ -246,7 +246,7 @@ fn new_descriptor(name: &str, suffix: scip_types::descriptor::Suffix) -> scip_ty
     if name.contains('\'') {
         new_descriptor_str(&format!("`{name}`"), suffix)
     } else {
-        new_descriptor_str(&name, suffix)
+        new_descriptor_str(name, suffix)
     }
 }
 
@@ -359,7 +359,7 @@ mod test {
             }
         }
 
-        if expected == "" {
+        if expected.is_empty() {
             assert!(found_symbol.is_none(), "must have no symbols {found_symbol:?}");
             return;
         }

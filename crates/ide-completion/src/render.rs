@@ -17,7 +17,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
+use syntax::{format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
@@ -202,7 +202,7 @@ fn field_with_receiver(
 ) -> SmolStr {
     receiver.map_or_else(
         || field_name.into(),
-        |receiver| format!("{}.{field_name}", receiver.display(db)).into(),
+        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db)),
     )
 }
 
@@ -295,15 +295,12 @@ fn render_resolution_pat(
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
-    match resolution {
-        ScopeDef::ModuleDef(Macro(mac)) => {
-            let ctx = ctx.import_to_add(import_to_add);
-            return render_macro_pat(ctx, pattern_ctx, local_name, mac);
-        }
-        _ => (),
+    if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
+        let ctx = ctx.import_to_add(import_to_add);
+        render_macro_pat(ctx, pattern_ctx, local_name, mac)
+    } else {
+        render_resolution_simple_(ctx, &local_name, import_to_add, resolution)
     }
-
-    render_resolution_simple_(ctx, &local_name, import_to_add, resolution)
 }
 
 fn render_resolution_path(

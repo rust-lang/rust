@@ -668,7 +668,7 @@ fn check_intersection_and_push(
     // check for intersection between all current members
     // and combine all such ranges into one.
     let s: SmallVec<[_; 2]> = import_paths_to_be_removed
-        .into_iter()
+        .iter_mut()
         .positions(|it| it.intersect(import_path).is_some())
         .collect();
     for pos in s.into_iter().rev() {
@@ -689,27 +689,22 @@ fn does_source_exists_outside_sel_in_same_mod(
     match def {
         Definition::Module(x) => {
             let source = x.definition_source(ctx.db());
-            let have_same_parent;
-            if let Some(ast_module) = &curr_parent_module {
+            let have_same_parent = if let Some(ast_module) = &curr_parent_module {
                 if let Some(hir_module) = x.parent(ctx.db()) {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some();
+                    compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
+                    source_file_id == curr_file_id
                 }
             } else {
                 let source_file_id = source.file_id.original_file(ctx.db());
-                have_same_parent = source_file_id == curr_file_id;
-            }
+                source_file_id == curr_file_id
+            };
 
             if have_same_parent {
-                match source.value {
-                    ModuleSource::Module(module_) => {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(module_.syntax().text_range());
-                    }
-                    _ => {}
+                if let ModuleSource::Module(module_) = source.value {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(module_.syntax().text_range());
                 }
             }
         }

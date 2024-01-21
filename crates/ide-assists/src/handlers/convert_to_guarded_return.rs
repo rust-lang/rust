@@ -8,7 +8,7 @@ use syntax::{
         make,
     },
     ted, AstNode,
-    SyntaxKind::{FN, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
+    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
     T,
 };
 
@@ -82,14 +82,12 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
     let parent_container = parent_block.syntax().parent()?;
 
     let early_expression: ast::Expr = match parent_container.kind() {
-        WHILE_EXPR | LOOP_EXPR => make::expr_continue(None),
+        WHILE_EXPR | LOOP_EXPR | FOR_EXPR => make::expr_continue(None),
         FN => make::expr_return(None),
         _ => return None,
     };
 
-    if then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{']).is_none() {
-        return None;
-    }
+    then_block.syntax().first_child_or_token().map(|t| t.kind() == T!['{'])?;
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == T!['}'])?;
 
@@ -417,6 +415,32 @@ fn main() {
             r#"
 fn main() {
     loop {
+        let Some(n) = n else { continue };
+        foo(n);
+        bar();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_let_inside_for() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    for n in ns {
+        if$0 let Some(n) = n {
+            foo(n);
+            bar();
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    for n in ns {
         let Some(n) = n else { continue };
         foo(n);
         bar();

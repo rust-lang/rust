@@ -2,7 +2,10 @@
 
 use std::{cmp::Ordering, iter};
 
-use hir_expand::name::{known, AsName, Name};
+use hir_expand::{
+    name::{known, AsName, Name},
+    Lookup,
+};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -139,9 +142,10 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         // - if the item is an enum variant, refer to it via the enum
-        if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(variant.parent.into()), from) {
-            let data = ctx.db.enum_data(variant.parent);
-            path.push_segment(data.variants[variant.local_id].name.clone());
+        if let Some(mut path) =
+            find_path_inner(ctx, ItemInNs::Types(variant.lookup(ctx.db).parent.into()), from)
+        {
+            path.push_segment(ctx.db.enum_variant_data(variant).name.clone());
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the
@@ -226,7 +230,7 @@ fn find_path_for_module(
     }
 
     if let value @ Some(_) =
-        find_in_prelude(ctx.db, &root_def_map, &def_map, ItemInNs::Types(module_id.into()), from)
+        find_in_prelude(ctx.db, &root_def_map, def_map, ItemInNs::Types(module_id.into()), from)
     {
         return value.zip(Some(Stable));
     }

@@ -500,7 +500,7 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
     docs_from_attrs(attrs).map_or(false, |doc| {
         let mut in_code_block = false;
 
-        for line in String::from(doc).lines() {
+        for line in doc.lines() {
             if let Some(header) =
                 RUSTDOC_FENCES.into_iter().find_map(|fence| line.strip_prefix(fence))
             {
@@ -570,7 +570,7 @@ mod tests {
                 if let Some(cfg) = runnable.cfg {
                     a.push_str(&format!(", {cfg:?}"));
                 }
-                a.push_str(")");
+                a.push(')');
                 a
             })
             .collect::<Vec<_>>();

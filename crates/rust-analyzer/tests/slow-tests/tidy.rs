@@ -379,7 +379,7 @@ impl TidyDocs {
             )
         }
 
-        for path in self.contains_fixme {
+        if let Some(path) = self.contains_fixme.first() {
             panic!("FIXME doc in a fully-documented crate: {}", path.display())
         }
     }

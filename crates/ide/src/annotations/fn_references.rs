@@ -14,7 +14,7 @@ pub(super) fn find_all_methods(
 ) -> Vec<(TextRange, Option<TextRange>)> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);
-    source_file.syntax().descendants().filter_map(|it| method_range(it)).collect()
+    source_file.syntax().descendants().filter_map(method_range).collect()
 }
 
 fn method_range(item: SyntaxNode) -> Option<(TextRange, Option<TextRange>)> {

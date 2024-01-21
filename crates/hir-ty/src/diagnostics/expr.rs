@@ -114,35 +114,27 @@ impl ExprValidator {
     ) {
         // Check that the number of arguments matches the number of parameters.
 
-        // FIXME: Due to shortcomings in the current type system implementation, only emit this
-        // diagnostic if there are no type mismatches in the containing function.
         if self.infer.expr_type_mismatches().next().is_some() {
-            return;
-        }
+            // FIXME: Due to shortcomings in the current type system implementation, only emit
+            // this diagnostic if there are no type mismatches in the containing function.
+        } else if let Expr::MethodCall { receiver, .. } = expr {
+            let (callee, _) = match self.infer.method_resolution(call_id) {
+                Some(it) => it,
+                None => return,
+            };
 
-        match expr {
-            Expr::MethodCall { receiver, .. } => {
-                let (callee, _) = match self.infer.method_resolution(call_id) {
-                    Some(it) => it,
-                    None => return,
-                };
-
-                if filter_map_next_checker
-                    .get_or_insert_with(|| {
-                        FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
-                    })
-                    .check(call_id, receiver, &callee)
-                    .is_some()
-                {
-                    self.diagnostics.push(
-                        BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap {
-                            method_call_expr: call_id,
-                        },
-                    );
-                }
+            if filter_map_next_checker
+                .get_or_insert_with(|| {
+                    FilterMapNextChecker::new(&self.owner.resolver(db.upcast()), db)
+                })
+                .check(call_id, receiver, &callee)
+                .is_some()
+            {
+                self.diagnostics.push(BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap {
+                    method_call_expr: call_id,
+                });
             }
-            _ => return,
-        };
+        }
     }
 
     fn validate_match(
