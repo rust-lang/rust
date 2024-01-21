@@ -108,14 +108,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
     #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
-    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'hir>>>(
+    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         only_self_bounds: OnlySelfBounds,
-    ) {
+    ) where
+        'tcx: 'hir,
+    {
         for ast_bound in ast_bounds {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
@@ -179,7 +181,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     pub(crate) fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[hir::GenericBound<'tcx>],
         filter: PredicateFilter,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();

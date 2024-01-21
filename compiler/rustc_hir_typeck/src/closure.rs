@@ -373,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_no_expectation(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
     ) -> ClosureSignatures<'tcx> {
         let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl, closure_kind);
@@ -449,7 +449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_with_expectation(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
@@ -506,7 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_with_mismatched_number_of_arguments(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         let expr_map_node = self.tcx.hir_node_by_def_id(expr_def_id);
@@ -547,7 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn merge_supplied_sig_with_expectation(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
         mut expected_sigs: ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ClosureSignatures<'tcx>> {
@@ -641,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn supplied_sig_of_closure(
         &self,
         expr_def_id: LocalDefId,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         closure_kind: hir::ClosureKind,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
@@ -843,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// all parameters are of type `ty::Error`.
     fn error_sig_of_closure(
         &self,
-        decl: &hir::FnDecl<'_>,
+        decl: &hir::FnDecl<'tcx>,
         guar: ErrorGuaranteed,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;

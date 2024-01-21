@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         hir_id: hir::HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         path_span: Span,
         hir_id: hir::HirId,
     ) -> (Res, RawTy<'tcx>) {

@@ -1790,7 +1790,7 @@ fn receiver_is_implemented<'tcx>(
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &hir::Item<'tcx>,
-    hir_generics: &hir::Generics<'_>,
+    hir_generics: &hir::Generics<'tcx>,
 ) {
     let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
 
