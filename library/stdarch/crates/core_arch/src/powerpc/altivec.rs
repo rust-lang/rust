@@ -347,6 +347,9 @@ extern "C" {
     fn vsrah(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short;
     #[link_name = "llvm.ppc.altivec.sraw"]
     fn vsraw(a: vector_signed_int, b: vector_unsigned_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.srl"]
+    fn vsr(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2855,7 +2858,7 @@ mod sealed {
     impl_vec_sld! { vector_bool_int, vector_signed_int, vector_unsigned_int }
     impl_vec_sld! { vector_float }
 
-    macro_rules! impl_vec_sll {
+    macro_rules! impl_vec_shift_long {
         ([$Trait:ident $m:ident] ($f:ident)) => {
             impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
             impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
@@ -2872,7 +2875,15 @@ mod sealed {
         unsafe fn vec_sll(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_sll! { [VectorSll vec_sll] (vsl) }
+    impl_vec_shift_long! { [VectorSll vec_sll] (vsl) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSrl<Other> {
+        type Result;
+        unsafe fn vec_srl(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_long! { [VectorSrl vec_srl] (vsr) }
 
     macro_rules! impl_vec_slo {
         ([$Trait:ident $m:ident] ($f:ident)) => {
@@ -3067,6 +3078,21 @@ where
     T: sealed::VectorSll<U>,
 {
     a.vec_sll(b)
+}
+
+/// Vector Shift Right Long
+///
+/// ## Endian considerations
+/// This intrinsic is not endian-neutral, so uses of vec_srl in big-endian
+/// code must be rewritten for little-endian targets.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_srl<T, U>(a: T, b: U) -> <T as sealed::VectorSrl<U>>::Result
+where
+    T: sealed::VectorSrl<U>,
+{
+    a.vec_srl(b)
 }
 
 /// Vector Shift Left by Octets
