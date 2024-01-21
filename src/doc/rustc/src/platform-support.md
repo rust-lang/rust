@@ -72,6 +72,12 @@ ensure that each tier 2 target can be used as build target after each change. Au
 not always run so it's not guaranteed to produce a working build, but tier 2
 targets often work to quite a good degree and patches are always welcome!
 
+Tier 2 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
+
 Tier 2 targets with host tools additionally support running tools like `rustc`
 and `cargo` natively on the target, and automated builds ensure that the host
 tools build as well. This allows the target to be used as a development
@@ -120,6 +126,12 @@ The `std` column in the table below has the following meanings:
 * \* indicates the target only supports [`no_std`] development.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
+
+Tier 2 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
 
 **NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
 so Rustup may install the documentation for a similar tier 1 target instead.
@@ -210,6 +222,12 @@ The `std` column in the table below has the following meanings:
 * ? indicates the standard library support is unknown or a work-in-progress.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
+
+Tier 3 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
 
 The `host` column indicates whether the codebase includes support for building
 host tools.
