@@ -350,6 +350,8 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.srl"]
     fn vsr(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.sro"]
+    fn vsro(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2885,7 +2887,7 @@ mod sealed {
 
     impl_vec_shift_long! { [VectorSrl vec_srl] (vsr) }
 
-    macro_rules! impl_vec_slo {
+    macro_rules! impl_vec_shift_octect {
         ([$Trait:ident $m:ident] ($f:ident)) => {
             impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_char, vector_signed_char) -> vector_unsigned_char }
             impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_char, vector_signed_char) -> vector_signed_char }
@@ -2910,7 +2912,15 @@ mod sealed {
         unsafe fn vec_slo(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_slo! { [VectorSlo vec_slo] (vslo) }
+    impl_vec_shift_octect! { [VectorSlo vec_slo] (vslo) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSro<Other> {
+        type Result;
+        unsafe fn vec_sro(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_octect! { [VectorSro vec_sro] (vsro) }
 }
 
 /// Vector Merge Low
@@ -3109,6 +3119,22 @@ where
     T: sealed::VectorSlo<U>,
 {
     a.vec_slo(b)
+}
+
+/// Vector Shift Right by Octets
+///
+/// ## Endian considerations
+/// This intrinsic is not endian-neutral, so uses of vec_sro in big-endian code must be rewritten
+/// for little-endian targets. The shift count is in element 15 of b for big-endian, but in element
+/// 0 of b for little-endian.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sro<T, U>(a: T, b: U) -> <T as sealed::VectorSro<U>>::Result
+where
+    T: sealed::VectorSro<U>,
+{
+    a.vec_sro(b)
 }
 
 /// Vector Load Indexed.
