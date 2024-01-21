@@ -642,7 +642,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is past
-    /// the end of the last code point of the string slice.  For non-panicking
+    /// the end of the last code point of the string slice.  For a non-panicking
     /// alternative see [`split_at_checked`](str::split_at_checked).
     ///
     /// # Examples
@@ -680,7 +680,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is past
-    /// the end of the last code point of the string slice.  For non-panicking
+    /// the end of the last code point of the string slice.  For a non-panicking
     /// alternative see [`split_at_mut_checked`](str::split_at_mut_checked).
     ///
     /// # Examples
