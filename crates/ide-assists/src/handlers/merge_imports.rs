@@ -1,8 +1,9 @@
 use either::Either;
 use ide_db::imports::{
     insert_use::{ImportGranularity, InsertUseConfig},
-    merge_imports::{try_merge_imports, try_merge_trees, MergeBehavior},
+    merge_imports::{try_merge_imports, try_merge_trees, try_normalize_use_tree, MergeBehavior},
 };
+use itertools::Itertools;
 use syntax::{
     algo::neighbor,
     ast::{self, edit_in_place::Removable},
@@ -83,7 +84,35 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             for edit in edits_mut {
                 match edit {
                     Remove(it) => it.as_ref().either(Removable::remove, Removable::remove),
-                    Replace(old, new) => ted::replace(old, new),
+                    Replace(old, new) => {
+                        ted::replace(old, &new);
+
+                        // If there's a selection and we're replacing a use tree in a tree list,
+                        // normalize the parent use tree if it only contains the merged subtree.
+                        if !ctx.has_empty_selection() {
+                            let normalized_use_tree = ast::UseTree::cast(new)
+                                .as_ref()
+                                .and_then(ast::UseTree::parent_use_tree_list)
+                                .and_then(|use_tree_list| {
+                                    if use_tree_list.use_trees().collect_tuple::<(_,)>().is_some() {
+                                        Some(use_tree_list.parent_use_tree())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .and_then(|target_tree| {
+                                    try_normalize_use_tree(
+                                        &target_tree,
+                                        ctx.config.insert_use.granularity.into(),
+                                    )
+                                    .map(|top_use_tree_flat| (target_tree, top_use_tree_flat))
+                                });
+                            if let Some((old_tree, new_tree)) = normalized_use_tree {
+                                cov_mark::hit!(replace_parent_with_normalized_use_tree);
+                                ted::replace(old_tree.syntax(), new_tree.syntax());
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -148,7 +177,10 @@ impl Edit {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_import_one, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_import_one, check_assist_not_applicable,
+        check_assist_not_applicable_for_import_one,
+    };
 
     use super::*;
 
@@ -255,6 +287,15 @@ use std::fmt::{self, Display};
             "std::fmt$0",
             "std::fmt::Display",
             "use {std::fmt::{self, Display}};"
+        );
+    }
+
+    #[test]
+    fn not_applicable_to_single_import() {
+        check_assist_not_applicable(merge_imports, "use std::{fmt, $0fmt::Display};");
+        check_assist_not_applicable_for_import_one(
+            merge_imports,
+            "use {std::{fmt, $0fmt::Display}};",
         );
     }
 
@@ -658,12 +699,19 @@ use std::{
 };",
         );
 
-        // FIXME: Remove redundant braces. See also unnecessary-braces diagnostic.
         cov_mark::check!(merge_with_selected_use_tree_neighbors);
         check_assist(
             merge_imports,
+            r"use std::{fmt::Result, $0fmt::Display, fmt::Debug$0};",
+            r"use std::{fmt::Result, fmt::{Debug, Display}};",
+        );
+
+        cov_mark::check!(merge_with_selected_use_tree_neighbors);
+        cov_mark::check!(replace_parent_with_normalized_use_tree);
+        check_assist(
+            merge_imports,
             r"use std::$0{fmt::Display, fmt::Debug}$0;",
-            r"use std::{fmt::{Debug, Display}};",
+            r"use std::fmt::{Debug, Display};",
         );
     }
 }
