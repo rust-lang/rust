@@ -351,7 +351,18 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
+    // Don't instrument functions with `#[automatically_derived]` on their
+    // enclosing impl block, on the assumption that most users won't care about
+    // coverage for derived impls.
+    if let Some(impl_of) = tcx.impl_of_method(def_id.to_def_id())
+        && tcx.is_automatically_derived(impl_of)
+    {
+        trace!("InstrumentCoverage skipped for {def_id:?} (automatically derived)");
+        return false;
+    }
+
     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+        trace!("InstrumentCoverage skipped for {def_id:?} (`#[coverage(off)]`)");
         return false;
     }
 
