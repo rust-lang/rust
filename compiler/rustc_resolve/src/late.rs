@@ -4618,24 +4618,30 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 }
 
 struct LateDesugarVisitor<'a, 'b, 'tcx> {
-    _r: &'b mut Resolver<'a, 'tcx>,
+    r: &'b mut Resolver<'a, 'tcx>,
 }
 
 impl<'a, 'b, 'tcx> LateDesugarVisitor<'a, 'b, 'tcx> {
     fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> Self {
-        LateDesugarVisitor { _r: resolver }
+        LateDesugarVisitor { r: resolver }
     }
 }
 
 impl MutVisitor for LateDesugarVisitor<'_, '_, '_> {
-    fn visit_item_kind(&mut self, i: &mut ItemKind) {
-        if is_axel_debug() {
-            eprintln!("[Desugar][ItemKind] {:?}", i);
+    fn visit_ty(&mut self, ty: &mut P<Ty>) {
+        // check whether this path is a bare trait object
+        if let TyKind::Path(None, _path) = &ty.kind
+            && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
+            && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
+        {
+            if _is_axel_debug() {
+                eprintln!("[Desugar][Ty][BareTrait] {:?}", ty);
+            }
         }
     }
 }
 
-fn is_axel_debug() -> bool {
+fn _is_axel_debug() -> bool {
     use std::env;
     env::var("AXEL_DEBUG").is_ok()
 }
