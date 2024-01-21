@@ -62,19 +62,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut existing_bindings = mem::take(&mut candidate.bindings);
         let mut new_bindings = Vec::new();
         loop {
-            let match_pairs = mem::take(&mut candidate.match_pairs);
-
-            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
-                &*match_pairs
-            {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
-                return true;
-            }
-
             let mut changed = false;
-            for match_pair in match_pairs {
+            for match_pair in mem::take(&mut candidate.match_pairs) {
                 match self.simplify_match_pair(match_pair, candidate) {
                     Ok(()) => {
                         changed = true;
@@ -84,6 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
+
             // Avoid issue #69971: the binding order should be right to left if there are more
             // bindings after `@` to please the borrow checker
             // Ex
@@ -102,18 +92,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.bindings.clear();
 
             if !changed {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                // Move or-patterns to the end, because they can result in us
-                // creating additional candidates, so we want to test them as
-                // late as possible.
-                candidate
-                    .match_pairs
-                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
-                debug!(simplified = ?candidate, "simplify_candidate");
-                return false; // if we were not able to simplify any, done.
+                // If we were not able to simplify anymore, done.
+                break;
             }
         }
+
+        existing_bindings.extend_from_slice(&new_bindings);
+        mem::swap(&mut candidate.bindings, &mut existing_bindings);
+
+        let did_expand_or =
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
+                &*candidate.match_pairs
+            {
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.match_pairs.clear();
+                true
+            } else {
+                false
+            };
+
+        // Move or-patterns to the end, because they can result in us
+        // creating additional candidates, so we want to test them as
+        // late as possible.
+        candidate.match_pairs.sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
+        debug!(simplified = ?candidate, "simplify_candidate");
+
+        did_expand_or
     }
 
     /// Given `candidate` that has a single or-pattern for its match-pairs,
