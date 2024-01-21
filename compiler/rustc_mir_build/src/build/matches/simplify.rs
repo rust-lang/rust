@@ -87,7 +87,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //     let z = (x as Variant).copy_field;
         //     // and raises an error
         // }
-        let mut original_bindings = mem::take(&mut candidate.bindings);
+        let original_bindings = mem::take(&mut candidate.bindings);
         let mut new_bindings = Vec::new();
         // Repeatedly simplify match pairs until fixed point is reached
         loop {
@@ -115,9 +115,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Restore original bindings and append the new ones.
-        // This does: candidate.bindings = original_bindings ++ new_bindings
-        mem::swap(&mut candidate.bindings, &mut original_bindings);
-        candidate.bindings.extend_from_slice(&new_bindings);
+        // This does: candidate.bindings = new_bindings ++ original_bindings
+        mem::swap(&mut candidate.bindings, &mut new_bindings);
+        candidate.bindings.extend_from_slice(&original_bindings);
 
         let did_expand_or =
             if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =

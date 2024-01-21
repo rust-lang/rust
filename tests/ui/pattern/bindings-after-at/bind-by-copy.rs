@@ -1,3 +1,4 @@
+// run-pass
 #![allow(unused)]
 
 // Test copy
@@ -41,7 +42,6 @@ pub fn main() {
 
     match (E::E { a: 10, e: C { c: 20 } }) {
         x @ E::E{ a, e: C { c } } => {
-            //~^ ERROR use of moved value
             assert!(matches!(x, E::E { a: 10, e: C { c: 20 } }));
             assert!(a == 10);
             assert!(c == 20);
@@ -50,7 +50,6 @@ pub fn main() {
     }
     match (E::E { a: 10, e: C { c: 20 } }) {
         mut x @ E::E{ a, e: C { mut c } } => {
-            //~^ ERROR use of moved value
             x = E::NotE;
             c += 30;
             assert_eq!(c, 50);
