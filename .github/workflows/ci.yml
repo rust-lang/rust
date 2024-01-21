@@ -28,6 +28,7 @@ name: CI
       - "**"
 permissions:
   contents: read
+  packages: write
 defaults:
   run:
     shell: bash
@@ -42,6 +43,7 @@ jobs:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
@@ -172,6 +174,7 @@ jobs:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -554,6 +557,7 @@ jobs:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
