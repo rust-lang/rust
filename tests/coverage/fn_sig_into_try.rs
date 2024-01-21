@@ -8,24 +8,28 @@
 // signature should be handled in the same way.
 
 fn a() -> Option<i32>
+//
 {
     Some(7i32);
     Some(0)
 }
 
 fn b() -> Option<i32>
+//
 {
     Some(7i32)?;
     Some(0)
 }
 
 fn c() -> Option<i32>
+//
 {
     let _ = Some(7i32)?;
     Some(0)
 }
 
 fn d() -> Option<i32>
+//
 {
     let _: () = ();
     Some(7i32)?;

@@ -1,5 +1,6 @@
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
    LL|      1|    let result
    LL|      1|        =
