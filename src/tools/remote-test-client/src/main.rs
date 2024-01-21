@@ -300,7 +300,7 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
 
     // Ok now it's time to read all the output. We're receiving "frames"
     // representing stdout/stderr, so we decode all that here.
-    let mut header = [0; 5];
+    let mut header = [0; 9];
     let mut stderr_done = false;
     let mut stdout_done = false;
     let mut client = t!(client.into_inner());
@@ -308,10 +308,8 @@ fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     let mut stderr = io::stderr();
     while !stdout_done || !stderr_done {
         t!(client.read_exact(&mut header));
-        let amt = ((header[1] as u64) << 24)
-            | ((header[2] as u64) << 16)
-            | ((header[3] as u64) << 8)
-            | ((header[4] as u64) << 0);
+        let amt = u64::from_be_bytes(header[1..9].try_into().unwrap());
+
         if header[0] == 0 {
             if amt == 0 {
                 stdout_done = true;
@@ -349,7 +347,8 @@ fn send(path: &Path, dst: &mut dyn Write) {
     t!(dst.write_all(&[0]));
     let mut file = t!(File::open(&path));
     let amt = t!(file.metadata()).len();
-    t!(dst.write_all(&[(amt >> 24) as u8, (amt >> 16) as u8, (amt >> 8) as u8, (amt >> 0) as u8,]));
+
+    t!(dst.write_all(&amt.to_be_bytes()));
     t!(io::copy(&mut file, dst));
 }
 
