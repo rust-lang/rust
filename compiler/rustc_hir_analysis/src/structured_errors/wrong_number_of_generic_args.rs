@@ -771,8 +771,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         );
 
         if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
-            && let Some(parent_node) = self.tcx.opt_hir_node(parent_node)
-            && let hir::Node::Expr(expr) = parent_node
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(parent_node)
         {
             match &expr.kind {
                 hir::ExprKind::Path(qpath) => self

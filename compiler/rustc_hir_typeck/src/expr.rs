@@ -1017,7 +1017,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         then: impl FnOnce(&hir::Expr<'_>),
     ) {
         let mut parent = self.tcx.hir().parent_id(original_expr_id);
-        while let Some(node) = self.tcx.opt_hir_node(parent) {
+        loop {
+            let node = self.tcx.hir_node(parent);
             match node {
                 hir::Node::Expr(hir::Expr {
                     kind:
@@ -1471,8 +1472,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
             && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
-            && let Some(span) = self.tcx.hir().opt_span(hir_id)
         {
+            let span = self.tcx.hir().span(hir_id);
             match self.dcx().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
                 Some(mut err) => {
                     err.span_suggestion(
