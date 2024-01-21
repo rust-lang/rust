@@ -2346,9 +2346,6 @@ mod sealed {
     vector_vnor! { vec_vnorsb i8 }
     vector_vnor! { vec_vnorsh i16 }
     vector_vnor! { vec_vnorsw i32 }
-    vector_vnor! { vec_vnorub u8 }
-    vector_vnor! { vec_vnoruh u16 }
-    vector_vnor! { vec_vnoruw u32 }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorNor<Other> {
@@ -2356,7 +2353,7 @@ mod sealed {
         unsafe fn vec_nor(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait! { [VectorNor vec_nor] 2 (vec_vnorub, vec_vnorsb, vec_vnoruh, vec_vnorsh, vec_vnoruw, vec_vnorsw) }
+    impl_vec_trait! { [VectorNor vec_nor]+ 2b (vec_vnorsb, vec_vnorsh, vec_vnorsw) }
 
     #[inline]
     #[target_feature(enable = "altivec")]
