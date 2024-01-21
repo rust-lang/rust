@@ -11,7 +11,7 @@ mod ty;
 
 impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
     type T = stable_mir::mir::Safety;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_hir::Unsafety::Unsafe => stable_mir::mir::Safety::Unsafe,
             rustc_hir::Unsafety::Normal => stable_mir::mir::Safety::Normal,
@@ -21,14 +21,14 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Unsafety {
 
 impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         self.as_usize()
     }
 }
 
 impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineSource {
     type T = stable_mir::mir::CoroutineSource;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_hir::CoroutineSource;
         match self {
             CoroutineSource::Block => stable_mir::mir::CoroutineSource::Block,
@@ -40,7 +40,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineSource {
 
 impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     type T = stable_mir::mir::CoroutineKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_hir::{CoroutineDesugaring, CoroutineKind};
         match *self {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, source) => {
@@ -71,7 +71,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
 impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
     type T = stable_mir::Symbol;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         self.to_string()
     }
 }
@@ -79,7 +79,7 @@ impl<'tcx> Stable<'tcx> for rustc_span::Symbol {
 impl<'tcx> Stable<'tcx> for rustc_span::Span {
     type T = stable_mir::ty::Span;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         tables.create_span(*self)
     }
 }
