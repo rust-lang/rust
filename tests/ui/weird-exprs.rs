@@ -238,7 +238,7 @@ fn return_already() -> impl std::fmt::Debug {
     }
 }
 
-fn cursed_macros() -> impl std::fmt::Debug {
+fn fake_macros() -> impl std::fmt::Debug {
     loop {
         if! {
             match! (
@@ -283,5 +283,5 @@ pub fn main() {
     useful_syntax();
     infcx();
     return_already();
-    cursed_macros();
+    fake_macros();
 }
