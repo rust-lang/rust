@@ -1168,7 +1168,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // be a switch or pattern comparison.
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
-            self.simplify_candidate(candidate);
+            self.simplify_match_pairs(
+                &mut candidate.match_pairs,
+                &mut candidate.bindings,
+                &mut candidate.ascriptions,
+            );
             if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
                 &*candidate.match_pairs
             {
@@ -1181,7 +1185,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // }
                 //
                 // only generates a single switch.
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.subcandidates =
+                    self.create_or_subcandidates(place, pats, candidate.has_guard);
                 candidate.match_pairs.pop();
                 split_or_candidate = true;
             }
