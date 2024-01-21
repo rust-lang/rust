@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `fn(Argument) -> Return {function}: Trait` is not satisfied
+error[E0277]: the trait bound `{fn item function: fn(Argument) -> Return}: Trait` is not satisfied
   --> $DIR/issue-99875.rs:12:11
    |
 LL |     takes(function);
-   |     ----- ^^^^^^^^ the trait `Trait` is not implemented for fn item `fn(Argument) -> Return {function}`
+   |     ----- ^^^^^^^^ the trait `Trait` is not implemented for fn item `{fn item function: fn(Argument) -> Return}`
    |     |
    |     required by a bound introduced by this call
    |

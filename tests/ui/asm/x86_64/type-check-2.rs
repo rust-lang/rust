@@ -64,7 +64,7 @@ fn main() {
         let mut r = &mut 0;
         asm!("{}", in(reg) f);
         asm!("{}", inout(reg) f);
-        //~^ ERROR cannot use value of type `fn() {main}` for inline assembly
+        //~^ ERROR cannot use value of type `{fn item main: fn()}` for inline assembly
         asm!("{}", in(reg) r);
         asm!("{}", inout(reg) r);
         //~^ ERROR cannot use value of type `&mut i32` for inline assembly

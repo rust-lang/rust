@@ -17,7 +17,7 @@ note: expected `usize`, found fn item
 LL |     generate_setter,
    |     ^^^^^^^^^^^^^^^
    = note: expected type `usize`
-           found fn item `fn() {generate_setter}`
+           found fn item `{fn item generate_setter: fn()}`
 note: associated function defined here
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 help: remove the extra arguments

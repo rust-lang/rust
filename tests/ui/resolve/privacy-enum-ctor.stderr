@@ -276,7 +276,7 @@ LL |         let _: Z = Z::Fn;
    |                expected due to this
    |
    = note:          expected enum `Z`
-           found enum constructor `fn(u8) -> Z {Z::Fn}`
+           found enum constructor `{fn item Z::Fn: fn(u8) -> Z}`
 help: use parentheses to construct this tuple variant
    |
 LL |         let _: Z = Z::Fn(/* u8 */);
@@ -317,7 +317,7 @@ LL |     let _: E = m::E::Fn;
    |            expected due to this
    |
    = note:          expected enum `E`
-           found enum constructor `fn(u8) -> E {E::Fn}`
+           found enum constructor `{fn item E::Fn: fn(u8) -> E}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = m::E::Fn(/* u8 */);
@@ -358,7 +358,7 @@ LL |     let _: E = E::Fn;
    |            expected due to this
    |
    = note:          expected enum `E`
-           found enum constructor `fn(u8) -> E {E::Fn}`
+           found enum constructor `{fn item E::Fn: fn(u8) -> E}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::Fn(/* u8 */);

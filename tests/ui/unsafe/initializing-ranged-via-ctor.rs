@@ -7,5 +7,5 @@ struct NonZeroAndOneU8(u8);
 
 fn main() {
     println!("{:?}", Some(1).map(NonZeroAndOneU8).unwrap());
-    //~^ ERROR found `unsafe fn(u8) -> NonZeroAndOneU8 {NonZeroAndOneU8}`
+    //~^ ERROR expected a `FnOnce({integer})` closure, found `{fn item NonZeroAndOneU8: unsafe fn(u8) -> NonZeroAndOneU8}`
 }

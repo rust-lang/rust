@@ -663,7 +663,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     p!(print_def_path(def_id, args));
                 } else {
                     let sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
-                    p!(print(sig), " {{", print_value_path(def_id, args), "}}");
+                    p!("{{fn item ", print_value_path(def_id, args), ": ", print(sig), "}}");
                 }
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),

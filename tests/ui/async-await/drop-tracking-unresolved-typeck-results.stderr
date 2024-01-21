@@ -8,7 +8,7 @@ LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrde
 LL | |     });
    | |______^ implementation of `FnOnce` is not general enough
    |
-   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: `{fn item std::future::ready::<&'0 ()>: fn(&'0 ()) -> std::future::Ready<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
@@ -21,7 +21,7 @@ LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrde
 LL | |     });
    | |______^ implementation of `FnOnce` is not general enough
    |
-   = note: `fn(&'0 ()) -> std::future::Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: `{fn item std::future::ready::<&'0 ()>: fn(&'0 ()) -> std::future::Ready<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
    = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

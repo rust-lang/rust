@@ -24,13 +24,13 @@ help: this trait has no implementations, consider adding one
 LL | trait Elide<T> {
    | ^^^^^^^^^^^^^^
 
-error[E0277]: cannot add `fn() {<() as Elide<(&(),)>>::call}` to `{integer}`
+error[E0277]: cannot add `{fn item <() as Elide<(&(),)>>::call: fn()}` to `{integer}`
   --> $DIR/escaping_bound_vars.rs:11:18
    |
 LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
-   |                  ^ no implementation for `{integer} + fn() {<() as Elide<(&(),)>>::call}`
+   |                  ^ no implementation for `{integer} + {fn item <() as Elide<(&(),)>>::call: fn()}`
    |
-   = help: the trait `Add<fn() {<() as Elide<(&(),)>>::call}>` is not implemented for `{integer}`
+   = help: the trait `Add<{fn item <() as Elide<(&(),)>>::call: fn()}>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
              <isize as Add>
              <isize as Add<&isize>>

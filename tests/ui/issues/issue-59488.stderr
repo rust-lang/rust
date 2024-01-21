@@ -1,10 +1,10 @@
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: binary operation `>` cannot be applied to type `{fn item foo: fn() -> i32}`
   --> $DIR/issue-59488.rs:14:9
    |
 LL |     foo > 12;
    |     --- ^ -- {integer}
    |     |
-   |     fn() -> i32 {foo}
+   |     {fn item foo: fn() -> i32}
    |
 help: use parentheses to call this function
    |
@@ -17,16 +17,16 @@ error[E0308]: mismatched types
 LL |     foo > 12;
    |           ^^ expected fn item, found `i32`
    |
-   = note: expected fn item `fn() -> i32 {foo}`
+   = note: expected fn item `{fn item foo: fn() -> i32}`
                  found type `i32`
 
-error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
+error[E0369]: binary operation `>` cannot be applied to type `{fn item bar: fn(i64) -> i64}`
   --> $DIR/issue-59488.rs:18:9
    |
 LL |     bar > 13;
    |     --- ^ -- {integer}
    |     |
-   |     fn(i64) -> i64 {bar}
+   |     {fn item bar: fn(i64) -> i64}
    |
 help: use parentheses to call this function
    |
@@ -39,29 +39,29 @@ error[E0308]: mismatched types
 LL |     bar > 13;
    |           ^^ expected fn item, found `i64`
    |
-   = note: expected fn item `fn(i64) -> i64 {bar}`
+   = note: expected fn item `{fn item bar: fn(i64) -> i64}`
                  found type `i64`
 
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: binary operation `>` cannot be applied to type `{fn item foo: fn() -> i32}`
   --> $DIR/issue-59488.rs:22:9
    |
 LL |     foo > foo;
-   |     --- ^ --- fn() -> i32 {foo}
+   |     --- ^ --- {fn item foo: fn() -> i32}
    |     |
-   |     fn() -> i32 {foo}
+   |     {fn item foo: fn() -> i32}
    |
 help: use parentheses to call these
    |
 LL |     foo() > foo();
    |        ++      ++
 
-error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+error[E0369]: binary operation `>` cannot be applied to type `{fn item foo: fn() -> i32}`
   --> $DIR/issue-59488.rs:25:9
    |
 LL |     foo > bar;
-   |     --- ^ --- fn(i64) -> i64 {bar}
+   |     --- ^ --- {fn item bar: fn(i64) -> i64}
    |     |
-   |     fn() -> i32 {foo}
+   |     {fn item foo: fn() -> i32}
 
 error[E0308]: mismatched types
   --> $DIR/issue-59488.rs:25:11
@@ -72,33 +72,33 @@ LL |     foo > bar;
    = note: expected fn item `fn() -> i32 {foo}`
               found fn item `fn(i64) -> i64 {bar}`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item Foo::Bar: fn(usize) -> Foo}`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |     |
-   |     fn(usize) -> Foo {Foo::Bar}
-   |     fn(usize) -> Foo {Foo::Bar}
+   |     {fn item Foo::Bar: fn(usize) -> Foo}
+   |     {fn item Foo::Bar: fn(usize) -> Foo}
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
+error[E0277]: `{fn item Foo::Bar: fn(usize) -> Foo}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `{fn item Foo::Bar: fn(usize) -> Foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for fn item `{fn item Foo::Bar: fn(usize) -> Foo}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
+error[E0277]: `{fn item Foo::Bar: fn(usize) -> Foo}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `{fn item Foo::Bar: fn(usize) -> Foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
+   = help: the trait `Debug` is not implemented for fn item `{fn item Foo::Bar: fn(usize) -> Foo}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors

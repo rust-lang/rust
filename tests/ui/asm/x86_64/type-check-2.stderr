@@ -63,7 +63,7 @@ LL |         asm!("{}", in(reg) [1, 2, 3]);
    |
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
-error: cannot use value of type `fn() {main}` for inline assembly
+error: cannot use value of type `{fn item main: fn()}` for inline assembly
   --> $DIR/type-check-2.rs:66:31
    |
 LL |         asm!("{}", inout(reg) f);

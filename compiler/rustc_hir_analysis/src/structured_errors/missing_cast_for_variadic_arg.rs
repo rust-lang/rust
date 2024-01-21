@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode};
+use rustc_errors::{codes::*, Applicability, DiagnosticBuilder, ErrCode};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -40,6 +40,20 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
         if self.ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
+
+        let msg = if self.ty.is_fn() {
+            err.help("a function item is zero-sized and needs to be casted into a function pointer to be used in FFI")
+                .note("for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html");
+            "cast the value into a function pointer".to_string()
+        } else {
+            format!("cast the value to `{}`", self.cast_ty)
+        };
+        err.span_suggestion_verbose(
+            self.span.shrink_to_hi(),
+            msg,
+            format!(" as {}", self.cast_ty),
+            Applicability::MachineApplicable,
+        );
 
         err
     }

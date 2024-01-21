@@ -48,13 +48,13 @@ error[E0054]: cannot cast `IntEnum` as `bool`
 LL |     let _ = IntEnum::One as bool;
    |             ^^^^^^^^^^^^^^^^^^^^ unsupported cast
 
-error[E0054]: cannot cast `fn(u8) -> String {uwu}` as `bool`
+error[E0054]: cannot cast `{fn item uwu: fn(u8) -> String}` as `bool`
   --> $DIR/cast-as-bool.rs:33:13
    |
 LL |     let _ = uwu as bool;
    |             ^^^^^^^^^^^ unsupported cast
 
-error[E0054]: cannot cast `unsafe fn() {owo}` as `bool`
+error[E0054]: cannot cast `{fn item owo: unsafe fn()}` as `bool`
   --> $DIR/cast-as-bool.rs:35:13
    |
 LL |     let _ = owo as bool;

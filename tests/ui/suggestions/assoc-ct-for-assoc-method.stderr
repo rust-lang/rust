@@ -7,7 +7,7 @@ LL |     let x: i32 = MyS::foo;
    |            expected due to this
    |
    = note: expected type `i32`
-           found fn item `fn() -> MyS {MyS::foo}`
+           found fn item `{fn item MyS::foo: fn() -> MyS}`
 help: try referring to the associated const `FOO` instead
    |
 LL |     let x: i32 = MyS::FOO;
@@ -22,19 +22,19 @@ LL |     let z: i32 = i32::max;
    |            expected due to this
    |
    = note: expected type `i32`
-           found fn item `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
+           found fn item `{fn item <i32 as Ord>::max: fn(i32, i32) -> i32}`
 help: try referring to the associated const `MAX` instead
    |
 LL |     let z: i32 = i32::MAX;
    |                       ~~~
 
-error[E0369]: cannot subtract `{integer}` from `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
+error[E0369]: cannot subtract `{integer}` from `{fn item <i32 as Ord>::max: fn(i32, i32) -> i32}`
   --> $DIR/assoc-ct-for-assoc-method.rs:22:27
    |
 LL |     let y: i32 = i32::max - 42;
    |                  -------- ^ -- {integer}
    |                  |
-   |                  fn(i32, i32) -> i32 {<i32 as Ord>::max}
+   |                  {fn item <i32 as Ord>::max: fn(i32, i32) -> i32}
    |
 help: use parentheses to call this method
    |

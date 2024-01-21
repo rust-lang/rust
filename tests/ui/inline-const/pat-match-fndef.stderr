@@ -1,4 +1,4 @@
-error: `fn() {uwu}` cannot be used in patterns
+error: `{fn item uwu: fn()}` cannot be used in patterns
   --> $DIR/pat-match-fndef.rs:8:9
    |
 LL |         const { uwu } => {}

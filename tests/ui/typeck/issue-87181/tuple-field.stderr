@@ -1,4 +1,4 @@
-error[E0609]: no field `0` on type `fn(char, u16) -> Foo {Foo}`
+error[E0609]: no field `0` on type `{fn item Foo: fn(char, u16) -> Foo}`
   --> $DIR/tuple-field.rs:12:15
    |
 LL |     thing.bar.0;

@@ -68,14 +68,14 @@ note: but type `PrivTy` is only usable at visibility `pub(crate)`
 LL | struct PrivTy;
    | ^^^^^^^^^^^^^
 
-error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
+error[E0446]: private type `{fn item my_const_fn: fn(u8) -> u8}` in public interface
   --> $DIR/where-priv-type.rs:75:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type
 ...
 LL | const fn my_const_fn(val: u8) -> u8 {
-   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+   | ----------------------------------- `{fn item my_const_fn: fn(u8) -> u8}` declared as private
 
 error: aborting due to 1 previous error; 5 warnings emitted
 

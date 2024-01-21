@@ -2,15 +2,15 @@ error[E0369]: binary operation `==` cannot be applied to type `A`
   --> $DIR/issue-62375.rs:7:7
    |
 LL |     a == A::Value;
-   |     - ^^ -------- fn(()) -> A {A::Value}
+   |     - ^^ -------- {fn item A::Value: fn(()) -> A}
    |     |
    |     A
    |
-note: an implementation of `PartialEq<fn(()) -> A {A::Value}>` might be missing for `A`
+note: an implementation of `PartialEq<{fn item A::Value: fn(()) -> A}>` might be missing for `A`
   --> $DIR/issue-62375.rs:1:1
    |
 LL | enum A {
-   | ^^^^^^ must implement `PartialEq<fn(()) -> A {A::Value}>`
+   | ^^^^^^ must implement `PartialEq<{fn item A::Value: fn(()) -> A}>`
 help: use parentheses to construct this tuple variant
    |
 LL |     a == A::Value(/* () */);

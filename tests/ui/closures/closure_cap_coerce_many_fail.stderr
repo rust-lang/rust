@@ -4,14 +4,14 @@ error[E0308]: `match` arms have incompatible types
 LL |       let _ = match "+" {
    |  _____________-
 LL | |         "+" => add,
-   | |                --- this is found to be of type `fn(i32, i32) -> i32 {add}`
+   | |                --- this is found to be of type `{fn item add: fn(i32, i32) -> i32}`
 LL | |         "-" => |a, b| (a - b + cap) as i32,
    | |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn item, found closure
 LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected fn item `fn(i32, i32) -> i32 {add}`
+   = note: expected fn item `{fn item add: fn(i32, i32) -> i32}`
               found closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:9:16: 9:22}`
 
 error[E0308]: `match` arms have incompatible types

@@ -1,10 +1,10 @@
-error[E0599]: no method named `nonexistent_method` found for enum constructor `fn(_) -> Option<_> {Option::<_>::Some}` in the current scope
+error[E0599]: no method named `nonexistent_method` found for enum constructor `{fn item Option::<_>::Some: fn(_) -> Option<_>}` in the current scope
   --> $DIR/issue-96738.rs:2:10
    |
 LL |     Some.nonexistent_method();
-   |          ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
+   |          ^^^^^^^^^^^^^^^^^^ method not found in `{fn item Option::<_>::Some: fn(_) -> Option<_>}`
 
-error[E0609]: no field `nonexistent_field` on type `fn(_) -> Option<_> {Option::<_>::Some}`
+error[E0609]: no field `nonexistent_field` on type `{fn item Option::<_>::Some: fn(_) -> Option<_>}`
   --> $DIR/issue-96738.rs:3:10
    |
 LL |     Some.nonexistent_field;

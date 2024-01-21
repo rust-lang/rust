@@ -11,11 +11,11 @@ mod priv_nominal {
 
     pub macro mac() {
         let value = Pub::method;
-        //~^ ERROR type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR type `{fn item priv_nominal::Pub::method: for<'a> fn(&'a priv_nominal::Pub)}` is private
         value;
-        //~^ ERROR type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR type `{fn item priv_nominal::Pub::method: for<'a> fn(&'a priv_nominal::Pub)}` is private
         Pub.method();
-        //~^ ERROR type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+        //~^ ERROR type `{fn item priv_nominal::Pub::method: for<'a> fn(&'a priv_nominal::Pub)}` is private
         Pub::CONST;
         //~^ ERROR associated constant `CONST` is private
         // let _: Pub::AssocTy;

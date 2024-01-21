@@ -27,7 +27,7 @@ LL | fn foo() {}
    | -------- function `foo` defined here
    |
    = note: expected unit type `()`
-                found fn item `fn() {foo}`
+                found fn item `{fn item foo: fn()}`
 help: use parentheses to call this function
    |
 LL |     let _: () = foo();

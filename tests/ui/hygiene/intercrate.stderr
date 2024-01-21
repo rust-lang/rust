@@ -1,4 +1,4 @@
-error: type `fn() -> u32 {foo::bar::f}` is private
+error: type `{fn item foo::bar::f: fn() -> u32}` is private
   --> $DIR/intercrate.rs:8:16
    |
 LL |     assert_eq!(intercrate::foo::m!(), 1);

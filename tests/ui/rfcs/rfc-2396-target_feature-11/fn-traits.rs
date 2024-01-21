@@ -21,14 +21,14 @@ fn call_once(f: impl FnOnce()) {
 }
 
 fn main() {
-    call(foo); //~ ERROR expected a `Fn()` closure, found `fn() {foo}`
-    call_mut(foo); //~ ERROR expected a `FnMut()` closure, found `fn() {foo}`
-    call_once(foo); //~ ERROR expected a `FnOnce()` closure, found `fn() {foo}`
+    call(foo); //~ ERROR expected a `Fn()` closure, found `{fn item foo: fn()}`
+    call_mut(foo); //~ expected a `FnMut()` closure, found `{fn item foo: fn()}`
+    call_once(foo); //~ expected a `FnOnce()` closure, found `{fn item foo: fn()}`
 
     call(foo_unsafe);
-    //~^ ERROR expected a `Fn()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ expected a `Fn()` closure, found `{fn item foo_unsafe: unsafe fn()}
     call_mut(foo_unsafe);
-    //~^ ERROR expected a `FnMut()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ ERROR expected a `FnMut()` closure, found `{fn item foo_unsafe: unsafe fn()}`
     call_once(foo_unsafe);
-    //~^ ERROR expected a `FnOnce()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ ERROR expected a `FnOnce()` closure, found `{fn item foo_unsafe: unsafe fn()}`
 }

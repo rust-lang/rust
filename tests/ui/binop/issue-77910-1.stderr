@@ -1,24 +1,24 @@
-error[E0369]: binary operation `==` cannot be applied to type `for<'a> fn(&'a i32) -> &'a i32 {foo}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item foo: for<'a> fn(&'a i32) -> &'a i32}`
   --> $DIR/issue-77910-1.rs:8:5
    |
 LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^
    |     |
-   |     for<'a> fn(&'a i32) -> &'a i32 {foo}
+   |     {fn item foo: for<'a> fn(&'a i32) -> &'a i32}
    |     _
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `for<'a> fn(&'a i32) -> &'a i32 {foo}` doesn't implement `Debug`
+error[E0277]: `{fn item foo: for<'a> fn(&'a i32) -> &'a i32}` doesn't implement `Debug`
   --> $DIR/issue-77910-1.rs:8:5
    |
 LL | fn foo(s: &i32) -> &i32 {
    |    --- consider calling this function
 ...
 LL |     assert_eq!(foo, y);
-   |     ^^^^^^^^^^^^^^^^^^ `for<'a> fn(&'a i32) -> &'a i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^ `{fn item foo: for<'a> fn(&'a i32) -> &'a i32}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for fn item `for<'a> fn(&'a i32) -> &'a i32 {foo}`
+   = help: the trait `Debug` is not implemented for fn item `{fn item foo: for<'a> fn(&'a i32) -> &'a i32}`
    = help: use parentheses to call this function: `foo(/* &i32 */)`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

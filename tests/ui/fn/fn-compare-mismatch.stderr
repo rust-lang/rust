@@ -1,10 +1,10 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() {f}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item f: fn()}`
   --> $DIR/fn-compare-mismatch.rs:4:15
    |
 LL |     let x = f == g;
-   |             - ^^ - fn() {g}
+   |             - ^^ - {fn item g: fn()}
    |             |
-   |             fn() {f}
+   |             {fn item f: fn()}
    |
 help: use parentheses to call these
    |

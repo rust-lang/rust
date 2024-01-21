@@ -7,7 +7,7 @@ LL | pub static C: S = S(f);
    |                   arguments to this struct are incorrect
    |
    = note: expected struct `Box<(dyn FnMut() + Sync + 'static)>`
-             found fn item `fn() {f}`
+             found fn item `{fn item f: fn()}`
 note: tuple struct defined here
   --> $DIR/issue-5216.rs:2:8
    |
@@ -21,7 +21,7 @@ LL | pub static D: T = g;
    |                   ^ expected `Box<dyn FnMut() + Sync>`, found fn item
    |
    = note: expected struct `Box<(dyn FnMut() + Sync + 'static)>`
-             found fn item `fn() {g}`
+             found fn item `{fn item g: fn()}`
 
 error: aborting due to 2 previous errors
 

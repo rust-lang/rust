@@ -47,7 +47,7 @@ LL | fn a() -> [u8; foo::()] {
    |                ^^^^^^^ expected `usize`, found fn item
    |
    = note: expected type `usize`
-           found fn item `fn() {foo}`
+           found fn item `{fn item foo: fn()}`
 
 error: `S<'_>` is forbidden as the type of a const generic parameter
   --> $DIR/unusual-rib-combinations.rs:24:15

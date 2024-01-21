@@ -1,10 +1,10 @@
-error[E0369]: binary operation `==` cannot be applied to type `fn() {second}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item second: fn()}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:2:12
    |
 LL |     second == 1
    |     ------ ^^ - {integer}
    |     |
-   |     fn() {second}
+   |     {fn item second: fn()}
 
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:2:15
@@ -12,7 +12,7 @@ error[E0308]: mismatched types
 LL |     second == 1
    |               ^ expected fn item, found integer
    |
-   = note: expected fn item `fn() {second}`
+   = note: expected fn item `{fn item second: fn()}`
                  found type `{integer}`
 
 error[E0308]: mismatched types
@@ -23,13 +23,13 @@ LL | fn first() {
 LL |     second == 1
    |     ^^^^^^^^^^^ expected `()`, found `bool`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {first}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item first: fn()}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:8:11
    |
 LL |     first == 1
    |     ----- ^^ - {integer}
    |     |
-   |     fn() {first}
+   |     {fn item first: fn()}
 
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:8:14
@@ -37,7 +37,7 @@ error[E0308]: mismatched types
 LL |     first == 1
    |              ^ expected fn item, found integer
    |
-   = note: expected fn item `fn() {first}`
+   = note: expected fn item `{fn item first: fn()}`
                  found type `{integer}`
 
 error[E0308]: mismatched types
@@ -48,13 +48,13 @@ LL | fn second() {
 LL |     first == 1
    |     ^^^^^^^^^^ expected `()`, found `bool`
 
-error[E0369]: binary operation `==` cannot be applied to type `fn() {bar}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item bar: fn()}`
   --> $DIR/issue-66667-function-cmp-cycle.rs:14:9
    |
 LL |     bar == 1
    |     --- ^^ - {integer}
    |     |
-   |     fn() {bar}
+   |     {fn item bar: fn()}
 
 error[E0308]: mismatched types
   --> $DIR/issue-66667-function-cmp-cycle.rs:14:12
@@ -62,7 +62,7 @@ error[E0308]: mismatched types
 LL |     bar == 1
    |            ^ expected fn item, found integer
    |
-   = note: expected fn item `fn() {bar}`
+   = note: expected fn item `{fn item bar: fn()}`
                  found type `{integer}`
 
 error[E0308]: mismatched types

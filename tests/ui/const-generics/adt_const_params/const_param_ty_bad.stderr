@@ -1,8 +1,8 @@
-error[E0277]: `fn() {main}` can't be used as a const parameter type
+error[E0277]: `{fn item main: fn()}` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:7:11
    |
 LL |     check(main);
-   |     ----- ^^^^ the trait `ConstParamTy` is not implemented for fn item `fn() {main}`
+   |     ----- ^^^^ the trait `ConstParamTy` is not implemented for fn item `{fn item main: fn()}`
    |     |
    |     required by a bound introduced by this call
    |

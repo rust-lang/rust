@@ -1,10 +1,10 @@
-error[E0369]: binary operation `==` cannot be applied to type `for<'a> fn(&'a i32) -> &'a i32 {foo}`
+error[E0369]: binary operation `==` cannot be applied to type `{fn item foo: for<'a> fn(&'a i32) -> &'a i32}`
   --> $DIR/issue-77910-2.rs:7:12
    |
 LL |     if foo == y {}
    |        --- ^^ - _
    |        |
-   |        for<'a> fn(&'a i32) -> &'a i32 {foo}
+   |        {fn item foo: for<'a> fn(&'a i32) -> &'a i32}
    |
 help: use parentheses to call this function
    |

@@ -10,7 +10,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
    |            expected due to this
    |
    = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
+                found fn item `{fn item <i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>: fn()}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>();
@@ -28,7 +28,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
    |            expected due to this
    |
    = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<ReStatic, ReStatic>>::bar::<ReStatic, char>}`
+                found fn item `{fn item <i8 as Foo<ReStatic, ReStatic>>::bar::<ReStatic, char>: fn()}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>();
@@ -46,7 +46,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
    |            expected due to this
    |
    = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::baz}`
+                found fn item `{fn item <i8 as Foo<ReStatic, ReStatic, u8>>::baz: fn()}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz();
@@ -64,7 +64,7 @@ LL |     let x: () = foo::<'static>;
    |            expected due to this
    |
    = note: expected unit type `()`
-                found fn item `fn() {foo::<ReStatic>}`
+                found fn item `{fn item foo::<ReStatic>: fn()}`
 help: use parentheses to call this function
    |
 LL |     let x: () = foo::<'static>();

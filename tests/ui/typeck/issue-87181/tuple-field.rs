@@ -10,5 +10,5 @@ impl Foo {
 fn main() {
     let thing = Bar { bar: Foo };
     thing.bar.0;
-    //~^ ERROR no field `0` on type `fn(char, u16) -> Foo {Foo}` [E0609]
+    //~^ ERROR no field `0` on type `{fn item Foo: fn(char, u16) -> Foo}` [E0609]
 }

@@ -106,7 +106,7 @@ error: type `S2` is private
 LL |     adjust::S1.method_s3();
    |     ^^^^^^^^^^ private type
 
-error: type `fn() {priv_fn}` is private
+error: type `{fn item priv_fn: fn()}` is private
   --> $DIR/private-inferred-type.rs:39:9
    |
 LL |         priv_fn;
@@ -128,7 +128,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn() {<u8 as PrivTrait>::method}` is private
+error: type `{fn item <u8 as PrivTrait>::method: fn()}` is private
   --> $DIR/private-inferred-type.rs:43:9
    |
 LL |         <u8 as PrivTrait>::method;
@@ -139,7 +139,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn(u8) -> PrivTupleStruct {PrivTupleStruct}` is private
+error: type `{fn item PrivTupleStruct: fn(u8) -> PrivTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:45:9
    |
 LL |         PrivTupleStruct;
@@ -150,7 +150,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
+error: type `{fn item PubTupleStruct: fn(u8) -> PubTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:47:9
    |
 LL |         PubTupleStruct;
@@ -161,7 +161,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+error: type `{fn item Pub::<u8>::priv_method: for<'a> fn(&'a Pub<u8>)}` is private
   --> $DIR/private-inferred-type.rs:49:18
    |
 LL |         Pub(0u8).priv_method();

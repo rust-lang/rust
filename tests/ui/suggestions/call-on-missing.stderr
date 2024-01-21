@@ -1,15 +1,15 @@
-error[E0599]: no method named `bar` found for fn item `fn() -> Foo {foo}` in the current scope
+error[E0599]: no method named `bar` found for fn item `{fn item foo: fn() -> Foo}` in the current scope
   --> $DIR/call-on-missing.rs:12:9
    |
 LL |     foo.bar();
-   |         ^^^ method not found in `fn() -> Foo {foo}`
+   |         ^^^ method not found in `{fn item foo: fn() -> Foo}`
    |
 help: use parentheses to call this function
    |
 LL |     foo().bar();
    |        ++
 
-error[E0609]: no field `i` on type `fn() -> Foo {foo}`
+error[E0609]: no field `i` on type `{fn item foo: fn() -> Foo}`
   --> $DIR/call-on-missing.rs:16:9
    |
 LL |     foo.i;

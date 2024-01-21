@@ -67,7 +67,7 @@ pub fn main() {
 
     // functions
     fn baz(_x: i32) {}
-    let _ = &baz as &dyn Fn(i32); //~ERROR `&fn(i32) {baz}` as `&dyn Fn(i32)`
+    let _ = &baz as &dyn Fn(i32); //~ERROR trivial cast: `&{fn item baz: fn(i32)}` as `&dyn Fn(i32)`
     let _: &dyn Fn(i32) = &baz;
     let x = |_x: i32| {};
     let _ = &x as &dyn Fn(i32); //~ERROR trivial cast

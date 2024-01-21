@@ -22,7 +22,7 @@ note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
 LL | pub trait StreamExt
    | ^^^^^^^^^^^^^^^^^^^
 
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@issue-30786.rs:131:30}>`, but its trait bounds were not satisfied
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, {fn item identity::<u64>: fn(&u64) -> &u64}>, {closure@issue-30786.rs:131:30}>`, but its trait bounds were not satisfied
   --> $DIR/issue-30786.rs:132:24
    |
 LL | pub struct Filter<S, F> {
@@ -32,9 +32,9 @@ LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
    |
 note: the following trait bounds were not satisfied:
-      `&'a mut &Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
-      `&'a mut &mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
-      `&'a mut Filter<Map<Repeat, for<'a> fn(&'a u64) -> &'a u64 {identity::<u64>}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
+      `&'a mut &Filter<Map<Repeat, {fn item identity::<u64>: for<'a> fn(&'a u64) -> &'a u64}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
+      `&'a mut &mut Filter<Map<Repeat, {fn item identity::<u64>: for<'a> fn(&'a u64) -> &'a u64}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
+      `&'a mut Filter<Map<Repeat, {fn item identity::<u64>: for<'a> fn(&'a u64) -> &'a u64}>, {closure@$DIR/issue-30786.rs:131:30: 131:37}>: Stream`
   --> $DIR/issue-30786.rs:98:50
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}

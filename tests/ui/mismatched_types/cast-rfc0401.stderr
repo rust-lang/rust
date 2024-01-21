@@ -14,7 +14,7 @@ LL |     u as *const str
    |
    = note: vtable kinds may not match
 
-error[E0609]: no field `f` on type `fn() {main}`
+error[E0609]: no field `f` on type `{fn item main: fn()}`
   --> $DIR/cast-rfc0401.rs:65:18
    |
 LL |     let _ = main.f as *const u32;
@@ -62,7 +62,7 @@ error[E0606]: casting `*const u8` as `f32` is invalid
 LL |     let _ = v as f32;
    |             ^^^^^^^^
 
-error[E0606]: casting `fn() {main}` as `f64` is invalid
+error[E0606]: casting `{fn item main: fn()}` as `f64` is invalid
   --> $DIR/cast-rfc0401.rs:36:13
    |
 LL |     let _ = main as f64;
@@ -176,7 +176,7 @@ error[E0606]: casting `&dyn Foo` as `*mut str` is invalid
 LL |     let _ = foo as *mut str;
    |             ^^^^^^^^^^^^^^^
 
-error[E0606]: casting `fn() {main}` as `*mut str` is invalid
+error[E0606]: casting `{fn item main: fn()}` as `*mut str` is invalid
   --> $DIR/cast-rfc0401.rs:56:13
    |
 LL |     let _ = main as *mut str;

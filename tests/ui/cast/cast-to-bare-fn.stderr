@@ -1,4 +1,4 @@
-error[E0605]: non-primitive cast: `fn(isize) {foo}` as `extern "C" fn() -> isize`
+error[E0605]: non-primitive cast: `{fn item foo: fn(isize)}` as `extern "C" fn() -> isize`
   --> $DIR/cast-to-bare-fn.rs:5:13
    |
 LL |     let x = foo as extern "C" fn() -> isize;

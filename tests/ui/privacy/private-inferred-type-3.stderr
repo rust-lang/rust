@@ -1,4 +1,4 @@
-error: type `fn() {ext::priv_fn}` is private
+error: type `{fn item ext::priv_fn: fn()}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
@@ -22,7 +22,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn() {<u8 as ext::PrivTrait>::method}` is private
+error: type `{fn item <u8 as ext::PrivTrait>::method: fn()}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
@@ -30,7 +30,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private
+error: type `{fn item ext::PrivTupleStruct: fn(u8) -> ext::PrivTupleStruct}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
@@ -38,7 +38,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
+error: type `{fn item PubTupleStruct: fn(u8) -> PubTupleStruct}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
@@ -46,7 +46,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
+error: type `{fn item Pub::<u8>::priv_method: for<'a> fn(&'a Pub<u8>)}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();

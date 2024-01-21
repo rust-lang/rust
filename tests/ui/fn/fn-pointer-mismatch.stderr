@@ -2,7 +2,7 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/fn-pointer-mismatch.rs:11:43
    |
 LL |     let g = if n % 2 == 0 { &foo } else { &bar };
-   |                             ----          ^^^^ expected `&fn(u32) -> u32 {foo}`, found `&fn(u32) -> u32 {bar}`
+   |                             ----          ^^^^ expected `&{fn item foo: fn(u32) -> u32}`, found `&{fn item bar: fn(u32) -> u32}`
    |                             |
    |                             expected because of this
    |
@@ -43,7 +43,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:36:29
    |
 LL |     let c: fn(u32) -> u32 = &foo;
-   |            --------------   ^^^^ expected fn pointer, found `&fn(u32) -> u32 {foo}`
+   |            --------------   ^^^^ expected fn pointer, found `&{fn item foo: fn(u32) -> u32}`
    |            |
    |            expected due to this
    |
@@ -73,7 +73,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:48:30
    |
 LL |     let e: &fn(u32) -> u32 = &foo;
-   |            ---------------   ^^^^ expected `&fn(u32) -> u32`, found `&fn(u32) -> u32 {foo}`
+   |            ---------------   ^^^^ expected `&fn(u32) -> u32`, found `&{fn item foo: fn(u32) -> u32}`
    |            |
    |            expected due to this
    |

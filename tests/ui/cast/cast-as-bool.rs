@@ -30,9 +30,9 @@ fn main() {
     unsafe fn owo() {}
 
     // fn item to bool
-    let _ = uwu as bool; //~ ERROR cannot cast `fn(u8) -> String {uwu}` as `bool`
+    let _ = uwu as bool; //~ ERROR cannot cast `{fn item uwu: fn(u8) -> String}` as `bool`
     // unsafe fn item
-    let _ = owo as bool; //~ ERROR cannot cast `unsafe fn() {owo}` as `bool`
+    let _ = owo as bool; //~ ERROR cannot cast `{fn item owo: unsafe fn()}` as `bool`
 
     // fn ptr to bool
     let _ = uwu as fn(u8) -> String as bool; //~ ERROR cannot cast `fn(u8) -> String` as `bool`

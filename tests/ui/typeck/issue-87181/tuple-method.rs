@@ -10,5 +10,5 @@ impl Foo {
 fn main() {
     let thing = Bar { bar: Foo };
     thing.bar.foo();
-    //~^ ERROR no method named `foo` found for struct constructor `fn(u8, i32) -> Foo {Foo}` in the current scope [E0599]
+    //~^ ERROR no method named `foo` found for struct constructor `{fn item Foo: fn(u8, i32) -> Foo}` in the current scope [E0599]
 }

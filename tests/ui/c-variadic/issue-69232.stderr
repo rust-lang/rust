@@ -1,19 +1,19 @@
-error[E0617]: can't pass `{fn item bar: fn(*const u8)}` to variadic function
-  --> $DIR/issue-32201.rs:9:16
+error[E0617]: can't pass `{fn item test: fn() -> u8}` to variadic function
+  --> $DIR/issue-69232.rs:10:12
    |
-LL |         foo(0, bar);
-   |                ^^^
+LL |     foo(1, test);
+   |            ^^^^
    |
    = help: a function item is zero-sized and needs to be casted into a function pointer to be used in FFI
    = note: for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
-help: cast the value to `fn(*const u8)`
+help: cast the value to `fn() -> u8`
    |
-LL |         foo(0, bar as fn(*const u8));
-   |                ~~~~~~~~~~~~~~~~~~~~
+LL |     foo(1, test as fn() -> u8);
+   |            ~~~~~~~~~~~~~~~~~~
 help: cast the value into a function pointer
    |
-LL |         foo(0, bar as fn(*const u8));
-   |                    ++++++++++++++++
+LL |     foo(1, test as fn() -> u8);
+   |                 +++++++++++++
 
 error: aborting due to 1 previous error
 

@@ -10,7 +10,7 @@ LL |     let _: usize = foo;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize, usize) -> usize {foo}`
+           found fn item `{fn item foo: fn(usize, usize) -> usize}`
 help: use parentheses to call this function
    |
 LL |     let _: usize = foo(/* usize */, /* usize */);
@@ -28,7 +28,7 @@ LL |     let _: S = S;
    |            expected due to this
    |
    = note:          expected struct `S`
-           found struct constructor `fn(usize, usize) -> S {S}`
+           found struct constructor `{fn item S: fn(usize, usize) -> S}`
 help: use parentheses to construct this tuple struct
    |
 LL |     let _: S = S(/* usize */, /* usize */);
@@ -46,7 +46,7 @@ LL |     let _: usize = bar;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn() -> usize {bar}`
+           found fn item `{fn item bar: fn() -> usize}`
 help: use parentheses to call this function
    |
 LL |     let _: usize = bar();
@@ -64,7 +64,7 @@ LL |     let _: V = V;
    |            expected due to this
    |
    = note:          expected struct `V`
-           found struct constructor `fn() -> V {V}`
+           found struct constructor `{fn item V: fn() -> V}`
 help: use parentheses to construct this tuple struct
    |
 LL |     let _: V = V();
@@ -82,7 +82,7 @@ LL |     let _: usize = T::baz;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize, usize) -> usize {<_ as T>::baz}`
+           found fn item `{fn item <_ as T>::baz: fn(usize, usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = T::baz(/* usize */, /* usize */);
@@ -100,7 +100,7 @@ LL |     let _: usize = T::bat;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize) -> usize {<_ as T>::bat}`
+           found fn item `{fn item <_ as T>::bat: fn(usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = T::bat(/* usize */);
@@ -118,7 +118,7 @@ LL |     let _: E = E::A;
    |            expected due to this
    |
    = note:          expected enum `E`
-           found enum constructor `fn(usize) -> E {E::A}`
+           found enum constructor `{fn item E::A: fn(usize) -> E}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::A(/* usize */);
@@ -142,7 +142,7 @@ LL |     let _: usize = X::baz;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize, usize) -> usize {<X as T>::baz}`
+           found fn item `{fn item <X as T>::baz: fn(usize, usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::baz(/* usize */, /* usize */);
@@ -160,7 +160,7 @@ LL |     let _: usize = X::bat;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize) -> usize {<X as T>::bat}`
+           found fn item `{fn item <X as T>::bat: fn(usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bat(/* usize */);
@@ -178,7 +178,7 @@ LL |     let _: usize = X::bax;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize) -> usize {<X as T>::bax}`
+           found fn item `{fn item <X as T>::bax: fn(usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bax(/* usize */);
@@ -196,7 +196,7 @@ LL |     let _: usize = X::bach;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `fn(usize) -> usize {<X as T>::bach}`
+           found fn item `{fn item <X as T>::bach: fn(usize) -> usize}`
 help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bach(/* usize */);
@@ -214,7 +214,7 @@ LL |     let _: usize = X::ban;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `for<'a> fn(&'a X) -> usize {<X as T>::ban}`
+           found fn item `{fn item <X as T>::ban: for<'a> fn(&'a X) -> usize}`
 help: use parentheses to call this method
    |
 LL |     let _: usize = X::ban(/* &X */);
@@ -232,7 +232,7 @@ LL |     let _: usize = X::bal;
    |            expected due to this
    |
    = note: expected type `usize`
-           found fn item `for<'a> fn(&'a X) -> usize {<X as T>::bal}`
+           found fn item `{fn item <X as T>::bal: for<'a> fn(&'a X) -> usize}`
 help: use parentheses to call this method
    |
 LL |     let _: usize = X::bal(/* &X */);
