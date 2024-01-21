@@ -4,6 +4,6 @@
    LL|       |
    LL|       |extern crate test;
    LL|       |
-   LL|      1|#[bench]
+   LL|       |#[bench]
    LL|      1|fn my_bench(_b: &mut test::Bencher) {}
 
