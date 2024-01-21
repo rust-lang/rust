@@ -796,9 +796,15 @@ impl SyntaxExtension {
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
     fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], is_local: bool) -> bool {
-        let collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+        let mut collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
             .map(|v| Self::collapse_debuginfo_by_name(sess, v))
             .unwrap_or(CollapseMacroDebuginfo::Unspecified);
+        if collapse_debuginfo_attr == CollapseMacroDebuginfo::Unspecified
+            && attr::contains_name(attrs, sym::rustc_builtin_macro)
+        {
+            collapse_debuginfo_attr = CollapseMacroDebuginfo::Yes;
+        }
+
         let flag = sess.opts.unstable_opts.collapse_macro_debuginfo;
         let attr = collapse_debuginfo_attr;
         let ext = !is_local;
