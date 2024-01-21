@@ -768,6 +768,16 @@ Additional dotfiles (files or directories starting with a dot) to allow
 * [`path_ends_with_ext`](https://rust-lang.github.io/rust-clippy/master/index.html#path_ends_with_ext)
 
 
+## `allowed-duplicate-crates`
+A list of crate names to allow duplicates of
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`multiple_crate_versions`](https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions)
+
+
 ## `enforce-iter-loop-reborrow`
 Whether to recommend using implicit into iter for reborrowed values.
 

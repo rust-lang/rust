@@ -3,13 +3,14 @@
 use cargo_metadata::{DependencyKind, Metadata, Node, Package, PackageId};
 use clippy_utils::diagnostics::span_lint;
 use itertools::Itertools;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::LateContext;
 use rustc_span::DUMMY_SP;
 
 use super::MULTIPLE_CRATE_VERSIONS;
 
-pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
+pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata, allowed_duplicate_crates: &FxHashSet<String>) {
     let local_name = cx.tcx.crate_name(LOCAL_CRATE);
     let mut packages = metadata.packages.clone();
     packages.sort_by(|a, b| a.name.cmp(&b.name));
@@ -31,7 +32,11 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
             }
         })
     {
-        for (name, group) in &packages.iter().group_by(|p| p.name.clone()) {
+        for (name, group) in &packages
+            .iter()
+            .filter(|p| !allowed_duplicate_crates.contains(&p.name))
+            .group_by(|p| &p.name)
+        {
             let group: Vec<&Package> = group.collect();
 
             if group.len() <= 1 {

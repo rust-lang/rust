@@ -574,6 +574,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         warn_on_all_wildcard_imports,
         check_private_items,
         pub_underscore_fields_behavior,
+        ref allowed_duplicate_crates,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -947,6 +948,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(cargo::Cargo {
             ignore_publish: cargo_ignore_publish,
+            allowed_duplicate_crates: allowed_duplicate_crates.clone(),
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));

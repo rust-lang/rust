@@ -523,6 +523,10 @@ define_Conf! {
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
     (allowed_dotfiles: FxHashSet<String> = FxHashSet::default()),
+    /// Lint: MULTIPLE_CRATE_VERSIONS.
+    ///
+    /// A list of crate names to allow duplicates of
+    (allowed_duplicate_crates: FxHashSet<String> = FxHashSet::default()),
     /// Lint: EXPLICIT_ITER_LOOP.
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.
