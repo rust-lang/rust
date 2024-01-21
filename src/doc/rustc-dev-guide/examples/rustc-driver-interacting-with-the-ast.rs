@@ -10,12 +10,11 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use std::{path, process, str};
+use std::{path, process, str, sync::Arc};
 
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::registry;
-use rustc_session::config::{self, CheckCfg};
-use rustc_span::source_map;
+use rustc_session::config;
 
 fn main() {
     let out = process::Command::new("rustc")
@@ -30,7 +29,7 @@ fn main() {
             ..config::Options::default()
         },
         input: config::Input::Str {
-            name: source_map::FileName::Custom("main.rs".to_string()),
+            name: rustc_span::FileName::Custom("main.rs".to_string()),
             input: r#"
 fn main() {
     let message = "Hello, World!";
@@ -39,8 +38,8 @@ fn main() {
 "#
             .to_string(),
         },
-        crate_cfg: rustc_hash::FxHashSet::default(),
-        crate_check_cfg: CheckCfg::default(),
+        crate_cfg: Vec::new(),
+        crate_check_cfg: Vec::new(),
         output_dir: None,
         output_file: None,
         file_loader: None,
@@ -50,9 +49,11 @@ fn main() {
         register_lints: None,
         override_queries: None,
         make_codegen_backend: None,
-        registry: registry::Registry::new(&rustc_error_codes::DIAGNOSTICS),
+        registry: registry::Registry::new(rustc_error_codes::DIAGNOSTICS),
         expanded_args: Vec::new(),
         ice_file: None,
+        hash_untracked_state: None,
+        using_internal_features: Arc::default(),
     };
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {

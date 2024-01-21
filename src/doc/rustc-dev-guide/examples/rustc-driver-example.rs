@@ -9,12 +9,11 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use std::{path, process, str};
+use std::{path, process, str, sync::Arc};
 
 use rustc_errors::registry;
-use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_session::config::{self, CheckCfg};
-use rustc_span::source_map;
+use rustc_hash::FxHashMap;
+use rustc_session::config;
 
 fn main() {
     let out = process::Command::new("rustc")
@@ -30,10 +29,10 @@ fn main() {
             ..config::Options::default()
         },
         // cfg! configuration in addition to the default ones
-        crate_cfg: FxHashSet::default(), // FxHashSet<(String, Option<String>)>
-        crate_check_cfg: CheckCfg::default(), // CheckCfg
+        crate_cfg: Vec::new(),       // FxHashSet<(String, Option<String>)>
+        crate_check_cfg: Vec::new(), // CheckCfg
         input: config::Input::Str {
-            name: source_map::FileName::Custom("main.rs".into()),
+            name: rustc_span::FileName::Custom("main.rs".into()),
             input: r#"
 static HELLO: &str = "Hello, world!";
 fn main() {
@@ -61,10 +60,12 @@ fn main() {
         // The second parameter is local providers and the third parameter is external providers.
         override_queries: None, // Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>
         // Registry of diagnostics codes.
-        registry: registry::Registry::new(&rustc_error_codes::DIAGNOSTICS),
+        registry: registry::Registry::new(rustc_error_codes::DIAGNOSTICS),
         make_codegen_backend: None,
         expanded_args: Vec::new(),
         ice_file: None,
+        hash_untracked_state: None,
+        using_internal_features: Arc::default(),
     };
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
