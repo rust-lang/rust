@@ -796,8 +796,7 @@ fn classify_name_ref(
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
                             match sema.resolve_path(&trait_.parent_path().top_path())? {
-                                hir::PathResolution::Def(def) => match def {
-                                    hir::ModuleDef::Trait(trait_) => {
+                                hir::PathResolution::Def(hir::ModuleDef::Trait(trait_)) =>  {
                                         let arg_name = arg.name_ref()?;
                                         let arg_name = arg_name.text();
                                         let trait_items = trait_.items_with_supertraits(sema.db);
@@ -810,8 +809,6 @@ fn classify_name_ref(
                                         })?;
                                         sema.source(*assoc_ty)?.value.generic_param_list()
                                     }
-                                    _ => None,
-                                },
                                 _ => None,
                             }
                         },
@@ -866,9 +863,7 @@ fn classify_name_ref(
                     TypeLocation::TypeAscription(TypeAscriptionTarget::Const(original.body()))
                 },
                 ast::RetType(it) => {
-                    if it.thin_arrow_token().is_none() {
-                        return None;
-                    }
+                    it.thin_arrow_token()?;
                     let parent = match ast::Fn::cast(parent.parent()?) {
                         Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
@@ -888,15 +883,11 @@ fn classify_name_ref(
                     }))
                 },
                 ast::Param(it) => {
-                    if it.colon_token().is_none() {
-                        return None;
-                    }
+                    it.colon_token()?;
                     TypeLocation::TypeAscription(TypeAscriptionTarget::FnParam(find_opt_node_in_file(original_file, it.pat())))
                 },
                 ast::LetStmt(it) => {
-                    if it.colon_token().is_none() {
-                        return None;
-                    }
+                    it.colon_token()?;
                     TypeLocation::TypeAscription(TypeAscriptionTarget::Let(find_opt_node_in_file(original_file, it.pat())))
                 },
                 ast::Impl(it) => {
@@ -1312,7 +1303,7 @@ fn pattern_context_for(
                                 .parent()
                                 .and_then(ast::MatchExpr::cast)
                                 .and_then(|match_expr| {
-                                    let expr_opt = find_opt_node_in_file(&original_file, match_expr.expr());
+                                    let expr_opt = find_opt_node_in_file(original_file, match_expr.expr());
 
                                     expr_opt.and_then(|expr| {
                                         sema.type_of_expr(&expr)?
@@ -1321,24 +1312,20 @@ fn pattern_context_for(
                                         .find_map(|ty| match ty.as_adt() {
                                             Some(hir::Adt::Enum(e)) => Some(e),
                                             _ => None,
-                                        }).and_then(|enum_| {
-                                            Some(enum_.variants(sema.db))
-                                        })
+                                        }).map(|enum_| enum_.variants(sema.db))
                                     })
-                                }).and_then(|variants| {
-                                   Some(variants.iter().filter_map(|variant| {
+                                }).map(|variants| variants.iter().filter_map(|variant| {
                                         let variant_name = variant.name(sema.db).display(sema.db).to_string();
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {
                                                 let pat_already_present = pat.syntax().to_string().contains(&variant_name);
-                                                pat_already_present.then(|| pat_already_present)
+                                                pat_already_present.then_some(pat_already_present)
                                             }).is_some()
                                         });
 
-                                        (!variant_already_present).then_some(variant.clone())
+                                        (!variant_already_present).then_some(*variant)
                                     }).collect::<Vec<Variant>>())
-                                })
                         });
 
                         if let Some(missing_variants_) = missing_variants_opt {

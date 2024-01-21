@@ -50,6 +50,21 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
 };
 
+pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        granularity: ImportGranularity::One,
+        prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
+        group: true,
+        skip_glob_imports: true,
+    },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    assist_emit_must_use: false,
+};
+
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     RootDatabase::with_single_file(text)
 }
@@ -69,6 +84,22 @@ pub(crate) fn check_assist_no_snippet_cap(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
         TEST_CONFIG_NO_SNIPPET_CAP,
+        assist,
+        ra_fixture_before,
+        ExpectedResult::After(&ra_fixture_after),
+        None,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_assist_import_one(
+    assist: Handler,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+) {
+    let ra_fixture_after = trim_indent(ra_fixture_after);
+    check_with_config(
+        TEST_CONFIG_IMPORT_ONE,
         assist,
         ra_fixture_before,
         ExpectedResult::After(&ra_fixture_after),
@@ -104,6 +135,17 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
 #[track_caller]
 pub(crate) fn check_assist_not_applicable_by_label(assist: Handler, ra_fixture: &str, label: &str) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, Some(label));
+}
+
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_for_import_one(assist: Handler, ra_fixture: &str) {
+    check_with_config(
+        TEST_CONFIG_IMPORT_ONE,
+        assist,
+        ra_fixture,
+        ExpectedResult::NotApplicable,
+        None,
+    );
 }
 
 /// Check assist in unresolved state. Useful to check assists for lazy computation.
@@ -201,7 +243,7 @@ fn check_with_config(
                 .filter(|it| !it.source_file_edits.is_empty() || !it.file_system_edits.is_empty())
                 .expect("Assist did not contain any source changes");
             let skip_header = source_change.source_file_edits.len() == 1
-                && source_change.file_system_edits.len() == 0;
+                && source_change.file_system_edits.is_empty();
 
             let mut buf = String::new();
             for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {

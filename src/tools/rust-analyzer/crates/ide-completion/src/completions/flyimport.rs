@@ -209,9 +209,7 @@ fn import_on_the_fly(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let ns_filter = |import: &LocatedImport| {
         match (kind, import.original_item) {
@@ -297,9 +295,7 @@ fn import_on_the_fly_pat_(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly_pat").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let ns_filter = |import: &LocatedImport| match import.original_item {
         ItemInNs::Macros(mac) => mac.is_fn_like(ctx.db),
@@ -349,9 +345,7 @@ fn import_on_the_fly_method(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly_method").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
@@ -375,11 +369,10 @@ fn import_on_the_fly_method(
             };
             key(&a.import_path).cmp(&key(&b.import_path))
         })
-        .for_each(|import| match import.original_item {
-            ItemInNs::Values(hir::ModuleDef::Function(f)) => {
+        .for_each(|import| {
+            if let ItemInNs::Values(hir::ModuleDef::Function(f)) = import.original_item {
                 acc.add_method_with_import(ctx, dot_access, f, import);
             }
-            _ => (),
         });
     Some(())
 }

@@ -37,7 +37,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
             "cannot mutate immutable variable `{}`",
             d.local.name(ctx.sema.db).display(ctx.sema.db)
         ),
-        d.span.clone(),
+        d.span,
     )
     .with_fixes(fixes)
 }

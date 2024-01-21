@@ -37,9 +37,8 @@ pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingField
     let ptr = InFile::new(
         d.file,
         d.field_list_parent_path
-            .clone()
             .map(SyntaxNodePtr::from)
-            .unwrap_or_else(|| d.field_list_parent.clone().into()),
+            .unwrap_or_else(|| d.field_list_parent.into()),
     );
 
     Diagnostic::new_with_syntax_node_ptr(ctx, DiagnosticCode::RustcHardError("E0063"), message, ptr)
@@ -87,7 +86,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
     match &d.field_list_parent.to_node(&root) {
         Either::Left(field_list_parent) => {
-            let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
+            let missing_fields = ctx.sema.record_literal_missing_fields(field_list_parent);
 
             let mut locals = FxHashMap::default();
             ctx.sema.scope(field_list_parent.syntax())?.process_all_names(&mut |name, def| {
@@ -99,7 +98,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
                 crate::ExprFillDefaultMode::Todo => make::ext::expr_todo(),
                 crate::ExprFillDefaultMode::Default => {
-                    get_default_constructor(ctx, d, ty).unwrap_or_else(|| make::ext::expr_todo())
+                    get_default_constructor(ctx, d, ty).unwrap_or_else(make::ext::expr_todo)
                 }
             };
 
@@ -151,7 +150,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             )
         }
         Either::Right(field_list_parent) => {
-            let missing_fields = ctx.sema.record_pattern_missing_fields(&field_list_parent);
+            let missing_fields = ctx.sema.record_pattern_missing_fields(field_list_parent);
 
             let old_field_list = field_list_parent.record_pat_field_list()?;
             let new_field_list = old_field_list.clone_for_update();

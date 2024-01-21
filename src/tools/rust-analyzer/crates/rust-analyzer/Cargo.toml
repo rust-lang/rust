@@ -63,6 +63,7 @@ parser.workspace = true
 toolchain.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
+memchr = "2.7.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.9"

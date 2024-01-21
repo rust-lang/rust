@@ -18,7 +18,7 @@ pub(crate) fn interpret_function(db: &RootDatabase, position: FilePosition) -> S
     let mut result = find_and_interpret(db, position)
         .unwrap_or_else(|| "Not inside a function body".to_string());
     let duration = Instant::now() - start_time;
-    writeln!(result, "").unwrap();
+    writeln!(result).unwrap();
     writeln!(result, "----------------------").unwrap();
     writeln!(result, "  Finished in {}s", duration.as_secs_f32()).unwrap();
     result

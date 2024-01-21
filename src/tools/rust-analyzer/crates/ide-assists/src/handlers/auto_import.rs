@@ -49,6 +49,8 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // - `item`: Don't merge imports at all, creating one import per item.
 // - `preserve`: Do not change the granularity of any imports. For auto-import this has the same
 //  effect as `item`.
+// - `one`: Merge all imports into a single use statement as long as they have the same visibility
+//  and attributes.
 //
 // In `VS Code` the configuration for this is `rust-analyzer.imports.granularity.group`.
 //
@@ -196,7 +198,7 @@ pub(super) fn find_importable_node(
     {
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
             .zip(Some(method_under_caret.syntax().clone().into()))
-    } else if let Some(_) = ctx.find_node_at_offset_with_descend::<ast::Param>() {
+    } else if ctx.find_node_at_offset_with_descend::<ast::Param>().is_some() {
         None
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()

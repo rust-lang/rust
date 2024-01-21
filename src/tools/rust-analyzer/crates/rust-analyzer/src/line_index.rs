@@ -6,6 +6,7 @@
 //! convert back to `\r\n` on the way out).
 
 use ide_db::line_index::WideEncoding;
+use memchr::memmem;
 use triomphe::Arc;
 
 #[derive(Clone, Copy)]
@@ -39,10 +40,10 @@ impl LineEndings {
         let mut tail = buf.as_mut_slice();
         let mut crlf_seen = false;
 
-        let find_crlf = |src: &[u8]| src.windows(2).position(|it| it == b"\r\n");
+        let finder = memmem::Finder::new(b"\r\n");
 
         loop {
-            let idx = match find_crlf(&tail[gap_len..]) {
+            let idx = match finder.find(&tail[gap_len..]) {
                 None if crlf_seen => tail.len(),
                 // SAFETY: buf is unchanged and therefore still contains utf8 data
                 None => return (unsafe { String::from_utf8_unchecked(buf) }, LineEndings::Unix),

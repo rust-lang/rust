@@ -207,7 +207,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
                         }
                     };
-                    diff.insertions.entry(insert_pos).or_insert_with(Vec::new).push(element);
+                    diff.insertions.entry(insert_pos).or_default().push(element);
                 }
                 (Some(element), None) => {
                     cov_mark::hit!(diff_delete);
@@ -239,7 +239,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
                         };
 
-                        diff.insertions.entry(insert_pos).or_insert_with(Vec::new).extend(drain);
+                        diff.insertions.entry(insert_pos).or_default().extend(drain);
                         rhs_children = rhs_children_clone;
                     } else {
                         go(diff, lhs_ele, rhs_ele);

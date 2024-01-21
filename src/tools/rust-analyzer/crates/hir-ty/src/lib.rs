@@ -228,7 +228,7 @@ impl MemoryMap {
         let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
-            f(val, align).and_then(|it| Ok((addr, it)))
+            f(val, align).map(|it| (addr, it))
         };
         match self {
             MemoryMap::Empty => Ok(Default::default()),
@@ -351,9 +351,156 @@ pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
     safety: Safety,
+    abi: FnAbi,
 }
 
 has_interner!(CallableSig);
+
+#[derive(Debug, Copy, Clone, Eq)]
+pub enum FnAbi {
+    Aapcs,
+    AapcsUnwind,
+    AmdgpuKernel,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
+    C,
+    CCmseNonsecureCall,
+    CDecl,
+    CDeclUnwind,
+    CUnwind,
+    Efiapi,
+    Fastcall,
+    FastcallUnwind,
+    Msp430Interrupt,
+    PlatformIntrinsic,
+    PtxKernel,
+    RiscvInterruptM,
+    RiscvInterruptS,
+    Rust,
+    RustCall,
+    RustCold,
+    RustIntrinsic,
+    Stdcall,
+    StdcallUnwind,
+    System,
+    SystemUnwind,
+    Sysv64,
+    Sysv64Unwind,
+    Thiscall,
+    ThiscallUnwind,
+    Unadjusted,
+    Vectorcall,
+    VectorcallUnwind,
+    Wasm,
+    Win64,
+    Win64Unwind,
+    X86Interrupt,
+    Unknown,
+}
+
+impl PartialEq for FnAbi {
+    fn eq(&self, _other: &Self) -> bool {
+        // FIXME: Proper equality breaks `coercion::two_closures_lub` test
+        true
+    }
+}
+
+impl Hash for FnAbi {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Required because of the FIXME above and due to us implementing `Eq`, without this
+        // we would break the `Hash` + `Eq` contract
+        core::mem::discriminant(&Self::Unknown).hash(state);
+    }
+}
+
+impl FnAbi {
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_str(s: &str) -> FnAbi {
+        match s {
+            "aapcs-unwind" => FnAbi::AapcsUnwind,
+            "aapcs" => FnAbi::Aapcs,
+            "amdgpu-kernel" => FnAbi::AmdgpuKernel,
+            "avr-interrupt" => FnAbi::AvrInterrupt,
+            "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
+            "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
+            "C-unwind" => FnAbi::CUnwind,
+            "C" => FnAbi::C,
+            "cdecl-unwind" => FnAbi::CDeclUnwind,
+            "cdecl" => FnAbi::CDecl,
+            "efiapi" => FnAbi::Efiapi,
+            "fastcall-unwind" => FnAbi::FastcallUnwind,
+            "fastcall" => FnAbi::Fastcall,
+            "msp430-interrupt" => FnAbi::Msp430Interrupt,
+            "platform-intrinsic" => FnAbi::PlatformIntrinsic,
+            "ptx-kernel" => FnAbi::PtxKernel,
+            "riscv-interrupt-m" => FnAbi::RiscvInterruptM,
+            "riscv-interrupt-s" => FnAbi::RiscvInterruptS,
+            "rust-call" => FnAbi::RustCall,
+            "rust-cold" => FnAbi::RustCold,
+            "rust-intrinsic" => FnAbi::RustIntrinsic,
+            "Rust" => FnAbi::Rust,
+            "stdcall-unwind" => FnAbi::StdcallUnwind,
+            "stdcall" => FnAbi::Stdcall,
+            "system-unwind" => FnAbi::SystemUnwind,
+            "system" => FnAbi::System,
+            "sysv64-unwind" => FnAbi::Sysv64Unwind,
+            "sysv64" => FnAbi::Sysv64,
+            "thiscall-unwind" => FnAbi::ThiscallUnwind,
+            "thiscall" => FnAbi::Thiscall,
+            "unadjusted" => FnAbi::Unadjusted,
+            "vectorcall-unwind" => FnAbi::VectorcallUnwind,
+            "vectorcall" => FnAbi::Vectorcall,
+            "wasm" => FnAbi::Wasm,
+            "win64-unwind" => FnAbi::Win64Unwind,
+            "win64" => FnAbi::Win64,
+            "x86-interrupt" => FnAbi::X86Interrupt,
+            _ => FnAbi::Unknown,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            FnAbi::Aapcs => "aapcs",
+            FnAbi::AapcsUnwind => "aapcs-unwind",
+            FnAbi::AmdgpuKernel => "amdgpu-kernel",
+            FnAbi::AvrInterrupt => "avr-interrupt",
+            FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
+            FnAbi::C => "C",
+            FnAbi::CCmseNonsecureCall => "C-cmse-nonsecure-call",
+            FnAbi::CDecl => "C-decl",
+            FnAbi::CDeclUnwind => "cdecl-unwind",
+            FnAbi::CUnwind => "C-unwind",
+            FnAbi::Efiapi => "efiapi",
+            FnAbi::Fastcall => "fastcall",
+            FnAbi::FastcallUnwind => "fastcall-unwind",
+            FnAbi::Msp430Interrupt => "msp430-interrupt",
+            FnAbi::PlatformIntrinsic => "platform-intrinsic",
+            FnAbi::PtxKernel => "ptx-kernel",
+            FnAbi::RiscvInterruptM => "riscv-interrupt-m",
+            FnAbi::RiscvInterruptS => "riscv-interrupt-s",
+            FnAbi::Rust => "Rust",
+            FnAbi::RustCall => "rust-call",
+            FnAbi::RustCold => "rust-cold",
+            FnAbi::RustIntrinsic => "rust-intrinsic",
+            FnAbi::Stdcall => "stdcall",
+            FnAbi::StdcallUnwind => "stdcall-unwind",
+            FnAbi::System => "system",
+            FnAbi::SystemUnwind => "system-unwind",
+            FnAbi::Sysv64 => "sysv64",
+            FnAbi::Sysv64Unwind => "sysv64-unwind",
+            FnAbi::Thiscall => "thiscall",
+            FnAbi::ThiscallUnwind => "thiscall-unwind",
+            FnAbi::Unadjusted => "unadjusted",
+            FnAbi::Vectorcall => "vectorcall",
+            FnAbi::VectorcallUnwind => "vectorcall-unwind",
+            FnAbi::Wasm => "wasm",
+            FnAbi::Win64 => "win64",
+            FnAbi::Win64Unwind => "win64-unwind",
+            FnAbi::X86Interrupt => "x86-interrupt",
+            FnAbi::Unknown => "unknown-abi",
+        }
+    }
+}
 
 /// A polymorphic function signature.
 pub type PolyFnSig = Binders<CallableSig>;
@@ -364,11 +511,17 @@ impl CallableSig {
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
+        abi: FnAbi,
     ) -> CallableSig {
         params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs, safety }
+        CallableSig { params_and_return: params.into(), is_varargs, safety, abi }
     }
 
+    pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
+        let callable_def = db.lookup_intern_callable_def(def.into());
+        let sig = db.callable_item_signature(callable_def);
+        sig.substitute(Interner, substs)
+    }
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
@@ -385,13 +538,14 @@ impl CallableSig {
             ),
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
+            abi: fn_ptr.sig.abi,
         }
     }
 
     pub fn to_fn_ptr(&self) -> FnPointer {
         FnPointer {
             num_binders: 0,
-            sig: FnSig { abi: (), safety: self.safety, variadic: self.is_varargs },
+            sig: FnSig { abi: self.abi, safety: self.safety, variadic: self.is_varargs },
             substitution: FnSubst(Substitution::from_iter(
                 Interner,
                 self.params_and_return.iter().cloned(),
@@ -420,6 +574,7 @@ impl TypeFoldable<Interner> for CallableSig {
             params_and_return: folded.into(),
             is_varargs: self.is_varargs,
             safety: self.safety,
+            abi: self.abi,
         })
     }
 }
@@ -704,7 +859,7 @@ pub fn callable_sig_from_fnonce(
     let params =
         args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
 
-    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
+    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe, FnAbi::RustCall))
 }
 
 struct PlaceholderCollector<'db> {

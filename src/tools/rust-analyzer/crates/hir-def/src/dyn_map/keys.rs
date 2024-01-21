@@ -28,7 +28,7 @@ pub const ENUM: Key<ast::Enum, EnumId> = Key::new();
 pub const EXTERN_CRATE: Key<ast::ExternCrate, ExternCrateId> = Key::new();
 pub const USE: Key<ast::Use, UseId> = Key::new();
 
-pub const VARIANT: Key<ast::Variant, EnumVariantId> = Key::new();
+pub const ENUM_VARIANT: Key<ast::Variant, EnumVariantId> = Key::new();
 pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
 pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeOrConstParamId> = Key::new();

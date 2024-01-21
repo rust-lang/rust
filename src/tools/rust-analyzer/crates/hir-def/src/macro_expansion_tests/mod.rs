@@ -291,15 +291,8 @@ fn pretty_print_macro_expansion(
             let span = map.span_for_range(token.text_range());
             format_to!(res, "#");
             if show_spans {
-                format_to!(
-                    res,
-                    "{:?}:{:?}@{:?}",
-                    span.anchor.file_id,
-                    span.anchor.ast_id.into_raw(),
-                    span.range,
-                );
-            }
-            if show_ctxt {
+                format_to!(res, "{span}",);
+            } else if show_ctxt {
                 format_to!(res, "\\{}", span.ctx);
             }
             format_to!(res, "#");

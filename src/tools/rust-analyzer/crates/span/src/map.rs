@@ -75,7 +75,7 @@ impl<S: Copy> SpanMap<S> {
         let (start, end) = (range.start(), range.end());
         let start_entry = self.spans.partition_point(|&(it, _)| it <= start);
         let end_entry = self.spans[start_entry..].partition_point(|&(it, _)| it <= end); // FIXME: this might be wrong?
-        (&self.spans[start_entry..][..end_entry]).iter().map(|&(_, s)| s)
+        self.spans[start_entry..][..end_entry].iter().map(|&(_, s)| s)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (TextSize, S)> + '_ {

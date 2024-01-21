@@ -185,7 +185,7 @@ fn collect_used_generics<'gp>(
         ast::GenericParam::TypeParam(_) => 1,
     });
 
-    Some(generics).filter(|it| it.len() > 0)
+    Some(generics).filter(|it| !it.is_empty())
 }
 
 #[cfg(test)]

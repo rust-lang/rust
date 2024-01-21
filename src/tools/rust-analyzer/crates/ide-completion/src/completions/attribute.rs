@@ -44,9 +44,7 @@ pub(crate) fn complete_known_attribute_input(
         None => None,
     };
     let (path, tt) = name_ref.zip(attribute.token_tree())?;
-    if tt.l_paren_token().is_none() {
-        return None;
-    }
+    tt.l_paren_token()?;
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),

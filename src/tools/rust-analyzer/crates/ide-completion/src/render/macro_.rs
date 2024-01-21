@@ -2,7 +2,7 @@
 
 use hir::HirDisplay;
 use ide_db::{documentation::Documentation, SymbolKind};
-use syntax::SmolStr;
+use syntax::{format_smolstr, SmolStr};
 
 use crate::{
     context::{PathCompletionCtx, PathKind, PatternContext},
@@ -94,7 +94,7 @@ fn label(
 ) -> SmolStr {
     if needs_bang {
         if ctx.snippet_cap().is_some() {
-            SmolStr::from_iter([&*name, "!", bra, "…", ket])
+            format_smolstr!("{name}!{bra}…{ket}",)
         } else {
             banged_name(name)
         }

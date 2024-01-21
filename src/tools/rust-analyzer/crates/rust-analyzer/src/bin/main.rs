@@ -17,7 +17,7 @@ use lsp_server::Connection;
 use rust_analyzer::{cli::flags, config::Config, from_json};
 use vfs::AbsPathBuf;
 
-#[cfg(all(feature = "mimalloc"))]
+#[cfg(feature = "mimalloc")]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
