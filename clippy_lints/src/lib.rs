@@ -1068,7 +1068,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(single_call_fn::SingleCallFn {
             avoid_breaking_exported_api,
-            def_id_to_usage: rustc_data_structures::fx::FxHashMap::default(),
+            def_id_to_usage: rustc_data_structures::fx::FxIndexMap::default(),
         })
     });
     store.register_early_pass(move || {
