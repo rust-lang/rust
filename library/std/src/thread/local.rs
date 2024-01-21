@@ -166,10 +166,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// ```
 /// use std::cell::Cell;
 /// thread_local! {
-///     pub static FOO: Cell<u32> = const {
-///         let value = 1;
-///         Cell::new(value)
-///     };
+///     pub static FOO: Cell<u32> = const { Cell::new(1) };
 /// }
 ///
 /// assert_eq!(FOO.get(), 1);
