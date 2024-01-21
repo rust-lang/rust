@@ -2663,14 +2663,8 @@ mod sealed {
         };
     }
 
-    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub trait VectorSl<Other> {
-        type Result;
-        unsafe fn vec_sl(self, b: Other) -> Self::Result;
-    }
-
-    macro_rules! impl_sl {
-        ($fun:ident $ty:ident) => {
+    macro_rules! impl_shift {
+        ($fun:ident $intr:ident $ty:ident) => {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr($fun))]
@@ -2681,16 +2675,34 @@ mod sealed {
                     <t_t_s!($ty)>::splat(mem::size_of::<$ty>() as $ty * $ty::BITS as $ty),
                 );
 
-                transmute(simd_shl(a, b))
+                transmute($intr(a, b))
             }
         };
     }
 
-    impl_sl! { vslb u8 }
-    impl_sl! { vslh u16 }
-    impl_sl! { vslw u32 }
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSl<Other> {
+        type Result;
+        unsafe fn vec_sl(self, b: Other) -> Self::Result;
+    }
+
+    impl_shift! { vslb simd_shl u8 }
+    impl_shift! { vslh simd_shl u16 }
+    impl_shift! { vslw simd_shl u32 }
 
     impl_vec_shift! { [VectorSl vec_sl] (vslb, vslh, vslw) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSr<Other> {
+        type Result;
+        unsafe fn vec_sr(self, b: Other) -> Self::Result;
+    }
+
+    impl_shift! { vsrb simd_shr u8 }
+    impl_shift! { vsrh simd_shr u16 }
+    impl_shift! { vsrw simd_shr u32 }
+
+    impl_vec_shift! { [VectorSr vec_sr] (vsrb, vsrh, vsrw) }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorSld {
@@ -2961,6 +2973,17 @@ where
     T: sealed::VectorSl<U>,
 {
     a.vec_sl(b)
+}
+
+/// Vector Shift Right
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sr<T, U>(a: T, b: U) -> <T as sealed::VectorSr<U>>::Result
+where
+    T: sealed::VectorSr<U>,
+{
+    a.vec_sr(b)
 }
 
 /// Vector Shift Left Double
