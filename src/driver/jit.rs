@@ -321,9 +321,10 @@ fn dep_symbol_lookup_fn(
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = crate_info.crate_name[&cnum];
-                let mut err = sess.dcx().struct_err(format!("Can't load static lib {}", name));
-                err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
-                err.emit();
+                sess.dcx()
+                    .struct_err(format!("Can't load static lib {}", name))
+                    .note("rustc_codegen_cranelift can only load dylibs in JIT mode.")
+                    .emit();
             }
             Linkage::Dynamic => {
                 dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
