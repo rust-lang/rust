@@ -123,11 +123,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
 fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    match tcx.opt_hir_node(id) {
-        Some(Node::Pat(Pat {
+    match tcx.hir_node(id) {
+        Node::Pat(Pat {
             kind: PatKind::Binding(..),
             ..
-        })) => (),
+        }) => (),
         _ => return false,
     }
 
