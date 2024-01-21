@@ -82,7 +82,7 @@ impl<'a, T: ?Sized> Captures<'a> for T {}
 /// Most of the crate is parameterized on a type that implements this trait.
 pub trait TypeCx: Sized + fmt::Debug {
     /// The type of a pattern.
-    type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
+    type Ty: Clone + fmt::Debug;
     /// Errors that can abort analysis.
     type Error: fmt::Debug;
     /// The index of an enum variant.
@@ -97,16 +97,16 @@ pub trait TypeCx: Sized + fmt::Debug {
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.
-    fn ctor_arity(&self, ctor: &Constructor<Self>, ty: Self::Ty) -> usize;
+    fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
 
     /// The types of the fields for this constructor. The result must have a length of
     /// `ctor_arity()`.
-    fn ctor_sub_tys(&self, ctor: &Constructor<Self>, ty: Self::Ty) -> &[Self::Ty];
+    fn ctor_sub_tys(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> &[Self::Ty];
 
     /// The set of all the constructors for `ty`.
     ///
     /// This must follow the invariants of `ConstructorSet`
-    fn ctors_for_ty(&self, ty: Self::Ty) -> Result<ConstructorSet<Self>, Self::Error>;
+    fn ctors_for_ty(&self, ty: &Self::Ty) -> Result<ConstructorSet<Self>, Self::Error>;
 
     /// Best-effort `Debug` implementation.
     fn debug_pat(f: &mut fmt::Formatter<'_>, pat: &DeconstructedPat<'_, Self>) -> fmt::Result;

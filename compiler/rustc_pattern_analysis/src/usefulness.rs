@@ -736,13 +736,14 @@ pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
     #[derivative(Debug = "ignore")]
     pub(crate) mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
-    pub(crate) ty: Cx::Ty,
+    #[derivative(Clone(clone_with = "Clone::clone"))] // See rust-derivative#90
+    pub(crate) ty: &'a Cx::Ty,
 }
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: Cx::Ty) -> Self {
+    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: &'a Cx::Ty) -> Self {
         PlaceCtxt { mcx, ty }
     }
 
@@ -1023,8 +1024,8 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self) -> Option<Cx::Ty> {
-        self.place_ty.first().copied()
+    fn head_ty(&self) -> Option<&Cx::Ty> {
+        self.place_ty.first()
     }
     fn column_count(&self) -> usize {
         self.place_ty.len()
@@ -1058,7 +1059,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         let arity = ctor_sub_tys.len();
         let specialized_place_ty =
-            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
+            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).cloned().collect();
         let ctor_sub_validity = self.place_validity[0].specialize(ctor);
         let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
             .take(arity)
@@ -1214,7 +1215,7 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
         let len = self.0.len();
         let arity = ctor.arity(pcx);
         let fields = self.0.drain((len - arity)..).rev().collect();
-        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty);
+        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty.clone());
         self.0.push(pat);
     }
 }
@@ -1410,7 +1411,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         return Ok(WitnessMatrix::empty());
     }
 
-    let Some(ty) = matrix.head_ty() else {
+    let Some(ty) = matrix.head_ty().cloned() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         let mut useful = true; // Whether the next row is useful.
@@ -1431,7 +1432,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { mcx, ty };
+    let pcx = &PlaceCtxt { mcx, ty: &ty };
     let ctors_for_ty = pcx.ctors_for_ty()?;
 
     // Whether the place/column we are inspecting is known to contain valid data.

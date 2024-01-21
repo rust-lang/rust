@@ -46,7 +46,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     }
 
     fn head_ty(&self) -> Option<RevealedTy<'tcx>> {
-        self.patterns.first().map(|pat| pat.ty())
+        self.patterns.first().map(|pat| *pat.ty())
     }
 
     /// Do constructor splitting on the constructors of the column.
@@ -101,7 +101,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Ok(Vec::new());
     };
-    let pcx = &PlaceCtxt::new_dummy(cx, ty);
+    let pcx = &PlaceCtxt::new_dummy(cx, &ty);
 
     let set = column.analyze_ctors(pcx)?;
     if set.present.is_empty() {

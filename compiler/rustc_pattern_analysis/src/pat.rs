@@ -54,8 +54,8 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     pub fn ctor(&self) -> &Constructor<Cx> {
         &self.ctor
     }
-    pub fn ty(&self) -> Cx::Ty {
-        self.ty
+    pub fn ty(&self) -> &Cx::Ty {
+        &self.ty
     }
     /// Returns the extra data stored in a pattern. Returns `None` if the pattern is a wildcard that
     /// does not correspond to a user-supplied pattern.
@@ -242,15 +242,15 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, Cx>, ctor: Constructor<Cx>) -> Self {
         let field_tys = pcx.ctor_sub_tys(&ctor);
-        let fields = field_tys.iter().map(|ty| Self::wildcard(*ty)).collect();
-        Self::new(ctor, fields, pcx.ty)
+        let fields = field_tys.iter().cloned().map(|ty| Self::wildcard(ty)).collect();
+        Self::new(ctor, fields, pcx.ty.clone())
     }
 
     pub fn ctor(&self) -> &Constructor<Cx> {
         &self.ctor
     }
-    pub fn ty(&self) -> Cx::Ty {
-        self.ty
+    pub fn ty(&self) -> &Cx::Ty {
+        &self.ty
     }
 
     pub fn iter_fields(&self) -> impl Iterator<Item = &WitnessPat<Cx>> {
