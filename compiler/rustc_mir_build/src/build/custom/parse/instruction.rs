@@ -20,6 +20,10 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call(mir_storage_dead, args) => {
                 Ok(StatementKind::StorageDead(self.parse_local(args[0])?))
             },
+            @call(mir_assume, args) => {
+                let op = self.parse_operand(args[0])?;
+                Ok(StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(op))))
+            },
             @call(mir_deinit, args) => {
                 Ok(StatementKind::Deinit(Box::new(self.parse_place(args[0])?)))
             },

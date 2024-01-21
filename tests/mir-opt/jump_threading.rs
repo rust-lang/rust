@@ -453,6 +453,52 @@ fn disappearing_bb(x: u8) -> u8 {
     )
 }
 
+/// Verify that we can leverage the existence of an `Assume` terminator.
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+fn assume(a: u8, b: bool) -> u8 {
+    // CHECK-LABEL: fn assume(
+    mir!(
+        {
+            // CHECK: bb0: {
+            // CHECK-NEXT: switchInt(_1) -> [7: bb1, otherwise: bb2]
+            match a { 7 => bb1, _ => bb2 }
+        }
+        bb1 = {
+            // CHECK: bb1: {
+            // CHECK-NEXT: assume(_2);
+            // CHECK-NEXT: goto -> bb6;
+            Assume(b);
+            Goto(bb3)
+        }
+        bb2 = {
+            // CHECK: bb2: {
+            // CHECK-NEXT: goto -> bb3;
+            Goto(bb3)
+        }
+        bb3 = {
+            // CHECK: bb3: {
+            // CHECK-NEXT: switchInt(_2) -> [0: bb4, otherwise: bb5];
+            match b { false => bb4, _ => bb5 }
+        }
+        bb4 = {
+            // CHECK: bb4: {
+            // CHECK-NEXT: _0 = const 4_u8;
+            // CHECK-NEXT: return;
+            RET = 4;
+            Return()
+        }
+        bb5 = {
+            // CHECK: bb5: {
+            // CHECK-NEXT: _0 = const 5_u8;
+            // CHECK-NEXT: return;
+            RET = 5;
+            Return()
+        }
+        // CHECK: bb6: {
+        // CHECK-NEXT: goto -> bb5;
+    )
+}
+
 fn main() {
     too_complex(Ok(0));
     identity(Ok(0));
@@ -464,6 +510,7 @@ fn main() {
     mutable_ref();
     renumbered_bb(true);
     disappearing_bb(7);
+    assume(7, false);
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -476,3 +523,4 @@ fn main() {
 // EMIT_MIR jump_threading.mutable_ref.JumpThreading.diff
 // EMIT_MIR jump_threading.renumbered_bb.JumpThreading.diff
 // EMIT_MIR jump_threading.disappearing_bb.JumpThreading.diff
+// EMIT_MIR jump_threading.assume.JumpThreading.diff
