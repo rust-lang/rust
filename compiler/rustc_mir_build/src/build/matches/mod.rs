@@ -1168,7 +1168,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // be a switch or pattern comparison.
         let mut split_or_candidate = false;
         for candidate in &mut *candidates {
-            split_or_candidate |= self.simplify_candidate(candidate);
+            self.simplify_candidate(candidate);
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
+                &*candidate.match_pairs
+            {
+                // Split a candidate in which the only match-pair is an or-pattern into multiple
+                // candidates. This is so that
+                //
+                // match x {
+                //     0 | 1 => { ... },
+                //     2 | 3 => { ... },
+                // }
+                //
+                // only generates a single switch.
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.match_pairs.pop();
+                split_or_candidate = true;
+            }
         }
 
         ensure_sufficient_stack(|| {

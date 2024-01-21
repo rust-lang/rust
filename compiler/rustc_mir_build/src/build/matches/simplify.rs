@@ -23,23 +23,8 @@ use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a candidate so that all match pairs require a test.
-    ///
-    /// This method will also split a candidate, in which the only
-    /// match-pair is an or-pattern, into multiple candidates.
-    /// This is so that
-    ///
-    /// match x {
-    ///     0 | 1 => { ... },
-    ///     2 | 3 => { ... },
-    /// }
-    ///
-    /// only generates a single switch. If this happens this method returns
-    /// `true`.
     #[instrument(skip(self, candidate), level = "debug")]
-    pub(super) fn simplify_candidate<'pat>(
-        &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-    ) -> bool {
+    pub(super) fn simplify_candidate<'pat>(&mut self, candidate: &mut Candidate<'pat, 'tcx>) {
         debug!("{candidate:#?}");
         // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the
         // bindings in `pat` before `x`. E.g. (#69971):
@@ -97,30 +82,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Store computed bindings back in `candidate`.
         mem::swap(&mut candidate.bindings, &mut accumulated_bindings);
 
-        let did_expand_or =
-            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
-                &*candidate.match_pairs
-            {
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
-                candidate.match_pairs.clear();
-                true
-            } else {
-                false
-            };
-
         // Move or-patterns to the end, because they can result in us
         // creating additional candidates, so we want to test them as
         // late as possible.
         candidate.match_pairs.sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
         debug!(simplified = ?candidate, "simplify_candidate");
-
-        did_expand_or
     }
 
     /// Given `candidate` that has a single or-pattern for its match-pairs,
     /// creates a fresh candidate for each of its input subpatterns passed via
     /// `pats`.
-    fn create_or_subcandidates<'pat>(
+    pub(super) fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
         place: &PlaceBuilder<'tcx>,
@@ -130,6 +102,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|box pat| {
                 let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard, self);
                 self.simplify_candidate(&mut candidate);
+
+                if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place, .. }] =
+                    &*candidate.match_pairs
+                {
+                    candidate.subcandidates = self.create_or_subcandidates(&candidate, place, pats);
+                    candidate.match_pairs.pop();
+                }
                 candidate
             })
             .collect()
