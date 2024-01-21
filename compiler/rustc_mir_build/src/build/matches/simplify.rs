@@ -39,28 +39,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         debug!("{candidate:#?}");
-        // `original_bindings` and `new_bindings` exist to keep the semantics in order.
-        // Reversing the binding order for bindings after `@` changes the binding order in places
-        // where it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`.
+        // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the
+        // bindings in `pat` before `x`. E.g. (#69971):
         //
-        // To avoid this, the binding occurs in the following manner:
-        // * the bindings for one iteration of the loop occurs in order (i.e. left to right)
-        // * the bindings from the previous iteration of the loop is prepended to the bindings from
-        // the current iteration (in the implementation this is done by mem::swap and extend)
-        // * after all iterations, these new bindings are then appended to the bindings that were
-        // preexisting (i.e. `candidate.binding` when the function was called).
-        //
-        // example:
-        // candidate.bindings = [1, 2, 3]
-        // binding in iter 1: [4, 5]
-        // binding in iter 2: [6, 7]
-        //
-        // final binding: [1, 2, 3, 6, 7, 4, 5]
-        //
-        // This is because we treat refutable and irrefutable bindings differently. The binding
-        // order should be right-to-left if there are more _irrefutable_ bindings after `@` to
-        // please the borrow checker (#69971)
-        // Ex
         // struct NonCopyStruct {
         //     copy_field: u32,
         // }
@@ -72,23 +53,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //     let y = x;
         // }
         //
-        // If however the bindings are refutable, i.e. under a test, then we keep the bindings
-        // left-to-right.
-        // Ex
-        // enum NonCopyEnum {
-        //     Variant { copy_field: u32 },
-        //     None,
-        // }
+        // We can't just reverse the binding order, because we must preserve pattern-order
+        // otherwise, e.g. in `let (Some(a), Some(b)) = (x, y)`. Our rule then is: deepest-first,
+        // and bindings at the same depth stay in source order.
         //
-        // fn foo2(x: NonCopyEnum) {
-        //     let y @ NonCopyEnum::Variant { copy_field: z } = x else { return };
-        //     // turns into
-        //     let y = x;
-        //     let z = (x as Variant).copy_field;
-        //     // and raises an error
-        // }
-        let original_bindings = mem::take(&mut candidate.bindings);
-        let mut new_bindings = Vec::new();
+        // To do this, every time around the loop we prepend the newly found bindings to the
+        // bindings we already had.
+        //
+        // example:
+        // candidate.bindings = [1, 2, 3]
+        // bindings in iter 1: [4, 5]
+        // bindings in iter 2: [6, 7]
+        //
+        // final bindings: [6, 7, 4, 5, 1, 2, 3]
+        let mut accumulated_bindings = mem::take(&mut candidate.bindings);
         // Repeatedly simplify match pairs until fixed point is reached
         loop {
             let mut changed = false;
@@ -103,9 +81,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            // This does: new_bindings = candidate.bindings.take() ++ new_bindings
-            candidate.bindings.extend_from_slice(&new_bindings);
-            mem::swap(&mut candidate.bindings, &mut new_bindings);
+            // This does: accumulated_bindings = candidate.bindings.take() ++ accumulated_bindings
+            candidate.bindings.extend_from_slice(&accumulated_bindings);
+            mem::swap(&mut candidate.bindings, &mut accumulated_bindings);
             candidate.bindings.clear();
 
             if !changed {
@@ -114,10 +92,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        // Restore original bindings and append the new ones.
-        // This does: candidate.bindings = new_bindings ++ original_bindings
-        mem::swap(&mut candidate.bindings, &mut new_bindings);
-        candidate.bindings.extend_from_slice(&original_bindings);
+        // Store computed bindings back in `candidate`.
+        mem::swap(&mut candidate.bindings, &mut accumulated_bindings);
 
         let did_expand_or =
             if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
