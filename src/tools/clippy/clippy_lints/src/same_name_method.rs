@@ -76,8 +76,8 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                 match of_trait {
                     Some(trait_ref) => {
                         let mut methods_in_trait: BTreeSet<Symbol> =
-                            if let Some(Node::TraitRef(TraitRef { path, .. })) =
-                                cx.tcx.opt_hir_node(trait_ref.hir_ref_id)
+                            if let Node::TraitRef(TraitRef { path, .. }) =
+                                cx.tcx.hir_node(trait_ref.hir_ref_id)
                                 && let Res::Def(DefKind::Trait, did) = path.res
                             {
                                 // FIXME: if
