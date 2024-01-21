@@ -32,7 +32,6 @@ use clap::ValueEnum;
 use once_cell::sync::Lazy;
 
 #[cfg(test)]
-#[path = "../tests/builder.rs"]
 mod tests;
 
 pub struct Builder<'a> {
