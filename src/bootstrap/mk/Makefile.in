@@ -77,7 +77,7 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 
 # test both x and bootstrap entrypoints
 ci-mingw-x:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 --skip tidy
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 tidy
 ci-mingw-bootstrap:
 	$(Q)$(BOOTSTRAP) test --stage 2 --skip tidy
 ci-mingw: ci-mingw-x ci-mingw-bootstrap

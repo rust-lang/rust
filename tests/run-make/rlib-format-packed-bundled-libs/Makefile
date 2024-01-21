@@ -14,7 +14,6 @@ NM = nm
 endif
 
 all: $(call NATIVE_STATICLIB,native_dep_1) $(call NATIVE_STATICLIB,native_dep_2) $(call NATIVE_STATICLIB,native_dep_3)
-	echo MAJAHA IS_WINDOWS $(IS_WINDOWS) IS_MSVC $(IS_MSVC)
 	$(RUSTC) rust_dep_up.rs --crate-type=rlib -Zpacked_bundled_libs
 	$(NM) $(TMPDIR)/librust_dep_up.rlib | $(CGREP) -e "U.*native_f2"
 	$(NM) $(TMPDIR)/librust_dep_up.rlib | $(CGREP) -e "U.*native_f3"
