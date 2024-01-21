@@ -2245,6 +2245,33 @@ mod sealed {
     }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorAdde {
+        unsafe fn vec_adde(self, b: Self, c: Self) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorAdde for vector_unsigned_int {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_adde(self, b: Self, c: Self) -> Self {
+            let mask: vector_unsigned_int = transmute(u32x4::new(1, 1, 1, 1));
+            let carry = vec_and(c, mask);
+            vec_add(vec_add(self, b), carry)
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorAdde for vector_signed_int {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_adde(self, b: Self, c: Self) -> Self {
+            let mask: vector_signed_int = transmute(i32x4::new(1, 1, 1, 1));
+            let carry = vec_and(c, mask);
+            vec_add(vec_add(self, b), carry)
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorMladd<Other> {
         type Result;
         unsafe fn vec_mladd(self, b: Other, c: Other) -> Self::Result;
@@ -3521,6 +3548,22 @@ where
     T: sealed::VectorAdd<U>,
 {
     a.vec_add(b)
+}
+
+/// Vector Add Extended
+///
+/// ## Result value
+/// The value of each element of r is produced by adding the corresponding elements of
+/// a and b with a carry specified in the corresponding element of c (1 if there is a carry, 0
+/// otherwise).
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_adde<T>(a: T, b: T, c: T) -> T
+where
+    T: sealed::VectorAdde,
+{
+    a.vec_adde(b, c)
 }
 
 /// Vector Convert to Floating-Point
