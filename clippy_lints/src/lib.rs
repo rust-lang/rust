@@ -719,7 +719,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(needless_update::NeedlessUpdate));
     store.register_late_pass(|_| Box::new(needless_borrowed_ref::NeedlessBorrowedRef));
     store.register_late_pass(|_| Box::new(borrow_deref_ref::BorrowDerefRef));
-    store.register_late_pass(|_| Box::new(no_effect::NoEffect));
+    store.register_late_pass(|_| Box::<no_effect::NoEffect>::default());
     store.register_late_pass(|_| Box::new(temporary_assignment::TemporaryAssignment));
     store.register_late_pass(move |_| Box::new(transmute::Transmute::new(msrv())));
     store.register_late_pass(move |_| {
