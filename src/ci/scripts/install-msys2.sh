@@ -25,6 +25,9 @@ if isWindows; then
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
 
+    # Install pacboy for easily installing packages
+    pacman -S --noconfirm pactoys
+
     # Delete these pre-installed tools because we are using the MSYS2 setup action versions
     # instead, so we can't accidentally use them.
     # Delete Windows-Git
@@ -33,9 +36,14 @@ if isWindows; then
     rm -r "/c/msys64/"
     # Delete Strawberry Perl, which contains a version of mingw
     rm -r "/c/Strawberry/"
-    # Delete native CMake
-    rm -r "/c/Program Files/CMake/"
     # Delete these other copies of mingw, I don't even know where they come from.
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
+
+    if isKnownToBeMingwBuild; then
+        # Delete native CMake
+        rm -r "/c/Program Files/CMake/"
+        # Install mingw-w64-$arch-cmake
+        pacboy -S --noconfirm cmake:p
+    fi # Otherwise, the MSVC build needs native CMake, it fails with the mingw one.
 fi
