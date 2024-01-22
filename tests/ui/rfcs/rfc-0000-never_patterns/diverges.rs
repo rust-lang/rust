@@ -9,21 +9,24 @@ enum Void {}
 
 // A never pattern alone diverges.
 
-fn never_arg(!: Void) -> u32 {}
+fn never_arg(!: Void) -> ! {}
 
-fn ref_never_arg(&!: &Void) -> u32 {}
+fn never_arg_returns_anything<T>(!: Void) -> T {}
 
-fn never_let() -> u32 {
+fn ref_never_arg(&!: &Void) -> ! {}
+
+fn never_let() -> ! {
     let ptr: *const Void = std::ptr::null();
     unsafe {
         let ! = *ptr;
     }
 }
 
-fn never_match() -> u32 {
+fn never_match() -> ! {
     let ptr: *const Void = std::ptr::null();
     unsafe {
         match *ptr { ! };
     }
-    println!(); // Ensures this typechecks because of divergence.
+    // Ensures this typechecks because of divergence and not the type of the match expression.
+    println!();
 }
