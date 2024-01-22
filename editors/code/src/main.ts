@@ -25,16 +25,7 @@ export async function deactivate() {
 export async function activate(
     context: vscode.ExtensionContext,
 ): Promise<RustAnalyzerExtensionApi> {
-    if (vscode.extensions.getExtension("rust-lang.rust")) {
-        vscode.window
-            .showWarningMessage(
-                `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
-                    "plugins enabled. These are known to conflict and cause various functions of " +
-                    "both plugins to not work correctly. You should disable one of them.",
-                "Got it",
-            )
-            .then(() => {}, console.error);
-    }
+    conflictExtDetect();
 
     const ctx = new Ctx(context, createCommands(), fetchWorkspace());
     // VS Code doesn't show a notification when an extension fails to activate
@@ -149,7 +140,7 @@ function createCommands(): Record<string, CommandFactory> {
                     health: "stopped",
                 });
             },
-            disabled: (_) => async () => {},
+            disabled: (_) => async () => { },
         },
 
         analyzerStatus: { enabled: commands.analyzerStatus },
@@ -199,4 +190,31 @@ function createCommands(): Record<string, CommandFactory> {
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
     };
+}
+
+function conflictExtDetect() {
+    if (vscode.extensions.getExtension("rust-lang.rust")) {
+        vscode.window
+            .showWarningMessage(
+                `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
+                "plugins enabled. These are known to conflict and cause various functions of " +
+                "both plugins to not work correctly. You should disable one of them.",
+                "Got it"
+            )
+            .then(() => { }, console.error);
+    }
+
+    if (vscode.extensions.getExtension("panicbit.cargo")) {
+        let isRustAnalyzerCheckOnSave = vscode.workspace.getConfiguration("rust-analyzer").get("checkOnSave");
+        let isCargoAutomaticCheck = vscode.workspace.getConfiguration("cargo").get("automaticCheck");
+        if (isRustAnalyzerCheckOnSave && isCargoAutomaticCheck) {
+            vscode.window
+                .showWarningMessage(
+                    `You have Cargo (panicbit.cargo) enabled with 'cargo.automaticCheck' set to true(default), ` +
+                    "you can disable it or set {\"cargo.automaticCheck\": false} in settings.json to avoid invoke cargo twice",
+                    "Got it"
+                )
+                .then(() => { }, console.error);
+        }
+    }
 }
