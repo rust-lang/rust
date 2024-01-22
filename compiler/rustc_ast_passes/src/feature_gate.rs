@@ -398,7 +398,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     &self,
                     exclusive_range_pattern,
                     pattern.span,
-                    "exclusive range pattern syntax is experimental"
+                    "exclusive range pattern syntax is experimental",
+                    "use an inclusive range pattern, like N..=M"
                 );
             }
             _ => {}
