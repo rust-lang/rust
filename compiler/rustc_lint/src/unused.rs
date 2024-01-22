@@ -182,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let mut op_warned = false;
 
         if let Some(must_use_op) = must_use_op {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 UNUSED_MUST_USE,
                 expr.span,
                 UnusedOp {
@@ -202,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if !(type_lint_emitted_or_suppressed || fn_warned || op_warned) {
-            cx.emit_spanned_lint(UNUSED_RESULTS, s.span, UnusedResult { ty });
+            cx.emit_span_lint(UNUSED_RESULTS, s.span, UnusedResult { ty });
         }
 
         fn check_fn_must_use(
@@ -494,21 +494,21 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Closure(span) => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         *span,
                         UnusedClosure { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
                 MustUsePath::Coroutine(span) => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         *span,
                         UnusedCoroutine { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         UNUSED_MUST_USE,
                         *span,
                         UnusedDef {
@@ -568,9 +568,9 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     } else {
                         PathStatementDropSub::Help { span: s.span }
                     };
-                    cx.emit_spanned_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
+                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
                 } else {
-                    cx.emit_spanned_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
+                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
                 }
             }
         }
@@ -824,7 +824,7 @@ trait UnusedDelimLint {
                 end_replace: hi_replace,
             }
         });
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             self.lint(),
             primary_span,
             UnusedDelim { delim: Self::DELIM_STR, item: msg, suggestion },
@@ -1507,7 +1507,7 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested(_) => return,
             };
 
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 UNUSED_IMPORT_BRACES,
                 item.span,
                 UnusedImportBracesDiag { node: node_name },
@@ -1564,10 +1564,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 match m {
                     adjustment::AutoBorrowMutability::Not => {
-                        cx.emit_spanned_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationDiag);
+                        cx.emit_span_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationDiag);
                     }
                     adjustment::AutoBorrowMutability::Mut { .. } => {
-                        cx.emit_spanned_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationMutDiag);
+                        cx.emit_span_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationMutDiag);
                     }
                 };
             }

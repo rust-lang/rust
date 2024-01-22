@@ -827,7 +827,7 @@ impl<'tcx> ExtraInfo<'tcx> {
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagnosticMessage>) {
         if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.node_span_lint(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
@@ -843,7 +843,7 @@ impl<'tcx> ExtraInfo<'tcx> {
         f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.node_span_lint(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
                 self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,

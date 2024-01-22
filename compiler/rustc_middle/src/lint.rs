@@ -247,18 +247,18 @@ pub fn explain_lint_level_source(
 ///
 /// If you are looking to implement a lint, look for higher level functions,
 /// for example:
-/// - [`TyCtxt::emit_spanned_lint`]
-/// - [`TyCtxt::struct_span_lint_hir`]
-/// - [`TyCtxt::emit_lint`]
-/// - [`TyCtxt::struct_lint_node`]
-/// - `LintContext::lookup`
+/// - [`TyCtxt::emit_node_span_lint`]
+/// - [`TyCtxt::node_span_lint`]
+/// - [`TyCtxt::emit_node_lint`]
+/// - [`TyCtxt::node_lint`]
+/// - `LintContext::opt_span_lint`
 ///
 /// ## `decorate`
 ///
 /// It is not intended to call `emit`/`cancel` on the `DiagnosticBuilder` passed
 /// in the `decorate` callback.
 #[track_caller]
-pub fn struct_lint_level(
+pub fn lint_level(
     sess: &Session,
     lint: &'static Lint,
     level: Level,
@@ -270,7 +270,7 @@ pub fn struct_lint_level(
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
     #[track_caller]
-    fn struct_lint_level_impl(
+    fn lint_level_impl(
         sess: &Session,
         lint: &'static Lint,
         level: Level,
@@ -399,7 +399,7 @@ pub fn struct_lint_level(
         explain_lint_level_source(lint, level, src, &mut *err);
         err.emit()
     }
-    struct_lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))
+    lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

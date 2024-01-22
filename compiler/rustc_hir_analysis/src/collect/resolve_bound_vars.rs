@@ -912,7 +912,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             continue;
                         }
                         self.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                        self.tcx.struct_span_lint_hir(
+                        self.tcx.node_span_lint(
                             lint::builtin::UNUSED_LIFETIMES,
                             lifetime.hir_id,
                             lifetime.ident.span,

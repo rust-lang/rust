@@ -46,7 +46,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
             .emit();
         }
         None => {
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 UNSUPPORTED_CALLING_CONVENTIONS,
                 hir_id,
                 span,
@@ -183,7 +183,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
     };
     if layout.abi.is_uninhabited() {
-        tcx.struct_span_lint_hir(
+        tcx.node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
@@ -1079,7 +1079,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_non_exhaustive_1zst {
-                tcx.struct_span_lint_hir(
+                tcx.node_span_lint(
                     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     span,

@@ -144,7 +144,7 @@ pub fn feature_warn_issue(
     let mut err = sess.parse_sess.dcx.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
 
-    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
+    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
     err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
