@@ -94,15 +94,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
+        let mut is_downgradable = true;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|o| match o.trait_ref.path.res {
-                    Res::Def(DefKind::Trait, id) if Some(id) == owner => {
-                        // When we're dealing with a recursive trait, we don't want to downgrade
-                        // the error, so we consider them to be object safe always. (#119652)
-                        true
+                    Res::Def(DefKind::Trait, id) => {
+                        if Some(id) == owner {
+                            // For recursive traits, don't downgrade the error. (#119652)
+                            is_downgradable = false;
+                        }
+                        tcx.check_is_object_safe(id)
                     }
-                    Res::Def(DefKind::Trait, id) => tcx.check_is_object_safe(id),
                     _ => false,
                 })
             }
@@ -130,7 +132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else if diag.is_error() {
+            } else if diag.is_error() && is_downgradable {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -156,7 +158,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                if diag.is_error() {
+                if diag.is_error() && is_downgradable {
                     // We'll emit the object safety error already, with a structured suggestion.
                     diag.downgrade_to_delayed_bug();
                 }
