@@ -175,10 +175,10 @@ toolchain.
 
 1. Download the latest [MSYS2 installer][msys2] and go through the installer.
 
-2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from the MSYS2 installation
-   directory (e.g. `C:\msys64`), depending on whether you want 32-bit or 64-bit
-   Rust. (As of the latest version of MSYS2 you have to run `msys2_shell.cmd
-   -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead.)
+2. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
+   or 64-bit Rust) either from your start menu, or by running `mingw64.exe`
+   or `mingw32.exe` from your MSYS2 installation directory (e.g.
+   `C:\msys64`).
 
 3. From this terminal, install the required tools:
 

@@ -103,6 +103,7 @@ jobs:
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -493,6 +494,7 @@ jobs:
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -629,6 +631,7 @@ jobs:
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

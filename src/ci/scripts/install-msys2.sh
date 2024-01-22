@@ -34,7 +34,7 @@ if isWindows; then
     # Delete Strawberry Perl, which contains a version of mingw
     rm -r "/c/Strawberry/"
     # Delete native CMake
-    # rm -r "/c/Program Files/CMake/"
+    rm -r "/c/Program Files/CMake/"
     # Delete these other copies of mingw, I don't even know where they come from.
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
