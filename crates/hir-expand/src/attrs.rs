@@ -230,7 +230,7 @@ impl Attr {
                     )
                 )
             })
-            .unwrap_or_else(|| tt.len());
+            .unwrap_or(tt.len());
 
         let (path, input) = tt.split_at(path_end);
         let path = Interned::new(ModPath::from_tt(db, path)?);

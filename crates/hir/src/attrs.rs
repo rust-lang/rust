@@ -297,7 +297,7 @@ fn as_module_def_if_namespace_matches(
         AssocItem::TypeAlias(it) => (ModuleDef::TypeAlias(it), Namespace::Types),
     };
 
-    (ns.unwrap_or(expected_ns) == expected_ns).then(|| DocLinkDef::ModuleDef(def))
+    (ns.unwrap_or(expected_ns) == expected_ns).then_some(DocLinkDef::ModuleDef(def))
 }
 
 fn modpath_from_str(link: &str) -> Option<ModPath> {

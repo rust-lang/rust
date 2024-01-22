@@ -166,6 +166,7 @@ enum PositionUsedAs {
 }
 use PositionUsedAs::*;
 
+#[allow(clippy::unnecessary_lazy_evaluations)]
 pub(crate) fn parse(
     s: &ast::String,
     fmt_snippet: Option<String>,
