@@ -20,8 +20,9 @@
 //! [`rustc_parse::lexer`]: ../rustc_parse/lexer/index.html
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-// We want to be able to build this crate with a stable compiler, so no
-// `#![feature]` attributes should be added.
+// We want to be able to build this crate with a stable compiler,
+// so no `#![feature]` attributes should be added.
+#![deny(unstable_features)]
 
 mod cursor;
 pub mod unescape;
