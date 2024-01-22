@@ -178,9 +178,9 @@ pub(crate) fn parse(
     let text = s.text_without_quotes();
     let str_style = match s.quote_offsets() {
         Some(offsets) => {
-            let raw = u32::from(offsets.quotes.0.len()) - 1;
+            let raw = usize::from(offsets.quotes.0.len()) - 1;
             // subtract 1 for the `r` prefix
-            (raw != 0).then(|| raw as usize - 1)
+            (raw != 0).then(|| raw - 1)
         }
         None => None,
     };
