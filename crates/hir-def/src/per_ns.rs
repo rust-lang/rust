@@ -16,17 +16,11 @@ pub enum Namespace {
     Macros,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct PerNs {
     pub types: Option<(ModuleDefId, Visibility, Option<ImportOrExternCrate>)>,
     pub values: Option<(ModuleDefId, Visibility, Option<ImportId>)>,
     pub macros: Option<(MacroId, Visibility, Option<ImportId>)>,
-}
-
-impl Default for PerNs {
-    fn default() -> Self {
-        PerNs { types: None, values: None, macros: None }
-    }
 }
 
 impl PerNs {

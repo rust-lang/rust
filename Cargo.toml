@@ -168,7 +168,6 @@ new_ret_no_self = "allow"
 ## Following lints should be tackled at some point
 borrowed_box = "allow"
 borrow_deref_ref = "allow"
-derivable_impls = "allow"
 derived_hash_with_manual_eq = "allow"
 field_reassign_with_default = "allow"
 forget_non_drop = "allow"
