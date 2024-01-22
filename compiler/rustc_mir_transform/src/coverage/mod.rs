@@ -366,10 +366,8 @@ fn check_code_region(code_region: CodeRegion) -> Option<CodeRegion> {
             ?is_ordered,
             "Skipping code region that would be misinterpreted or rejected by LLVM"
         );
-        if cfg!(debug_assertions) {
-            // If this happens in a debug build, ICE to make it easier to notice.
-            bug!("Improper code region: {code_region:?}");
-        }
+        // If this happens in a debug build, ICE to make it easier to notice.
+        debug_assert!(false, "Improper code region: {code_region:?}");
         None
     }
 }
