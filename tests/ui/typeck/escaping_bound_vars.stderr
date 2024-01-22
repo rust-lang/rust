@@ -40,7 +40,7 @@ LL |     (): Test<{ 1 + (<() as Elide(&())>::call) }>,
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 52 others
 
 error[E0277]: the trait bound `(): Elide<(&(),)>` is not satisfied
   --> $DIR/escaping_bound_vars.rs:11:18

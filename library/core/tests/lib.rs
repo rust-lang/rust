@@ -124,6 +124,7 @@ mod alloc;
 mod any;
 mod array;
 mod ascii;
+mod ascii_char;
 mod asserting;
 mod async_iter;
 mod atomic;

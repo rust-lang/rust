@@ -5,6 +5,7 @@
 
 use crate::fmt::{self, Write};
 use crate::mem::transmute;
+use crate::ops::{Add, AddAssign};
 
 /// One of the 128 Unicode characters from U+0000 through U+007F,
 /// often known as the [ASCII] subset.
@@ -615,4 +616,72 @@ impl fmt::Debug for AsciiChar {
         }
         f.write_char('\'')
     }
+}
+
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl Add<u8> for AsciiChar {
+    type Output = AsciiChar;
+
+    /// Calculates sum of the ASCII value and given offset.
+    ///
+    /// In debug builds, panics if result is greater than largest ASCII value.
+    /// In release builds wraps the value (i.e. masks out the most significant
+    /// bit) so the output is a valid ASCII character.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use core::ascii::Char;
+    ///
+    /// assert_eq!(Char::Digit8, Char::Digit0 + 8);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(ascii_char, ascii_char_variants)]
+    /// use core::ascii::Char;
+    ///
+    /// // This produces value which is not a valid ASCII character and thus
+    /// // panics in debug builds.
+    /// let _ = Char::Digit0 + 100;
+    /// ```
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn add(self, rhs: u8) -> Self::Output {
+        add_impl(self, rhs)
+    }
+}
+
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl Add<AsciiChar> for u8 {
+    type Output = AsciiChar;
+
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn add(self, rhs: AsciiChar) -> Self::Output {
+        add_impl(rhs, self)
+    }
+}
+
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl AddAssign<u8> for AsciiChar {
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn add_assign(&mut self, rhs: u8) {
+        *self = add_impl(*self, rhs)
+    }
+}
+
+forward_ref_binop! { impl Add, add for AsciiChar, u8 }
+forward_ref_binop! { impl Add, add for u8, AsciiChar }
+forward_ref_op_assign! { impl AddAssign, add_assign for AsciiChar, u8 }
+
+#[inline]
+#[rustc_inherit_overflow_checks]
+fn add_impl(chr: AsciiChar, rhs: u8) -> AsciiChar {
+    // Make sure we overflow if chr + rhs ≥ 128.  Since we inherit overflow
+    // checks, we’re wrap in release and panic in debug builds.
+    let sum = u8::from(chr) + 128 + rhs;
+    // SAFETY: `sum & 127` limits the sum to a valid ASCII value.
+    unsafe { AsciiChar::from_u8_unchecked(sum & 127) }
 }

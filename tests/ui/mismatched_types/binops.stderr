@@ -14,7 +14,7 @@ LL |     1 + Some(1);
              <i16 as Add<&i16>>
              <i32 as Add>
              <i32 as Add<&i32>>
-           and 48 others
+           and 52 others
 
 error[E0277]: cannot subtract `Option<{integer}>` from `usize`
   --> $DIR/binops.rs:3:16

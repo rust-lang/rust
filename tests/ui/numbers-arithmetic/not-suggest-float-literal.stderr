@@ -7,9 +7,13 @@ LL |     x + 100.0
    = help: the trait `Add<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Add<Rhs>`:
              <u8 as Add>
+             <u8 as Add<Char>>
              <u8 as Add<&u8>>
+             <u8 as Add<&Char>>
              <&'a u8 as Add<u8>>
+             <&'a u8 as Add<Char>>
              <&u8 as Add<&u8>>
+             <&u8 as Add<&Char>>
 
 error[E0277]: cannot add `&str` to `f64`
   --> $DIR/not-suggest-float-literal.rs:6:7
