@@ -222,7 +222,7 @@ fn scan_escape<T: From<u8> + From<char>>(
     mode: Mode,
 ) -> Result<T, EscapeError> {
     // Previous character was '\\', unescape what follows.
-    let res = match chars.next().ok_or(EscapeError::LoneSlash)? {
+    let res: u8 = match chars.next().ok_or(EscapeError::LoneSlash)? {
         '"' => b'"',
         'n' => b'\n',
         'r' => b'\r',
@@ -249,10 +249,10 @@ fn scan_escape<T: From<u8> + From<char>>(
             value as u8
         }
 
-        'u' => return scan_unicode(chars, mode.is_unicode_escape_disallowed()).map(Into::into),
+        'u' => return scan_unicode(chars, mode.is_unicode_escape_disallowed()).map(T::from),
         _ => return Err(EscapeError::InvalidEscape),
     };
-    Ok(res.into())
+    Ok(T::from(res))
 }
 
 fn scan_unicode(
@@ -366,7 +366,7 @@ where
             }
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, chars_should_be_ascii).map(Into::into),
+            _ => ascii_check(c, chars_should_be_ascii).map(T::from),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
