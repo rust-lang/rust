@@ -5,12 +5,16 @@ use crate::{
 
 use rustc_hir as hir;
 use rustc_middle::ty;
+use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::sym;
 use rustc_trait_selection::traits::supertraits;
 
 declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
     /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
+    ///
+    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
+    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
     ///
     /// ### Example
     ///
@@ -40,10 +44,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The implicit dyn upcasting coercion take priority over those `Deref` impls.
+    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
+    /// over certain other coercion rules, which will cause some behavior change.
     pub DEREF_INTO_DYN_SUPERTRAIT,
     Warn,
-    "`Deref` implementation usage with a supertrait trait object for output are shadow by implicit coercion",
+    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
+    };
 }
 
 declare_lint_pass!(DerefIntoDynSupertrait => [DEREF_INTO_DYN_SUPERTRAIT]);

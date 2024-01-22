@@ -544,7 +544,6 @@ pub enum BuiltinSpecialModuleNameUsed {
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
-#[help]
 pub struct SupertraitAsDerefTarget<'a> {
     pub self_ty: Ty<'a>,
     pub supertrait_principal: PolyExistentialTraitRef<'a>,

@@ -9,10 +9,13 @@
 use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_hir as hir;
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
+use crate::traits;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
 use super::BuiltinImplConditions;
@@ -723,6 +726,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Temporary migration for #89190
+    fn need_migrate_deref_output_trait_object(
+        &mut self,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
+        let tcx = self.tcx();
+        if tcx.features().trait_upcasting {
+            return None;
+        }
+
+        // <ty as Deref>
+        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
+
+        let obligation =
+            traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
+        if !self.infcx.predicate_may_hold(&obligation) {
+            return None;
+        }
+
+        self.infcx.probe(|_| {
+            let ty = traits::normalize_projection_type(
+                self,
+                param_env,
+                ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
+                cause.clone(),
+                0,
+                // We're *intentionally* throwing these away,
+                // since we don't actually use them.
+                &mut vec![],
+            )
+            .ty()
+            .unwrap();
+
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+        })
+    }
+
     /// Searches for unsizing that might apply to `obligation`.
     fn assemble_candidates_for_unsizing(
         &mut self,
@@ -780,6 +822,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = a_data.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
+                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                            source,
+                            obligation.param_env,
+                            &obligation.cause,
+                        ) {
+                            if deref_trait_ref.def_id() == target_trait_did {
+                                return;
+                            }
+                        }
 
                         for (idx, upcast_trait_ref) in
                             util::supertraits(self.tcx(), source_trait_ref).enumerate()

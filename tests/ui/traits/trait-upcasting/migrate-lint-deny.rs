@@ -1,4 +1,4 @@
-// check-pass
+#![deny(deref_into_dyn_supertrait)]
 
 use std::ops::Deref;
 
@@ -7,7 +7,8 @@ trait A {}
 trait B: A {}
 
 impl<'a> Deref for dyn 'a + B {
-    //~^ WARN this `Deref` implementation is covered by an implicit supertrait coercion
+    //~^ ERROR this `Deref` implementation is covered by an implicit supertrait coercion
+    //~| WARN this will change its meaning in a future release!
 
     type Target = dyn A;
     fn deref(&self) -> &Self::Target {
