@@ -148,6 +148,59 @@ mod tests {
     }
 
     #[test]
+    fn test_merge_self() {
+        check_assist_variations!("std::{fmt, fmt::Display}", "std::fmt::{self, Display}");
+    }
+
+    #[test]
+    fn test_merge_nested() {
+        check_assist_variations!("std::{fmt::Debug, fmt::Display}", "std::fmt::{Debug, Display}");
+    }
+
+    #[test]
+    fn test_merge_nested2() {
+        check_assist_variations!("std::{fmt::Debug, fmt::Display}", "std::fmt::{Debug, Display}");
+    }
+
+    #[test]
+    fn test_merge_self_with_nested_self_item() {
+        check_assist_variations!(
+            "std::{fmt::{self, Debug}, fmt::{Write, Display}}",
+            "std::fmt::{self, Debug, Display, Write}"
+        );
+    }
+
+    #[test]
+    fn works_with_trailing_comma() {
+        check_assist(
+            normalize_import,
+            r"
+use $0{
+    foo::bar,
+    foo::baz,
+};
+        ",
+            r"
+use foo::{bar, baz};
+        ",
+        );
+        check_assist_import_one(
+            normalize_import,
+            r"
+use $0{
+    foo::bar,
+    foo::baz,
+};
+",
+            r"
+use {
+    foo::{bar, baz},
+};
+",
+        );
+    }
+
+    #[test]
     fn not_applicable_to_normalized_import() {
         check_assist_not_applicable_variations!("foo::bar");
         check_assist_not_applicable_variations!("foo::bar::*");
