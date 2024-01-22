@@ -454,7 +454,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMe
             reason = "cannot translate user-provided messages"
         )]
         let mut diag = DiagnosticBuilder::new(dcx, level, self.msg_from_user.to_string());
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag
     }
 }
@@ -618,7 +618,7 @@ impl AddToDiagnostic for FormatUnusedArg {
             rustc_errors::SubdiagnosticMessage,
         ) -> rustc_errors::SubdiagnosticMessage,
     {
-        diag.set_arg("named", self.named);
+        diag.arg("named", self.named);
         let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
         diag.span_label(self.span, msg);
     }
@@ -803,24 +803,23 @@ pub(crate) struct AsmClobberNoReg {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag = DiagnosticBuilder::new(
-            dcx,
-            level,
-            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
-        );
-        diag.set_span(self.spans.clone());
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,
             [].into_iter(),
         );
-        diag.span_labels(self.clobbers, &lbl1);
         let lbl2 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_outputs,
             [].into_iter(),
         );
-        diag.span_labels(self.spans, &lbl2);
-        diag
+        DiagnosticBuilder::new(
+            dcx,
+            level,
+            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
+        )
+        .with_span(self.spans.clone())
+        .with_span_labels(self.clobbers, &lbl1)
+        .with_span_labels(self.spans, &lbl2)
     }
 }
 

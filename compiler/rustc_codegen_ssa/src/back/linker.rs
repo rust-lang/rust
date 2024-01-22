@@ -446,11 +446,11 @@ impl<'a> Linker for GccLinker<'a> {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
-                self.sess.dcx().emit_warning(errors::Ld64UnimplementedModifier);
+                self.sess.dcx().emit_warn(errors::Ld64UnimplementedModifier);
             } else if self.is_gnu && !self.sess.target.is_like_windows {
                 self.linker_arg("--no-as-needed");
             } else {
-                self.sess.dcx().emit_warning(errors::LinkerUnsupportedModifier);
+                self.sess.dcx().emit_warn(errors::LinkerUnsupportedModifier);
             }
         }
         self.hint_dynamic();
@@ -504,7 +504,7 @@ impl<'a> Linker for GccLinker<'a> {
             // FIXME(81490): ld64 as of macOS 11 supports the -needed_framework
             // flag but we have no way to detect that here.
             // self.cmd.arg("-needed_framework").arg(framework);
-            self.sess.dcx().emit_warning(errors::Ld64UnimplementedModifier);
+            self.sess.dcx().emit_warn(errors::Ld64UnimplementedModifier);
         }
         self.cmd.arg("-framework").arg(framework);
     }
@@ -950,7 +950,7 @@ impl<'a> Linker for MsvcLinker<'a> {
                                 }
                             }
                             Err(error) => {
-                                self.sess.dcx().emit_warning(errors::NoNatvisDirectory { error });
+                                self.sess.dcx().emit_warn(errors::NoNatvisDirectory { error });
                             }
                         }
                     }
@@ -1501,7 +1501,7 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[String]) {
         // ToDo, not implemented, copy from GCC
-        self.sess.dcx().emit_warning(errors::L4BenderExportingSymbolsUnimplemented);
+        self.sess.dcx().emit_warn(errors::L4BenderExportingSymbolsUnimplemented);
         return;
     }
 

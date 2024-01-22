@@ -31,7 +31,6 @@ impl CastCheck {
             // Note that this type of cast is actually split into a coercion to a
             // pointer type and a cast:
             // &[T; N] -> *[T; N] -> *T
-            return;
         }
 
         // FIXME: Check other kinds of non-coercion casts and report error if any?

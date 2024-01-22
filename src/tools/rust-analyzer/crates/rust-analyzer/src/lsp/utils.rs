@@ -168,33 +168,22 @@ impl GlobalState {
 
 pub(crate) fn apply_document_changes(
     encoding: PositionEncoding,
-    file_contents: impl FnOnce() -> String,
+    file_contents: &str,
     mut content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
 ) -> String {
-    // Skip to the last full document change, as it invalidates all previous changes anyways.
-    let mut start = content_changes
-        .iter()
-        .rev()
-        .position(|change| change.range.is_none())
-        .map(|idx| content_changes.len() - idx - 1)
-        .unwrap_or(0);
-
-    let mut text: String = match content_changes.get_mut(start) {
-        // peek at the first content change as an optimization
-        Some(lsp_types::TextDocumentContentChangeEvent { range: None, text, .. }) => {
-            let text = mem::take(text);
-            start += 1;
-
-            // The only change is a full document update
-            if start == content_changes.len() {
-                return text;
+    // If at least one of the changes is a full document change, use the last
+    // of them as the starting point and ignore all previous changes.
+    let (mut text, content_changes) =
+        match content_changes.iter().rposition(|change| change.range.is_none()) {
+            Some(idx) => {
+                let text = mem::take(&mut content_changes[idx].text);
+                (text, &content_changes[idx + 1..])
             }
-            text
-        }
-        Some(_) => file_contents(),
-        // we received no content changes
-        None => return file_contents(),
-    };
+            None => (file_contents.to_owned(), &content_changes[..]),
+        };
+    if content_changes.is_empty() {
+        return text;
+    }
 
     let mut line_index = LineIndex {
         // the index will be overwritten in the bottom loop's first iteration
@@ -287,11 +276,11 @@ mod tests {
         }
 
         let encoding = PositionEncoding::Wide(WideEncoding::Utf16);
-        let text = apply_document_changes(encoding, || String::new(), vec![]);
+        let text = apply_document_changes(encoding, "", vec![]);
         assert_eq!(text, "");
         let text = apply_document_changes(
             encoding,
-            || text,
+            &text,
             vec![TextDocumentContentChangeEvent {
                 range: None,
                 range_length: None,
@@ -299,49 +288,46 @@ mod tests {
             }],
         );
         assert_eq!(text, "the");
-        let text = apply_document_changes(encoding, || text, c![0, 3; 0, 3 => " quick"]);
+        let text = apply_document_changes(encoding, &text, c![0, 3; 0, 3 => " quick"]);
         assert_eq!(text, "the quick");
         let text =
-            apply_document_changes(encoding, || text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
+            apply_document_changes(encoding, &text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
         assert_eq!(text, "quick foxes");
-        let text = apply_document_changes(encoding, || text, c![0, 11; 0, 11 => "\ndream"]);
+        let text = apply_document_changes(encoding, &text, c![0, 11; 0, 11 => "\ndream"]);
         assert_eq!(text, "quick foxes\ndream");
-        let text = apply_document_changes(encoding, || text, c![1, 0; 1, 0 => "have "]);
+        let text = apply_document_changes(encoding, &text, c![1, 0; 1, 0 => "have "]);
         assert_eq!(text, "quick foxes\nhave dream");
         let text = apply_document_changes(
             encoding,
-            || text,
+            &text,
             c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"],
         );
         assert_eq!(text, "the quick foxes\nhave quiet dreams\n");
-        let text = apply_document_changes(
-            encoding,
-            || text,
-            c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"],
-        );
+        let text =
+            apply_document_changes(encoding, &text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
         assert_eq!(text, "the quick foxes\n\nhave quiet dreams\n\n");
         let text = apply_document_changes(
             encoding,
-            || text,
+            &text,
             c![1, 0; 1, 0 => "DREAM", 2, 0; 2, 0 => "they ", 3, 0; 3, 0 => "DON'T THEY?"],
         );
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
         let text =
-            apply_document_changes(encoding, || text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
+            apply_document_changes(encoding, &text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
 
         let text = String::from("❤️");
-        let text = apply_document_changes(encoding, || text, c![0, 0; 0, 0 => "a"]);
+        let text = apply_document_changes(encoding, &text, c![0, 0; 0, 0 => "a"]);
         assert_eq!(text, "a❤️");
 
         let text = String::from("a\nb");
         let text =
-            apply_document_changes(encoding, || text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+            apply_document_changes(encoding, &text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
         assert_eq!(text, "adcb");
 
         let text = String::from("a\nb");
         let text =
-            apply_document_changes(encoding, || text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+            apply_document_changes(encoding, &text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
         assert_eq!(text, "ațc\ncb");
     }
 

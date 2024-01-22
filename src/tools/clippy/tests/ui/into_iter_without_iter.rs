@@ -1,5 +1,7 @@
 //@no-rustfix
+//@aux-build:proc_macros.rs
 #![warn(clippy::into_iter_without_iter)]
+extern crate proc_macros;
 
 use std::iter::IntoIterator;
 
@@ -106,6 +108,43 @@ pub type Alias = S5;
 impl IntoIterator for &Alias {
     type IntoIter = std::slice::Iter<'static, u8>;
     type Item = &'static u8;
+    fn into_iter(self) -> Self::IntoIter {
+        todo!()
+    }
+}
+
+// Fine to lint, the impls comes from a local macro.
+pub struct Issue12037;
+macro_rules! generate_impl {
+    () => {
+        impl<'a> IntoIterator for &'a Issue12037 {
+            type IntoIter = std::slice::Iter<'a, u8>;
+            type Item = &'a u8;
+            fn into_iter(self) -> Self::IntoIter {
+                todo!()
+            }
+        }
+    };
+}
+generate_impl!();
+
+// Impl comes from an external crate
+proc_macros::external! {
+    pub struct ImplWithForeignSpan;
+    impl<'a> IntoIterator for &'a ImplWithForeignSpan {
+        type IntoIter = std::slice::Iter<'a, u8>;
+        type Item = &'a u8;
+        fn into_iter(self) -> Self::IntoIter {
+            todo!()
+        }
+    }
+}
+
+pub struct Allowed;
+#[allow(clippy::into_iter_without_iter)]
+impl<'a> IntoIterator for &'a Allowed {
+    type IntoIter = std::slice::Iter<'a, u8>;
+    type Item = &'a u8;
     fn into_iter(self) -> Self::IntoIter {
         todo!()
     }

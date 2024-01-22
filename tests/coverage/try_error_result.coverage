@@ -9,6 +9,7 @@
    LL|       |    }
    LL|      6|}
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn test1() -> Result<(), ()> {
    LL|      1|    let mut
    LL|      1|        countdown = 10
@@ -58,6 +59,7 @@
    LL|     17|    }
    LL|       |}
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn test2() -> Result<(), ()> {
    LL|      1|    let thing1 = Thing1{};
    LL|      1|    let mut
@@ -115,6 +117,7 @@
    LL|      0|    Ok(())
    LL|      1|}
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() -> Result<(), ()> {
    LL|      1|    test1().expect_err("test1 should fail");
    LL|      1|    test2()

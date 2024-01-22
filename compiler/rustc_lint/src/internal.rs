@@ -549,7 +549,9 @@ declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
 
 impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        if let ExprKind::Binary(BinOp { node: BinOpKind::Eq, .. }, lhs, rhs) = expr.kind {
+        if let ExprKind::Binary(BinOp { node: BinOpKind::Eq | BinOpKind::Ne, .. }, lhs, rhs) =
+            expr.kind
+        {
             if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
                 cx.emit_spanned_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
             }

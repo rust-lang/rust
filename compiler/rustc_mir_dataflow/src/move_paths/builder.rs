@@ -469,7 +469,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             } => {
                 self.gather_operand(func);
                 for arg in args {
-                    self.gather_operand(arg);
+                    self.gather_operand(&arg.node);
                 }
                 if let Some(_bb) = target {
                     self.create_move_path(destination);

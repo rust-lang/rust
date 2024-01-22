@@ -1,7 +1,7 @@
 // run-pass
 // Eventually this will be rejected (when the future-compat lints are turned into hard errors), and
 // then this test can be removed. But meanwhile we should ensure that this works and does not ICE.
-struct NoDerive(i32);
+struct NoDerive(#[allow(dead_code)] i32);
 
 #[derive(PartialEq)]
 struct WrapEmbedded(*const NoDerive);

@@ -57,7 +57,7 @@
         "@types/vscode": "~1.78.1",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
-        "@vscode/test-electron": "^2.3.3",
+        "@vscode/test-electron": "^2.3.8",
         "@vscode/vsce": "^2.19.0",
         "esbuild": "^0.18.12",
         "eslint": "^8.44.0",
@@ -586,6 +586,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.cargo.buildScripts.rebuildOnSave": {
+                    "markdownDescription": "Rerun proc-macros building/build-scripts running when proc-macro\nor build-script sources change and are saved.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.buildScripts.useRustcWrapper": {
                     "markdownDescription": "Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to\navoid checking unnecessary things.",
                     "default": true,
@@ -642,6 +647,11 @@
                         "null",
                         "string"
                     ]
+                },
+                "rust-analyzer.cargo.sysrootQueryMetadata": {
+                    "markdownDescription": "Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze\nthird-party dependencies of the standard libraries.\n\nThis will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer\nwill attempt to clean up afterwards, but nevertheless requires the location to be\nwritable to.",
+                    "default": false,
+                    "type": "boolean"
                 },
                 "rust-analyzer.cargo.sysrootSrc": {
                     "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
@@ -731,7 +741,7 @@
                     "uniqueItems": true
                 },
                 "rust-analyzer.check.invocationLocation": {
-                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.check.overrideCommand#`\nis set.",
                     "default": "workspace",
                     "type": "string",
                     "enum": [
@@ -744,7 +754,7 @@
                     ]
                 },
                 "rust-analyzer.check.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the check command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the invocation strategy to use when running the check command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.check.overrideCommand#`\nis set.",
                     "default": "per_workspace",
                     "type": "string",
                     "enum": [
@@ -765,7 +775,7 @@
                     ]
                 },
                 "rust-analyzer.check.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.cargo.check.invocationStrategy#` and\n`#rust-analyzer.cargo.check.invocationLocation#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -1110,13 +1120,15 @@
                         "preserve",
                         "crate",
                         "module",
-                        "item"
+                        "item",
+                        "one"
                     ],
                     "enumDescriptions": [
                         "Do not change the granularity of any imports and preserve the original structure written by the developer.",
                         "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
                         "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                        "Flatten imports so that each has its own use statement."
+                        "Flatten imports so that each has its own use statement.",
+                        "Merge all imports into a single use statement as long as they have the same visibility and attributes."
                     ]
                 },
                 "rust-analyzer.imports.group.enable": {
@@ -1303,6 +1315,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.rangeExclusiveHints.enable": {
+                    "markdownDescription": "Whether to show exclusive range inlay hints.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.reborrowHints.enable": {
                     "markdownDescription": "Whether to show inlay hints for compiler inserted reborrows.\nThis setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.",
                     "default": "never",
@@ -1485,6 +1502,11 @@
                 },
                 "rust-analyzer.references.excludeImports": {
                     "markdownDescription": "Exclude imports from find-all-references.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.rename.allowExternalItems": {
+                    "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
                     "default": false,
                     "type": "boolean"
                 },
@@ -1690,11 +1712,14 @@
                 "name": "rust-panic",
                 "patterns": [
                     {
-                        "regexp": "^thread '.*' panicked at '(.*)', (.*):(\\d*):(\\d*)$",
-                        "message": 1,
-                        "file": 2,
-                        "line": 3,
-                        "column": 4
+                        "regexp": "^thread '.*' panicked at (.*):(\\d*):(\\d*):$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3
+                    },
+                    {
+                        "regexp": "(.*)",
+                        "message": 1
                     }
                 ]
             }

@@ -2109,9 +2109,9 @@ fn test_align_to_zst() {
 #[test]
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
-    struct U64(u64, u64);
+    struct U64(#[allow(dead_code)] u64, #[allow(dead_code)] u64);
     #[repr(align(8))]
-    struct U64U64U32(u64, u64, u32);
+    struct U64U64U32(#[allow(dead_code)] u64, #[allow(dead_code)] u64, #[allow(dead_code)] u32);
     let data = [
         U64(1, 2),
         U64(3, 4),
@@ -2196,7 +2196,7 @@ fn test_slice_partition_dedup_multiple_ident() {
 #[test]
 fn test_slice_partition_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {
@@ -2307,7 +2307,7 @@ fn test_is_sorted() {
 
     // Tests for is_sorted_by
     assert!(![6, 2, 8, 5, 1, -60, 1337].is_sorted());
-    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| Some(Ordering::Less)));
+    assert!([6, 2, 8, 5, 1, -60, 1337].is_sorted_by(|_, _| true));
 
     // Tests for is_sorted_by_key
     assert!([-2, -1, 0, 3].is_sorted());
@@ -2398,36 +2398,44 @@ mod swap_panics {
 }
 
 #[test]
-fn slice_split_array_mut() {
+fn slice_split_first_chunk_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.split_array_mut::<0>();
+        let (left, right) = v.split_first_chunk_mut::<0>().unwrap();
         assert_eq!(left, &mut []);
         assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     }
 
     {
-        let (left, right) = v.split_array_mut::<6>();
+        let (left, right) = v.split_first_chunk_mut::<6>().unwrap();
         assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, []);
+    }
+
+    {
+        assert!(v.split_first_chunk_mut::<7>().is_none());
     }
 }
 
 #[test]
-fn slice_rsplit_array_mut() {
+fn slice_split_last_chunk_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.rsplit_array_mut::<0>();
+        let (left, right) = v.split_last_chunk_mut::<0>().unwrap();
         assert_eq!(left, [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, &mut []);
     }
 
     {
-        let (left, right) = v.rsplit_array_mut::<6>();
+        let (left, right) = v.split_last_chunk_mut::<6>().unwrap();
         assert_eq!(left, []);
         assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        assert!(v.split_last_chunk_mut::<7>().is_none());
     }
 }
 
@@ -2441,38 +2449,6 @@ fn split_as_slice() {
     assert!(split.next().is_some());
     assert!(split.next().is_some());
     assert_eq!(split.as_slice(), &[]);
-}
-
-#[should_panic]
-#[test]
-fn slice_split_array_ref_out_of_bounds() {
-    let v = &[1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.split_array_ref::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_split_array_mut_out_of_bounds() {
-    let v = &mut [1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.split_array_mut::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_rsplit_array_ref_out_of_bounds() {
-    let v = &[1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.rsplit_array_ref::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_rsplit_array_mut_out_of_bounds() {
-    let v = &mut [1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.rsplit_array_mut::<7>();
 }
 
 #[test]

@@ -1,0 +1,50 @@
+error: range pattern bounds cannot have parentheses
+  --> $DIR/pat-recover-ranges.rs:4:13
+   |
+LL |         0..=(1) => (),
+   |             ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         0..=(1) => (),
+LL +         0..=1 => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/pat-recover-ranges.rs:6:9
+   |
+LL |         (-12)..=4 => (),
+   |         ^   ^
+   |
+help: remove these parentheses
+   |
+LL -         (-12)..=4 => (),
+LL +         -12..=4 => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/pat-recover-ranges.rs:8:9
+   |
+LL |         (0)..=(-4) => (),
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (0)..=(-4) => (),
+LL +         0..=(-4) => (),
+   |
+
+error: range pattern bounds cannot have parentheses
+  --> $DIR/pat-recover-ranges.rs:8:15
+   |
+LL |         (0)..=(-4) => (),
+   |               ^  ^
+   |
+help: remove these parentheses
+   |
+LL -         (0)..=(-4) => (),
+LL +         (0)..=-4 => (),
+   |
+
+error: aborting due to 4 previous errors
+

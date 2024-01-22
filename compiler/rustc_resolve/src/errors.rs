@@ -486,6 +486,15 @@ pub(crate) struct LowercaseSelf {
     pub(crate) span: Span,
 }
 
+#[derive(Debug)]
+#[derive(Diagnostic)]
+#[diag(resolve_binding_in_never_pattern)]
+pub(crate) struct BindingInNeverPattern {
+    #[primary_span]
+    #[suggestion(code = "_", applicability = "machine-applicable", style = "short")]
+    pub(crate) span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(resolve_trait_impl_duplicate, code = "E0201")]
 pub(crate) struct TraitImplDuplicate {

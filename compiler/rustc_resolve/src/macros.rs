@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_code_err, Applicability};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -128,7 +128,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                         let msg = format!("{} `{}` was already registered", "tool", ident);
                         tcx.dcx()
                             .struct_span_err(ident.span, msg)
-                            .span_label(old_ident.span, "already registered here")
+                            .with_span_label(old_ident.span, "already registered here")
                             .emit();
                     }
                 }
@@ -137,7 +137,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     let span = nested_meta.span();
                     tcx.dcx()
                         .struct_span_err(span, msg)
-                        .span_label(span, "not an identifier")
+                        .with_span_label(span, "not an identifier")
                         .emit();
                 }
             }
@@ -576,10 +576,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
             }
 
-            let mut err = self.dcx().create_err(err);
-            err.span_label(path.span, format!("not {article} {expected}"));
-
-            err.emit();
+            self.dcx()
+                .create_err(err)
+                .with_span_label(path.span, format!("not {article} {expected}"))
+                .emit();
 
             return Ok((self.dummy_ext(kind), Res::Err));
         }
@@ -594,13 +594,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if soft_custom_inner_attributes_gate {
                 self.tcx.sess.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
-                feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::custom_inner_attributes,
-                    path.span,
-                    msg,
-                )
-                .emit();
+                feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
             }
         }
 
@@ -779,7 +773,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            last_segment: path.last().map(|segment| segment.ident.name),
+                            segment: path.last().map(|segment| segment.ident.name),
                             label,
                             suggestion,
                             module,
@@ -830,7 +824,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         expected,
                         ident,
                     });
-
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
                     err.emit();
                 }
@@ -949,13 +942,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         rule_spans = Vec::new();
                     }
                     BuiltinMacroState::AlreadySeen(span) => {
-                        struct_span_err!(
+                        struct_span_code_err!(
                             self.dcx(),
                             item.span,
                             E0773,
                             "attempted to define built-in macro more than once"
                         )
-                        .span_note(span, "previously defined here")
+                        .with_span_note(span, "previously defined here")
                         .emit();
                     }
                 }

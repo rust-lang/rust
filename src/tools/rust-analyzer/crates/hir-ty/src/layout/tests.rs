@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
+use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
@@ -118,7 +118,7 @@ fn check_fail(ra_fixture: &str, e: LayoutError) {
 macro_rules! size_and_align {
     (minicore: $($x:tt),*;$($t:tt)*) => {
         {
-            #[allow(dead_code)]
+            #![allow(dead_code)]
             $($t)*
             check_size_and_align(
                 stringify!($($t)*),
@@ -130,7 +130,7 @@ macro_rules! size_and_align {
     };
     ($($t:tt)*) => {
         {
-            #[allow(dead_code)]
+            #![allow(dead_code)]
             $($t)*
             check_size_and_align(
                 stringify!($($t)*),
@@ -218,6 +218,36 @@ fn recursive() {
         "#,
         LayoutError::RecursiveTypeWithoutIndirection,
     );
+}
+
+#[test]
+fn repr_packed() {
+    size_and_align! {
+        #[repr(packed)]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed(2))]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed(4))]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed)]
+        struct Goal(i32);
+    }
+    size_and_align! {
+        #[repr(packed(2))]
+        struct Goal(i32);
+    }
+    size_and_align! {
+        #[repr(packed(4))]
+        struct Goal(i32);
+    }
+
+    check_size_and_align("#[repr(packed(5))] struct Goal(i32);", "", 4, 1);
 }
 
 #[test]
@@ -336,11 +366,11 @@ fn return_position_impl_trait() {
             }
             let waker = Arc::new(EmptyWaker).into();
             let mut context = Context::from_waker(&waker);
-            let x = pinned.poll(&mut context);
-            x
+
+            pinned.poll(&mut context)
         }
-        let x = unwrap_fut(f());
-        x
+
+        unwrap_fut(f())
     }
     size_and_align_expr! {
         struct Foo<T>(T, T, (T, T));

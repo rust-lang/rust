@@ -6,18 +6,20 @@ LL |     let c = #[rustc_capture_analysis]
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/unsafe_ptr.rs:45:13
+  --> $DIR/unsafe_ptr.rs:46:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: First Pass analysis includes:
-  --> $DIR/unsafe_ptr.rs:28:6
+  --> $DIR/unsafe_ptr.rs:29:6
    |
 LL | /      || unsafe {
 LL | |
@@ -29,13 +31,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
-  --> $DIR/unsafe_ptr.rs:31:26
+  --> $DIR/unsafe_ptr.rs:32:26
    |
 LL |         println!("{:?}", (*t.0).s);
    |                          ^^^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/unsafe_ptr.rs:28:6
+  --> $DIR/unsafe_ptr.rs:29:6
    |
 LL | /      || unsafe {
 LL | |
@@ -47,13 +49,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture t[(0, 0)] -> ImmBorrow
-  --> $DIR/unsafe_ptr.rs:31:26
+  --> $DIR/unsafe_ptr.rs:32:26
    |
 LL |         println!("{:?}", (*t.0).s);
    |                          ^^^^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/unsafe_ptr.rs:48:5
+  --> $DIR/unsafe_ptr.rs:50:5
    |
 LL | /     || {
 LL | |
@@ -65,13 +67,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[Deref,(0, 0)] -> ImmBorrow
-  --> $DIR/unsafe_ptr.rs:51:31
+  --> $DIR/unsafe_ptr.rs:53:31
    |
 LL |         let x = unsafe { &mut (*p).s };
    |                               ^^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/unsafe_ptr.rs:48:5
+  --> $DIR/unsafe_ptr.rs:50:5
    |
 LL | /     || {
 LL | |
@@ -83,7 +85,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[] -> ImmBorrow
-  --> $DIR/unsafe_ptr.rs:51:31
+  --> $DIR/unsafe_ptr.rs:53:31
    |
 LL |         let x = unsafe { &mut (*p).s };
    |                               ^^^^^^

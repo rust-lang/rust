@@ -22,6 +22,11 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_lexer as rustc_lexer;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_lexer;
+
 #[allow(unused)]
 macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
@@ -65,7 +70,7 @@ pub use rowan::{
     api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
     TokenAtOffset, WalkEvent,
 };
-pub use smol_str::SmolStr;
+pub use smol_str::{format_smolstr, SmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

@@ -78,16 +78,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut other_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm = None;
         for arm in arms {
-            if let Some(g) = &arm.guard {
+            if let Some(e) = &arm.guard {
                 self.diverges.set(Diverges::Maybe);
-                match g {
-                    hir::Guard::If(e) => {
-                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
-                    }
-                    hir::Guard::IfLet(l) => {
-                        self.check_expr_let(l);
-                    }
-                };
+                self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
             }
 
             self.diverges.set(Diverges::Maybe);

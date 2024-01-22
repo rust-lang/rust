@@ -331,7 +331,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                     slice,
                 } if indexes.len() > 1 => {
                     // if we have found an `assert!`, let's also check that it's actually right
-                    // and if it convers the highest index and if not, suggest the correct length
+                    // and if it covers the highest index and if not, suggest the correct length
                     let sugg = match comparison {
                         // `v.len() < 5` and `v.len() <= 5` does nothing in terms of bounds checks.
                         // The user probably meant `v.len() > 5`

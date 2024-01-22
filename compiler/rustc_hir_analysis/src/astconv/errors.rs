@@ -6,7 +6,8 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_data_structures::unord::UnordMap;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
@@ -57,13 +58,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if !trait_def.paren_sugar {
             if trait_segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
-                let mut err = feature_err(
-                    &self.tcx().sess.parse_sess,
+                feature_err(
+                    &self.tcx().sess,
                     sym::unboxed_closures,
                     span,
                     "parenthetical notation is only stable when used with `Fn`-family traits",
-                );
-                err.emit();
+                )
+                .emit();
             }
 
             return;
@@ -74,7 +75,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if trait_segment.args().parenthesized != hir::GenericArgsParentheses::ParenSugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let mut err = feature_err(
-                &sess.parse_sess,
+                sess,
                 sym::unboxed_closures,
                 span,
                 "the precise format of `Fn`-family traits' type parameters is subject to change",
@@ -345,7 +346,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         candidates: Vec<DefId>,
         span: Span,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.tcx().dcx(),
             name.span,
             E0034,
@@ -353,7 +354,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
         self.note_ambiguous_inherent_assoc_type(&mut err, candidates, span);
-        err.emit()
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
@@ -444,7 +447,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 String::new()
             };
 
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 name.span,
                 E0220,
@@ -605,7 +608,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let violations =
                     object_safety_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
                 if !violations.is_empty() {
-                    report_object_safety_error(tcx, *span, trait_def_id, &violations).emit();
+                    report_object_safety_error(tcx, *span, None, trait_def_id, &violations).emit();
                     object_safety_violations = true;
                 }
             }
@@ -673,7 +676,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }))
             })
             .flatten()
-            .collect::<FxHashMap<Symbol, &ty::AssocItem>>();
+            .collect::<UnordMap<Symbol, &ty::AssocItem>>();
 
         let mut names = names
             .into_iter()
@@ -696,7 +699,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let names = names.join(", ");
 
         trait_bound_spans.sort();
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             tcx.dcx(),
             trait_bound_spans,
             E0191,
@@ -709,7 +712,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut where_constraints = vec![];
         let mut already_has_generics_args_suggestion = false;
         for (span, assoc_items) in &associated_types {
-            let mut names: FxHashMap<_, usize> = FxHashMap::default();
+            let mut names: UnordMap<_, usize> = Default::default();
             for item in assoc_items {
                 types_count += 1;
                 *names.entry(item.name).or_insert(0) += 1;
@@ -842,7 +845,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.emit();
+        self.set_tainted_by_errors(err.emit());
     }
 }
 

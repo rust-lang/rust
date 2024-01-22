@@ -293,49 +293,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_node: &hir::ExprKind<'_>,
         callee_span: Span,
     ) {
+        let hir::ExprKind::Block(..) = callee_node else {
+            // Only calls on blocks suggested here.
+            return;
+        };
+
         let hir = self.tcx.hir();
-        let parent_hir_id = hir.parent_id(hir_id);
-        let parent_node = self.tcx.hir_node(parent_hir_id);
-        if let (
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, kind, .. }),
+        let fn_decl_span = if let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
+            ..
+        }) = hir.get_parent(hir_id)
+        {
+            fn_decl_span
+        } else if let Some((
+            _,
+            hir::Node::Expr(&hir::Expr {
+                hir_id: parent_hir_id,
+                kind:
+                    hir::ExprKind::Closure(&hir::Closure {
+                        kind:
+                            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                                hir::CoroutineDesugaring::Async,
+                                hir::CoroutineSource::Closure,
+                            )),
+                        ..
+                    }),
                 ..
             }),
-            hir::ExprKind::Block(..),
-        ) = (parent_node, callee_node)
+        )) = hir.parent_iter(hir_id).nth(3)
         {
-            let fn_decl_span = if matches!(
-                kind,
-                hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Closure
-                ),)
-            ) {
-                // Actually need to unwrap one more layer of HIR to get to
-                // the _real_ closure...
-                let async_closure = hir.parent_id(parent_hir_id);
-                if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
-                    ..
-                }) = self.tcx.hir_node(async_closure)
-                {
-                    fn_decl_span
-                } else {
-                    return;
-                }
-            } else {
+            // Actually need to unwrap one more layer of HIR to get to
+            // the _real_ closure...
+            let async_closure = hir.parent_id(parent_hir_id);
+            if let hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
+                ..
+            }) = self.tcx.hir_node(async_closure)
+            {
                 fn_decl_span
-            };
+            } else {
+                return;
+            }
+        } else {
+            return;
+        };
 
-            let start = fn_decl_span.shrink_to_lo();
-            let end = callee_span.shrink_to_hi();
-            err.multipart_suggestion(
-                "if you meant to create this closure and immediately call it, surround the \
+        let start = fn_decl_span.shrink_to_lo();
+        let end = callee_span.shrink_to_hi();
+        err.multipart_suggestion(
+            "if you meant to create this closure and immediately call it, surround the \
                 closure with parentheses",
-                vec![(start, "(".to_string()), (end, ")".to_string())],
-                Applicability::MaybeIncorrect,
-            );
-        }
+            vec![(start, "(".to_string()), (end, ")".to_string())],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// Give appropriate suggestion when encountering `[("a", 0) ("b", 1)]`, where the
@@ -402,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 callee_expr.span,
                                 format!("evaluate({predicate:?}) = {result:?}"),
                             )
-                            .span_label(predicate_span, "predicate")
+                            .with_span_label(predicate_span, "predicate")
                             .emit();
                     }
                 }
@@ -490,11 +500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
                     let fn_once_output_def_id =
                         self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
-                    if self.tcx.generics_of(fn_once_def_id).host_effect_index.is_none() {
-                        if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
-                            self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
-                        }
-                    } else {
+                    if self.tcx.has_host_param(fn_once_def_id) {
                         let const_param: ty::GenericArg<'tcx> =
                             ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
                         self.register_predicate(traits::Obligation::new(
@@ -523,6 +529,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
 
                         self.select_obligations_where_possible(|_| {});
+                    } else if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                        self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
                     }
                 } else {
                     self.dcx().emit_err(errors::ConstSelectMustBeFn { span, ty: arg_ty });

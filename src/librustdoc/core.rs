@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::emitter::{DynEmitter, EmitterWriter};
+use rustc_errors::emitter::{DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::TerminalUrl;
 use rustc_feature::UnstableFeatures;
@@ -138,7 +138,7 @@ pub(crate) fn new_dcx(
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(
-                EmitterWriter::stderr(color_config, fallback_bundle)
+                HumanEmitter::stderr(color_config, fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .teach(unstable_opts.teach)
@@ -323,7 +323,9 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
     tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
+        tcx.hir().for_each_module(|module| {
+            let _ = tcx.ensure().check_mod_type_wf(module);
+        });
     });
 
     tcx.dcx().abort_if_errors();
@@ -493,16 +495,16 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                     .intersperse("::")
                     .collect::<String>()
             );
-            let mut err = rustc_errors::struct_span_err!(
+            rustc_errors::struct_span_code_err!(
                 self.tcx.dcx(),
                 path.span,
                 E0433,
                 "failed to resolve: {label}",
-            );
-            err.span_label(path.span, label);
-            err.note("this error was originally ignored because you are running `rustdoc`");
-            err.note("try running again with `rustc` or `cargo check` and you may get a more detailed error");
-            err.emit();
+            )
+            .with_span_label(path.span, label)
+            .with_note("this error was originally ignored because you are running `rustdoc`")
+            .with_note("try running again with `rustc` or `cargo check` and you may get a more detailed error")
+            .emit();
         }
         // We could have an outer resolution that succeeded,
         // but with generic parameters that failed.

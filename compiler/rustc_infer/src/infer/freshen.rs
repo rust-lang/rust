@@ -5,7 +5,7 @@
 //! Freshening is used primarily to get a good type for inserting into a cache. The result
 //! summarizes what the type inferencer knows "so far". The primary place it is used right now is
 //! in the trait matching algorithm, which needs to be able to cache whether an `impl` self type
-//! matches some other type X -- *without* affecting `X`. That means if that if the type `X` is in
+//! matches some other type X -- *without* affecting `X`. That means that if the type `X` is in
 //! fact an unbound type variable, we want the match to be regarded as ambiguous, because depending
 //! on what type that type variable is ultimately assigned, the match may or may not succeed.
 //!
@@ -21,7 +21,7 @@
 //! Because of the manipulation required to handle closures, doing arbitrary operations on
 //! freshened types is not recommended. However, in addition to doing equality/hash
 //! comparisons (for caching), it is possible to do a `ty::_match` operation between
-//! 2 freshened types - this works even with the closure encoding.
+//! two freshened types - this works even with the closure encoding.
 //!
 //! __An important detail concerning regions.__ The freshener also replaces *all* free regions with
 //! 'erased. The reason behind this is that, in general, we do not take region relationships into
@@ -146,14 +146,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
-                let opt_ct = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .const_unification_table()
-                    .probe_value(v)
-                    .val
-                    .known();
+                let opt_ct =
+                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(v).known();
                 self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {

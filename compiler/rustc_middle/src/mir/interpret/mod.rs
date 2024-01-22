@@ -142,12 +142,11 @@ use crate::ty::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
-    struct_error, BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled,
-    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
-    InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind, InvalidProgramInfo,
-    MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
-    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
-    ValidationErrorKind,
+    BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalToAllocationRawResult,
+    EvalToConstValueResult, EvalToValTreeResult, ExpectedKind, InterpError, InterpErrorInfo,
+    InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType, Misalignment, PointerKind,
+    ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UnsupportedOpInfo, ValidationErrorInfo, ValidationErrorKind,
 };
 
 pub use self::value::Scalar;

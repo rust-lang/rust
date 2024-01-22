@@ -31,9 +31,10 @@ use base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt, SourceRootId, Upcast,
 };
-use fst::{self, Streamer};
+use fst::{self, raw::IndexedValue, Automaton, Streamer};
 use hir::{
     db::HirDatabase,
+    import_map::{AssocSearchMode, SearchMode},
     symbols::{FileSymbol, SymbolCollector},
     Crate, Module,
 };
@@ -43,22 +44,15 @@ use triomphe::Arc;
 
 use crate::RootDatabase;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum SearchMode {
-    Fuzzy,
-    Exact,
-    Prefix,
-}
-
 #[derive(Debug, Clone)]
 pub struct Query {
     query: String,
     lowercased: String,
+    mode: SearchMode,
+    assoc_mode: AssocSearchMode,
+    case_sensitive: bool,
     only_types: bool,
     libs: bool,
-    mode: SearchMode,
-    case_sensitive: bool,
-    limit: usize,
 }
 
 impl Query {
@@ -70,8 +64,8 @@ impl Query {
             only_types: false,
             libs: false,
             mode: SearchMode::Fuzzy,
+            assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
-            limit: usize::max_value(),
         }
     }
 
@@ -95,12 +89,13 @@ impl Query {
         self.mode = SearchMode::Prefix;
     }
 
-    pub fn case_sensitive(&mut self) {
-        self.case_sensitive = true;
+    /// Specifies whether we want to include associated items in the result.
+    pub fn assoc_search_mode(&mut self, assoc_mode: AssocSearchMode) {
+        self.assoc_mode = assoc_mode;
     }
 
-    pub fn limit(&mut self, limit: usize) {
-        self.limit = limit
+    pub fn case_sensitive(&mut self) {
+        self.case_sensitive = true;
     }
 }
 
@@ -225,7 +220,9 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
         indices.iter().flat_map(|indices| indices.iter().cloned()).collect()
     };
 
-    query.search(&indices)
+    let mut res = vec![];
+    query.search(&indices, |f| res.push(f.clone()));
+    res
 }
 
 #[derive(Default)]
@@ -285,6 +282,7 @@ impl SymbolIndex {
             builder.insert(key, value).unwrap();
         }
 
+        // FIXME: fst::Map should ideally have a way to shrink the backing buffer without the unwrap dance
         let map = fst::Map::new({
             let mut buf = builder.into_inner().unwrap();
             buf.shrink_to_fit();
@@ -317,22 +315,54 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search(self, indices: &[Arc<SymbolIndex>]) -> Vec<FileSymbol> {
+    pub(crate) fn search<'sym>(
+        self,
+        indices: &'sym [Arc<SymbolIndex>],
+        cb: impl FnMut(&'sym FileSymbol),
+    ) {
         let _p = profile::span("symbol_index::Query::search");
         let mut op = fst::map::OpBuilder::new();
-        for file_symbols in indices.iter() {
-            let automaton = fst::automaton::Subsequence::new(&self.lowercased);
-            op = op.add(file_symbols.map.search(automaton))
+        match self.mode {
+            SearchMode::Exact => {
+                let automaton = fst::automaton::Str::new(&self.lowercased);
+
+                for index in indices.iter() {
+                    op = op.add(index.map.search(&automaton));
+                }
+                self.search_maps(indices, op.union(), cb)
+            }
+            SearchMode::Fuzzy => {
+                let automaton = fst::automaton::Subsequence::new(&self.lowercased);
+
+                for index in indices.iter() {
+                    op = op.add(index.map.search(&automaton));
+                }
+                self.search_maps(indices, op.union(), cb)
+            }
+            SearchMode::Prefix => {
+                let automaton = fst::automaton::Str::new(&self.lowercased).starts_with();
+
+                for index in indices.iter() {
+                    op = op.add(index.map.search(&automaton));
+                }
+                self.search_maps(indices, op.union(), cb)
+            }
         }
-        let mut stream = op.union();
-        let mut res = Vec::new();
+    }
+
+    fn search_maps<'sym>(
+        &self,
+        indices: &'sym [Arc<SymbolIndex>],
+        mut stream: fst::map::Union<'_>,
+        mut cb: impl FnMut(&'sym FileSymbol),
+    ) {
         while let Some((_, indexed_values)) = stream.next() {
-            for indexed_value in indexed_values {
-                let symbol_index = &indices[indexed_value.index];
-                let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
+            for &IndexedValue { index, value } in indexed_values {
+                let symbol_index = &indices[index];
+                let (start, end) = SymbolIndex::map_value_to_range(value);
 
                 for symbol in &symbol_index.symbols[start..end] {
-                    if self.only_types
+                    let non_type_for_type_only_query = self.only_types
                         && !matches!(
                             symbol.def,
                             hir::ModuleDef::Adt(..)
@@ -340,47 +370,32 @@ impl Query {
                                 | hir::ModuleDef::BuiltinType(..)
                                 | hir::ModuleDef::TraitAlias(..)
                                 | hir::ModuleDef::Trait(..)
-                        )
-                    {
+                        );
+                    if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
-                    let skip = match self.mode {
-                        SearchMode::Fuzzy => {
-                            self.case_sensitive
-                                && self.query.chars().any(|c| !symbol.name.contains(c))
-                        }
-                        SearchMode::Exact => symbol.name != self.query,
-                        SearchMode::Prefix if self.case_sensitive => {
-                            !symbol.name.starts_with(&self.query)
-                        }
-                        SearchMode::Prefix => symbol
-                            .name
-                            .chars()
-                            .zip(self.lowercased.chars())
-                            .all(|(n, q)| n.to_lowercase().next() == Some(q)),
-                    };
-
-                    if skip {
-                        continue;
-                    }
-
-                    res.push(symbol.clone());
-                    if res.len() >= self.limit {
-                        return res;
+                    if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
+                        cb(symbol);
                     }
                 }
             }
         }
-        res
+    }
+
+    fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {
+        !matches!(
+            (is_trait_assoc_item, self.assoc_mode),
+            (true, AssocSearchMode::Exclude) | (false, AssocSearchMode::AssocItemsOnly)
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use base_db::fixture::WithFixture;
     use expect_test::expect_file;
     use hir::symbols::SymbolCollector;
+    use test_fixture::WithFixture;
 
     use super::*;
 
@@ -412,6 +427,12 @@ union Union {}
 
 impl Struct {
     fn impl_fn() {}
+}
+
+struct StructT<T>;
+
+impl <T> StructT<T> {
+    fn generic_impl_fn() {}
 }
 
 trait Trait {

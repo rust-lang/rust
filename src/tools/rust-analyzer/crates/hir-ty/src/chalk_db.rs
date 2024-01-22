@@ -167,7 +167,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 }
             });
         })
-        .map(|block_id| self.db.trait_impls_in_block(block_id));
+        .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
         let mut result = vec![];
@@ -183,7 +183,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 def_blocks
                     .into_iter()
                     .flatten()
-                    .for_each(|it| f(&self.db.trait_impls_in_block(it)));
+                    .filter_map(|it| self.db.trait_impls_in_block(it))
+                    .for_each(|it| f(&it));
             }
             fps => {
                 let mut f =
@@ -198,7 +199,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 def_blocks
                     .into_iter()
                     .flatten()
-                    .for_each(|it| f(&self.db.trait_impls_in_block(it)));
+                    .filter_map(|it| self.db.trait_impls_in_block(it))
+                    .for_each(|it| f(&it));
             }
         }
 
@@ -228,7 +230,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         well_known_trait: rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
         let lang_attr = lang_item_from_well_known_trait(well_known_trait);
-        let trait_ = match self.db.lang_item(self.krate, lang_attr.into()) {
+        let trait_ = match self.db.lang_item(self.krate, lang_attr) {
             Some(LangItemTarget::Trait(trait_)) => trait_,
             _ => return None,
         };
@@ -422,18 +424,18 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
         format!("fn_{}", fn_def_id.0)
     }
-    fn generator_datum(
+    fn coroutine_datum(
         &self,
-        id: chalk_ir::GeneratorId<Interner>,
-    ) -> Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
-        let (parent, expr) = self.db.lookup_intern_generator(id.into());
+        id: chalk_ir::CoroutineId<Interner>,
+    ) -> Arc<chalk_solve::rust_ir::CoroutineDatum<Interner>> {
+        let (parent, expr) = self.db.lookup_intern_coroutine(id.into());
 
         // We fill substitution with unknown type, because we only need to know whether the generic
         // params are types or consts to build `Binders` and those being filled up are for
-        // `resume_type`, `yield_type`, and `return_type` of the generator in question.
-        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+        // `resume_type`, `yield_type`, and `return_type` of the coroutine in question.
+        let subst = TyBuilder::subst_for_coroutine(self.db, parent).fill_with_unknown().build();
 
-        let input_output = rust_ir::GeneratorInputOutputDatum {
+        let input_output = rust_ir::CoroutineInputOutputDatum {
             resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                 .intern(Interner),
             yield_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 1))
@@ -451,35 +453,35 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 
         let movability = match self.db.body(parent)[expr] {
             hir_def::hir::Expr::Closure {
-                closure_kind: hir_def::hir::ClosureKind::Generator(movability),
+                closure_kind: hir_def::hir::ClosureKind::Coroutine(movability),
                 ..
             } => movability,
-            _ => unreachable!("non generator expression interned as generator"),
+            _ => unreachable!("non coroutine expression interned as coroutine"),
         };
         let movability = match movability {
             Movability::Static => rust_ir::Movability::Static,
             Movability::Movable => rust_ir::Movability::Movable,
         };
 
-        Arc::new(rust_ir::GeneratorDatum { movability, input_output })
+        Arc::new(rust_ir::CoroutineDatum { movability, input_output })
     }
-    fn generator_witness_datum(
+    fn coroutine_witness_datum(
         &self,
-        id: chalk_ir::GeneratorId<Interner>,
-    ) -> Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
+        id: chalk_ir::CoroutineId<Interner>,
+    ) -> Arc<chalk_solve::rust_ir::CoroutineWitnessDatum<Interner>> {
         // FIXME: calculate inner types
         let inner_types =
-            rust_ir::GeneratorWitnessExistential { types: wrap_empty_binders(vec![]) };
+            rust_ir::CoroutineWitnessExistential { types: wrap_empty_binders(vec![]) };
 
-        let (parent, _) = self.db.lookup_intern_generator(id.into());
-        // See the comment in `generator_datum()` for unknown types.
-        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+        let (parent, _) = self.db.lookup_intern_coroutine(id.into());
+        // See the comment in `coroutine_datum()` for unknown types.
+        let subst = TyBuilder::subst_for_coroutine(self.db, parent).fill_with_unknown().build();
         let it = subst
             .iter(Interner)
             .map(|it| it.constant(Interner).map(|c| c.data(Interner).ty.clone()));
         let inner_types = crate::make_type_and_const_binders(it, inner_types);
 
-        Arc::new(rust_ir::GeneratorWitnessDatum { inner_types })
+        Arc::new(rust_ir::CoroutineWitnessDatum { inner_types })
     }
 
     fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<Interner> {
@@ -615,7 +617,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Fn => WellKnownTrait::Fn,
         LangItem::FnMut => WellKnownTrait::FnMut,
         LangItem::FnOnce => WellKnownTrait::FnOnce,
-        LangItem::Generator => WellKnownTrait::Generator,
+        LangItem::Coroutine => WellKnownTrait::Coroutine,
         LangItem::Sized => WellKnownTrait::Sized,
         LangItem::Unpin => WellKnownTrait::Unpin,
         LangItem::Unsize => WellKnownTrait::Unsize,
@@ -637,7 +639,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Fn => LangItem::Fn,
         WellKnownTrait::FnMut => LangItem::FnMut,
         WellKnownTrait::FnOnce => LangItem::FnOnce,
-        WellKnownTrait::Generator => LangItem::Generator,
+        WellKnownTrait::Coroutine => LangItem::Coroutine,
         WellKnownTrait::Sized => LangItem::Sized,
         WellKnownTrait::Tuple => LangItem::Tuple,
         WellKnownTrait::Unpin => LangItem::Unpin,
@@ -817,7 +819,11 @@ pub(crate) fn fn_def_datum_query(
     };
     let datum = FnDefDatum {
         id: fn_def_id,
-        sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: sig.is_varargs },
+        sig: chalk_ir::FnSig {
+            abi: sig.abi,
+            safety: chalk_ir::Safety::Safe,
+            variadic: sig.is_varargs,
+        },
         binders: chalk_ir::Binders::new(binders, bound),
     };
     Arc::new(datum)

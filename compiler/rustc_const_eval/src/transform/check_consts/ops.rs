@@ -64,7 +64,7 @@ impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
-            &ccx.tcx.sess.parse_sess,
+            &ccx.tcx.sess,
             sym::const_fn_floating_point_arithmetic,
             span,
             format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
@@ -553,7 +553,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
-            &ccx.tcx.sess.parse_sess,
+            &ccx.tcx.sess,
             sym::const_mut_refs,
             span,
             format!("dereferencing raw mutable pointers in {}s is unstable", ccx.const_kind(),),
@@ -624,7 +624,7 @@ pub mod ty {
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
             feature_err(
-                &ccx.tcx.sess.parse_sess,
+                &ccx.tcx.sess,
                 sym::const_mut_refs,
                 span,
                 format!("mutable references are not allowed in {}s", ccx.const_kind()),

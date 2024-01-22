@@ -859,6 +859,7 @@ impl CrateInfo {
             local_crate_name,
             compiler_builtins,
             profiler_runtime: None,
+            is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             crate_name: Default::default(),
@@ -885,6 +886,9 @@ impl CrateInfo {
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
+            if tcx.is_no_builtins(cnum) {
+                info.is_no_builtins.insert(cnum);
+            }
         }
 
         // Handle circular dependencies in the standard library.
@@ -892,7 +896,9 @@ impl CrateInfo {
         // If global LTO is enabled then almost everything (*) is glued into a single object file,
         // so this logic is not necessary and can cause issues on some targets (due to weak lang
         // item symbols being "privatized" to that object file), so we disable it.
-        // (*) Native libs are not glued, and we assume that they cannot define weak lang items.
+        // (*) Native libs, and `#[compiler_builtins]` and `#[no_builtins]` crates are not glued,
+        // and we assume that they cannot define weak lang items. This is not currently enforced
+        // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
             let missing_weak_lang_items: FxHashSet<Symbol> = info
@@ -906,17 +912,22 @@ impl CrateInfo {
                 })
                 .collect();
             let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+
+            // This loop only adds new items to values of the hash map, so the order in which we
+            // iterate over the values is not important.
+            #[allow(rustc::potential_query_instability)]
             info.linked_symbols
                 .iter_mut()
                 .filter(|(crate_type, _)| {
                     !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
                 })
                 .for_each(|(_, linked_symbols)| {
-                    linked_symbols.extend(
-                        missing_weak_lang_items
-                            .iter()
-                            .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
-                    );
+                    let mut symbols = missing_weak_lang_items
+                        .iter()
+                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .collect::<Vec<_>>();
+                    symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+                    linked_symbols.extend(symbols);
                     if tcx.allocator_kind(()).is_some() {
                         // At least one crate needs a global allocator. This crate may be placed
                         // after the crate that defines it in the linker order, in which case some

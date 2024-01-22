@@ -248,7 +248,7 @@ pub struct InferArg {
 }
 
 impl InferArg {
-    pub fn to_ty(&self) -> Ty<'_> {
+    pub fn to_ty(&self) -> Ty<'static> {
         Ty { kind: TyKind::Infer, span: self.span, hir_id: self.hir_id }
     }
 }
@@ -841,7 +841,7 @@ pub struct OwnerNodes<'tcx> {
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
-    fn node(&self) -> OwnerNode<'tcx> {
+    pub fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
@@ -1015,7 +1015,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1042,7 +1042,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1205,6 +1205,9 @@ pub enum PatKind<'hir> {
     /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
     /// ```
     Slice(&'hir [Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [Pat<'hir>]),
+
+    /// A placeholder for a pattern that wasn't well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// A statement.
@@ -1258,7 +1261,7 @@ pub struct Arm<'hir> {
     /// If this pattern and the optional guard matches, then `body` is evaluated.
     pub pat: &'hir Pat<'hir>,
     /// Optional guard clause.
-    pub guard: Option<Guard<'hir>>,
+    pub guard: Option<&'hir Expr<'hir>>,
     /// The expression the arm evaluates to if this arm matches.
     pub body: &'hir Expr<'hir>,
 }
@@ -1278,26 +1281,6 @@ pub struct Let<'hir> {
     /// `Some` when this let expressions is not in a syntanctically valid location.
     /// Used to prevent building MIR in such situations.
     pub is_recovered: Option<ErrorGuaranteed>,
-}
-
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub enum Guard<'hir> {
-    If(&'hir Expr<'hir>),
-    IfLet(&'hir Let<'hir>),
-}
-
-impl<'hir> Guard<'hir> {
-    /// Returns the body of the guard
-    ///
-    /// In other words, returns the e in either of the following:
-    ///
-    /// - `if e`
-    /// - `if let x = e`
-    pub fn body(&self) -> &'hir Expr<'hir> {
-        match self {
-            Guard::If(e) | Guard::IfLet(Let { init: e, .. }) => e,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -1322,7 +1305,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1378,6 +1361,12 @@ impl CoroutineKind {
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => Movability::Movable,
             CoroutineKind::Coroutine(mov) => mov,
         }
+    }
+}
+
+impl CoroutineKind {
+    pub fn is_fn_like(self) -> bool {
+        matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
     }
 }
 
@@ -2017,7 +2006,7 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
-    /// A desugared `expr = expr`, where the LHS is a tuple, struct or array.
+    /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
     /// The span is that of the `=` sign.
     AssignDesugar(Span),
 }
@@ -2108,12 +2097,6 @@ pub enum YieldSource {
     Await { expr: Option<HirId> },
     /// A plain `yield`.
     Yield,
-}
-
-impl YieldSource {
-    pub fn is_await(&self) -> bool {
-        matches!(self, YieldSource::Await { .. })
-    }
 }
 
 impl fmt::Display for YieldSource {
@@ -2425,6 +2408,39 @@ impl<'hir> Ty<'hir> {
         my_visitor.visit_ty(self);
         my_visitor.0
     }
+
+    /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
+    /// use inference to provide suggestions for the appropriate type if possible.
+    pub fn is_suggestable_infer_ty(&self) -> bool {
+        fn are_suggestable_generic_args(generic_args: &[GenericArg<'_>]) -> bool {
+            generic_args.iter().any(|arg| match arg {
+                GenericArg::Type(ty) => ty.is_suggestable_infer_ty(),
+                GenericArg::Infer(_) => true,
+                _ => false,
+            })
+        }
+        debug!(?self);
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
+            TyKind::Array(ty, length) => {
+                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(_, _))
+            }
+            TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
+            TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
+            TyKind::OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
+            TyKind::Path(QPath::TypeRelative(ty, segment)) => {
+                ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
+            }
+            TyKind::Path(QPath::Resolved(ty_opt, Path { segments, .. })) => {
+                ty_opt.is_some_and(Self::is_suggestable_infer_ty)
+                    || segments
+                        .iter()
+                        .any(|segment| are_suggestable_generic_args(segment.args().args))
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
@@ -2558,9 +2574,17 @@ pub enum OpaqueTyOrigin {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegationKind {
+    Input(usize),
+    Output,
+}
+
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir> {
+    /// Actual type should be inherited from `DefId` signature
+    InferDelegation(DefId, InferDelegationKind),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -2755,13 +2779,22 @@ pub enum FnRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl FnRetTy<'_> {
+impl<'hir> FnRetTy<'hir> {
     #[inline]
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,
             Self::Return(ref ty) => ty.span,
         }
+    }
+
+    pub fn get_infer_ret_ty(&self) -> Option<&'hir Ty<'hir>> {
+        if let Self::Return(ty) = self {
+            if ty.is_suggestable_infer_ty() {
+                return Some(*ty);
+            }
+        }
+        None
     }
 }
 

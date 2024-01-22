@@ -4,7 +4,6 @@ pub struct Foo<'a, 'b, T> {
     field1: dyn Bar<'a, 'b,>,
     //~^ ERROR
     //~| ERROR
-    //~| ERROR
 }
 
 pub trait Bar<'x, 's, U>

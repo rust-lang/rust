@@ -11,18 +11,18 @@
 //! `ReachedFixedPoint` signals about this.
 
 use base_db::Edition;
-use hir_expand::name::Name;
+use hir_expand::{name::Name, Lookup};
 use triomphe::Arc;
 
 use crate::{
-    data::adt::VariantData,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, BUILTIN_SCOPE},
+    item_tree::Fields,
     nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
+    AdtId, CrateId, LocalModuleId, ModuleDefId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,7 +87,7 @@ impl DefMap {
         within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
-            RawVisibility::Module(path) => {
+            RawVisibility::Module(path, explicity) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
@@ -95,7 +95,7 @@ impl DefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Visibility::Module(m),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicity),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;
@@ -108,11 +108,11 @@ impl DefMap {
         // In block expressions, `self` normally refers to the containing non-block module, and
         // `super` to its parent (etc.). However, visibilities must only refer to a module in the
         // DefMap they're written in, so we restrict them when that happens.
-        if let Visibility::Module(m) = vis {
+        if let Visibility::Module(m, mv) = vis {
             // ...unless we're resolving visibility for an associated item in an impl.
             if self.block_id() != m.block && !within_impl {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
-                vis = Visibility::Module(self.module_id(Self::ROOT));
+                vis = Visibility::Module(self.module_id(Self::ROOT), mv);
                 tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
         }
@@ -355,29 +355,42 @@ impl DefMap {
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
-                    let enum_data = db.enum_data(e);
-                    match enum_data.variant(segment) {
-                        Some(local_id) => {
-                            let variant = EnumVariantId { parent: e, local_id };
-                            match &*enum_data.variants[local_id].variant_data {
-                                VariantData::Record(_) => {
-                                    PerNs::types(variant.into(), Visibility::Public, None)
-                                }
-                                VariantData::Tuple(_) | VariantData::Unit => PerNs::both(
-                                    variant.into(),
-                                    variant.into(),
-                                    Visibility::Public,
-                                    None,
-                                ),
+                    let def_map;
+
+                    let loc = e.lookup(db);
+                    let tree = loc.id.item_tree(db);
+                    let current_def_map =
+                        self.krate == loc.container.krate && self.block_id() == loc.container.block;
+                    let res = if current_def_map {
+                        &self.enum_definitions[&e]
+                    } else {
+                        def_map = loc.container.def_map(db);
+                        &def_map.enum_definitions[&e]
+                    }
+                    .iter()
+                    .find_map(|&variant| {
+                        let variant_data = &tree[variant.lookup(db).id.value];
+                        (variant_data.name == *segment).then(|| match variant_data.fields {
+                            Fields::Record(_) => {
+                                PerNs::types(variant.into(), Visibility::Public, None)
                             }
-                        }
+                            Fields::Tuple(_) | Fields::Unit => PerNs::both(
+                                variant.into(),
+                                variant.into(),
+                                Visibility::Public,
+                                None,
+                            ),
+                        })
+                    });
+                    match res {
+                        Some(res) => res,
                         None => {
                             return ResolvePathResult::with(
                                 PerNs::types(e.into(), vis, imp),
                                 ReachedFixedPoint::Yes,
                                 Some(i),
                                 Some(self.krate),
-                            );
+                            )
                         }
                     }
                 }

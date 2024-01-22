@@ -1,7 +1,4 @@
 // run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 #![allow(dead_code)]
 
 use std::mem::ManuallyDrop;

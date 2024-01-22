@@ -63,6 +63,7 @@ impl flags::AnalysisStats {
             true => None,
             false => Some(RustLibSource::Discover),
         };
+        cargo_config.sysroot_query_metadata = self.query_sysroot_metadata;
         let no_progress = &|_| ();
 
         let mut db_load_sw = self.stop_watch();
@@ -276,7 +277,7 @@ impl flags::AnalysisStats {
             }
             all += 1;
             let Err(e) = db.layout_of_adt(
-                hir_def::AdtId::from(a).into(),
+                hir_def::AdtId::from(a),
                 Substitution::empty(Interner),
                 db.trait_environment(a.into()),
             ) else {
@@ -792,6 +793,7 @@ impl flags::AnalysisStats {
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
+                    range_exclusive_hints: true,
                 },
                 file_id,
                 None,

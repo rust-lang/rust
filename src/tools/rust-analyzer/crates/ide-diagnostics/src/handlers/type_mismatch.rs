@@ -59,8 +59,8 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
-    if let Some(expr_ptr) = d.expr_or_pat.value.clone().cast::<ast::Expr>() {
-        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr.clone() };
+    if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
+        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr };
         add_reference(ctx, d, expr_ptr, &mut fixes);
         add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
@@ -80,7 +80,7 @@ fn add_reference(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let range = ctx.sema.diagnostics_display_range(expr_ptr.clone().map(|it| it.into()));
+    let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
     let actual_with_ref = Type::reference(&d.actual, mutability);
@@ -182,7 +182,7 @@ fn str_ref_to_owned(
     let expr = expr_ptr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
 
-    let to_owned = format!(".to_owned()");
+    let to_owned = ".to_owned()".to_string();
 
     let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
     let source_change =

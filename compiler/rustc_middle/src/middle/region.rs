@@ -7,12 +7,11 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use crate::ty::TyCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirIdMap, Node};
 use rustc_macros::HashStable;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -205,7 +204,7 @@ impl Scope {
 pub type ScopeDepth = u32;
 
 /// The region scope tree encodes information about region relationships.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, HashStable)]
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
     pub root_body: Option<hir::HirId>,
@@ -306,7 +305,7 @@ pub struct ScopeTree {
     /// The reason is that semantically, until the `box` expression returns,
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
-    pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
+    pub yield_in_scope: UnordMap<Scope, Vec<YieldData>>,
 }
 
 /// Identifies the reason that a given expression is an rvalue candidate
@@ -402,25 +401,5 @@ impl ScopeTree {
     /// returns `Some(YieldData)`. If not, returns `None`.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
         self.yield_in_scope.get(&scope).map(Deref::deref)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let ScopeTree {
-            root_body,
-            ref parent_map,
-            ref var_map,
-            ref destruction_scopes,
-            ref rvalue_candidates,
-            ref yield_in_scope,
-        } = *self;
-
-        root_body.hash_stable(hcx, hasher);
-        parent_map.hash_stable(hcx, hasher);
-        var_map.hash_stable(hcx, hasher);
-        destruction_scopes.hash_stable(hcx, hasher);
-        rvalue_candidates.hash_stable(hcx, hasher);
-        yield_in_scope.hash_stable(hcx, hasher);
     }
 }

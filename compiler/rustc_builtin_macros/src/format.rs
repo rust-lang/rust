@@ -99,7 +99,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             }
 
             match p.expect(&token::Comma) {
-                Err(mut err) => {
+                Err(err) => {
                     match token::TokenKind::Comma.similar_tokens() {
                         Some(tks) if tks.contains(&p.token.kind) => {
                             // If a similar token is found, then it may be a typo. We
@@ -630,8 +630,7 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        if let Some(mut new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders)
-        {
+        if let Some(new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders) {
             diag.cancel();
             new_diag.emit();
             return;
@@ -976,7 +975,7 @@ fn expand_format_args_impl<'cx>(
                 MacEager::expr(DummyResult::raw_expr(sp, true))
             }
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

@@ -36,7 +36,7 @@ pub(crate) fn handle_work_done_progress_cancel(
 ) -> anyhow::Result<()> {
     if let lsp_types::NumberOrString::String(s) = &params.token {
         if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
-            if let Ok(id) = u32::from_str_radix(id, 10) {
+            if let Ok(id) = id.parse::<u32>() {
                 if let Some(flycheck) = state.flycheck.get(id as usize) {
                     flycheck.cancel();
                 }
@@ -59,7 +59,13 @@ pub(crate) fn handle_did_open_text_document(
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let already_exists = state
             .mem_docs
-            .insert(path.clone(), DocumentData::new(params.text_document.version))
+            .insert(
+                path.clone(),
+                DocumentData::new(
+                    params.text_document.version,
+                    params.text_document.text.clone().into_bytes(),
+                ),
+            )
             .is_err();
         if already_exists {
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
@@ -76,11 +82,12 @@ pub(crate) fn handle_did_change_text_document(
     let _p = profile::span("handle_did_change_text_document");
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-        match state.mem_docs.get_mut(&path) {
+        let data = match state.mem_docs.get_mut(&path) {
             Some(doc) => {
                 // The version passed in DidChangeTextDocument is the version after all edits are applied
                 // so we should apply it before the vfs is notified.
                 doc.version = params.text_document.version;
+                &mut doc.data
             }
             None => {
                 tracing::error!("unexpected DidChangeTextDocument: {}", path);
@@ -88,16 +95,16 @@ pub(crate) fn handle_did_change_text_document(
             }
         };
 
-        let text = apply_document_changes(
+        let new_contents = apply_document_changes(
             state.config.position_encoding(),
-            || {
-                let vfs = &state.vfs.read().0;
-                let file_id = vfs.file_id(&path).unwrap();
-                std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into()
-            },
+            std::str::from_utf8(data).unwrap(),
             params.content_changes,
-        );
-        state.vfs.write().0.set_file_contents(path, Some(text.into_bytes()));
+        )
+        .into_bytes();
+        if *data != new_contents {
+            *data = new_contents.clone();
+            state.vfs.write().0.set_file_contents(path, Some(new_contents));
+        }
     }
     Ok(())
 }
@@ -130,6 +137,13 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
+    if state.config.script_rebuild_on_save() && state.proc_macro_changed {
+        // reset the flag
+        state.proc_macro_changed = false;
+        // rebuild the proc macros
+        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
+    }
+
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
         if let Some(abs_path) = vfs_path.as_path() {

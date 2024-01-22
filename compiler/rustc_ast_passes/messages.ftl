@@ -188,6 +188,9 @@ ast_passes_module_nonascii = trying to load file for module `{$name}` with non-a
 ast_passes_negative_bound_not_supported =
     negative bounds are not supported
 
+ast_passes_negative_bound_with_parenthetical_notation =
+    parenthetical notation may not be used for negative bounds
+
 ast_passes_nested_impl_trait = nested `impl Trait` is not allowed
     .outer = outer `impl Trait`
     .inner = nested `impl Trait` here
@@ -229,12 +232,28 @@ ast_passes_tilde_const_disallowed = `~const` is not allowed here
     .trait = this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
     .trait_impl = this impl is not `const`, so it cannot have `~const` trait bounds
     .impl = inherent impls cannot have `~const` trait bounds
+    .trait_assoc_ty = associated types in non-`#[const_trait]` traits cannot have `~const` trait bounds
+    .trait_impl_assoc_ty = associated types in non-const impls cannot have `~const` trait bounds
+    .inherent_assoc_ty = inherent associated types cannot have `~const` trait bounds
     .object = trait objects cannot have `~const` trait bounds
     .item = this item cannot have `~const` trait bounds
 
 ast_passes_trait_fn_const =
-    functions in traits cannot be declared const
-    .label = functions in traits cannot be const
+    functions in {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    } cannot be declared const
+    .label = functions in {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    } cannot be const
+    .const_context_label = this declares all associated functions implicitly const
+    .remove_const_sugg = remove the `const`{$requires_multiple_changes ->
+        [true] {" ..."}
+        *[false] {""}
+    }
+    .make_impl_const_sugg = ... and declare the impl to be const instead
+    .make_trait_const_sugg = ... and declare the trait to be a `#[const_trait]` instead
 
 ast_passes_trait_object_single_bound = only a single explicit lifetime bound is permitted
 

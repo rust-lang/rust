@@ -1,15 +1,19 @@
-#![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
+#![feature(impl_trait_in_assoc_type)]
+#![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(option_get_or_insert_default)]
+#![feature(round_char_boundary)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
@@ -39,7 +43,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::sym;
+use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]
@@ -94,6 +98,7 @@ mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
 mod prettify;
+mod promote_consts;
 mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -115,7 +120,6 @@ mod uninhabited_enum_branching;
 mod unreachable_prop;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
-use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
 
@@ -168,13 +172,13 @@ fn remap_mir_for_const_eval_select<'tcx>(
             {
                 let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
                     std::mem::take(args).try_into().unwrap();
-                let ty = tupled_args.ty(&body.local_decls, tcx);
+                let ty = tupled_args.node.ty(&body.local_decls, tcx);
                 let fields = ty.tuple_fields();
                 let num_args = fields.len();
                 let func =
                     if context == hir::Constness::Const { called_in_const } else { called_at_rt };
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
-                    match tupled_args {
+                    match tupled_args.node {
                         Operand::Constant(_) => {
                             // there is no good way of extracting a tuple arg from a constant (const generic stuff)
                             // so we just create a temporary and deconstruct that.
@@ -183,7 +187,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                                 source_info: SourceInfo::outermost(fn_span),
                                 kind: StatementKind::Assign(Box::new((
                                     local.into(),
-                                    Rvalue::Use(tupled_args.clone()),
+                                    Rvalue::Use(tupled_args.node.clone()),
                                 ))),
                             });
                             (Operand::Move, local.into())
@@ -198,11 +202,11 @@ fn remap_mir_for_const_eval_select<'tcx>(
                         place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
                         let projection = tcx.mk_place_elems(&place_elems);
                         let place = Place { local: place.local, projection };
-                        method(place)
+                        Spanned { node: method(place), span: DUMMY_SP }
                     })
                     .collect();
                 terminator.kind = TerminatorKind::Call {
-                    func,
+                    func: func.node,
                     args: arguments,
                     destination,
                     target,
@@ -285,9 +289,9 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 /// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
 /// We used to have this for pre-miri MIR based const eval.
 fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    // Unsafety check uses the raw mir, so make sure it is run.
+    // MIR unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        tcx.ensure_with_value().unsafety_check_result(def);
+        tcx.ensure_with_value().mir_unsafety_check_result(def);
     }
 
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
@@ -565,17 +569,28 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         body,
         &[
             &check_alignment::CheckAlignment,
-            &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
+            // Before inlining: trim down MIR with passes to reduce inlining work.
+
+            // Has to be done before inlining, otherwise actual call will be almost always inlined.
+            // Also simple, so can just do first
+            &lower_slice_len::LowerSliceLenCalls,
+            // Perform inlining, which may add a lot of code.
             &inline::Inline,
-            // Substitutions during inlining may introduce switch on enums with uninhabited branches.
+            // Code from other crates may have storage markers, so this needs to happen after inlining.
+            &remove_storage_markers::RemoveStorageMarkers,
+            // Inlining and substitution may introduce ZST and useless drops.
+            &remove_zsts::RemoveZsts,
+            &remove_unneeded_drops::RemoveUnneededDrops,
+            // Type substitution may create uninhabited enums.
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
-            &remove_storage_markers::RemoveStorageMarkers,
-            &remove_zsts::RemoveZsts,
-            &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
+            // Inlining may have introduced a lot of redundant code and a large move pattern.
+            // Now, we need to shrink the generated MIR.
+
+            // Has to run after `slice::len` lowering
+            &normalize_array_len::NormalizeArrayLen,
             &const_goto::ConstGoto,
-            &remove_unneeded_drops::RemoveUnneededDrops,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
@@ -583,24 +598,25 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
             &simplify::SimplifyLocals::BeforeConstProp,
-            &copy_prop::CopyProp,
+            &dead_store_elimination::DeadStoreElimination::Initial,
+            &gvn::GVN,
+            &simplify::SimplifyLocals::AfterGVN,
             // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
             // destroy the SSA property. It should still happen before const-propagation, so the
             // latter pass will leverage the created opportunities.
             &separate_const_switch::SeparateConstSwitch,
-            &gvn::GVN,
-            &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
-            &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
+            &copy_prop::CopyProp,
+            &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,

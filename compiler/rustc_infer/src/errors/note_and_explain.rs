@@ -164,10 +164,10 @@ impl AddToDiagnostic for RegionExplanation<'_> {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("pref_kind", self.prefix);
-        diag.set_arg("suff_kind", self.suffix);
-        diag.set_arg("desc_kind", self.desc.kind);
-        diag.set_arg("desc_arg", self.desc.arg);
+        diag.arg("pref_kind", self.prefix);
+        diag.arg("suff_kind", self.suffix);
+        diag.arg("desc_kind", self.desc.kind);
+        diag.arg("desc_arg", self.desc.arg);
 
         let msg = f(diag, fluent::infer_region_explanation.into());
         if let Some(span) = self.desc.span {

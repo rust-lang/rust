@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Level, MultiSpan,
-    SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DelayedBugKind, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Level,
+    MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -104,7 +104,7 @@ pub struct Diagnostic {
     pub(crate) level: Level,
 
     pub messages: Vec<(DiagnosticMessage, Style)>,
-    pub code: Option<DiagnosticId>,
+    pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
@@ -115,9 +115,9 @@ pub struct Diagnostic {
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
     pub sort_span: Span,
 
-    /// If diagnostic is from Lint, custom hash function ignores notes
-    /// otherwise hash is based on the all the fields
-    pub is_lint: bool,
+    /// If diagnostic is from Lint, custom hash function ignores children.
+    /// Otherwise hash is based on the all the fields.
+    pub is_lint: Option<IsLint>,
 
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
@@ -146,14 +146,11 @@ impl fmt::Display for DiagnosticLocation {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagnosticId {
-    Error(String),
-    Lint {
-        name: String,
-        /// Indicates whether this lint should show up in cargo's future breakage report.
-        has_future_breakage: bool,
-        is_force_warn: bool,
-    },
+pub struct IsLint {
+    /// The lint name.
+    pub(crate) name: String,
+    /// Indicates whether this lint should show up in cargo's future breakage report.
+    has_future_breakage: bool,
 }
 
 /// A "sub"-diagnostic attached to a parent diagnostic.
@@ -212,6 +209,9 @@ impl StringPart {
     }
 }
 
+// Note: most of these methods are setters that return `&mut Self`. The small
+// number of simple getter functions all have `get_` prefixes to distinguish
+// them from the setters.
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
@@ -229,7 +229,7 @@ impl Diagnostic {
             suggestions: Ok(vec![]),
             args: Default::default(),
             sort_span: DUMMY_SP,
-            is_lint: false,
+            is_lint: None,
             emitted_at: DiagnosticLocation::caller(),
         }
     }
@@ -242,12 +242,14 @@ impl Diagnostic {
     pub fn is_error(&self) -> bool {
         match self.level {
             Level::Bug
-            | Level::DelayedBug
+            | Level::DelayedBug(DelayedBugKind::Normal)
             | Level::Fatal
-            | Level::Error { .. }
+            | Level::Error
             | Level::FailureNote => true,
 
-            Level::Warning(_)
+            Level::ForceWarning(_)
+            | Level::Warning
+            | Level::DelayedBug(DelayedBugKind::GoodPath)
             | Level::Note
             | Level::OnceNote
             | Level::Help
@@ -261,7 +263,7 @@ impl Diagnostic {
         &mut self,
         unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
     ) {
-        if let Level::Expect(expectation_id) | Level::Warning(Some(expectation_id)) =
+        if let Level::Expect(expectation_id) | Level::ForceWarning(Some(expectation_id)) =
             &mut self.level
         {
             if expectation_id.is_stable() {
@@ -284,15 +286,15 @@ impl Diagnostic {
 
     /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub(crate) fn has_future_breakage(&self) -> bool {
-        match self.code {
-            Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
-            _ => false,
-        }
+        matches!(self.is_lint, Some(IsLint { has_future_breakage: true, .. }))
     }
 
     pub(crate) fn is_force_warn(&self) -> bool {
-        match self.code {
-            Some(DiagnosticId::Lint { is_force_warn, .. }) => is_force_warn,
+        match self.level {
+            Level::ForceWarning(_) => {
+                assert!(self.is_lint.is_some());
+                true
+            }
             _ => false,
         }
     }
@@ -308,25 +310,27 @@ impl Diagnostic {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
+    pub fn downgrade_to_delayed_bug(&mut self) {
         assert!(
             self.is_error(),
             "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
             self.level
         );
-        self.level = Level::DelayedBug;
-
-        self
+        self.level = Level::DelayedBug(DelayedBugKind::Normal);
     }
 
-    /// Adds a span/label to be included in the resulting snippet.
+    /// Appends a labeled span to the diagnostic.
     ///
-    /// This is pushed onto the [`MultiSpan`] that was created when the diagnostic
-    /// was first built. That means it will be shown together with the original
-    /// span/label, *not* a span added by one of the `span_{note,warn,help,suggestions}` methods.
+    /// Labels are used to convey additional context for the diagnostic's primary span. They will
+    /// be shown together with the original diagnostic's span, *not* with spans added by
+    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
+    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
+    /// either.
     ///
-    /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
-    /// the `Span` supplied when creating the diagnostic is primary.
+    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
+    /// the diagnostic was constructed. However, the label span is *not* considered a
+    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
+    /// primary.
     #[rustc_lint_diagnostics]
     pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.span.push_span_label(span, self.subdiagnostic_message_to_diagnostic_message(label));
@@ -344,7 +348,7 @@ impl Diagnostic {
 
     pub fn replace_span_with(&mut self, after: Span, keep_label: bool) -> &mut Self {
         let before = self.span.clone();
-        self.set_span(after);
+        self.span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
                 if span_label.is_primary && keep_label {
@@ -469,7 +473,7 @@ impl Diagnostic {
     /// Add a warning attached to this diagnostic.
     #[rustc_lint_diagnostics]
     pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::Warning(None), msg, MultiSpan::new());
+        self.sub(Level::Warning, msg, MultiSpan::new());
         self
     }
 
@@ -481,7 +485,7 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::Warning(None), msg, sp.into());
+        self.sub(Level::Warning, msg, sp.into());
         self
     }
 
@@ -876,7 +880,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
+    pub fn span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         if let Some(span) = self.span.primary_span() {
             self.sort_span = span;
@@ -884,12 +888,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_is_lint(&mut self) -> &mut Self {
-        self.is_lint = true;
+    pub fn is_lint(&mut self, name: String, has_future_breakage: bool) -> &mut Self {
+        self.is_lint = Some(IsLint { name, has_future_breakage });
         self
     }
 
-    pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
+    pub fn code(&mut self, s: String) -> &mut Self {
         self.code = Some(s);
         self
     }
@@ -899,11 +903,11 @@ impl Diagnostic {
         self
     }
 
-    pub fn get_code(&self) -> Option<DiagnosticId> {
-        self.code.clone()
+    pub fn get_code(&self) -> Option<&str> {
+        self.code.as_deref()
     }
 
-    pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
+    pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
     }
@@ -915,7 +919,7 @@ impl Diagnostic {
         self.args.iter()
     }
 
-    pub fn set_arg(
+    pub fn arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,
@@ -986,7 +990,8 @@ impl Diagnostic {
         &Level,
         &[(DiagnosticMessage, Style)],
         Vec<(&Cow<'static, str>, &DiagnosticArgValue<'static>)>,
-        &Option<DiagnosticId>,
+        &Option<String>,
+        &Option<IsLint>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
         Option<&[SubDiagnostic]>,
@@ -996,9 +1001,10 @@ impl Diagnostic {
             &self.messages,
             self.args().collect(),
             &self.code,
+            &self.is_lint,
             &self.span,
             &self.suggestions,
-            (if self.is_lint { None } else { Some(&self.children) }),
+            (if self.is_lint.is_some() { None } else { Some(&self.children) }),
         )
     }
 }

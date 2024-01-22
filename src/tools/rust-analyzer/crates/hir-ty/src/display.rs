@@ -8,7 +8,7 @@ use std::{
 };
 
 use base_db::CrateId;
-use chalk_ir::{BoundVar, TyKind};
+use chalk_ir::{BoundVar, Safety, TyKind};
 use hir_def::{
     data::adt::VariantData,
     db::DefDatabase,
@@ -20,8 +20,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    EnumVariantId, HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use intern::{Internable, Interned};
@@ -42,7 +41,7 @@ use crate::{
     primitive, to_assoc_type_id,
     utils::{self, detect_variant_from_bytes, generics, ClosureSubst},
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstScalar, ConstValue,
-    DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
+    DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives,
     MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar,
     Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyExt, WhereClause,
 };
@@ -276,7 +275,7 @@ impl DisplayTarget {
 pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
-    Generator,
+    Coroutine,
     OpaqueType,
 }
 
@@ -428,7 +427,7 @@ impl HirDisplay for Const {
                 Ok(())
             }
             ConstValue::Concrete(c) => match &c.interned {
-                ConstScalar::Bytes(b, m) => render_const_scalar(f, &b, m, &data.ty),
+                ConstScalar::Bytes(b, m) => render_const_scalar(f, b, m, &data.ty),
                 ConstScalar::UnevaluatedConst(c, parameters) => {
                     write!(f, "{}", c.name(f.db.upcast()))?;
                     hir_fmt_generics(f, parameters, c.generic_def(f.db.upcast()))?;
@@ -452,7 +451,7 @@ fn render_const_scalar(
         TraitEnvironment::empty(*f.db.crate_graph().crates_in_topological_order().last().unwrap());
     match ty.kind(Interner) {
         TyKind::Scalar(s) => match s {
-            Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
+            Scalar::Bool => write!(f, "{}", b[0] != 0),
             Scalar::Char => {
                 let it = u128::from_le_bytes(pad16(b, false)) as u32;
                 let Ok(c) = char::try_from(it) else {
@@ -486,7 +485,7 @@ fn render_const_scalar(
                 let Some(bytes) = memory_map.get(addr, size) else {
                     return f.write_str("<ref-data-not-available>");
                 };
-                let s = std::str::from_utf8(&bytes).unwrap_or("<utf8-error>");
+                let s = std::str::from_utf8(bytes).unwrap_or("<utf8-error>");
                 write!(f, "{s:?}")
             }
             TyKind::Slice(ty) => {
@@ -508,14 +507,14 @@ fn render_const_scalar(
                         f.write_str(", ")?;
                     }
                     let offset = size_one * i;
-                    render_const_scalar(f, &bytes[offset..offset + size_one], memory_map, &ty)?;
+                    render_const_scalar(f, &bytes[offset..offset + size_one], memory_map, ty)?;
                 }
                 f.write_str("]")
             }
             TyKind::Dyn(_) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let ty_id = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(t) = memory_map.vtable.ty(ty_id) else {
+                let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
                 let Ok(layout) = f.db.layout_of_ty(t.clone(), trait_env) else {
@@ -534,9 +533,7 @@ fn render_const_scalar(
                     write!(f, "&{}", data.name.display(f.db.upcast()))?;
                     Ok(())
                 }
-                _ => {
-                    return f.write_str("<unsized-enum-or-union>");
-                }
+                _ => f.write_str("<unsized-enum-or-union>"),
             },
             _ => {
                 let addr = usize::from_le_bytes(match b.try_into() {
@@ -580,7 +577,7 @@ fn render_const_scalar(
                     continue;
                 };
                 let size = layout.size.bytes_usize();
-                render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)?;
+                render_const_scalar(f, &b[offset..offset + size], memory_map, ty)?;
             }
             f.write_str(")")
         }
@@ -609,20 +606,19 @@ fn render_const_scalar(
                 }
                 hir_def::AdtId::EnumId(e) => {
                     let Some((var_id, var_layout)) =
-                        detect_variant_from_bytes(&layout, f.db, trait_env.clone(), b, e)
+                        detect_variant_from_bytes(&layout, f.db, trait_env, b, e)
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };
-                    let data = &f.db.enum_data(e).variants[var_id];
+                    let data = f.db.enum_variant_data(var_id);
                     write!(f, "{}", data.name.display(f.db.upcast()))?;
-                    let field_types =
-                        f.db.field_types(EnumVariantId { parent: e, local_id: var_id }.into());
+                    let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
                         &data.variant_data,
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
-                        &var_layout,
+                        var_layout,
                         subst,
                         b,
                         memory_map,
@@ -653,14 +649,14 @@ fn render_const_scalar(
                     f.write_str(", ")?;
                 }
                 let offset = size_one * i;
-                render_const_scalar(f, &b[offset..offset + size_one], memory_map, &ty)?;
+                render_const_scalar(f, &b[offset..offset + size_one], memory_map, ty)?;
             }
             f.write_str("]")
         }
         TyKind::Never => f.write_str("!"),
         TyKind::Closure(_, _) => f.write_str("<closure>"),
-        TyKind::Generator(_, _) => f.write_str("<generator>"),
-        TyKind::GeneratorWitness(_, _) => f.write_str("<generator-witness>"),
+        TyKind::Coroutine(_, _) => f.write_str("<coroutine>"),
+        TyKind::CoroutineWitness(_, _) => f.write_str("<coroutine-witness>"),
         // The below arms are unreachable, since const eval will bail out before here.
         TyKind::Foreign(_) => f.write_str("<extern-type>"),
         TyKind::Error
@@ -720,7 +716,7 @@ fn render_variant_after_name(
                 }
                 write!(f, ")")?;
             }
-            return Ok(());
+            Ok(())
         }
         VariantData::Unit => Ok(()),
     }
@@ -866,7 +862,7 @@ impl HirDisplay for Ty {
                     write!(f, ",)")?;
                 } else {
                     write!(f, "(")?;
-                    f.write_joined(&*substs.as_slice(Interner), ", ")?;
+                    f.write_joined(substs.as_slice(Interner), ", ")?;
                     write!(f, ")")?;
                 }
             }
@@ -883,20 +879,29 @@ impl HirDisplay for Ty {
                     // function pointer type.
                     return sig.hir_fmt(f);
                 }
+                if let Safety::Unsafe = sig.safety {
+                    write!(f, "unsafe ")?;
+                }
+                if !matches!(sig.abi, FnAbi::Rust) {
+                    f.write_str("extern \"")?;
+                    f.write_str(sig.abi.as_str())?;
+                    f.write_str("\" ")?;
+                }
 
-                f.start_location_link(def.into());
                 match def {
                     CallableDefId::FunctionId(ff) => {
-                        write!(f, "fn {}", db.function_data(ff).name.display(f.db.upcast()))?
+                        write!(f, "fn ")?;
+                        f.start_location_link(def.into());
+                        write!(f, "{}", db.function_data(ff).name.display(f.db.upcast()))?
                     }
                     CallableDefId::StructId(s) => {
+                        f.start_location_link(def.into());
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast()))?
                     }
-                    CallableDefId::EnumVariantId(e) => write!(
-                        f,
-                        "{}",
-                        db.enum_data(e.parent).variants[e.local_id].name.display(f.db.upcast())
-                    )?,
+                    CallableDefId::EnumVariantId(e) => {
+                        f.start_location_link(def.into());
+                        write!(f, "{}", db.enum_variant_data(e).name.display(f.db.upcast()))?
+                    }
                 };
                 f.end_location_link();
                 if parameters.len(Interner) > 0 {
@@ -1038,7 +1043,7 @@ impl HirDisplay for Ty {
                             f.start_location_link(t.into());
                         }
                         write!(f, "Future")?;
-                        if let Some(_) = future_trait {
+                        if future_trait.is_some() {
                             f.end_location_link();
                         }
                         write!(f, "<")?;
@@ -1046,7 +1051,7 @@ impl HirDisplay for Ty {
                             f.start_location_link(t.into());
                         }
                         write!(f, "Output")?;
-                        if let Some(_) = output {
+                        if output.is_some() {
                             f.end_location_link();
                         }
                         write!(f, " = ")?;
@@ -1205,17 +1210,16 @@ impl HirDisplay for Ty {
                 write!(f, "{{unknown}}")?;
             }
             TyKind::InferenceVar(..) => write!(f, "_")?,
-            TyKind::Generator(_, subst) => {
+            TyKind::Coroutine(_, subst) => {
                 if f.display_target.is_source_code() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::Generator,
+                        DisplaySourceCodeError::Coroutine,
                     ));
                 }
                 let subst = subst.as_slice(Interner);
                 let a: Option<SmallVec<[&Ty; 3]>> = subst
                     .get(subst.len() - 3..)
-                    .map(|args| args.iter().map(|arg| arg.ty(Interner)).collect())
-                    .flatten();
+                    .and_then(|args| args.iter().map(|arg| arg.ty(Interner)).collect());
 
                 if let Some([resume_ty, yield_ty, ret_ty]) = a.as_deref() {
                     write!(f, "|")?;
@@ -1229,10 +1233,10 @@ impl HirDisplay for Ty {
                     ret_ty.hir_fmt(f)?;
                 } else {
                     // This *should* be unreachable, but fallback just in case.
-                    write!(f, "{{generator}}")?;
+                    write!(f, "{{coroutine}}")?;
                 }
             }
-            TyKind::GeneratorWitness(..) => write!(f, "{{generator witness}}")?,
+            TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
         }
         Ok(())
     }
@@ -1323,9 +1327,19 @@ fn hir_fmt_generics(
 
 impl HirDisplay for CallableSig {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        let CallableSig { params_and_return: _, is_varargs, safety, abi: _ } = *self;
+        if let Safety::Unsafe = safety {
+            write!(f, "unsafe ")?;
+        }
+        // FIXME: Enable this when the FIXME on FnAbi regarding PartialEq is fixed.
+        // if !matches!(abi, FnAbi::Rust) {
+        //     f.write_str("extern \"")?;
+        //     f.write_str(abi.as_str())?;
+        //     f.write_str("\" ")?;
+        // }
         write!(f, "fn(")?;
         f.write_joined(self.params(), ", ")?;
-        if self.is_varargs {
+        if is_varargs {
             if self.params().is_empty() {
                 write!(f, "...")?;
             } else {
@@ -1426,7 +1440,7 @@ fn write_bounds_like_dyn_trait(
                 f.start_location_link(trait_.into());
                 write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast()))?;
                 f.end_location_link();
-                if let [_, params @ ..] = &*trait_ref.substitution.as_slice(Interner) {
+                if let [_, params @ ..] = trait_ref.substitution.as_slice(Interner) {
                     if is_fn_trait {
                         if let Some(args) =
                             params.first().and_then(|it| it.assert_ty_ref(Interner).as_tuple())
@@ -1506,7 +1520,7 @@ fn write_bounds_like_dyn_trait(
             }
             write!(f, "Sized")?;
         }
-        if let Some(_) = sized_trait {
+        if sized_trait.is_some() {
             f.end_location_link();
         }
     }
@@ -1629,7 +1643,7 @@ pub fn write_visibility(
 ) -> Result<(), HirDisplayError> {
     match vis {
         Visibility::Public => write!(f, "pub "),
-        Visibility::Module(vis_id) => {
+        Visibility::Module(vis_id, _) => {
             let def_map = module_id.def_map(f.db.upcast());
             let root_module_id = def_map.module_id(DefMap::ROOT);
             if vis_id == module_id {
@@ -1690,10 +1704,14 @@ impl HirDisplay for TypeRef {
                 inner.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe) => {
-                // FIXME: Function pointer qualifiers.
+            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe, ref abi) => {
                 if is_unsafe {
                     write!(f, "unsafe ")?;
+                }
+                if let Some(abi) = abi {
+                    f.write_str("extern \"")?;
+                    f.write_str(abi)?;
+                    f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
                 if let Some(((_, return_type), function_parameters)) = parameters.split_last() {

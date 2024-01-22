@@ -249,60 +249,43 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag;
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag =
-                    DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space)
+                    .with_arg("addr_space", addr_space)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits)
+                    .with_arg("kind", kind)
+                    .with_arg("bit", bit)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment);
-                diag.set_arg("cause", cause);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment)
+                    .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err_kind", err.diag_ident());
-                diag.set_arg("align", err.align());
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment)
+                    .with_arg("cause", cause)
+                    .with_arg("err_kind", err.diag_ident())
+                    .with_arg("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = DiagnosticBuilder::new(
-                    dcx,
-                    level,
-                    fluent::errors_target_inconsistent_architecture,
-                );
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_architecture)
+                    .with_arg("dl", dl)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = DiagnosticBuilder::new(
-                    dcx,
-                    level,
-                    fluent::errors_target_inconsistent_pointer_width,
-                );
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
+                    .with_arg("pointer_size", pointer_size)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size);
-                diag.set_arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size)
+                    .with_arg("err", err)
             }
         }
     }

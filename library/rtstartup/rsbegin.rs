@@ -18,6 +18,7 @@
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]
+#![allow(internal_features)]
 
 #[lang = "sized"]
 trait Sized {}

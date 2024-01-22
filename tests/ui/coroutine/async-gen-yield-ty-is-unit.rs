@@ -10,8 +10,7 @@ async gen fn gen_fn() -> &'static str {
 }
 
 pub fn main() {
-    let stream = pin!(gen_fn());
-    let waker = Waker::noop();
-    let ctx = &mut Context::from_waker(&waker);
+    let async_iterator = pin!(gen_fn());
+    let ctx = &mut Context::from_waker(Waker::noop());
     stream.poll_next(ctx);
 }

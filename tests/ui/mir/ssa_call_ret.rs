@@ -13,7 +13,7 @@ pub fn f() -> u32 {
     mir!(
         let a: u32;
         {
-            Call(a = g(), bb1, UnwindCleanup(bb2))
+            Call(a = g(), ReturnTo(bb1), UnwindCleanup(bb2))
         }
         bb1 = {
             RET = a;

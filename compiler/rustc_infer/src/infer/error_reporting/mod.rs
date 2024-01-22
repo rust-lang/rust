@@ -60,8 +60,8 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
+    error_code, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -361,7 +361,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             );
         }
         ty::ReError(_) => {
-            err.delay_as_bug();
+            err.downgrade_to_delayed_bug();
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one
@@ -2348,23 +2348,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
             GenericKind::Placeholder(ref p) => format!("the placeholder type `{p:?}`"),
             GenericKind::Alias(ref p) => match p.kind(self.tcx) {
-                ty::AliasKind::Projection | ty::AliasKind::Inherent => {
+                ty::Projection | ty::Inherent => {
                     format!("the associated type `{p}`")
                 }
-                ty::AliasKind::Weak => format!("the type alias `{p}`"),
-                ty::AliasKind::Opaque => format!("the opaque type `{p}`"),
+                ty::Weak => format!("the type alias `{p}`"),
+                ty::Opaque => format!("the opaque type `{p}`"),
             },
         };
 
-        let mut err = self.tcx.dcx().struct_span_err_with_code(
-            span,
-            format!("{labeled_user_string} may not live long enough"),
-            match sub.kind() {
-                ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-                ty::ReStatic => error_code!(E0310),
-                _ => error_code!(E0311),
-            },
-        );
+        let mut err = self
+            .tcx
+            .dcx()
+            .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
+        err.code(match sub.kind() {
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
+            ty::ReStatic => error_code!(E0310),
+            _ => error_code!(E0311),
+        });
 
         '_explain: {
             let (description, span) = match sub.kind() {
@@ -2780,7 +2780,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };
 
-        struct_span_err!(
+        struct_span_code_err!(
             self.tcx.dcx(),
             var_origin.span(),
             E0495,

@@ -1,14 +1,12 @@
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 
-use expect_test::Expect;
 use ide_db::{
-    assists::AssistResolveStrategy,
-    base_db::{fixture::WithFixture, SourceDatabaseExt},
-    LineIndexDatabase, RootDatabase,
+    assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_annotations, MiniCore};
 
 use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
@@ -44,8 +42,9 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
-    let fix =
-        &diagnostic.fixes.expect(&format!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
+    let fix = &diagnostic
+        .fixes
+        .unwrap_or_else(|| panic!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
@@ -81,17 +80,6 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     .pop()
     .unwrap();
     assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
-}
-
-pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
-    let (db, file_id) = RootDatabase::with_single_file(ra_fixture);
-    let diagnostics = super::diagnostics(
-        &db,
-        &DiagnosticsConfig::test_sample(),
-        &AssistResolveStrategy::All,
-        file_id,
-    );
-    expect.assert_debug_eq(&diagnostics)
 }
 
 #[track_caller]

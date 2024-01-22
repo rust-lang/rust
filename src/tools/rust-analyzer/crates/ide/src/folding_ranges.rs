@@ -271,13 +271,13 @@ fn fold_range_for_where_clause(where_clause: ast::WhereClause) -> Option<TextRan
 }
 
 fn fold_range_for_multiline_match_arm(match_arm: ast::MatchArm) -> Option<TextRange> {
-    if let Some(_) = fold_kind(match_arm.expr()?.syntax().kind()) {
-        return None;
+    if fold_kind(match_arm.expr()?.syntax().kind()).is_some() {
+        None
+    } else if match_arm.expr()?.syntax().text().contains_char('\n') {
+        Some(match_arm.expr()?.syntax().text_range())
+    } else {
+        None
     }
-    if match_arm.expr()?.syntax().text().contains_char('\n') {
-        return Some(match_arm.expr()?.syntax().text_range());
-    }
-    None
 }
 
 #[cfg(test)]

@@ -108,6 +108,10 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
         if !matches!(local.pat.kind, hir::PatKind::Wild) {
             return;
         }
+
+        if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
+            return;
+        }
         if let Some(init) = local.init {
             let init_ty = cx.typeck_results().expr_ty(init);
             // If the type has a trivial Drop implementation, then it doesn't
@@ -126,6 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 suggestion: local.pat.span,
                 multi_suggestion_start: local.span.until(init.span),
                 multi_suggestion_end: init.span.shrink_to_hi(),
+                is_assign_desugar: matches!(local.source, rustc_hir::LocalSource::AssignDesugar(_)),
             };
             if is_sync_lock {
                 let mut span = MultiSpan::from_spans(vec![local.pat.span, init.span]);

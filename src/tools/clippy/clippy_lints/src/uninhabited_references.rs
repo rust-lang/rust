@@ -57,11 +57,11 @@ impl LateLintPass<'_> for UninhabitedReferences {
         }
     }
 
-    fn check_fn(
+    fn check_fn<'tcx>(
         &mut self,
-        cx: &LateContext<'_>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'_>,
-        fndecl: &'_ FnDecl<'_>,
+        fndecl: &'_ FnDecl<'tcx>,
         _: &'_ Body<'_>,
         span: Span,
         _: LocalDefId,

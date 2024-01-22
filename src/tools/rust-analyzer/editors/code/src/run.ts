@@ -43,7 +43,7 @@ export async function selectRunnable(
         return;
     }
 
-    // clear the list before we hook up listeners to to avoid invoking them
+    // clear the list before we hook up listeners to avoid invoking them
     // if the user happens to accept the placeholder item
     quickPick.items = [];
 

@@ -15,7 +15,7 @@ pub fn future_from_coroutine<
     GenFuture(x)
 }
 
-struct GenFuture<T: FakeCoroutine<Yield = ()>>(#[allow(unused_tuple_struct_fields)] T);
+struct GenFuture<T: FakeCoroutine<Yield = ()>>(#[allow(dead_code)] T);
 
 impl<T: FakeCoroutine<Yield = ()>> FakeFuture for GenFuture<T> {
     type Output = T::Return;

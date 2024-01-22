@@ -90,6 +90,7 @@ pub enum AssocTyParenthesesSub {
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_misplaced_impl_trait, code = "E0562")]
+#[note]
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
@@ -113,10 +114,10 @@ pub struct UnderscoreExprLhsAssign {
 }
 
 #[derive(Diagnostic, Clone, Copy)]
-#[diag(ast_lowering_base_expression_double_dot)]
+#[diag(ast_lowering_base_expression_double_dot, code = "E0797")]
 pub struct BaseExpressionDoubleDot {
     #[primary_span]
-    #[label]
+    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
     pub span: Span,
 }
 
@@ -140,14 +141,6 @@ pub struct CoroutineTooManyParameters {
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_closure_cannot_be_static, code = "E0697")]
 pub struct ClosureCannotBeStatic {
-    #[primary_span]
-    pub fn_decl_span: Span,
-}
-
-#[derive(Diagnostic, Clone, Copy)]
-#[help]
-#[diag(ast_lowering_async_non_move_closure_not_supported, code = "E0708")]
-pub struct AsyncNonMoveClosureNotSupported {
     #[primary_span]
     pub fn_decl_span: Span,
 }
@@ -397,8 +390,8 @@ pub enum BadReturnTypeNotation {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_default_parameter_in_binder)]
-pub(crate) struct UnexpectedDefaultParameterInBinder {
+#[diag(ast_lowering_generic_param_default_in_binder)]
+pub(crate) struct GenericParamDefaultInBinder {
     #[primary_span]
     pub span: Span,
 }

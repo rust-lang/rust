@@ -71,6 +71,12 @@ cargo check --quiet --workspace --message-format=json --all-targets
 ```
 .
 --
+[[rust-analyzer.cargo.buildScripts.rebuildOnSave]]rust-analyzer.cargo.buildScripts.rebuildOnSave (default: `false`)::
++
+--
+Rerun proc-macros building/build-scripts running when proc-macro
+or build-script sources change and are saved.
+--
 [[rust-analyzer.cargo.buildScripts.useRustcWrapper]]rust-analyzer.cargo.buildScripts.useRustcWrapper (default: `true`)::
 +
 --
@@ -114,6 +120,16 @@ Relative path to the sysroot, or "discover" to try to automatically find it via
 Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
+--
+[[rust-analyzer.cargo.sysrootQueryMetadata]]rust-analyzer.cargo.sysrootQueryMetadata (default: `false`)::
++
+--
+Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
+third-party dependencies of the standard libraries.
+
+This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
+will attempt to clean up afterwards, but nevertheless requires the location to be
+writable to.
 --
 [[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
 +
@@ -179,9 +195,9 @@ For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`
 --
 Specifies the working directory for running checks.
 - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-  This falls back to "root" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.
+  This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
 - "root": run checks in the project's root directory.
-This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+This config only has an effect when `#rust-analyzer.check.overrideCommand#`
 is set.
 --
 [[rust-analyzer.check.invocationStrategy]]rust-analyzer.check.invocationStrategy (default: `"per_workspace"`)::
@@ -190,7 +206,7 @@ is set.
 Specifies the invocation strategy to use when running the check command.
 If `per_workspace` is set, the command will be executed for each workspace.
 If `once` is set, the command will be executed once.
-This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+This config only has an effect when `#rust-analyzer.check.overrideCommand#`
 is set.
 --
 [[rust-analyzer.check.noDefaultFeatures]]rust-analyzer.check.noDefaultFeatures (default: `null`)::
@@ -215,8 +231,8 @@ Cargo, you might also want to change
 If there are multiple linked projects/workspaces, this command is invoked for
 each of them, with the working directory being the workspace root
 (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-by changing `#rust-analyzer.cargo.check.invocationStrategy#` and
-`#rust-analyzer.cargo.check.invocationLocation#`.
+by changing `#rust-analyzer.check.invocationStrategy#` and
+`#rust-analyzer.check.invocationLocation#`.
 
 An example command would be:
 
@@ -590,6 +606,11 @@ Maximum length for inlay hints. Set to null to have an unlimited length.
 Whether to show function parameter name inlay hints at the call
 site.
 --
+[[rust-analyzer.inlayHints.rangeExclusiveHints.enable]]rust-analyzer.inlayHints.rangeExclusiveHints.enable (default: `false`)::
++
+--
+Whether to show exclusive range inlay hints.
+--
 [[rust-analyzer.inlayHints.reborrowHints.enable]]rust-analyzer.inlayHints.reborrowHints.enable (default: `"never"`)::
 +
 --
@@ -755,6 +776,11 @@ Internal config, path to proc-macro server executable.
 +
 --
 Exclude imports from find-all-references.
+--
+[[rust-analyzer.rename.allowExternalItems]]rust-analyzer.rename.allowExternalItems (default: `false`)::
++
+--
+Allow renaming of items not belonging to the loaded workspaces.
 --
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +

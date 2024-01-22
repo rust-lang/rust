@@ -106,4 +106,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The dist.missing-tools config option was deprecated, as it was unused. If you are using it, remove it from your config, it will be removed soon.",
     },
+    ChangeInfo {
+        change_id: 102579,
+        severity: ChangeSeverity::Warning,
+        summary: "A new `optimized-compiler-builtins` option has been introduced. Whether to build llvm's `compiler-rt` from source is no longer implicitly controlled by git state. See the PR for more details.",
+    },
 ];

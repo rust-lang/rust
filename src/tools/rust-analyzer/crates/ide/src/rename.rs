@@ -84,6 +84,7 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
+    rename_external: bool,
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
@@ -103,7 +104,7 @@ pub(crate) fn rename(
                     return rename_to_self(&sema, local);
                 }
             }
-            def.rename(&sema, new_name)
+            def.rename(&sema, new_name, rename_external)
         })
         .collect();
 
@@ -122,9 +123,9 @@ pub(crate) fn will_rename_file(
     let module = sema.to_module_def(file_id)?;
     let def = Definition::Module(module);
     let mut change = if is_raw_identifier(new_name_stem) {
-        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
+        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem]), true).ok()?
     } else {
-        def.rename(&sema, new_name_stem).ok()?
+        def.rename(&sema, new_name_stem, true).ok()?
     };
     change.file_system_edits.clear();
     Some(change)
@@ -366,16 +367,26 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use ide_db::source_change::SourceChange;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
     use text_edit::TextEdit;
 
-    use crate::{fixture, FileId};
+    use crate::fixture;
 
     use super::{RangeInfo, RenameError};
 
-    #[track_caller]
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after, true);
+    }
+
+    #[track_caller]
+    fn check_with_rename_config(
+        new_name: &str,
+        ra_fixture_before: &str,
+        ra_fixture_after: &str,
+        rename_external: bool,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -384,23 +395,22 @@ mod tests {
             }
         }
         let rename_result = analysis
-            .rename(position, new_name)
+            .rename(position, new_name, rename_external)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
-                let mut file_id: Option<FileId> = None;
-                for edit in source_change.source_file_edits {
-                    file_id = Some(edit.0);
-                    for indel in edit.1 .0.into_iter() {
-                        text_edit_builder.replace(indel.delete, indel.insert);
-                    }
+                let (&file_id, edit) = match source_change.source_file_edits.len() {
+                    0 => return,
+                    1 => source_change.source_file_edits.iter().next().unwrap(),
+                    _ => (&position.file_id, &source_change.source_file_edits[&position.file_id]),
+                };
+                for indel in edit.0.iter() {
+                    text_edit_builder.replace(indel.delete, indel.insert.clone());
                 }
-                if let Some(file_id) = file_id {
-                    let mut result = analysis.file_text(file_id).unwrap().to_string();
-                    text_edit_builder.finish().apply(&mut result);
-                    assert_eq_text!(ra_fixture_after, &*result);
-                }
+                let mut result = analysis.file_text(file_id).unwrap().to_string();
+                text_edit_builder.finish().apply(&mut result);
+                assert_eq_text!(ra_fixture_after, &*result);
             }
             Err(err) => {
                 if ra_fixture_after.starts_with("error:") {
@@ -416,9 +426,11 @@ mod tests {
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let source_change =
-            analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
-        expect.assert_debug_eq(&source_change)
+        let source_change = analysis
+            .rename(position, new_name, true)
+            .unwrap()
+            .expect("Expect returned a RenameError");
+        expect.assert_eq(&filter_expect(source_change))
     }
 
     fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
@@ -427,7 +439,7 @@ mod tests {
             .will_rename_file(position.file_id, new_name)
             .unwrap()
             .expect("Expect returned a RenameError");
-        expect.assert_debug_eq(&source_change)
+        expect.assert_eq(&filter_expect(source_change))
     }
 
     fn check_prepare(ra_fixture: &str, expect: Expect) {
@@ -442,6 +454,19 @@ mod tests {
             }
             Err(RenameError(err)) => expect.assert_eq(&err),
         };
+    }
+
+    fn filter_expect(source_change: SourceChange) -> String {
+        let source_file_edits = source_change
+            .source_file_edits
+            .into_iter()
+            .map(|(id, (text_edit, _))| (id, text_edit.into_iter().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+
+        format!(
+            "source_file_edits: {:#?}\nfile_system_edits: {:#?}\n",
+            source_file_edits, source_change.file_system_edits
+        )
     }
 
     #[test]
@@ -916,37 +941,32 @@ mod foo$0;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             1,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            2,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 2,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo2.rs",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -968,50 +988,43 @@ pub struct FooContent;
 use crate::foo$0::FooContent;
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
+                        [
+                            Indel {
+                                insert: "quux",
+                                delete: 8..11,
+                            },
+                        ],
+                    ),
+                    (
                         FileId(
                             2,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 11..14,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                        [
+                            Indel {
+                                insert: "quux",
+                                delete: 11..14,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "quux.rs",
-                            },
+                            path: "quux.rs",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -1027,43 +1040,38 @@ mod fo$0o;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
-                    },
-                    file_system_edits: [
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo",
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
                             },
-                            src_id: FileId(
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo2",
-                            },
+                            path: "../foo",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "../foo2",
+                        },
+                    },
+                ]
             "#]],
         );
     }
@@ -1080,37 +1088,32 @@ mod outer { mod fo$0o; }
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "bar",
-                                        delete: 16..19,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                        [
+                            Indel {
+                                insert: "bar",
+                                delete: 16..19,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "bar.rs",
-                            },
+                            path: "bar.rs",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -1156,50 +1159,43 @@ pub mod foo$0;
 // pub fn fun() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 27..30,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 27..30,
+                            },
+                        ],
+                    ),
+                    (
                         FileId(
                             1,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 8..11,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            2,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 2,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo2.rs",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -1229,54 +1225,49 @@ mod quux;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo2.rs",
+                        },
                     },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo",
                         },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2",
-                            },
+                            path: "foo2",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         )
     }
@@ -1344,12 +1335,9 @@ fn foo() {}
 mod bar$0;
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {},
-                    file_system_edits: [],
-                    is_snippet: false,
-                }
-                "#]],
+                source_file_edits: []
+                file_system_edits: []
+            "#]],
         )
     }
 
@@ -1370,58 +1358,53 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "r#fn",
-                                        delete: 4..7,
-                                    },
-                                    Indel {
-                                        insert: "r#fn",
-                                        delete: 22..25,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
+                        [
+                            Indel {
+                                insert: "r#fn",
+                                delete: 4..7,
+                            },
+                            Indel {
+                                insert: "r#fn",
+                                delete: 22..25,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "fn.rs",
+                        },
                     },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn.rs",
-                            },
+                            path: "foo",
                         },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
+                            path: "fn",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -1443,58 +1426,53 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
+                source_file_edits: [
+                    (
                         FileId(
                             0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo",
-                                        delete: 4..8,
-                                    },
-                                    Indel {
-                                        insert: "foo",
-                                        delete: 23..27,
-                                    },
-                                ],
-                            },
-                            None,
                         ),
+                        [
+                            Indel {
+                                insert: "foo",
+                                delete: 4..8,
+                            },
+                            Indel {
+                                insert: "foo",
+                                delete: 23..27,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo.rs",
+                        },
                     },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo.rs",
-                            },
+                            path: "fn",
                         },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
-                            src_id: FileId(
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
+                            path: "foo",
                         },
-                    ],
-                    is_snippet: false,
-                }
+                    },
+                ]
             "#]],
         );
     }
@@ -2650,6 +2628,18 @@ use qux as frob;
 
     #[test]
     fn disallow_renaming_for_non_local_definition() {
+        check_with_rename_config(
+            "Baz",
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+use lib::S$0;
+"#,
+            "error: Cannot rename a non-local definition as the config for it is disabled",
+            false,
+        );
+
         check(
             "Baz",
             r#"
@@ -2658,13 +2648,13 @@ pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
 use lib::S$0;
 "#,
-            "error: Cannot rename a non-local definition.",
+            "use lib::Baz;\n",
         );
     }
 
     #[test]
     fn disallow_renaming_for_builtin_macros() {
-        check(
+        check_with_rename_config(
             "Baz",
             r#"
 //- minicore: derive, hash
@@ -2673,8 +2663,9 @@ use core::hash::Hash;
 #[derive(H$0ash)]
 struct A;
             "#,
-            "error: Cannot rename a non-local definition.",
-        )
+            "error: Cannot rename a non-local definition as the config for it is disabled",
+            false,
+        );
     }
 
     #[test]

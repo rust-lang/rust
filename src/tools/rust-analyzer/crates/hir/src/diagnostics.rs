@@ -8,7 +8,7 @@ pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_def::path::ModPath;
+use hir_def::{path::ModPath, AssocItemId};
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
@@ -62,6 +62,7 @@ diagnostics![
     UndeclaredLabel,
     UnimplementedBuiltinMacro,
     UnreachableLabel,
+    UnresolvedAssocItem,
     UnresolvedExternCrate,
     UnresolvedField,
     UnresolvedImport,
@@ -215,6 +216,12 @@ pub struct UnresolvedMethodCall {
     pub receiver: Type,
     pub name: Name,
     pub field_with_same_name: Option<Type>,
+    pub assoc_func_with_same_name: Option<AssocItemId>,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedAssocItem {
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
 }
 
 #[derive(Debug)]

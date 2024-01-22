@@ -74,7 +74,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             // we have some type like `&<Ty as Trait>::Assoc`, since users of
             // autoderef expect this type to have been structurally normalized.
             if self.infcx.next_trait_solver()
-                && let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = ty.kind()
+                && let ty::Alias(..) = ty.kind()
             {
                 let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
                 self.state.obligations.extend(obligations);

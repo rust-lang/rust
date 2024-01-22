@@ -23,6 +23,39 @@ LL |         self.eq(other)
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:210:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.to_string()
+   |         ---------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:219:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |         x.to_string()
+   |         ------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:229:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         (self as &Self).to_string()
+   |         --------------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
   --> $DIR/unconditional_recursion.rs:12:5
    |
 LL | /     fn ne(&self, other: &Self) -> bool {
@@ -53,6 +86,34 @@ note: recursive call site
    |
 LL |         self == other
    |         ^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:28:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |         self != &Foo2::B // no error here
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:29:9
+   |
+LL |         self != &Foo2::B // no error here
+   |         ^^^^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:31:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |         self == &Foo2::B // no error here
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:32:9
+   |
+LL |         self == &Foo2::B // no error here
+   |         ^^^^^^^^^^^^^^^^
 
 error: function cannot return without recursing
   --> $DIR/unconditional_recursion.rs:42:5
@@ -247,5 +308,37 @@ LL | impl_partial_eq!(S5);
    | -------------------- in this macro invocation
    = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 19 previous errors
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:178:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         let mine = &self.field;
+LL | |         let theirs = &other.field;
+LL | |         mine == theirs
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:182:9
+   |
+LL |         mine == theirs
+   |         ^^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:244:5
+   |
+LL | /     fn new() -> Self {
+LL | |
+LL | |         Self::default()
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:246:9
+   |
+LL |         Self::default()
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
 

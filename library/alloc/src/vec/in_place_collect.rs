@@ -9,7 +9,7 @@
 //! or [`BinaryHeap<T>`], the adapters guarantee to consume enough items per step to make room
 //! for the results (represented by [`InPlaceIterable`]), provide transitive access to `source`
 //! (via [`SourceIter`]) and thus the underlying allocation.
-//! And finally there are alignment and size constriants to consider, this is currently ensured via
+//! And finally there are alignment and size constraints to consider, this is currently ensured via
 //! const eval instead of trait bounds in the specialized [`SpecFromIter`] implementation.
 //!
 //! [`BinaryHeap<T>`]: crate::collections::BinaryHeap
@@ -72,7 +72,7 @@
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
-//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstDataSrcBufDrop`] will handle dropping
 //! the already collected sink items (`U`) and freeing the allocation.
 //!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
@@ -158,17 +158,20 @@ use crate::alloc::{handle_alloc_error, Global};
 use core::alloc::Allocator;
 use core::alloc::Layout;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
+use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::num::NonZeroUsize;
 use core::ptr::{self, NonNull};
 
-use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstDataSrcBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 const fn in_place_collectible<DEST, SRC>(
     step_merge: Option<NonZeroUsize>,
     step_expand: Option<NonZeroUsize>,
 ) -> bool {
-    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() < mem::align_of::<DEST>() } {
+    // Require matching alignments because an alignment-changing realloc is inefficient on many
+    // system allocators and better implementations would require the unstable Allocator trait.
+    if const { SRC::IS_ZST || DEST::IS_ZST || mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
         return false;
     }
 
@@ -188,7 +191,8 @@ const fn in_place_collectible<DEST, SRC>(
 
 const fn needs_realloc<SRC, DEST>(src_cap: usize, dst_cap: usize) -> bool {
     if const { mem::align_of::<SRC>() != mem::align_of::<DEST>() } {
-        return src_cap > 0;
+        // FIXME: use unreachable! once that works in const
+        panic!("in_place_collectible() prevents this");
     }
 
     // If src type size is an integer multiple of the destination type size then
@@ -257,12 +261,12 @@ where
         // then the source pointer will stay in its initial position and we can't use it as reference
         if src.ptr != src_ptr {
             debug_assert!(
-                unsafe { dst_buf.add(len) as *const _ } <= src.ptr,
+                unsafe { dst_buf.add(len) as *const _ } <= src.ptr.as_ptr(),
                 "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
             );
         }
 
-        // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
+        // The ownership of the source allocation and the new `T` values is temporarily moved into `dst_guard`.
         // This is safe because
         // * `forget_allocation_drop_remaining` immediately forgets the allocation
         // before any panic can occur in order to avoid any double free, and then proceeds to drop
@@ -273,11 +277,12 @@ where
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documentation why this is ok anyway.
-        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap: dst_cap };
+        let dst_guard =
+            InPlaceDstDataSrcBufDrop { ptr: dst_buf, len, src_cap, src: PhantomData::<I::Src> };
         src.forget_allocation_drop_remaining();
 
-        // Adjust the allocation if the alignment didn't match or the source had a capacity in bytes
-        // that wasn't a multiple of the destination type size.
+        // Adjust the allocation if the source had a capacity in bytes that wasn't a multiple
+        // of the destination type size.
         // Since the discrepancy should generally be small this should only result in some
         // bookkeeping updates and no memmove.
         if needs_realloc::<I::Src, T>(src_cap, dst_cap) {
@@ -290,7 +295,7 @@ where
                 let src_size = mem::size_of::<I::Src>().unchecked_mul(src_cap);
                 let old_layout = Layout::from_size_align_unchecked(src_size, src_align);
 
-                // The must be equal or smaller for in-place iteration to be possible
+                // The allocation must be equal or smaller for in-place iteration to be possible
                 // therefore the new layout must be ≤ the old one and therefore valid.
                 let dst_align = mem::align_of::<T>();
                 let dst_size = mem::size_of::<T>().unchecked_mul(dst_cap);

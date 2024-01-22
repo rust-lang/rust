@@ -1,6 +1,6 @@
 //! Structural editing for ast.
 
-use std::iter::{empty, successors};
+use std::iter::{empty, once, successors};
 
 use parser::{SyntaxKind, T};
 
@@ -13,7 +13,7 @@ use crate::{
     SyntaxNode, SyntaxToken,
 };
 
-use super::{HasArgList, HasName};
+use super::{GenericParam, HasArgList, HasName};
 
 pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
@@ -272,6 +272,35 @@ impl ast::GenericParamList {
         }
     }
 
+    /// Find the params corresponded to generic arg
+    pub fn find_generic_arg(&self, generic_arg: &ast::GenericArg) -> Option<GenericParam> {
+        self.generic_params().find_map(move |param| match (&param, &generic_arg) {
+            (ast::GenericParam::LifetimeParam(a), ast::GenericArg::LifetimeArg(b)) => {
+                (a.lifetime()?.lifetime_ident_token()?.text()
+                    == b.lifetime()?.lifetime_ident_token()?.text())
+                .then_some(param)
+            }
+            (ast::GenericParam::TypeParam(a), ast::GenericArg::TypeArg(b)) => {
+                debug_assert_eq!(b.syntax().first_token(), b.syntax().last_token());
+                (a.name()?.text() == b.syntax().first_token()?.text()).then_some(param)
+            }
+            (ast::GenericParam::ConstParam(a), ast::GenericArg::TypeArg(b)) => {
+                debug_assert_eq!(b.syntax().first_token(), b.syntax().last_token());
+                (a.name()?.text() == b.syntax().first_token()?.text()).then_some(param)
+            }
+            _ => None,
+        })
+    }
+
+    /// Removes the corresponding generic arg
+    pub fn remove_generic_arg(&self, generic_arg: &ast::GenericArg) {
+        let param_to_remove = self.find_generic_arg(generic_arg);
+
+        if let Some(param) = &param_to_remove {
+            self.remove_generic_param(param.clone());
+        }
+    }
+
     /// Constructs a matching [`ast::GenericArgList`]
     pub fn to_generic_args(&self) -> ast::GenericArgList {
         let args = self.generic_params().filter_map(|param| match param {
@@ -299,6 +328,20 @@ impl ast::WhereClause {
             }
         }
         ted::append_child(self.syntax(), predicate.syntax());
+    }
+
+    pub fn remove_predicate(&self, predicate: ast::WherePred) {
+        if let Some(previous) = predicate.syntax().prev_sibling() {
+            if let Some(next_token) = previous.next_sibling_or_token() {
+                ted::remove_all(next_token..=predicate.syntax().clone().into());
+            }
+        } else if let Some(next) = predicate.syntax().next_sibling() {
+            if let Some(next_token) = next.prev_sibling_or_token() {
+                ted::remove_all(predicate.syntax().clone().into()..=next_token);
+            }
+        } else {
+            ted::remove(predicate.syntax());
+        }
     }
 }
 
@@ -414,6 +457,7 @@ impl ast::UseTree {
                     u.remove_recursive();
                 }
             }
+            u.remove_unnecessary_braces();
         }
     }
 
@@ -485,6 +529,25 @@ impl ast::UseTree {
             ted::remove(prefix.syntax());
             Some(())
         }
+    }
+
+    /// Wraps the use tree in use tree list with no top level path (if it isn't already).
+    ///
+    /// # Examples
+    ///
+    /// `foo::bar` -> `{foo::bar}`
+    ///
+    /// `{foo::bar}` -> `{foo::bar}`
+    pub fn wrap_in_tree_list(&self) {
+        if self.path().is_none() {
+            return;
+        }
+        let subtree = self.clone_subtree().clone_for_update();
+        ted::remove_all_iter(self.syntax().children_with_tokens());
+        ted::append_child(
+            self.syntax(),
+            make::use_tree_list(once(subtree)).clone_for_update().syntax(),
+        );
     }
 }
 

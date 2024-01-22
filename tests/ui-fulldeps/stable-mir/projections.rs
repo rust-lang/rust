@@ -12,14 +12,12 @@
 #![feature(control_flow_enum)]
 
 extern crate rustc_hir;
-extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
@@ -32,7 +30,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 /// Tests projections within Place objects
-fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_place_projections() -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
     let body = get_item(&items, (ItemKind::Fn, "projections")).unwrap().body();
     assert_eq!(body.blocks.len(), 4);
@@ -159,7 +157,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, tcx, test_place_projections(tcx)).unwrap();
+    run!(args, test_place_projections).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

@@ -138,7 +138,7 @@
 //!
 //! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
 //! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
-//! operation) can still cause a page fault if the underlying memory page is mapped read-only. Since
+//! operation) can still cause a segmentation fault if the underlying memory page is mapped read-only. Since
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
 //! on read-only memory.
 //!
@@ -181,12 +181,13 @@
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
 //!
 //!     let spinlock_clone = Arc::clone(&spinlock);
+//!
 //!     let thread = thread::spawn(move|| {
-//!         spinlock_clone.store(0, Ordering::SeqCst);
+//!         spinlock_clone.store(0, Ordering::Release);
 //!     });
 //!
 //!     // Wait for the other thread to release the lock
-//!     while spinlock.load(Ordering::SeqCst) != 0 {
+//!     while spinlock.load(Ordering::Acquire) != 0 {
 //!         hint::spin_loop();
 //!     }
 //!
@@ -203,7 +204,11 @@
 //!
 //! static GLOBAL_THREAD_COUNT: AtomicUsize = AtomicUsize::new(0);
 //!
-//! let old_thread_count = GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::SeqCst);
+//! // Note that Relaxed ordering doesn't synchronize anything
+//! // except the global thread counter itself.
+//! let old_thread_count = GLOBAL_THREAD_COUNT.fetch_add(1, Ordering::Relaxed);
+//! // Note that this number may not be true at the moment of printing
+//! // because some other thread may have changed static value already.
 //! println!("live threads: {}", old_thread_count + 1);
 //! ```
 

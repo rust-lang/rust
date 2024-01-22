@@ -3,7 +3,12 @@
 // Some targets treat arrays and structs very differently. We would probably catch that on those
 // targets since we check the `PassMode`; here we ensure that we catch it on *all* targets
 // (in particular, on x86-64 the pass mode is `Indirect` for both of these).
-struct S(i32, i32, i32, i32);
+struct S(
+    #[allow(dead_code)] i32,
+    #[allow(dead_code)] i32,
+    #[allow(dead_code)] i32,
+    #[allow(dead_code)] i32,
+);
 type A = [i32; 4];
 
 fn main() {

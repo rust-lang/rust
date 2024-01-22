@@ -23,7 +23,7 @@ impl ActiveParameter {
 
         let idx = active_parameter?;
         let mut params = signature.params(sema.db);
-        if !(idx < params.len()) {
+        if idx >= params.len() {
             cov_mark::hit!(too_many_arguments);
             return None;
         }
@@ -66,19 +66,15 @@ pub fn callable_for_node(
         }
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
     }?;
-    let active_param = if let Some(arg_list) = calling_node.arg_list() {
-        Some(
-            arg_list
-                .syntax()
-                .children_with_tokens()
-                .filter_map(NodeOrToken::into_token)
-                .filter(|t| t.kind() == T![,])
-                .take_while(|t| t.text_range().start() <= token.text_range().start())
-                .count(),
-        )
-    } else {
-        None
-    };
+    let active_param = calling_node.arg_list().map(|arg_list| {
+        arg_list
+            .syntax()
+            .children_with_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .filter(|t| t.kind() == T![,])
+            .take_while(|t| t.text_range().start() <= token.text_range().start())
+            .count()
+    });
     Some((callable, active_param))
 }
 

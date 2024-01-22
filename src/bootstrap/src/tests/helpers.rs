@@ -1,4 +1,4 @@
-use crate::utils::helpers::{extract_beta_rev, hex_encode, make, check_cfg_arg};
+use crate::utils::helpers::{check_cfg_arg, extract_beta_rev, hex_encode, make};
 use std::path::PathBuf;
 
 #[test]

@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(mut e) = self.demand_suptype_diag(sp, expected, actual) {
+        if let Some(e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
         }
     }
@@ -189,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(mut err) = self.demand_eqtype_diag(sp, expected, actual) {
+        if let Some(err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
@@ -228,7 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (ty, err) =
             self.demand_coerce_diag(expr, checked_ty, expected, expected_ty_expr, allow_two_phase);
-        if let Some(mut err) = err {
+        if let Some(err) = err {
             err.emit();
         }
         ty

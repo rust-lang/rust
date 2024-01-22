@@ -10,7 +10,7 @@ use ide_db::{
 use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
-use syntax::{SmolStr, TextRange, TextSize};
+use syntax::{format_smolstr, SmolStr, TextRange, TextSize};
 use text_edit::TextEdit;
 
 use crate::{
@@ -152,6 +152,8 @@ pub struct CompletionRelevance {
     pub is_local: bool,
     /// This is set when trait items are completed in an impl of that trait.
     pub is_item_from_trait: bool,
+    /// This is set for when trait items are from traits with `#[doc(notable_trait)]`
+    pub is_item_from_notable_trait: bool,
     /// This is set when an import is suggested whose name is already imported.
     pub is_name_already_imported: bool,
     /// This is set for completions that will insert a `use` item.
@@ -228,6 +230,7 @@ impl CompletionRelevance {
             is_private_editable,
             postfix_match,
             is_definite,
+            is_item_from_notable_trait,
         } = self;
 
         // lower rank private things
@@ -264,6 +267,9 @@ impl CompletionRelevance {
             score += 1;
         }
         if is_item_from_trait {
+            score += 1;
+        }
+        if is_item_from_notable_trait {
             score += 1;
         }
         if is_definite {
@@ -436,7 +442,7 @@ impl Builder {
 
         if !self.doc_aliases.is_empty() {
             let doc_aliases = self.doc_aliases.iter().join(", ");
-            label_detail.replace(SmolStr::from(format!(" (alias {doc_aliases})")));
+            label_detail.replace(format_smolstr!(" (alias {doc_aliases})"));
             let lookup_doc_aliases = self
                 .doc_aliases
                 .iter()
@@ -453,21 +459,21 @@ impl Builder {
                 // after typing a comma or space.
                 .join("");
             if !lookup_doc_aliases.is_empty() {
-                lookup = SmolStr::from(format!("{lookup}{lookup_doc_aliases}"));
+                lookup = format_smolstr!("{lookup}{lookup_doc_aliases}");
             }
         }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
-            label_detail.replace(SmolStr::from(format!(
+            label_detail.replace(format_smolstr!(
                 "{} (use {})",
                 label_detail.as_deref().unwrap_or_default(),
                 import_edit.import_path.display(db)
-            )));
+            ));
         } else if let Some(trait_name) = self.trait_name {
-            label_detail.replace(SmolStr::from(format!(
+            label_detail.replace(format_smolstr!(
                 "{} (as {trait_name})",
                 label_detail.as_deref().unwrap_or_default(),
-            )));
+            ));
         }
 
         let text_edit = match self.text_edit {
@@ -547,7 +553,7 @@ impl Builder {
         self.detail = detail.map(Into::into);
         if let Some(detail) = &self.detail {
             if never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
-                self.detail = Some(detail.splitn(2, '\n').next().unwrap().to_string());
+                self.detail = Some(detail.split('\n').next().unwrap().to_string());
             }
         }
         self

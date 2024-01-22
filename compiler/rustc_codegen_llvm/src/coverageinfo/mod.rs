@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, MiscMethods,
     StaticMethods,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
@@ -30,7 +30,7 @@ const VAR_ALIGN_BYTES: usize = 8;
 pub struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
-        RefCell<FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
+        RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
 
@@ -44,8 +44,8 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
 
     pub fn take_function_coverage_map(
         &self,
-    ) -> FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
-        self.function_coverage_map.replace(FxHashMap::default())
+    ) -> FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
+        self.function_coverage_map.replace(FxIndexMap::default())
     }
 }
 

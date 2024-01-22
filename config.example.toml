@@ -339,6 +339,14 @@
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
 
+# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
+# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
+# sources are available.
+#
+# Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
+# order to run `x check`.
+#optimized-compiler-builtins = if rust.channel == "dev" { false } else { true }
+
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.
 #cargo-native-static = false

@@ -2466,7 +2466,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     debug!(?cache_projection, ?obligation_projection);
 
     match infcx.at(cause, param_env).eq(
-        DefineOpaqueTypes::No,
+        DefineOpaqueTypes::Yes,
         cache_projection,
         obligation_projection,
     ) {

@@ -56,6 +56,8 @@ decl_derive!(
     hash_stable::hash_stable_no_context_derive
 );
 
+decl_derive!([Decodable_Generic] => serialize::decodable_generic_derive);
+decl_derive!([Encodable_Generic] => serialize::encodable_generic_derive);
 decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);
 decl_derive!([TyDecodable] => serialize::type_decodable_derive);

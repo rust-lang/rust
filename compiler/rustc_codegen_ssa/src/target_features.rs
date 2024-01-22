@@ -1,8 +1,8 @@
 use crate::errors;
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -18,7 +18,7 @@ use rustc_span::Span;
 pub fn from_target_feature(
     tcx: TyCtxt<'_>,
     attr: &ast::Attribute,
-    supported_target_features: &FxHashMap<String, Option<Symbol>>,
+    supported_target_features: &UnordMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
@@ -27,7 +27,7 @@ pub fn from_target_feature(
         let code = "enable = \"..\"";
         tcx.dcx()
             .struct_span_err(span, msg)
-            .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
+            .with_span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
             .emit();
     };
     let rust_features = tcx.features();
@@ -82,7 +82,7 @@ pub fn from_target_feature(
             };
             if !allowed {
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     feature_gate.unwrap(),
                     item.span(),
                     format!("the target feature `{feature}` is currently unstable"),

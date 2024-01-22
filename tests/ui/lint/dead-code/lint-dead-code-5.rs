@@ -2,12 +2,12 @@
 #![deny(dead_code)]
 
 enum Enum1 {
-    Variant1(isize),
+    Variant1(#[allow(dead_code)] isize),
     Variant2 //~ ERROR: variant `Variant2` is never constructed
 }
 
 enum Enum2 {
-    Variant3(bool),
+    Variant3(#[allow(dead_code)] bool),
     #[allow(dead_code)]
     Variant4(isize),
     Variant5 { _x: isize }, //~ ERROR: variants `Variant5` and `Variant6` are never constructed
@@ -15,7 +15,7 @@ enum Enum2 {
     _Variant7,
     Variant8 { _field: bool },
     Variant9,
-    Variant10(usize)
+    Variant10(#[allow(dead_code)] usize)
 }
 
 impl Enum2 {

@@ -2,6 +2,7 @@
 name = "sourcegen"
 version = "0.0.0"
 description = "TBD"
+publish = false
 
 authors.workspace = true
 edition.workspace = true
@@ -13,3 +14,6 @@ doctest = false
 
 [dependencies]
 xshell.workspace = true
+
+[lints]
+workspace = true

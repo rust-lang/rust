@@ -7,8 +7,20 @@ use crate::{lint::lint_body, validate, MirPass};
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
-        let name = std::any::type_name::<Self>();
-        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
+        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        const {
+            let name = std::any::type_name::<Self>();
+            let bytes = name.as_bytes();
+            let mut i = bytes.len();
+            while i > 0 && bytes[i - 1] != b':' {
+                i = i - 1;
+            }
+            let (_, bytes) = bytes.split_at(i);
+            match std::str::from_utf8(bytes) {
+                Ok(name) => name,
+                Err(_) => name,
+            }
+        }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {
@@ -109,14 +121,15 @@ fn run_passes_inner<'tcx>(
     phase_change: Option<MirPhase>,
     validate_each: bool,
 ) {
-    let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
-    let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip();
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
 
     if !body.should_skip() {
+        let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
+        let lint = tcx.sess.opts.unstable_opts.lint_mir;
+
         for pass in passes {
             let name = pass.name();
 
@@ -162,7 +175,12 @@ fn run_passes_inner<'tcx>(
         body.pass_count = 0;
 
         dump_mir_for_phase_change(tcx, body);
-        if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
+
+        let validate =
+            (validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip())
+                || new_phase == MirPhase::Runtime(RuntimePhase::Optimized);
+        let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
+        if validate {
             validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
         }
         if lint {

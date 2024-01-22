@@ -69,8 +69,8 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     let mut parser =
         match rustc_parse::maybe_new_parser_from_source_str(&sess, file_name, snippet.clone()) {
             Ok(parser) => parser,
-            Err(diagnostics) => {
-                drop(diagnostics);
+            Err(errs) => {
+                errs.into_iter().for_each(|err| err.cancel());
                 return None;
             }
         };

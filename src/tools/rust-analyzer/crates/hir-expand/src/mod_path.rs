@@ -9,10 +9,11 @@ use crate::{
     db::ExpandDatabase,
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
-    span::SpanMapRef,
+    span_map::SpanMapRef,
 };
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use smallvec::SmallVec;
+use span::SyntaxContextId;
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -300,7 +301,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) ->
         result_mark = Some(mark);
     }
 
-    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call.into()).def.krate)
+    result_mark.flatten().map(|call| db.lookup_intern_macro_call(call).def.krate)
 }
 
 pub use crate::name as __name;

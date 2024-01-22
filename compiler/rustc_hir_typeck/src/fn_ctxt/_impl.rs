@@ -377,13 +377,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         RawTy { raw: ty, normalized: self.normalize(span, ty) }
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> RawTy<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'tcx>) -> RawTy<'tcx> {
         let t = self.astconv().ast_ty_to_ty(ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
         self.handle_raw_ty(ast_t.span, t)
     }
 
-    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
+    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
@@ -534,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coroutines = std::mem::take(&mut *self.deferred_coroutine_interiors.borrow_mut());
         debug!(?coroutines);
 
-        for &(expr_def_id, body_id, interior, _) in coroutines.iter() {
+        for &(expr_def_id, body_id, interior) in coroutines.iter() {
             debug!(?expr_def_id);
 
             // Create the `CoroutineWitness` type that we will unify with `interior`.
@@ -845,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) =
+                    && let Some(diag) =
                         self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     diag.emit();
@@ -877,7 +877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // emit or cancel the diagnostic for bare traits
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) =
+                    && let Some(diag) =
                         self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     if trait_missing_method {
@@ -889,7 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if item_name.name != kw::Empty {
-                    if let Some(mut e) = self.report_method_error(
+                    if let Some(e) = self.report_method_error(
                         span,
                         ty.normalized,
                         item_name,
@@ -1073,7 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, span), level = "debug")]
     pub fn instantiate_value_path(
         &self,
-        segments: &[hir::PathSegment<'_>],
+        segments: &'tcx [hir::PathSegment<'tcx>],
         self_ty: Option<RawTy<'tcx>>,
         res: Res,
         span: Span,
@@ -1260,13 +1260,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: Span,
             path_segs: &'a [PathSeg],
             infer_args_for_err: &'a FxHashSet<usize>,
-            segments: &'a [hir::PathSegment<'a>],
+            segments: &'tcx [hir::PathSegment<'tcx>],
         }
         impl<'tcx, 'a> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for CreateCtorSubstsContext<'a, 'tcx> {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
-            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+            ) -> (Option<&'a hir::GenericArgs<'tcx>>, bool) {
                 if let Some(&PathSeg(_, index)) =
                     self.path_segs.iter().find(|&PathSeg(did, _)| *did == def_id)
                 {
@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn provided_kind(
                 &mut self,
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'_>,
+                arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {

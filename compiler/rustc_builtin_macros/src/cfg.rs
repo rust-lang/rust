@@ -22,13 +22,13 @@ pub fn expand_cfg(
         Ok(cfg) => {
             let matches_cfg = attr::cfg_matches(
                 &cfg,
-                &cx.sess.parse_sess,
+                &cx.sess,
                 cx.current_expansion.lint_node_id,
                 Some(cx.ecfg.features),
             );
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

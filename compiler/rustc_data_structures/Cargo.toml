@@ -13,7 +13,7 @@ indexmap = { version = "2.0.0" }
 itertools = "0.11"
 jobserver_crate = { version = "0.1.27", package = "jobserver" }
 libc = "0.2"
-measureme = "10.0.0"
+measureme = "11"
 rustc-hash = "1.1.0"
 rustc-rayon = { version = "0.5.0", optional = true }
 rustc-rayon-core = { version = "0.5.0", optional = true }

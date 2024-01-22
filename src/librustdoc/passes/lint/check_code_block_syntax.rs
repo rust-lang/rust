@@ -8,7 +8,7 @@ use rustc_errors::{
 use rustc_parse::parse_stream_from_source_str;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use rustc_session::parse::ParseSess;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, Transparency};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan, DUMMY_SP};
 
@@ -50,7 +50,7 @@ fn check_rust_syntax(
     let expn_data =
         ExpnData::default(ExpnKind::AstPass(AstPass::TestHarness), DUMMY_SP, edition, None, None);
     let expn_id = cx.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
-    let span = DUMMY_SP.fresh_expansion(expn_id);
+    let span = DUMMY_SP.apply_mark(expn_id.to_expn_id(), Transparency::Transparent);
 
     let is_empty = rustc_driver::catch_fatal_errors(|| {
         parse_stream_from_source_str(

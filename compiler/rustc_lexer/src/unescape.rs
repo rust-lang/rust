@@ -59,6 +59,9 @@ pub enum EscapeError {
     /// Non-ascii character in byte literal, byte string literal, or raw byte string literal.
     NonAsciiCharInByte,
 
+    // `\0` in a C string literal.
+    NulInCStr,
+
     /// After a line ending with '\', the next line contains whitespace
     /// characters that are not skipped.
     UnskippedWhitespaceWarning,
@@ -122,10 +125,20 @@ where
 {
     match mode {
         CStr => {
-            unescape_non_raw_common(src, mode, callback);
+            unescape_non_raw_common(src, mode, &mut |r, mut result| {
+                if let Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) = result {
+                    result = Err(EscapeError::NulInCStr);
+                }
+                callback(r, result)
+            });
         }
         RawCStr => {
-            check_raw_common(src, mode, &mut |r, result| callback(r, result.map(CStrUnit::Char)));
+            check_raw_common(src, mode, &mut |r, mut result| {
+                if let Ok('\0') = result {
+                    result = Err(EscapeError::NulInCStr);
+                }
+                callback(r, result.map(CStrUnit::Char))
+            });
         }
         Char | Byte | Str | RawStr | ByteStr | RawByteStr => unreachable!(),
     }

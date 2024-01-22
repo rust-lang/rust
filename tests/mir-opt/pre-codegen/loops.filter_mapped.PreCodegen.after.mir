@@ -32,7 +32,7 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
 
     bb1: {
         StorageLive(_4);
-        _4 = move _3;
+        _4 = _3;
         goto -> bb2;
     }
 

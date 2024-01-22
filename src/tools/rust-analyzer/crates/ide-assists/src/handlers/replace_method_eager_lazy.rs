@@ -133,7 +133,7 @@ pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'
         None,
         None,
         |func| {
-            let valid = func.name(ctx.sema.db).as_str() == Some(&*method_name_eager)
+            let valid = func.name(ctx.sema.db).as_str() == Some(method_name_eager)
                 && func.num_params(ctx.sema.db) == n_params;
             valid.then_some(func)
         },

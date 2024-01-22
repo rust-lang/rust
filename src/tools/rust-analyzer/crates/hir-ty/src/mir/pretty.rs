@@ -5,8 +5,9 @@ use std::{
     mem,
 };
 
+use either::Either;
 use hir_def::{body::Body, hir::BindingId};
-use hir_expand::name::Name;
+use hir_expand::{name::Name, Lookup};
 use la_arena::ArenaMap;
 
 use crate::{
@@ -57,8 +58,14 @@ impl MirBody {
                 );
             }
             hir_def::DefWithBodyId::VariantId(id) => {
-                let data = db.enum_data(id.parent);
-                w!(this, "enum {} = ", data.name.display(db.upcast()));
+                let loc = id.lookup(db.upcast());
+                let enum_loc = loc.parent.lookup(db.upcast());
+                w!(
+                    this,
+                    "enum {}::{} = ",
+                    enum_loc.id.item_tree(db.upcast())[enum_loc.id.value].name.display(db.upcast()),
+                    loc.id.item_tree(db.upcast())[loc.id.value].name.display(db.upcast()),
+                )
             }
             hir_def::DefWithBodyId::InTypeConstId(id) => {
                 w!(this, "in type const {id:?} = ");
@@ -298,15 +305,14 @@ impl<'a> MirPrettyCtx<'a> {
                     f(this, local, head);
                     w!(this, ")");
                 }
-                ProjectionElem::Field(field) => {
+                ProjectionElem::Field(Either::Left(field)) => {
                     let variant_data = field.parent.variant_data(this.db.upcast());
                     let name = &variant_data.fields()[field.local_id].name;
                     match field.parent {
                         hir_def::VariantId::EnumVariantId(e) => {
                             w!(this, "(");
                             f(this, local, head);
-                            let variant_name =
-                                &this.db.enum_data(e.parent).variants[e.local_id].name;
+                            let variant_name = &this.db.enum_variant_data(e).name;
                             w!(
                                 this,
                                 " as {}).{}",
@@ -320,7 +326,11 @@ impl<'a> MirPrettyCtx<'a> {
                         }
                     }
                 }
-                ProjectionElem::TupleOrClosureField(it) => {
+                ProjectionElem::Field(Either::Right(field)) => {
+                    f(this, local, head);
+                    w!(this, ".{}", field.index);
+                }
+                ProjectionElem::ClosureField(it) => {
                     f(this, local, head);
                     w!(this, ".{}", it);
                 }
@@ -334,7 +344,7 @@ impl<'a> MirPrettyCtx<'a> {
                 }
             }
         }
-        f(self, p.local, &p.projection.lookup(&self.body.projection_store));
+        f(self, p.local, p.projection.lookup(&self.body.projection_store));
     }
 
     fn operand(&mut self, r: &Operand) {

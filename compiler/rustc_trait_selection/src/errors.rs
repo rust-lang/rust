@@ -66,12 +66,9 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NegativePositiveConflict<'_
     ) -> rustc_errors::DiagnosticBuilder<'_, G> {
         let mut diag =
             DiagnosticBuilder::new(dcx, level, fluent::trait_selection_negative_positive_conflict);
-        diag.set_arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
-        diag.set_arg(
-            "self_desc",
-            self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()),
-        );
-        diag.set_span(self.impl_span);
+        diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
+        diag.arg("self_desc", self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()));
+        diag.span(self.impl_span);
         diag.code(rustc_errors::error_code!(E0751));
         match self.negative_impl_span {
             Ok(span) => {
@@ -79,7 +76,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NegativePositiveConflict<'_
             }
             Err(cname) => {
                 diag.note(fluent::trait_selection_negative_implementation_in_crate);
-                diag.set_arg("negative_impl_cname", cname.to_string());
+                diag.arg("negative_impl_cname", cname.to_string());
             }
         }
         match self.positive_impl_span {
@@ -88,7 +85,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NegativePositiveConflict<'_
             }
             Err(cname) => {
                 diag.note(fluent::trait_selection_positive_implementation_in_crate);
-                diag.set_arg("positive_impl_cname", cname.to_string());
+                diag.arg("positive_impl_cname", cname.to_string());
             }
         }
         diag
@@ -115,7 +112,7 @@ impl AddToDiagnostic for AdjustSignatureBorrow {
     {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
-                diag.set_arg("len", to_borrow.len());
+                diag.arg("len", to_borrow.len());
                 diag.multipart_suggestion_verbose(
                     fluent::trait_selection_adjust_signature_borrow,
                     to_borrow,
@@ -123,7 +120,7 @@ impl AddToDiagnostic for AdjustSignatureBorrow {
                 );
             }
             AdjustSignatureBorrow::RemoveBorrow { remove_borrow } => {
-                diag.set_arg("len", remove_borrow.len());
+                diag.arg("len", remove_borrow.len());
                 diag.multipart_suggestion_verbose(
                     fluent::trait_selection_adjust_signature_remove_borrow,
                     remove_borrow,

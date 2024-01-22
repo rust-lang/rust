@@ -275,7 +275,7 @@ impl Filler<'_> {
                     | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::Assert { .. }
                     | TerminatorKind::Yield { .. }
-                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::CoroutineDrop
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => (),
                 }
@@ -306,7 +306,7 @@ pub fn monomorphized_mir_body_recover(
     _: &Substitution,
     _: &Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
-    return Err(MirLowerError::Loop);
+    Err(MirLowerError::Loop)
 }
 
 pub fn monomorphized_mir_body_for_closure_query(

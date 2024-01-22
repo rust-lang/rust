@@ -23,6 +23,7 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::*;
+use helpers::{ToHost, ToSoft};
 
 /// Type of dynamic symbols (for `dlsym` et al)
 #[derive(Debug, Copy, Clone)]
@@ -341,7 +342,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
-        // List taken from `library/std/src/sys/common/alloc.rs`.
+        // List taken from `library/std/src/sys/pal/common/alloc.rs`.
         // This list should be kept in sync with the one from libstd.
         let min_align = match this.tcx.sess.target.arch.as_ref() {
             "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "wasm32" => 8,
@@ -886,23 +887,26 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "tgammaf"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let f = this.read_scalar(f)?.to_f32()?;
                 // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
+                let f_host = f.to_host();
                 let res = match link_name.as_str() {
-                    "cbrtf" => f.cbrt(),
-                    "coshf" => f.cosh(),
-                    "sinhf" => f.sinh(),
-                    "tanf" => f.tan(),
-                    "tanhf" => f.tanh(),
-                    "acosf" => f.acos(),
-                    "asinf" => f.asin(),
-                    "atanf" => f.atan(),
-                    "log1pf" => f.ln_1p(),
-                    "expm1f" => f.exp_m1(),
-                    "tgammaf" => f.gamma(),
+                    "cbrtf" => f_host.cbrt(),
+                    "coshf" => f_host.cosh(),
+                    "sinhf" => f_host.sinh(),
+                    "tanf" => f_host.tan(),
+                    "tanhf" => f_host.tanh(),
+                    "acosf" => f_host.acos(),
+                    "asinf" => f_host.asin(),
+                    "atanf" => f_host.atan(),
+                    "log1pf" => f_host.ln_1p(),
+                    "expm1f" => f_host.exp_m1(),
+                    "tgammaf" => f_host.gamma(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
+                let res = res.to_soft();
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_hypotf"
@@ -911,19 +915,20 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "fdimf"
             => {
                 let [f1, f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let f1 = this.read_scalar(f1)?.to_f32()?;
+                let f2 = this.read_scalar(f2)?.to_f32()?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
                 // FIXME: Using host floats.
-                let f1 = f32::from_bits(this.read_scalar(f1)?.to_u32()?);
-                let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
                 let res = match link_name.as_str() {
-                    "_hypotf" | "hypotf" => f1.hypot(f2),
-                    "atan2f" => f1.atan2(f2),
+                    "_hypotf" | "hypotf" => f1.to_host().hypot(f2.to_host()).to_soft(),
+                    "atan2f" => f1.to_host().atan2(f2.to_host()).to_soft(),
                     #[allow(deprecated)]
-                    "fdimf" => f1.abs_sub(f2),
+                    "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
+                let res = this.adjust_nan(res, &[f1, f2]);
+                this.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "cbrt"
@@ -939,23 +944,26 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "tgamma"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
                 // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
+                let f_host = f.to_host();
                 let res = match link_name.as_str() {
-                    "cbrt" => f.cbrt(),
-                    "cosh" => f.cosh(),
-                    "sinh" => f.sinh(),
-                    "tan" => f.tan(),
-                    "tanh" => f.tanh(),
-                    "acos" => f.acos(),
-                    "asin" => f.asin(),
-                    "atan" => f.atan(),
-                    "log1p" => f.ln_1p(),
-                    "expm1" => f.exp_m1(),
-                    "tgamma" => f.gamma(),
+                    "cbrt" => f_host.cbrt(),
+                    "cosh" => f_host.cosh(),
+                    "sinh" => f_host.sinh(),
+                    "tan" => f_host.tan(),
+                    "tanh" => f_host.tanh(),
+                    "acos" => f_host.acos(),
+                    "asin" => f_host.asin(),
+                    "atan" => f_host.atan(),
+                    "log1p" => f_host.ln_1p(),
+                    "expm1" => f_host.exp_m1(),
+                    "tgamma" => f_host.gamma(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
+                let res = res.to_soft();
+                let res = this.adjust_nan(res, &[f]);
+                this.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_hypot"
@@ -964,17 +972,20 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             | "fdim"
             => {
                 let [f1, f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let f1 = this.read_scalar(f1)?.to_f64()?;
+                let f2 = this.read_scalar(f2)?.to_f64()?;
+                // underscore case for windows, here and below
+                // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
                 // FIXME: Using host floats.
-                let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
-                let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
                 let res = match link_name.as_str() {
-                    "_hypot" | "hypot" => f1.hypot(f2),
-                    "atan2" => f1.atan2(f2),
+                    "_hypot" | "hypot" => f1.to_host().hypot(f2.to_host()).to_soft(),
+                    "atan2" => f1.to_host().atan2(f2.to_host()).to_soft(),
                     #[allow(deprecated)]
-                    "fdim" => f1.abs_sub(f2),
+                    "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
+                let res = this.adjust_nan(res, &[f1, f2]);
+                this.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_ldexp"
@@ -987,27 +998,30 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let exp = this.read_scalar(exp)?.to_i32()?;
 
                 let res = x.scalbn(exp);
-                this.write_scalar(Scalar::from_f64(res), dest)?;
+                let res = this.adjust_nan(res, &[x]);
+                this.write_scalar(res, dest)?;
             }
             "lgammaf_r" => {
                 let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // FIXME: Using host floats.
-                let x = f32::from_bits(this.read_scalar(x)?.to_u32()?);
+                let x = this.read_scalar(x)?.to_f32()?;
                 let signp = this.deref_pointer(signp)?;
 
-                let (res, sign) = x.ln_gamma();
+                // FIXME: Using host floats.
+                let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
+                let res = this.adjust_nan(res.to_soft(), &[x]);
+                this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
                 let [x, signp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // FIXME: Using host floats.
-                let x = f64::from_bits(this.read_scalar(x)?.to_u64()?);
+                let x = this.read_scalar(x)?.to_f64()?;
                 let signp = this.deref_pointer(signp)?;
 
-                let (res, sign) = x.ln_gamma();
+                // FIXME: Using host floats.
+                let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
+                let res = this.adjust_nan(res.to_soft(), &[x]);
+                this.write_scalar(res, dest)?;
             }
 
             // LLVM intrinsics

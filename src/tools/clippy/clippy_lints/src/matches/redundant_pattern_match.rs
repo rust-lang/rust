@@ -9,7 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
-use rustc_hir::{Arm, Expr, ExprKind, Guard, Node, Pat, PatKind, QPath, UnOp};
+use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{sym, Span, Symbol};
@@ -277,8 +277,6 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
             let mut sugg = format!("{}.{good_method}", snippet(cx, result_expr.span, "_"));
 
             if let Some(guard) = maybe_guard {
-                let Guard::If(guard) = *guard else { return }; // `...is_none() && let ...` is a syntax error
-
                 // wow, the HIR for match guards in `PAT if let PAT = expr && expr => ...` is annoying!
                 // `guard` here is `Guard::If` with the let expression somewhere deep in the tree of exprs,
                 // counter to the intuition that it should be `Guard::IfLet`, so we need another check
@@ -319,7 +317,7 @@ fn found_good_method<'tcx>(
     cx: &LateContext<'_>,
     arms: &'tcx [Arm<'tcx>],
     node: (&PatKind<'_>, &PatKind<'_>),
-) -> Option<(&'static str, Option<&'tcx Guard<'tcx>>)> {
+) -> Option<(&'static str, Option<&'tcx Expr<'tcx>>)> {
     match node {
         (
             PatKind::TupleStruct(ref path_left, patterns_left, _),
@@ -409,7 +407,7 @@ fn get_good_method<'tcx>(
     cx: &LateContext<'_>,
     arms: &'tcx [Arm<'tcx>],
     path_left: &QPath<'_>,
-) -> Option<(&'static str, Option<&'tcx Guard<'tcx>>)> {
+) -> Option<(&'static str, Option<&'tcx Expr<'tcx>>)> {
     if let Some(name) = get_ident(path_left) {
         let (expected_item_left, should_be_left, should_be_right) = match name.as_str() {
             "Ok" => (Item::Lang(ResultOk), "is_ok()", "is_err()"),
@@ -478,7 +476,7 @@ fn find_good_method_for_match<'a, 'tcx>(
     expected_item_right: Item,
     should_be_left: &'a str,
     should_be_right: &'a str,
-) -> Option<(&'a str, Option<&'tcx Guard<'tcx>>)> {
+) -> Option<(&'a str, Option<&'tcx Expr<'tcx>>)> {
     let first_pat = arms[0].pat;
     let second_pat = arms[1].pat;
 
@@ -496,8 +494,8 @@ fn find_good_method_for_match<'a, 'tcx>(
 
     match body_node_pair {
         (ExprKind::Lit(lit_left), ExprKind::Lit(lit_right)) => match (&lit_left.node, &lit_right.node) {
-            (LitKind::Bool(true), LitKind::Bool(false)) => Some((should_be_left, arms[0].guard.as_ref())),
-            (LitKind::Bool(false), LitKind::Bool(true)) => Some((should_be_right, arms[1].guard.as_ref())),
+            (LitKind::Bool(true), LitKind::Bool(false)) => Some((should_be_left, arms[0].guard)),
+            (LitKind::Bool(false), LitKind::Bool(true)) => Some((should_be_right, arms[1].guard)),
             _ => None,
         },
         _ => None,
@@ -511,7 +509,7 @@ fn find_good_method_for_matches_macro<'a, 'tcx>(
     expected_item_left: Item,
     should_be_left: &'a str,
     should_be_right: &'a str,
-) -> Option<(&'a str, Option<&'tcx Guard<'tcx>>)> {
+) -> Option<(&'a str, Option<&'tcx Expr<'tcx>>)> {
     let first_pat = arms[0].pat;
 
     let body_node_pair = if is_pat_variant(cx, first_pat, path_left, expected_item_left) {
@@ -522,8 +520,8 @@ fn find_good_method_for_matches_macro<'a, 'tcx>(
 
     match body_node_pair {
         (ExprKind::Lit(lit_left), ExprKind::Lit(lit_right)) => match (&lit_left.node, &lit_right.node) {
-            (LitKind::Bool(true), LitKind::Bool(false)) => Some((should_be_left, arms[0].guard.as_ref())),
-            (LitKind::Bool(false), LitKind::Bool(true)) => Some((should_be_right, arms[1].guard.as_ref())),
+            (LitKind::Bool(true), LitKind::Bool(false)) => Some((should_be_left, arms[0].guard)),
+            (LitKind::Bool(false), LitKind::Bool(true)) => Some((should_be_right, arms[1].guard)),
             _ => None,
         },
         _ => None,

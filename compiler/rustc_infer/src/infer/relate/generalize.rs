@@ -3,7 +3,7 @@ use std::mem;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
@@ -431,22 +431,19 @@ where
 
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
-                match var_value.val {
+                match variable_table.probe_value(vid) {
                     ConstVariableValue::Known { value: u } => {
                         drop(inner);
                         self.relate(u, u)
                     }
-                    ConstVariableValue::Unknown { universe } => {
+                    ConstVariableValue::Unknown { origin, universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
                             let new_var_id = variable_table
-                                .new_key(ConstVarValue {
-                                    origin: var_value.origin,
-                                    val: ConstVariableValue::Unknown {
-                                        universe: self.for_universe,
-                                    },
+                                .new_key(ConstVariableValue::Unknown {
+                                    origin,
+                                    universe: self.for_universe,
                                 })
                                 .vid;
                             Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))

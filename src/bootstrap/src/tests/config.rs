@@ -32,9 +32,12 @@ fn download_ci_llvm() {
     assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
     assert!(!parse_llvm("rust.channel = \"stable\""));
     assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
-    assert_eq!(parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
-    ), if_unchanged);
+    assert_eq!(
+        parse_llvm(
+            "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
+        ),
+        if_unchanged
+    );
     assert!(!parse_llvm(
         "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
     ));

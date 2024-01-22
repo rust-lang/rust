@@ -247,8 +247,8 @@ impl AddToDiagnostic for RegionOriginNote<'_> {
             }
             RegionOriginNote::WithName { span, msg, name, continues } => {
                 label_or_note(span, msg);
-                diag.set_arg("name", name);
-                diag.set_arg("continues", continues);
+                diag.arg("name", name);
+                diag.arg("continues", continues);
             }
             RegionOriginNote::WithRequirement {
                 span,
@@ -256,7 +256,7 @@ impl AddToDiagnostic for RegionOriginNote<'_> {
                 expected_found: Some((expected, found)),
             } => {
                 label_or_note(span, fluent::infer_subtype);
-                diag.set_arg("requirement", requirement);
+                diag.arg("requirement", requirement);
 
                 diag.note_expected_found(&"", expected, &"", found);
             }
@@ -265,7 +265,7 @@ impl AddToDiagnostic for RegionOriginNote<'_> {
                 // handling of region checking when type errors are present is
                 // *terrible*.
                 label_or_note(span, fluent::infer_subtype_2);
-                diag.set_arg("requirement", requirement);
+                diag.arg("requirement", requirement);
             }
         };
     }
@@ -298,8 +298,8 @@ impl AddToDiagnostic for LifetimeMismatchLabels {
                 diag.span_label(param_span, fluent::infer_declared_different);
                 diag.span_label(ret_span, fluent::infer_nothing);
                 diag.span_label(span, fluent::infer_data_returned);
-                diag.set_arg("label_var1_exists", label_var1.is_some());
-                diag.set_arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
+                diag.arg("label_var1_exists", label_var1.is_some());
+                diag.arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
             }
             LifetimeMismatchLabels::Normal {
                 hir_equal,
@@ -317,16 +317,10 @@ impl AddToDiagnostic for LifetimeMismatchLabels {
                     diag.span_label(ty_sup, fluent::infer_types_declared_different);
                     diag.span_label(ty_sub, fluent::infer_nothing);
                     diag.span_label(span, fluent::infer_data_flows);
-                    diag.set_arg("label_var1_exists", label_var1.is_some());
-                    diag.set_arg(
-                        "label_var1",
-                        label_var1.map(|x| x.to_string()).unwrap_or_default(),
-                    );
-                    diag.set_arg("label_var2_exists", label_var2.is_some());
-                    diag.set_arg(
-                        "label_var2",
-                        label_var2.map(|x| x.to_string()).unwrap_or_default(),
-                    );
+                    diag.arg("label_var1_exists", label_var1.is_some());
+                    diag.arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
+                    diag.arg("label_var2_exists", label_var2.is_some());
+                    diag.arg("label_var2", label_var2.map(|x| x.to_string()).unwrap_or_default());
                 }
             }
         }
@@ -417,7 +411,7 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
                 suggestions,
                 Applicability::MaybeIncorrect,
             );
-            diag.set_arg("is_impl", is_impl);
+            diag.arg("is_impl", is_impl);
             true
         };
         if mk_suggestion() && self.add_note {
@@ -878,8 +872,8 @@ impl AddToDiagnostic for MoreTargeted {
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         diag.code(rustc_errors::error_code!(E0772));
-        diag.set_primary_message(fluent::infer_more_targeted);
-        diag.set_arg("ident", self.ident);
+        diag.primary_message(fluent::infer_more_targeted);
+        diag.arg("ident", self.ident);
     }
 }
 
@@ -1299,7 +1293,7 @@ impl AddToDiagnostic for SuggestTuplePatternMany {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("path", self.path);
+        diag.arg("path", self.path);
         let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());
         diag.multipart_suggestions(
             message,

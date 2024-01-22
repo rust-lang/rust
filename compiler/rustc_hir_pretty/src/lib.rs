@@ -320,7 +320,7 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::Infer => {
+            hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
         }
@@ -1838,6 +1838,11 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, after, |s, p| s.print_pat(p));
                 self.word("]");
             }
+            PatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }
@@ -1874,17 +1879,9 @@ impl<'a> State<'a> {
         self.print_pat(arm.pat);
         self.space();
         if let Some(ref g) = arm.guard {
-            match *g {
-                hir::Guard::If(e) => {
-                    self.word_space("if");
-                    self.print_expr(e);
-                    self.space();
-                }
-                hir::Guard::IfLet(&hir::Let { pat, ty, init, .. }) => {
-                    self.word_nbsp("if");
-                    self.print_let(pat, ty, init);
-                }
-            }
+            self.word_space("if");
+            self.print_expr(g);
+            self.space();
         }
         self.word_space("=>");
 

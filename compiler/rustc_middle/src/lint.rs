@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -312,16 +312,15 @@ pub fn struct_lint_level(
                 // create a `DiagnosticBuilder` and continue as we would for warnings.
                 rustc_errors::Level::Expect(expect_id)
             }
-            Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::Warning(Some(expect_id)),
-            Level::Warn | Level::ForceWarn(None) => rustc_errors::Level::Warning(None),
-            Level::Deny | Level::Forbid => rustc_errors::Level::Error { lint: true },
+            Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::ForceWarning(Some(expect_id)),
+            Level::ForceWarn(None) => rustc_errors::Level::ForceWarning(None),
+            Level::Warn => rustc_errors::Level::Warning,
+            Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
         let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
         if let Some(span) = span {
-            err.set_span(span);
+            err.span(span);
         }
-
-        err.set_is_lint();
 
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
@@ -348,24 +347,19 @@ pub fn struct_lint_level(
 
         // Delay evaluating and setting the primary message until after we've
         // suppressed the lint due to macros.
-        err.set_primary_message(msg);
+        err.primary_message(msg);
+
+        err.is_lint(lint.name_lower(), has_future_breakage);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
         // This will therefore directly call the decorate function which will in turn emit
         // the `Diagnostic`.
         if let Level::Expect(_) = level {
-            let name = lint.name_lower();
-            err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
-
             decorate(&mut err);
             err.emit();
             return;
         }
-
-        let name = lint.name_lower();
-        let is_force_warn = matches!(level, Level::ForceWarn(_));
-        err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = match future_incompatible.reason {

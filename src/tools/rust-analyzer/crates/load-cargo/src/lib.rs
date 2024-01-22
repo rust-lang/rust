@@ -5,17 +5,19 @@
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
-use ide::{AnalysisHost, Change, SourceRoot};
+use hir_expand::proc_macro::{
+    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+    ProcMacros,
+};
+use ide::{AnalysisHost, SourceRoot};
 use ide_db::{
-    base_db::{
-        span::SpanData, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroKind, ProcMacroLoadResult, ProcMacros,
-    },
-    FxHashMap,
+    base_db::{CrateGraph, Env},
+    Change, FxHashMap,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
+use span::Span;
 use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
@@ -315,12 +317,12 @@ fn load_crate_graph(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_done, n_total, config_version: _ } => {
-                if n_done == n_total {
+            vfs::loader::Message::Progress { n_done, n_total, .. } => {
+                if n_done == Some(n_total) {
                     break;
                 }
             }
-            vfs::loader::Message::Loaded { files } => {
+            vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }
@@ -329,9 +331,8 @@ fn load_crate_graph(
     }
     let changes = vfs.take_changes();
     for file in changes {
-        if file.exists() {
-            let contents = vfs.file_contents(file.file_id);
-            if let Ok(text) = std::str::from_utf8(contents) {
+        if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
+            if let Ok(text) = std::str::from_utf8(&v) {
                 analysis_change.change_file(file.file_id, Some(text.into()))
             }
         }
@@ -357,7 +358,7 @@ fn expander_to_proc_macro(
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
     let expander: sync::Arc<dyn ProcMacroExpander> =
-        if dummy_replace.iter().any(|replace| &**replace == name) {
+        if dummy_replace.iter().any(|replace| **replace == name) {
             match kind {
                 ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
                 _ => sync::Arc::new(EmptyExpander),
@@ -374,13 +375,13 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<SpanData>,
-        attrs: Option<&tt::Subtree<SpanData>>,
+        subtree: &tt::Subtree<Span>,
+        attrs: Option<&tt::Subtree<Span>>,
         env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
             Ok(Ok(subtree)) => Ok(subtree),
@@ -397,13 +398,13 @@ struct IdentityExpander;
 impl ProcMacroExpander for IdentityExpander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<SpanData>,
-        _: Option<&tt::Subtree<SpanData>>,
+        subtree: &tt::Subtree<Span>,
+        _: Option<&tt::Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -415,13 +416,13 @@ struct EmptyExpander;
 impl ProcMacroExpander for EmptyExpander {
     fn expand(
         &self,
-        _: &tt::Subtree<SpanData>,
-        _: Option<&tt::Subtree<SpanData>>,
+        _: &tt::Subtree<Span>,
+        _: Option<&tt::Subtree<Span>>,
         _: &Env,
-        call_site: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        call_site: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }

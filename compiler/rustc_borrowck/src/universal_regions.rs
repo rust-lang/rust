@@ -76,6 +76,8 @@ pub struct UniversalRegions<'tcx> {
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     pub yield_ty: Option<Ty<'tcx>>,
+
+    pub resume_ty: Option<Ty<'tcx>>,
 }
 
 /// The "defining type" for this MIR. The key feature of the "defining
@@ -525,9 +527,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: extern regions = {}..{}", first_extern_index, first_local_index);
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
-        let yield_ty = match defining_ty {
-            DefiningTy::Coroutine(_, args) => Some(args.as_coroutine().yield_ty()),
-            _ => None,
+        let (resume_ty, yield_ty) = match defining_ty {
+            DefiningTy::Coroutine(_, args) => {
+                let tys = args.as_coroutine();
+                (Some(tys.resume_ty()), Some(tys.yield_ty()))
+            }
+            _ => (None, None),
         };
 
         UniversalRegions {
@@ -541,6 +546,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             unnormalized_output_ty: *unnormalized_output_ty,
             unnormalized_input_tys,
             yield_ty,
+            resume_ty,
         }
     }
 
@@ -662,7 +668,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     kind: ty::BrEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-                let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_closure(tcx, def_id, args),
+                    args.as_closure().kind(),
+                    env_region,
+                );
 
                 // The "inputs" of the closure in the
                 // signature appear as a tuple. The MIR side

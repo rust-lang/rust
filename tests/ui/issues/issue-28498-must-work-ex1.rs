@@ -6,7 +6,7 @@
 
 use std::cell::Cell;
 
-struct Concrete<'a>(#[allow(unused_tuple_struct_fields)] u32, Cell<Option<&'a Concrete<'a>>>);
+struct Concrete<'a>(#[allow(dead_code)] u32, Cell<Option<&'a Concrete<'a>>>);
 
 fn main() {
     let mut data = Vec::new();

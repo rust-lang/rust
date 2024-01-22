@@ -111,14 +111,9 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
             return Ok((result, None, vec![], Certainty::Proven));
         }
 
-        // FIXME(#33684) -- We need to use
-        // `canonicalize_query_keep_static` here because of things
-        // like the subtype query, which go awry around
-        // `'static` otherwise.
         let mut canonical_var_values = OriginalQueryValues::default();
         let old_param_env = query_key.param_env;
-        let canonical_self =
-            infcx.canonicalize_query_keep_static(query_key, &mut canonical_var_values);
+        let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
         let InferOk { value, obligations } = infcx

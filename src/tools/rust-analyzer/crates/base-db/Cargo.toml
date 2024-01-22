@@ -16,12 +16,15 @@ la-arena.workspace = true
 rust-analyzer-salsa.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
+semver.workspace = true
 
 # local deps
 cfg.workspace = true
 profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
-test-utils.workspace = true
-tt.workspace = true
 vfs.workspace = true
+span.workspace = true
+
+[lints]
+workspace = true

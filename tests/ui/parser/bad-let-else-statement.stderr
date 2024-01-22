@@ -228,5 +228,31 @@ LL |         x
 LL ~     }) else {
    |
 
-error: aborting due to 17 previous errors
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/bad-let-else-statement.rs:167:31
+   |
+LL |     let bad = format_args! {""} else { return; };
+   |                               ^
+   |
+help: use parentheses instead of braces for this macro
+   |
+LL |     let bad = format_args! ("") else { return; };
+   |                            ~  ~
+
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/bad-let-else-statement.rs:181:25
+   |
+LL |             let x = a! {} else { return; };
+   |                         ^
+...
+LL |     b!(1); b!(2);
+   |            ----- in this macro invocation
+   |
+   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use parentheses instead of braces for this macro
+   |
+LL |             let x = a! () else { return; };
+   |                        ~~
+
+error: aborting due to 19 previous errors
 

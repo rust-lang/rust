@@ -59,6 +59,11 @@ fn create_synthetic_target(
     let mut cmd = Command::new(builder.rustc(compiler));
     cmd.arg("--target").arg(base.rustc_target_arg());
     cmd.args(["-Zunstable-options", "--print", "target-spec-json"]);
+
+    // If `rust.channel` is set to either beta or stable, rustc will complain that
+    // we cannot use nightly features. So `RUSTC_BOOTSTRAP` is needed here.
+    cmd.env("RUSTC_BOOTSTRAP", "1");
+
     cmd.stdout(Stdio::piped());
 
     let output = cmd.spawn().unwrap().wait_with_output().unwrap();

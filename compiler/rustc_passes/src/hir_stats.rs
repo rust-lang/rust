@@ -303,7 +303,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Ref,
                 Lit,
                 Range,
-                Slice
+                Slice,
+                Err
             ]
         );
         hir_visit::walk_pat(self, p)
@@ -341,6 +342,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, t, t.kind, Id::Node(t.hir_id), hir, Ty, TyKind),
             [
+                InferDelegation,
                 Slice,
                 Array,
                 Ptr,
@@ -521,7 +523,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 TraitAlias,
                 Impl,
                 MacCall,
-                MacroDef
+                MacroDef,
+                Delegation
             ]
         );
         ast_visit::walk_item(self, i)
@@ -574,7 +577,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Rest,
                 Never,
                 Paren,
-                MacCall
+                MacCall,
+                Err
             ]
         );
         ast_visit::walk_pat(self, p)
@@ -645,7 +649,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         record_variants!(
             (self, i, i.kind, Id::None, ast, AssocItem, AssocItemKind),
-            [Const, Fn, Type, MacCall]
+            [Const, Fn, Type, MacCall, Delegation]
         );
         ast_visit::walk_assoc_item(self, i, ctxt);
     }

@@ -9,7 +9,6 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
-crossbeam-channel = "0.5.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

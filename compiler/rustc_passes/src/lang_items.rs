@@ -271,7 +271,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
             ast::ItemKind::Const(_) => Target::Const,
-            ast::ItemKind::Fn(_) => Target::Fn,
+            ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
             ast::ItemKind::Mod(_, _) => Target::Mod,
             ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
             ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
@@ -315,24 +315,29 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
     fn visit_assoc_item(&mut self, i: &'ast ast::AssocItem, ctxt: visit::AssocCtxt) {
         let (target, generics) = match &i.kind {
-            ast::AssocItemKind::Fn(fun) => (
-                match &self.parent_item.unwrap().kind {
-                    ast::ItemKind::Impl(i) => {
-                        if i.of_trait.is_some() {
-                            Target::Method(MethodKind::Trait { body: fun.body.is_some() })
-                        } else {
-                            Target::Method(MethodKind::Inherent)
+            ast::AssocItemKind::Fn(..) | ast::AssocItemKind::Delegation(..) => {
+                let (body, generics) = if let ast::AssocItemKind::Fn(fun) = &i.kind {
+                    (fun.body.is_some(), Some(&fun.generics))
+                } else {
+                    (true, None)
+                };
+                (
+                    match &self.parent_item.unwrap().kind {
+                        ast::ItemKind::Impl(i) => {
+                            if i.of_trait.is_some() {
+                                Target::Method(MethodKind::Trait { body })
+                            } else {
+                                Target::Method(MethodKind::Inherent)
+                            }
                         }
-                    }
-                    ast::ItemKind::Trait(_) => {
-                        Target::Method(MethodKind::Trait { body: fun.body.is_some() })
-                    }
-                    _ => unreachable!(),
-                },
-                &fun.generics,
-            ),
-            ast::AssocItemKind::Const(ct) => (Target::AssocConst, &ct.generics),
-            ast::AssocItemKind::Type(ty) => (Target::AssocTy, &ty.generics),
+                        ast::ItemKind::Trait(_) => Target::Method(MethodKind::Trait { body }),
+                        _ => unreachable!(),
+                    },
+                    generics,
+                )
+            }
+            ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
+            ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
             ast::AssocItemKind::MacCall(_) => unreachable!("macros should have been expanded"),
         };
 
@@ -341,7 +346,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             self.resolver.node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
-            Some(generics),
+            generics,
         );
 
         visit::walk_assoc_item(self, i, ctxt);

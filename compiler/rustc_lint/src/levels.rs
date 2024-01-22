@@ -582,8 +582,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 }
                 CheckLintNameResult::NoLint(suggestion) => {
                     let name = lint_name.clone();
-                    let suggestion =
-                        suggestion.map(|replace| UnknownLintSuggestion::WithoutSpan { replace });
+                    let suggestion = suggestion.map(|(replace, from_rustc)| {
+                        UnknownLintSuggestion::WithoutSpan { replace, from_rustc }
+                    });
                     let requested_level = RequestedLevel { level, lint_name };
                     let lint = UnknownLintFromCommandLine { name, suggestion, requested_level };
                     self.emit_lint(UNKNOWN_LINTS, lint);
@@ -785,7 +786,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.features.lint_reasons {
                                     feature_err(
-                                        &self.sess.parse_sess,
+                                        &self.sess,
                                         sym::lint_reasons,
                                         item.span,
                                         "lint reasons are experimental",
@@ -990,8 +991,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         } else {
                             name.to_string()
                         };
-                        let suggestion = suggestion.map(|replace| {
-                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace }
+                        let suggestion = suggestion.map(|(replace, from_rustc)| {
+                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
                         });
                         let lint = UnknownLint { name, suggestion };
                         self.emit_spanned_lint(UNKNOWN_LINTS, sp.into(), lint);
@@ -1069,11 +1070,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         Some(span.into()),
                         fluent::lint_unknown_gated_lint,
                         |lint| {
-                            lint.set_arg("name", lint_id.lint.name_lower());
+                            lint.arg("name", lint_id.lint.name_lower());
                             lint.note(fluent::lint_note);
                             rustc_session::parse::add_feature_diagnostics_for_issue(
                                 lint,
-                                &self.sess.parse_sess,
+                                &self.sess,
                                 feature,
                                 GateIssue::Language,
                                 lint_from_cli,

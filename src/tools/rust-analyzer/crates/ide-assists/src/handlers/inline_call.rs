@@ -15,7 +15,7 @@ use ide_db::{
 };
 use itertools::{izip, Itertools};
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, HasArgList, PathExpr},
+    ast::{self, edit::IndentLevel, edit_in_place::Indent, HasArgList, Pat, PathExpr},
     ted, AstNode, NodeOrToken, SyntaxKind,
 };
 
@@ -278,7 +278,7 @@ fn get_fn_params(
 
     let mut params = Vec::new();
     if let Some(self_param) = param_list.self_param() {
-        // FIXME this should depend on the receiver as well as the self_param
+        // Keep `ref` and `mut` and transform them into `&` and `mut` later
         params.push((
             make::ident_pat(
                 self_param.amp_token().is_some(),
@@ -315,17 +315,6 @@ fn inline(
     } else {
         fn_body.clone_for_update()
     };
-    if let Some(imp) = body.syntax().ancestors().find_map(ast::Impl::cast) {
-        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
-            if let Some(t) = imp.self_ty() {
-                body.syntax()
-                    .descendants_with_tokens()
-                    .filter_map(NodeOrToken::into_token)
-                    .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
-                    .for_each(|tok| ted::replace(tok, t.syntax()));
-            }
-        }
-    }
     let usages_for_locals = |local| {
         Definition::Local(local)
             .usages(sema)
@@ -381,6 +370,27 @@ fn inline(
         }
     }
 
+    // We should place the following code after last usage of `usages_for_locals`
+    // because `ted::replace` will change the offset in syntax tree, which makes
+    // `FileReference` incorrect
+    if let Some(imp) =
+        sema.ancestors_with_macros(fn_body.syntax().clone()).find_map(ast::Impl::cast)
+    {
+        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
+            if let Some(t) = imp.self_ty() {
+                while let Some(self_tok) = body
+                    .syntax()
+                    .descendants_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+                {
+                    let replace_with = t.clone_subtree().syntax().clone_for_update();
+                    ted::replace(self_tok, replace_with);
+                }
+            }
+        }
+    }
+
     let mut func_let_vars: BTreeSet<String> = BTreeSet::new();
 
     // grab all of the local variable declarations in the function
@@ -399,16 +409,55 @@ fn inline(
     let mut let_stmts = Vec::new();
 
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
-    for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arguments) {
+    for ((pat, param_ty, param), usages, expr) in izip!(params, param_use_nodes, arguments) {
         // izip confuses RA due to our lack of hygiene info currently losing us type info causing incorrect errors
         let usages: &[ast::PathExpr] = &usages;
         let expr: &ast::Expr = expr;
 
         let mut insert_let_stmt = || {
             let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty.clone());
-            let_stmts.push(
-                make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
-            );
+
+            let is_self = param
+                .name(sema.db)
+                .and_then(|name| name.as_text())
+                .is_some_and(|name| name == "self");
+
+            if is_self {
+                let mut this_pat = make::ident_pat(false, false, make::name("this"));
+                let mut expr = expr.clone();
+                if let Pat::IdentPat(pat) = pat {
+                    match (pat.ref_token(), pat.mut_token()) {
+                        // self => let this = obj
+                        (None, None) => {}
+                        // mut self => let mut this = obj
+                        (None, Some(_)) => {
+                            this_pat = make::ident_pat(false, true, make::name("this"));
+                        }
+                        // &self => let this = &obj
+                        (Some(_), None) => {
+                            expr = make::expr_ref(expr, false);
+                        }
+                        // let foo = &mut X; &mut self => let this = &mut obj
+                        // let mut foo = X;  &mut self => let this = &mut *obj (reborrow)
+                        (Some(_), Some(_)) => {
+                            let should_reborrow = sema
+                                .type_of_expr(&expr)
+                                .map(|ty| ty.original.is_mutable_reference());
+                            expr = if let Some(true) = should_reborrow {
+                                make::expr_reborrow(expr)
+                            } else {
+                                make::expr_ref(expr, true)
+                            };
+                        }
+                    }
+                };
+                let_stmts
+                    .push(make::let_stmt(this_pat.into(), ty, Some(expr)).clone_for_update().into())
+            } else {
+                let_stmts.push(
+                    make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
+                );
+            }
         };
 
         // check if there is a local var in the function that conflicts with parameter
@@ -474,12 +523,10 @@ fn inline(
             body = make::block_expr(let_stmts, Some(body.into())).clone_for_update();
         }
     } else if let Some(stmt_list) = body.stmt_list() {
-        ted::insert_all(
-            ted::Position::after(
-                stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing."),
-            ),
-            let_stmts.into_iter().map(|stmt| stmt.syntax().clone().into()).collect(),
-        );
+        let position = stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing.");
+        let_stmts.into_iter().rev().for_each(|let_stmt| {
+            ted::insert(ted::Position::after(position.clone()), let_stmt.syntax().clone());
+        });
     }
 
     let original_indentation = match node {
@@ -711,7 +758,7 @@ impl Foo {
 
 fn main() {
     let x = {
-        let ref this = Foo(3);
+        let this = &Foo(3);
         Foo(this.0 + 2)
     };
 }
@@ -747,7 +794,7 @@ impl Foo {
 
 fn main() {
     let x = {
-        let ref this = Foo(3);
+        let this = &Foo(3);
         Foo(this.0 + 2)
     };
 }
@@ -785,7 +832,7 @@ impl Foo {
 fn main() {
     let mut foo = Foo(3);
     {
-        let ref mut this = foo;
+        let this = &mut foo;
         this.0 = 0;
     };
 }
@@ -872,7 +919,7 @@ impl Foo {
     }
     fn bar(&self) {
         {
-            let ref this = self;
+            let this = &self;
             this;
             this;
         };
@@ -1509,5 +1556,183 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn inline_call_with_multiple_self_types_eq() {
+        check_assist(
+            inline_call,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Enum {
+    A,
+    B,
+}
+
+impl Enum {
+    fn a_or_b_eq(&self) -> bool {
+        self == &Self::A || self == &Self::B
+    }
+}
+
+fn a() -> bool {
+    Enum::A.$0a_or_b_eq()
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Enum {
+    A,
+    B,
+}
+
+impl Enum {
+    fn a_or_b_eq(&self) -> bool {
+        self == &Self::A || self == &Self::B
+    }
+}
+
+fn a() -> bool {
+    {
+        let this = &Enum::A;
+        this == &Enum::A || this == &Enum::B
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type_in_macros() {
+        check_assist(
+            inline_call,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = <A as Trait<A>>::$0f(a);
+}
+"#,
+            r#"
+trait Trait<T1> {
+    fn f(a: T1) -> Self;
+}
+
+macro_rules! impl_from {
+    ($t: ty) => {
+        impl Trait<$t> for $t {
+            fn f(a: $t) -> Self {
+                a as Self
+            }
+        }
+    };
+}
+
+struct A {}
+
+impl_from!(A);
+
+fn main() {
+    let a: A = A{};
+    let b = {
+        let a = a;
+      a as A
+    };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn method_by_reborrow() {
+        check_assist(
+            inline_call,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(&mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let f = &mut Foo(0);
+    f.add1$0();
+}
+"#,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(&mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let f = &mut Foo(0);
+    {
+        let this = &mut *f;
+        this.0 += 1;
+    };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn method_by_mut() {
+        check_assist(
+            inline_call,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let mut f = Foo(0);
+    f.add1$0();
+}
+"#,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let mut f = Foo(0);
+    {
+        let mut this = f;
+        this.0 += 1;
+    };
+}
+"#,
+        )
     }
 }

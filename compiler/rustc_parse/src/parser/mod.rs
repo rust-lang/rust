@@ -499,7 +499,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found_err();
+            let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -847,7 +847,7 @@ impl<'a> Parser<'a> {
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
-                                    .span_suggestion_verbose(
+                                    .with_span_suggestion_verbose(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
                                         msg,
                                         " @ ",
@@ -863,7 +863,7 @@ impl<'a> Parser<'a> {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
                                     expect_err
-                                        .span_suggestion_short(
+                                        .with_span_suggestion_short(
                                             sp,
                                             format!("missing `{token_str}`"),
                                             token_str,
@@ -925,9 +925,8 @@ impl<'a> Parser<'a> {
                 });
         }
 
-        expect_err.set_primary_message(
-            "closure bodies that contain statements must be surrounded by braces",
-        );
+        expect_err
+            .primary_message("closure bodies that contain statements must be surrounded by braces");
 
         let preceding_pipe_span = closure_spans.closing_pipe;
         let following_token_span = self.token.span;
@@ -951,7 +950,7 @@ impl<'a> Parser<'a> {
         );
         expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
 
-        expect_err.set_span(vec![preceding_pipe_span, following_token_span]);
+        expect_err.span(vec![preceding_pipe_span, following_token_span]);
 
         let opening_suggestion_str = " {".to_string();
         let closing_suggestion_str = "}".to_string();

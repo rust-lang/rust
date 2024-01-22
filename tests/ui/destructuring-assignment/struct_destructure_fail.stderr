@@ -12,11 +12,16 @@ error: functional record updates are not allowed in destructuring assignments
 LL |     Struct { a, ..d } = Struct { a: 1, b: 2 };
    |                   ^ help: consider removing the trailing pattern
 
-error: base expression required after `..`
+error[E0797]: base expression required after `..`
   --> $DIR/struct_destructure_fail.rs:15:19
    |
 LL |     Struct { a, .. };
-   |                   ^ add a base expression here
+   |                   ^
+   |
+help: add a base expression here
+   |
+LL |     Struct { a, ../* expr */ };
+   |                   ++++++++++
 
 error[E0026]: struct `Struct` does not have a field named `c`
   --> $DIR/struct_destructure_fail.rs:10:20
@@ -41,5 +46,5 @@ LL |     Struct { a, .. } = Struct { a: 1, b: 2 };
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0026, E0027.
+Some errors have detailed explanations: E0026, E0027, E0797.
 For more information about an error, try `rustc --explain E0026`.

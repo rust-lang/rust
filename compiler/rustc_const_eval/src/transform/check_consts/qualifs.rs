@@ -157,9 +157,7 @@ impl Qualif for NeedsNonConstDrop {
         // FIXME(effects): If `destruct` is not a `const_trait`,
         // or effects are disabled in this crate, then give up.
         let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
-        if cx.tcx.generics_of(destruct_def_id).host_effect_index.is_none()
-            || !cx.tcx.features().effects
-        {
+        if !cx.tcx.has_host_param(destruct_def_id) || !cx.tcx.features().effects {
             return NeedsDrop::in_any_value_of_ty(cx, ty);
         }
 

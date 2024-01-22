@@ -676,10 +676,7 @@ type MainResult = Result<(), ErrorGuaranteed>;
 fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
-        Err(err) => {
-            let reported = dcx.struct_err(err).emit();
-            Err(reported)
-        }
+        Err(err) => Err(dcx.err(err)),
     }
 }
 

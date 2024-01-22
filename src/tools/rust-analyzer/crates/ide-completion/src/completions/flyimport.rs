@@ -209,9 +209,7 @@ fn import_on_the_fly(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let ns_filter = |import: &LocatedImport| {
         match (kind, import.original_item) {
@@ -263,7 +261,6 @@ fn import_on_the_fly(
             ctx.config.prefer_no_std,
             ctx.config.prefer_prelude,
         )
-        .into_iter()
         .filter(ns_filter)
         .filter(|import| {
             let original_item = &import.original_item;
@@ -271,8 +268,14 @@ fn import_on_the_fly(
                 && !ctx.is_item_hidden(original_item)
                 && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
         })
-        .sorted_by_key(|located_import| {
-            compute_fuzzy_completion_order_key(&located_import.import_path, &user_input_lowercased)
+        .sorted_by(|a, b| {
+            let key = |import_path| {
+                (
+                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    import_path,
+                )
+            };
+            key(&a.import_path).cmp(&key(&b.import_path))
         })
         .filter_map(|import| {
             render_resolution_with_import(RenderContext::new(ctx), path_ctx, import)
@@ -292,9 +295,7 @@ fn import_on_the_fly_pat_(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly_pat").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let ns_filter = |import: &LocatedImport| match import.original_item {
         ItemInNs::Macros(mac) => mac.is_fn_like(ctx.db),
@@ -310,7 +311,6 @@ fn import_on_the_fly_pat_(
             ctx.config.prefer_no_std,
             ctx.config.prefer_prelude,
         )
-        .into_iter()
         .filter(ns_filter)
         .filter(|import| {
             let original_item = &import.original_item;
@@ -318,8 +318,14 @@ fn import_on_the_fly_pat_(
                 && !ctx.is_item_hidden(original_item)
                 && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
         })
-        .sorted_by_key(|located_import| {
-            compute_fuzzy_completion_order_key(&located_import.import_path, &user_input_lowercased)
+        .sorted_by(|a, b| {
+            let key = |import_path| {
+                (
+                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    import_path,
+                )
+            };
+            key(&a.import_path).cmp(&key(&b.import_path))
         })
         .filter_map(|import| {
             render_resolution_with_import_pat(RenderContext::new(ctx), pattern_ctx, import)
@@ -339,9 +345,7 @@ fn import_on_the_fly_method(
 ) -> Option<()> {
     let _p = profile::span("import_on_the_fly_method").detail(|| potential_import_name.clone());
 
-    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
@@ -352,19 +356,23 @@ fn import_on_the_fly_method(
             ctx.config.prefer_no_std,
             ctx.config.prefer_prelude,
         )
-        .into_iter()
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(&import.original_item)
         })
-        .sorted_by_key(|located_import| {
-            compute_fuzzy_completion_order_key(&located_import.import_path, &user_input_lowercased)
+        .sorted_by(|a, b| {
+            let key = |import_path| {
+                (
+                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    import_path,
+                )
+            };
+            key(&a.import_path).cmp(&key(&b.import_path))
         })
-        .for_each(|import| match import.original_item {
-            ItemInNs::Values(hir::ModuleDef::Function(f)) => {
+        .for_each(|import| {
+            if let ItemInNs::Values(hir::ModuleDef::Function(f)) = import.original_item {
                 acc.add_method_with_import(ctx, dot_access, f, import);
             }
-            _ => (),
         });
     Some(())
 }
@@ -407,7 +415,8 @@ fn compute_fuzzy_completion_order_key(
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
     let import_name = match proposed_mod_path.segments().last() {
-        Some(name) => name.to_smol_str().to_lowercase(),
+        // FIXME: nasty alloc, this is a hot path!
+        Some(name) => name.to_smol_str().to_ascii_lowercase(),
         None => return usize::MAX,
     };
     match import_name.match_indices(user_input_lowercased).next() {

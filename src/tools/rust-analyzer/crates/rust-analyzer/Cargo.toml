@@ -24,12 +24,12 @@ crossbeam-channel = "0.5.5"
 dissimilar.workspace = true
 itertools.workspace = true
 scip = "0.3.1"
-lsp-types = { version = "=0.94.0", features = ["proposed"] }
+lsp-types = { version = "=0.95.0", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
 oorandom = "11.1.3"
 rayon.workspace = true
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
 num_cpus = "1.15.0"
@@ -49,7 +49,6 @@ flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
-rustc-dependencies.workspace = true
 ide-db.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
@@ -64,6 +63,7 @@ parser.workspace = true
 toolchain.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
+memchr = "2.7.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.9"
@@ -76,6 +76,7 @@ expect-test = "1.4.0"
 xshell.workspace = true
 
 test-utils.workspace = true
+test-fixture.workspace = true
 sourcegen.workspace = true
 mbe.workspace = true
 
@@ -88,8 +89,10 @@ in-rust-tree = [
     "ide/in-rust-tree",
     "syntax/in-rust-tree",
     "parser/in-rust-tree",
-    "rustc-dependencies/in-rust-tree",
     "hir/in-rust-tree",
     "hir-def/in-rust-tree",
     "hir-ty/in-rust-tree",
 ]
+
+[lints]
+workspace = true

@@ -62,7 +62,7 @@ pub trait AnotherTrait2 {}
 
 // @has - '//pre[@class="rust"]//a[@href="#61"]' 'AnotherTrait2'
 pub fn foo4() {
-    let x: Vec<AnotherTrait2> = Vec::new();
+    let x: Vec<&dyn AnotherTrait2> = Vec::new();
 }
 
 // @has - '//pre[@class="rust"]//a[@href="../../foo/primitive.bool.html"]' 'bool'

@@ -10,7 +10,7 @@ LL |     let mut r#async = 1;
    |             ++
 
 error: expected identifier, found keyword `async`
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:26:13
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:28:13
    |
 LL |     module::async();
    |             ^^^^^ expected identifier, found keyword
@@ -52,17 +52,23 @@ LL |     ($i: ident) => ($i)
    |
   ::: $DIR/edition-keywords-2018-2015-parsing.rs:24:8
    |
-LL |     if passes_ident!(async) == 1 {}
+LL |     if passes_ident!(async) == 1 {} // FIXME: Edition hygiene bug, async here is 2018 and reserved
    |        -------------------- in this macro invocation
 
+error: macro expansion ends with an incomplete expression: expected one of `move`, `|`, or `||`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:26:24
+   |
+LL |     if passes_tt!(async) == 1 {}
+   |                        ^ expected one of `move`, `|`, or `||`
+
 error[E0308]: mismatched types
-  --> $DIR/edition-keywords-2018-2015-parsing.rs:29:33
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:31:33
    |
 LL |     let _recovery_witness: () = 0;
    |                            --   ^ expected `()`, found integer
    |                            |
    |                            expected due to this
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

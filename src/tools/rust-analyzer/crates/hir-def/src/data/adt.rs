@@ -11,7 +11,7 @@ use hir_expand::{
 };
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
-use rustc_dependencies::abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
+use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
 use triomphe::Arc;
 
@@ -21,15 +21,14 @@ use crate::{
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     lang_item::LangItem,
     lower::LowerCtx,
-    nameres::diagnostics::DefDiagnostic,
+    nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, EnumLoc, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId,
-    UnionId, VariantId,
+    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -43,7 +42,7 @@ pub struct StructData {
 }
 
 bitflags! {
-#[derive(Debug, Clone, PartialEq, Eq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct StructFlags: u8 {
         const NO_FLAGS         = 0;
         /// Indicates whether the struct is `PhantomData`.
@@ -65,7 +64,7 @@ bitflags! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
-    pub variants: Arena<EnumVariantData>,
+    pub variants: Box<[(EnumVariantId, Name)]>,
     pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
     pub rustc_has_incoherent_inherent_impls: bool,
@@ -75,7 +74,6 @@ pub struct EnumData {
 pub struct EnumVariantData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
-    pub tree_id: la_arena::Idx<crate::item_tree::Variant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,7 +126,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     } else {
                         0
                     };
-                    let pack = Align::from_bytes(pack).unwrap();
+                    let pack = Align::from_bytes(pack).unwrap_or(Align::ONE);
                     min_pack =
                         Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
                     ReprFlags::empty()
@@ -182,6 +180,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
 }
 
 impl StructData {
+    #[inline]
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         db.struct_data_with_diagnostics(id).0
     }
@@ -189,7 +188,7 @@ impl StructData {
     pub(crate) fn struct_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: StructId,
-    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -234,10 +233,11 @@ impl StructData {
                 visibility: item_tree[strukt.visibility].clone(),
                 flags,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 
+    #[inline]
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         db.union_data_with_diagnostics(id).0
     }
@@ -245,7 +245,7 @@ impl StructData {
     pub(crate) fn union_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: UnionId,
-    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -280,24 +280,16 @@ impl StructData {
                 visibility: item_tree[union.visibility].clone(),
                 flags,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 }
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
-        db.enum_data_with_diagnostics(e).0
-    }
-
-    pub(crate) fn enum_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        e: EnumId,
-    ) -> (Arc<EnumData>, Arc<[DefDiagnostic]>) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
-        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let rustc_has_incoherent_inherent_impls = item_tree
             .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
@@ -305,53 +297,21 @@ impl EnumData {
             .exists();
 
         let enum_ = &item_tree[loc.id.value];
-        let mut variants = Arena::new();
-        let mut diagnostics = Vec::new();
-        for tree_id in enum_.variants.clone() {
-            let attrs = item_tree.attrs(db, krate, tree_id.into());
-            let var = &item_tree[tree_id];
-            if attrs.is_cfg_enabled(&cfg_options) {
-                let (var_data, field_diagnostics) = lower_fields(
-                    db,
-                    krate,
-                    loc.id.file_id(),
-                    loc.container.local_id,
-                    &item_tree,
-                    &cfg_options,
-                    &var.fields,
-                    Some(enum_.visibility),
-                );
-                diagnostics.extend(field_diagnostics);
 
-                variants.alloc(EnumVariantData {
-                    name: var.name.clone(),
-                    variant_data: Arc::new(var_data),
-                    tree_id,
-                });
-            } else {
-                diagnostics.push(DefDiagnostic::unconfigured_code(
-                    loc.container.local_id,
-                    InFile::new(loc.id.file_id(), var.ast_id.erase()),
-                    attrs.cfg().unwrap(),
-                    cfg_options.clone(),
-                ))
-            }
-        }
-
-        (
-            Arc::new(EnumData {
-                name: enum_.name.clone(),
-                variants,
-                repr,
-                visibility: item_tree[enum_.visibility].clone(),
-                rustc_has_incoherent_inherent_impls,
-            }),
-            diagnostics.into(),
-        )
+        Arc::new(EnumData {
+            name: enum_.name.clone(),
+            variants: loc.container.def_map(db).enum_definitions[&e]
+                .iter()
+                .map(|&id| (id, item_tree[id.lookup(db).id.value].name.clone()))
+                .collect(),
+            repr,
+            visibility: item_tree[enum_.visibility].clone(),
+            rustc_has_incoherent_inherent_impls,
+        })
     }
 
-    pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {
-        let (id, _) = self.variants.iter().find(|(_id, data)| &data.name == name)?;
+    pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
+        let &(id, _) = self.variants.iter().find(|(_id, n)| n == name)?;
         Some(id)
     }
 
@@ -363,82 +323,48 @@ impl EnumData {
     }
 }
 
-impl HasChildSource<LocalEnumVariantId> for EnumId {
-    type Value = ast::Variant;
-    fn child_source(
-        &self,
+impl EnumVariantData {
+    #[inline]
+    pub(crate) fn enum_variant_data_query(
         db: &dyn DefDatabase,
-    ) -> InFile<ArenaMap<LocalEnumVariantId, Self::Value>> {
-        let loc = &self.lookup(db);
-        let src = loc.source(db);
-        let mut trace = Trace::new_for_map();
-        lower_enum(db, &mut trace, &src, loc);
-        src.with_value(trace.into_map())
+        e: EnumVariantId,
+    ) -> Arc<EnumVariantData> {
+        db.enum_variant_data_with_diagnostics(e).0
     }
-}
 
-fn lower_enum(
-    db: &dyn DefDatabase,
-    trace: &mut Trace<EnumVariantData, ast::Variant>,
-    ast: &InFile<ast::Enum>,
-    loc: &EnumLoc,
-) {
-    let item_tree = loc.id.item_tree(db);
-    let krate = loc.container.krate;
+    pub(crate) fn enum_variant_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        e: EnumVariantId,
+    ) -> (Arc<EnumVariantData>, DefDiagnostics) {
+        let loc = e.lookup(db);
+        let container = loc.parent.lookup(db).container;
+        let krate = container.krate;
+        let item_tree = loc.id.item_tree(db);
+        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
+        let variant = &item_tree[loc.id.value];
 
-    let item_tree_variants = item_tree[loc.id.value].variants.clone();
-
-    let cfg_options = &db.crate_graph()[krate].cfg_options;
-    let variants = ast
-        .value
-        .variant_list()
-        .into_iter()
-        .flat_map(|it| it.variants())
-        .zip(item_tree_variants)
-        .filter(|&(_, item_tree_id)| {
-            item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options)
-        });
-    for (var, item_tree_id) in variants {
-        trace.alloc(
-            || var.clone(),
-            || EnumVariantData {
-                name: var.name().map_or_else(Name::missing, |it| it.as_name()),
-                variant_data: Arc::new(VariantData::new(
-                    db,
-                    ast.with_value(var.kind()),
-                    loc.container,
-                    &item_tree,
-                    item_tree_id,
-                )),
-                tree_id: item_tree_id,
-            },
+        let (var_data, diagnostics) = lower_fields(
+            db,
+            krate,
+            loc.id.file_id(),
+            container.local_id,
+            &item_tree,
+            &cfg_options,
+            &variant.fields,
+            Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
+
+        (
+            Arc::new(EnumVariantData {
+                name: variant.name.clone(),
+                variant_data: Arc::new(var_data),
+            }),
+            DefDiagnostics::new(diagnostics),
+        )
     }
 }
 
 impl VariantData {
-    fn new(
-        db: &dyn DefDatabase,
-        flavor: InFile<ast::StructKind>,
-        module_id: ModuleId,
-        item_tree: &ItemTree,
-        variant: la_arena::Idx<crate::item_tree::Variant>,
-    ) -> Self {
-        let mut trace = Trace::new_for_arena();
-        match lower_struct(
-            db,
-            &mut trace,
-            &flavor,
-            module_id.krate,
-            item_tree,
-            &item_tree[variant].fields,
-        ) {
-            StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
-            StructKind::Record => VariantData::Record(trace.into_arena()),
-            StructKind::Unit => VariantData::Unit,
-        }
-    }
-
     pub fn fields(&self) -> &Arena<FieldData> {
         const EMPTY: &Arena<FieldData> = &Arena::new();
         match &self {
@@ -468,14 +394,13 @@ impl HasChildSource<LocalFieldId> for VariantId {
         let item_tree;
         let (src, fields, container) = match *self {
             VariantId::EnumVariantId(it) => {
-                // I don't really like the fact that we call into parent source
-                // here, this might add to more queries then necessary.
-                let lookup = it.parent.lookup(db);
+                let lookup = it.lookup(db);
                 item_tree = lookup.id.item_tree(db);
-                let src = it.parent.child_source(db);
-                let tree_id = db.enum_data(it.parent).variants[it.local_id].tree_id;
-                let fields = &item_tree[tree_id].fields;
-                (src.map(|map| map[it.local_id].kind()), fields, lookup.container)
+                (
+                    lookup.source(db).map(|it| it.kind()),
+                    &item_tree[lookup.id.value].fields,
+                    lookup.parent.lookup(db).container,
+                )
             }
             VariantId::StructId(it) => {
                 let lookup = it.lookup(db);
@@ -490,11 +415,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 let lookup = it.lookup(db);
                 item_tree = lookup.id.item_tree(db);
                 (
-                    lookup.source(db).map(|it| {
-                        it.record_field_list()
-                            .map(ast::StructKind::Record)
-                            .unwrap_or(ast::StructKind::Unit)
-                    }),
+                    lookup.source(db).map(|it| it.kind()),
                     &item_tree[lookup.id.value].fields,
                     lookup.container,
                 )

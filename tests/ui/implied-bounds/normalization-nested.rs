@@ -1,17 +1,19 @@
 // Test for normalization of projections that appear in the item bounds
 // (versus those that appear directly in the input types).
-// Both revisions should pass. `lifetime` revision is a bug.
 //
-// revisions: param_ty lifetime
-// [param_ty] check-pass
-// [lifetime] check-fail
-// [lifetime] known-bug: #109799
+// revisions: param_ty lifetime param_ty_no_compat lifetime_no_compat
+
+//[param_ty] check-pass
+//[param_ty_no_compat] check-pass
+//[lifetime_no_compat] check-pass
+//[param_ty_no_compat] compile-flags: -Zno-implied-bounds-compat
+//[lifetime_no_compat] compile-flags: -Zno-implied-bounds-compat
 
 pub trait Iter {
     type Item;
 }
 
-#[cfg(param_ty)]
+#[cfg(any(param_ty, param_ty_no_compat))]
 impl<X, I> Iter for I
 where
     I: IntoIterator<Item = X>,
@@ -19,7 +21,7 @@ where
     type Item = X;
 }
 
-#[cfg(lifetime)]
+#[cfg(any(lifetime, lifetime_no_compat))]
 impl<'x, I> Iter for I
 where
     I: IntoIterator<Item = &'x ()>,
@@ -36,6 +38,7 @@ pub fn test_wfcheck<'x>(_: Map<Vec<&'x ()>>) {}
 
 pub fn test_borrowck<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
     s
+    //[lifetime]~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

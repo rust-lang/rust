@@ -6,22 +6,19 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
+use std::{fmt, mem, ops, str::FromStr};
 
 use cfg::CfgOptions;
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet};
+use semver::Version;
 use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
-use crate::span::SpanData;
-
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
 pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
-pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
-
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -160,6 +157,10 @@ impl CrateOrigin {
     pub fn is_lib(&self) -> bool {
         matches!(self, CrateOrigin::Library { .. })
     }
+
+    pub fn is_lang(&self) -> bool {
+        matches!(self, CrateOrigin::Lang { .. })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -177,7 +178,7 @@ impl From<&str> for LangCrateOrigin {
         match s {
             "alloc" => LangCrateOrigin::Alloc,
             "core" => LangCrateOrigin::Core,
-            "proc-macro" => LangCrateOrigin::ProcMacro,
+            "proc-macro" | "proc_macro" => LangCrateOrigin::ProcMacro,
             "std" => LangCrateOrigin::Std,
             "test" => LangCrateOrigin::Test,
             _ => LangCrateOrigin::Other,
@@ -242,48 +243,7 @@ impl CrateDisplayName {
         CrateDisplayName { crate_name, canonical_name }
     }
 }
-
-// FIXME: These should not be defined in here? Why does base db know about proc-macros
-// ProcMacroKind is used in [`fixture`], but that module probably shouldn't be in this crate either.
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub u32);
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
-pub enum ProcMacroKind {
-    CustomDerive,
-    FuncLike,
-    Attr,
-}
-
-pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
-    fn expand(
-        &self,
-        subtree: &tt::Subtree<SpanData>,
-        attrs: Option<&tt::Subtree<SpanData>>,
-        env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
-}
-
-#[derive(Debug)]
-pub enum ProcMacroExpansionError {
-    Panic(String),
-    /// Things like "proc macro server was killed by OOM".
-    System(String),
-}
-
-pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
 pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
-
-#[derive(Debug, Clone)]
-pub struct ProcMacro {
-    pub name: SmolStr,
-    pub kind: ProcMacroKind,
-    pub expander: sync::Arc<dyn ProcMacroExpander>,
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
@@ -301,9 +261,10 @@ impl ReleaseChannel {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(str: &str) -> Option<Self> {
         Some(match str {
-            "" => ReleaseChannel::Stable,
+            "" | "stable" => ReleaseChannel::Stable,
             "nightly" => ReleaseChannel::Nightly,
             _ if str.starts_with("beta") => ReleaseChannel::Beta,
             _ => return None,
@@ -334,7 +295,7 @@ pub struct CrateData {
     // things. This info does need to be somewhat present though as to prevent deduplication from
     // happening across different workspaces with different layouts.
     pub target_layout: TargetLayoutLoadResult,
-    pub channel: Option<ReleaseChannel>,
+    pub toolchain: Option<Version>,
 }
 
 impl CrateData {
@@ -370,7 +331,7 @@ impl CrateData {
                 return false;
             }
 
-            if let Some(_) = opts.next() {
+            if opts.next().is_some() {
                 return false;
             }
         }
@@ -391,6 +352,10 @@ impl CrateData {
 
         slf_deps.eq(other_deps)
     }
+
+    pub fn channel(&self) -> Option<ReleaseChannel> {
+        self.toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -398,10 +363,12 @@ pub enum Edition {
     Edition2015,
     Edition2018,
     Edition2021,
+    Edition2024,
 }
 
 impl Edition {
     pub const CURRENT: Edition = Edition::Edition2021;
+    pub const DEFAULT: Edition = Edition::Edition2015;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -472,7 +439,7 @@ impl CrateGraph {
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
-        channel: Option<ReleaseChannel>,
+        toolchain: Option<Version>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -486,7 +453,7 @@ impl CrateGraph {
             origin,
             target_layout,
             is_proc_macro,
-            channel,
+            toolchain,
         };
         self.arena.alloc(data)
     }
@@ -560,7 +527,7 @@ impl CrateGraph {
         self.arena.iter().map(|(idx, _)| idx)
     }
 
-    // FIXME: used for `handle_hack_cargo_workspace`, should be removed later
+    // FIXME: used for fixing up the toolchain sysroot, should be removed and done differently
     #[doc(hidden)]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (CrateId, &mut CrateData)> + '_ {
         self.arena.iter_mut()
@@ -657,7 +624,12 @@ impl CrateGraph {
     /// This will deduplicate the crates of the graph where possible.
     /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
     /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also have the crate dependencies sorted.
-    pub fn extend(&mut self, mut other: CrateGraph, proc_macros: &mut ProcMacroPaths) {
+    pub fn extend(
+        &mut self,
+        mut other: CrateGraph,
+        proc_macros: &mut ProcMacroPaths,
+        on_finished: impl FnOnce(&FxHashMap<CrateId, CrateId>),
+    ) {
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -668,7 +640,7 @@ impl CrateGraph {
             let res = self.arena.iter().find_map(|(id, data)| {
                 match (&data.origin, &crate_data.origin) {
                     (a, b) if a == b => {
-                        if data.eq_ignoring_origin_and_deps(&crate_data, false) {
+                        if data.eq_ignoring_origin_and_deps(crate_data, false) {
                             return Some((id, false));
                         }
                     }
@@ -680,8 +652,8 @@ impl CrateGraph {
                         // version and discard the library one as the local version may have
                         // dev-dependencies that we want to keep resolving. See #15656 for more
                         // information.
-                        if data.eq_ignoring_origin_and_deps(&crate_data, true) {
-                            return Some((id, if a.is_local() { false } else { true }));
+                        if data.eq_ignoring_origin_and_deps(crate_data, true) {
+                            return Some((id, !a.is_local()));
                         }
                     }
                     (_, _) => return None,
@@ -708,6 +680,8 @@ impl CrateGraph {
 
         *proc_macros =
             mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
+
+        on_finished(&id_map);
     }
 
     fn find_path(
@@ -759,6 +733,29 @@ impl CrateGraph {
     fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
         self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
+
+    /// Removes all crates from this crate graph except for the ones in `to_keep` and fixes up the dependencies.
+    /// Returns a mapping from old crate ids to new crate ids.
+    pub fn remove_crates_except(&mut self, to_keep: &[CrateId]) -> Vec<Option<CrateId>> {
+        let mut id_map = vec![None; self.arena.len()];
+        self.arena = std::mem::take(&mut self.arena)
+            .into_iter()
+            .filter_map(|(id, data)| if to_keep.contains(&id) { Some((id, data)) } else { None })
+            .enumerate()
+            .map(|(new_id, (id, data))| {
+                id_map[id.into_raw().into_u32() as usize] =
+                    Some(CrateId::from_raw(RawIdx::from_u32(new_id as u32)));
+                data
+            })
+            .collect();
+        for (_, data) in self.arena.iter_mut() {
+            data.dependencies.iter_mut().for_each(|dep| {
+                dep.crate_id =
+                    id_map[dep.crate_id.into_raw().into_u32() as usize].expect("crate was filtered")
+            });
+        }
+        id_map
+    }
 }
 
 impl ops::Index<CrateId> for CrateGraph {
@@ -784,6 +781,7 @@ impl FromStr for Edition {
             "2015" => Edition::Edition2015,
             "2018" => Edition::Edition2018,
             "2021" => Edition::Edition2021,
+            "2024" => Edition::Edition2024,
             _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
         };
         Ok(res)
@@ -796,6 +794,7 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
             Edition::Edition2021 => "2021",
+            Edition::Edition2024 => "2024",
         })
     }
 }

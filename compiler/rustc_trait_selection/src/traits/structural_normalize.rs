@@ -22,8 +22,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            // FIXME(-Znext-solver): Should we resolve opaques here?
-            let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = *ty.kind() else {
+            let ty::Alias(..) = *ty.kind() else {
                 return Ok(ty);
             };
 

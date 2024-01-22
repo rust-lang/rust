@@ -31,7 +31,7 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_built = build::mir_built;
     providers.closure_saved_names_of_captured_variables =
         build::closure_saved_names_of_captured_variables;
-    providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
+    providers.check_unsafety = check_unsafety::check_unsafety;
     providers.thir_body = thir::cx::thir_body;
     providers.thir_tree = thir::print::thir_tree;
     providers.thir_flat = thir::print::thir_flat;

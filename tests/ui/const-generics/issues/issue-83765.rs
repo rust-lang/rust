@@ -4,6 +4,7 @@
 trait TensorDimension {
     const DIM: usize;
     //~^ ERROR cycle detected when resolving instance
+    //~| ERROR cycle detected when resolving instance
     // FIXME Given the current state of the compiler its expected that we cycle here,
     // but the cycle is still wrong.
     const ISSCALAR: bool = Self::DIM == 0;
@@ -79,6 +80,7 @@ impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> TensorSi
     for BMap<'a, R, T, F, DIM>
 {
     fn size(&self) -> [usize; DIM] {
+        //~^ ERROR: method not compatible with trait
         self.reference.size()
     }
 }
@@ -88,6 +90,7 @@ impl<'a, R, T: Broadcastable, F: Fn(T::Element) -> R, const DIM: usize> Broadcas
 {
     type Element = R;
     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+        //~^ ERROR: method not compatible with trait
         self.reference.bget(index).map(&self.closure)
     }
 }

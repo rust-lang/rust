@@ -6,13 +6,13 @@ use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy, TupleArgumentsFlag,
+    struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy,
+    TupleArgumentsFlag,
 };
+use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan, StashKey,
-};
+use rustc_errors::{pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -204,7 +204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    struct_span_err!(
+                    struct_span_code_err!(
                         tcx.dcx(),
                         call_span,
                         E0059,
@@ -420,7 +420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys
                     .iter()
                     .copied()
-                    .zip(expected_input_tys.iter().copied())
+                    .zip_eq(expected_input_tys.iter().copied())
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.dcx().struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -676,8 +676,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 potentially_plural_count(provided_args.len(), "argument"),
                                 pluralize!("was", provided_args.len())
                             ),
-                            DiagnosticId::Error(err_code.to_owned()),
                         );
+                        err.code(err_code.to_owned());
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
@@ -807,7 +807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 full_call_span,
                 E0308,
@@ -815,18 +815,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_name,
             )
         } else {
-            tcx.dcx().struct_span_err_with_code(
-                full_call_span,
-                format!(
-                    "this {} takes {}{} but {} {} supplied",
-                    call_name,
-                    if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
-                    potentially_plural_count(provided_args.len(), "argument"),
-                    pluralize!("was", provided_args.len())
-                ),
-                DiagnosticId::Error(err_code.to_owned()),
-            )
+            tcx.dcx()
+                .struct_span_err(
+                    full_call_span,
+                    format!(
+                        "this {} takes {}{} but {} {} supplied",
+                        call_name,
+                        if c_variadic { "at least " } else { "" },
+                        potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
+                        potentially_plural_count(provided_args.len(), "argument"),
+                        pluralize!("was", provided_args.len())
+                    ),
+                )
+                .with_code(err_code.to_owned())
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion
@@ -1326,7 +1327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         hir_id: hir::HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
@@ -1377,14 +1378,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // (issue #88844).
                     guar
                 }
-                _ => struct_span_err!(
+                _ => struct_span_code_err!(
                     self.dcx(),
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
                     ty.normalized.sort_string(self.tcx)
                 )
-                .span_label(path_span, "not a struct")
+                .with_span_label(path_span, "not a struct")
                 .emit(),
             })
         }
@@ -1459,8 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
-            if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            if let Some(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
                 err.emit();
             }
@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         path_span: Span,
         hir_id: hir::HirId,
     ) -> (Res, RawTy<'tcx>) {

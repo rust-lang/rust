@@ -9,5 +9,6 @@ trait Super1<'a> {
 
 impl Super1<'_, bar(): Send> for () {}
 //~^ ERROR associated type bindings are not allowed here
+//~| ERROR not all trait items implemented
 
 fn main() {}

@@ -48,7 +48,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             );
             if !is_stable && !self.tcx.features().asm_experimental_arch {
                 feature_err(
-                    &self.tcx.sess.parse_sess,
+                    &self.tcx.sess,
                     sym::asm_experimental_arch,
                     sp,
                     "inline assembly is not stable yet on this architecture",
@@ -63,13 +63,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.dcx().emit_err(AttSyntaxOnlyX86 { span: sp });
         }
         if asm.options.contains(InlineAsmOptions::MAY_UNWIND) && !self.tcx.features().asm_unwind {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::asm_unwind,
-                sp,
-                "the `may_unwind` option is unstable",
-            )
-            .emit();
+            feature_err(&self.tcx.sess, sym::asm_unwind, sp, "the `may_unwind` option is unstable")
+                .emit();
         }
 
         let mut clobber_abis = FxIndexMap::default();
@@ -183,7 +178,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmOperand::Const { anon_const } => {
                         if !self.tcx.features().asm_const {
                             feature_err(
-                                &sess.parse_sess,
+                                sess,
                                 sym::asm_const,
                                 *op_sp,
                                 "const operands for inline assembly are unstable",

@@ -612,7 +612,7 @@ impl<'tcx> Tree {
                     is_foreign: rel_pos.is_foreign(),
                     access_cause,
                     access_range,
-                    transition_range: perms_range.clone(),
+                    transition_range: perms_range,
                     span,
                 });
             }

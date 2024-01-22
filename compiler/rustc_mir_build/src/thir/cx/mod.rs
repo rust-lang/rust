@@ -117,50 +117,32 @@ impl<'tcx> Cx<'tcx> {
         pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 
-    fn closure_env_param(&self, owner_def: LocalDefId, owner_id: HirId) -> Option<Param<'tcx>> {
-        match self.tcx.def_kind(owner_def) {
-            DefKind::Closure if self.tcx.is_coroutine(owner_def.to_def_id()) => {
-                let coroutine_ty = self.typeck_results.node_type(owner_id);
-                let coroutine_param = Param {
-                    ty: coroutine_ty,
-                    pat: None,
-                    ty_span: None,
-                    self_kind: None,
-                    hir_id: None,
-                };
-                Some(coroutine_param)
-            }
-            DefKind::Closure => {
-                let closure_ty = self.typeck_results.node_type(owner_id);
-
-                let ty::Closure(closure_def_id, closure_args) = *closure_ty.kind() else {
-                    bug!("closure expr does not have closure type: {:?}", closure_ty);
-                };
-
-                let bound_vars =
-                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BrEnv,
-                };
-                let env_region = ty::Region::new_bound(self.tcx, ty::INNERMOST, br);
-                let closure_env_ty =
-                    self.tcx.closure_env_ty(closure_def_id, closure_args, env_region).unwrap();
-                let liberated_closure_env_ty = self.tcx.instantiate_bound_regions_with_erased(
-                    ty::Binder::bind_with_vars(closure_env_ty, bound_vars),
-                );
-                let env_param = Param {
-                    ty: liberated_closure_env_ty,
-                    pat: None,
-                    ty_span: None,
-                    self_kind: None,
-                    hir_id: None,
-                };
-
-                Some(env_param)
-            }
-            _ => None,
+    fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
+        if self.tcx.def_kind(owner_def) != DefKind::Closure {
+            return None;
         }
+
+        let closure_ty = self.typeck_results.node_type(expr_id);
+        Some(match *closure_ty.kind() {
+            ty::Coroutine(..) => {
+                Param { ty: closure_ty, pat: None, ty_span: None, self_kind: None, hir_id: None }
+            }
+            ty::Closure(_, closure_args) => {
+                let closure_env_ty = self.tcx.closure_env_ty(
+                    closure_ty,
+                    closure_args.as_closure().kind(),
+                    self.tcx.lifetimes.re_erased,
+                );
+                Param {
+                    ty: closure_env_ty,
+                    pat: None,
+                    ty_span: None,
+                    self_kind: None,
+                    hir_id: None,
+                }
+            }
+            _ => bug!("unexpected closure type: {closure_ty}"),
+        })
     }
 
     fn explicit_params<'a>(

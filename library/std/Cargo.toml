@@ -18,7 +18,7 @@ panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
 libc = { version = "0.2.150", default-features = false, features = ['rustc-dep-of-std'], public = true }
-compiler_builtins = { version = "0.1.103" }
+compiler_builtins = { version = "0.1.105" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.14", default-features = false, features = ['rustc-dep-of-std'] }
@@ -54,8 +54,8 @@ hermit-abi = { version = "0.3.2", features = ['rustc-dep-of-std'], public = true
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-r-efi = { version = "4.2.0", features = ['rustc-dep-of-std']}
-r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std']}
+r-efi = { version = "4.2.0", features = ['rustc-dep-of-std'] }
+r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std'] }
 
 [features]
 backtrace = [

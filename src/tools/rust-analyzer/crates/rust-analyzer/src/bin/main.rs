@@ -5,8 +5,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #[cfg(feature = "in-rust-tree")]
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate rustc_driver as _;
 
 mod logger;
 mod rustc_wrapper;
@@ -18,7 +17,7 @@ use lsp_server::Connection;
 use rust_analyzer::{cli::flags, config::Config, from_json};
 use vfs::AbsPathBuf;
 
-#[cfg(all(feature = "mimalloc"))]
+#[cfg(feature = "mimalloc")]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -172,7 +171,15 @@ fn run_server() -> anyhow::Result<()> {
 
     let (connection, io_threads) = Connection::stdio();
 
-    let (initialize_id, initialize_params) = connection.initialize_start()?;
+    let (initialize_id, initialize_params) = match connection.initialize_start() {
+        Ok(it) => it,
+        Err(e) => {
+            if e.channel_is_disconnected() {
+                io_threads.join()?;
+            }
+            return Err(e.into());
+        }
+    };
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         root_uri,
@@ -240,7 +247,12 @@ fn run_server() -> anyhow::Result<()> {
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
 
-    connection.initialize_finish(initialize_id, initialize_result)?;
+    if let Err(e) = connection.initialize_finish(initialize_id, initialize_result) {
+        if e.channel_is_disconnected() {
+            io_threads.join()?;
+        }
+        return Err(e.into());
+    }
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();

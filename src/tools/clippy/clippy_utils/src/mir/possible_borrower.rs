@@ -104,7 +104,7 @@ impl<'a, 'b, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'b,
             let mut mutable_borrowers = vec![];
 
             for op in args {
-                match op {
+                match &op.node {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => {
                         if let ty::Ref(_, _, Mutability::Mut) = self.body.local_decls[p.local].ty.kind() {
                             mutable_borrowers.push(p.local);

@@ -1170,7 +1170,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         sym::rust_logo => {
                             if !self.tcx.features().rustdoc_internals {
                                 feature_err(
-                                    &self.tcx.sess.parse_sess,
+                                    &self.tcx.sess,
                                     sym::rustdoc_internals,
                                     meta.span(),
                                     "the `#[doc(rust_logo)]` attribute is used for Rust branding",
@@ -1815,7 +1815,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         (target, self.tcx.features().fn_align)
                     {
                         feature_err(
-                            &self.tcx.sess.parse_sess,
+                            &self.tcx.sess,
                             sym::fn_align,
                             hint.span(),
                             "`repr(align)` attributes on functions are unstable",
@@ -2341,17 +2341,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
                         if let Some(ty) = hir_sig.decl.inputs.get(idx) {
-                            diag.set_span(ty.span);
+                            diag.span(ty.span);
                             cause.span = ty.span;
                         } else if idx == hir_sig.decl.inputs.len() {
                             let span = hir_sig.decl.output.span();
-                            diag.set_span(span);
+                            diag.span(span);
                             cause.span = span;
                         }
                     }
                     TypeError::ArgCount => {
                         if let Some(ty) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
-                            diag.set_span(ty.span);
+                            diag.span(ty.span);
                             cause.span = ty.span;
                         }
                     }

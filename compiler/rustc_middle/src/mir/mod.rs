@@ -55,7 +55,6 @@ pub mod mono;
 pub mod patch;
 pub mod pretty;
 mod query;
-pub mod spanview;
 mod statement;
 mod syntax;
 pub mod tcx;
@@ -250,6 +249,9 @@ pub struct CoroutineInfo<'tcx> {
     /// The yield type of the function, if it is a coroutine.
     pub yield_ty: Option<Ty<'tcx>>,
 
+    /// The resume type of the function, if it is a coroutine.
+    pub resume_ty: Option<Ty<'tcx>>,
+
     /// Coroutine drop glue.
     pub coroutine_drop: Option<Body<'tcx>>,
 
@@ -259,6 +261,23 @@ pub struct CoroutineInfo<'tcx> {
     /// If this is a coroutine then record the type of source expression that caused this coroutine
     /// to be created.
     pub coroutine_kind: CoroutineKind,
+}
+
+impl<'tcx> CoroutineInfo<'tcx> {
+    // Sets up `CoroutineInfo` for a pre-coroutine-transform MIR body.
+    pub fn initial(
+        coroutine_kind: CoroutineKind,
+        yield_ty: Ty<'tcx>,
+        resume_ty: Ty<'tcx>,
+    ) -> CoroutineInfo<'tcx> {
+        CoroutineInfo {
+            coroutine_kind,
+            yield_ty: Some(yield_ty),
+            resume_ty: Some(resume_ty),
+            coroutine_drop: None,
+            coroutine_layout: None,
+        }
+    }
 }
 
 /// The lowered representation of a single function.
@@ -365,7 +384,7 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        coroutine_kind: Option<CoroutineKind>,
+        coroutine: Option<Box<CoroutineInfo<'tcx>>>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -382,14 +401,7 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
-            coroutine: coroutine_kind.map(|coroutine_kind| {
-                Box::new(CoroutineInfo {
-                    yield_ty: None,
-                    coroutine_drop: None,
-                    coroutine_layout: None,
-                    coroutine_kind,
-                })
-            }),
+            coroutine,
             local_decls,
             user_type_annotations,
             arg_count,
@@ -549,6 +561,11 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn yield_ty(&self) -> Option<Ty<'tcx>> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.yield_ty)
+    }
+
+    #[inline]
+    pub fn resume_ty(&self) -> Option<Ty<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.resume_ty)
     }
 
     #[inline]
@@ -720,7 +737,7 @@ pub struct SourceInfo {
     pub span: Span,
 
     /// The source scope, keeping track of which bindings can be
-    /// seen by debuginfo, active lint levels, `unsafe {...}`, etc.
+    /// seen by debuginfo, active lint levels, etc.
     pub scope: SourceScope,
 }
 
@@ -942,7 +959,7 @@ pub struct LocalDecl<'tcx> {
 
 /// Extra information about a some locals that's used for diagnostics and for
 /// classifying variables into local variables, statics, etc, which is needed e.g.
-/// for unsafety checking.
+/// for borrow checking.
 ///
 /// Not used for non-StaticRef temporaries, the return place, or anonymous
 /// function parameters.
@@ -1299,6 +1316,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     /// Does the block have no statements and an unreachable terminator?
+    #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
         self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
     }
@@ -1568,6 +1586,7 @@ impl Location {
     ///
     /// Note that if this location represents a terminator, then the
     /// resulting location would be out of bounds and invalid.
+    #[inline]
     pub fn successor_within_block(&self) -> Location {
         Location { block: self.block, statement_index: self.statement_index + 1 }
     }
@@ -1604,6 +1623,7 @@ impl Location {
         false
     }
 
+    #[inline]
     pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
@@ -1623,6 +1643,7 @@ pub enum DefLocation {
 }
 
 impl DefLocation {
+    #[inline]
     pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
         match self {
             DefLocation::Argument => true,
@@ -1651,13 +1672,19 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 136);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 72);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);
-    static_assert_size!(Terminator<'_>, 104);
-    static_assert_size!(TerminatorKind<'_>, 88);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Terminator<'_>, 112);
+    // This can be removed after i128:128 is in the bootstrap compiler's target.
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TerminatorKind<'_>, 96);
     static_assert_size!(VarDebugInfo<'_>, 88);
     // tidy-alphabetical-end
 }

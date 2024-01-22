@@ -186,18 +186,13 @@ $ pacman -S rust-analyzer
 
 ==== Gentoo Linux
 
-`rust-analyzer` is available in the GURU repository:
+There are two ways to install `rust-analyzer` under Gentoo:
 
-- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer`] builds from source
-- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer-bin?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer-bin`] installs an official binary release
+- when installing `dev-lang/rust` or `dev-lang/rust-bin`, enable the `rust-analyzer` and `rust-src` USE flags
+- use the `rust-analyzer` component in `rustup` (see instructions above)
 
-If not already, GURU must be enabled (e.g. using `app-eselect/eselect-repository`) and sync'd before running `emerge`:
-
-[source,bash]
-----
-$ eselect repository enable guru && emaint sync -r guru
-$ emerge rust-analyzer-bin
-----
+Note that in both cases, the version installed lags for a couple of months behind the official releases on GitHub.
+To obtain a newer one, you can download a binary from GitHub Releases or building from source.
 
 ==== macOS
 
@@ -517,7 +512,8 @@ https://docs.helix-editor.com/[Helix] supports LSP by default.
 However, it won't install `rust-analyzer` automatically.
 You can follow instructions for installing <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-=== Visual Studio 2022
+[#visual-studio]
+=== [[visual-studio-2022]]Visual Studio 2022
 
 There are multiple rust-analyzer extensions for Visual Studio 2022 on Windows:
 

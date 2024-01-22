@@ -12,6 +12,7 @@
 #![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(panic_update_hook)]
+#![feature(result_flattening)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -24,7 +25,6 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
-use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
 use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
@@ -35,7 +35,7 @@ use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
+use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, EarlyDiagCtxt, Session};
@@ -204,7 +204,7 @@ impl Callbacks for TimePassesCallbacks {
         //
         self.time_passes = (config.opts.prints.is_empty() && config.opts.unstable_opts.time_passes)
             .then(|| config.opts.unstable_opts.time_passes_format);
-        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
+        config.opts.trimmed_def_paths = true;
     }
 }
 
@@ -475,7 +475,7 @@ fn run_compiler(
             eprintln!(
                 "Fuel used by {}: {}",
                 sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
-                sess.print_fuel.load(SeqCst)
+                sess.print_fuel.load(Ordering::SeqCst)
             );
         }
 
@@ -715,7 +715,7 @@ fn print_crate_info(
         let result = parse_crate_attrs(sess);
         match result {
             Ok(attrs) => Some(attrs),
-            Err(mut parse_error) => {
+            Err(parse_error) => {
                 parse_error.emit();
                 return Compilation::Stop;
             }
@@ -1249,8 +1249,7 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuarantee
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
 pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
-    let result = catch_fatal_errors(f).and_then(|result| result);
-    match result {
+    match catch_fatal_errors(f).flatten() {
         Ok(()) => EXIT_SUCCESS,
         Err(_) => EXIT_FAILURE,
     }
@@ -1393,7 +1392,7 @@ fn report_ice(
 ) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+    let emitter = Box::new(rustc_errors::emitter::HumanEmitter::stderr(
         rustc_errors::ColorConfig::Auto,
         fallback_bundle,
     ));
@@ -1430,7 +1429,7 @@ fn report_ice(
             }
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
-                dcx.emit_warning(session_diagnostics::IcePathError {
+                dcx.emit_warn(session_diagnostics::IcePathError {
                     path: path.clone(),
                     error: err.to_string(),
                     env_var: std::env::var_os("RUSTC_ICE")

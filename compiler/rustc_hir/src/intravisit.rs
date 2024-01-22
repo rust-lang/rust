@@ -619,13 +619,8 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
 pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     visitor.visit_id(arm.hir_id);
     visitor.visit_pat(arm.pat);
-    if let Some(ref g) = arm.guard {
-        match g {
-            Guard::If(ref e) => visitor.visit_expr(e),
-            Guard::IfLet(ref l) => {
-                visitor.visit_let_expr(l);
-            }
-        }
+    if let Some(ref e) = arm.guard {
+        visitor.visit_expr(e);
     }
     visitor.visit_expr(arm.body);
 }
@@ -660,7 +655,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Never | PatKind::Wild => (),
+        PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
@@ -861,7 +856,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
             visitor.visit_lifetime(lifetime);
         }
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
-        TyKind::Infer | TyKind::Err(_) => {}
+        TyKind::Infer | TyKind::InferDelegation(..) | TyKind::Err(_) => {}
     }
 }
 

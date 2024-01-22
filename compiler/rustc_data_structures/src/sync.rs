@@ -43,7 +43,6 @@
 pub use crate::marker::*;
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
-use std::ops::{Deref, DerefMut};
 
 mod lock;
 pub use lock::{Lock, LockGuard, Mode};
@@ -56,9 +55,6 @@ mod parallel;
 pub use parallel::scope;
 pub use parallel::{join, par_for_each_in, par_map, parallel_guard, try_par_for_each_in};
 
-pub use std::sync::atomic::Ordering;
-pub use std::sync::atomic::Ordering::SeqCst;
-
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
@@ -67,8 +63,7 @@ mod freeze;
 pub use freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 
 mod mode {
-    use super::Ordering;
-    use std::sync::atomic::AtomicU8;
+    use std::sync::atomic::{AtomicU8, Ordering};
 
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
@@ -113,6 +108,7 @@ cfg_match! {
     cfg(not(parallel_compiler)) => {
         use std::ops::Add;
         use std::cell::Cell;
+        use std::sync::atomic::Ordering;
 
         pub unsafe auto trait Send {}
         pub unsafe auto trait Sync {}
@@ -312,8 +308,6 @@ cfg_match! {
 
         use parking_lot::RwLock as InnerRwLock;
 
-        use std::thread;
-
         /// This makes locks panic if they are already held.
         /// It is only useful when you are running in a single thread
         const ERROR_CHECKING: bool = false;
@@ -446,58 +440,5 @@ impl<T: Clone> Clone for RwLock<T> {
     #[inline]
     fn clone(&self) -> Self {
         RwLock::new(self.borrow().clone())
-    }
-}
-
-/// A type which only allows its inner value to be used in one thread.
-/// It will panic if it is used on multiple threads.
-#[derive(Debug)]
-pub struct OneThread<T> {
-    #[cfg(parallel_compiler)]
-    thread: thread::ThreadId,
-    inner: T,
-}
-
-#[cfg(parallel_compiler)]
-unsafe impl<T> std::marker::Sync for OneThread<T> {}
-#[cfg(parallel_compiler)]
-unsafe impl<T> std::marker::Send for OneThread<T> {}
-
-impl<T> OneThread<T> {
-    #[inline(always)]
-    fn check(&self) {
-        #[cfg(parallel_compiler)]
-        assert_eq!(thread::current().id(), self.thread);
-    }
-
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        OneThread {
-            #[cfg(parallel_compiler)]
-            thread: thread::current().id(),
-            inner,
-        }
-    }
-
-    #[inline(always)]
-    pub fn into_inner(value: Self) -> T {
-        value.check();
-        value.inner
-    }
-}
-
-impl<T> Deref for OneThread<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        self.check();
-        &self.inner
-    }
-}
-
-impl<T> DerefMut for OneThread<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        self.check();
-        &mut self.inner
     }
 }

@@ -6,7 +6,7 @@ trait MyTrait<T> {
 
 impl<T> MyTrait<T> for T where T: Copy {
     async fn foo_recursive(&self, n: usize) -> T {
-        //~^ ERROR recursion in an `async fn` requires boxing
+        //~^ ERROR recursion in an async fn requires boxing
         if n > 0 {
             self.foo_recursive(n - 1).await
         } else {

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
+use clippy_utils::{contains_return, higher, in_constant, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
@@ -71,6 +71,11 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
 
         // We only care about the top-most `if` in the chain
         if is_else_clause(cx.tcx, expr) {
+            return;
+        }
+
+        // `bool::then()` and `bool::then_some()` are not const
+        if in_constant(cx, expr.hir_id) {
             return;
         }
 

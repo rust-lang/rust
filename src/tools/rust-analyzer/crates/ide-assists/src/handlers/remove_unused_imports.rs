@@ -54,7 +54,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
         .filter_map(|u| {
             // Find any uses trees that are unused
 
-            let use_module = ctx.sema.scope(&u.syntax()).map(|s| s.module())?;
+            let use_module = ctx.sema.scope(u.syntax()).map(|s| s.module())?;
             let scope = match search_scopes.entry(use_module) {
                 Entry::Occupied(o) => o.into_mut(),
                 Entry::Vacant(v) => v.insert(module_search_scope(ctx.db(), use_module)),
@@ -113,10 +113,8 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 {
                     return Some(u);
                 }
-            } else {
-                if !used_once_in_scope(ctx, def, &scope) {
-                    return Some(u);
-                }
+            } else if !used_once_in_scope(ctx, def, scope) {
+                return Some(u);
             }
 
             None
@@ -208,7 +206,7 @@ fn module_search_scope(db: &RootDatabase, module: hir::Module) -> Vec<SearchScop
             };
             let mut new_ranges = Vec::new();
             for old_range in ranges.iter_mut() {
-                let split = split_at_subrange(old_range.clone(), rng);
+                let split = split_at_subrange(*old_range, rng);
                 *old_range = split.0;
                 new_ranges.extend(split.1);
             }
@@ -423,7 +421,7 @@ mod z {
 struct X();
 struct Y();
 mod z {
-    use super::{X};
+    use super::X;
 
     fn w() {
         let x = X();
@@ -495,7 +493,7 @@ struct X();
 mod y {
     struct Y();
     mod z {
-        use crate::{X};
+        use crate::X;
         fn f() {
             let x = X();
         }
@@ -526,11 +524,189 @@ struct X();
 mod y {
     struct Y();
     mod z {
-        use crate::{y::Y};
+        use crate::y::Y;
         fn f() {
             let y = Y();
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_auto_remove_brace_nested() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod a {
+    pub struct A();
+}
+mod b {
+    struct F();
+    mod c {
+        $0use {{super::{{
+            {d::{{{{{{{S, U}}}}}}}},
+            {{{{e::{H, L, {{{R}}}}}}}},
+            F, super::a::A
+        }}}};$0
+        fn f() {
+            let f = F();
+            let l = L();
+            let a = A();
+            let s = S();
+            let h = H();
+        }
+    }
+
+    mod d {
+        pub struct S();
+        pub struct U();
+    }
+
+    mod e {
+        pub struct H();
+        pub struct L();
+        pub struct R();
+    }
+}
+"#,
+            r#"
+mod a {
+    pub struct A();
+}
+mod b {
+    struct F();
+    mod c {
+        use super::{
+            d::S,
+            e::{H, L},
+            F, super::a::A
+        };
+        fn f() {
+            let f = F();
+            let l = L();
+            let a = A();
+            let s = S();
+            let h = H();
+        }
+    }
+
+    mod d {
+        pub struct S();
+        pub struct U();
+    }
+
+    mod e {
+        pub struct H();
+        pub struct L();
+        pub struct R();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_comma_after_auto_remove_brace() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+    }
+}
+
+$0use m::{
+    x::{A, B},
+    y::C,
+};$0
+
+fn main() {
+    B;
+}
+"#,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+    }
+}
+
+use m::
+    x::B
+;
+
+fn main() {
+    B;
+}
+"#,
+        );
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+        pub struct D;
+    }
+    pub mod z {
+        pub struct E;
+        pub struct F;
+    }
+}
+
+$0use m::{
+    x::{A, B},
+    y::{C, D,},
+    z::{E, F},
+};$0
+
+fn main() {
+    B;
+    C;
+    F;
+}
+"#,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+        pub struct D;
+    }
+    pub mod z {
+        pub struct E;
+        pub struct F;
+    }
+}
+
+use m::{
+    x::B,
+    y::C,
+    z::F,
+};
+
+fn main() {
+    B;
+    C;
+    F;
 }
 "#,
         );

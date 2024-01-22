@@ -20,7 +20,7 @@ LL |     permissions.set_mode(644);
    |                          ^^^ help: consider using an octal literal instead: `0o644`
 
 error: using a non-octal value to set unix file permissions
-  --> $DIR/non_octal_unix_permissions.rs:31:18
+  --> $DIR/non_octal_unix_permissions.rs:33:18
    |
 LL |     builder.mode(755);
    |                  ^^^ help: consider using an octal literal instead: `0o755`

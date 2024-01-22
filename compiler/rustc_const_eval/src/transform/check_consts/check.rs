@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -214,7 +214,7 @@ pub struct Checker<'mir, 'tcx> {
     local_has_storage_dead: Option<BitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
-    secondary_errors: Vec<Diagnostic>,
+    secondary_errors: Vec<DiagnosticBuilder<'tcx>>,
 }
 
 impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
@@ -272,14 +272,17 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
-        // "secondary" errors if they occurred.
+        // "secondary" errors if they occurred. Otherwise, cancel the "secondary" errors.
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.tcx.dcx().emit_diagnostic(error);
+                error.emit();
             }
         } else {
             assert!(self.tcx.dcx().has_errors().is_some());
+            for error in secondary_errors {
+                error.cancel();
+            }
         }
     }
 
@@ -338,7 +341,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        let mut err = op.build_error(self.ccx, span);
+        let err = op.build_error(self.ccx, span);
         assert!(err.is_error());
 
         match op.importance() {
@@ -347,7 +350,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
+            ops::DiagnosticImportance::Secondary => self.secondary_errors.push(err),
         }
     }
 
@@ -801,7 +804,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of the `begin_panic` fn assumes the argument is `&str`
                 if Some(callee) == tcx.lang_items().begin_panic_fn() {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => return,
                         _ => self.check_op(ops::PanicNonStr),
                     }
@@ -809,7 +812,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                         {
                             return;

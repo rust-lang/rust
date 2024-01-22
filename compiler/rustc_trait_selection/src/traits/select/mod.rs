@@ -14,9 +14,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
+    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
+    SelectionError, SelectionResult, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -239,20 +239,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    // Sets the `TreatInductiveCycleAs` mode temporarily in the selection context
-    pub fn with_treat_inductive_cycle_as<T>(
-        &mut self,
-        treat_inductive_cycle: TreatInductiveCycleAs,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn with_treat_inductive_cycle_as_ambig(
+        infcx: &'cx InferCtxt<'tcx>,
+    ) -> SelectionContext<'cx, 'tcx> {
         // Should be executed in a context where caching is disabled,
         // otherwise the cache is poisoned with the temporary result.
-        assert!(self.is_intercrate());
-        let treat_inductive_cycle =
-            std::mem::replace(&mut self.treat_inductive_cycle, treat_inductive_cycle);
-        let value = f(self);
-        self.treat_inductive_cycle = treat_inductive_cycle;
-        value
+        assert!(infcx.intercrate);
+        SelectionContext {
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
+            ..SelectionContext::new(infcx)
+        }
     }
 
     pub fn with_query_mode(
@@ -500,7 +496,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Ok(_) => Ok(None),
                 Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
@@ -1237,7 +1232,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
-            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
     }
