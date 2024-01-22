@@ -1,9 +1,8 @@
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, RustcMatchCheckCtxt as MatchCheckCtxt, Usefulness,
+    Constructor, DeconstructedPat, MatchArm, RustcMatchCheckCtxt as MatchCheckCtxt, Usefulness,
     UsefulnessReport, WitnessPat,
 };
-use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;
 
@@ -390,6 +389,34 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         }
     }
 
+    fn analyze_patterns(
+        &mut self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        arms: &[MatchArm<'p, 'tcx>],
+        scrut_ty: Ty<'tcx>,
+    ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
+        let report =
+            rustc_pattern_analysis::analyze_match(&cx, &arms, scrut_ty).map_err(|err| {
+                self.error = Err(err);
+                err
+            })?;
+
+        // Warn unreachable subpatterns.
+        for (arm, is_useful) in report.arm_usefulness.iter() {
+            if let Usefulness::Useful(redundant_subpats) = is_useful
+                && !redundant_subpats.is_empty()
+            {
+                let mut redundant_subpats = redundant_subpats.clone();
+                // Emit lints in the order in which they occur in the file.
+                redundant_subpats.sort_unstable_by_key(|pat| pat.data().unwrap().span);
+                for pat in redundant_subpats {
+                    report_unreachable_pattern(cx, arm.arm_data, pat.data().unwrap().span, None)
+                }
+            }
+        }
+        Ok(report)
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
         assert!(self.let_source != LetSource::None);
@@ -435,14 +462,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             }
         }
 
-        let scrut_ty = scrut.ty;
-        let report = match analyze_match(&cx, &tarms, scrut_ty) {
-            Ok(report) => report,
-            Err(err) => {
-                self.error = Err(err);
-                return;
-            }
-        };
+        let Ok(report) = self.analyze_patterns(&cx, &tarms, scrut.ty) else { return };
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -474,7 +494,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 );
             } else {
                 self.error = Err(report_non_exhaustive_match(
-                    &cx, self.thir, scrut_ty, scrut.span, witnesses, arms, expr_span,
+                    &cx, self.thir, scrut.ty, scrut.span, witnesses, arms, expr_span,
                 ));
             }
         }
@@ -556,7 +576,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
-        let report = analyze_match(&cx, &arms, pat.ty().inner())?;
+        let report = self.analyze_patterns(&cx, &arms, pat.ty().inner())?;
         Ok((cx, report))
     }
 
@@ -567,7 +587,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<RefutableFlag, ErrorGuaranteed> {
         let (cx, report) = self.analyze_binding(pat, Refutable, scrut)?;
         // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
-        // This also reports unreachable sub-patterns.
         report_arm_reachability(&cx, &report);
         // If the list of witnesses is empty, the match is exhaustive, i.e. the `if let` pattern is
         // irrefutable.
@@ -851,38 +870,29 @@ fn report_irrefutable_let_patterns(
 }
 
 /// Report unreachable arms, if any.
+fn report_unreachable_pattern<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    hir_id: HirId,
+    span: Span,
+    catchall: Option<Span>,
+) {
+    cx.tcx.emit_spanned_lint(
+        UNREACHABLE_PATTERNS,
+        hir_id,
+        span,
+        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
+    );
+}
+
+/// Report unreachable arms, if any.
 fn report_arm_reachability<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
-    let report_unreachable_pattern = |span, hir_id, catchall: Option<Span>| {
-        cx.tcx.emit_spanned_lint(
-            UNREACHABLE_PATTERNS,
-            hir_id,
-            span,
-            UnreachablePattern {
-                span: if catchall.is_some() { Some(span) } else { None },
-                catchall,
-            },
-        );
-    };
-
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
-        match is_useful {
-            Usefulness::Redundant => {
-                report_unreachable_pattern(arm.pat.data().unwrap().span, arm.arm_data, catchall)
-            }
-            Usefulness::Useful(redundant_subpats) if redundant_subpats.is_empty() => {}
-            // The arm is reachable, but contains redundant subpatterns (from or-patterns).
-            Usefulness::Useful(redundant_subpats) => {
-                let mut redundant_subpats = redundant_subpats.clone();
-                // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|pat| pat.data().unwrap().span);
-                for pat in redundant_subpats {
-                    report_unreachable_pattern(pat.data().unwrap().span, arm.arm_data, None);
-                }
-            }
+        if matches!(is_useful, Usefulness::Redundant) {
+            report_unreachable_pattern(cx, arm.arm_data, arm.pat.data().unwrap().span, catchall)
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
             catchall = Some(arm.pat.data().unwrap().span);
