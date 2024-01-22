@@ -4645,8 +4645,3 @@ impl MutVisitor for LateDesugarVisitor<'_, '_, '_> {
         mut_visit::noop_visit_ty(ty, self);
     }
 }
-
-fn _is_axel_debug() -> bool {
-    use std::env;
-    env::var("AXEL_DEBUG").is_ok()
-}
