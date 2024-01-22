@@ -288,6 +288,7 @@ mod macros;
 // We don't export this through #[macro_export] for now, to avoid breakage.
 // See https://github.com/rust-lang/rust/issues/82913
 #[cfg(not(test))]
+#[allow(missing_docs)]
 #[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 pub mod assert_matches {
     #[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]

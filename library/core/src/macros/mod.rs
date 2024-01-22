@@ -396,7 +396,7 @@ macro_rules! debug_assert_ne {
 /// let c = Ok("abc".to_string());
 /// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[stable(feature = "assert_matches", since= "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -410,7 +410,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
 /// and a guard expression that has access to names bound by the pattern.
 ///
-/// Use [`assert_matches`] to assert if an expression matches the given patterns. 
+/// Use [`assert_matches`] to assert if an expression matches the given patterns.
 ///
 /// # Examples
 ///
