@@ -600,6 +600,7 @@ symbols! {
         core_panic_macro,
         coroutine,
         coroutine_clone,
+        coroutine_resume,
         coroutine_state,
         coroutines,
         cosf32,
