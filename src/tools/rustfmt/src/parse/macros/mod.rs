@@ -1,4 +1,4 @@
-use rustc_ast::token::{Delimiter, TokenKind};
+use rustc_ast::token::{Delimiter, NonterminalKind, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
@@ -24,9 +24,9 @@ fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser
 
 fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg:ident, $can_begin:expr, $try_parse:expr, $then:expr) => {
+        ($macro_arg:ident, $nt_kind:expr, $try_parse:expr, $then:expr) => {
             let mut cloned_parser = (*parser).clone();
-            if $can_begin(&mut cloned_parser) {
+            if Parser::nonterminal_may_begin_with($nt_kind, &cloned_parser.token) {
                 match $try_parse(&mut cloned_parser) {
                     Ok(x) => {
                         if parser.sess.dcx.has_errors().is_some() {
@@ -48,27 +48,26 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
     parse_macro_arg!(
         Expr,
-        |parser: &mut Parser<'b>| parser.token.can_begin_expr(),
+        NonterminalKind::Expr,
         |parser: &mut Parser<'b>| parser.parse_expr(),
         |x: ptr::P<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
         Ty,
-        |parser: &mut Parser<'b>| parser.token.can_begin_type(),
+        NonterminalKind::Ty,
         |parser: &mut Parser<'b>| parser.parse_ty(),
         |x: ptr::P<ast::Ty>| Some(x)
     );
     parse_macro_arg!(
         Pat,
-        // FIXME: This isn't right
-        |_| true,
+        NonterminalKind::PatParam { inferred: false },
         |parser: &mut Parser<'b>| parser.parse_pat_no_top_alt(None, None),
         |x: ptr::P<ast::Pat>| Some(x)
     );
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
     parse_macro_arg!(
         Item,
-        |_| true,
+        NonterminalKind::Item,
         |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No),
         |x: Option<ptr::P<ast::Item>>| x
     );
