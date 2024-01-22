@@ -1,7 +1,6 @@
 // Test that uninhabited saved local doesn't make the entire variant uninhabited.
 // run-pass
 #![allow(unused)]
-#![feature(assert_matches)]
 #![feature(coroutine_trait)]
 #![feature(coroutines)]
 #![feature(never_type)]

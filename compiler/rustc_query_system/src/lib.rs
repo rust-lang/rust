@@ -1,4 +1,3 @@
-#![feature(assert_matches)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
 #![feature(min_specialization)]

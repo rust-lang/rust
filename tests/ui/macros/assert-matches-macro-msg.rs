@@ -4,8 +4,6 @@
 // error-pattern: right: 3
 // ignore-emscripten no processes
 
-#![feature(assert_matches)]
-
 use std::assert_matches::assert_matches;
 
 fn main() {

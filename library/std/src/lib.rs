@@ -365,7 +365,6 @@
 //
 // Only for re-exporting:
 // tidy-alphabetical-start
-#![feature(assert_matches)]
 #![feature(async_iterator)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]

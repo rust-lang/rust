@@ -27,7 +27,6 @@
 #![feature(rustdoc_internals)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]

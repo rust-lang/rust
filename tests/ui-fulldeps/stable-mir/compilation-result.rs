@@ -8,7 +8,6 @@
 // edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 #[macro_use]
 extern crate rustc_smir;

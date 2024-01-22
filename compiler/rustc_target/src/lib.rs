@@ -10,7 +10,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 #![feature(iter_intersperse)]

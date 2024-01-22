@@ -126,8 +126,6 @@ macro_rules! assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::assert_matches::assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
@@ -138,7 +136,7 @@ macro_rules! assert_ne {
 /// let c = Ok("abc".to_string());
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
@@ -388,8 +386,6 @@ macro_rules! debug_assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::assert_matches::debug_assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
@@ -400,7 +396,7 @@ macro_rules! debug_assert_ne {
 /// let c = Ok("abc".to_string());
 /// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since= "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -413,6 +409,8 @@ pub macro debug_assert_matches($($arg:tt)*) {
 ///
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
 /// and a guard expression that has access to names bound by the pattern.
+///
+/// Use [`assert_matches`] to assert if an expression matches the given patterns. 
 ///
 /// # Examples
 ///

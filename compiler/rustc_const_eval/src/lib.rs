@@ -8,7 +8,6 @@ Rust MIR: a lowered representation of Rust.
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![deny(rustc::untranslatable_diagnostic)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
