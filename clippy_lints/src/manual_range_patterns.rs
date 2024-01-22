@@ -45,7 +45,7 @@ fn expr_as_i128(expr: &Expr<'_>) -> Option<i128> {
         && let LitKind::Int(num, _) = lit.node
     {
         // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
-        num.try_into().ok()
+        num.get().try_into().ok()
     } else {
         None
     }

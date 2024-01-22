@@ -461,7 +461,7 @@ fn is_array_length_equal_to_range(cx: &LateContext<'_>, start: &Expr<'_>, end: &
         if let ExprKind::Lit(lit) = expr.kind
             && let ast::LitKind::Int(value, _) = lit.node
         {
-            Some(value)
+            Some(value.get())
         } else {
             None
         }

@@ -209,8 +209,8 @@ fn is_end_eq_array_len<'tcx>(
         && let Some(arr_len) = arr_len_const.try_eval_target_usize(cx.tcx, cx.param_env)
     {
         return match limits {
-            ast::RangeLimits::Closed => end_int + 1 >= arr_len.into(),
-            ast::RangeLimits::HalfOpen => end_int >= arr_len.into(),
+            ast::RangeLimits::Closed => end_int.get() + 1 >= arr_len.into(),
+            ast::RangeLimits::HalfOpen => end_int.get() >= arr_len.into(),
         };
     }
 
