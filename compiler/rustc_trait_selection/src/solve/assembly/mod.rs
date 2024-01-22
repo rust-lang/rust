@@ -214,7 +214,7 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    fn consider_builtin_async_iterator_candidate(
+    fn consider_builtin_async_stream_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -577,8 +577,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.iterator_trait() == Some(trait_def_id) {
             G::consider_builtin_iterator_candidate(self, goal)
-        } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
-            G::consider_builtin_async_iterator_candidate(self, goal)
+        } else if lang_items.async_stream_trait() == Some(trait_def_id) {
+            G::consider_builtin_async_stream_candidate(self, goal)
         } else if lang_items.coroutine_trait() == Some(trait_def_id) {
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {

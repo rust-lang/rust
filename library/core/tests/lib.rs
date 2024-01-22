@@ -4,8 +4,10 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
-#![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
+#![feature(async_iter_from_iter)]
+#![feature(async_stream)]
+#![feature(async_stream_from_iter)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_align_offset)]
@@ -161,6 +163,7 @@ mod simd;
 mod slice;
 mod str;
 mod str_lossy;
+mod stream;
 mod task;
 mod time;
 mod tuple;

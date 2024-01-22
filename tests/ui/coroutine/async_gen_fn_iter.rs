@@ -2,7 +2,7 @@
 // compile-flags: -Zunstable-options
 // run-pass
 
-#![feature(gen_blocks, async_iterator)]
+#![feature(gen_blocks, async_stream)]
 #![feature(noop_waker)]
 
 // make sure that a ridiculously simple async gen fn works as an iterator.
@@ -45,14 +45,14 @@ async fn async_main() {
 
 use std::pin::{Pin, pin};
 use std::task::*;
-use std::async_iter::AsyncIterator;
+use std::stream::Stream;
 use std::future::Future;
 
-trait AsyncIterExt {
+trait StreamExt {
     fn next(&mut self) -> Next<'_, Self>;
 }
 
-impl<T> AsyncIterExt for T {
+impl<T> StreamExt for T {
     fn next(&mut self) -> Next<'_, Self> {
         Next { s: self }
     }
@@ -62,7 +62,7 @@ struct Next<'s, S: ?Sized> {
     s: &'s mut S,
 }
 
-impl<'s, S: AsyncIterator> Future for Next<'s, S> where S: Unpin {
+impl<'s, S: Stream> Future for Next<'s, S> where S: Unpin {
     type Output = Option<S::Item>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<S::Item>> {

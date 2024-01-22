@@ -30,19 +30,11 @@
 //! [`AsyncIterator`] looks like this:
 //!
 //! ```
-//! # use core::task::{Context, Poll};
-//! # use core::pin::Pin;
 //! trait AsyncIterator {
 //!     type Item;
-//!     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
+//!     async fn next(&mut self) -> Option<Self::Item>;
 //! }
 //! ```
-//!
-//! Unlike `Iterator`, `AsyncIterator` makes a distinction between the [`poll_next`]
-//! method which is used when implementing an `AsyncIterator`, and a (to-be-implemented)
-//! `next` method which is used when consuming an async iterator. Consumers of `AsyncIterator`
-//! only need to consider `next`, which when called, returns a future which
-//! yields `Option<AsyncIterator::Item>`.
 //!
 //! The future returned by `next` will yield `Some(Item)` as long as there are
 //! elements, and once they've all been exhausted, will yield `None` to indicate
@@ -53,11 +45,10 @@
 //! again may or may not eventually yield `Some(Item)` again at some point.
 //!
 //! [`AsyncIterator`]'s full definition includes a number of other methods as well,
-//! but they are default methods, built on top of [`poll_next`], and so you get
+//! but they are default methods, built on top of [`next`], and so you get
 //! them for free.
 //!
-//! [`Poll`]: super::task::Poll
-//! [`poll_next`]: AsyncIterator::poll_next
+//! [`next`]: AsyncIterator::next
 //!
 //! # Implementing Async Iterator
 //!
@@ -70,8 +61,6 @@
 //! ```no_run
 //! #![feature(async_iterator)]
 //! # use core::async_iter::AsyncIterator;
-//! # use core::task::{Context, Poll};
-//! # use core::pin::Pin;
 //!
 //! // First, the struct:
 //!
@@ -82,7 +71,7 @@
 //!
 //! // we want our count to start at one, so let's add a new() method to help.
 //! // This isn't strictly necessary, but is convenient. Note that we start
-//! // `count` at zero, we'll see why in `poll_next()`'s implementation below.
+//! // `count` at zero, we'll see why in `next()`'s implementation below.
 //! impl Counter {
 //!     fn new() -> Counter {
 //!         Counter { count: 0 }
@@ -95,16 +84,16 @@
 //!     // we will be counting with usize
 //!     type Item = usize;
 //!
-//!     // poll_next() is the only required method
-//!     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+//!     // next() is the only required method
+//!     async fn next(&mut self) -> Option<Self::Item> {
 //!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
 //!         // Check to see if we've finished counting or not.
 //!         if self.count < 6 {
-//!             Poll::Ready(Some(self.count))
+//!             Some(self.count)
 //!         } else {
-//!             Poll::Ready(None)
+//!             None
 //!         }
 //!     }
 //! }
@@ -113,7 +102,7 @@
 //! # Laziness
 //!
 //! Async iterators are *lazy*. This means that just creating an async iterator doesn't
-//! _do_ a whole lot. Nothing really happens until you call `poll_next`. This is
+//! _do_ a whole lot. Nothing really happens until you call `next`. This is
 //! sometimes a source of confusion when creating an async iterator solely for its side
 //! effects. The compiler will warn us about this kind of behavior:
 //!

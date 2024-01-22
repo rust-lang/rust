@@ -271,7 +271,7 @@ fn resolve_associated_item<'tcx>(
                     debug_assert!(tcx.defaultness(trait_item_id).has_value());
                     Some(Instance::new(trait_item_id, rcvr_args))
                 }
-            } else if Some(trait_ref.def_id) == lang_items.async_iterator_trait() {
+            } else if Some(trait_ref.def_id) == lang_items.async_stream_trait() {
                 let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
                     bug!()
                 };

@@ -164,6 +164,7 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
+use core::stream::Stream;
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -2153,12 +2154,25 @@ where
     }
 }
 
-#[unstable(feature = "async_iterator", issue = "79024")]
-impl<S: ?Sized + AsyncIterator + Unpin> AsyncIterator for Box<S> {
+#[unstable(feature = "async_stream", issue = "79024")]
+impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
     type Item = S::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut **self).poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
+#[unstable(feature = "async_iterator", issue = "79024")]
+impl<I: ?Sized + AsyncIterator> AsyncIterator for Box<I> {
+    type Item = I::Item;
+
+    async fn next(&mut self) -> Option<Self::Item> {
+        (&mut **self).next().await
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

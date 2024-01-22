@@ -1,11 +1,11 @@
 // compile-flags: --edition 2024 -Zunstable-options
 // check-pass
 
-#![feature(async_iterator, gen_blocks)]
+#![feature(async_stream, gen_blocks)]
 
-use std::async_iter::AsyncIterator;
+use std::stream::Stream;
 
-fn deduce() -> impl AsyncIterator<Item = ()> {
+fn deduce() -> impl Stream<Item = ()> {
     async gen {
         yield Default::default();
     }

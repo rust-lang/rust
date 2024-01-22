@@ -383,6 +383,8 @@ pub mod panic;
 pub mod panicking;
 pub mod pin;
 pub mod result;
+#[unstable(feature = "async_stream", issue = "79024")]
+pub mod stream;
 pub mod sync;
 
 pub mod fmt;

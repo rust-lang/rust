@@ -1,9 +1,9 @@
 // compile-flags: --edition 2024 -Zunstable-options
 // check-pass
 
-#![feature(async_iterator, gen_blocks, noop_waker)]
+#![feature(async_stream, gen_blocks, noop_waker)]
 
-use std::{async_iter::AsyncIterator, pin::pin, task::{Context, Waker}};
+use std::{stream::Stream, pin::pin, task::{Context, Waker}};
 
 async gen fn gen_fn() -> &'static str {
     yield "hello"
@@ -12,5 +12,5 @@ async gen fn gen_fn() -> &'static str {
 pub fn main() {
     let async_iterator = pin!(gen_fn());
     let ctx = &mut Context::from_waker(Waker::noop());
-    async_iterator.poll_next(ctx);
+    stream.poll_next(ctx);
 }

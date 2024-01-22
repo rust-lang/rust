@@ -1,7 +1,4 @@
-use crate::pin::Pin;
-
 use crate::async_iter::AsyncIterator;
-use crate::task::{Context, Poll};
 
 /// An async iterator that was created from iterator.
 ///
@@ -28,8 +25,8 @@ pub fn from_iter<I: IntoIterator>(iter: I) -> FromIter<I::IntoIter> {
 impl<I: Iterator> AsyncIterator for FromIter<I> {
     type Item = I::Item;
 
-    fn poll_next(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Ready(self.iter.next())
+    async fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

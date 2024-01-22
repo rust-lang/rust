@@ -1,13 +1,13 @@
 // run-pass
 // edition: 2024
 // compile-flags: -Zunstable-options
-#![feature(async_iterator, async_iter_from_iter, const_waker, async_for_loop, noop_waker,
+#![feature(async_stream, async_stream_from_iter, const_waker, async_for_loop, noop_waker,
            gen_blocks)]
 
 use std::future::Future;
 
-async gen fn async_iter() -> i32 {
-    let iter = core::async_iter::from_iter(0..3);
+async gen fn stream() -> i32 {
+    let iter = core::stream::from_iter(0..3);
     for await i in iter {
         yield i + 1;
     }
@@ -16,7 +16,7 @@ async gen fn async_iter() -> i32 {
 // make sure a simple for await loop works
 async fn real_main() {
     let mut count = 1;
-    for await i in async_iter() {
+    for await i in stream() {
         assert_eq!(i, count);
         count += 1;
     }

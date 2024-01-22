@@ -112,8 +112,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_future_candidates(obligation, &mut candidates);
                 } else if lang_items.iterator_trait() == Some(def_id) {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
-                } else if lang_items.async_iterator_trait() == Some(def_id) {
-                    self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.async_stream_trait() == Some(def_id) {
+                    self.assemble_async_stream_candidates(obligation, &mut candidates);
                 }
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
@@ -257,7 +257,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn assemble_async_iterator_candidates(
+    fn assemble_async_stream_candidates(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,

@@ -99,7 +99,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             AsyncIteratorCandidate => {
-                let vtable_iterator = self.confirm_async_iterator_candidate(obligation)?;
+                let vtable_iterator = self.confirm_async_stream_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
             }
 
@@ -818,7 +818,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(nested)
     }
 
-    fn confirm_async_iterator_candidate(
+    fn confirm_async_stream_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
@@ -830,11 +830,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
-        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_async_iterator_candidate");
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_async_stream_candidate");
 
         let gen_sig = args.as_coroutine().sig();
 
-        let (trait_ref, _) = super::util::async_iterator_trait_ref_and_outputs(
+        let (trait_ref, _) = super::util::async_stream_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("iterator has no bound vars").self_ty(),

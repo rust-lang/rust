@@ -525,7 +525,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         )
     }
 
-    fn consider_builtin_async_iterator_candidate(
+    fn consider_builtin_async_stream_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
