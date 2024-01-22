@@ -297,7 +297,7 @@ impl SearchMode {
             SearchMode::Exact => candidate.eq_ignore_ascii_case(query),
             SearchMode::Prefix => {
                 query.len() <= candidate.len() && {
-                    let prefix = &candidate[..query.len() as usize];
+                    let prefix = &candidate[..query.len()];
                     if case_sensitive {
                         prefix == query
                     } else {
@@ -446,7 +446,7 @@ fn search_maps(
             let end = (value & 0xFFFF_FFFF) as usize;
             let start = (value >> 32) as usize;
             let ImportMap { item_to_info_map, importables, .. } = &*import_maps[import_map_idx];
-            let importables = &importables[start as usize..end];
+            let importables = &importables[start..end];
 
             let iter = importables
                 .iter()
