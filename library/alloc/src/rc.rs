@@ -1885,10 +1885,10 @@ impl<T: ?Sized> Rc<T> {
         // Initialize the RcBox
         let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
         unsafe {
-            debug_assert_eq!(Layout::for_value(&*inner), layout);
+            debug_assert_eq!(Layout::for_value_raw(inner), layout);
 
-            ptr::write(&mut (*inner).strong, Cell::new(1));
-            ptr::write(&mut (*inner).weak, Cell::new(1));
+            ptr::addr_of_mut!((*inner).strong).write(Cell::new(1));
+            ptr::addr_of_mut!((*inner).weak).write(Cell::new(1));
         }
 
         Ok(inner)
@@ -1902,7 +1902,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
         // Allocate for the `RcBox<T>` using the given value.
         unsafe {
             Rc::<T>::allocate_for_layout(
-                Layout::for_value(&*ptr),
+                Layout::for_value_raw(ptr),
                 |layout| alloc.allocate(layout),
                 |mem| mem.with_metadata_of(ptr as *const RcBox<T>),
             )
@@ -1918,7 +1918,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
             // Copy value as bytes
             ptr::copy_nonoverlapping(
                 &*src as *const T as *const u8,
-                &mut (*ptr).value as *mut _ as *mut u8,
+                ptr::addr_of_mut!((*ptr).value) as *mut u8,
                 value_size,
             );
 
@@ -1952,7 +1952,11 @@ impl<T> Rc<[T]> {
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         unsafe {
             let ptr = Self::allocate_for_slice(v.len());
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
+            ptr::copy_nonoverlapping(
+                v.as_ptr(),
+                ptr::addr_of_mut!((*ptr).value) as *mut T,
+                v.len(),
+            );
             Self::from_ptr(ptr)
         }
     }
@@ -1987,10 +1991,10 @@ impl<T> Rc<[T]> {
             let ptr = Self::allocate_for_slice(len);
 
             let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
+            let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = &mut (*ptr).value as *mut [T] as *mut T;
+            let elems = ptr::addr_of_mut!((*ptr).value) as *mut T;
 
             let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
@@ -2096,7 +2100,8 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
                 self.inner().dec_weak();
 
                 if self.inner().weak() == 0 {
-                    self.alloc.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                    self.alloc
+                        .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
                 }
             }
         }
@@ -2524,7 +2529,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
             let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
-            ptr::copy_nonoverlapping(vec_ptr, &mut (*rc_ptr).value as *mut [T] as *mut T, len);
+            ptr::copy_nonoverlapping(vec_ptr, ptr::addr_of_mut!((*rc_ptr).value) as *mut T, len);
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator
@@ -3514,7 +3519,7 @@ unsafe impl<#[may_dangle] T> Drop for UniqueRc<T> {
             self.ptr.as_ref().dec_weak();
 
             if self.ptr.as_ref().weak() == 0 {
-                Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
         }
     }
