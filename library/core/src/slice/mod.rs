@@ -1842,7 +1842,8 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `mid > len`.
+    /// Panics if `mid > len`.  For a non-panicking alternative see
+    /// [`split_at_checked`](slice::split_at_checked).
     ///
     /// # Examples
     ///
@@ -1869,14 +1870,15 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
+    #[rustc_allow_const_fn_unstable(split_at_checked)]
     #[inline]
     #[track_caller]
     #[must_use]
     pub const fn split_at(&self, mid: usize) -> (&[T], &[T]) {
-        assert!(mid <= self.len());
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `split_at_unchecked`.
-        unsafe { self.split_at_unchecked(mid) }
+        match self.split_at_checked(mid) {
+            Some(pair) => pair,
+            None => panic!("mid > len"),
+        }
     }
 
     /// Divides one mutable slice into two at an index.
@@ -1887,7 +1889,8 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `mid > len`.
+    /// Panics if `mid > len`.  For a non-panicking alternative see
+    /// [`split_at_mut_checked`](slice::split_at_mut_checked).
     ///
     /// # Examples
     ///
@@ -1906,10 +1909,10 @@ impl<T> [T] {
     #[must_use]
     #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
-        assert!(mid <= self.len());
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
-        unsafe { self.split_at_mut_unchecked(mid) }
+        match self.split_at_mut_checked(mid) {
+            Some(pair) => pair,
+            None => panic!("mid > len"),
+        }
     }
 
     /// Divides one slice into two at an index, without doing bounds checking.
@@ -2029,6 +2032,98 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
+    }
+
+    /// Divides one slice into two at an index, returning `None` if the slice is
+    /// too short.
+    ///
+    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// indices from `[0, mid)` (excluding the index `mid` itself) and the
+    /// second will contain all indices from `[mid, len)` (excluding the index
+    /// `len` itself).
+    ///
+    /// Otherwise, if `mid > len`, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_at_checked)]
+    ///
+    /// let v = [1, -2, 3, -4, 5, -6];
+    ///
+    /// {
+    ///    let (left, right) = v.split_at_checked(0).unwrap();
+    ///    assert_eq!(left, []);
+    ///    assert_eq!(right, [1, -2, 3, -4, 5, -6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at_checked(2).unwrap();
+    ///     assert_eq!(left, [1, -2]);
+    ///     assert_eq!(right, [3, -4, 5, -6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at_checked(6).unwrap();
+    ///     assert_eq!(left, [1, -2, 3, -4, 5, -6]);
+    ///     assert_eq!(right, []);
+    /// }
+    ///
+    /// assert_eq!(None, v.split_at_checked(7));
+    /// ```
+    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[rustc_const_unstable(feature = "split_at_checked", issue = "119128")]
+    #[inline]
+    #[must_use]
+    pub const fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])> {
+        if mid <= self.len() {
+            // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
+            // fulfills the requirements of `split_at_unchecked`.
+            Some(unsafe { self.split_at_unchecked(mid) })
+        } else {
+            None
+        }
+    }
+
+    /// Divides one mutable slice into two at an index, returning `None` if the
+    /// slice is too short.
+    ///
+    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// indices from `[0, mid)` (excluding the index `mid` itself) and the
+    /// second will contain all indices from `[mid, len)` (excluding the index
+    /// `len` itself).
+    ///
+    /// Otherwise, if `mid > len`, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_at_checked)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    ///
+    /// if let Some((left, right)) = v.split_at_mut_checked(2) {
+    ///     assert_eq!(left, [1, 0]);
+    ///     assert_eq!(right, [3, 0, 5, 6]);
+    ///     left[1] = 2;
+    ///     right[1] = 4;
+    /// }
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    ///
+    /// assert_eq!(None, v.split_at_mut_checked(7));
+    /// ```
+    #[unstable(feature = "split_at_checked", reason = "new API", issue = "119128")]
+    #[rustc_const_unstable(feature = "split_at_checked", issue = "119128")]
+    #[inline]
+    #[must_use]
+    pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
+        if mid <= self.len() {
+            // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
+            // fulfills the requirements of `split_at_unchecked`.
+            Some(unsafe { self.split_at_mut_unchecked(mid) })
+        } else {
+            None
+        }
     }
 
     /// Returns an iterator over subslices separated by elements that match
