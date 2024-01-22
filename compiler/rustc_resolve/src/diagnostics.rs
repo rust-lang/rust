@@ -285,7 +285,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         use NameBindingKind::Import;
         let can_suggest = |binding: NameBinding<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
-                && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
+                && !matches!(import.kind, ImportKind::MacroUse { .. } | ImportKind::MacroExport)
         };
         let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
@@ -1819,9 +1819,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         next_ident = source;
                         Some(binding)
                     }
-                    ImportKind::Glob { .. } | ImportKind::MacroUse | ImportKind::MacroExport => {
-                        Some(binding)
-                    }
+                    ImportKind::Glob { .. }
+                    | ImportKind::MacroUse { .. }
+                    | ImportKind::MacroExport => Some(binding),
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,
