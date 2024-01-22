@@ -5,6 +5,7 @@
 #![allow(irrefutable_let_patterns)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
+#![allow(dereferencing_mut_binding)]
 
 fn main() {
     // A regression test for a mistake we made at one point:
