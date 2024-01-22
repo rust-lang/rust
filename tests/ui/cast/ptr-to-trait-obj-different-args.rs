@@ -28,3 +28,11 @@ fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
     let _: *const dyn Trait<T> = x as _; //~ error: casting `*const (dyn Trait<X> + 'static)` as `*const dyn Trait<T>` is invalid
     let _: *const dyn Trait<X> = t as _; //~ error: casting `*const (dyn Trait<T> + 'static)` as `*const dyn Trait<X>` is invalid
 }
+
+trait Assocked {
+    type Assoc: ?Sized;
+}
+
+fn change_assoc(x: *mut dyn Assocked<Assoc = u8>) -> *mut dyn Assocked<Assoc = u32> {
+    x as _
+}
