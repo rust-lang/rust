@@ -51,8 +51,9 @@ pub(super) fn generate_coverage_spans(
         // with the user code wrapped in a closure. Any spans in the desugared
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
-        let span = hir_info.fn_sig_span;
-        mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
+        if let Some(span) = hir_info.fn_sig_span_extended {
+            mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
+        }
     } else {
         let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
             mir_body,

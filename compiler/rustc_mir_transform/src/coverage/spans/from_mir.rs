@@ -23,7 +23,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
-    let &ExtractedHirInfo { fn_sig_span, body_span, .. } = hir_info;
+    let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let mut initial_spans = vec![];
 
@@ -33,6 +33,10 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
 
     // Only add the signature span if we found at least one span in the body.
     if !initial_spans.is_empty() {
+        // If there is no usable signature span, add a fake one (before refinement)
+        // to avoid an ugly gap between the body start and the first real span.
+        // FIXME: Find a more principled way to solve this problem.
+        let fn_sig_span = hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo());
         initial_spans.push(SpanFromMir::for_fn_sig(fn_sig_span));
     }
 
