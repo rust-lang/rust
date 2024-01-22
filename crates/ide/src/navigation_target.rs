@@ -76,7 +76,7 @@ pub(crate) trait ToNav {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget>;
 }
 
-pub(crate) trait TryToNav {
+pub trait TryToNav {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>>;
 }
 
