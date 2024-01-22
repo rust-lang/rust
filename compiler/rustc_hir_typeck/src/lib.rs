@@ -49,7 +49,7 @@ use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
 use crate::diverges::Diverges;
 use crate::expectation::Expectation;
-use crate::fn_ctxt::RawTy;
+use crate::fn_ctxt::LoweredTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{struct_span_code_err, ErrorGuaranteed};

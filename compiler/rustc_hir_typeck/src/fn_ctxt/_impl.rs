@@ -2,7 +2,7 @@ use crate::callee::{self, DeferredCallResolution};
 use crate::errors::CtorIsPrivate;
 use crate::method::{self, MethodCallee, SelfSource};
 use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, RawTy};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
@@ -373,14 +373,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn handle_raw_ty(&self, span: Span, ty: Ty<'tcx>) -> RawTy<'tcx> {
-        RawTy { raw: ty, normalized: self.normalize(span, ty) }
-    }
-
-    pub fn to_ty(&self, ast_t: &hir::Ty<'tcx>) -> RawTy<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
         let t = self.astconv().ast_ty_to_ty(ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
-        self.handle_raw_ty(ast_t.span, t)
+        LoweredTy::from_raw(self, ast_t.span, t)
     }
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -396,7 +392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty.normalized
     }
 
-    pub(super) fn user_args_for_adt(ty: RawTy<'tcx>) -> UserArgs<'tcx> {
+    pub(super) fn user_args_for_adt(ty: LoweredTy<'tcx>) -> UserArgs<'tcx> {
         match (ty.raw.kind(), ty.normalized.kind()) {
             (ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
             (_, ty::Adt(adt, args)) => UserArgs {
@@ -801,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
-    ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
+    ) -> (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
             qpath, hir_id, span
@@ -825,7 +821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 let ty = self.astconv().ast_ty_to_ty_in_path(qself);
-                (self.handle_raw_ty(span, ty), qself, segment)
+                (LoweredTy::from_raw(self, span, ty), qself, segment)
             }
             QPath::LangItem(..) => {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
@@ -1074,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn instantiate_value_path(
         &self,
         segments: &'tcx [hir::PathSegment<'tcx>],
-        self_ty: Option<RawTy<'tcx>>,
+        self_ty: Option<LoweredTy<'tcx>>,
         res: Res,
         span: Span,
         hir_id: hir::HirId,
@@ -1201,8 +1197,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             path_segs.last().is_some_and(|PathSeg(def_id, _)| tcx.generics_of(*def_id).has_self);
 
         let (res, self_ctor_args) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty =
-                self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id).instantiate_identity());
+            let ty = LoweredTy::from_raw(
+                self,
+                span,
+                tcx.at(span).type_of(impl_def_id).instantiate_identity(),
+            );
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
