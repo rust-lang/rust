@@ -331,6 +331,11 @@ pub(crate) fn complete_expr_path(
 
 pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) {
     let _p = tracing::span!(tracing::Level::INFO, "complete_expr").entered();
+
+    if !ctx.config.enable_term_search {
+        return;
+    }
+
     if !ctx.qualifier_ctx.none() {
         return;
     }

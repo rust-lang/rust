@@ -902,6 +902,11 @@
                     },
                     "type": "object"
                 },
+                "rust-analyzer.completion.term.search.enable": {
+                    "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",
                     "default": [],

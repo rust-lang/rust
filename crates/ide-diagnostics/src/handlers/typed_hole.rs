@@ -1,13 +1,12 @@
 use hir::{
     db::ExpandDatabase,
     term_search::{term_search, TermSearchCtx},
-    ClosureStyle, HirDisplay, Semantics,
+    ClosureStyle, HirDisplay,
 };
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
     label::Label,
     source_change::SourceChange,
-    RootDatabase,
 };
 use itertools::Itertools;
 use text_edit::TextEdit;
@@ -29,7 +28,7 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
                 "invalid `_` expression, expected type `{}`",
                 d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
             ),
-            fixes(&ctx.sema, d),
+            fixes(ctx, d),
         )
     };
 
@@ -37,21 +36,30 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
         .with_fixes(fixes)
 }
 
-fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::TypedHole) -> Option<Vec<Assist>> {
-    let db = sema.db;
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>> {
+    let db = ctx.sema.db;
     let root = db.parse_or_expand(d.expr.file_id);
     let (original_range, _) =
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
-    let scope = sema.scope(d.expr.value.to_node(&root).syntax())?;
+    let scope = ctx.sema.scope(d.expr.value.to_node(&root).syntax())?;
 
-    let ctx =
-        TermSearchCtx { sema, scope: &scope, goal: d.expected.clone(), config: Default::default() };
-    let paths = term_search(&ctx);
+    let term_search_ctx = TermSearchCtx {
+        sema: &ctx.sema,
+        scope: &scope,
+        goal: d.expected.clone(),
+        config: Default::default(),
+    };
+    let paths = term_search(&term_search_ctx);
 
     let mut assists = vec![];
     let mut formatter = |_: &hir::Type| String::from("_");
     for path in paths.into_iter().unique() {
-        let code = path.gen_source_code(&scope, &mut formatter);
+        let code = path.gen_source_code(
+            &scope,
+            &mut formatter,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        );
 
         assists.push(Assist {
             id: AssistId("typed-hole", AssistKind::QuickFix),

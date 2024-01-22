@@ -760,7 +760,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                 .count();
 
             // Ignore bigger number of generics for now as they kill the performance
-            if non_default_type_params_len > 0 {
+            if non_default_type_params_len > 1 {
                 return None;
             }
 

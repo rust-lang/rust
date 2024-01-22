@@ -11,7 +11,12 @@ use crate::{
 };
 
 /// Helper function to get path to `ModuleDef`
-fn mod_item_path(sema_scope: &SemanticsScope<'_>, def: &ModuleDef) -> Option<ModPath> {
+fn mod_item_path(
+    sema_scope: &SemanticsScope<'_>,
+    def: &ModuleDef,
+    prefer_no_std: bool,
+    prefer_prelude: bool,
+) -> Option<ModPath> {
     let db = sema_scope.db;
     // Account for locals shadowing items from module
     let name_hit_count = def.name(db).map(|def_name| {
@@ -26,25 +31,43 @@ fn mod_item_path(sema_scope: &SemanticsScope<'_>, def: &ModuleDef) -> Option<Mod
 
     let m = sema_scope.module();
     match name_hit_count {
-        Some(0..=1) | None => m.find_use_path(db.upcast(), *def, false, true),
-        Some(_) => m.find_use_path_prefixed(db.upcast(), *def, PrefixKind::ByCrate, false, true),
+        Some(0..=1) | None => m.find_use_path(db.upcast(), *def, prefer_no_std, prefer_prelude),
+        Some(_) => m.find_use_path_prefixed(
+            db.upcast(),
+            *def,
+            PrefixKind::ByCrate,
+            prefer_no_std,
+            prefer_prelude,
+        ),
     }
 }
 
 /// Helper function to get path to `ModuleDef` as string
-fn mod_item_path_str(sema_scope: &SemanticsScope<'_>, def: &ModuleDef) -> String {
-    let path = mod_item_path(sema_scope, def);
+fn mod_item_path_str(
+    sema_scope: &SemanticsScope<'_>,
+    def: &ModuleDef,
+    prefer_no_std: bool,
+    prefer_prelude: bool,
+) -> String {
+    let path = mod_item_path(sema_scope, def, prefer_no_std, prefer_prelude);
     path.map(|it| it.display(sema_scope.db.upcast()).to_string()).unwrap()
 }
 
 /// Helper function to get path to `Type`
-fn type_path(sema_scope: &SemanticsScope<'_>, ty: &Type) -> String {
+fn type_path(
+    sema_scope: &SemanticsScope<'_>,
+    ty: &Type,
+    prefer_no_std: bool,
+    prefer_prelude: bool,
+) -> String {
     let db = sema_scope.db;
     match ty.as_adt() {
         Some(adt) => {
             let ty_name = ty.display(db).to_string();
 
-            let mut path = mod_item_path(sema_scope, &ModuleDef::Adt(adt)).unwrap();
+            let mut path =
+                mod_item_path(sema_scope, &ModuleDef::Adt(adt), prefer_no_std, prefer_prelude)
+                    .unwrap();
             path.pop_segment();
             let path = path.display(db.upcast()).to_string();
             match path.is_empty() {
@@ -125,8 +148,11 @@ impl Expr {
         &self,
         sema_scope: &SemanticsScope<'_>,
         many_formatter: &mut dyn FnMut(&Type) -> String,
+        prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> String {
         let db = sema_scope.db;
+        let mod_item_path_str = |s, def| mod_item_path_str(s, def, prefer_no_std, prefer_prelude);
         match self {
             Expr::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
@@ -134,8 +160,12 @@ impl Expr {
             Expr::ConstParam(it) => return it.name(db).display(db.upcast()).to_string(),
             Expr::FamousType { value, .. } => return value.to_string(),
             Expr::Function { func, params, .. } => {
-                let args =
-                    params.iter().map(|f| f.gen_source_code(sema_scope, many_formatter)).join(", ");
+                let args = params
+                    .iter()
+                    .map(|f| {
+                        f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
+                    })
+                    .join(", ");
 
                 match func.as_assoc_item(db).map(|it| it.container(db)) {
                     Some(container) => {
@@ -146,10 +176,14 @@ impl Expr {
                             crate::AssocItemContainer::Impl(imp) => {
                                 let self_ty = imp.self_ty(db);
                                 // Should it be guaranteed that `mod_item_path` always exists?
-                                match self_ty
-                                    .as_adt()
-                                    .and_then(|adt| mod_item_path(sema_scope, &adt.into()))
-                                {
+                                match self_ty.as_adt().and_then(|adt| {
+                                    mod_item_path(
+                                        sema_scope,
+                                        &adt.into(),
+                                        prefer_no_std,
+                                        prefer_prelude,
+                                    )
+                                }) {
                                     Some(path) => path.display(sema_scope.db.upcast()).to_string(),
                                     None => self_ty.display(db).to_string(),
                                 }
@@ -171,9 +205,18 @@ impl Expr {
 
                 let func_name = func.name(db).display(db.upcast()).to_string();
                 let self_param = func.self_param(db).unwrap();
-                let target = target.gen_source_code(sema_scope, many_formatter);
-                let args =
-                    params.iter().map(|f| f.gen_source_code(sema_scope, many_formatter)).join(", ");
+                let target = target.gen_source_code(
+                    sema_scope,
+                    many_formatter,
+                    prefer_no_std,
+                    prefer_prelude,
+                );
+                let args = params
+                    .iter()
+                    .map(|f| {
+                        f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
+                    })
+                    .join(", ");
 
                 match func.as_assoc_item(db).and_then(|it| it.containing_trait_or_trait_impl(db)) {
                     Some(trait_) => {
@@ -196,8 +239,10 @@ impl Expr {
                 let generics_str = match generics.is_empty() {
                     true => String::new(),
                     false => {
-                        let generics =
-                            generics.iter().map(|it| type_path(sema_scope, it)).join(", ");
+                        let generics = generics
+                            .iter()
+                            .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                            .join(", ");
                         format!("::<{generics}>")
                     }
                 };
@@ -205,7 +250,14 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|f| f.gen_source_code(sema_scope, many_formatter))
+                            .map(|f| {
+                                f.gen_source_code(
+                                    sema_scope,
+                                    many_formatter,
+                                    prefer_no_std,
+                                    prefer_prelude,
+                                )
+                            })
                             .join(", ");
                         format!("{generics_str}({args})")
                     }
@@ -218,7 +270,12 @@ impl Expr {
                                 format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()).to_string(),
-                                    a.gen_source_code(sema_scope, many_formatter)
+                                    a.gen_source_code(
+                                        sema_scope,
+                                        many_formatter,
+                                        prefer_no_std,
+                                        prefer_prelude
+                                    )
                                 )
                             })
                             .join(", ");
@@ -236,7 +293,14 @@ impl Expr {
                     StructKind::Tuple => {
                         let args = params
                             .iter()
-                            .map(|a| a.gen_source_code(sema_scope, many_formatter))
+                            .map(|a| {
+                                a.gen_source_code(
+                                    sema_scope,
+                                    many_formatter,
+                                    prefer_no_std,
+                                    prefer_prelude,
+                                )
+                            })
                             .join(", ");
                         format!("({args})")
                     }
@@ -249,7 +313,12 @@ impl Expr {
                                 format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()).to_string(),
-                                    a.gen_source_code(sema_scope, many_formatter)
+                                    a.gen_source_code(
+                                        sema_scope,
+                                        many_formatter,
+                                        prefer_no_std,
+                                        prefer_prelude
+                                    )
                                 )
                             })
                             .join(", ");
@@ -258,8 +327,10 @@ impl Expr {
                     StructKind::Unit => match generics.is_empty() {
                         true => String::new(),
                         false => {
-                            let generics =
-                                generics.iter().map(|it| type_path(sema_scope, it)).join(", ");
+                            let generics = generics
+                                .iter()
+                                .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                                .join(", ");
                             format!("::<{generics}>")
                         }
                     },
@@ -273,7 +344,8 @@ impl Expr {
                     return many_formatter(&expr.ty(db));
                 }
 
-                let strukt = expr.gen_source_code(sema_scope, many_formatter);
+                let strukt =
+                    expr.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude);
                 let field = field.name(db).display(db.upcast()).to_string();
                 format!("{strukt}.{field}")
             }
@@ -282,7 +354,8 @@ impl Expr {
                     return many_formatter(&expr.ty(db));
                 }
 
-                let inner = expr.gen_source_code(sema_scope, many_formatter);
+                let inner =
+                    expr.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude);
                 format!("&{inner}")
             }
             Expr::Many(ty) => many_formatter(ty),

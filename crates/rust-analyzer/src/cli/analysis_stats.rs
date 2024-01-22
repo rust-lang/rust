@@ -432,7 +432,7 @@ impl flags::AnalysisStats {
                 let mut formatter = |_: &hir::Type| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
-                    let generated = term.gen_source_code(&scope, &mut formatter);
+                    let generated = term.gen_source_code(&scope, &mut formatter, false, true);
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks

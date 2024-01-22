@@ -38,7 +38,12 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let mut formatter = |_: &hir::Type| String::from("todo!()");
     for path in paths.iter().unique() {
-        let code = path.gen_source_code(&scope, &mut formatter);
+        let code = path.gen_source_code(
+            &scope,
+            &mut formatter,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        );
         acc.add_group(
             &GroupLabel(String::from("Term search")),
             AssistId("term_search", AssistKind::Generate),
