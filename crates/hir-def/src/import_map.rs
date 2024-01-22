@@ -396,7 +396,7 @@ impl Query {
 pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: CrateId,
-    ref query: Query,
+    query: &Query,
 ) -> FxHashSet<ItemInNs> {
     let _p = tracing::span!(tracing::Level::INFO, "search_dependencies", ?query).entered();
 
@@ -516,7 +516,7 @@ mod tests {
             })
             .expect("could not find crate");
 
-        let actual = search_dependencies(db.upcast(), krate, query)
+        let actual = search_dependencies(db.upcast(), krate, &query)
             .into_iter()
             .filter_map(|dependency| {
                 let dependency_krate = dependency.krate(db.upcast())?;

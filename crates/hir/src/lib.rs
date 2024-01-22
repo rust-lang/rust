@@ -236,7 +236,7 @@ impl Crate {
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
         let _p = tracing::span!(tracing::Level::INFO, "query_external_importables");
-        import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| {
+        import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
             match ItemInNs::from(item) {
                 ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
                 ItemInNs::Macros(mac_id) => Either::Right(mac_id),
