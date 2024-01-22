@@ -1,4 +1,5 @@
 // run-pass
+#![allow(unreachable_patterns)]
 
 #[derive(Copy, Clone)]
 #[allow(dead_code)]

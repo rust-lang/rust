@@ -148,7 +148,7 @@ lint_builtin_unsafe_impl = implementation of an `unsafe` trait
 
 lint_builtin_unsafe_trait = declaration of an `unsafe` trait
 
-lint_builtin_unstable_features = unstable feature
+lint_builtin_unstable_features = use of an unstable feature
 
 lint_builtin_unused_doc_comment = unused doc comment
     .label = rustdoc does not generate documentation for {$kind}

@@ -11,3 +11,4 @@ impl<const N: u64> Q for [u8; N] {
 }
 
 pub fn test() -> [u8; <[u8; 13] as Q>::ASSOC] { todo!() }
+//~^ ERROR: the constant `13` is not of type `u64`
