@@ -4,6 +4,7 @@ error: call to unsafe function `unsf` is unsafe and requires unsafe block (error
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:8:1
@@ -22,6 +23,7 @@ error: dereference of raw pointer is unsafe and requires unsafe block (error E01
 LL |     *PTR;
    |     ^^^^ dereference of raw pointer
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error: use of mutable static is unsafe and requires unsafe block (error E0133)
@@ -30,6 +32,7 @@ error: use of mutable static is unsafe and requires unsafe block (error E0133)
 LL |     VOID = ();
    |     ^^^^ use of mutable static
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error: unnecessary `unsafe` block
@@ -50,6 +53,7 @@ error: call to unsafe function `unsf` is unsafe and requires unsafe block (error
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:23:1
@@ -69,6 +73,7 @@ error: dereference of raw pointer is unsafe and requires unsafe block (error E01
 LL |     *PTR;
    |     ^^^^ dereference of raw pointer
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error: use of mutable static is unsafe and requires unsafe block (error E0133)
@@ -77,6 +82,7 @@ error: use of mutable static is unsafe and requires unsafe block (error E0133)
 LL |     VOID = ();
    |     ^^^^ use of mutable static
    |
+   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error: unnecessary `unsafe` block

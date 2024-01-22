@@ -17,6 +17,7 @@ LL |             1 | -3..0 => first_or.push(x),
    = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
 
 error[E0658]: exclusive range pattern syntax is experimental
   --> $DIR/range_pat_interactions3.rs:12:18
@@ -27,6 +28,7 @@ LL |             y @ (0..5 | 6) => or_two.push(y),
    = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
 
 error[E0658]: exclusive range pattern syntax is experimental
   --> $DIR/range_pat_interactions3.rs:14:17
@@ -37,6 +39,7 @@ LL |             y @ 0..const { 5 + 1 } => assert_eq!(y, 5),
    = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
 
 error[E0658]: exclusive range pattern syntax is experimental
   --> $DIR/range_pat_interactions3.rs:18:17
@@ -47,6 +50,7 @@ LL |             y @ ..-7 => assert_eq!(y, -8),
    = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
    = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
 
 error: aborting due to 5 previous errors
 

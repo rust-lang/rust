@@ -23,10 +23,25 @@ pub type Dtor = unsafe extern "C" fn(*mut u8);
 
 const TLS_MEMORY_SIZE: usize = 4096;
 
-/// TLS keys start at `1` to mimic POSIX.
+/// TLS keys start at `1`. Index `0` is unused
+#[cfg(not(test))]
+#[export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE"]
 static TLS_KEY_INDEX: AtomicUsize = AtomicUsize::new(1);
 
-fn tls_ptr_addr() -> *mut usize {
+#[cfg(not(test))]
+#[export_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key9DTORSE"]
+static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
+
+#[cfg(test)]
+extern "Rust" {
+    #[link_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE"]
+    static TLS_KEY_INDEX: AtomicUsize;
+
+    #[link_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key9DTORSE"]
+    static DTORS: AtomicPtr<Node>;
+}
+
+fn tls_ptr_addr() -> *mut *mut u8 {
     let mut tp: usize;
     unsafe {
         asm!(
@@ -34,50 +49,50 @@ fn tls_ptr_addr() -> *mut usize {
             out(reg) tp,
         );
     }
-    core::ptr::from_exposed_addr_mut::<usize>(tp)
+    core::ptr::from_exposed_addr_mut::<*mut u8>(tp)
 }
 
 /// Create an area of memory that's unique per thread. This area will
 /// contain all thread local pointers.
-fn tls_ptr() -> *mut usize {
-    let mut tp = tls_ptr_addr();
+fn tls_table() -> &'static mut [*mut u8] {
+    let tp = tls_ptr_addr();
 
+    if !tp.is_null() {
+        return unsafe {
+            core::slice::from_raw_parts_mut(tp, TLS_MEMORY_SIZE / core::mem::size_of::<*mut u8>())
+        };
+    }
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
-    if tp.is_null() {
-        tp = unsafe {
-            map_memory(
-                None,
-                None,
-                TLS_MEMORY_SIZE / core::mem::size_of::<usize>(),
-                MemoryFlags::R | MemoryFlags::W,
-            )
-        }
+    let tp = unsafe {
+        map_memory(
+            None,
+            None,
+            TLS_MEMORY_SIZE / core::mem::size_of::<*mut u8>(),
+            MemoryFlags::R | MemoryFlags::W,
+        )
         .expect("Unable to allocate memory for thread local storage")
-        .as_mut_ptr();
+    };
 
-        unsafe {
-            // Key #0 is currently unused.
-            (tp).write_volatile(0);
+    for val in tp.iter() {
+        assert!(*val as usize == 0);
+    }
 
-            // Set the thread's `$tp` register
-            asm!(
-                "mv tp, {}",
-                in(reg) tp as usize,
-            );
-        }
+    unsafe {
+        // Set the thread's `$tp` register
+        asm!(
+            "mv tp, {}",
+            in(reg) tp.as_mut_ptr() as usize,
+        );
     }
     tp
 }
 
-/// Allocate a new TLS key. These keys are shared among all threads.
-fn tls_alloc() -> usize {
-    TLS_KEY_INDEX.fetch_add(1, SeqCst)
-}
-
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
-    let key = tls_alloc();
+    // Allocate a new TLS key. These keys are shared among all threads.
+    #[allow(unused_unsafe)]
+    let key = unsafe { TLS_KEY_INDEX.fetch_add(1, SeqCst) };
     if let Some(f) = dtor {
         unsafe { register_dtor(key, f) };
     }
@@ -87,18 +102,20 @@ pub unsafe fn create(dtor: Option<Dtor>) -> Key {
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
     assert!((key < 1022) && (key >= 1));
-    unsafe { tls_ptr().add(key).write_volatile(value as usize) };
+    let table = tls_table();
+    table[key] = value;
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
     assert!((key < 1022) && (key >= 1));
-    core::ptr::from_exposed_addr_mut::<u8>(unsafe { tls_ptr().add(key).read_volatile() })
+    tls_table()[key]
 }
 
 #[inline]
 pub unsafe fn destroy(_key: Key) {
-    panic!("can't destroy keys on Xous");
+    // Just leak the key. Probably not great on long-running systems that create
+    // lots of TLS variables, but in practice that's not an issue.
 }
 
 // -------------------------------------------------------------------------
@@ -127,8 +144,6 @@ pub unsafe fn destroy(_key: Key) {
 // key but also a slot for the destructor queue on windows. An optimization for
 // another day!
 
-static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
-
 struct Node {
     dtor: Dtor,
     key: Key,
@@ -138,10 +153,12 @@ struct Node {
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
     let mut node = ManuallyDrop::new(Box::new(Node { key, dtor, next: ptr::null_mut() }));
 
-    let mut head = DTORS.load(SeqCst);
+    #[allow(unused_unsafe)]
+    let mut head = unsafe { DTORS.load(SeqCst) };
     loop {
         node.next = head;
-        match DTORS.compare_exchange(head, &mut **node, SeqCst, SeqCst) {
+        #[allow(unused_unsafe)]
+        match unsafe { DTORS.compare_exchange(head, &mut **node, SeqCst, SeqCst) } {
             Ok(_) => return, // nothing to drop, we successfully added the node to the list
             Err(cur) => head = cur,
         }
@@ -155,6 +172,7 @@ pub unsafe fn destroy_tls() {
     if tp.is_null() {
         return;
     }
+
     unsafe { run_dtors() };
 
     // Finally, free the TLS array
@@ -169,12 +187,19 @@ pub unsafe fn destroy_tls() {
 
 unsafe fn run_dtors() {
     let mut any_run = true;
+
+    // Run the destructor "some" number of times. This is 5x on Windows,
+    // so we copy it here. This allows TLS variables to create new
+    // TLS variables upon destruction that will also get destroyed.
+    // Keep going until we run out of tries or until we have nothing
+    // left to destroy.
     for _ in 0..5 {
         if !any_run {
             break;
         }
         any_run = false;
-        let mut cur = DTORS.load(SeqCst);
+        #[allow(unused_unsafe)]
+        let mut cur = unsafe { DTORS.load(SeqCst) };
         while !cur.is_null() {
             let ptr = unsafe { get((*cur).key) };
 
