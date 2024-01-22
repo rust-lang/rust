@@ -1,7 +1,8 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DelayedBugKind, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Level,
-    MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DelayedBugKind, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
+    ErrCode, Level, MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart,
+    SuggestionStyle,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -104,7 +105,7 @@ pub struct Diagnostic {
     pub(crate) level: Level,
 
     pub messages: Vec<(DiagnosticMessage, Style)>,
-    pub code: Option<String>,
+    pub code: Option<ErrCode>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
@@ -893,8 +894,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn code(&mut self, s: String) -> &mut Self {
-        self.code = Some(s);
+    pub fn code(&mut self, code: ErrCode) -> &mut Self {
+        self.code = Some(code);
         self
     }
 
@@ -903,8 +904,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn get_code(&self) -> Option<&str> {
-        self.code.as_deref()
+    pub fn get_code(&self) -> Option<ErrCode> {
+        self.code
     }
 
     pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
@@ -990,7 +991,7 @@ impl Diagnostic {
         &Level,
         &[(DiagnosticMessage, Style)],
         Vec<(&Cow<'static, str>, &DiagnosticArgValue<'static>)>,
-        &Option<String>,
+        &Option<ErrCode>,
         &Option<IsLint>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,

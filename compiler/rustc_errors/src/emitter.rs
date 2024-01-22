@@ -17,8 +17,8 @@ use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
-    FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
-    SuggestionStyle, TerminalUrl,
+    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -1309,7 +1309,7 @@ impl HumanEmitter {
         msp: &MultiSpan,
         msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<String>,
+        code: &Option<ErrCode>,
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
@@ -1340,9 +1340,9 @@ impl HumanEmitter {
                 buffer.append(0, "[", Style::Level(*level));
                 let code = if let TerminalUrl::Yes = self.terminal_url {
                     let path = "https://doc.rust-lang.org/error_codes";
-                    Cow::Owned(format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07"))
+                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
                 } else {
-                    Cow::Borrowed(code)
+                    code.to_string()
                 };
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
@@ -2076,7 +2076,7 @@ impl HumanEmitter {
         level: &Level,
         messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<String>,
+        code: &Option<ErrCode>,
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],

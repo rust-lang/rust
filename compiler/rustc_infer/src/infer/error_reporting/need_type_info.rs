@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
+use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -43,12 +43,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<String> for TypeAnnotationNeeded {
-    fn into(self) -> String {
+impl Into<ErrCode> for TypeAnnotationNeeded {
+    fn into(self) -> ErrCode {
         match self {
-            Self::E0282 => rustc_errors::error_code!(E0282),
-            Self::E0283 => rustc_errors::error_code!(E0283),
-            Self::E0284 => rustc_errors::error_code!(E0284),
+            Self::E0282 => E0282,
+            Self::E0283 => E0283,
+            Self::E0284 => E0284,
         }
     }
 }

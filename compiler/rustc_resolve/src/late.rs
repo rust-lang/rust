@@ -16,7 +16,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{Applicability, DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{
+    codes::*, struct_span_code_err, Applicability, DiagnosticArgValue, ErrCode, IntoDiagnosticArg,
+};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -533,21 +535,20 @@ impl<'a> PathSource<'a> {
         }
     }
 
-    fn error_code(self, has_unexpected_resolution: bool) -> String {
-        use rustc_errors::error_code;
+    fn error_code(self, has_unexpected_resolution: bool) -> ErrCode {
         match (self, has_unexpected_resolution) {
-            (PathSource::Trait(_), true) => error_code!(E0404),
-            (PathSource::Trait(_), false) => error_code!(E0405),
-            (PathSource::Type, true) => error_code!(E0573),
-            (PathSource::Type, false) => error_code!(E0412),
-            (PathSource::Struct, true) => error_code!(E0574),
-            (PathSource::Struct, false) => error_code!(E0422),
-            (PathSource::Expr(..), true) | (PathSource::Delegation, true) => error_code!(E0423),
-            (PathSource::Expr(..), false) | (PathSource::Delegation, false) => error_code!(E0425),
-            (PathSource::Pat | PathSource::TupleStruct(..), true) => error_code!(E0532),
-            (PathSource::Pat | PathSource::TupleStruct(..), false) => error_code!(E0531),
-            (PathSource::TraitItem(..), true) => error_code!(E0575),
-            (PathSource::TraitItem(..), false) => error_code!(E0576),
+            (PathSource::Trait(_), true) => E0404,
+            (PathSource::Trait(_), false) => E0405,
+            (PathSource::Type, true) => E0573,
+            (PathSource::Type, false) => E0412,
+            (PathSource::Struct, true) => E0574,
+            (PathSource::Struct, false) => E0422,
+            (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
+            (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
+            (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
+            (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
+            (PathSource::TraitItem(..), true) => E0575,
+            (PathSource::TraitItem(..), false) => E0576,
         }
     }
 }
@@ -1673,13 +1674,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     } else {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
-                    let mut diag = rustc_errors::struct_span_code_err!(
-                        self.r.dcx(),
-                        lifetime.ident.span,
-                        E0637,
-                        "{}",
-                        msg,
-                    );
+                    let mut diag =
+                        struct_span_code_err!(self.r.dcx(), lifetime.ident.span, E0637, "{}", msg,);
                     diag.span_label(lifetime.ident.span, note);
                     if elided {
                         for rib in self.lifetime_ribs[i..].iter().rev() {
@@ -1863,7 +1859,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
                     | LifetimeRibKind::AnonymousWarn(_) => {
                         let sess = self.r.tcx.sess;
-                        let mut err = rustc_errors::struct_span_code_err!(
+                        let mut err = struct_span_code_err!(
                             sess.dcx(),
                             path_span,
                             E0726,
@@ -2608,7 +2604,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if param.ident.name == kw::UnderscoreLifetime {
-                rustc_errors::struct_span_code_err!(
+                struct_span_code_err!(
                     self.r.dcx(),
                     param.ident.span,
                     E0637,
@@ -2622,7 +2618,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if param.ident.name == kw::StaticLifetime {
-                rustc_errors::struct_span_code_err!(
+                struct_span_code_err!(
                     self.r.dcx(),
                     param.ident.span,
                     E0262,
@@ -3164,10 +3160,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // The method kind does not correspond to what appeared in the trait, report.
         let path = &self.current_trait_ref.as_ref().unwrap().1.path;
         let (code, kind) = match kind {
-            AssocItemKind::Const(..) => (rustc_errors::error_code!(E0323), "const"),
-            AssocItemKind::Fn(..) => (rustc_errors::error_code!(E0324), "method"),
-            AssocItemKind::Type(..) => (rustc_errors::error_code!(E0325), "type"),
-            AssocItemKind::Delegation(..) => (rustc_errors::error_code!(E0324), "method"),
+            AssocItemKind::Const(..) => (E0323, "const"),
+            AssocItemKind::Fn(..) => (E0324, "method"),
+            AssocItemKind::Type(..) => (E0325, "type"),
+            AssocItemKind::Delegation(..) => (E0324, "method"),
             AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
         let trait_path = path_names_to_string(path);

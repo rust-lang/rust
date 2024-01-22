@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_errors::{DiagnosticArgValue, DiagnosticMessage};
+use rustc_errors::{codes::*, DiagnosticArgValue, DiagnosticMessage};
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;
 
 #[derive(Diagnostic)]
-#[diag(middle_drop_check_overflow, code = "E0320")]
+#[diag(middle_drop_check_overflow, code = E0320)]
 #[note]
 pub struct DropCheckOverflow<'tcx> {
     #[primary_span]

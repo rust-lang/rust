@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{Diagnostic, StashKey};
+use rustc_errors::{codes::*, Diagnostic, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};

@@ -9,8 +9,8 @@ use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticMessage, Emitter, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Style, SubDiagnostic,
+    CodeSuggestion, Diagnostic, DiagnosticMessage, Emitter, ErrCode, FluentBundle,
+    LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
 };
 use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use rustc_data_structures::sync::Lrc;
@@ -127,7 +127,7 @@ impl AnnotateSnippetEmitter {
         level: &Level,
         messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<String>,
+        code: &Option<ErrCode>,
         msp: &MultiSpan,
         _children: &[SubDiagnostic],
         _suggestions: &[CodeSuggestion],
@@ -178,6 +178,7 @@ impl AnnotateSnippetEmitter {
                         .collect::<Vec<Owned>>()
                 })
                 .collect();
+            let code = code.map(|code| code.to_string());
             let snippet = Snippet {
                 title: Some(Annotation {
                     label: Some(&message),

@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_code_err, DiagnosticMessage};
+use rustc_errors::{codes::*, struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
