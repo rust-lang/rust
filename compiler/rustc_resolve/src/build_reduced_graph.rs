@@ -1029,9 +1029,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
         }
 
-        let macro_use_import = |this: &Self, span| {
+        let macro_use_import = |this: &Self, span, warn_private| {
             this.r.arenas.alloc_import(ImportData {
-                kind: ImportKind::MacroUse,
+                kind: ImportKind::MacroUse { warn_private },
                 root_id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
@@ -1048,11 +1048,25 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         let allow_shadowing = self.parent_scope.expansion == LocalExpnId::ROOT;
         if let Some(span) = import_all {
-            let import = macro_use_import(self, span);
+            let import = macro_use_import(self, span, false);
             self.r.potentially_unused_imports.push(import);
             module.for_each_child(self, |this, ident, ns, binding| {
                 if ns == MacroNS {
-                    let imported_binding = this.r.import(binding, import);
+                    let imported_binding =
+                        if this.r.is_accessible_from(binding.vis, this.parent_scope.module) {
+                            this.r.import(binding, import)
+                        } else if !this.r.is_builtin_macro(binding.res())
+                            && !this.r.macro_use_prelude.contains_key(&ident.name)
+                        {
+                            // - `!r.is_builtin_macro(res)` excluding the built-in macros such as `Debug` or `Hash`.
+                            // - `!r.macro_use_prelude.contains_key(name)` excluding macros defined in other extern
+                            //    crates such as `std`.
+                            // FIXME: This branch should eventually be removed.
+                            let import = macro_use_import(this, span, true);
+                            this.r.import(binding, import)
+                        } else {
+                            return;
+                        };
                     this.add_macro_use_binding(ident.name, imported_binding, span, allow_shadowing);
                 }
             });
@@ -1065,7 +1079,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     &self.parent_scope,
                 );
                 if let Ok(binding) = result {
-                    let import = macro_use_import(self, ident.span);
+                    let import = macro_use_import(self, ident.span, false);
                     self.r.potentially_unused_imports.push(import);
                     let imported_binding = self.r.import(binding, import);
                     self.add_macro_use_binding(
