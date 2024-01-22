@@ -28,7 +28,8 @@ pub const m_test: test::TestDescAndFn =
             should_panic: test::ShouldPanic::No,
             test_type: test::TestType::Unknown,
         },
-        testfn: test::StaticTestFn(|| test::assert_test_result(m_test())),
+        testfn: test::StaticTestFn(#[coverage(off)] ||
+                test::assert_test_result(m_test())),
     };
 fn m_test() {}
 
@@ -51,7 +52,8 @@ pub const z_test: test::TestDescAndFn =
             should_panic: test::ShouldPanic::No,
             test_type: test::TestType::Unknown,
         },
-        testfn: test::StaticTestFn(|| test::assert_test_result(z_test())),
+        testfn: test::StaticTestFn(#[coverage(off)] ||
+                test::assert_test_result(z_test())),
     };
 #[ignore = "not yet implemented"]
 fn z_test() {}
@@ -75,7 +77,8 @@ pub const a_test: test::TestDescAndFn =
             should_panic: test::ShouldPanic::No,
             test_type: test::TestType::Unknown,
         },
-        testfn: test::StaticTestFn(|| test::assert_test_result(a_test())),
+        testfn: test::StaticTestFn(#[coverage(off)] ||
+                test::assert_test_result(a_test())),
     };
 fn a_test() {}
 #[rustc_main]
