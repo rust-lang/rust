@@ -93,6 +93,7 @@ pub mod aligned;
 pub mod frozen;
 mod hashes;
 pub mod owned_slice;
+pub mod packed;
 pub mod sso;
 pub mod steal;
 pub mod tagged_ptr;

@@ -151,7 +151,7 @@ impl ArithmeticSideEffects {
         if let hir::ExprKind::Lit(lit) = actual.kind
             && let ast::LitKind::Int(n, _) = lit.node
         {
-            return Some(n);
+            return Some(n.get());
         }
         if let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), expr) {
             return Some(n);

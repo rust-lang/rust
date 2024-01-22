@@ -1899,7 +1899,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
         let lit = self.arena.alloc(hir::Lit {
             span: sp,
-            node: ast::LitKind::Int(value as u128, ast::LitIntType::Unsigned(ast::UintTy::Usize)),
+            node: ast::LitKind::Int(
+                (value as u128).into(),
+                ast::LitIntType::Unsigned(ast::UintTy::Usize),
+            ),
         });
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
@@ -1907,7 +1910,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
         let lit = self.arena.alloc(hir::Lit {
             span: sp,
-            node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ast::UintTy::U32)),
+            node: ast::LitKind::Int(
+                u128::from(value).into(),
+                ast::LitIntType::Unsigned(ast::UintTy::U32),
+            ),
         });
         self.expr(sp, hir::ExprKind::Lit(lit))
     }

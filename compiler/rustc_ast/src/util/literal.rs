@@ -366,7 +366,7 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
     };
 
     let s = &s[if base != 10 { 2 } else { 0 }..];
-    u128::from_str_radix(s, base).map(|i| LitKind::Int(i, ty)).map_err(|_| {
+    u128::from_str_radix(s, base).map(|i| LitKind::Int(i.into(), ty)).map_err(|_| {
         // Small bases are lexed as if they were base 10, e.g, the string
         // might be `0b10201`. This will cause the conversion above to fail,
         // but these kinds of errors are already reported by the lexer.

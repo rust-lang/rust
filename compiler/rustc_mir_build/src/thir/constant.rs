@@ -54,7 +54,7 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
             let scalar_int =
-                trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?;
+                trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })?;
             ty::ValTree::from_scalar_int(scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),

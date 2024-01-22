@@ -296,7 +296,7 @@ impl<'a> IncorrectReprFormatGenericCause<'a> {
     pub fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
         match kind {
             ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                Some(Self::Int { span, name, int: *int })
+                Some(Self::Int { span, name, int: int.get() })
             }
             ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol: *symbol }),
             _ => None,
