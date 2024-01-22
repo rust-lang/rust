@@ -140,7 +140,7 @@ function createCommands(): Record<string, CommandFactory> {
                     health: "stopped",
                 });
             },
-            disabled: (_) => async () => { },
+            disabled: (_) => async () => {},
         },
 
         analyzerStatus: { enabled: commands.analyzerStatus },
@@ -197,24 +197,28 @@ function conflictExtDetect() {
         vscode.window
             .showWarningMessage(
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
-                "plugins enabled. These are known to conflict and cause various functions of " +
-                "both plugins to not work correctly. You should disable one of them.",
-                "Got it"
+                    "plugins enabled. These are known to conflict and cause various functions of " +
+                    "both plugins to not work correctly. You should disable one of them.",
+                "Got it",
             )
-            .then(() => { }, console.error);
+            .then(() => {}, console.error);
     }
 
     if (vscode.extensions.getExtension("panicbit.cargo")) {
-        let isRustAnalyzerCheckOnSave = vscode.workspace.getConfiguration("rust-analyzer").get("checkOnSave");
-        let isCargoAutomaticCheck = vscode.workspace.getConfiguration("cargo").get("automaticCheck");
+        const isRustAnalyzerCheckOnSave = vscode.workspace
+            .getConfiguration("rust-analyzer")
+            .get("checkOnSave");
+        const isCargoAutomaticCheck = vscode.workspace
+            .getConfiguration("cargo")
+            .get("automaticCheck");
         if (isRustAnalyzerCheckOnSave && isCargoAutomaticCheck) {
             vscode.window
                 .showWarningMessage(
                     `You have Cargo (panicbit.cargo) enabled with 'cargo.automaticCheck' set to true(default), ` +
-                    "you can disable it or set {\"cargo.automaticCheck\": false} in settings.json to avoid invoke cargo twice",
-                    "Got it"
+                        'you can disable it or set {"cargo.automaticCheck": false} in settings.json to avoid invoke cargo twice',
+                    "Got it",
                 )
-                .then(() => { }, console.error);
+                .then(() => {}, console.error);
         }
     }
 }
