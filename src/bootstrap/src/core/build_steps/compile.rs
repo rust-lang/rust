@@ -803,7 +803,14 @@ impl Rustc {
 }
 
 impl Step for Rustc {
-    type Output = ();
+    // We return the stage of the "actual" compiler (not the uplifted one).
+    //
+    // By "actual" we refer to the uplifting logic where we may not compile the requested stage;
+    // instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
+    // specific situations where we request stage X from other steps. However we may end up
+    // uplifting it from stage Y, causing the other stage to fail when attempting to link with
+    // stage X which was never actually built.
+    type Output = u32;
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
 
@@ -834,7 +841,7 @@ impl Step for Rustc {
     /// This will build the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> u32 {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -848,7 +855,7 @@ impl Step for Rustc {
                 compiler,
                 builder.config.ci_rustc_dev_contents(),
             );
-            return;
+            return compiler.stage;
         }
 
         builder.ensure(Std::new(compiler, target));
@@ -857,7 +864,8 @@ impl Step for Rustc {
             builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
             builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
             builder.ensure(RustcLink::from_rustc(self, compiler));
-            return;
+
+            return compiler.stage;
         }
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
@@ -880,7 +888,7 @@ impl Step for Rustc {
             };
             builder.info(&msg);
             builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
-            return;
+            return compiler_to_use.stage;
         }
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
@@ -984,6 +992,8 @@ impl Step for Rustc {
             self,
             builder.compiler(compiler.stage, builder.config.build),
         ));
+
+        compiler.stage
     }
 }
 
@@ -1642,21 +1652,6 @@ impl Step for Assemble {
             return target_compiler;
         }
 
-        // Get the compiler that we'll use to bootstrap ourselves.
-        //
-        // Note that this is where the recursive nature of the bootstrap
-        // happens, as this will request the previous stage's compiler on
-        // downwards to stage 0.
-        //
-        // Also note that we're building a compiler for the host platform. We
-        // only assume that we can run `build` artifacts, which means that to
-        // produce some other architecture compiler we need to start from
-        // `build` to get there.
-        //
-        // FIXME: It may be faster if we build just a stage 1 compiler and then
-        //        use that to bootstrap this compiler forward.
-        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
-
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() {
             let sysroot =
@@ -1671,19 +1666,30 @@ impl Step for Assemble {
             return target_compiler;
         }
 
+        // Get the compiler that we'll use to bootstrap ourselves.
+        //
+        // Note that this is where the recursive nature of the bootstrap
+        // happens, as this will request the previous stage's compiler on
+        // downwards to stage 0.
+        //
+        // Also note that we're building a compiler for the host platform. We
+        // only assume that we can run `build` artifacts, which means that to
+        // produce some other architecture compiler we need to start from
+        // `build` to get there.
+        //
+        // FIXME: It may be faster if we build just a stage 1 compiler and then
+        //        use that to bootstrap this compiler forward.
+        let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        builder.ensure(Rustc::new(build_compiler, target_compiler.host));
-
-        // FIXME: For now patch over problems noted in #90244 by early returning here, even though
-        // we've not properly assembled the target sysroot. A full fix is pending further investigation,
-        // for now full bootstrap usage is rare enough that this is OK.
-        if target_compiler.stage >= 3 && !builder.config.full_bootstrap {
-            return target_compiler;
-        }
+        let actual_stage = builder.ensure(Rustc::new(build_compiler, target_compiler.host));
+        // Current build_compiler.stage might be uplifted instead of being built; so update it
+        // to not fail while linking the artifacts.
+        build_compiler.stage = actual_stage;
 
         for &backend in builder.config.rust_codegen_backends.iter() {
             if backend == "llvm" {
