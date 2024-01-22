@@ -484,6 +484,19 @@ impl DroplessArena {
         }
     }
 
+    /// Used by `Lift` to check whether this slice is allocated
+    /// in this arena.
+    #[inline]
+    pub fn contains_slice<T>(&self, slice: &[T]) -> bool {
+        for chunk in self.chunks.borrow_mut().iter_mut() {
+            let ptr = slice.as_ptr().cast::<u8>().cast_mut();
+            if chunk.start() <= ptr && chunk.end() >= ptr {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Allocates a string slice that is copied into the `DroplessArena`, returning a
     /// reference to it. Will panic if passed an empty string.
     ///
