@@ -34,8 +34,7 @@ $DIR/doctest.rs:
    LL|       |//!
    LL|       |//! doctest returning a result:
    LL|      1|//! ```
-   LL|      2|//! #[derive(Debug, PartialEq)]
-                       ^1
+   LL|      1|//! #[derive(Debug, PartialEq)]
    LL|      1|//! struct SomeError {
    LL|      1|//!     msg: String,
    LL|      1|//! }
@@ -63,7 +62,7 @@ $DIR/doctest.rs:
    LL|      1|//!     println!("called some_func()");
    LL|      1|//! }
    LL|       |//!
-   LL|      0|//! #[derive(Debug)]
+   LL|       |//! #[derive(Debug)]
    LL|       |//! struct SomeError;
    LL|       |//!
    LL|       |//! extern crate doctest_crate;
