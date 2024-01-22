@@ -181,7 +181,6 @@ non_canonical_partial_ord_impl = "allow"
 self_named_constructors = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
-useless_format = "allow"
 wildcard_in_or_patterns = "allow"
 wrong_self_convention = "allow"
 
