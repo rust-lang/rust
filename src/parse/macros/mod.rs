@@ -15,7 +15,7 @@ pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
 
 fn build_stream_parser<'a>(sess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
-    stream_to_parser(sess, tokens, MACRO_ARGUMENTS)
+    stream_to_parser(sess, tokens, MACRO_ARGUMENTS).recovery(Recovery::Forbidden)
 }
 
 fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
