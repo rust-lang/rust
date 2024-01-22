@@ -1,0 +1,24 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:12:9
+   |
+LL |       let _ = if true {
+   |  _____________-
+LL | |         foo()
+   | |         ----- expected because of this
+LL | |     } else {
+LL | |         Struct
+   | |         ^^^^^^ expected `Box<dyn Trait>`, found `Struct`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected struct `Box<dyn Trait>`
+              found struct `Struct`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Box::new(Struct)
+   |         +++++++++      +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
