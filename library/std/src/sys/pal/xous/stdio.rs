@@ -5,7 +5,7 @@ pub struct Stdout {}
 pub struct Stderr;
 
 use crate::os::xous::ffi::{lend, try_lend, try_scalar, Connection};
-use crate::os::xous::services::{log_server, try_connect, LogScalar};
+use crate::os::xous::services::{log_server, try_connect, LogLend, LogScalar};
 
 impl Stdin {
     pub const fn new() -> Stdin {
@@ -27,7 +27,7 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        #[repr(align(4096))]
+        #[repr(C, align(4096))]
         struct LendBuffer([u8; 4096]);
         let mut lend_buffer = LendBuffer([0u8; 4096]);
         let connection = log_server();
@@ -35,7 +35,8 @@ impl io::Write for Stdout {
             for (dest, src) in lend_buffer.0.iter_mut().zip(chunk) {
                 *dest = *src;
             }
-            lend(connection, 1, &lend_buffer.0, 0, chunk.len()).unwrap();
+            lend(connection, LogLend::StandardOutput.into(), &lend_buffer.0, 0, chunk.len())
+                .unwrap();
         }
         Ok(buf.len())
     }
@@ -53,7 +54,7 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        #[repr(align(4096))]
+        #[repr(C, align(4096))]
         struct LendBuffer([u8; 4096]);
         let mut lend_buffer = LendBuffer([0u8; 4096]);
         let connection = log_server();
@@ -61,7 +62,8 @@ impl io::Write for Stderr {
             for (dest, src) in lend_buffer.0.iter_mut().zip(chunk) {
                 *dest = *src;
             }
-            lend(connection, 1, &lend_buffer.0, 0, chunk.len()).unwrap();
+            lend(connection, LogLend::StandardError.into(), &lend_buffer.0, 0, chunk.len())
+                .unwrap();
         }
         Ok(buf.len())
     }
