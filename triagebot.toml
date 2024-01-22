@@ -1,3 +1,6 @@
+# This file's format is documented at
+# https://forge.rust-lang.org/triagebot/pr-assignment.html#configuration
+
 [relabel]
 allow-unauthenticated = [
     "A-*",
