@@ -7,6 +7,11 @@ fn foo() -> Box<dyn Trait> {
 }
 fn main() {
     let _ = if true {
+        Box::new(Struct)
+    } else {
+        foo() //~ ERROR E0308
+    };
+    let _ = if true {
         foo()
     } else {
         Box::new(Struct) //~ ERROR E0308

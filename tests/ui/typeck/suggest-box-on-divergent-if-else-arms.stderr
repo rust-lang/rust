@@ -3,6 +3,26 @@ error[E0308]: `if` and `else` have incompatible types
    |
 LL |       let _ = if true {
    |  _____________-
+LL | |         Struct
+   | |         ------ expected because of this
+LL | |     } else {
+LL | |         foo()
+   | |         ^^^^^ expected `Struct`, found `Box<dyn Trait>`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected struct `Struct`
+              found struct `Box<dyn Trait>`
+help: `Struct` implements `Trait` so you can box it to coerce to the trait object `Box<dyn Trait>`
+   |
+LL |         Box::new(Struct)
+   |         +++++++++      +
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-box-on-divergent-if-else-arms.rs:17:9
+   |
+LL |       let _ = if true {
+   |  _____________-
 LL | |         foo()
    | |         ----- expected because of this
 LL | |     } else {
@@ -19,6 +39,6 @@ help: store this in the heap by calling `Box::new`
 LL |         Box::new(Struct)
    |         +++++++++      +
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

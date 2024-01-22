@@ -330,6 +330,38 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
+                    (ty::Adt(_, _), ty::Adt(def, args))
+                        if let ObligationCauseCode::IfExpression(cause) = cause.code()
+                            && let hir::Node::Block(blk) = self.tcx.hir_node(cause.then_id)
+                            && let Some(then) = blk.expr
+                            && def.is_box()
+                            && let boxed_ty = args.type_at(0)
+                            && let ty::Dynamic(t, _, _) = boxed_ty.kind()
+                            && let Some(def_id) = t.principal_def_id()
+                            && let mut impl_def_ids = vec![]
+                            && let _ =
+                                tcx.for_each_relevant_impl(def_id, values.expected, |did| {
+                                    impl_def_ids.push(did)
+                                })
+                            && let [_] = &impl_def_ids[..] =>
+                    {
+                        // We have divergent if/else arms where the expected value is a type that
+                        // implements the trait of the found boxed trait object.
+                        diag.multipart_suggestion(
+                            format!(
+                                "`{}` implements `{}` so you can box it to coerce to the trait \
+                                 object `{}`",
+                                values.expected,
+                                tcx.item_name(def_id),
+                                values.found,
+                            ),
+                            vec![
+                                (then.span.shrink_to_lo(), "Box::new(".to_string()),
+                                (then.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            MachineApplicable,
+                        );
+                    }
                     _ => {}
                 }
                 debug!(
