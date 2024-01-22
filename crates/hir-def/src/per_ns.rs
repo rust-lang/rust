@@ -131,13 +131,11 @@ impl PerNs {
             .into_iter()
             .chain(
                 self.values
-                    .map(|it| (ItemInNs::Values(it.0), it.2.map(ImportOrExternCrate::Import)))
-                    .into_iter(),
+                    .map(|it| (ItemInNs::Values(it.0), it.2.map(ImportOrExternCrate::Import))),
             )
             .chain(
                 self.macros
-                    .map(|it| (ItemInNs::Macros(it.0), it.2.map(ImportOrExternCrate::Import)))
-                    .into_iter(),
+                    .map(|it| (ItemInNs::Macros(it.0), it.2.map(ImportOrExternCrate::Import))),
             )
     }
 }

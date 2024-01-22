@@ -1744,7 +1744,7 @@ impl Config {
     }
 
     pub fn main_loop_num_threads(&self) -> usize {
-        self.data.numThreads.unwrap_or(num_cpus::get_physical().try_into().unwrap_or(1))
+        self.data.numThreads.unwrap_or(num_cpus::get_physical())
     }
 
     pub fn typing_autoclose_angle(&self) -> bool {

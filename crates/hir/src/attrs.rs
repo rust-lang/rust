@@ -239,10 +239,9 @@ fn resolve_impl_trait_item(
 ) -> Option<DocLinkDef> {
     let canonical = ty.canonical();
     let krate = ty.krate(db);
-    let environment = resolver.generic_def().map_or_else(
-        || crate::TraitEnvironment::empty(krate.id).into(),
-        |d| db.trait_environment(d),
-    );
+    let environment = resolver
+        .generic_def()
+        .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
     let traits_in_scope = resolver.traits_in_scope(db.upcast());
 
     let mut result = None;

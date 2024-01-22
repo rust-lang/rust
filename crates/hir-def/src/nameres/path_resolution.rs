@@ -475,7 +475,7 @@ impl DefMap {
         let macro_use_prelude = || {
             self.macro_use_prelude.get(name).map_or(PerNs::none(), |&(it, _extern_crate)| {
                 PerNs::macros(
-                    it.into(),
+                    it,
                     Visibility::Public,
                     // FIXME?
                     None, // extern_crate.map(ImportOrExternCrate::ExternCrate),
