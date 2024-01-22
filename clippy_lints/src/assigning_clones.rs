@@ -76,25 +76,33 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
     let (target, kind, resolved_method) = match expr.kind {
         ExprKind::MethodCall(path, receiver, [], _span) => {
             let args = cx.typeck_results().node_args(expr.hir_id);
-            let resolved_method = Instance::resolve(cx.tcx, cx.param_env, fn_def_id, args);
+
+            // If we could not resolve the method, don't apply the lint
+            let Ok(Some(resolved_method)) = Instance::resolve(cx.tcx, cx.param_env, fn_def_id, args) else {
+                return None;
+            };
             if is_trait_method(cx, expr, sym::Clone) && path.ident.name == sym::clone {
                 (TargetTrait::Clone, CallKind::MethodCall { receiver }, resolved_method)
-            } else if is_trait_method(cx, expr, sym::ToOwned) && path.ident.name == sym!(to_owned) {
+            } else if is_trait_method(cx, expr, sym::ToOwned) && path.ident.name.as_str() == "to_owned" {
                 (TargetTrait::ToOwned, CallKind::MethodCall { receiver }, resolved_method)
             } else {
                 return None;
             }
         },
-        ExprKind::Call(function, args) if args.len() == 1 => {
+        ExprKind::Call(function, [arg]) => {
             let kind = cx.typeck_results().node_type(function.hir_id).kind();
-            let resolved_method = match kind {
+
+            // If we could not resolve the method, don't apply the lint
+            let Ok(Some(resolved_method)) = (match kind {
                 ty::FnDef(_, args) => Instance::resolve(cx.tcx, cx.param_env, fn_def_id, args),
-                _ => return None,
+                _ => Ok(None),
+            }) else {
+                return None;
             };
             if cx.tcx.is_diagnostic_item(sym::to_owned_method, fn_def_id) {
                 (
                     TargetTrait::ToOwned,
-                    CallKind::FunctionCall { self_arg: &args[0] },
+                    CallKind::FunctionCall { self_arg: arg },
                     resolved_method,
                 )
             } else if let Some(trait_did) = cx.tcx.trait_of_item(fn_def_id)
@@ -102,7 +110,7 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
             {
                 (
                     TargetTrait::Clone,
-                    CallKind::FunctionCall { self_arg: &args[0] },
+                    CallKind::FunctionCall { self_arg: arg },
                     resolved_method,
                 )
             } else {
@@ -110,10 +118,6 @@ fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<
             }
         },
         _ => return None,
-    };
-    let Ok(Some(resolved_method)) = resolved_method else {
-        // If we could not resolve the method, don't apply the lint
-        return None;
     };
 
     Some(CallCandidate {
@@ -144,7 +148,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
     };
 
     // If the method implementation comes from #[derive(Clone)], then don't suggest the lint.
-    // Automatically generated Clone impls do not override `clone_from`.
+    // Automatically generated Clone impls do not currently override `clone_from`.
     // See e.g. https://github.com/rust-lang/rust/pull/98445#issuecomment-1190681305 for more details.
     if cx.tcx.is_builtin_derived(impl_block) {
         return false;
@@ -160,7 +164,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         TargetTrait::ToOwned => cx.tcx.get_diagnostic_item(sym::ToOwned).and_then(|to_owned| {
             cx.tcx
                 .provided_trait_methods(to_owned)
-                .find(|item| item.name == sym!(clone_into))
+                .find(|item| item.name.as_str() == "clone_into")
         }),
     };
     let Some(provided_fn) = provided_fn else {
@@ -213,6 +217,7 @@ struct CallCandidate<'tcx> {
 }
 
 impl<'tcx> CallCandidate<'tcx> {
+    #[inline]
     fn message(&self) -> &'static str {
         match self.target {
             TargetTrait::Clone => "assigning the result of `Clone::clone()` may be inefficient",
@@ -220,6 +225,7 @@ impl<'tcx> CallCandidate<'tcx> {
         }
     }
 
+    #[inline]
     fn suggestion_msg(&self) -> &'static str {
         match self.target {
             TargetTrait::Clone => "use `clone_from()`",
@@ -269,9 +275,7 @@ impl<'tcx> CallCandidate<'tcx> {
                         // The RHS had to be exactly correct before the call, there is no auto-deref for function calls.
                         let rhs_sugg = Sugg::hir_with_applicability(cx, self_arg, "_", applicability);
 
-                        // TODO: how to get rid of the full path? Modify the function call function's (q)path? Or
-                        // auto-import it the trait?
-                        format!("::std::clone::Clone::clone_from({self_sugg}, {rhs_sugg})")
+                        format!("Clone::clone_from({self_sugg}, {rhs_sugg})")
                     },
                 }
             },
@@ -303,7 +307,7 @@ impl<'tcx> CallCandidate<'tcx> {
                     },
                     CallKind::FunctionCall { self_arg, .. } => {
                         let self_sugg = Sugg::hir_with_applicability(cx, self_arg, "_", applicability);
-                        format!("::std::borrow::ToOwned::clone_into({self_sugg}, {rhs_sugg})")
+                        format!("ToOwned::clone_into({self_sugg}, {rhs_sugg})")
                     },
                 }
             },

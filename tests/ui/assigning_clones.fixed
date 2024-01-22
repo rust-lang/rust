@@ -34,23 +34,23 @@ fn clone_method_lhs_val(mut mut_thing: HasCloneFrom, ref_thing: &HasCloneFrom) {
 }
 
 fn clone_function_lhs_mut_ref(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
-    ::std::clone::Clone::clone_from(mut_thing, ref_thing);
+    Clone::clone_from(mut_thing, ref_thing);
 }
 
 fn clone_function_lhs_val(mut mut_thing: HasCloneFrom, ref_thing: &HasCloneFrom) {
-    ::std::clone::Clone::clone_from(&mut mut_thing, ref_thing);
+    Clone::clone_from(&mut mut_thing, ref_thing);
 }
 
 fn clone_function_through_trait(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
-    ::std::clone::Clone::clone_from(mut_thing, ref_thing);
+    Clone::clone_from(mut_thing, ref_thing);
 }
 
 fn clone_function_through_type(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
-    ::std::clone::Clone::clone_from(mut_thing, ref_thing);
+    Clone::clone_from(mut_thing, ref_thing);
 }
 
 fn clone_function_fully_qualified(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
-    ::std::clone::Clone::clone_from(mut_thing, ref_thing);
+    Clone::clone_from(mut_thing, ref_thing);
 }
 
 fn clone_method_lhs_complex(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
@@ -164,11 +164,11 @@ fn owned_method_deref(mut_box_string: &mut HasDeref, ref_str: &str) {
 }
 
 fn owned_function_mut_ref(mut_thing: &mut String, ref_str: &str) {
-    ::std::borrow::ToOwned::clone_into(ref_str, mut_thing);
+    ToOwned::clone_into(ref_str, mut_thing);
 }
 
 fn owned_function_val(mut mut_thing: String, ref_str: &str) {
-    ::std::borrow::ToOwned::clone_into(ref_str, &mut mut_thing);
+    ToOwned::clone_into(ref_str, &mut mut_thing);
 }
 
 struct FakeToOwned;

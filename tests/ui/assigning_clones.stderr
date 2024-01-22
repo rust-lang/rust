@@ -23,31 +23,31 @@ error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:37:5
    |
 LL |     *mut_thing = Clone::clone(ref_thing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `::std::clone::Clone::clone_from(mut_thing, ref_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:41:5
    |
 LL |     mut_thing = Clone::clone(ref_thing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `::std::clone::Clone::clone_from(&mut mut_thing, ref_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(&mut mut_thing, ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:45:5
    |
 LL |     *mut_thing = Clone::clone(ref_thing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `::std::clone::Clone::clone_from(mut_thing, ref_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:49:5
    |
 LL |     *mut_thing = HasCloneFrom::clone(ref_thing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `::std::clone::Clone::clone_from(mut_thing, ref_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:53:5
    |
 LL |     *mut_thing = <HasCloneFrom as Clone>::clone(ref_thing);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `::std::clone::Clone::clone_from(mut_thing, ref_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `Clone::clone_from(mut_thing, ref_thing)`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> $DIR/assigning_clones.rs:58:5
@@ -95,13 +95,13 @@ error: assigning the result of `ToOwned::to_owned()` may be inefficient
   --> $DIR/assigning_clones.rs:167:5
    |
 LL |     *mut_thing = ToOwned::to_owned(ref_str);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `::std::borrow::ToOwned::clone_into(ref_str, mut_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, mut_thing)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
   --> $DIR/assigning_clones.rs:171:5
    |
 LL |     mut_thing = ToOwned::to_owned(ref_str);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `::std::borrow::ToOwned::clone_into(ref_str, &mut mut_thing)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, &mut mut_thing)`
 
 error: aborting due to 17 previous errors
 
