@@ -15,6 +15,8 @@ impl Foo for () {
 }
 
 impl<'a> Deref for dyn Foo + 'a {
+    //~^ ERROR this `Deref` implementation is covered by an implicit supertrait coercion
+    //~| WARN this will change its meaning in a future release!
     type Target = dyn Bar<u32> + 'a;
 
     fn deref(&self) -> &Self::Target {
@@ -30,5 +32,4 @@ fn main() {
     let x: &dyn Foo = &();
     let y = take_dyn(x);
     let z: u32 = y;
-    //~^ ERROR mismatched types
 }
