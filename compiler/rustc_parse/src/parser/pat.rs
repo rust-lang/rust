@@ -349,7 +349,8 @@ impl<'a> Parser<'a> {
 
         let mut lo = self.token.span;
 
-        if self.token.is_keyword(kw::Let) && self.look_ahead(1, |tok| tok.can_begin_pattern()) {
+        if self.token.is_keyword(kw::Let) && self.look_ahead(1, |tok| tok.can_begin_pattern(false))
+        {
             self.bump();
             self.dcx().emit_err(RemoveLet { span: lo });
             lo = self.token.span;

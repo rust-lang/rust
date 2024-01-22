@@ -447,6 +447,9 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
+    ///
+    /// **NB**: Take care when modifying this function, since it will change
+    /// the stable set of tokens that are allowed to match an expr nonterminal.
     pub fn can_begin_expr(&self) -> bool {
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
@@ -475,24 +478,34 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a pattern.
     ///
-    /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
-    pub fn can_begin_pattern(&self) -> bool {
-        match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
-                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
-            | Literal(..)                        // literal
-            | BinOp(Minus)                       // unary minus
-            | BinOp(And)                         // reference
-            | AndAnd                             // double reference
-            // DotDotDot is no longer supported
-            | DotDot | DotDotDot | DotDotEq      // ranges
-            | Lt | BinOp(Shl)                    // associated path
-            | ModSep                    => true, // global path
-            Interpolated(ref nt) => matches!(&nt.0, NtLiteral(..) |
-                NtPat(..)     |
-                NtBlock(..)   |
-                NtPath(..)),
+    /// **NB**: Take care when modifying this function, since it will change
+    /// the stable set of tokens that are allowed to match a pat nonterminal.
+    pub fn can_begin_pattern(&self, allow_leading_or: bool) -> bool {
+        match &self.uninterpolate().kind {
+            Ident(..) |                          // box, ref, mut, and other identifiers (can stricten)
+            OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
+            OpenDelim(Delimiter::Bracket) |      // slice pattern
+            BinOp(And) |                  // reference
+            BinOp(Minus) |                // negative literal
+            AndAnd |                             // double reference
+            Literal(_) |                        // literal
+            DotDot |                             // range pattern (future compat)
+            DotDotDot |                          // range pattern (future compat)
+            ModSep |                             // path
+            Lt |                                 // path (UFCS constant)
+            BinOp(Shl) => true,           // path (double UFCS)
+            // leading vert `|` or-pattern
+            BinOp(Or) => allow_leading_or,
+            Interpolated(nt) =>
+                matches!(&nt.0,
+                    | NtBlock(..)
+                    | NtExpr(..)
+                    | NtLiteral(..)
+                    | NtMeta(..)
+                    | NtPat(..)
+                    | NtPath(..)
+                    | NtTy(..)
+                ),
             _ => false,
         }
     }
