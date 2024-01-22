@@ -1,0 +1,20 @@
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/nested_field.rs:18:44
+   |
+LL |     let _: Foo<&'static mut u8> = unsafe { transmute(Other(&1u8, &1u8)) };
+   |                                            ^^^^^^^^^
+   |
+   = note: transmute from `Other.1` to `Foo<&mut u8>.b.0.0`
+   = note: `#[deny(mutable_transmutes)]` on by default
+
+error: transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+  --> $DIR/nested_field.rs:20:52
+   |
+LL |     let _: Foo<&'static UnsafeCell<u8>> = unsafe { transmute(Other(&1u8, &1u8)) };
+   |                                                    ^^^^^^^^^
+   |
+   = note: transmute from `*Other.1` to `*Foo<&UnsafeCell<u8>>.b.0.0`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: aborting due to 2 previous errors
+

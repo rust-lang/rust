@@ -1,0 +1,27 @@
+error: transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+  --> $DIR/diag_includes_field_names.rs:39:25
+   |
+LL |     let _: A = unsafe { transmute(&1u8) };
+   |                         ^^^^^^^^^
+   |
+   = note: transmute from `*&u8` to `(*A.a.b.c).d`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+  --> $DIR/diag_includes_field_names.rs:41:25
+   |
+LL |     let _: A = unsafe { transmute(E { e: F { f: &G { g: H { h: 0 } } } }) };
+   |                         ^^^^^^^^^
+   |
+   = note: transmute from `(*E.e.f).g.h` to `(*A.a.b.c).d`
+
+error: transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+  --> $DIR/diag_includes_field_names.rs:43:47
+   |
+LL |     let _: &'static UnsafeCell<u8> = unsafe { transmute(E { e: F { f: &G { g: H { h: 0 } } } }) };
+   |                                               ^^^^^^^^^
+   |
+   = note: transmute from `(*E.e.f).g.h` to `*&UnsafeCell<u8>`
+
+error: aborting due to 3 previous errors
+

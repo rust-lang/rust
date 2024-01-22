@@ -1,0 +1,11 @@
+error: transmuting &T to &UnsafeCell<T> is undefined behavior, even if the reference is unused, consider using UnsafeCell on the original data
+  --> $DIR/imm_to_unsafecell.rs:5:40
+   |
+LL |     let _a: &UnsafeCell<u8> = unsafe { transmute(&1u8) };
+   |                                        ^^^^^^^^^
+   |
+   = note: transmute from `*&u8` to `*&UnsafeCell<u8>`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: aborting due to 1 previous error
+
