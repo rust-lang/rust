@@ -20,8 +20,6 @@ use crate::mem;
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 pub mod env;
 pub mod fd;
 pub mod fs;
