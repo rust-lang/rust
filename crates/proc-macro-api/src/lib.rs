@@ -184,7 +184,7 @@ impl ProcMacro {
             .process
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .send_task(msg::Request::ExpandMacro(task))?;
+            .send_task(msg::Request::ExpandMacro(Box::new(task)))?;
 
         match response {
             msg::Response::ExpandMacro(it) => {
