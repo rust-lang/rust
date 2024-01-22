@@ -10,7 +10,7 @@
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
-#![feature(int_roundings)]
+#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

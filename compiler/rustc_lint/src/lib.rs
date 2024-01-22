@@ -35,6 +35,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
+#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

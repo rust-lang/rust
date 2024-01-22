@@ -1,3 +1,5 @@
+#![feature(trait_upcasting)]
+
 trait Foo<T>: Bar<i32> + Bar<T> {}
 trait Bar<T> {
     fn bar(&self) -> Option<T> {

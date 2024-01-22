@@ -1,3 +1,5 @@
+#![feature(trait_upcasting)]
+
 trait Foo<'a>: Bar<'a> {}
 trait Bar<'a> {}
 
