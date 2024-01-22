@@ -59,8 +59,8 @@ impl Tester {
         path.push("ra-rustc-test.rs");
         let tmp_file = AbsPathBuf::try_from(path).unwrap();
         std::fs::write(&tmp_file, "")?;
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let workspace = ProjectWorkspace::DetachedFiles {
             files: vec![tmp_file.clone()],
             sysroot: Ok(Sysroot::discover(
