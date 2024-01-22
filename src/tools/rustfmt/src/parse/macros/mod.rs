@@ -1,7 +1,7 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{self, kw};
@@ -24,21 +24,23 @@ fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser
 
 fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg:ident, $parser:expr, $f:expr) => {
+        ($macro_arg:ident, $can_begin:expr, $try_parse:expr, $then:expr) => {
             let mut cloned_parser = (*parser).clone();
-            match $parser(&mut cloned_parser) {
-                Ok(x) => {
-                    if parser.sess.dcx.has_errors().is_some() {
-                        parser.sess.dcx.reset_err_count();
-                    } else {
-                        // Parsing succeeded.
-                        *parser = cloned_parser;
-                        return Some(MacroArg::$macro_arg($f(x)?));
+            if $can_begin(&mut cloned_parser) {
+                match $try_parse(&mut cloned_parser) {
+                    Ok(x) => {
+                        if parser.sess.dcx.has_errors().is_some() {
+                            parser.sess.dcx.reset_err_count();
+                        } else {
+                            // Parsing succeeded.
+                            *parser = cloned_parser;
+                            return Some(MacroArg::$macro_arg($then(x)?));
+                        }
                     }
-                }
-                Err(e) => {
-                    e.cancel();
-                    parser.sess.dcx.reset_err_count();
+                    Err(e) => {
+                        e.cancel();
+                        parser.sess.dcx.reset_err_count();
+                    }
                 }
             }
         };
@@ -46,23 +48,28 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
     parse_macro_arg!(
         Expr,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_expr(),
+        |parser: &mut Parser<'b>| parser.token.can_begin_expr(),
+        |parser: &mut Parser<'b>| parser.parse_expr(),
         |x: ptr::P<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
         Ty,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_ty(),
+        |parser: &mut Parser<'b>| parser.token.can_begin_type(),
+        |parser: &mut Parser<'b>| parser.parse_ty(),
         |x: ptr::P<ast::Ty>| Some(x)
     );
     parse_macro_arg!(
         Pat,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_pat_no_top_alt(None, None),
+        // FIXME: This isn't right
+        |_| true,
+        |parser: &mut Parser<'b>| parser.parse_pat_no_top_alt(None, None),
         |x: ptr::P<ast::Pat>| Some(x)
     );
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
     parse_macro_arg!(
         Item,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(ForceCollect::No),
+        |_| true,
+        |parser: &mut Parser<'b>| parser.parse_item(ForceCollect::No),
         |x: Option<ptr::P<ast::Item>>| x
     );
 
