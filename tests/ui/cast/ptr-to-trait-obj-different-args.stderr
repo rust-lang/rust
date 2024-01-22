@@ -6,6 +6,30 @@ LL |     let b: *const dyn B = a as _;
    |
    = note: vtable kinds may not match
 
-error: aborting due to 1 previous error
+error[E0606]: casting `*const dyn Trait<X>` as `*const dyn Trait<Y>` is invalid
+  --> $DIR/ptr-to-trait-obj-different-args.rs:22:34
+   |
+LL |     let y: *const dyn Trait<Y> = x as _;
+   |                                  ^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error[E0606]: casting `*const (dyn Trait<X> + 'static)` as `*const dyn Trait<T>` is invalid
+  --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
+   |
+LL |     let _: *const dyn Trait<T> = x as _;
+   |                                  ^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error[E0606]: casting `*const (dyn Trait<T> + 'static)` as `*const dyn Trait<X>` is invalid
+  --> $DIR/ptr-to-trait-obj-different-args.rs:29:34
+   |
+LL |     let _: *const dyn Trait<X> = t as _;
+   |                                  ^^^^^^
+   |
+   = note: vtable kinds may not match
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0606`.
