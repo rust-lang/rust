@@ -4629,54 +4629,17 @@ impl<'a, 'b, 'tcx> LateDesugarVisitor<'a, 'b, 'tcx> {
 
 impl MutVisitor for LateDesugarVisitor<'_, '_, '_> {
     fn visit_ty(&mut self, ty: &mut P<Ty>) {
-        // check whether this path is a bare trait object
-        // if _is_axel_debug() {
-        //     let is_path = if let TyKind::Path(None, _path) = &ty.kind { true } else { false };
-        //     let is_partial_res = if let Some(_partial_res) = self.r.partial_res_map.get(&ty.id) {
-        //         true
-        //     } else {
-        //         false
-        //     };
-        //     let is_trait = if let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
-        //         && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) =
-        //             partial_res.full_res()
-        //     {
-        //         true
-        //     } else {
-        //         false
-        //     };
-
-        //     eprintln!(
-        //         "[Desugar][Ty] {:?}:{:?} (Path: {}, PRes: {}, Trait: {})",
-        //         ty.kind, ty.span, is_path, is_partial_res, is_trait
-        //     );
-        // }
-
-        // if _is_axel_debug() {
-        //     eprint!("[Desugar][Ty][{:?}]", ty.span);
-        //     if let Some(partial_res) = self.r.partial_res_map.get(&ty.id) {
-        //         let full_res = partial_res.full_res();
-        //         eprint!(" [{:?}]", full_res);
-        //     }
-        //     eprintln!("\n\t{:?}", ty)
-        // }
-
         if let TyKind::Path(None, _path) = &ty.kind
             && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
             && let Some(res @ Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) =
                 partial_res.full_res()
         {
-            if _is_axel_debug() {
-                eprintln!("[Desugar][Ty][BareTrait][{:?}] {:?}\n{:#?}", ty.span, res, ty);
-            }
+            debug!("[Desugar][Ty][BareTrait][{:?}] {:?}\n{:#?}", ty.span, res, ty);
 
-            // TODO(axelmagn): confirm TraitObject variables
             let trait_obj = TyKind::TraitObject(vec![], TraitObjectSyntax::None);
             ty.kind = trait_obj;
 
-            if _is_axel_debug() {
-                eprintln!("->\n{:#?}\n", ty);
-            }
+            debug!("->\n{:#?}\n", ty);
         }
 
         mut_visit::noop_visit_ty(ty, self);
