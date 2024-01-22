@@ -1,0 +1,15 @@
+error: item constrains opaque type that is not in its signature
+  --> $DIR/hidden_behind_struct_field2.rs:17:22
+   |
+LL |         Foo { field: () }
+   |                      ^^
+   |
+   = note: this item must mention the opaque type in its signature in order to be able to register hidden types
+note: this item must mention the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/hidden_behind_struct_field2.rs:16:8
+   |
+LL |     fn foo() -> Foo {
+   |        ^^^
+
+error: aborting due to 1 previous error
+
