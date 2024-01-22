@@ -345,6 +345,9 @@ lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple
 lint_node_source = `forbid` level set here
     .note = {$reason}
 
+lint_non_binding_let_multi_drop_fn =
+    consider immediately dropping the value using `drop(..)` after the `let` statement
+
 lint_non_binding_let_multi_suggestion =
     consider immediately dropping the value
 

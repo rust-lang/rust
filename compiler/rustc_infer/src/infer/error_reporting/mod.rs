@@ -117,9 +117,9 @@ fn escape_literal(s: &str) -> String {
 /// field is only populated during an in-progress typeck.
 /// Get an instance by calling `InferCtxt::err_ctxt` or `FnCtxt::err_ctxt`.
 ///
-/// You must only create this if you intend to actually emit an error.
-/// This provides a lot of utility methods which should not be used
-/// during the happy path.
+/// You must only create this if you intend to actually emit an error (or
+/// perhaps a warning, though preferably not.) It provides a lot of utility
+/// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
@@ -133,9 +133,10 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
 impl Drop for TypeErrCtxt<'_, '_> {
     fn drop(&mut self) {
-        if let Some(_) = self.dcx().has_errors_or_span_delayed_bugs() {
-            // ok, emitted an error.
+        if self.dcx().has_errors().is_some() {
+            // Ok, emitted an error.
         } else {
+            // Didn't emit an error; maybe it was created but not yet emitted.
             self.infcx
                 .tcx
                 .sess

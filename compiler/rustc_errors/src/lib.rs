@@ -421,16 +421,16 @@ pub struct DiagCtxt {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
-    /// The number of lint errors that have been emitted.
+    /// The number of lint errors that have been emitted, including duplicates.
     lint_err_count: usize,
-    /// The number of errors that have been emitted, including duplicates.
-    ///
-    /// This is not necessarily the count that's reported to the user once
-    /// compilation ends.
+    /// The number of non-lint errors that have been emitted, including duplicates.
     err_count: usize,
+
+    /// The error count shown to the user at the end.
     deduplicated_err_count: usize,
-    /// The warning count, used for a recap upon finishing
+    /// The warning count shown to the user at the end.
     deduplicated_warn_count: usize,
+
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
     has_printed: bool,
@@ -927,11 +927,13 @@ impl DiagCtxt {
         self.struct_bug(msg).emit()
     }
 
+    /// This excludes lint errors and delayed bugs.
     #[inline]
     pub fn err_count(&self) -> usize {
         self.inner.borrow().err_count
     }
 
+    /// This excludes lint errors and delayed bugs.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors().then(|| {
             #[allow(deprecated)]
@@ -939,30 +941,24 @@ impl DiagCtxt {
         })
     }
 
+    /// This excludes delayed bugs. Unless absolutely necessary, prefer
+    /// `has_errors` to this method.
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         let inner = self.inner.borrow();
-        let has_errors_or_lint_errors = inner.has_errors() || inner.lint_err_count > 0;
-        has_errors_or_lint_errors.then(|| {
+        let result = inner.has_errors() || inner.lint_err_count > 0;
+        result.then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
     }
 
-    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+    /// Unless absolutely necessary, prefer `has_errors` or
+    /// `has_errors_or_lint_errors` to this method.
+    pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         let inner = self.inner.borrow();
-        let has_errors_or_span_delayed_bugs =
-            inner.has_errors() || !inner.span_delayed_bugs.is_empty();
-        has_errors_or_span_delayed_bugs.then(|| {
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
-        })
-    }
-
-    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow();
-        let will_fail =
+        let result =
             inner.has_errors() || inner.lint_err_count > 0 || !inner.span_delayed_bugs.is_empty();
-        will_fail.then(|| {
+        result.then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -1162,7 +1158,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
 
         if loud && lint_level.is_error() {
-            inner.err_count += 1;
+            inner.lint_err_count += 1;
             inner.panic_if_treat_err_as_bug();
         }
 
