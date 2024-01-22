@@ -1643,6 +1643,10 @@ macro_rules! int_impl {
         /// Saturating integer division. Computes `self / rhs`, saturating at the
         /// numeric bounds instead of overflowing.
         ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is 0.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -1651,11 +1655,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".saturating_div(2), 2);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_div(-1), ", stringify!($SelfT), "::MIN + 1);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.saturating_div(-1), ", stringify!($SelfT), "::MAX);")]
-        ///
-        /// ```
-        ///
-        /// ```should_panic
-        #[doc = concat!("let _ = 1", stringify!($SelfT), ".saturating_div(0);")]
         ///
         /// ```
         #[stable(feature = "saturating_div", since = "1.58.0")]
@@ -2435,6 +2434,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
             if unlikely!(rhs == -1) {
                 (0, self == Self::MIN)
@@ -2674,7 +2674,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2694,7 +2695,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_euclid(self, rhs: Self) -> Self {
             let q = self / rhs;
             if self % rhs < 0 {
@@ -2712,7 +2713,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or the division results in overflow.
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2733,7 +2735,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             let r = self % rhs;
             if r < 0 {
@@ -2755,12 +2757,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero.
-        ///
-        /// ## Overflow behavior
-        ///
-        /// On overflow, this function will panic if overflow checks are enabled (default in debug
-        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2780,7 +2778,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_floor(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
@@ -2795,12 +2793,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero.
-        ///
-        /// ## Overflow behavior
-        ///
-        /// On overflow, this function will panic if overflow checks are enabled (default in debug
-        /// mode) and wrap if overflow checks are disabled (default in release mode).
+        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
+        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2820,7 +2814,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_inherit_overflow_checks]
+        #[track_caller]
         pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
