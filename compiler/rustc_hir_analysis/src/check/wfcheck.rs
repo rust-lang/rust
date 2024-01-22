@@ -4,7 +4,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};

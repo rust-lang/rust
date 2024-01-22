@@ -1,6 +1,6 @@
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
-    IntoDiagnostic, Level,
+    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
+    EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -41,14 +41,14 @@ pub(crate) struct UnstableInStable {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_thread_local_access, code = "E0625")]
+#[diag(const_eval_thread_local_access, code = E0625)]
 pub(crate) struct NonConstOpErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_static_access, code = "E0013")]
+#[diag(const_eval_static_access, code = E0013)]
 #[help]
 pub(crate) struct StaticAccessErr {
     #[primary_span]
@@ -84,7 +84,7 @@ pub(crate) struct PanicNonStrErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mut_deref, code = "E0658")]
+#[diag(const_eval_mut_deref, code = E0658)]
 pub(crate) struct MutDerefErr {
     #[primary_span]
     pub span: Span,
@@ -92,7 +92,7 @@ pub(crate) struct MutDerefErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow, code = "E0658")]
+#[diag(const_eval_transient_mut_borrow, code = E0658)]
 pub(crate) struct TransientMutBorrowErr {
     #[primary_span]
     pub span: Span,
@@ -100,7 +100,7 @@ pub(crate) struct TransientMutBorrowErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow_raw, code = "E0658")]
+#[diag(const_eval_transient_mut_borrow_raw, code = E0658)]
 pub(crate) struct TransientMutBorrowErrRaw {
     #[primary_span]
     pub span: Span,
@@ -132,7 +132,7 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs, code = "E0764")]
+#[diag(const_eval_unallowed_mutable_refs, code = E0764)]
 pub(crate) struct UnallowedMutableRefs {
     #[primary_span]
     pub span: Span,
@@ -142,7 +142,7 @@ pub(crate) struct UnallowedMutableRefs {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs_raw, code = "E0764")]
+#[diag(const_eval_unallowed_mutable_refs_raw, code = E0764)]
 pub(crate) struct UnallowedMutableRefsRaw {
     #[primary_span]
     pub span: Span,
@@ -151,7 +151,7 @@ pub(crate) struct UnallowedMutableRefsRaw {
     pub teach: Option<()>,
 }
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fmt_macro_call, code = "E0015")]
+#[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
 pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
@@ -159,7 +159,7 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fn_call, code = "E0015")]
+#[diag(const_eval_non_const_fn_call, code = E0015)]
 pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
@@ -176,7 +176,7 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_heap_allocations, code = "E0010")]
+#[diag(const_eval_unallowed_heap_allocations, code = E0010)]
 pub(crate) struct UnallowedHeapAllocations {
     #[primary_span]
     #[label]
@@ -187,7 +187,7 @@ pub(crate) struct UnallowedHeapAllocations {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_inline_asm, code = "E0015")]
+#[diag(const_eval_unallowed_inline_asm, code = E0015)]
 pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -203,7 +203,7 @@ pub(crate) struct UnsupportedUntypedPointer {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_data_refer, code = "E0492")]
+#[diag(const_eval_interior_mutable_data_refer, code = E0492)]
 pub(crate) struct InteriorMutableDataRefer {
     #[primary_span]
     #[label]
@@ -268,7 +268,7 @@ pub struct RawBytesNote {
 // FIXME(fee1-dead) do not use stringly typed `ConstContext`
 
 #[derive(Diagnostic)]
-#[diag(const_eval_match_eq_non_const, code = "E0015")]
+#[diag(const_eval_match_eq_non_const, code = E0015)]
 #[note]
 pub struct NonConstMatchEq<'tcx> {
     #[primary_span]
@@ -278,7 +278,7 @@ pub struct NonConstMatchEq<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_for_loop_into_iter_non_const, code = "E0015")]
+#[diag(const_eval_for_loop_into_iter_non_const, code = E0015)]
 pub struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -287,7 +287,7 @@ pub struct NonConstForLoopIntoIter<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_branch_non_const, code = "E0015")]
+#[diag(const_eval_question_branch_non_const, code = E0015)]
 pub struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -296,7 +296,7 @@ pub struct NonConstQuestionBranch<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_from_residual_non_const, code = "E0015")]
+#[diag(const_eval_question_from_residual_non_const, code = E0015)]
 pub struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -305,7 +305,7 @@ pub struct NonConstQuestionFromResidual<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_try_block_from_output_non_const, code = "E0015")]
+#[diag(const_eval_try_block_from_output_non_const, code = E0015)]
 pub struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -314,7 +314,7 @@ pub struct NonConstTryBlockFromOutput<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_await_non_const, code = "E0015")]
+#[diag(const_eval_await_non_const, code = E0015)]
 pub struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -323,7 +323,7 @@ pub struct NonConstAwait<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_closure_non_const, code = "E0015")]
+#[diag(const_eval_closure_non_const, code = E0015)]
 pub struct NonConstClosure {
     #[primary_span]
     pub span: Span,
@@ -356,7 +356,7 @@ pub struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_operator_non_const, code = "E0015")]
+#[diag(const_eval_operator_non_const, code = E0015)]
 pub struct NonConstOperator {
     #[primary_span]
     pub span: Span,
@@ -366,7 +366,7 @@ pub struct NonConstOperator {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_deref_coercion_non_const, code = "E0015")]
+#[diag(const_eval_deref_coercion_non_const, code = E0015)]
 #[note]
 pub struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
@@ -379,7 +379,7 @@ pub struct NonConstDerefCoercion<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_live_drop, code = "E0493")]
+#[diag(const_eval_live_drop, code = E0493)]
 pub struct LiveDrop<'tcx> {
     #[primary_span]
     #[label]
@@ -391,7 +391,7 @@ pub struct LiveDrop<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_error, code = "E0080")]
+#[diag(const_eval_error, code = E0080)]
 pub struct ConstEvalError {
     #[primary_span]
     pub span: Span,
@@ -417,7 +417,7 @@ pub struct NullaryIntrinsicError {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_undefined_behavior, code = "E0080")]
+#[diag(const_eval_undefined_behavior, code = E0080)]
 pub struct UndefinedBehavior {
     #[primary_span]
     pub span: Span,

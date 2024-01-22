@@ -1,7 +1,7 @@
 use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, ErrCode, IntoDiagnostic,
     IntoDiagnosticArg, Level,
 };
 use rustc_ast as ast;
@@ -80,6 +80,7 @@ into_diagnostic_arg_using_display!(
     &TargetTriple,
     SplitDebuginfo,
     ExitStatus,
+    ErrCode,
 );
 
 impl IntoDiagnosticArg for i32 {

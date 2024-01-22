@@ -400,10 +400,10 @@ impl Diagnostic {
 
         let translated_message = je.translate_messages(&diag.messages, &args);
 
-        let code = if let Some(code) = &diag.code {
+        let code = if let Some(code) = diag.code {
             Some(DiagnosticCode {
                 code: code.to_string(),
-                explanation: je.registry.as_ref().unwrap().try_find_description(&code).ok(),
+                explanation: je.registry.as_ref().unwrap().try_find_description(code).ok(),
             })
         } else if let Some(IsLint { name, .. }) = &diag.is_lint {
             Some(DiagnosticCode { code: name.to_string(), explanation: None })

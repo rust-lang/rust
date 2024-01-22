@@ -8,7 +8,7 @@ pub(crate) use self::check_match::check_match;
 use crate::errors::*;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_errors::error_code;
+use rustc_errors::codes::*;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -209,7 +209,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     RangeEnd::Included => {
                         self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                             span,
-                            teach: self.tcx.sess.teach(&error_code!(E0030)).then_some(()),
+                            teach: self.tcx.sess.teach(E0030).then_some(()),
                         })
                     }
                     RangeEnd::Excluded => {

@@ -5,7 +5,9 @@ use crate::astconv::{
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    codes::*, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;

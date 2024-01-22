@@ -1,7 +1,7 @@
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;

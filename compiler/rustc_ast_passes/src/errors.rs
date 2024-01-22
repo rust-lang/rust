@@ -1,7 +1,7 @@
 //! Errors emitted by ast_passes.
 
 use rustc_ast::ParamKindOrd;
-use rustc_errors::{AddToDiagnostic, Applicability};
+use rustc_errors::{codes::*, AddToDiagnostic, Applicability};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -23,7 +23,7 @@ pub struct InvalidLabel {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_visibility_not_permitted, code = "E0449")]
+#[diag(ast_passes_visibility_not_permitted, code = E0449)]
 pub struct VisibilityNotPermitted {
     #[primary_span]
     pub span: Span,
@@ -44,7 +44,7 @@ pub enum VisibilityNotPermittedNote {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_trait_fn_const, code = "E0379")]
+#[diag(ast_passes_trait_fn_const, code = E0379)]
 pub struct TraitFnConst {
     #[primary_span]
     #[label]
@@ -302,14 +302,14 @@ pub struct ItemUnderscore<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_nomangle_ascii, code = "E0754")]
+#[diag(ast_passes_nomangle_ascii, code = E0754)]
 pub struct NoMangleAscii {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_module_nonascii, code = "E0754")]
+#[diag(ast_passes_module_nonascii, code = E0754)]
 #[help]
 pub struct ModuleNonAscii {
     #[primary_span]
@@ -318,7 +318,7 @@ pub struct ModuleNonAscii {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_auto_generic, code = "E0567")]
+#[diag(ast_passes_auto_generic, code = E0567)]
 pub struct AutoTraitGeneric {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -328,7 +328,7 @@ pub struct AutoTraitGeneric {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_auto_super_lifetime, code = "E0568")]
+#[diag(ast_passes_auto_super_lifetime, code = E0568)]
 pub struct AutoTraitBounds {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -338,7 +338,7 @@ pub struct AutoTraitBounds {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_auto_items, code = "E0380")]
+#[diag(ast_passes_auto_items, code = E0380)]
 pub struct AutoTraitItems {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -384,28 +384,28 @@ impl AddToDiagnostic for EmptyLabelManySpans {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_pattern_in_fn_pointer, code = "E0561")]
+#[diag(ast_passes_pattern_in_fn_pointer, code = E0561)]
 pub struct PatternFnPointer {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_trait_object_single_bound, code = "E0226")]
+#[diag(ast_passes_trait_object_single_bound, code = E0226)]
 pub struct TraitObjectBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_impl_trait_path, code = "E0667")]
+#[diag(ast_passes_impl_trait_path, code = E0667)]
 pub struct ImplTraitPath {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_nested_impl_trait, code = "E0666")]
+#[diag(ast_passes_nested_impl_trait, code = E0666)]
 pub struct NestedImplTrait {
     #[primary_span]
     pub span: Span,
@@ -443,7 +443,7 @@ pub struct ObsoleteAuto {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_unsafe_negative_impl, code = "E0198")]
+#[diag(ast_passes_unsafe_negative_impl, code = E0198)]
 pub struct UnsafeNegativeImpl {
     #[primary_span]
     pub span: Span,
@@ -468,7 +468,7 @@ pub struct InherentImplCannot<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_inherent_cannot_be, code = "E0197")]
+#[diag(ast_passes_inherent_cannot_be, code = E0197)]
 pub struct InherentImplCannotUnsafe<'a> {
     #[primary_span]
     pub span: Span,
@@ -536,7 +536,7 @@ pub struct GenericDefaultTrailing {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_nested_lifetimes, code = "E0316")]
+#[diag(ast_passes_nested_lifetimes, code = E0316)]
 pub struct NestedLifetimes {
     #[primary_span]
     pub span: Span,
@@ -655,7 +655,7 @@ pub struct ConstAndCVariadic {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_pattern_in_foreign, code = "E0130")]
+#[diag(ast_passes_pattern_in_foreign, code = E0130)]
 pub struct PatternInForeign {
     #[primary_span]
     #[label]
@@ -663,7 +663,7 @@ pub struct PatternInForeign {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_pattern_in_bodiless, code = "E0642")]
+#[diag(ast_passes_pattern_in_bodiless, code = E0642)]
 pub struct PatternInBodiless {
     #[primary_span]
     #[label]
@@ -711,14 +711,14 @@ pub struct AssociatedSuggestion2 {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_stability_outside_std, code = "E0734")]
+#[diag(ast_passes_stability_outside_std, code = E0734)]
 pub struct StabilityOutsideStd {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_feature_on_non_nightly, code = "E0554")]
+#[diag(ast_passes_feature_on_non_nightly, code = E0554)]
 pub struct FeatureOnNonNightly {
     #[primary_span]
     pub span: Span,

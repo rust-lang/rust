@@ -12,7 +12,9 @@ use crate::{
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
+use rustc_errors::{
+    codes::*, pluralize, Applicability, Diagnostic, ErrCode, ErrorGuaranteed, MultiSpan, StashKey,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -177,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
-        let mut err_code = "E0061";
+        let mut err_code = E0061;
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
@@ -187,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     if arg_types.len() != provided_args.len() {
-                        err_code = "E0057";
+                        err_code = E0057;
                     }
                     let expected_input_tys = match expected_input_tys {
                         Some(expected_input_tys) => match expected_input_tys.get(0) {
@@ -358,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if c_variadic && provided_arg_count < minimum_input_count {
-            err_code = "E0060";
+            err_code = E0060;
         }
 
         for arg in provided_args.iter().skip(minimum_input_count) {
@@ -443,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
         c_variadic: bool,
-        err_code: &str,
+        err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
