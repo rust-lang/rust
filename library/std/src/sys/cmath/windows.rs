@@ -1,5 +1,3 @@
-#![cfg(not(test))]
-
 use core::ffi::{c_double, c_float, c_int};
 
 extern "C" {
