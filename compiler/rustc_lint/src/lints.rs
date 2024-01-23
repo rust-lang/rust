@@ -1109,6 +1109,7 @@ pub struct IdentifierNonAsciiChar;
 #[diag(lint_identifier_uncommon_codepoints)]
 pub struct IdentifierUncommonCodepoints {
     pub codepoints: Vec<char>,
+    pub codepoints_len: usize,
 }
 
 #[derive(LintDiagnostic)]
