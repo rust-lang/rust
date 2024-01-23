@@ -1,6 +1,10 @@
 # ignore-cross-compile
 include ../tools.mk
 
+export HERE := $(shell pwd)
+export REMAPPED_OUT := /my-remapped-out
+export REMAPPED_CWD := /my-remapped-cwd
+
 all: off packed unpacked
 
 ifeq ($(UNAME),Darwin)
@@ -11,23 +15,200 @@ off:
 	[ ! -d $(TMPDIR)/foo.dSYM ]
 
 # Packed by default, but only if debuginfo is requested
-packed:
-	rm -rf $(TMPDIR)/*.dSYM
-	$(RUSTC) foo.rs
-	[ ! -d $(TMPDIR)/foo.dSYM ]
-	rm -rf $(TMPDIR)/*.dSYM
-	$(RUSTC) foo.rs -g
+packed: packed-remapped-object-scope packed-remapped-macro-scope packed-remapped-split-debuginfo-scope
+
+# - Debuginfo in binary file
+# - `.o` deleted
+# - `.dSYM` present
+packed-remapped-object-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=object foo.rs -g
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
 	[ -d $(TMPDIR)/foo.dSYM ]
-	rm -rf $(TMPDIR)/*.dSYM
-	$(RUSTC) foo.rs -g -C split-debuginfo=packed
+
+	# binary contains remapped paths
+	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+
+	# binary contains no original paths
+	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+
+	# dSYM bundle contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+
+	# dSYM bundle contains original paths
+	grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo || exit 1
+
+	rm -rf $(TMPDIR)/foo.dSYM
+	rm $(TMPDIR)/$(call BIN,foo)
+
+# - Debuginfo in binary file
+# - `.o` deleted
+# - `.dSYM` present
+packed-remapped-macro-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=macro foo.rs -g
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
 	[ -d $(TMPDIR)/foo.dSYM ]
-	rm -rf $(TMPDIR)/*.dSYM
+
+	# binary contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+
+	# binary contains original paths
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+
+	# dSYM bundle contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+
+	# dSYM bundle contains original paths
+	grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo || exit 1
+
+	rm -rf $(TMPDIR)/foo.dSYM
+	rm $(TMPDIR)/$(call BIN,foo)
+
+# - Debuginfo in binary file
+# - `.o` deleted
+# - `.dSYM` present
+packed-remapped-split-debuginfo-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=packed -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=split-debuginfo,split-debuginfo-path foo.rs -g
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	[ -d $(TMPDIR)/foo.dSYM ]
+
+	# binary contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
+	nm -pa $(TMPDIR)/foo | grep " SO " | grep $(REMAPPED_CWD) || exit 1
+	nm -pa $(TMPDIR)/foo | grep --invert-match " SO " | (! grep $(REMAPPED_CWD)) || exit 1
+
+	# binary contains original paths
+	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
+	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+
+	## dSYM bundle contains remapped paths
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo || exit 1
+
+	## dSYM bundle contains no original paths
+	(! grep --text $(TMPDIR) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+	(! grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+
+	rm -rf $(TMPDIR)/foo.dSYM
+	rm $(TMPDIR)/$(call BIN,foo)
 
 # Object files are preserved with unpacked and `dsymutil` isn't run
-unpacked:
-	$(RUSTC) foo.rs -g -C split-debuginfo=unpacked
+unpacked: unpacked-remapped-object-scope unpacked-remapped-macro-scope unpacked-remapped-split-debuginfo-scope
+
+# - Debuginfo in object files
+# - `.o` present
+# - `.dSYM` never created
+unpacked-remapped-object-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=object foo.rs -g
 	ls $(TMPDIR)/*.o
 	[ ! -d $(TMPDIR)/foo.dSYM ]
+
+	# binary contains remapped paths
+	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+
+	# binary contains no original paths
+	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+
+	# object file contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.*.o) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o) || exit 1
+
+	# object file contains original paths
+	grep --text $(HERE) $(TMPDIR)/foo.*.o || exit 1
+
+	rm $(TMPDIR)/*.o
+	rm $(TMPDIR)/$(call BIN,foo)
+
+# - Debuginfo in object files
+# - `.o` present,
+# - `.dSYM` never created
+unpacked-remapped-macro-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=macro foo.rs -g
+	ls $(TMPDIR)/*.o
+	[ ! -d $(TMPDIR)/foo.dSYM ]
+
+	# binary contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+
+	# binary contains original paths
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+
+	# object file contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.*.o) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o) || exit 1
+
+	# object file contains original paths
+	grep --text $(HERE) $(TMPDIR)/foo.*.o || exit 1
+
+	rm $(TMPDIR)/*.o
+	rm $(TMPDIR)/$(call BIN,foo)
+
+# - Debuginfo in object files
+# - `.o` present
+# - `.dSYM` never created
+unpacked-remapped-split-debuginfo-scope:
+	$(RUSTC) $(UNSTABLEOPTS) -C split-debuginfo=unpacked -C debuginfo=2 \
+		--remap-path-prefix $(TMPDIR)=$(REMAPPED_OUT) \
+		--remap-path-prefix $(HERE)=$(REMAPPED_CWD) \
+		-Z remap-path-scope=split-debuginfo,split-debuginfo-path foo.rs -g
+	ls $(TMPDIR)/*.o
+	[ ! -d $(TMPDIR)/foo.dSYM ]
+
+	# binary contains no remapped paths
+	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
+	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
+	nm -pa $(TMPDIR)/foo | grep " SO " | grep $(REMAPPED_CWD) || exit 1
+	nm -pa $(TMPDIR)/foo | grep --invert-match " SO " | (! grep $(REMAPPED_CWD)) || exit 1
+
+	# binary contains original paths
+	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
+	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
+	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+
+	# object file contains remapped paths
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o || exit 1
+
+	# object file contains no original paths
+	(! grep --text $(TMPDIR) $(TMPDIR)/foo.*.o) || exit 1
+	(! grep --text $(HERE) $(TMPDIR)/foo.*.o) || exit 1
+
+	rm $(TMPDIR)/*.o
+	rm $(TMPDIR)/$(call BIN,foo)
+
 else
 ifdef IS_WINDOWS
 # Windows only supports packed debuginfo - nothing to test.
