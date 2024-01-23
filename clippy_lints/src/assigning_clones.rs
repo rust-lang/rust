@@ -61,16 +61,14 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
         };
 
         if is_ok_to_suggest(cx, lhs, &call) {
-            suggest(cx, assign_expr, lhs, call);
+            suggest(cx, assign_expr, lhs, &call);
         }
     }
 }
 
 // Try to resolve the call to `Clone::clone` or `ToOwned::to_owned`.
 fn extract_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<CallCandidate<'tcx>> {
-    let Some(fn_def_id) = clippy_utils::fn_def_id(cx, expr) else {
-        return None;
-    };
+    let fn_def_id = clippy_utils::fn_def_id(cx, expr)?;
 
     // Fast paths to only check method calls without arguments or function calls with a single argument
     let (target, kind, resolved_method) = match expr.kind {
@@ -182,7 +180,7 @@ fn suggest<'tcx>(
     cx: &LateContext<'tcx>,
     assign_expr: &hir::Expr<'tcx>,
     lhs: &hir::Expr<'tcx>,
-    call: CallCandidate<'tcx>,
+    call: &CallCandidate<'tcx>,
 ) {
     span_lint_and_then(cx, ASSIGNING_CLONES, assign_expr.span, call.message(), |diag| {
         let mut applicability = Applicability::MachineApplicable;
