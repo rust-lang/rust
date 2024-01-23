@@ -13,7 +13,7 @@ fn expr_as_u128(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<u128> {
     if let ExprKind::Lit(lit) = expr_or_init(cx, e).kind
         && let LitKind::Int(n, _) = lit.node
     {
-        Some(n)
+        Some(n.get())
     } else {
         None
     }

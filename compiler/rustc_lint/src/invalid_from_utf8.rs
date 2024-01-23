@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                 let valid_up_to = utf8_error.valid_up_to();
                 let is_unchecked_variant = diag_item.as_str().contains("unchecked");
 
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     if is_unchecked_variant {
                         INVALID_FROM_UTF8_UNCHECKED
                     } else {
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                         .map(|e| match &e.kind {
                             ExprKind::Lit(Spanned { node: lit, .. }) => match lit {
                                 LitKind::Byte(b) => Some(*b),
-                                LitKind::Int(b, _) => Some(*b as u8),
+                                LitKind::Int(b, _) => Some(b.get() as u8),
                                 _ => None,
                             },
                             _ => None,

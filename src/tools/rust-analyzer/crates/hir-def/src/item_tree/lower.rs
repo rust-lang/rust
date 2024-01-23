@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 
 use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef, HirFileId};
-use syntax::ast::{self, HasModuleItem, HasTypeBounds};
+use syntax::ast::{self, HasModuleItem, HasTypeBounds, IsString};
 
 use crate::{
     generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
@@ -13,7 +13,7 @@ use crate::{
 
 use super::*;
 
-fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
+fn id<N: ItemTreeModItemNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId(index)
 }
 
@@ -253,25 +253,27 @@ impl<'a> Ctx<'a> {
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
-            None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
+            None => {
+                FileItemTreeId(self.next_variant_idx())..FileItemTreeId(self.next_variant_idx())
+            }
         };
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdxRange<Variant> {
+    fn lower_variants(&mut self, variants: &ast::VariantList) -> Range<FileItemTreeId<Variant>> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
                 self.add_attrs(
-                    idx.into(),
+                    FileItemTreeId(idx).into(),
                     RawAttrs::new(self.db.upcast(), &variant, self.span_map()),
                 );
             }
         }
         let end = self.next_variant_idx();
-        IdxRange::new(start..end)
+        FileItemTreeId(start)..FileItemTreeId(end)
     }
 
     fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {
@@ -719,16 +721,10 @@ enum HasImplicitSelf {
 }
 
 fn lower_abi(abi: ast::Abi) -> Interned<str> {
-    // FIXME: Abi::abi() -> Option<SyntaxToken>?
-    match abi.syntax().last_token() {
-        Some(tok) if tok.kind() == SyntaxKind::STRING => {
-            // FIXME: Better way to unescape?
-            Interned::new_str(tok.text().trim_matches('"'))
-        }
-        _ => {
-            // `extern` default to be `extern "C"`.
-            Interned::new_str("C")
-        }
+    match abi.abi_string() {
+        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+        // `extern` default to be `extern "C"`.
+        _ => Interned::new_str("C"),
     }
 }
 

@@ -59,7 +59,7 @@ impl<'a> ProgressReport<'a> {
             "{}/{} {percent:3>}% {}",
             self.pos,
             self.len,
-            self.msg.as_ref().map_or_else(|| String::new(), |it| it())
+            self.msg.as_ref().map_or_else(String::new, |it| it())
         );
         self.update_text(&text);
     }

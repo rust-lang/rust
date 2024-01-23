@@ -11,7 +11,7 @@ pub(crate) fn missing_match_arms(
         ctx,
         DiagnosticCode::RustcHardError("E0004"),
         format!("missing match arm: {}", d.uncovered_patterns),
-        d.scrutinee_expr.clone().map(Into::into),
+        d.scrutinee_expr.map(Into::into),
     )
 }
 

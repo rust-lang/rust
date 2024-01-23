@@ -21,8 +21,6 @@ mod itron {
 pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`

@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
                 def.owner_id.def_id,
                 " + Send",
             );
-            cx.tcx.emit_spanned_lint(
+            cx.tcx.emit_node_span_lint(
                 ASYNC_FN_IN_TRAIT,
                 item.hir_id(),
                 async_span,

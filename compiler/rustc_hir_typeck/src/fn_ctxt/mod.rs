@@ -103,6 +103,13 @@ pub struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
+    /// If one of the function arguments is a never pattern, this counts as diverging code. This
+    /// affect typechecking of the function body.
+    pub(super) function_diverges_because_of_empty_arguments: Cell<Diverges>,
+
+    /// Whether the currently checked node is the whole body of the function.
+    pub(super) is_whole_body: Cell<bool>,
+
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
@@ -124,6 +131,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,
             diverges: Cell::new(Diverges::Maybe),
+            function_diverges_because_of_empty_arguments: Cell::new(Diverges::Maybe),
+            is_whole_body: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
                 by_id: Default::default(),

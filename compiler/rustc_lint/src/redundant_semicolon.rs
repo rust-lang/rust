@@ -47,7 +47,7 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             return;
         }
 
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             REDUNDANT_SEMICOLONS,
             span,
             RedundantSemicolonsDiag { multiple, suggestion: span },

@@ -2071,7 +2071,7 @@ fn check_must_not_suspend_def(
             span: data.source_span,
             reason: s.as_str().to_string(),
         });
-        tcx.emit_spanned_lint(
+        tcx.emit_node_span_lint(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,
             data.source_span,

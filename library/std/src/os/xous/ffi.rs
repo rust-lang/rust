@@ -88,29 +88,31 @@ fn lend_impl(
     let a3 = opcode;
     let a4 = data.as_ptr() as usize;
     let a5 = data.len();
-    let mut a6 = arg1;
-    let mut a7 = arg2;
+    let a6 = arg1;
+    let a7 = arg2;
+    let mut ret1;
+    let mut ret2;
 
     unsafe {
         core::arch::asm!(
             "ecall",
             inlateout("a0") a0,
-            inlateout("a1") a1 => _,
-            inlateout("a2") a2 => _,
+            inlateout("a1") a1 => ret1,
+            inlateout("a2") a2 => ret2,
             inlateout("a3") a3 => _,
             inlateout("a4") a4 => _,
             inlateout("a5") a5 => _,
-            inlateout("a6") a6,
-            inlateout("a7") a7,
+            inlateout("a6") a6 => _,
+            inlateout("a7") a7 => _,
         )
     };
 
     let result = a0;
 
     if result == SyscallResult::MemoryReturned as usize {
-        Ok((a6, a7))
+        Ok((ret1, ret2))
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(ret1.into())
     } else {
         Err(Error::InternalError)
     }
@@ -405,7 +407,7 @@ pub(crate) unsafe fn map_memory<T>(
 pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let mut a0 = Syscall::UnmapMemory as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len();
+    let a2 = range.len() * core::mem::size_of::<T>();
     let a3 = 0;
     let a4 = 0;
     let a5 = 0;
@@ -450,7 +452,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
 ) -> Result<(), Error> {
     let mut a0 = Syscall::UpdateMemoryFlags as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len();
+    let a2 = range.len() * core::mem::size_of::<T>();
     let a3 = new_flags.bits();
     let a4 = 0; // Process ID is currently None
     let a5 = 0;

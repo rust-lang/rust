@@ -186,14 +186,13 @@ impl TypeLocation {
     }
 
     pub(crate) fn complete_consts(&self) -> bool {
-        match self {
+        matches!(
+            self,
             TypeLocation::GenericArg {
                 corresponding_param: Some(ast::GenericParam::ConstParam(_)),
                 ..
-            } => true,
-            TypeLocation::AssocConstEq => true,
-            _ => false,
-        }
+            } | TypeLocation::AssocConstEq
+        )
     }
 
     pub(crate) fn complete_types(&self) -> bool {

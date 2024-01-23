@@ -400,9 +400,8 @@ impl GenericParams {
                             params
                                 .type_or_consts
                                 .iter()
-                                .filter_map(|(idx, param)| {
-                                    enabled(idx.into()).then(|| param.clone())
-                                })
+                                .filter(|(idx, _)| enabled((*idx).into()))
+                                .map(|(_, param)| param.clone())
                                 .collect()
                         }),
                     lifetimes: all_lifetimes_enabled
@@ -411,9 +410,8 @@ impl GenericParams {
                             params
                                 .lifetimes
                                 .iter()
-                                .filter_map(|(idx, param)| {
-                                    enabled(idx.into()).then(|| param.clone())
-                                })
+                                .filter(|(idx, _)| enabled((*idx).into()))
+                                .map(|(_, param)| param.clone())
                                 .collect()
                         }),
                     where_predicates: params.where_predicates.clone(),

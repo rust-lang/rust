@@ -55,6 +55,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1799,6 +1800,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
         if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
+            if let ImportKind::MacroUse { warn_private: true } = import.kind {
+                let msg = format!("macro `{ident}` is private");
+                self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
+            }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
@@ -2069,7 +2074,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a as usize),
+                        LitKind::Int(a, _) => ret.push(a.get() as usize),
                         _ => panic!("invalid arg index"),
                     }
                 }

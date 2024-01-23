@@ -13,6 +13,7 @@ use crate::ty::{self, List, Ty};
 use crate::ty::{Region, UserTypeAnnotationIndex};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
@@ -829,7 +830,7 @@ impl TerminatorKind<'_> {
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
-    pub(super) values: SmallVec<[u128; 1]>,
+    pub(super) values: SmallVec<[Pu128; 1]>,
 
     /// Possible branch sites. The last element of this vector is used
     /// for the otherwise branch, so targets.len() == values.len() + 1

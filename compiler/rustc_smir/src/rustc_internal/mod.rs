@@ -24,12 +24,38 @@ use std::ops::Index;
 mod internal;
 pub mod pretty;
 
+/// Convert an internal Rust compiler item into its stable counterpart, if one exists.
+///
+/// # Warning
+///
+/// This function is unstable, and its behavior may change at any point.
+/// E.g.: Items that were previously supported, may no longer be supported, or its translation may
+/// change.
+///
+/// # Panics
+///
+/// This function will panic if StableMIR has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
-pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: S) -> S::T {
-    with_tables(|tables| item.internal(tables))
+/// Convert a stable item into its internal Rust compiler counterpart, if one exists.
+///
+/// # Warning
+///
+/// This function is unstable, and it's behavior may change at any point.
+/// Not every stable item can be converted to an internal one.
+/// Furthermore, items that were previously supported, may no longer be supported in newer versions.
+///
+/// # Panics
+///
+/// This function will panic if StableMIR has not been properly initialized.
+pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
+where
+    S: RustcInternal,
+{
+    // The tcx argument ensures that the item won't outlive the type context.
+    with_tables(|tables| item.internal(tables, tcx))
 }
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
@@ -162,12 +188,12 @@ where
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R {
+pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let wrapper = ptr as *const TablesWrapper<'tcx>;
+        let wrapper = ptr as *const TablesWrapper<'_>;
         let mut tables = unsafe { (*wrapper).0.borrow_mut() };
         f(&mut *tables)
     })
@@ -393,7 +419,7 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
 /// Trait used to translate a stable construct to its rustc counterpart.
 ///
 /// This is basically a mirror of [crate::rustc_smir::Stable].
-pub trait RustcInternal<'tcx> {
-    type T;
-    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T;
+pub trait RustcInternal {
+    type T<'tcx>;
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx>;
 }

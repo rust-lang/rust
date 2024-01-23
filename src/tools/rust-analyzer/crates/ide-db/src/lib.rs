@@ -99,21 +99,21 @@ impl fmt::Debug for RootDatabase {
 impl Upcast<dyn ExpandDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn DefDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn HirDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn HirDatabase + 'static) {
-        &*self
+        self
     }
 }
 
@@ -217,15 +217,11 @@ impl RootDatabase {
             hir_db::FileItemTreeQuery
             hir_db::CrateDefMapQueryQuery
             hir_db::BlockDefMapQuery
-            hir_db::StructDataQuery
             hir_db::StructDataWithDiagnosticsQuery
-            hir_db::UnionDataQuery
             hir_db::UnionDataWithDiagnosticsQuery
             hir_db::EnumDataQuery
-            hir_db::EnumDataWithDiagnosticsQuery
-            hir_db::ImplDataQuery
+            hir_db::EnumVariantDataWithDiagnosticsQuery
             hir_db::ImplDataWithDiagnosticsQuery
-            hir_db::TraitDataQuery
             hir_db::TraitDataWithDiagnosticsQuery
             hir_db::TraitAliasDataQuery
             hir_db::TypeAliasDataQuery
@@ -239,9 +235,7 @@ impl RootDatabase {
             hir_db::BodyQuery
             hir_db::ExprScopesQuery
             hir_db::GenericParamsQuery
-            hir_db::VariantsAttrsQuery
             hir_db::FieldsAttrsQuery
-            hir_db::VariantsAttrsSourceMapQuery
             hir_db::FieldsAttrsSourceMapQuery
             hir_db::AttrsQuery
             hir_db::CrateLangItemsQuery
@@ -283,7 +277,7 @@ impl RootDatabase {
             // hir_db::InternImplTraitIdQuery
             // hir_db::InternTypeOrConstParamIdQuery
             // hir_db::InternClosureQuery
-            // hir_db::InternGeneratorQuery
+            // hir_db::InternCoroutineQuery
             hir_db::AssociatedTyDataQuery
             hir_db::TraitDatumQuery
             hir_db::StructDatumQuery

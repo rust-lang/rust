@@ -122,7 +122,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-                self.tcx.emit_spanned_lint(
+                self.tcx.emit_node_span_lint(
                     USELESS_DEPRECATED,
                     hir_id,
                     *span,
@@ -739,7 +739,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
                         if t.path.res != Res::Err && c.fully_stable {
-                            self.tcx.emit_spanned_lint(
+                            self.tcx.emit_node_span_lint(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
@@ -1073,7 +1073,7 @@ fn unnecessary_partially_stable_feature_lint(
     implies: Symbol,
     since: Symbol,
 ) {
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
@@ -1096,7 +1096,7 @@ fn unnecessary_stable_feature_lint(
     if since.as_str() == VERSION_PLACEHOLDER {
         since = sym::env_CFG_RELEASE;
     }
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,

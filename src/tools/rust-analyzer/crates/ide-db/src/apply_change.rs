@@ -120,7 +120,7 @@ impl RootDatabase {
             hir::db::InternImplTraitIdQuery
             hir::db::InternTypeOrConstParamIdQuery
             hir::db::InternClosureQuery
-            hir::db::InternGeneratorQuery
+            hir::db::InternCoroutineQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
@@ -136,15 +136,11 @@ impl RootDatabase {
             hir::db::FileItemTreeQuery
             hir::db::CrateDefMapQueryQuery
             hir::db::BlockDefMapQuery
-            hir::db::StructDataQuery
             hir::db::StructDataWithDiagnosticsQuery
-            hir::db::UnionDataQuery
             hir::db::UnionDataWithDiagnosticsQuery
             hir::db::EnumDataQuery
-            hir::db::EnumDataWithDiagnosticsQuery
-            hir::db::ImplDataQuery
+            hir::db::EnumVariantDataWithDiagnosticsQuery
             hir::db::ImplDataWithDiagnosticsQuery
-            hir::db::TraitDataQuery
             hir::db::TraitDataWithDiagnosticsQuery
             hir::db::TraitAliasDataQuery
             hir::db::TypeAliasDataQuery
@@ -158,9 +154,7 @@ impl RootDatabase {
             hir::db::BodyQuery
             hir::db::ExprScopesQuery
             hir::db::GenericParamsQuery
-            hir::db::VariantsAttrsQuery
             hir::db::FieldsAttrsQuery
-            hir::db::VariantsAttrsSourceMapQuery
             hir::db::FieldsAttrsSourceMapQuery
             hir::db::AttrsQuery
             hir::db::CrateLangItemsQuery

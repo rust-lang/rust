@@ -46,7 +46,7 @@ impl Evaluator<'_> {
                 match try_const_usize(self.db, len) {
                     Some(len) => {
                         let Some(ty) =
-                            subst.as_slice(Interner).get(0).and_then(|it| it.ty(Interner))
+                            subst.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                         else {
                             return Err(MirEvalError::TypeError("simd type with no ty param"));
                         };
@@ -106,7 +106,7 @@ impl Evaluator<'_> {
                         }
                     }
                     if is_signed {
-                        if let Some((&l, &r)) = l.iter().zip(r).rev().next() {
+                        if let Some((&l, &r)) = l.iter().zip(r).next_back() {
                             if l != r {
                                 result = (l as i8).cmp(&(r as i8));
                             }

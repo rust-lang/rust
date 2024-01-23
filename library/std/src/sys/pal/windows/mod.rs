@@ -15,7 +15,6 @@ pub mod compat;
 pub mod alloc;
 pub mod args;
 pub mod c;
-pub mod cmath;
 pub mod env;
 pub mod fs;
 pub mod handle;

@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{AstNode, SmolStr};
+use syntax::{format_smolstr, AstNode, SmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
@@ -52,13 +52,12 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!(
+            format_smolstr!(
                 "{}.{}",
                 receiver.unescaped().display(ctx.db()),
                 name.unescaped().display(ctx.db())
-            )
-            .into(),
-            format!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())).into(),
+            ),
+            format_smolstr!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())),
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
@@ -305,9 +304,7 @@ fn params(
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
-    if ctx.config.callable.is_none() {
-        return None;
-    }
+    ctx.config.callable.as_ref()?;
 
     // Don't add parentheses if the expected type is a function reference with the same signature.
     if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn()) {

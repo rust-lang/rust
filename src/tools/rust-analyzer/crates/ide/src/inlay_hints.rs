@@ -357,7 +357,7 @@ fn label_of_ty(
         label_builder: &mut InlayHintLabelBuilder<'_>,
         config: &InlayHintsConfig,
     ) -> Result<(), HirDisplayError> {
-        let iter_item_type = hint_iterator(sema, famous_defs, &ty);
+        let iter_item_type = hint_iterator(sema, famous_defs, ty);
         match iter_item_type {
             Some((iter_trait, item, ty)) => {
                 const LABEL_START: &str = "impl ";

@@ -1001,7 +1001,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
             .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
             .collect();
         let pat_span = pat.data().unwrap().span;
-        self.tcx.emit_spanned_lint(
+        self.tcx.emit_node_span_lint(
             lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
             pat_span,

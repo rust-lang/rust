@@ -185,7 +185,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             ret,
         );
 
-        self.tcx.emit_spanned_lint(
+        self.tcx.emit_node_span_lint(
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,

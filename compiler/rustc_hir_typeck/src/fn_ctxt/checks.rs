@@ -1471,6 +1471,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check a `let` statement.
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
         self.check_decl(local.into());
+        if local.pat.is_never_pattern() {
+            self.diverges.set(Diverges::Always {
+                span: local.pat.span,
+                custom_note: Some("any code following a never pattern is unreachable"),
+            });
+        }
     }
 
     pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {

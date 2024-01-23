@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -62,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
             && let Some((real_ty, resolved_ty, other_expr)) = get_one_size_of_ty(cx, left_expr, right_expr)
             && matches!(resolved_ty.kind(), ty::Int(_) | ty::Uint(_))
             && let ExprKind::Lit(lit) = &other_expr.kind
-            && let LitKind::Int(8, _) = lit.node
+            && let LitKind::Int(Pu128(8), _) = lit.node
         {
             let mut app = Applicability::MachineApplicable;
             let ty_snip = snippet_with_context(cx, real_ty.span, ctxt, "..", &mut app).0;

@@ -274,7 +274,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Defaults::FutureCompatDisallowed
                         if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
-                        tcx.struct_span_lint_hir(
+                        tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,

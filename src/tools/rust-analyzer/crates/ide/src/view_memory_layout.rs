@@ -128,7 +128,7 @@ pub(crate) fn view_memory_layout(
             )
             .collect::<Vec<_>>();
 
-        if fields.len() == 0 {
+        if fields.is_empty() {
             return;
         }
 
@@ -174,7 +174,7 @@ pub(crate) fn view_memory_layout(
 
         for (i, (_, child_ty)) in fields.iter().enumerate() {
             if let Ok(child_layout) = child_ty.layout(db) {
-                read_layout(nodes, db, &child_ty, &child_layout, children_start + i);
+                read_layout(nodes, db, child_ty, &child_layout, children_start + i);
             }
         }
     }

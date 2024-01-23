@@ -60,7 +60,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
 
         let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
 
-        let label = format!("Inline const as literal");
+        let label = "Inline const as literal".to_string();
         let target = variable.syntax().text_range();
 
         return acc.add(id, label, target, |edit| {
@@ -100,7 +100,7 @@ fn validate_type_recursively(
         }
         (_, Some(ty)) => match ty.as_builtin() {
             // `const A: str` is not correct, but `const A: &builtin` is.
-            Some(builtin) if refed || (!refed && !builtin.is_str()) => Some(()),
+            Some(builtin) if refed || !builtin.is_str() => Some(()),
             _ => None,
         },
         _ => None,
@@ -138,7 +138,7 @@ mod tests {
     // -----------Not supported-----------
     #[test]
     fn inline_const_as_literal_const_fn_call_slice() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist_not_applicable(
                 inline_const_as_literal,
                 &format!(
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_expr() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -261,7 +261,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_block_expr() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_block_eval_expr() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_block_eval_block_expr() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_fn_call_block_nested_builtin() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -347,7 +347,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_fn_call_tuple() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn inline_const_as_literal_const_fn_call_builtin() {
-        TEST_PAIRS.into_iter().for_each(|(ty, val, _)| {
+        TEST_PAIRS.iter().for_each(|(ty, val, _)| {
             check_assist(
                 inline_const_as_literal,
                 &format!(

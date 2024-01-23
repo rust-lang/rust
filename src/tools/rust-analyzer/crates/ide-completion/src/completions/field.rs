@@ -11,22 +11,18 @@ pub(crate) fn complete_field_list_tuple_variant(
     path_ctx: &PathCompletionCtx,
 ) {
     if ctx.qualifier_ctx.vis_node.is_some() {
-        return;
-    }
-    match path_ctx {
-        PathCompletionCtx {
-            has_macro_bang: false,
-            qualified: Qualified::No,
-            parent: None,
-            has_type_args: false,
-            ..
-        } => {
-            let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
-            add_keyword("pub(crate)", "pub(crate)");
-            add_keyword("pub(super)", "pub(super)");
-            add_keyword("pub", "pub");
-        }
-        _ => (),
+    } else if let PathCompletionCtx {
+        has_macro_bang: false,
+        qualified: Qualified::No,
+        parent: None,
+        has_type_args: false,
+        ..
+    } = path_ctx
+    {
+        let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
+        add_keyword("pub(crate)", "pub(crate)");
+        add_keyword("pub(super)", "pub(super)");
+        add_keyword("pub", "pub");
     }
 }
 

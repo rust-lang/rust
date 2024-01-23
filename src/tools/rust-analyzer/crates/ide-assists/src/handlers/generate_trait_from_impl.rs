@@ -85,10 +85,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
 
     let assoc_items = impl_ast.assoc_item_list()?;
     let first_element = assoc_items.assoc_items().next();
-    if first_element.is_none() {
-        // No reason for an assist.
-        return None;
-    }
+    first_element.as_ref()?;
 
     let impl_name = impl_ast.self_ty()?;
 
@@ -184,21 +181,18 @@ fn remove_items_visibility(item: &ast::AssocItem) {
 }
 
 fn strip_body(item: &ast::AssocItem) {
-    match item {
-        ast::AssocItem::Fn(f) => {
-            if let Some(body) = f.body() {
-                // In constrast to function bodies, we want to see no ws before a semicolon.
-                // So let's remove them if we see any.
-                if let Some(prev) = body.syntax().prev_sibling_or_token() {
-                    if prev.kind() == SyntaxKind::WHITESPACE {
-                        ted::remove(prev);
-                    }
+    if let ast::AssocItem::Fn(f) = item {
+        if let Some(body) = f.body() {
+            // In constrast to function bodies, we want to see no ws before a semicolon.
+            // So let's remove them if we see any.
+            if let Some(prev) = body.syntax().prev_sibling_or_token() {
+                if prev.kind() == SyntaxKind::WHITESPACE {
+                    ted::remove(prev);
                 }
-
-                ted::replace(body.syntax(), make::tokens::semicolon());
             }
+
+            ted::replace(body.syntax(), make::tokens::semicolon());
         }
-        _ => (),
     };
 }
 

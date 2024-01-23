@@ -5,6 +5,7 @@ pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
 }
+
 pub struct LintGroup {
     pub lint: Lint,
     pub children: &'static [&'static str],
@@ -21,6 +22,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"detects certain glob imports that require reporting an ambiguity error"##,
     },
     Lint { label: "ambiguous_glob_reexports", description: r##"ambiguous glob re-exports"## },
+    Lint {
+        label: "ambiguous_wide_pointer_comparisons",
+        description: r##"detects ambiguous wide pointer comparisons"##,
+    },
     Lint { label: "anonymous_parameters", description: r##"detects anonymous parameters"## },
     Lint { label: "arithmetic_overflow", description: r##"arithmetic operation overflows"## },
     Lint {
@@ -105,7 +110,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "deref_into_dyn_supertrait",
-        description: r##"`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future"##,
+        description: r##"`Deref` implementation usage with a supertrait trait object for output are shadow by implicit coercion"##,
     },
     Lint {
         label: "deref_nullptr",
@@ -175,7 +180,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "future_incompatible",
-        description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, implied-bounds-entailment, indirect-structural-match, invalid-alignment, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety"##,
+        description: r##"lint group for: ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety, writes-through-immutable-pointer"##,
     },
     Lint {
         label: "fuzzy_provenance_casts",
@@ -192,10 +197,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "illegal_floating_point_literal_pattern",
         description: r##"floating-point literals cannot be used in patterns"##,
-    },
-    Lint {
-        label: "implied_bounds_entailment",
-        description: r##"impl method assumes more implied bounds than its corresponding trait method"##,
     },
     Lint {
         label: "improper_ctypes",
@@ -225,10 +226,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "internal_features",
         description: r##"internal features are not supposed to be used"##,
-    },
-    Lint {
-        label: "invalid_alignment",
-        description: r##"raw pointers must be aligned before dereferencing"##,
     },
     Lint {
         label: "invalid_atomic_ordering",
@@ -583,6 +580,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint { label: "uninhabited_static", description: r##"uninhabited static"## },
     Lint {
+        label: "unit_bindings",
+        description: r##"binding is useless because it has the unit `()` type"##,
+    },
+    Lint {
         label: "unknown_crate_types",
         description: r##"unknown crate type found in `#[crate_type]` directive"##,
     },
@@ -739,16 +740,19 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "while_true",
         description: r##"suggest using `loop { }` instead of `while true { }`"##,
     },
+    Lint {
+        label: "writes_through_immutable_pointer",
+        description: r##"shared references are immutable, and pointers derived from them must not be written to"##,
+    },
 ];
 
 pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "future_incompatible",
-            description: r##"lint group for: deref-into-dyn-supertrait, ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, implied-bounds-entailment, indirect-structural-match, invalid-alignment, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety"##,
+            description: r##"lint group for: ambiguous-associated-items, ambiguous-glob-imports, byte-slice-in-packed-struct-with-derive, cenum-impl-drop-cast, coherence-leak-check, coinductive-overlap-in-coherence, conflicting-repr-hints, const-evaluatable-unchecked, const-patterns-without-partial-eq, deprecated-cfg-attr-crate-type-name, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, illegal-floating-point-literal-pattern, indirect-structural-match, invalid-doc-attributes, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, missing-fragment-specifier, nontrivial-structural-match, order-dependent-trait-objects, patterns-in-fns-without-body, pointer-structural-match, proc-macro-back-compat, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-transparent-external-private-fields, semicolon-in-expressions-from-macros, soft-unstable, suspicious-auto-trait-impls, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, where-clauses-object-safety, writes-through-immutable-pointer"##,
         },
         children: &[
-            "deref_into_dyn_supertrait",
             "ambiguous_associated_items",
             "ambiguous_glob_imports",
             "byte_slice_in_packed_struct_with_derive",
@@ -763,9 +767,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "forbidden_lint_groups",
             "ill_formed_attribute_input",
             "illegal_floating_point_literal_pattern",
-            "implied_bounds_entailment",
             "indirect_structural_match",
-            "invalid_alignment",
             "invalid_doc_attributes",
             "invalid_type_param_default",
             "late_bound_lifetime_arguments",
@@ -788,6 +790,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "unstable_syntax_pre_expansion",
             "unsupported_calling_conventions",
             "where_clauses_object_safety",
+            "writes_through_immutable_pointer",
         ],
     },
     LintGroup {
@@ -1371,17 +1374,6 @@ The tracking issue for this feature is: [#44874]
 "##,
     },
     Lint {
-        label: "arc_unwrap_or_clone",
-        description: r##"# `arc_unwrap_or_clone`
-
-The tracking issue for this feature is: [#93610]
-
-[#93610]: https://github.com/rust-lang/rust/issues/93610
-
-------------------------
-"##,
-    },
-    Lint {
         label: "arm_target_feature",
         description: r##"# `arm_target_feature`
 
@@ -1757,23 +1749,32 @@ The tracking issue for this feature is: [#62290]
 "##,
     },
     Lint {
-        label: "async_fn_in_trait",
-        description: r##"# `async_fn_in_trait`
-
-The tracking issue for this feature is: [#91611]
-
-[#91611]: https://github.com/rust-lang/rust/issues/91611
-
-------------------------
-"##,
-    },
-    Lint {
         label: "async_fn_track_caller",
         description: r##"# `async_fn_track_caller`
 
 The tracking issue for this feature is: [#110011]
 
 [#110011]: https://github.com/rust-lang/rust/issues/110011
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_for_loop",
+        description: r##"# `async_for_loop`
+
+The tracking issue for this feature is: [#118898]
+
+[#118898]: https://github.com/rust-lang/rust/issues/118898
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "async_gen_internals",
+        description: r##"# `async_gen_internals`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -1818,17 +1819,6 @@ The tracking issue for this feature is: [#98485]
 The tracking issue for this feature is: [#76314]
 
 [#76314]: https://github.com/rust-lang/rust/issues/76314
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "atomic_from_ptr",
-        description: r##"# `atomic_from_ptr`
-
-The tracking issue for this feature is: [#108652]
-
-[#108652]: https://github.com/rust-lang/rust/issues/108652
 
 ------------------------
 "##,
@@ -2143,6 +2133,17 @@ The tracking issue for this feature is: [#86423]
 "##,
     },
     Lint {
+        label: "bufread_skip_until",
+        description: r##"# `bufread_skip_until`
+
+The tracking issue for this feature is: [#111735]
+
+[#111735]: https://github.com/rust-lang/rust/issues/111735
+
+------------------------
+"##,
+    },
+    Lint {
         label: "builtin_syntax",
         description: r##"# `builtin_syntax`
 
@@ -2171,17 +2172,6 @@ The tracking issue for this feature is: [#94035]
 The tracking issue for this feature is: [#88345]
 
 [#88345]: https://github.com/rust-lang/rust/issues/88345
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "c_str_literals",
-        description: r##"# `c_str_literals`
-
-The tracking issue for this feature is: [#105723]
-
-[#105723]: https://github.com/rust-lang/rust/issues/105723
 
 ------------------------
 "##,
@@ -2584,8 +2574,8 @@ The tracking issue for this feature is: [#87417]
 
 ------------------------
 
-Allows using the `#[track_caller]` attribute on closures and generators.
-Calls made to the closure or generator will have caller information
+Allows using the `#[track_caller]` attribute on closures and coroutines.
+Calls made to the closure or coroutine will have caller information
 available through `std::panic::Location::caller()`, just like using
 `#[track_caller]` on a function.
 "##,
@@ -2843,15 +2833,6 @@ The tracking issue for this feature is: [#91583]
 "##,
     },
     Lint {
-        label: "const_assert_type2",
-        description: r##"# `const_assert_type2`
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-    },
-    Lint {
         label: "const_assume",
         description: r##"# `const_assume`
 
@@ -2874,12 +2855,34 @@ The tracking issue for this feature is: [#85368]
 "##,
     },
     Lint {
+        label: "const_atomic_from_ptr",
+        description: r##"# `const_atomic_from_ptr`
+
+The tracking issue for this feature is: [#108652]
+
+[#108652]: https://github.com/rust-lang/rust/issues/108652
+
+------------------------
+"##,
+    },
+    Lint {
         label: "const_bigint_helper_methods",
         description: r##"# `const_bigint_helper_methods`
 
 The tracking issue for this feature is: [#85532]
 
 [#85532]: https://github.com/rust-lang/rust/issues/85532
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "const_binary_heap_constructor",
+        description: r##"# `const_binary_heap_constructor`
+
+The tracking issue for this feature is: [#112353]
+
+[#112353]: https://github.com/rust-lang/rust/issues/112353
 
 ------------------------
 "##,
@@ -2958,6 +2961,17 @@ The tracking issue for this feature is: [#106003]
 "##,
     },
     Lint {
+        label: "const_cmp",
+        description: r##"# `const_cmp`
+
+The tracking issue for this feature is: [#92391]
+
+[#92391]: https://github.com/rust-lang/rust/issues/92391
+
+------------------------
+"##,
+    },
+    Lint {
         label: "const_collections_with_hasher",
         description: r##"# `const_collections_with_hasher`
 
@@ -2986,17 +3000,6 @@ The tracking issue for this feature is: [#65143]
 The tracking issue for this feature is: [#113219]
 
 [#113219]: https://github.com/rust-lang/rust/issues/113219
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "const_discriminant",
-        description: r##"# `const_discriminant`
-
-The tracking issue for this feature is: [#69821]
-
-[#69821]: https://github.com/rust-lang/rust/issues/69821
 
 ------------------------
 "##,
@@ -3119,17 +3122,6 @@ The tracking issue for this feature is: [#79597]
         description: r##"# `const_index_range_slice_index`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "const_inherent_unchecked_arith",
-        description: r##"# `const_inherent_unchecked_arith`
-
-The tracking issue for this feature is: [#85122]
-
-[#85122]: https://github.com/rust-lang/rust/issues/85122
 
 ------------------------
 "##,
@@ -3277,17 +3269,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 "##,
     },
     Lint {
-        label: "const_maybe_uninit_assume_init_read",
-        description: r##"# `const_maybe_uninit_assume_init_read`
-
-The tracking issue for this feature is: [#63567]
-
-[#63567]: https://github.com/rust-lang/rust/issues/63567
-
-------------------------
-"##,
-    },
-    Lint {
         label: "const_maybe_uninit_uninit_array",
         description: r##"# `const_maybe_uninit_uninit_array`
 
@@ -3305,17 +3286,6 @@ The tracking issue for this feature is: [#96097]
 The tracking issue for this feature is: [#63567]
 
 [#63567]: https://github.com/rust-lang/rust/issues/63567
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "const_maybe_uninit_zeroed",
-        description: r##"# `const_maybe_uninit_zeroed`
-
-The tracking issue for this feature is: [#91850]
-
-[#91850]: https://github.com/rust-lang/rust/issues/91850
 
 ------------------------
 "##,
@@ -3382,17 +3352,6 @@ The tracking issue for this feature is: [#91930]
 The tracking issue for this feature is: [#76654]
 
 [#76654]: https://github.com/rust-lang/rust/issues/76654
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "const_pointer_byte_offsets",
-        description: r##"# `const_pointer_byte_offsets`
-
-The tracking issue for this feature is: [#96283]
-
-[#96283]: https://github.com/rust-lang/rust/issues/96283
 
 ------------------------
 "##,
@@ -3788,6 +3747,17 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "core_io_borrowed_buf",
+        description: r##"# `core_io_borrowed_buf`
+
+The tracking issue for this feature is: [#117693]
+
+[#117693]: https://github.com/rust-lang/rust/issues/117693
+
+------------------------
+"##,
+    },
+    Lint {
         label: "core_panic",
         description: r##"# `core_panic`
 
@@ -3812,6 +3782,278 @@ This feature is internal to the Rust compiler and is not intended for general us
 This feature is internal to the Rust compiler and is not intended for general use.
 
 ------------------------
+"##,
+    },
+    Lint {
+        label: "coroutine_clone",
+        description: r##"# `coroutine_clone`
+
+The tracking issue for this feature is: [#95360]
+
+[#95360]: https://github.com/rust-lang/rust/issues/95360
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "coroutine_trait",
+        description: r##"# `coroutine_trait`
+
+The tracking issue for this feature is: [#43122]
+
+[#43122]: https://github.com/rust-lang/rust/issues/43122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "coroutines",
+        description: r##"# `coroutines`
+
+The tracking issue for this feature is: [#43122]
+
+[#43122]: https://github.com/rust-lang/rust/issues/43122
+
+------------------------
+
+The `coroutines` feature gate in Rust allows you to define coroutine or
+coroutine literals. A coroutine is a "resumable function" that syntactically
+resembles a closure but compiles to much different semantics in the compiler
+itself. The primary feature of a coroutine is that it can be suspended during
+execution to be resumed at a later date. Coroutines use the `yield` keyword to
+"return", and then the caller can `resume` a coroutine to resume execution just
+after the `yield` keyword.
+
+Coroutines are an extra-unstable feature in the compiler right now. Added in
+[RFC 2033] they're mostly intended right now as a information/constraint
+gathering phase. The intent is that experimentation can happen on the nightly
+compiler before actual stabilization. A further RFC will be required to
+stabilize coroutines and will likely contain at least a few small
+tweaks to the overall design.
+
+[RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
+
+A syntactical example of a coroutine is:
+
+```rust
+#![feature(coroutines, coroutine_trait)]
+
+use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
+
+fn main() {
+    let mut coroutine = || {
+        yield 1;
+        return "foo"
+    };
+
+    match Pin::new(&mut coroutine).resume(()) {
+        CoroutineState::Yielded(1) => {}
+        _ => panic!("unexpected value from resume"),
+    }
+    match Pin::new(&mut coroutine).resume(()) {
+        CoroutineState::Complete("foo") => {}
+        _ => panic!("unexpected value from resume"),
+    }
+}
+```
+
+Coroutines are closure-like literals which can contain a `yield` statement. The
+`yield` statement takes an optional expression of a value to yield out of the
+coroutine. All coroutine literals implement the `Coroutine` trait in the
+`std::ops` module. The `Coroutine` trait has one main method, `resume`, which
+resumes execution of the coroutine at the previous suspension point.
+
+An example of the control flow of coroutines is that the following example
+prints all numbers in order:
+
+```rust
+#![feature(coroutines, coroutine_trait)]
+
+use std::ops::Coroutine;
+use std::pin::Pin;
+
+fn main() {
+    let mut coroutine = || {
+        println!("2");
+        yield;
+        println!("4");
+    };
+
+    println!("1");
+    Pin::new(&mut coroutine).resume(());
+    println!("3");
+    Pin::new(&mut coroutine).resume(());
+    println!("5");
+}
+```
+
+At this time the main intended use case of coroutines is an implementation
+primitive for async/await syntax, but coroutines will likely be extended to
+ergonomic implementations of iterators and other primitives in the future.
+Feedback on the design and usage is always appreciated!
+
+### The `Coroutine` trait
+
+The `Coroutine` trait in `std::ops` currently looks like:
+
+```rust
+# #![feature(arbitrary_self_types, coroutine_trait)]
+# use std::ops::CoroutineState;
+# use std::pin::Pin;
+
+pub trait Coroutine<R = ()> {
+    type Yield;
+    type Return;
+    fn resume(self: Pin<&mut Self>, resume: R) -> CoroutineState<Self::Yield, Self::Return>;
+}
+```
+
+The `Coroutine::Yield` type is the type of values that can be yielded with the
+`yield` statement. The `Coroutine::Return` type is the returned type of the
+coroutine. This is typically the last expression in a coroutine's definition or
+any value passed to `return` in a coroutine. The `resume` function is the entry
+point for executing the `Coroutine` itself.
+
+The return value of `resume`, `CoroutineState`, looks like:
+
+```rust
+pub enum CoroutineState<Y, R> {
+    Yielded(Y),
+    Complete(R),
+}
+```
+
+The `Yielded` variant indicates that the coroutine can later be resumed. This
+corresponds to a `yield` point in a coroutine. The `Complete` variant indicates
+that the coroutine is complete and cannot be resumed again. Calling `resume`
+after a coroutine has returned `Complete` will likely result in a panic of the
+program.
+
+### Closure-like semantics
+
+The closure-like syntax for coroutines alludes to the fact that they also have
+closure-like semantics. Namely:
+
+* When created, a coroutine executes no code. A closure literal does not
+  actually execute any of the closure's code on construction, and similarly a
+  coroutine literal does not execute any code inside the coroutine when
+  constructed.
+
+* Coroutines can capture outer variables by reference or by move, and this can
+  be tweaked with the `move` keyword at the beginning of the closure. Like
+  closures all coroutines will have an implicit environment which is inferred by
+  the compiler. Outer variables can be moved into a coroutine for use as the
+  coroutine progresses.
+
+* Coroutine literals produce a value with a unique type which implements the
+  `std::ops::Coroutine` trait. This allows actual execution of the coroutine
+  through the `Coroutine::resume` method as well as also naming it in return
+  types and such.
+
+* Traits like `Send` and `Sync` are automatically implemented for a `Coroutine`
+  depending on the captured variables of the environment. Unlike closures,
+  coroutines also depend on variables live across suspension points. This means
+  that although the ambient environment may be `Send` or `Sync`, the coroutine
+  itself may not be due to internal variables live across `yield` points being
+  not-`Send` or not-`Sync`. Note that coroutines do
+  not implement traits like `Copy` or `Clone` automatically.
+
+* Whenever a coroutine is dropped it will drop all captured environment
+  variables.
+
+### Coroutines as state machines
+
+In the compiler, coroutines are currently compiled as state machines. Each
+`yield` expression will correspond to a different state that stores all live
+variables over that suspension point. Resumption of a coroutine will dispatch on
+the current state and then execute internally until a `yield` is reached, at
+which point all state is saved off in the coroutine and a value is returned.
+
+Let's take a look at an example to see what's going on here:
+
+```rust
+#![feature(coroutines, coroutine_trait)]
+
+use std::ops::Coroutine;
+use std::pin::Pin;
+
+fn main() {
+    let ret = "foo";
+    let mut coroutine = move || {
+        yield 1;
+        return ret
+    };
+
+    Pin::new(&mut coroutine).resume(());
+    Pin::new(&mut coroutine).resume(());
+}
+```
+
+This coroutine literal will compile down to something similar to:
+
+```rust
+#![feature(arbitrary_self_types, coroutines, coroutine_trait)]
+
+use std::ops::{Coroutine, CoroutineState};
+use std::pin::Pin;
+
+fn main() {
+    let ret = "foo";
+    let mut coroutine = {
+        enum __Coroutine {
+            Start(&'static str),
+            Yield1(&'static str),
+            Done,
+        }
+
+        impl Coroutine for __Coroutine {
+            type Yield = i32;
+            type Return = &'static str;
+
+            fn resume(mut self: Pin<&mut Self>, resume: ()) -> CoroutineState<i32, &'static str> {
+                use std::mem;
+                match mem::replace(&mut *self, __Coroutine::Done) {
+                    __Coroutine::Start(s) => {
+                        *self = __Coroutine::Yield1(s);
+                        CoroutineState::Yielded(1)
+                    }
+
+                    __Coroutine::Yield1(s) => {
+                        *self = __Coroutine::Done;
+                        CoroutineState::Complete(s)
+                    }
+
+                    __Coroutine::Done => {
+                        panic!("coroutine resumed after completion")
+                    }
+                }
+            }
+        }
+
+        __Coroutine::Start(ret)
+    };
+
+    Pin::new(&mut coroutine).resume(());
+    Pin::new(&mut coroutine).resume(());
+}
+```
+
+Notably here we can see that the compiler is generating a fresh type,
+`__Coroutine` in this case. This type has a number of states (represented here
+as an `enum`) corresponding to each of the conceptual states of the coroutine.
+At the beginning we're closing over our outer variable `foo` and then that
+variable is also live over the `yield` point, so it's stored in both states.
+
+When the coroutine starts it'll immediately yield 1, but it saves off its state
+just before it does so indicating that it has reached the yield point. Upon
+resuming again we'll execute the `return ret` which returns the `Complete`
+state.
+
+Here we can also note that the `Done` state, if resumed, panics immediately as
+it's invalid to resume a completed coroutine. It's also worth noting that this
+is just a rough desugaring, not a normative specification for what the compiler
+does.
 "##,
     },
     Lint {
@@ -3971,6 +4213,17 @@ The tracking issue for this feature is: [#46316]
 "##,
     },
     Lint {
+        label: "debug_closure_helpers",
+        description: r##"# `debug_closure_helpers`
+
+The tracking issue for this feature is: [#117729]
+
+[#117729]: https://github.com/rust-lang/rust/issues/117729
+
+------------------------
+"##,
+    },
+    Lint {
         label: "dec2flt",
         description: r##"# `dec2flt`
 
@@ -4059,6 +4312,83 @@ The tracking issue for this feature is: [#111996]
 [#111996]: https://github.com/rust-lang/rust/issues/111996
 
 ------------------------
+
+The `diagnostic_namespace` feature permits customization of compilation errors.
+
+## diagnostic::on_unimplemented
+
+With [#114452] support for `diagnostic::on_unimplemented` was added.
+
+When used on a trait declaration, the following options are available:
+
+* `message` to customize the primary error message
+* `note` to add a customized note message to an error message
+* `label` to customize the label part of the error message
+
+The attribute will hint to the compiler to use these in error messages:
+```rust
+// some library
+#![feature(diagnostic_namespace)]
+
+#[diagnostic::on_unimplemented(
+    message = "cannot insert element",
+    label = "cannot be put into a table",
+    note = "see <link> for more information about the Table api"
+)]
+pub trait Element {
+    // ...
+}
+```
+
+```rust,compile_fail,E0277
+# #![feature(diagnostic_namespace)]
+#
+# #[diagnostic::on_unimplemented(
+#    message = "cannot insert element",
+#    label = "cannot be put into a table",
+#    note = "see <link> for more information about the Table api"
+# )]
+# pub trait Element {
+#    // ...
+# }
+# struct Table;
+# impl Table {
+#    fn insert<T: Element>(&self, element: T) {
+#        // ..
+#    }
+# }
+# fn main() {
+#    let table = Table;
+#    let element = ();
+// user code
+table.insert(element);
+# }
+```
+
+```text
+error[E0277]: cannot insert element
+  --> src/main.rs:24:18
+   |
+24 |     table.insert(element);
+   |           ------ ^^^^^^^ cannot be put into a table
+   |           |
+   |           required by a bound introduced by this call
+   |
+   = help: the trait `Element` is not implemented for `<type>`
+   = note: see <link> for more information about the Table api
+note: required by a bound in `Table::insert`
+  --> src/main.rs:15:18
+   |
+15 |     fn insert<T: Element>(&self, element: T) {
+   |                  ^^^^^^^ required by this bound in `Table::insert`
+
+For more information about this error, try `rustc --explain E0277`.
+```
+
+See [RFC 3368] for more information.
+
+[#114452]: https://github.com/rust-lang/rust/pull/114452
+[RFC 3368]: https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md
 "##,
     },
     Lint {
@@ -4278,6 +4608,17 @@ The tracking issue for this feature is: [#101122]
 The tracking issue for this feature is: [#34761]
 
 [#34761]: https://github.com/rust-lang/rust/issues/34761
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "duration_abs_diff",
+        description: r##"# `duration_abs_diff`
+
+The tracking issue for this feature is: [#117618]
+
+[#117618]: https://github.com/rust-lang/rust/issues/117618
 
 ------------------------
 "##,
@@ -4509,6 +4850,17 @@ The tracking issue for this feature is: [#112788]
 "##,
     },
     Lint {
+        label: "exposed_provenance",
+        description: r##"# `exposed_provenance`
+
+The tracking issue for this feature is: [#95228]
+
+[#95228]: https://github.com/rust-lang/rust/issues/95228
+
+------------------------
+"##,
+    },
+    Lint {
         label: "extend_one",
         description: r##"# `extend_one`
 
@@ -4701,28 +5053,6 @@ The tracking issue for this feature is: [#58314]
 "##,
     },
     Lint {
-        label: "file_create_new",
-        description: r##"# `file_create_new`
-
-The tracking issue for this feature is: [#105135]
-
-[#105135]: https://github.com/rust-lang/rust/issues/105135
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "file_set_times",
-        description: r##"# `file_set_times`
-
-The tracking issue for this feature is: [#98245]
-
-[#98245]: https://github.com/rust-lang/rust/issues/98245
-
-------------------------
-"##,
-    },
-    Lint {
         label: "float_gamma",
         description: r##"# `float_gamma`
 
@@ -4789,6 +5119,17 @@ This feature is internal to the Rust compiler and is not intended for general us
 The tracking issue for this feature is: [#82232]
 
 [#82232]: https://github.com/rust-lang/rust/issues/82232
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "fn_delegation",
+        description: r##"# `fn_delegation`
+
+The tracking issue for this feature is: [#118212]
+
+[#118212]: https://github.com/rust-lang/rust/issues/118212
 
 ------------------------
 "##,
@@ -4893,6 +5234,17 @@ The tracking issue for this feature is: [#91642]
 "##,
     },
     Lint {
+        label: "gen_blocks",
+        description: r##"# `gen_blocks`
+
+The tracking issue for this feature is: [#117078]
+
+[#117078]: https://github.com/rust-lang/rust/issues/117078
+
+------------------------
+"##,
+    },
+    Lint {
         label: "gen_future",
         description: r##"# `gen_future`
 
@@ -4901,278 +5253,6 @@ The tracking issue for this feature is: [#50547]
 [#50547]: https://github.com/rust-lang/rust/issues/50547
 
 ------------------------
-"##,
-    },
-    Lint {
-        label: "generator_clone",
-        description: r##"# `generator_clone`
-
-The tracking issue for this feature is: [#95360]
-
-[#95360]: https://github.com/rust-lang/rust/issues/95360
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "generator_trait",
-        description: r##"# `generator_trait`
-
-The tracking issue for this feature is: [#43122]
-
-[#43122]: https://github.com/rust-lang/rust/issues/43122
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "generators",
-        description: r##"# `generators`
-
-The tracking issue for this feature is: [#43122]
-
-[#43122]: https://github.com/rust-lang/rust/issues/43122
-
-------------------------
-
-The `generators` feature gate in Rust allows you to define generator or
-coroutine literals. A generator is a "resumable function" that syntactically
-resembles a closure but compiles to much different semantics in the compiler
-itself. The primary feature of a generator is that it can be suspended during
-execution to be resumed at a later date. Generators use the `yield` keyword to
-"return", and then the caller can `resume` a generator to resume execution just
-after the `yield` keyword.
-
-Generators are an extra-unstable feature in the compiler right now. Added in
-[RFC 2033] they're mostly intended right now as a information/constraint
-gathering phase. The intent is that experimentation can happen on the nightly
-compiler before actual stabilization. A further RFC will be required to
-stabilize generators/coroutines and will likely contain at least a few small
-tweaks to the overall design.
-
-[RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
-
-A syntactical example of a generator is:
-
-```rust
-#![feature(generators, generator_trait)]
-
-use std::ops::{Generator, GeneratorState};
-use std::pin::Pin;
-
-fn main() {
-    let mut generator = || {
-        yield 1;
-        return "foo"
-    };
-
-    match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(1) => {}
-        _ => panic!("unexpected value from resume"),
-    }
-    match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Complete("foo") => {}
-        _ => panic!("unexpected value from resume"),
-    }
-}
-```
-
-Generators are closure-like literals which can contain a `yield` statement. The
-`yield` statement takes an optional expression of a value to yield out of the
-generator. All generator literals implement the `Generator` trait in the
-`std::ops` module. The `Generator` trait has one main method, `resume`, which
-resumes execution of the generator at the previous suspension point.
-
-An example of the control flow of generators is that the following example
-prints all numbers in order:
-
-```rust
-#![feature(generators, generator_trait)]
-
-use std::ops::Generator;
-use std::pin::Pin;
-
-fn main() {
-    let mut generator = || {
-        println!("2");
-        yield;
-        println!("4");
-    };
-
-    println!("1");
-    Pin::new(&mut generator).resume(());
-    println!("3");
-    Pin::new(&mut generator).resume(());
-    println!("5");
-}
-```
-
-At this time the main intended use case of generators is an implementation
-primitive for async/await syntax, but generators will likely be extended to
-ergonomic implementations of iterators and other primitives in the future.
-Feedback on the design and usage is always appreciated!
-
-### The `Generator` trait
-
-The `Generator` trait in `std::ops` currently looks like:
-
-```rust
-# #![feature(arbitrary_self_types, generator_trait)]
-# use std::ops::GeneratorState;
-# use std::pin::Pin;
-
-pub trait Generator<R = ()> {
-    type Yield;
-    type Return;
-    fn resume(self: Pin<&mut Self>, resume: R) -> GeneratorState<Self::Yield, Self::Return>;
-}
-```
-
-The `Generator::Yield` type is the type of values that can be yielded with the
-`yield` statement. The `Generator::Return` type is the returned type of the
-generator. This is typically the last expression in a generator's definition or
-any value passed to `return` in a generator. The `resume` function is the entry
-point for executing the `Generator` itself.
-
-The return value of `resume`, `GeneratorState`, looks like:
-
-```rust
-pub enum GeneratorState<Y, R> {
-    Yielded(Y),
-    Complete(R),
-}
-```
-
-The `Yielded` variant indicates that the generator can later be resumed. This
-corresponds to a `yield` point in a generator. The `Complete` variant indicates
-that the generator is complete and cannot be resumed again. Calling `resume`
-after a generator has returned `Complete` will likely result in a panic of the
-program.
-
-### Closure-like semantics
-
-The closure-like syntax for generators alludes to the fact that they also have
-closure-like semantics. Namely:
-
-* When created, a generator executes no code. A closure literal does not
-  actually execute any of the closure's code on construction, and similarly a
-  generator literal does not execute any code inside the generator when
-  constructed.
-
-* Generators can capture outer variables by reference or by move, and this can
-  be tweaked with the `move` keyword at the beginning of the closure. Like
-  closures all generators will have an implicit environment which is inferred by
-  the compiler. Outer variables can be moved into a generator for use as the
-  generator progresses.
-
-* Generator literals produce a value with a unique type which implements the
-  `std::ops::Generator` trait. This allows actual execution of the generator
-  through the `Generator::resume` method as well as also naming it in return
-  types and such.
-
-* Traits like `Send` and `Sync` are automatically implemented for a `Generator`
-  depending on the captured variables of the environment. Unlike closures,
-  generators also depend on variables live across suspension points. This means
-  that although the ambient environment may be `Send` or `Sync`, the generator
-  itself may not be due to internal variables live across `yield` points being
-  not-`Send` or not-`Sync`. Note that generators do
-  not implement traits like `Copy` or `Clone` automatically.
-
-* Whenever a generator is dropped it will drop all captured environment
-  variables.
-
-### Generators as state machines
-
-In the compiler, generators are currently compiled as state machines. Each
-`yield` expression will correspond to a different state that stores all live
-variables over that suspension point. Resumption of a generator will dispatch on
-the current state and then execute internally until a `yield` is reached, at
-which point all state is saved off in the generator and a value is returned.
-
-Let's take a look at an example to see what's going on here:
-
-```rust
-#![feature(generators, generator_trait)]
-
-use std::ops::Generator;
-use std::pin::Pin;
-
-fn main() {
-    let ret = "foo";
-    let mut generator = move || {
-        yield 1;
-        return ret
-    };
-
-    Pin::new(&mut generator).resume(());
-    Pin::new(&mut generator).resume(());
-}
-```
-
-This generator literal will compile down to something similar to:
-
-```rust
-#![feature(arbitrary_self_types, generators, generator_trait)]
-
-use std::ops::{Generator, GeneratorState};
-use std::pin::Pin;
-
-fn main() {
-    let ret = "foo";
-    let mut generator = {
-        enum __Generator {
-            Start(&'static str),
-            Yield1(&'static str),
-            Done,
-        }
-
-        impl Generator for __Generator {
-            type Yield = i32;
-            type Return = &'static str;
-
-            fn resume(mut self: Pin<&mut Self>, resume: ()) -> GeneratorState<i32, &'static str> {
-                use std::mem;
-                match mem::replace(&mut *self, __Generator::Done) {
-                    __Generator::Start(s) => {
-                        *self = __Generator::Yield1(s);
-                        GeneratorState::Yielded(1)
-                    }
-
-                    __Generator::Yield1(s) => {
-                        *self = __Generator::Done;
-                        GeneratorState::Complete(s)
-                    }
-
-                    __Generator::Done => {
-                        panic!("generator resumed after completion")
-                    }
-                }
-            }
-        }
-
-        __Generator::Start(ret)
-    };
-
-    Pin::new(&mut generator).resume(());
-    Pin::new(&mut generator).resume(());
-}
-```
-
-Notably here we can see that the compiler is generating a fresh type,
-`__Generator` in this case. This type has a number of states (represented here
-as an `enum`) corresponding to each of the conceptual states of the generator.
-At the beginning we're closing over our outer variable `foo` and then that
-variable is also live over the `yield` point, so it's stored in both states.
-
-When the generator starts it'll immediately yield 1, but it saves off its state
-just before it does so indicating that it has reached the yield point. Upon
-resuming again we'll execute the `return ret` which returns the `Complete`
-state.
-
-Here we can also note that the `Done` state, if resumed, panics immediately as
-it's invalid to resume a completed generator. It's also worth noting that this
-is just a rough desugaring, not a normative specification for what the compiler
-does.
 "##,
     },
     Lint {
@@ -5656,17 +5736,6 @@ The tracking issue for this feature is: [#113744]
 "##,
     },
     Lint {
-        label: "ip_in_core",
-        description: r##"# `ip_in_core`
-
-The tracking issue for this feature is: [#108443]
-
-[#108443]: https://github.com/rust-lang/rust/issues/108443
-
-------------------------
-"##,
-    },
-    Lint {
         label: "is_ascii_octdigit",
         description: r##"# `is_ascii_octdigit`
 
@@ -5737,8 +5806,8 @@ The tracking issue for this feature is: [#94780]
 "##,
     },
     Lint {
-        label: "iter_from_generator",
-        description: r##"# `iter_from_generator`
+        label: "iter_from_coroutine",
+        description: r##"# `iter_from_coroutine`
 
 The tracking issue for this feature is: [#43122]
 
@@ -6050,6 +6119,40 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
+        label: "lifetime_capture_rules_2024",
+        description: r##"# `lifetime_capture_rules_2024`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "link_arg_attribute",
+        description: r##"# `link_arg_attribute`
+
+The tracking issue for this feature is: [#99427]
+
+------
+
+The `link_arg_attribute` feature allows passing arguments into the linker
+from inside of the source code. Order is preserved for link attributes as
+they were defined on a single extern block:
+
+```rust,no_run
+#![feature(link_arg_attribute)]
+
+#[link(kind = "link-arg", name = "--start-group")]
+#[link(kind = "static", name = "c")]
+#[link(kind = "static", name = "gcc")]
+#[link(kind = "link-arg", name = "--end-group")]
+extern "C" {}
+```
+
+[#99427]: https://github.com/rust-lang/rust/issues/99427
+"##,
+    },
+    Lint {
         label: "link_cfg",
         description: r##"# `link_cfg`
 
@@ -6103,6 +6206,17 @@ The tracking issue for this feature is: [#69210]
 "##,
     },
     Lint {
+        label: "linked_list_retain",
+        description: r##"# `linked_list_retain`
+
+The tracking issue for this feature is: [#114135]
+
+[#114135]: https://github.com/rust-lang/rust/issues/114135
+
+------------------------
+"##,
+    },
+    Lint {
         label: "lint_reasons",
         description: r##"# `lint_reasons`
 
@@ -6131,6 +6245,17 @@ The tracking issue for this feature is: [#82971]
 The tracking issue for this feature is: [#29598]
 
 [#29598]: https://github.com/rust-lang/rust/issues/29598
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "loongarch_target_feature",
+        description: r##"# `loongarch_target_feature`
+
+The tracking issue for this feature is: [#44839]
+
+[#44839]: https://github.com/rust-lang/rust/issues/44839
 
 ------------------------
 "##,
@@ -6518,6 +6643,17 @@ This serves two purposes:
 "##,
     },
     Lint {
+        label: "never_patterns",
+        description: r##"# `never_patterns`
+
+The tracking issue for this feature is: [#118155]
+
+[#118155]: https://github.com/rust-lang/rust/issues/118155
+
+------------------------
+"##,
+    },
+    Lint {
         label: "never_type",
         description: r##"# `never_type`
 
@@ -6617,6 +6753,17 @@ The tracking issue for this feature is: [#108185]
 "##,
     },
     Lint {
+        label: "non_null_convenience",
+        description: r##"# `non_null_convenience`
+
+The tracking issue for this feature is: [#117691]
+
+[#117691]: https://github.com/rust-lang/rust/issues/117691
+
+------------------------
+"##,
+    },
+    Lint {
         label: "nonzero_ops",
         description: r##"# `nonzero_ops`
 
@@ -6681,6 +6828,17 @@ The tracking issue for this feature is: [#106655]
 "##,
     },
     Lint {
+        label: "offset_of_enum",
+        description: r##"# `offset_of_enum`
+
+The tracking issue for this feature is: [#106655]
+
+[#106655]: https://github.com/rust-lang/rust/issues/106655
+
+------------------------
+"##,
+    },
+    Lint {
         label: "omit_gdb_pretty_printer_section",
         description: r##"# `omit_gdb_pretty_printer_section`
 
@@ -6696,6 +6854,17 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#109737]
 
 [#109737]: https://github.com/rust-lang/rust/issues/109737
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "once_cell_try_insert",
+        description: r##"# `once_cell_try_insert`
+
+The tracking issue for this feature is: [#116693]
+
+[#116693]: https://github.com/rust-lang/rust/issues/116693
 
 ------------------------
 "##,
@@ -6751,6 +6920,17 @@ The tracking issue for this feature is: [#98934]
 The tracking issue for this feature is: [#70086]
 
 [#70086]: https://github.com/rust-lang/rust/issues/70086
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "os_str_slice",
+        description: r##"# `os_str_slice`
+
+The tracking issue for this feature is: [#118485]
+
+[#118485]: https://github.com/rust-lang/rust/issues/118485
 
 ------------------------
 "##,
@@ -6908,135 +7088,6 @@ The tracking issue for this feature is: [#27731]
 "##,
     },
     Lint {
-        label: "plugin",
-        description: r##"# `plugin`
-
-The tracking issue for this feature is: [#29597]
-
-[#29597]: https://github.com/rust-lang/rust/issues/29597
-
-
-This feature is part of "compiler plugins." It will often be used with the
-`rustc_private` feature.
-
-------------------------
-
-`rustc` can load compiler plugins, which are user-provided libraries that
-extend the compiler's behavior with new lint checks, etc.
-
-A plugin is a dynamic library crate with a designated *registrar* function that
-registers extensions with `rustc`. Other crates can load these extensions using
-the crate attribute `#![plugin(...)]`.  See the
-`rustc_driver::plugin` documentation for more about the
-mechanics of defining and loading a plugin.
-
-In the vast majority of cases, a plugin should *only* be used through
-`#![plugin]` and not through an `extern crate` item.  Linking a plugin would
-pull in all of librustc_ast and librustc as dependencies of your crate.  This is
-generally unwanted unless you are building another plugin.
-
-The usual practice is to put compiler plugins in their own crate, separate from
-any `macro_rules!` macros or ordinary Rust code meant to be used by consumers
-of a library.
-
-# Lint plugins
-
-Plugins can extend [Rust's lint
-infrastructure](../../reference/attributes/diagnostics.md#lint-check-attributes) with
-additional checks for code style, safety, etc. Now let's write a plugin
-[`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui-fulldeps/plugin/auxiliary/lint-plugin-test.rs)
-that warns about any item named `lintme`.
-
-```rust,ignore (requires-stage-2)
-#![feature(rustc_private)]
-
-extern crate rustc_ast;
-
-// Load rustc as a plugin to get macros
-extern crate rustc_driver;
-extern crate rustc_lint;
-#[macro_use]
-extern crate rustc_session;
-
-use rustc_ast::ast;
-use rustc_driver::plugin::Registry;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-
-declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
-
-declare_lint_pass!(Pass => [TEST_LINT]);
-
-impl EarlyLintPass for Pass {
-    fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
-        if it.ident.name.as_str() == "lintme" {
-            cx.lint(TEST_LINT, "item is named 'lintme'", |lint| lint.set_span(it.span));
-        }
-    }
-}
-
-#[no_mangle]
-fn __rustc_plugin_registrar(reg: &mut Registry) {
-    reg.lint_store.register_lints(&[&TEST_LINT]);
-    reg.lint_store.register_early_pass(|| Box::new(Pass));
-}
-```
-
-Then code like
-
-```rust,ignore (requires-plugin)
-#![feature(plugin)]
-#![plugin(lint_plugin_test)]
-
-fn lintme() { }
-```
-
-will produce a compiler warning:
-
-```txt
-foo.rs:4:1: 4:16 warning: item is named 'lintme', #[warn(test_lint)] on by default
-foo.rs:4 fn lintme() { }
-         ^~~~~~~~~~~~~~~
-```
-
-The components of a lint plugin are:
-
-* one or more `declare_lint!` invocations, which define static `Lint` structs;
-
-* a struct holding any state needed by the lint pass (here, none);
-
-* a `LintPass`
-  implementation defining how to check each syntax element. A single
-  `LintPass` may call `span_lint` for several different `Lint`s, but should
-  register them all through the `get_lints` method.
-
-Lint passes are syntax traversals, but they run at a late stage of compilation
-where type information is available. `rustc`'s [built-in
-lints](https://github.com/rust-lang/rust/blob/master/compiler/rustc_lint_defs/src/builtin.rs)
-mostly use the same infrastructure as lint plugins, and provide examples of how
-to access type information.
-
-Lints defined by plugins are controlled by the usual [attributes and compiler
-flags](../../reference/attributes/diagnostics.md#lint-check-attributes), e.g.
-`#[allow(test_lint)]` or `-A test-lint`. These identifiers are derived from the
-first argument to `declare_lint!`, with appropriate case and punctuation
-conversion.
-
-You can run `rustc -W help foo.rs` to see a list of lints known to `rustc`,
-including those provided by plugins loaded by `foo.rs`.
-"##,
-    },
-    Lint {
-        label: "pointer_byte_offsets",
-        description: r##"# `pointer_byte_offsets`
-
-The tracking issue for this feature is: [#96283]
-
-[#96283]: https://github.com/rust-lang/rust/issues/96283
-
-------------------------
-"##,
-    },
-    Lint {
         label: "pointer_is_aligned",
         description: r##"# `pointer_is_aligned`
 
@@ -7074,17 +7125,6 @@ The tracking issue for this feature is: [#86656]
 The tracking issue for this feature is: [#44839]
 
 [#44839]: https://github.com/rust-lang/rust/issues/44839
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "precise_pointer_size_matching",
-        description: r##"# `precise_pointer_size_matching`
-
-The tracking issue for this feature is: [#56354]
-
-[#56354]: https://github.com/rust-lang/rust/issues/56354
 
 ------------------------
 "##,
@@ -7252,17 +7292,6 @@ This feature is internal to the Rust compiler and is not intended for general us
 "##,
     },
     Lint {
-        label: "ptr_addr_eq",
-        description: r##"# `ptr_addr_eq`
-
-The tracking issue for this feature is: [#116324]
-
-[#116324]: https://github.com/rust-lang/rust/issues/116324
-
-------------------------
-"##,
-    },
-    Lint {
         label: "ptr_alignment_type",
         description: r##"# `ptr_alignment_type`
 
@@ -7280,17 +7309,6 @@ The tracking issue for this feature is: [#102070]
 The tracking issue for this feature is: [#75402]
 
 [#75402]: https://github.com/rust-lang/rust/issues/75402
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "ptr_from_ref",
-        description: r##"# `ptr_from_ref`
-
-The tracking issue for this feature is: [#106116]
-
-[#106116]: https://github.com/rust-lang/rust/issues/106116
 
 ------------------------
 "##,
@@ -7506,28 +7524,6 @@ The tracking issue for this feature is: [#70142]
 "##,
     },
     Lint {
-        label: "result_option_inspect",
-        description: r##"# `result_option_inspect`
-
-The tracking issue for this feature is: [#91345]
-
-[#91345]: https://github.com/rust-lang/rust/issues/91345
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "return_position_impl_trait_in_trait",
-        description: r##"# `return_position_impl_trait_in_trait`
-
-The tracking issue for this feature is: [#91611]
-
-[#91611]: https://github.com/rust-lang/rust/issues/91611
-
-------------------------
-"##,
-    },
-    Lint {
         label: "return_type_notation",
         description: r##"# `return_type_notation`
 
@@ -7708,6 +7704,17 @@ The tracking issue for this feature is: [#101730]
         description: r##"# `sealed`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "seek_seek_relative",
+        description: r##"# `seek_seek_relative`
+
+The tracking issue for this feature is: [#117374]
+
+[#117374]: https://github.com/rust-lang/rust/issues/117374
 
 ------------------------
 "##,
@@ -7949,6 +7956,17 @@ The tracking issue for this feature is: [#76014]
 "##,
     },
     Lint {
+        label: "slice_split_once",
+        description: r##"# `slice_split_once`
+
+The tracking issue for this feature is: [#112811]
+
+[#112811]: https://github.com/rust-lang/rust/issues/112811
+
+------------------------
+"##,
+    },
+    Lint {
         label: "slice_swap_unchecked",
         description: r##"# `slice_swap_unchecked`
 
@@ -8178,6 +8196,17 @@ The tracking issue for this feature is: [#15701]
 "##,
     },
     Lint {
+        label: "str_from_utf16_endian",
+        description: r##"# `str_from_utf16_endian`
+
+The tracking issue for this feature is: [#116258]
+
+[#116258]: https://github.com/rust-lang/rust/issues/116258
+
+------------------------
+"##,
+    },
+    Lint {
         label: "str_internals",
         description: r##"# `str_internals`
 
@@ -8265,6 +8294,44 @@ The tracking issue for this feature is: [#87121]
 [#87121]: https://github.com/rust-lang/rust/issues/87121
 
 ------------------------
+
+This feature permits pattern matching `String` to `&str` through [its `Deref` implementation].
+
+```rust
+#![feature(string_deref_patterns)]
+
+pub enum Value {
+    String(String),
+    Number(u32),
+}
+
+pub fn is_it_the_answer(value: Value) -> bool {
+    match value {
+        Value::String("42") => true,
+        Value::Number(42) => true,
+        _ => false,
+    }
+}
+```
+
+Without this feature other constructs such as match guards have to be used.
+
+```rust
+# pub enum Value {
+#    String(String),
+#    Number(u32),
+# }
+#
+pub fn is_it_the_answer(value: Value) -> bool {
+    match value {
+        Value::String(s) if s == "42" => true,
+        Value::Number(42) => true,
+        _ => false,
+    }
+}
+```
+
+[its `Deref` implementation]: https://doc.rust-lang.org/std/string/struct.String.html#impl-Deref-for-String
 "##,
     },
     Lint {
@@ -8529,15 +8596,6 @@ even when using either of the above.
 "##,
     },
     Lint {
-        label: "test_2018_feature",
-        description: r##"# `test_2018_feature`
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-    },
-    Lint {
         label: "test_unstable_lint",
         description: r##"# `test_unstable_lint`
 
@@ -8703,37 +8761,6 @@ pub fn main() {
 "##,
     },
     Lint {
-        label: "trait_upcasting",
-        description: r##"# `trait_upcasting`
-
-The tracking issue for this feature is: [#65991]
-
-[#65991]: https://github.com/rust-lang/rust/issues/65991
-
-------------------------
-
-The `trait_upcasting` feature adds support for trait upcasting coercion. This allows a
-trait object of type `dyn Bar` to be cast to a trait object of type `dyn Foo`
-so long as `Bar: Foo`.
-
-```rust,edition2018
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
-trait Foo {}
-
-trait Bar: Foo {}
-
-impl Foo for i32 {}
-
-impl<T: Foo + ?Sized> Bar for T {}
-
-let bar: &dyn Bar = &123;
-let foo: &dyn Foo = bar;
-```
-"##,
-    },
-    Lint {
         label: "transmutability",
         description: r##"# `transmutability`
 
@@ -8849,6 +8876,15 @@ their application of these optimizations.
 The tracking issue for this feature is: [#48214]
 
 [#48214]: https://github.com/rust-lang/rust/issues/48214
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "trusted_fused",
+        description: r##"# `trusted_fused`
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -9053,17 +9089,6 @@ fn main () {
 "##,
     },
     Lint {
-        label: "type_name_of_val",
-        description: r##"# `type_name_of_val`
-
-The tracking issue for this feature is: [#66359]
-
-[#66359]: https://github.com/rust-lang/rust/issues/66359
-
-------------------------
-"##,
-    },
-    Lint {
         label: "type_privacy_lints",
         description: r##"# `type_privacy_lints`
 
@@ -9117,6 +9142,28 @@ fn main() {}
     Lint {
         label: "unchecked_math",
         description: r##"# `unchecked_math`
+
+The tracking issue for this feature is: [#85122]
+
+[#85122]: https://github.com/rust-lang/rust/issues/85122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unchecked_neg",
+        description: r##"# `unchecked_neg`
+
+The tracking issue for this feature is: [#85122]
+
+[#85122]: https://github.com/rust-lang/rust/issues/85122
+
+------------------------
+"##,
+    },
+    Lint {
+        label: "unchecked_shifts",
+        description: r##"# `unchecked_shifts`
 
 The tracking issue for this feature is: [#85122]
 
@@ -9630,9 +9677,9 @@ The tracking issue for this feature is: [#81944]
         label: "waker_getters",
         description: r##"# `waker_getters`
 
-The tracking issue for this feature is: [#87021]
+The tracking issue for this feature is: [#96992]
 
-[#87021]: https://github.com/rust-lang/rust/issues/87021
+[#96992]: https://github.com/rust-lang/rust/issues/96992
 
 ------------------------
 "##,
@@ -9712,7 +9759,9 @@ This feature is internal to the Rust compiler and is not intended for general us
         label: "windows_process_exit_code_from",
         description: r##"# `windows_process_exit_code_from`
 
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+The tracking issue for this feature is: [#111688]
+
+[#111688]: https://github.com/rust-lang/rust/issues/111688
 
 ------------------------
 "##,
@@ -10008,7 +10057,7 @@ table:
         description: r##"Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category."##,
     },
     Lint {
-        label: "clippy::blocks_in_if_conditions",
+        label: "clippy::blocks_in_conditions",
         description: r##"Checks for `if` conditions that use blocks containing an
 expression, statements or conditions that use closures with blocks."##,
     },
@@ -10315,7 +10364,8 @@ with `#[rustfmt::skip]`."##,
     Lint {
         label: "clippy::deprecated_semver",
         description: r##"Checks for `#[deprecated]` annotations with a `since`
-field that is not a valid semantic version."##,
+field that is not a valid semantic version. Also allows TBD to signal
+future deprecation."##,
     },
     Lint {
         label: "clippy::deref_addrof",
@@ -10462,7 +10512,7 @@ if the `never_type` is enabled."##,
     },
     Lint {
         label: "clippy::empty_line_after_doc_comments",
-        description: r##"Checks for empty lines after documenation comments."##,
+        description: r##"Checks for empty lines after documentation comments."##,
     },
     Lint {
         label: "clippy::empty_line_after_outer_attr",
@@ -10778,6 +10828,13 @@ and the *else* part."##,
         description: r##"Checks for usage of `_` in patterns of type `()`."##,
     },
     Lint {
+        label: "clippy::impl_hash_borrow_with_str_and_bytes",
+        description: r##"This lint is concerned with the semantics of `Borrow` and `Hash` for a
+type that implements all three of `Hash`, `Borrow<str>` and `Borrow<[u8]>`
+as it is impossible to satisfy the semantics of Borrow and `Hash` for
+both `Borrow<str>` and `Borrow<[u8]>`."##,
+    },
+    Lint {
         label: "clippy::impl_trait_in_params",
         description: r##"Lints when `impl Trait` is being used in a function's parameters."##,
     },
@@ -10854,6 +10911,11 @@ following table:
 |`<` / `>=`|`\\|` / `^`|`x ^ 1 < 4` |`x < 4`|"##,
     },
     Lint {
+        label: "clippy::ineffective_open_options",
+        description: r##"Checks if both `.write(true)` and `.append(true)` methods are called
+on a same `OpenOptions`."##,
+    },
+    Lint {
         label: "clippy::inefficient_to_string",
         description: r##"Checks for usage of `.to_string()` on an `&&T` where
 `T` implements `ToString` directly (like `&&str` or `&&String`)."##,
@@ -10866,6 +10928,11 @@ or tuple struct where a `let` will suffice."##,
     Lint {
         label: "clippy::infinite_iter",
         description: r##"Checks for iteration that is guaranteed to be infinite."##,
+    },
+    Lint {
+        label: "clippy::infinite_loop",
+        description: r##"Checks for infinite loops in a function where the return type is not `!`
+and lint accordingly."##,
     },
     Lint {
         label: "clippy::inherent_to_string",
@@ -10998,6 +11065,10 @@ ignoring either the keys or values."##,
 where `x` is greater than the amount of items that an iterator will produce."##,
     },
     Lint {
+        label: "clippy::iter_over_hash_type",
+        description: r##"This is a restriction lint which prevents the use of hash types (i.e., `HashSet` and `HashMap`) in for loops."##,
+    },
+    Lint {
         label: "clippy::iter_overeager_cloned",
         description: r##"Checks for usage of `_.cloned().<func>()` where call to `.cloned()` can be postponed."##,
     },
@@ -11020,6 +11091,10 @@ where `x` is greater than the amount of items that an iterator will produce."##,
     Lint {
         label: "clippy::iterator_step_by_zero",
         description: r##"Checks for calling `.step_by(0)` on iterators which panics."##,
+    },
+    Lint {
+        label: "clippy::join_absolute_paths",
+        description: r##"Checks for calls to `Path::join` that start with a path separator (`\\\\` or `/`)."##,
     },
     Lint {
         label: "clippy::just_underscores_and_digits",
@@ -11192,7 +11267,8 @@ where only the `Some` or `Ok` variant of the iterator element is used."##,
     Lint {
         label: "clippy::manual_is_ascii_check",
         description: r##"Suggests to use dedicated built-in methods,
-`is_ascii_(lowercase|uppercase|digit)` for checking on corresponding ascii range"##,
+`is_ascii_(lowercase|uppercase|digit|hexdigit)` for checking on corresponding
+ascii range"##,
     },
     Lint {
         label: "clippy::manual_is_finite",
@@ -11400,7 +11476,9 @@ and take drastic actions like `panic!`."##,
     Lint {
         label: "clippy::maybe_misused_cfg",
         description: r##"Checks for `#[cfg(features = ...)]` and suggests to replace it with
-`#[cfg(feature = ...)]`."##,
+`#[cfg(feature = ...)]`.
+
+It also checks if `cfg(test)` was misspelled."##,
     },
     Lint {
         label: "clippy::mem_forget",
@@ -11478,7 +11556,10 @@ is greater than the largest index used to index into the slice."##,
     Lint {
         label: "clippy::missing_enforced_import_renames",
         description: r##"Checks for imports that do not rename the item as specified
-in the `enforce-import-renames` config option."##,
+in the `enforce-import-renames` config option.
+
+Note: Even though this lint is warn-by-default, it will only trigger if
+import renames are defined in the clippy.toml file."##,
     },
     Lint {
         label: "clippy::missing_errors_doc",
@@ -11877,7 +11958,8 @@ suggests usage of the `env!` macro."##,
     },
     Lint {
         label: "clippy::option_filter_map",
-        description: r##"Checks for indirect collection of populated `Option`"##,
+        description: r##"Checks for iterators of `Option`s using ``.filter(Option::is_some).map(Option::unwrap)` that may
+be replaced with a `.flatten()` call."##,
     },
     Lint {
         label: "clippy::option_if_let_else",
@@ -11886,6 +11968,10 @@ suggests usage of the `env!` macro."##,
 idiomatically done with `Option::map_or` (if the else bit is a pure
 expression) or `Option::map_or_else` (if the else bit is an impure
 expression)."##,
+    },
+    Lint {
+        label: "clippy::option_map_or_err_ok",
+        description: r##"Checks for usage of `_.map_or(Err(_), Ok)`."##,
     },
     Lint {
         label: "clippy::option_map_or_none",
@@ -12135,7 +12221,7 @@ This is typically done indirectly with the `write!` macro or with `to_string()`.
     },
     Lint {
         label: "clippy::redundant_as_str",
-        description: r##"Checks for usage of `as_str()` on a `String`` chained with a method available on the `String` itself."##,
+        description: r##"Checks for usage of `as_str()` on a `String` chained with a method available on the `String` itself."##,
     },
     Lint {
         label: "clippy::redundant_async_block",
@@ -12198,7 +12284,7 @@ could be used."##,
     Lint {
         label: "clippy::redundant_pattern_matching",
         description: r##"Lint for redundant pattern matching over `Result`, `Option`,
-`std::task::Poll` or `std::net::IpAddr`"##,
+`std::task::Poll`, `std::net::IpAddr` or `bool`s"##,
     },
     Lint {
         label: "clippy::redundant_pub_crate",
@@ -12245,6 +12331,10 @@ The lint will evaluate constant expressions and values as arguments of `.repeat(
 they are equivalent to `1`. (Related discussion in [rust-clippy#7306](https://github.com/rust-lang/rust-clippy/issues/7306))"##,
     },
     Lint {
+        label: "clippy::repeat_vec_with_capacity",
+        description: r##"Looks for patterns such as `vec![Vec::with_capacity(x); n]` or `iter::repeat(Vec::with_capacity(x))`."##,
+    },
+    Lint {
         label: "clippy::replace_consts",
         description: r##"Nothing. This lint has been deprecated."##,
     },
@@ -12255,6 +12345,11 @@ they are equivalent to `1`. (Related discussion in [rust-clippy#7306](https://gi
     Lint {
         label: "clippy::rest_pat_in_fully_bound_structs",
         description: r##"Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched."##,
+    },
+    Lint {
+        label: "clippy::result_filter_map",
+        description: r##"Checks for iterators of `Result`s using ``.filter(Result::is_ok).map(Result::unwrap)` that may
+be replaced with a `.flatten()` call."##,
     },
     Lint {
         label: "clippy::result_large_err",
@@ -12537,6 +12632,11 @@ and suggest calling `as_bytes().len()` or `to_bytes().len()` respectively instea
 use of bools in structs."##,
     },
     Lint {
+        label: "clippy::struct_field_names",
+        description: r##"Detects struct fields that are prefixed or suffixed
+by the same characters or the name of the struct itself."##,
+    },
+    Lint {
         label: "clippy::suboptimal_flops",
         description: r##"Looks for floating-point expressions that
 can be expressed using built-in methods to improve both
@@ -12613,6 +12713,11 @@ but there is a space between the unary and its operand."##,
         label: "clippy::temporary_assignment",
         description: r##"Checks for construction of a structure or tuple just to
 assign a value in it."##,
+    },
+    Lint {
+        label: "clippy::test_attr_in_doctest",
+        description: r##"Checks for `#[test]` in doctests unless they are marked with
+either `ignore`, `no_run` or `compile_fail`."##,
     },
     Lint {
         label: "clippy::tests_outside_test_module",
@@ -12745,6 +12850,11 @@ declarations above a certain complexity threshold."##,
         description: r##"Lints subtraction between an [`Instant`] and a [`Duration`]."##,
     },
     Lint {
+        label: "clippy::unconditional_recursion",
+        description: r##"Checks that there isn't an infinite recursion in `PartialEq` trait
+implementation."##,
+    },
+    Lint {
         label: "clippy::undocumented_unsafe_blocks",
         description: r##"Checks for `unsafe` blocks and impls without a `// SAFETY: ` comment
 explaining why the unsafe operations performed inside
@@ -12777,6 +12887,11 @@ that is not equal to its
     Lint {
         label: "clippy::unimplemented",
         description: r##"Checks for usage of `unimplemented!`."##,
+    },
+    Lint {
+        label: "clippy::uninhabited_references",
+        description: r##"It detects references to uninhabited types, such as `!` and
+warns when those are either dereferenced or returned from a function."##,
     },
     Lint {
         label: "clippy::uninit_assumed_init",
@@ -12823,6 +12938,11 @@ as returning a large `T` directly may be detrimental to performance."##,
 literals to float types and casts between raw pointers without changing type or constness."##,
     },
     Lint {
+        label: "clippy::unnecessary_fallible_conversions",
+        description: r##"Checks for calls to `TryInto::try_into` and `TryFrom::try_from` when their infallible counterparts
+could be used."##,
+    },
+    Lint {
         label: "clippy::unnecessary_filter_map",
         description: r##"Checks for `filter_map` calls that could be replaced by `filter` or `map`.
 More specifically it checks if the closure provided is only performing one of the
@@ -12864,7 +12984,8 @@ simpler code:
     },
     Lint {
         label: "clippy::unnecessary_map_on_constructor",
-        description: r##"Suggest removing the use of a may (or map_err) method when an Option or Result is being construted."##,
+        description: r##"Suggests removing the use of a `map()` (or `map_err()`) method when an `Option` or `Result`
+is being constructed."##,
     },
     Lint {
         label: "clippy::unnecessary_mut_passed",
@@ -12985,6 +13106,10 @@ types have different ABI, size or alignment."##,
     Lint {
         label: "clippy::unused_collect",
         description: r##"Nothing. This lint has been deprecated."##,
+    },
+    Lint {
+        label: "clippy::unused_enumerate_index",
+        description: r##"Checks for uses of the `enumerate` method where the index is unused (`_`)"##,
     },
     Lint {
         label: "clippy::unused_format_specs",
@@ -13130,8 +13255,8 @@ to `trailing_zeros`"##,
         description: r##"Checks for usage of File::read_to_end and File::read_to_string."##,
     },
     Lint {
-        label: "clippy::vtable_address_comparisons",
-        description: r##"Checks for comparisons with an address of a trait vtable."##,
+        label: "clippy::waker_clone_wake",
+        description: r##"Checks for usage of `waker.clone().wake()`"##,
     },
     Lint {
         label: "clippy::while_immutable_condition",
@@ -13251,7 +13376,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::complexity",
-            description: r##"lint group for: clippy::bind_instead_of_map, clippy::bool_comparison, clippy::borrow_deref_ref, clippy::borrowed_box, clippy::bytes_count_to_len, clippy::char_lit_as_u8, clippy::clone_on_copy, clippy::crosspointer_transmute, clippy::default_constructed_unit_structs, clippy::deprecated_cfg_attr, clippy::deref_addrof, clippy::derivable_impls, clippy::diverging_sub_expression, clippy::double_comparisons, clippy::double_parens, clippy::duration_subsec, clippy::excessive_nesting, clippy::explicit_auto_deref, clippy::explicit_counter_loop, clippy::explicit_write, clippy::extra_unused_lifetimes, clippy::extra_unused_type_parameters, clippy::filter_map_identity, clippy::filter_next, clippy::flat_map_identity, clippy::get_last_with_len, clippy::identity_op, clippy::inspect_for_each, clippy::int_plus_one, clippy::iter_count, clippy::iter_kv_map, clippy::let_with_type_underscore, clippy::manual_filter, clippy::manual_filter_map, clippy::manual_find, clippy::manual_find_map, clippy::manual_flatten, clippy::manual_hash_one, clippy::manual_main_separator_str, clippy::manual_range_patterns, clippy::manual_rem_euclid, clippy::manual_slice_size_calculation, clippy::manual_split_once, clippy::manual_strip, clippy::manual_swap, clippy::manual_unwrap_or, clippy::map_flatten, clippy::map_identity, clippy::match_as_ref, clippy::match_single_binding, clippy::needless_arbitrary_self_type, clippy::needless_bool, clippy::needless_bool_assign, clippy::needless_borrowed_reference, clippy::needless_if, clippy::needless_lifetimes, clippy::needless_match, clippy::needless_option_as_deref, clippy::needless_option_take, clippy::needless_question_mark, clippy::needless_splitn, clippy::needless_update, clippy::neg_cmp_op_on_partial_ord, clippy::no_effect, clippy::nonminimal_bool, clippy::only_used_in_recursion, clippy::option_as_ref_deref, clippy::option_filter_map, clippy::option_map_unit_fn, clippy::or_then_unwrap, clippy::overflow_check_conditional, clippy::partialeq_ne_impl, clippy::precedence, clippy::ptr_offset_with_cast, clippy::range_zip_with_len, clippy::redundant_as_str, clippy::redundant_async_block, clippy::redundant_at_rest_pattern, clippy::redundant_closure_call, clippy::redundant_guards, clippy::redundant_slicing, clippy::repeat_once, clippy::reserve_after_initialization, clippy::result_map_unit_fn, clippy::search_is_some, clippy::seek_from_current, clippy::seek_to_start_instead_of_rewind, clippy::short_circuit_statement, clippy::single_element_loop, clippy::skip_while_next, clippy::string_from_utf8_as_bytes, clippy::strlen_on_c_strings, clippy::temporary_assignment, clippy::too_many_arguments, clippy::transmute_bytes_to_str, clippy::transmute_float_to_int, clippy::transmute_int_to_bool, clippy::transmute_int_to_char, clippy::transmute_int_to_float, clippy::transmute_int_to_non_zero, clippy::transmute_num_to_bytes, clippy::transmute_ptr_to_ref, clippy::transmutes_expressible_as_ptr_casts, clippy::type_complexity, clippy::unit_arg, clippy::unnecessary_cast, clippy::unnecessary_filter_map, clippy::unnecessary_find_map, clippy::unnecessary_literal_unwrap, clippy::unnecessary_map_on_constructor, clippy::unnecessary_operation, clippy::unnecessary_sort_by, clippy::unnecessary_unwrap, clippy::unneeded_wildcard_pattern, clippy::unused_format_specs, clippy::useless_asref, clippy::useless_conversion, clippy::useless_format, clippy::useless_transmute, clippy::vec_box, clippy::while_let_loop, clippy::wildcard_in_or_patterns, clippy::zero_divided_by_zero, clippy::zero_prefixed_literal"##,
+            description: r##"lint group for: clippy::bind_instead_of_map, clippy::bool_comparison, clippy::borrow_deref_ref, clippy::borrowed_box, clippy::bytes_count_to_len, clippy::char_lit_as_u8, clippy::clone_on_copy, clippy::crosspointer_transmute, clippy::default_constructed_unit_structs, clippy::deprecated_cfg_attr, clippy::deref_addrof, clippy::derivable_impls, clippy::diverging_sub_expression, clippy::double_comparisons, clippy::double_parens, clippy::duration_subsec, clippy::excessive_nesting, clippy::explicit_auto_deref, clippy::explicit_counter_loop, clippy::explicit_write, clippy::extra_unused_lifetimes, clippy::extra_unused_type_parameters, clippy::filter_map_identity, clippy::filter_next, clippy::flat_map_identity, clippy::get_last_with_len, clippy::identity_op, clippy::implied_bounds_in_impls, clippy::inspect_for_each, clippy::int_plus_one, clippy::iter_count, clippy::iter_kv_map, clippy::let_with_type_underscore, clippy::manual_filter, clippy::manual_filter_map, clippy::manual_find, clippy::manual_find_map, clippy::manual_flatten, clippy::manual_hash_one, clippy::manual_main_separator_str, clippy::manual_range_patterns, clippy::manual_rem_euclid, clippy::manual_slice_size_calculation, clippy::manual_split_once, clippy::manual_strip, clippy::manual_swap, clippy::manual_unwrap_or, clippy::map_flatten, clippy::map_identity, clippy::match_as_ref, clippy::match_single_binding, clippy::needless_arbitrary_self_type, clippy::needless_bool, clippy::needless_bool_assign, clippy::needless_borrowed_reference, clippy::needless_if, clippy::needless_lifetimes, clippy::needless_match, clippy::needless_option_as_deref, clippy::needless_option_take, clippy::needless_question_mark, clippy::needless_splitn, clippy::needless_update, clippy::neg_cmp_op_on_partial_ord, clippy::no_effect, clippy::nonminimal_bool, clippy::only_used_in_recursion, clippy::option_as_ref_deref, clippy::option_filter_map, clippy::option_map_unit_fn, clippy::or_then_unwrap, clippy::overflow_check_conditional, clippy::partialeq_ne_impl, clippy::precedence, clippy::ptr_offset_with_cast, clippy::range_zip_with_len, clippy::redundant_as_str, clippy::redundant_async_block, clippy::redundant_at_rest_pattern, clippy::redundant_closure_call, clippy::redundant_guards, clippy::redundant_slicing, clippy::repeat_once, clippy::reserve_after_initialization, clippy::result_filter_map, clippy::result_map_unit_fn, clippy::search_is_some, clippy::seek_from_current, clippy::seek_to_start_instead_of_rewind, clippy::short_circuit_statement, clippy::single_element_loop, clippy::skip_while_next, clippy::string_from_utf8_as_bytes, clippy::strlen_on_c_strings, clippy::temporary_assignment, clippy::too_many_arguments, clippy::transmute_bytes_to_str, clippy::transmute_float_to_int, clippy::transmute_int_to_bool, clippy::transmute_int_to_char, clippy::transmute_int_to_float, clippy::transmute_int_to_non_zero, clippy::transmute_num_to_bytes, clippy::transmute_ptr_to_ref, clippy::transmutes_expressible_as_ptr_casts, clippy::type_complexity, clippy::unit_arg, clippy::unnecessary_cast, clippy::unnecessary_filter_map, clippy::unnecessary_find_map, clippy::unnecessary_literal_unwrap, clippy::unnecessary_map_on_constructor, clippy::unnecessary_operation, clippy::unnecessary_sort_by, clippy::unnecessary_unwrap, clippy::unneeded_wildcard_pattern, clippy::unused_format_specs, clippy::useless_asref, clippy::useless_conversion, clippy::useless_format, clippy::useless_transmute, clippy::vec_box, clippy::while_let_loop, clippy::wildcard_in_or_patterns, clippy::zero_divided_by_zero, clippy::zero_prefixed_literal"##,
         },
         children: &[
             "clippy::bind_instead_of_map",
@@ -13281,6 +13406,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::flat_map_identity",
             "clippy::get_last_with_len",
             "clippy::identity_op",
+            "clippy::implied_bounds_in_impls",
             "clippy::inspect_for_each",
             "clippy::int_plus_one",
             "clippy::iter_count",
@@ -13337,6 +13463,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::redundant_slicing",
             "clippy::repeat_once",
             "clippy::reserve_after_initialization",
+            "clippy::result_filter_map",
             "clippy::result_map_unit_fn",
             "clippy::search_is_some",
             "clippy::seek_from_current",
@@ -13383,7 +13510,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::correctness",
-            description: r##"lint group for: clippy::absurd_extreme_comparisons, clippy::almost_swapped, clippy::approx_constant, clippy::async_yields_async, clippy::bad_bit_mask, clippy::cast_slice_different_sizes, clippy::deprecated_semver, clippy::derive_ord_xor_partial_ord, clippy::derived_hash_with_manual_eq, clippy::enum_clike_unportable_variant, clippy::eq_op, clippy::erasing_op, clippy::fn_address_comparisons, clippy::if_let_mutex, clippy::if_same_then_else, clippy::ifs_same_cond, clippy::impossible_comparisons, clippy::ineffective_bit_mask, clippy::infinite_iter, clippy::inherent_to_string_shadow_display, clippy::inline_fn_without_body, clippy::invalid_null_ptr_usage, clippy::invalid_regex, clippy::invisible_characters, clippy::iter_next_loop, clippy::iter_skip_zero, clippy::iterator_step_by_zero, clippy::let_underscore_lock, clippy::match_str_case_mismatch, clippy::mem_replace_with_uninit, clippy::min_max, clippy::mismatched_target_os, clippy::mistyped_literal_suffixes, clippy::modulo_one, clippy::mut_from_ref, clippy::never_loop, clippy::non_octal_unix_permissions, clippy::nonsensical_open_options, clippy::not_unsafe_ptr_arg_deref, clippy::option_env_unwrap, clippy::out_of_bounds_indexing, clippy::overly_complex_bool_expr, clippy::panicking_unwrap, clippy::possible_missing_comma, clippy::read_line_without_trim, clippy::read_zero_byte_vec, clippy::recursive_format_impl, clippy::redundant_comparisons, clippy::redundant_locals, clippy::reversed_empty_ranges, clippy::self_assignment, clippy::serde_api_misuse, clippy::size_of_in_element_count, clippy::suspicious_splitn, clippy::transmute_null_to_fn, clippy::transmuting_null, clippy::uninit_assumed_init, clippy::uninit_vec, clippy::unit_cmp, clippy::unit_hash, clippy::unit_return_expecting_ord, clippy::unsound_collection_transmute, clippy::unused_io_amount, clippy::useless_attribute, clippy::vec_resize_to_zero, clippy::vtable_address_comparisons, clippy::while_immutable_condition, clippy::wrong_transmute, clippy::zst_offset"##,
+            description: r##"lint group for: clippy::absurd_extreme_comparisons, clippy::almost_swapped, clippy::approx_constant, clippy::async_yields_async, clippy::bad_bit_mask, clippy::cast_slice_different_sizes, clippy::deprecated_semver, clippy::derive_ord_xor_partial_ord, clippy::derived_hash_with_manual_eq, clippy::enum_clike_unportable_variant, clippy::eq_op, clippy::erasing_op, clippy::fn_address_comparisons, clippy::if_let_mutex, clippy::ifs_same_cond, clippy::impl_hash_borrow_with_str_and_bytes, clippy::impossible_comparisons, clippy::ineffective_bit_mask, clippy::infinite_iter, clippy::inherent_to_string_shadow_display, clippy::inline_fn_without_body, clippy::invalid_null_ptr_usage, clippy::invalid_regex, clippy::invisible_characters, clippy::iter_next_loop, clippy::iter_skip_zero, clippy::iterator_step_by_zero, clippy::let_underscore_lock, clippy::match_str_case_mismatch, clippy::mem_replace_with_uninit, clippy::min_max, clippy::mismatched_target_os, clippy::mistyped_literal_suffixes, clippy::modulo_one, clippy::mut_from_ref, clippy::never_loop, clippy::non_octal_unix_permissions, clippy::nonsensical_open_options, clippy::not_unsafe_ptr_arg_deref, clippy::option_env_unwrap, clippy::out_of_bounds_indexing, clippy::overly_complex_bool_expr, clippy::panicking_unwrap, clippy::possible_missing_comma, clippy::read_line_without_trim, clippy::recursive_format_impl, clippy::redundant_comparisons, clippy::redundant_locals, clippy::reversed_empty_ranges, clippy::self_assignment, clippy::serde_api_misuse, clippy::size_of_in_element_count, clippy::suspicious_splitn, clippy::transmute_null_to_fn, clippy::transmuting_null, clippy::uninit_assumed_init, clippy::uninit_vec, clippy::unit_cmp, clippy::unit_hash, clippy::unit_return_expecting_ord, clippy::unsound_collection_transmute, clippy::unused_io_amount, clippy::useless_attribute, clippy::vec_resize_to_zero, clippy::while_immutable_condition, clippy::wrong_transmute, clippy::zst_offset"##,
         },
         children: &[
             "clippy::absurd_extreme_comparisons",
@@ -13400,8 +13527,8 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::erasing_op",
             "clippy::fn_address_comparisons",
             "clippy::if_let_mutex",
-            "clippy::if_same_then_else",
             "clippy::ifs_same_cond",
+            "clippy::impl_hash_borrow_with_str_and_bytes",
             "clippy::impossible_comparisons",
             "clippy::ineffective_bit_mask",
             "clippy::infinite_iter",
@@ -13431,7 +13558,6 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::panicking_unwrap",
             "clippy::possible_missing_comma",
             "clippy::read_line_without_trim",
-            "clippy::read_zero_byte_vec",
             "clippy::recursive_format_impl",
             "clippy::redundant_comparisons",
             "clippy::redundant_locals",
@@ -13451,7 +13577,6 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::unused_io_amount",
             "clippy::useless_attribute",
             "clippy::vec_resize_to_zero",
-            "clippy::vtable_address_comparisons",
             "clippy::while_immutable_condition",
             "clippy::wrong_transmute",
             "clippy::zst_offset",
@@ -13484,7 +13609,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::nursery",
-            description: r##"lint group for: clippy::as_ptr_cast_mut, clippy::branches_sharing_code, clippy::clear_with_drain, clippy::cognitive_complexity, clippy::collection_is_never_read, clippy::debug_assert_with_mut_call, clippy::derive_partial_eq_without_eq, clippy::empty_line_after_doc_comments, clippy::empty_line_after_outer_attr, clippy::equatable_if_let, clippy::fallible_impl_from, clippy::future_not_send, clippy::implied_bounds_in_impls, clippy::imprecise_flops, clippy::iter_on_empty_collections, clippy::iter_on_single_items, clippy::iter_with_drain, clippy::large_stack_frames, clippy::manual_clamp, clippy::missing_const_for_fn, clippy::mutex_integer, clippy::needless_collect, clippy::needless_pass_by_ref_mut, clippy::non_send_fields_in_send_ty, clippy::nonstandard_macro_braces, clippy::option_if_let_else, clippy::or_fun_call, clippy::path_buf_push_overwrite, clippy::readonly_write_lock, clippy::redundant_clone, clippy::redundant_pub_crate, clippy::significant_drop_in_scrutinee, clippy::significant_drop_tightening, clippy::string_lit_as_bytes, clippy::suboptimal_flops, clippy::suspicious_operation_groupings, clippy::trailing_empty_array, clippy::trait_duplication_in_bounds, clippy::transmute_undefined_repr, clippy::trivial_regex, clippy::tuple_array_conversions, clippy::type_repetition_in_bounds, clippy::unnecessary_struct_initialization, clippy::unused_peekable, clippy::unused_rounding, clippy::use_self, clippy::useless_let_if_seq"##,
+            description: r##"lint group for: clippy::as_ptr_cast_mut, clippy::branches_sharing_code, clippy::clear_with_drain, clippy::cognitive_complexity, clippy::collection_is_never_read, clippy::debug_assert_with_mut_call, clippy::derive_partial_eq_without_eq, clippy::empty_line_after_doc_comments, clippy::empty_line_after_outer_attr, clippy::equatable_if_let, clippy::fallible_impl_from, clippy::future_not_send, clippy::imprecise_flops, clippy::iter_on_empty_collections, clippy::iter_on_single_items, clippy::iter_with_drain, clippy::large_stack_frames, clippy::manual_clamp, clippy::missing_const_for_fn, clippy::mutex_integer, clippy::needless_collect, clippy::needless_pass_by_ref_mut, clippy::non_send_fields_in_send_ty, clippy::nonstandard_macro_braces, clippy::option_if_let_else, clippy::or_fun_call, clippy::path_buf_push_overwrite, clippy::read_zero_byte_vec, clippy::readonly_write_lock, clippy::redundant_clone, clippy::redundant_pub_crate, clippy::significant_drop_in_scrutinee, clippy::significant_drop_tightening, clippy::string_lit_as_bytes, clippy::suboptimal_flops, clippy::suspicious_operation_groupings, clippy::trailing_empty_array, clippy::trait_duplication_in_bounds, clippy::transmute_undefined_repr, clippy::trivial_regex, clippy::tuple_array_conversions, clippy::type_repetition_in_bounds, clippy::uninhabited_references, clippy::unnecessary_struct_initialization, clippy::unused_peekable, clippy::unused_rounding, clippy::use_self, clippy::useless_let_if_seq"##,
         },
         children: &[
             "clippy::as_ptr_cast_mut",
@@ -13499,7 +13624,6 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::equatable_if_let",
             "clippy::fallible_impl_from",
             "clippy::future_not_send",
-            "clippy::implied_bounds_in_impls",
             "clippy::imprecise_flops",
             "clippy::iter_on_empty_collections",
             "clippy::iter_on_single_items",
@@ -13515,6 +13639,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::option_if_let_else",
             "clippy::or_fun_call",
             "clippy::path_buf_push_overwrite",
+            "clippy::read_zero_byte_vec",
             "clippy::readonly_write_lock",
             "clippy::redundant_clone",
             "clippy::redundant_pub_crate",
@@ -13529,6 +13654,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::trivial_regex",
             "clippy::tuple_array_conversions",
             "clippy::type_repetition_in_bounds",
+            "clippy::uninhabited_references",
             "clippy::unnecessary_struct_initialization",
             "clippy::unused_peekable",
             "clippy::unused_rounding",
@@ -13539,7 +13665,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::pedantic",
-            description: r##"lint group for: clippy::bool_to_int_with_if, clippy::borrow_as_ptr, clippy::case_sensitive_file_extension_comparisons, clippy::cast_lossless, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss, clippy::cast_ptr_alignment, clippy::cast_sign_loss, clippy::checked_conversions, clippy::cloned_instead_of_copied, clippy::copy_iterator, clippy::default_trait_access, clippy::doc_link_with_quotes, clippy::doc_markdown, clippy::empty_enum, clippy::enum_glob_use, clippy::expl_impl_clone_on_copy, clippy::explicit_deref_methods, clippy::explicit_into_iter_loop, clippy::explicit_iter_loop, clippy::filter_map_next, clippy::flat_map_option, clippy::float_cmp, clippy::fn_params_excessive_bools, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::ignored_unit_patterns, clippy::implicit_clone, clippy::implicit_hasher, clippy::inconsistent_struct_constructor, clippy::index_refutable_slice, clippy::inefficient_to_string, clippy::inline_always, clippy::into_iter_without_iter, clippy::invalid_upcast_comparisons, clippy::items_after_statements, clippy::iter_not_returning_iterator, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_futures, clippy::large_stack_arrays, clippy::large_types_passed_by_value, clippy::linkedlist, clippy::macro_use_imports, clippy::manual_assert, clippy::manual_instant_elapsed, clippy::manual_let_else, clippy::manual_ok_or, clippy::manual_string_new, clippy::many_single_char_names, clippy::map_unwrap_or, clippy::match_bool, clippy::match_on_vec_items, clippy::match_same_arms, clippy::match_wild_err_arm, clippy::match_wildcard_for_single_variants, clippy::maybe_infinite_iter, clippy::mismatching_type_param_order, clippy::missing_errors_doc, clippy::missing_fields_in_debug, clippy::missing_panics_doc, clippy::module_name_repetitions, clippy::must_use_candidate, clippy::mut_mut, clippy::naive_bytecount, clippy::needless_bitwise_bool, clippy::needless_continue, clippy::needless_for_each, clippy::needless_pass_by_value, clippy::needless_raw_string_hashes, clippy::no_effect_underscore_binding, clippy::no_mangle_with_rust_abi, clippy::option_option, clippy::ptr_as_ptr, clippy::ptr_cast_constness, clippy::range_minus_one, clippy::range_plus_one, clippy::redundant_closure_for_method_calls, clippy::redundant_else, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::return_self_not_must_use, clippy::same_functions_in_if_condition, clippy::semicolon_if_nothing_returned, clippy::should_panic_without_expect, clippy::similar_names, clippy::single_match_else, clippy::stable_sort_primitive, clippy::string_add_assign, clippy::struct_excessive_bools, clippy::too_many_lines, clippy::transmute_ptr_to_ptr, clippy::trivially_copy_pass_by_ref, clippy::unchecked_duration_subtraction, clippy::unicode_not_nfc, clippy::uninlined_format_args, clippy::unnecessary_box_returns, clippy::unnecessary_join, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unsafe_derive_deserialize, clippy::unused_async, clippy::unused_self, clippy::used_underscore_binding, clippy::verbose_bit_mask, clippy::wildcard_imports, clippy::zero_sized_map_values"##,
+            description: r##"lint group for: clippy::bool_to_int_with_if, clippy::borrow_as_ptr, clippy::case_sensitive_file_extension_comparisons, clippy::cast_lossless, clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_precision_loss, clippy::cast_ptr_alignment, clippy::cast_sign_loss, clippy::checked_conversions, clippy::cloned_instead_of_copied, clippy::copy_iterator, clippy::default_trait_access, clippy::doc_link_with_quotes, clippy::doc_markdown, clippy::empty_enum, clippy::enum_glob_use, clippy::expl_impl_clone_on_copy, clippy::explicit_deref_methods, clippy::explicit_into_iter_loop, clippy::explicit_iter_loop, clippy::filter_map_next, clippy::flat_map_option, clippy::float_cmp, clippy::fn_params_excessive_bools, clippy::from_iter_instead_of_collect, clippy::if_not_else, clippy::ignored_unit_patterns, clippy::implicit_clone, clippy::implicit_hasher, clippy::inconsistent_struct_constructor, clippy::index_refutable_slice, clippy::inefficient_to_string, clippy::inline_always, clippy::into_iter_without_iter, clippy::invalid_upcast_comparisons, clippy::items_after_statements, clippy::iter_not_returning_iterator, clippy::iter_without_into_iter, clippy::large_digit_groups, clippy::large_futures, clippy::large_stack_arrays, clippy::large_types_passed_by_value, clippy::linkedlist, clippy::macro_use_imports, clippy::manual_assert, clippy::manual_instant_elapsed, clippy::manual_let_else, clippy::manual_ok_or, clippy::manual_string_new, clippy::many_single_char_names, clippy::map_unwrap_or, clippy::match_bool, clippy::match_on_vec_items, clippy::match_same_arms, clippy::match_wild_err_arm, clippy::match_wildcard_for_single_variants, clippy::maybe_infinite_iter, clippy::mismatching_type_param_order, clippy::missing_errors_doc, clippy::missing_fields_in_debug, clippy::missing_panics_doc, clippy::module_name_repetitions, clippy::must_use_candidate, clippy::mut_mut, clippy::naive_bytecount, clippy::needless_bitwise_bool, clippy::needless_continue, clippy::needless_for_each, clippy::needless_pass_by_value, clippy::needless_raw_string_hashes, clippy::no_effect_underscore_binding, clippy::no_mangle_with_rust_abi, clippy::option_option, clippy::ptr_as_ptr, clippy::ptr_cast_constness, clippy::range_minus_one, clippy::range_plus_one, clippy::redundant_closure_for_method_calls, clippy::redundant_else, clippy::ref_binding_to_reference, clippy::ref_option_ref, clippy::return_self_not_must_use, clippy::same_functions_in_if_condition, clippy::semicolon_if_nothing_returned, clippy::should_panic_without_expect, clippy::similar_names, clippy::single_match_else, clippy::stable_sort_primitive, clippy::string_add_assign, clippy::struct_excessive_bools, clippy::struct_field_names, clippy::too_many_lines, clippy::transmute_ptr_to_ptr, clippy::trivially_copy_pass_by_ref, clippy::unchecked_duration_subtraction, clippy::unicode_not_nfc, clippy::uninlined_format_args, clippy::unnecessary_box_returns, clippy::unnecessary_join, clippy::unnecessary_wraps, clippy::unnested_or_patterns, clippy::unreadable_literal, clippy::unsafe_derive_deserialize, clippy::unused_async, clippy::unused_self, clippy::used_underscore_binding, clippy::verbose_bit_mask, clippy::wildcard_imports, clippy::zero_sized_map_values"##,
         },
         children: &[
             "clippy::bool_to_int_with_if",
@@ -13633,6 +13759,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::stable_sort_primitive",
             "clippy::string_add_assign",
             "clippy::struct_excessive_bools",
+            "clippy::struct_field_names",
             "clippy::too_many_lines",
             "clippy::transmute_ptr_to_ptr",
             "clippy::trivially_copy_pass_by_ref",
@@ -13656,7 +13783,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::perf",
-            description: r##"lint group for: clippy::box_collection, clippy::box_default, clippy::boxed_local, clippy::cmp_owned, clippy::collapsible_str_replace, clippy::drain_collect, clippy::expect_fun_call, clippy::extend_with_drain, clippy::format_collect, clippy::format_in_format_args, clippy::iter_nth, clippy::iter_overeager_cloned, clippy::large_const_arrays, clippy::large_enum_variant, clippy::manual_memcpy, clippy::manual_retain, clippy::manual_str_repeat, clippy::manual_try_fold, clippy::map_entry, clippy::missing_spin_loop, clippy::redundant_allocation, clippy::result_large_err, clippy::single_char_pattern, clippy::slow_vector_initialization, clippy::to_string_in_format_args, clippy::unnecessary_to_owned, clippy::useless_vec, clippy::vec_init_then_push"##,
+            description: r##"lint group for: clippy::box_collection, clippy::box_default, clippy::boxed_local, clippy::cmp_owned, clippy::collapsible_str_replace, clippy::drain_collect, clippy::expect_fun_call, clippy::extend_with_drain, clippy::format_collect, clippy::format_in_format_args, clippy::iter_nth, clippy::iter_overeager_cloned, clippy::large_const_arrays, clippy::large_enum_variant, clippy::manual_memcpy, clippy::manual_retain, clippy::manual_str_repeat, clippy::manual_try_fold, clippy::map_entry, clippy::missing_spin_loop, clippy::redundant_allocation, clippy::result_large_err, clippy::single_char_pattern, clippy::slow_vector_initialization, clippy::to_string_in_format_args, clippy::unnecessary_to_owned, clippy::useless_vec, clippy::vec_init_then_push, clippy::waker_clone_wake"##,
         },
         children: &[
             "clippy::box_collection",
@@ -13687,12 +13814,13 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::unnecessary_to_owned",
             "clippy::useless_vec",
             "clippy::vec_init_then_push",
+            "clippy::waker_clone_wake",
         ],
     },
     LintGroup {
         lint: Lint {
             label: "clippy::restriction",
-            description: r##"lint group for: clippy::absolute_paths, clippy::alloc_instead_of_core, clippy::allow_attributes, clippy::allow_attributes_without_reason, clippy::arithmetic_side_effects, clippy::as_conversions, clippy::as_underscore, clippy::assertions_on_result_states, clippy::big_endian_bytes, clippy::clone_on_ref_ptr, clippy::create_dir, clippy::dbg_macro, clippy::decimal_literal_representation, clippy::default_numeric_fallback, clippy::default_union_representation, clippy::deref_by_slicing, clippy::disallowed_script_idents, clippy::else_if_without_else, clippy::empty_drop, clippy::empty_structs_with_brackets, clippy::error_impl_error, clippy::exhaustive_enums, clippy::exhaustive_structs, clippy::exit, clippy::expect_used, clippy::filetype_is_file, clippy::float_arithmetic, clippy::float_cmp_const, clippy::fn_to_numeric_cast_any, clippy::format_push_string, clippy::get_unwrap, clippy::host_endian_bytes, clippy::if_then_some_else_none, clippy::impl_trait_in_params, clippy::implicit_return, clippy::indexing_slicing, clippy::inline_asm_x86_att_syntax, clippy::inline_asm_x86_intel_syntax, clippy::integer_division, clippy::large_include_file, clippy::let_underscore_must_use, clippy::let_underscore_untyped, clippy::little_endian_bytes, clippy::lossy_float_literal, clippy::map_err_ignore, clippy::mem_forget, clippy::min_ident_chars, clippy::missing_assert_message, clippy::missing_asserts_for_indexing, clippy::missing_docs_in_private_items, clippy::missing_enforced_import_renames, clippy::missing_inline_in_public_items, clippy::missing_trait_methods, clippy::mixed_read_write_in_expression, clippy::mod_module_files, clippy::modulo_arithmetic, clippy::multiple_inherent_impl, clippy::multiple_unsafe_ops_per_block, clippy::mutex_atomic, clippy::needless_raw_strings, clippy::non_ascii_literal, clippy::panic, clippy::panic_in_result_fn, clippy::partial_pub_fields, clippy::pattern_type_mismatch, clippy::print_stderr, clippy::print_stdout, clippy::pub_use, clippy::pub_with_shorthand, clippy::pub_without_shorthand, clippy::question_mark_used, clippy::rc_buffer, clippy::rc_mutex, clippy::redundant_type_annotations, clippy::ref_patterns, clippy::rest_pat_in_fully_bound_structs, clippy::same_name_method, clippy::self_named_module_files, clippy::semicolon_inside_block, clippy::semicolon_outside_block, clippy::separated_literal_suffix, clippy::shadow_reuse, clippy::shadow_same, clippy::shadow_unrelated, clippy::single_call_fn, clippy::single_char_lifetime_names, clippy::std_instead_of_alloc, clippy::std_instead_of_core, clippy::str_to_string, clippy::string_add, clippy::string_lit_chars_any, clippy::string_slice, clippy::string_to_string, clippy::suspicious_xor_used_as_pow, clippy::tests_outside_test_module, clippy::todo, clippy::try_err, clippy::undocumented_unsafe_blocks, clippy::unimplemented, clippy::unnecessary_safety_comment, clippy::unnecessary_safety_doc, clippy::unnecessary_self_imports, clippy::unneeded_field_pattern, clippy::unreachable, clippy::unseparated_literal_suffix, clippy::unwrap_in_result, clippy::unwrap_used, clippy::use_debug, clippy::verbose_file_reads, clippy::wildcard_enum_match_arm"##,
+            description: r##"lint group for: clippy::absolute_paths, clippy::alloc_instead_of_core, clippy::allow_attributes, clippy::allow_attributes_without_reason, clippy::arithmetic_side_effects, clippy::as_conversions, clippy::as_underscore, clippy::assertions_on_result_states, clippy::big_endian_bytes, clippy::clone_on_ref_ptr, clippy::create_dir, clippy::dbg_macro, clippy::decimal_literal_representation, clippy::default_numeric_fallback, clippy::default_union_representation, clippy::deref_by_slicing, clippy::disallowed_script_idents, clippy::else_if_without_else, clippy::empty_drop, clippy::empty_structs_with_brackets, clippy::error_impl_error, clippy::exhaustive_enums, clippy::exhaustive_structs, clippy::exit, clippy::expect_used, clippy::filetype_is_file, clippy::float_arithmetic, clippy::float_cmp_const, clippy::fn_to_numeric_cast_any, clippy::format_push_string, clippy::get_unwrap, clippy::host_endian_bytes, clippy::if_then_some_else_none, clippy::impl_trait_in_params, clippy::implicit_return, clippy::indexing_slicing, clippy::infinite_loop, clippy::inline_asm_x86_att_syntax, clippy::inline_asm_x86_intel_syntax, clippy::integer_division, clippy::iter_over_hash_type, clippy::large_include_file, clippy::let_underscore_must_use, clippy::let_underscore_untyped, clippy::little_endian_bytes, clippy::lossy_float_literal, clippy::map_err_ignore, clippy::mem_forget, clippy::min_ident_chars, clippy::missing_assert_message, clippy::missing_asserts_for_indexing, clippy::missing_docs_in_private_items, clippy::missing_inline_in_public_items, clippy::missing_trait_methods, clippy::mixed_read_write_in_expression, clippy::mod_module_files, clippy::modulo_arithmetic, clippy::multiple_inherent_impl, clippy::multiple_unsafe_ops_per_block, clippy::mutex_atomic, clippy::needless_raw_strings, clippy::non_ascii_literal, clippy::panic, clippy::panic_in_result_fn, clippy::partial_pub_fields, clippy::pattern_type_mismatch, clippy::print_stderr, clippy::print_stdout, clippy::pub_use, clippy::pub_with_shorthand, clippy::pub_without_shorthand, clippy::question_mark_used, clippy::rc_buffer, clippy::rc_mutex, clippy::redundant_type_annotations, clippy::ref_patterns, clippy::rest_pat_in_fully_bound_structs, clippy::same_name_method, clippy::self_named_module_files, clippy::semicolon_inside_block, clippy::semicolon_outside_block, clippy::separated_literal_suffix, clippy::shadow_reuse, clippy::shadow_same, clippy::shadow_unrelated, clippy::single_call_fn, clippy::single_char_lifetime_names, clippy::std_instead_of_alloc, clippy::std_instead_of_core, clippy::str_to_string, clippy::string_add, clippy::string_lit_chars_any, clippy::string_slice, clippy::string_to_string, clippy::suspicious_xor_used_as_pow, clippy::tests_outside_test_module, clippy::todo, clippy::try_err, clippy::undocumented_unsafe_blocks, clippy::unimplemented, clippy::unnecessary_safety_comment, clippy::unnecessary_safety_doc, clippy::unnecessary_self_imports, clippy::unneeded_field_pattern, clippy::unreachable, clippy::unseparated_literal_suffix, clippy::unwrap_in_result, clippy::unwrap_used, clippy::use_debug, clippy::verbose_file_reads, clippy::wildcard_enum_match_arm"##,
         },
         children: &[
             "clippy::absolute_paths",
@@ -13731,9 +13859,11 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::impl_trait_in_params",
             "clippy::implicit_return",
             "clippy::indexing_slicing",
+            "clippy::infinite_loop",
             "clippy::inline_asm_x86_att_syntax",
             "clippy::inline_asm_x86_intel_syntax",
             "clippy::integer_division",
+            "clippy::iter_over_hash_type",
             "clippy::large_include_file",
             "clippy::let_underscore_must_use",
             "clippy::let_underscore_untyped",
@@ -13745,7 +13875,6 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::missing_assert_message",
             "clippy::missing_asserts_for_indexing",
             "clippy::missing_docs_in_private_items",
-            "clippy::missing_enforced_import_renames",
             "clippy::missing_inline_in_public_items",
             "clippy::missing_trait_methods",
             "clippy::mixed_read_write_in_expression",
@@ -13810,12 +13939,12 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::style",
-            description: r##"lint group for: clippy::assertions_on_constants, clippy::assign_op_pattern, clippy::blocks_in_if_conditions, clippy::bool_assert_comparison, clippy::borrow_interior_mutable_const, clippy::builtin_type_shadow, clippy::bytes_nth, clippy::chars_last_cmp, clippy::chars_next_cmp, clippy::cmp_null, clippy::collapsible_else_if, clippy::collapsible_if, clippy::collapsible_match, clippy::comparison_chain, clippy::comparison_to_empty, clippy::declare_interior_mutable_const, clippy::default_instead_of_iter_empty, clippy::disallowed_macros, clippy::disallowed_methods, clippy::disallowed_names, clippy::disallowed_types, clippy::double_must_use, clippy::double_neg, clippy::duplicate_underscore_argument, clippy::enum_variant_names, clippy::err_expect, clippy::excessive_precision, clippy::field_reassign_with_default, clippy::filter_map_bool_then, clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation, clippy::for_kv_map, clippy::from_over_into, clippy::from_str_radix_10, clippy::get_first, clippy::implicit_saturating_add, clippy::implicit_saturating_sub, clippy::inconsistent_digit_grouping, clippy::infallible_destructuring_match, clippy::inherent_to_string, clippy::init_numbered_fields, clippy::into_iter_on_ref, clippy::is_digit_ascii_radix, clippy::items_after_test_module, clippy::iter_cloned_collect, clippy::iter_next_slice, clippy::iter_nth_zero, clippy::iter_skip_next, clippy::just_underscores_and_digits, clippy::len_without_is_empty, clippy::len_zero, clippy::let_and_return, clippy::let_unit_value, clippy::main_recursion, clippy::manual_async_fn, clippy::manual_bits, clippy::manual_is_ascii_check, clippy::manual_is_finite, clippy::manual_is_infinite, clippy::manual_map, clippy::manual_next_back, clippy::manual_non_exhaustive, clippy::manual_range_contains, clippy::manual_saturating_arithmetic, clippy::manual_while_let_some, clippy::map_clone, clippy::map_collect_result_unit, clippy::match_like_matches_macro, clippy::match_overlapping_arm, clippy::match_ref_pats, clippy::match_result_ok, clippy::mem_replace_option_with_none, clippy::mem_replace_with_default, clippy::missing_safety_doc, clippy::mixed_case_hex_literals, clippy::module_inception, clippy::must_use_unit, clippy::mut_mutex_lock, clippy::needless_borrow, clippy::needless_borrows_for_generic_args, clippy::needless_doctest_main, clippy::needless_else, clippy::needless_late_init, clippy::needless_parens_on_range_literals, clippy::needless_pub_self, clippy::needless_range_loop, clippy::needless_return, clippy::needless_return_with_question_mark, clippy::neg_multiply, clippy::new_ret_no_self, clippy::new_without_default, clippy::non_minimal_cfg, clippy::obfuscated_if_else, clippy::ok_expect, clippy::op_ref, clippy::option_map_or_none, clippy::partialeq_to_none, clippy::print_literal, clippy::print_with_newline, clippy::println_empty_string, clippy::ptr_arg, clippy::ptr_eq, clippy::question_mark, clippy::redundant_closure, clippy::redundant_field_names, clippy::redundant_pattern, clippy::redundant_pattern_matching, clippy::redundant_static_lifetimes, clippy::result_map_or_into_option, clippy::result_unit_err, clippy::same_item_push, clippy::self_named_constructors, clippy::should_implement_trait, clippy::single_char_add_str, clippy::single_component_path_imports, clippy::single_match, clippy::string_extend_chars, clippy::tabs_in_doc_comments, clippy::to_digit_is_some, clippy::toplevel_ref_arg, clippy::trim_split_whitespace, clippy::unnecessary_fold, clippy::unnecessary_lazy_evaluations, clippy::unnecessary_mut_passed, clippy::unnecessary_owned_empty_strings, clippy::unsafe_removed_from_name, clippy::unused_unit, clippy::unusual_byte_groupings, clippy::unwrap_or_default, clippy::upper_case_acronyms, clippy::while_let_on_iterator, clippy::write_literal, clippy::write_with_newline, clippy::writeln_empty_string, clippy::wrong_self_convention, clippy::zero_ptr"##,
+            description: r##"lint group for: clippy::assertions_on_constants, clippy::assign_op_pattern, clippy::blocks_in_conditions, clippy::bool_assert_comparison, clippy::borrow_interior_mutable_const, clippy::builtin_type_shadow, clippy::bytes_nth, clippy::chars_last_cmp, clippy::chars_next_cmp, clippy::cmp_null, clippy::collapsible_else_if, clippy::collapsible_if, clippy::collapsible_match, clippy::comparison_chain, clippy::comparison_to_empty, clippy::declare_interior_mutable_const, clippy::default_instead_of_iter_empty, clippy::disallowed_macros, clippy::disallowed_methods, clippy::disallowed_names, clippy::disallowed_types, clippy::double_must_use, clippy::double_neg, clippy::duplicate_underscore_argument, clippy::enum_variant_names, clippy::err_expect, clippy::excessive_precision, clippy::field_reassign_with_default, clippy::filter_map_bool_then, clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation, clippy::for_kv_map, clippy::from_over_into, clippy::from_str_radix_10, clippy::get_first, clippy::if_same_then_else, clippy::implicit_saturating_add, clippy::implicit_saturating_sub, clippy::inconsistent_digit_grouping, clippy::infallible_destructuring_match, clippy::inherent_to_string, clippy::init_numbered_fields, clippy::into_iter_on_ref, clippy::is_digit_ascii_radix, clippy::items_after_test_module, clippy::iter_cloned_collect, clippy::iter_next_slice, clippy::iter_nth_zero, clippy::iter_skip_next, clippy::just_underscores_and_digits, clippy::len_without_is_empty, clippy::len_zero, clippy::let_and_return, clippy::let_unit_value, clippy::main_recursion, clippy::manual_async_fn, clippy::manual_bits, clippy::manual_is_ascii_check, clippy::manual_is_finite, clippy::manual_is_infinite, clippy::manual_map, clippy::manual_next_back, clippy::manual_non_exhaustive, clippy::manual_range_contains, clippy::manual_saturating_arithmetic, clippy::manual_while_let_some, clippy::map_clone, clippy::map_collect_result_unit, clippy::match_like_matches_macro, clippy::match_overlapping_arm, clippy::match_ref_pats, clippy::match_result_ok, clippy::mem_replace_option_with_none, clippy::mem_replace_with_default, clippy::missing_enforced_import_renames, clippy::missing_safety_doc, clippy::mixed_case_hex_literals, clippy::module_inception, clippy::must_use_unit, clippy::mut_mutex_lock, clippy::needless_borrow, clippy::needless_borrows_for_generic_args, clippy::needless_doctest_main, clippy::needless_else, clippy::needless_late_init, clippy::needless_parens_on_range_literals, clippy::needless_pub_self, clippy::needless_range_loop, clippy::needless_return, clippy::needless_return_with_question_mark, clippy::neg_multiply, clippy::new_ret_no_self, clippy::new_without_default, clippy::non_minimal_cfg, clippy::obfuscated_if_else, clippy::ok_expect, clippy::op_ref, clippy::option_map_or_err_ok, clippy::option_map_or_none, clippy::partialeq_to_none, clippy::print_literal, clippy::print_with_newline, clippy::println_empty_string, clippy::ptr_arg, clippy::ptr_eq, clippy::question_mark, clippy::redundant_closure, clippy::redundant_field_names, clippy::redundant_pattern, clippy::redundant_pattern_matching, clippy::redundant_static_lifetimes, clippy::result_map_or_into_option, clippy::result_unit_err, clippy::same_item_push, clippy::self_named_constructors, clippy::should_implement_trait, clippy::single_char_add_str, clippy::single_component_path_imports, clippy::single_match, clippy::string_extend_chars, clippy::tabs_in_doc_comments, clippy::to_digit_is_some, clippy::toplevel_ref_arg, clippy::trim_split_whitespace, clippy::unnecessary_fallible_conversions, clippy::unnecessary_fold, clippy::unnecessary_lazy_evaluations, clippy::unnecessary_mut_passed, clippy::unnecessary_owned_empty_strings, clippy::unsafe_removed_from_name, clippy::unused_enumerate_index, clippy::unused_unit, clippy::unusual_byte_groupings, clippy::unwrap_or_default, clippy::upper_case_acronyms, clippy::while_let_on_iterator, clippy::write_literal, clippy::write_with_newline, clippy::writeln_empty_string, clippy::wrong_self_convention, clippy::zero_ptr"##,
         },
         children: &[
             "clippy::assertions_on_constants",
             "clippy::assign_op_pattern",
-            "clippy::blocks_in_if_conditions",
+            "clippy::blocks_in_conditions",
             "clippy::bool_assert_comparison",
             "clippy::borrow_interior_mutable_const",
             "clippy::builtin_type_shadow",
@@ -13848,6 +13977,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::from_over_into",
             "clippy::from_str_radix_10",
             "clippy::get_first",
+            "clippy::if_same_then_else",
             "clippy::implicit_saturating_add",
             "clippy::implicit_saturating_sub",
             "clippy::inconsistent_digit_grouping",
@@ -13886,6 +14016,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::match_result_ok",
             "clippy::mem_replace_option_with_none",
             "clippy::mem_replace_with_default",
+            "clippy::missing_enforced_import_renames",
             "clippy::missing_safety_doc",
             "clippy::mixed_case_hex_literals",
             "clippy::module_inception",
@@ -13908,6 +14039,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::obfuscated_if_else",
             "clippy::ok_expect",
             "clippy::op_ref",
+            "clippy::option_map_or_err_ok",
             "clippy::option_map_or_none",
             "clippy::partialeq_to_none",
             "clippy::print_literal",
@@ -13934,11 +14066,13 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::to_digit_is_some",
             "clippy::toplevel_ref_arg",
             "clippy::trim_split_whitespace",
+            "clippy::unnecessary_fallible_conversions",
             "clippy::unnecessary_fold",
             "clippy::unnecessary_lazy_evaluations",
             "clippy::unnecessary_mut_passed",
             "clippy::unnecessary_owned_empty_strings",
             "clippy::unsafe_removed_from_name",
+            "clippy::unused_enumerate_index",
             "clippy::unused_unit",
             "clippy::unusual_byte_groupings",
             "clippy::unwrap_or_default",
@@ -13954,7 +14088,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "clippy::suspicious",
-            description: r##"lint group for: clippy::almost_complete_range, clippy::arc_with_non_send_sync, clippy::await_holding_invalid_type, clippy::await_holding_lock, clippy::await_holding_refcell_ref, clippy::blanket_clippy_restriction_lints, clippy::cast_abs_to_unsigned, clippy::cast_enum_constructor, clippy::cast_enum_truncation, clippy::cast_nan_to_int, clippy::cast_slice_from_raw_parts, clippy::crate_in_macro_def, clippy::drop_non_drop, clippy::duplicate_mod, clippy::empty_loop, clippy::float_equality_without_abs, clippy::forget_non_drop, clippy::four_forward_slashes, clippy::from_raw_with_void_ptr, clippy::iter_out_of_bounds, clippy::let_underscore_future, clippy::lines_filter_map_ok, clippy::maybe_misused_cfg, clippy::misnamed_getters, clippy::misrefactored_assign_op, clippy::multi_assignments, clippy::mut_range_bound, clippy::mutable_key_type, clippy::no_effect_replace, clippy::non_canonical_clone_impl, clippy::non_canonical_partial_ord_impl, clippy::octal_escapes, clippy::path_ends_with_ext, clippy::permissions_set_readonly_false, clippy::print_in_format_impl, clippy::rc_clone_in_vec_init, clippy::single_range_in_vec_init, clippy::size_of_ref, clippy::suspicious_arithmetic_impl, clippy::suspicious_assignment_formatting, clippy::suspicious_command_arg_space, clippy::suspicious_doc_comments, clippy::suspicious_else_formatting, clippy::suspicious_map, clippy::suspicious_op_assign_impl, clippy::suspicious_to_owned, clippy::suspicious_unary_op_formatting, clippy::swap_ptr_to_ref, clippy::type_id_on_box"##,
+            description: r##"lint group for: clippy::almost_complete_range, clippy::arc_with_non_send_sync, clippy::await_holding_invalid_type, clippy::await_holding_lock, clippy::await_holding_refcell_ref, clippy::blanket_clippy_restriction_lints, clippy::cast_abs_to_unsigned, clippy::cast_enum_constructor, clippy::cast_enum_truncation, clippy::cast_nan_to_int, clippy::cast_slice_from_raw_parts, clippy::crate_in_macro_def, clippy::drop_non_drop, clippy::duplicate_mod, clippy::empty_loop, clippy::float_equality_without_abs, clippy::forget_non_drop, clippy::four_forward_slashes, clippy::from_raw_with_void_ptr, clippy::ineffective_open_options, clippy::iter_out_of_bounds, clippy::join_absolute_paths, clippy::let_underscore_future, clippy::lines_filter_map_ok, clippy::maybe_misused_cfg, clippy::misnamed_getters, clippy::misrefactored_assign_op, clippy::multi_assignments, clippy::mut_range_bound, clippy::mutable_key_type, clippy::no_effect_replace, clippy::non_canonical_clone_impl, clippy::non_canonical_partial_ord_impl, clippy::octal_escapes, clippy::path_ends_with_ext, clippy::permissions_set_readonly_false, clippy::print_in_format_impl, clippy::rc_clone_in_vec_init, clippy::repeat_vec_with_capacity, clippy::single_range_in_vec_init, clippy::size_of_ref, clippy::suspicious_arithmetic_impl, clippy::suspicious_assignment_formatting, clippy::suspicious_command_arg_space, clippy::suspicious_doc_comments, clippy::suspicious_else_formatting, clippy::suspicious_map, clippy::suspicious_op_assign_impl, clippy::suspicious_to_owned, clippy::suspicious_unary_op_formatting, clippy::swap_ptr_to_ref, clippy::test_attr_in_doctest, clippy::type_id_on_box, clippy::unconditional_recursion"##,
         },
         children: &[
             "clippy::almost_complete_range",
@@ -13976,7 +14110,9 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::forget_non_drop",
             "clippy::four_forward_slashes",
             "clippy::from_raw_with_void_ptr",
+            "clippy::ineffective_open_options",
             "clippy::iter_out_of_bounds",
+            "clippy::join_absolute_paths",
             "clippy::let_underscore_future",
             "clippy::lines_filter_map_ok",
             "clippy::maybe_misused_cfg",
@@ -13993,6 +14129,7 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::permissions_set_readonly_false",
             "clippy::print_in_format_impl",
             "clippy::rc_clone_in_vec_init",
+            "clippy::repeat_vec_with_capacity",
             "clippy::single_range_in_vec_init",
             "clippy::size_of_ref",
             "clippy::suspicious_arithmetic_impl",
@@ -14005,7 +14142,9 @@ pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &[
             "clippy::suspicious_to_owned",
             "clippy::suspicious_unary_op_formatting",
             "clippy::swap_ptr_to_ref",
+            "clippy::test_attr_in_doctest",
             "clippy::type_id_on_box",
+            "clippy::unconditional_recursion",
         ],
     },
 ];
