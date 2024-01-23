@@ -650,7 +650,7 @@ fn iter_header_extra(
 
     let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//" } else { "#" };
 
-    let mut rdr = BufReader::new(rdr);
+    let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
 
