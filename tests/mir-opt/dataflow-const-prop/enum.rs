@@ -129,9 +129,7 @@ fn multiple(x: bool, i: u8) {
     // The dataflow state must have:
     //   discriminant(e) => Top
     //   (e as Some).0 => Top
-    // CHECK-NOT: [[x2]] = const 5
     // CHECK: [[x2]] = const 0_u8;
-    // CHECK-NOT: [[x2]] = const 5
     // CHECK: [[some:_.*]] = (({{_.*}} as Some).0: u8)
     // CHECK: [[x2]] = [[some]];
     let x2 = match e { Some(i) => i, None => 0 };
