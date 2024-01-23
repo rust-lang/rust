@@ -983,9 +983,13 @@ impl<T, A: Allocator> Arc<T, A> {
     /// it is guaranteed that exactly one of the calls returns the inner value.
     /// This means in particular that the inner value is not dropped.
     ///
-    /// The similar expression `Arc::try_unwrap(this).ok()` does not
-    /// offer such a guarantee. See the last example below
-    /// and the documentation of [`Arc::try_unwrap`].
+    /// [`Arc::try_unwrap`] is conceptually similar to `Arc::into_inner`, but it
+    /// is meant for different use-cases. If used as a direct replacement
+    /// for `Arc::into_inner` anyway, such as with the expression
+    /// <code>[Arc::try_unwrap]\(this).[ok][Result::ok]()</code>, then it does
+    /// **not** give the same guarantee as described in the previous paragraph.
+    /// For more information, see the examples below and read the documentation
+    /// of [`Arc::try_unwrap`].
     ///
     /// # Examples
     ///
