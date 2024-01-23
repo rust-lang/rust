@@ -240,7 +240,10 @@ lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
-lint_identifier_uncommon_codepoints = identifier contains uncommon Unicode codepoints
+lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
+    [one] an uncommon Unicode codepoint
+    *[other] uncommon Unicode codepoints
+}: {$codepoints}
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
