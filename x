@@ -32,12 +32,14 @@ for SEARCH_PYTHON in py python3 python python2; do
         else
             extra_arg=""
         fi
+        echo MAJAHA1 $SEARCH_PYTHON $python
         exec "$python" $extra_arg "$xpy" "$@"
     fi
 done
 
 python=$(bash -c "compgen -c python" | grep '^python[2-3]\.[0-9]\+$' | head -n1)
 if ! [ "$python" = "" ]; then
+    echo MAJAHA2 $python
     exec "$python" "$xpy" "$@"
 fi
 
