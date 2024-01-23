@@ -108,15 +108,13 @@ impl Res {
             Res::Primitive(_) => return Suggestion::Prefix("prim"),
             Res::Def(kind, _) => kind,
         };
-        if kind == DefKind::Macro(MacroKind::Bang) {
-            return Suggestion::Macro;
-        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
-            return Suggestion::Function;
-        } else if kind == DefKind::Field {
-            return Suggestion::RemoveDisambiguator;
-        }
 
         let prefix = match kind {
+            DefKind::Fn | DefKind::AssocFn => return Suggestion::Function,
+            DefKind::Field => return Suggestion::RemoveDisambiguator,
+            DefKind::Macro(MacroKind::Bang) => return Suggestion::Macro,
+
+            DefKind::Macro(MacroKind::Derive) => "derive",
             DefKind::Struct => "struct",
             DefKind::Enum => "enum",
             DefKind::Trait => "trait",
@@ -126,7 +124,6 @@ impl Res {
                 "const"
             }
             DefKind::Static(_) => "static",
-            DefKind::Macro(MacroKind::Derive) => "derive",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
                 .ns()
@@ -283,20 +280,15 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         debug!("looking for enum variant {path_str}");
         let mut split = path_str.rsplitn(3, "::");
-        let variant_field_name = split
-            .next()
-            .map(|f| Symbol::intern(f))
-            .expect("fold_item should ensure link is non-empty");
-        let variant_name =
-            // we're not sure this is a variant at all, so use the full string
-            // If there's no second component, the link looks like `[path]`.
-            // So there's no partial res and we should say the whole link failed to resolve.
-            split.next().map(|f|  Symbol::intern(f)).ok_or_else(no_res)?;
-        let path = split
-            .next()
-            // If there's no third component, we saw `[a::b]` before and it failed to resolve.
-            // So there's no partial res.
-            .ok_or_else(no_res)?;
+        let variant_field_name = Symbol::intern(split.next().unwrap());
+        // We're not sure this is a variant at all, so use the full string.
+        // If there's no second component, the link looks like `[path]`.
+        // So there's no partial res and we should say the whole link failed to resolve.
+        let variant_name = Symbol::intern(split.next().ok_or_else(no_res)?);
+
+        // If there's no third component, we saw `[a::b]` before and it failed to resolve.
+        // So there's no partial res.
+        let path = split.next().ok_or_else(no_res)?;
         let ty_res = self.resolve_path(&path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
@@ -447,41 +439,29 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
 
         // Try looking for methods and associated items.
-        let mut split = path_str.rsplitn(2, "::");
-        // NB: `split`'s first element is always defined, even if the delimiter was not present.
-        // NB: `item_str` could be empty when resolving in the root namespace (e.g. `::std`).
-        let item_str = split.next().unwrap();
-        let item_name = Symbol::intern(item_str);
-        let path_root = split
-            .next()
+        // NB: `path_root` could be empty when resolving in the root namespace (e.g. `::std`).
+        let (path_root, item_str) = path_str.rsplit_once("::").ok_or_else(|| {
             // If there's no `::`, it's not an associated item.
             // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
-            .ok_or_else(|| {
-                debug!("found no `::`, assuming {item_name} was correctly not in scope");
-                UnresolvedPath {
-                    item_id,
-                    module_id,
-                    partial_res: None,
-                    unresolved: item_str.into(),
-                }
-            })?;
+            debug!("found no `::`, assuming {path_str} was correctly not in scope");
+            UnresolvedPath { item_id, module_id, partial_res: None, unresolved: path_str.into() }
+        })?;
+        let item_name = Symbol::intern(item_str);
 
         // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
         // links to primitives when `#[rustc_doc_primitive]` is present. It should give an ambiguity
         // error instead and special case *only* modules with `#[rustc_doc_primitive]`, not all
         // primitives.
-        match resolve_primitive(&path_root, TypeNS)
-            .or_else(|| self.resolve_path(&path_root, TypeNS, item_id, module_id))
-            .and_then(|ty_res| {
-                let candidates = self
-                    .resolve_associated_item(ty_res, item_name, ns, module_id)
+        match resolve_primitive(path_root, TypeNS)
+            .or_else(|| self.resolve_path(path_root, TypeNS, item_id, module_id))
+            .map(|ty_res| {
+                self.resolve_associated_item(ty_res, item_name, ns, module_id)
                     .into_iter()
                     .map(|(res, def_id)| (res, Some(def_id)))
-                    .collect::<Vec<_>>();
-                if !candidates.is_empty() { Some(candidates) } else { None }
+                    .collect::<Vec<_>>()
             }) {
-            Some(r) => Ok(r),
-            None => {
+            Some(r) if !r.is_empty() => Ok(r),
+            _ => {
                 if ns == Namespace::ValueNS {
                     self.variant_field(path_str, item_id, module_id)
                         .map(|(res, def_id)| vec![(res, Some(def_id))])
@@ -1263,7 +1243,7 @@ impl LinkCollector<'_, '_> {
                 self.report_rawptr_assoc_feature_gate(diag.dox, &diag.link_range, diag.item);
                 return None;
             } else {
-                candidates = vec![candidates[0]];
+                candidates = vec![*candidate];
             }
         }
 
@@ -1271,8 +1251,10 @@ impl LinkCollector<'_, '_> {
         // and after removing duplicated kinds, only one remains, the `ambiguity_error` function
         // won't emit an error. So at this point, we can just take the first candidate as it was
         // the first retrieved and use it to generate the link.
-        if candidates.len() > 1 && !ambiguity_error(self.cx, &diag, &key.path_str, &candidates) {
-            candidates = vec![candidates[0]];
+        if let [candidate, _candidate2, ..] = *candidates
+            && !ambiguity_error(self.cx, &diag, &key.path_str, &candidates)
+        {
+            candidates = vec![candidate];
         }
 
         if let &[(res, def_id)] = candidates.as_slice() {
@@ -1322,12 +1304,11 @@ impl LinkCollector<'_, '_> {
                         let mut err = ResolutionFailure::NotResolved(err);
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
                             if other_ns != expected_ns {
-                                if let Ok(res) =
-                                    self.resolve(path_str, other_ns, item_id, module_id)
-                                    && !res.is_empty()
+                                if let Ok(&[res, ..]) =
+                                    self.resolve(path_str, other_ns, item_id, module_id).as_deref()
                                 {
                                     err = ResolutionFailure::WrongNamespace {
-                                        res: full_res(self.cx.tcx, res[0]),
+                                        res: full_res(self.cx.tcx, res),
                                         expected_ns,
                                     };
                                     break;
@@ -1748,7 +1729,6 @@ fn report_diagnostic(
             lint.note(format!(
                 "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
-                line = line,
                 indicator = "",
                 before = md_range.start - last_new_line_offset,
                 found = md_range.len(),
@@ -1807,18 +1787,13 @@ fn resolution_failure(
 
                     let item_id = *item_id;
                     let module_id = *module_id;
-                    // FIXME(jynelson): this might conflict with my `Self` fix in #76467
-                    // FIXME: maybe use itertools `collect_tuple` instead?
-                    fn split(path: &str) -> Option<(&str, &str)> {
-                        let mut splitter = path.rsplitn(2, "::");
-                        splitter.next().and_then(|right| splitter.next().map(|left| (left, right)))
-                    }
 
                     // Check if _any_ parent of the path gets resolved.
                     // If so, report it and say the first which failed; if not, say the first path segment didn't resolve.
                     let mut name = path_str;
                     'outer: loop {
-                        let Some((start, end)) = split(name) else {
+                        // FIXME(jynelson): this might conflict with my `Self` fix in #76467
+                        let Some((start, end)) = name.rsplit_once("::") else {
                             // avoid bug that marked [Quux::Z] as missing Z, not Quux
                             if partial_res.is_none() {
                                 *unresolved = name.into();
@@ -1829,8 +1804,8 @@ fn resolution_failure(
                         for ns in [TypeNS, ValueNS, MacroNS] {
                             if let Ok(v_res) = collector.resolve(start, ns, item_id, module_id) {
                                 debug!("found partial_res={v_res:?}");
-                                if !v_res.is_empty() {
-                                    *partial_res = Some(full_res(tcx, v_res[0]));
+                                if let Some(&res) = v_res.first() {
+                                    *partial_res = Some(full_res(tcx, res));
                                     *unresolved = end.into();
                                     break 'outer;
                                 }
