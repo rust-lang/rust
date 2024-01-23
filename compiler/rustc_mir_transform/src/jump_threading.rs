@@ -566,11 +566,6 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         cost: &CostChecker<'_, 'tcx>,
         depth: usize,
     ) {
-        let register_opportunity = |c: Condition| {
-            debug!(?bb, ?c.target, "register");
-            self.opportunities.push(ThreadingOpportunity { chain: vec![bb], target: c.target })
-        };
-
         let term = self.body.basic_blocks[bb].terminator();
         let place_to_flood = match term.kind {
             // We come from a target, so those are not possible.
@@ -592,16 +587,8 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // Flood the overwritten place, and progress through.
             TerminatorKind::Drop { place: destination, .. }
             | TerminatorKind::Call { destination, .. } => Some(destination),
-            // Treat as an `assume(cond == expected)`.
-            TerminatorKind::Assert { ref cond, expected, .. } => {
-                if let Some(place) = cond.place()
-                    && let Some(conditions) = state.try_get(place.as_ref(), self.map)
-                {
-                    let expected = if expected { ScalarInt::TRUE } else { ScalarInt::FALSE };
-                    conditions.iter_matches(expected).for_each(register_opportunity);
-                }
-                None
-            }
+            // Ignore, as this can be a no-op at codegen time.
+            TerminatorKind::Assert { .. } => None,
         };
 
         // We can recurse through this terminator.
