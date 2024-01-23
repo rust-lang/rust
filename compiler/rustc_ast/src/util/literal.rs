@@ -3,7 +3,7 @@
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
-    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit,
+    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, MixedUnit,
     Mode,
 };
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -127,10 +127,10 @@ impl LitKind {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
                 unescape_c_string(s, Mode::CStr, &mut |_span, c| match c {
-                    Ok(CStrUnit::Byte(b)) => buf.push(b),
-                    Ok(CStrUnit::Char(c)) => {
+                    Ok(MixedUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
                     Err(err) => {
                         assert!(!err.is_fatal(), "failed to unescape C string literal")
                     }
