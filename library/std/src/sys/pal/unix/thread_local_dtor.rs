@@ -17,7 +17,10 @@
     target_os = "android",
     target_os = "fuchsia",
     target_os = "redox",
-    target_os = "hurd"
+    target_os = "hurd",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "dragonfly"
 ))]
 // FIXME: The Rust compiler currently omits weakly function definitions (i.e.,
 // __cxa_thread_atexit_impl) and its metadata from LLVM IR.
