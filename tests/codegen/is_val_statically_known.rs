@@ -1,6 +1,4 @@
-// #[cfg(bootstrap)]
-// ignore-stage1
-// compile-flags: --crate-type=lib -Zmerge-functions=disabled
+// compile-flags: --crate-type=lib -Zmerge-functions=disabled -O
 
 #![feature(core_intrinsics)]
 
