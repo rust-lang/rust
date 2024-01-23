@@ -1,6 +1,9 @@
 //! Definitions of integer that is known not to equal zero.
 
+use crate::cmp::Ordering;
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
+use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
 
@@ -30,13 +33,6 @@ mod private {
 pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {
     type NonZero;
 }
-
-#[unstable(
-    feature = "nonzero_internals",
-    reason = "implementation detail which may disappear or be replaced at any time",
-    issue = "none"
-)]
-pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
 
 macro_rules! impl_zeroable_primitive {
     ($NonZero:ident ( $primitive:ty )) => {
@@ -70,6 +66,13 @@ impl_zeroable_primitive!(NonZeroI32(i32));
 impl_zeroable_primitive!(NonZeroI64(i64));
 impl_zeroable_primitive!(NonZeroI128(i128));
 impl_zeroable_primitive!(NonZeroIsize(isize));
+
+#[unstable(
+    feature = "nonzero_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -128,7 +131,7 @@ macro_rules! nonzero_integer {
         ///
         /// [null pointer optimization]: crate::option#representation
         #[$stability]
-        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        #[derive(Copy, Eq)]
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start(1)]
         #[rustc_nonnull_optimization_guaranteed]
@@ -491,6 +494,96 @@ macro_rules! nonzero_integer {
                 //
                 // So the result cannot be zero.
                 unsafe { Self::new_unchecked(self.get().saturating_pow(other)) }
+            }
+        }
+
+        #[$stability]
+        impl Clone for $Ty {
+            #[inline]
+            fn clone(&self) -> Self {
+                // SAFETY: The contained value is non-zero.
+                unsafe { Self(self.0) }
+            }
+        }
+
+        #[$stability]
+        impl PartialEq for $Ty {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+
+            #[inline]
+            fn ne(&self, other: &Self) -> bool {
+                self.0 != other.0
+            }
+        }
+
+        #[unstable(feature = "structural_match", issue = "31434")]
+        impl StructuralPartialEq for $Ty {}
+
+        #[$stability]
+        impl PartialOrd for $Ty {
+            #[inline]
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+
+            #[inline]
+            fn lt(&self, other: &Self) -> bool {
+                self.0 < other.0
+            }
+
+            #[inline]
+            fn le(&self, other: &Self) -> bool {
+                self.0 <= other.0
+            }
+
+            #[inline]
+            fn gt(&self, other: &Self) -> bool {
+                self.0 > other.0
+            }
+
+            #[inline]
+            fn ge(&self, other: &Self) -> bool {
+                self.0 >= other.0
+            }
+        }
+
+        #[$stability]
+        impl Ord for $Ty {
+            #[inline]
+            fn cmp(&self, other: &Self) -> Ordering {
+                self.0.cmp(&other.0)
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                // SAFETY: The maximum of two non-zero values is still non-zero.
+                unsafe { Self(self.0.max(other.0)) }
+            }
+
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                // SAFETY: The minimum of two non-zero values is still non-zero.
+                unsafe { Self(self.0.min(other.0)) }
+            }
+
+            #[inline]
+            fn clamp(self, min: Self, max: Self) -> Self {
+                // SAFETY: A non-zero value clamped between two non-zero values is still non-zero.
+                unsafe { Self(self.0.clamp(min.0, max.0)) }
+            }
+        }
+
+        #[$stability]
+        impl Hash for $Ty {
+            #[inline]
+            fn hash<H>(&self, state: &mut H)
+            where
+                H: Hasher,
+            {
+                self.0.hash(state)
             }
         }
 

@@ -190,7 +190,17 @@ impl EarlyLintPass for NonAsciiIdents {
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
-                cx.emit_span_lint(UNCOMMON_CODEPOINTS, sp, IdentifierUncommonCodepoints);
+                let codepoints: Vec<_> = symbol_str
+                    .chars()
+                    .filter(|c| !GeneralSecurityProfile::identifier_allowed(*c))
+                    .collect();
+                let codepoints_len = codepoints.len();
+
+                cx.emit_span_lint(
+                    UNCOMMON_CODEPOINTS,
+                    sp,
+                    IdentifierUncommonCodepoints { codepoints, codepoints_len },
+                );
             }
         }
 

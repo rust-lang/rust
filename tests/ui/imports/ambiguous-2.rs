@@ -6,4 +6,5 @@ extern crate ambiguous_1;
 
 fn main() {
     ambiguous_1::id();
+    //^ FIXME: `id` should be identified as an ambiguous item.
 }

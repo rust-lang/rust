@@ -110,6 +110,14 @@ impl IntoDiagnosticArg for char {
     }
 }
 
+impl IntoDiagnosticArg for Vec<char> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::StrListSepByAnd(
+            self.into_iter().map(|c| Cow::Owned(format!("{c:?}"))).collect(),
+        )
+    }
+}
+
 impl IntoDiagnosticArg for Symbol {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         self.to_ident_string().into_diagnostic_arg()

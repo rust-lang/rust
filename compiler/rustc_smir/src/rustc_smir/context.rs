@@ -464,7 +464,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let def_id = def.0.internal(&mut *tables, tcx);
         let args_ref = args.internal(&mut *tables, tcx);
         let closure_kind = kind.internal(&mut *tables, tcx);
-        Instance::resolve_closure(tables.tcx, def_id, args_ref, closure_kind).stable(&mut *tables)
+        Some(
+            Instance::resolve_closure(tables.tcx, def_id, args_ref, closure_kind)
+                .stable(&mut *tables),
+        )
     }
 
     fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error> {
