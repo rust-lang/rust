@@ -56,7 +56,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 )
                 .unwrap_or_else(|| item.attr_span(tcx));
 
-                tcx.struct_span_lint_hir(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, "unescaped backtick", |lint| {
+                tcx.node_span_lint(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, "unescaped backtick", |lint| {
                     let mut help_emitted = false;
 
                     match element.prev_code_guess {

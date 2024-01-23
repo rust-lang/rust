@@ -45,7 +45,13 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.lookup_with_diagnostics(lint_id.lint, Some(span), msg, |_| {}, diagnostic);
+            self.context.span_lint_with_diagnostics(
+                lint_id.lint,
+                Some(span),
+                msg,
+                |_| {},
+                diagnostic,
+            );
         }
     }
 

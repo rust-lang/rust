@@ -24,7 +24,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 let sp =
                     source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs.doc_strings)
                         .unwrap_or_else(|| item.attr_span(cx.tcx));
-                cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, msg, |lint| {
+                cx.tcx.node_span_lint(crate::lint::BARE_URLS, hir_id, sp, msg, |lint| {
                     lint.note("bare URLs are not automatically turned into clickable links")
                         .span_suggestion(
                             sp,

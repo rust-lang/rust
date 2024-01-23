@@ -387,7 +387,7 @@ fn report_conflicting_impls<'tcx>(
     let impl_span = tcx.def_span(impl_def_id);
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
-    // now because the struct_lint methods don't return back the DiagnosticBuilder
+    // now because the lint emit methods don't return back the DiagnosticBuilder
     // that's passed in.
     fn decorate<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -462,7 +462,7 @@ fn report_conflicting_impls<'tcx>(
                 FutureCompatOverlapErrorKind::Issue33140 => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 lint,
                 tcx.local_def_id_to_hir_id(impl_def_id),
                 impl_span,
