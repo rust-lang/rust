@@ -195,29 +195,29 @@ impl Mode {
         }
     }
 
-    /// Non-byte literals should have `\xXX` escapes that are within the ASCII range.
-    fn ascii_escapes_should_be_ascii(self) -> bool {
+    /// Are `\x80`..`\xff` allowed?
+    fn allow_high_bytes(self) -> bool {
         match self {
-            Char | Str => true,
-            Byte | ByteStr | CStr => false,
+            Char | Str => false,
+            Byte | ByteStr | CStr => true,
             RawStr | RawByteStr | RawCStr => unreachable!(),
         }
     }
 
-    /// Whether characters within the literal must be within the ASCII range.
+    /// Are unicode (non-ASCII) chars allowed?
     #[inline]
-    fn chars_should_be_ascii(self) -> bool {
+    fn allow_unicode_chars(self) -> bool {
         match self {
-            Byte | ByteStr | RawByteStr => true,
-            Char | Str | RawStr | CStr | RawCStr => false,
+            Byte | ByteStr | RawByteStr => false,
+            Char | Str | RawStr | CStr | RawCStr => true,
         }
     }
 
-    /// Byte literals do not allow unicode escape.
-    fn is_unicode_escape_disallowed(self) -> bool {
+    /// Are unicode escapes (`\u`) allowed?
+    fn allow_unicode_escapes(self) -> bool {
         match self {
-            Byte | ByteStr => true,
-            Char | Str | CStr => false,
+            Byte | ByteStr => false,
+            Char | Str | CStr => true,
             RawByteStr | RawStr | RawCStr => unreachable!(),
         }
     }
@@ -255,25 +255,21 @@ fn scan_escape<T: From<char> + From<u8>>(
 
             let value = (hi * 16 + lo) as u8;
 
-            return if mode.ascii_escapes_should_be_ascii() && !value.is_ascii() {
+            return if !mode.allow_high_bytes() && !value.is_ascii() {
                 Err(EscapeError::OutOfRangeHexEscape)
             } else {
                 // This may be a high byte, but that will only happen if `T` is
-                // `MixedUnit`, because of the `ascii_escapes_should_be_ascii`
-                // check above.
+                // `MixedUnit`, because of the `allow_high_bytes` check above.
                 Ok(T::from(value as u8))
             };
         }
-        'u' => return scan_unicode(chars, mode.is_unicode_escape_disallowed()).map(T::from),
+        'u' => return scan_unicode(chars, mode.allow_unicode_escapes()).map(T::from),
         _ => return Err(EscapeError::InvalidEscape),
     };
     Ok(T::from(res))
 }
 
-fn scan_unicode(
-    chars: &mut Chars<'_>,
-    is_unicode_escape_disallowed: bool,
-) -> Result<char, EscapeError> {
+fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<char, EscapeError> {
     // We've parsed '\u', now we have to parse '{..}'.
 
     if chars.next() != Some('{') {
@@ -301,7 +297,7 @@ fn scan_unicode(
 
                 // Incorrect syntax has higher priority for error reporting
                 // than unallowed value for a literal.
-                if is_unicode_escape_disallowed {
+                if !allow_unicode_escapes {
                     return Err(EscapeError::UnicodeEscapeInByte);
                 }
 
@@ -327,12 +323,8 @@ fn scan_unicode(
 }
 
 #[inline]
-fn ascii_check(c: char, chars_should_be_ascii: bool) -> Result<char, EscapeError> {
-    if chars_should_be_ascii && !c.is_ascii() {
-        Err(EscapeError::NonAsciiCharInByte)
-    } else {
-        Ok(c)
-    }
+fn ascii_check(c: char, allow_unicode_chars: bool) -> Result<char, EscapeError> {
+    if allow_unicode_chars || c.is_ascii() { Ok(c) } else { Err(EscapeError::NonAsciiCharInByte) }
 }
 
 fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
@@ -341,7 +333,7 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
         '\\' => scan_escape(chars, mode),
         '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
         '\r' => Err(EscapeError::BareCarriageReturn),
-        _ => ascii_check(c, mode.chars_should_be_ascii()),
+        _ => ascii_check(c, mode.allow_unicode_chars()),
     }?;
     if chars.next().is_some() {
         return Err(EscapeError::MoreThanOneChar);
@@ -356,7 +348,7 @@ where
     F: FnMut(Range<usize>, Result<T, EscapeError>),
 {
     let mut chars = src.chars();
-    let chars_should_be_ascii = mode.chars_should_be_ascii(); // get this outside the loop
+    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
 
     // The `start` and `end` computation here is complicated because
     // `skip_ascii_whitespace` makes us to skip over chars without counting
@@ -381,7 +373,7 @@ where
             }
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, chars_should_be_ascii).map(T::from),
+            _ => ascii_check(c, allow_unicode_chars).map(T::from),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
@@ -423,7 +415,7 @@ where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     let mut chars = src.chars();
-    let chars_should_be_ascii = mode.chars_should_be_ascii(); // get this outside the loop
+    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
 
     // The `start` and `end` computation here matches the one in
     // `unescape_non_raw_common` for consistency, even though this function
@@ -432,7 +424,7 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let res = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            _ => ascii_check(c, chars_should_be_ascii),
+            _ => ascii_check(c, allow_unicode_chars),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
