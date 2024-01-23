@@ -6,8 +6,9 @@ use rustc_hir as hir;
 use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::ErrorGuaranteed;
 
-pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
 
@@ -18,7 +19,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
         match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
-                struct_span_code_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0199,
@@ -31,11 +32,11 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "",
                     rustc_errors::Applicability::MachineApplicable,
                 )
-                .emit();
+                .emit());
             }
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_code_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0200,
@@ -54,11 +55,11 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit());
             }
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_code_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0569,
@@ -77,7 +78,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit());
             }
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
@@ -92,4 +93,5 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             }
         }
     }
+    Ok(())
 }

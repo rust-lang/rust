@@ -332,20 +332,6 @@ impl Session {
         }
     }
 
-    // FIXME(matthewjasper) Remove this method, it should never be needed.
-    pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorGuaranteed>
-    where
-        F: FnOnce() -> T,
-    {
-        let old_count = self.dcx().err_count();
-        let result = f();
-        if self.dcx().err_count() == old_count {
-            Ok(result)
-        } else {
-            Err(self.dcx().delayed_bug("`self.err_count()` changed but an error was not emitted"))
-        }
-    }
-
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.

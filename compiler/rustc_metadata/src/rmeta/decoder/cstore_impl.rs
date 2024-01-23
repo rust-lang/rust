@@ -236,7 +236,14 @@ provide! { tcx, def_id, other, cdata,
     impl_polarity => { table_direct }
     defaultness => { table_direct }
     constness => { table_direct }
-    coerce_unsized_info => { table }
+    coerce_unsized_info => {
+        Ok(cdata
+            .root
+            .tables
+            .coerce_unsized_info
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
     rendered_const => { table }
     asyncness => { table_direct }
