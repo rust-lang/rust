@@ -530,12 +530,12 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         requested_kind: ty::ClosureKind,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let actual_kind = args.as_closure().kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, args),
-            _ => Some(Instance::new(def_id, args)),
+            _ => Instance::new(def_id, args),
         }
     }
 
@@ -550,7 +550,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -564,14 +564,12 @@ impl<'tcx> Instance<'tcx> {
 
         let self_ty = Ty::new_closure(tcx, closure_did, args);
 
-        let sig = args.as_closure().sig();
-        let sig =
-            tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
-        assert_eq!(sig.inputs().len(), 1);
-        let args = tcx.mk_args_trait(self_ty, [sig.inputs()[0].into()]);
+        let tupled_inputs_ty = args.as_closure().sig().map_bound(|sig| sig.inputs()[0]);
+        let tupled_inputs_ty = tcx.instantiate_bound_regions_with_erased(tupled_inputs_ty);
+        let args = tcx.mk_args_trait(self_ty, [tupled_inputs_ty.into()]);
 
-        debug!(?self_ty, ?sig);
-        Some(Instance { def, args })
+        debug!(?self_ty, args=?tupled_inputs_ty.tuple_fields());
+        Instance { def, args }
     }
 
     pub fn try_resolve_item_for_coroutine(
