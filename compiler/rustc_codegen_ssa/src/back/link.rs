@@ -2866,7 +2866,11 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
     if let Some(dir) = parent {
         cmd.include_path(&rehome_sysroot_lib_dir(sess, dir));
     }
-    let stem = cratepath.file_stem().unwrap().to_str().unwrap();
+    // "<dir>/name.dll -> name.dll" on windows-msvc
+    // "<dir>/name.dll -> name" on windows-gnu
+    // "<dir>/libname.<ext> -> name" elsewhere
+    let stem = if sess.target.is_like_msvc { cratepath.file_name() } else { cratepath.file_stem() };
+    let stem = stem.unwrap().to_str().unwrap();
     // Convert library file-stem into a cc -l argument.
     let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
     cmd.link_dylib_by_name(&stem[prefix..], false, true);
