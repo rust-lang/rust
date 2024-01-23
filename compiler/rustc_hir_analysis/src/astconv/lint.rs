@@ -132,7 +132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else if diag.is_error() && is_downgradable {
+            } else if is_downgradable {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -158,7 +158,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                if diag.is_error() && is_downgradable {
+                if is_downgradable {
                     // We'll emit the object safety error already, with a structured suggestion.
                     diag.downgrade_to_delayed_bug();
                 }
@@ -241,9 +241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
-                    if self_ty.span.can_be_used_for_suggestions()
-                        && !self.maybe_lint_impl_trait(self_ty, lint)
-                    {
+                    if self_ty.span.can_be_used_for_suggestions() {
                         lint.multipart_suggestion_verbose(
                             "use `dyn`",
                             sugg,

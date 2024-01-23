@@ -1,43 +1,33 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-2.rs:1:13
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `Copy` it is not object safe, so it can't be `dyn`
    = note: `#[warn(bare_trait_objects)]` on by default
-help: use a new generic type parameter, constrained by `Copy`
+help: use `dyn`
    |
-LL | fn id<F, T: Copy>(f: T) -> usize {
-   |        +++++++++     ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | fn id<F>(f: impl Copy) -> usize {
-   |             ++++
+LL | fn id<F>(f: dyn Copy) -> usize {
+   |             +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-2.rs:1:13
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `Copy` it is not object safe, so it can't be `dyn`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use a new generic type parameter, constrained by `Copy`
+help: use `dyn`
    |
-LL | fn id<F, T: Copy>(f: T) -> usize {
-   |        +++++++++     ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | fn id<F>(f: impl Copy) -> usize {
-   |             ++++
+LL | fn id<F>(f: dyn Copy) -> usize {
+   |             +++
 
 error[E0038]: the trait `Copy` cannot be made into an object
-  --> $DIR/avoid-ice-on-warning-2.rs:1:13
+  --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^ `Copy` cannot be made into an object
