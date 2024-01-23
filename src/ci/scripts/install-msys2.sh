@@ -26,6 +26,7 @@ if isWindows; then
     # ciCommandAddPath "C:\\hostedtoolcache\\
     #windows\\Python\\${native_python_version}\\x64\\Scripts"
     rm -r /c/hostedtoolcache/windows/Python/
+    rm /c/Windows/py.exe
 
     # Install pacboy for easily installing packages
     pacman -S --noconfirm pactoys
