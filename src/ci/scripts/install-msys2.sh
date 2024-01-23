@@ -22,8 +22,9 @@ if isWindows; then
     if ! [[ -f "${python_home}/python3.exe" ]]; then
         cp "${python_home}/python.exe" "${python_home}/python3.exe"
     fi
-    ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
-    ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
+    # ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
+    # ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
+    rm -r /c/hostedtoolcache/windows/Python/
 
     # Install pacboy for easily installing packages
     pacman -S --noconfirm pactoys

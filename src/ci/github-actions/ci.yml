@@ -136,6 +136,7 @@ x--expand-yaml-anchors--remove:
             git
             dos2unix
             diffutils
+            python
       
       # - name: disable git crlf conversion
       #   run: src/ci/scripts/disable-git-crlf-conversion.sh
