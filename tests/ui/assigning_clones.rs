@@ -1,4 +1,3 @@
-// run-rustfix
 #![allow(unused)]
 #![allow(clippy::redundant_clone)]
 #![allow(clippy::ptr_arg)] // https://github.com/rust-lang/rust-clippy/issues/10612

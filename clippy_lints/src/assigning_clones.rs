@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// impl Clone for Thing {
     ///     fn clone(&self) -> Self { todo!() }
-    ///     fn clone_from(&mut self, other: &Self) -> Self { todo!() }
+    ///     fn clone_from(&mut self, other: &Self) { todo!() }
     /// }
     ///
     /// pub fn assign_to_ref(a: &mut Thing, b: Thing) {
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// struct Thing;
     /// impl Clone for Thing {
     ///     fn clone(&self) -> Self { todo!() }
-    ///     fn clone_from(&mut self, other: &Self) -> Self { todo!() }
+    ///     fn clone_from(&mut self, other: &Self) { todo!() }
     /// }
     ///
     /// pub fn assign_to_ref(a: &mut Thing, b: Thing) {
@@ -142,7 +142,7 @@ fn is_ok_to_suggest<'tcx>(cx: &LateContext<'tcx>, lhs: &Expr<'tcx>, call: &CallC
         // TODO: This check currently bails if the local variable has no initializer.
         // That is overly conservative - the lint should fire even if there was no initializer,
         // but the variable has been initialized before `lhs` was evaluated.
-        if let Some(Node::Local(local)) = cx.tcx.opt_hir_node(cx.tcx.hir().parent_id(local))
+        if let Some(Node::Local(local)) = cx.tcx.hir().parent_id_iter(local).next().map(|p| cx.tcx.hir_node(p))
             && local.init.is_none()
         {
             return false;
