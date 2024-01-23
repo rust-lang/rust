@@ -68,37 +68,37 @@ LL |         a = b.clone();
    |         ^^^^^^^^^^^^^ help: use `clone_from()`: `a.clone_from(&b)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:134:5
+  --> $DIR/assigning_clones.rs:146:5
    |
 LL |     *mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:138:5
+  --> $DIR/assigning_clones.rs:150:5
    |
 LL |     mut_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut mut_string)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:159:5
+  --> $DIR/assigning_clones.rs:171:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:163:5
+  --> $DIR/assigning_clones.rs:175:5
    |
 LL |     **mut_box_string = ref_str.to_owned();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ref_str.clone_into(&mut (*mut_box_string))`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:167:5
+  --> $DIR/assigning_clones.rs:179:5
    |
 LL |     *mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, mut_thing)`
 
 error: assigning the result of `ToOwned::to_owned()` may be inefficient
-  --> $DIR/assigning_clones.rs:171:5
+  --> $DIR/assigning_clones.rs:183:5
    |
 LL |     mut_thing = ToOwned::to_owned(ref_str);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_into()`: `ToOwned::clone_into(ref_str, &mut mut_thing)`

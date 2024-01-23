@@ -129,6 +129,18 @@ fn ignore_generic_clone<T: Clone>(a: &mut T, b: &T) {
     *a = b.clone();
 }
 
+macro_rules! clone_inside {
+    ($a:expr, $b: expr) => {
+        $a = $b.clone();
+    };
+}
+
+fn clone_inside_macro() {
+    let mut a = String::new();
+    let b = String::new();
+    clone_inside!(a, b);
+}
+
 // ToOwned
 fn owned_method_mut_ref(mut_string: &mut String, ref_str: &str) {
     ref_str.clone_into(mut_string);

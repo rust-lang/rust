@@ -1,14 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::HirNode;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_trait_method, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
-use rustc_middle::ty::{Instance, Mutability};
+use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
+use rustc_span::ExpnKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -52,6 +53,13 @@ declare_lint_pass!(AssigningClones => [ASSIGNING_CLONES]);
 
 impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, assign_expr: &'tcx hir::Expr<'_>) {
+        // Do not fire the lint in macros
+        let expn_data = assign_expr.span().ctxt().outer_expn_data();
+        match expn_data.kind {
+            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) | ExpnKind::Macro(..) => return,
+            ExpnKind::Root => {},
+        }
+
         let ExprKind::Assign(lhs, rhs, _span) = assign_expr.kind else {
             return;
         };
