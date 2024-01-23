@@ -1596,7 +1596,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/testing.html#the-test-attribute
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(test, rustc_attrs)]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro test($item:item) {
         /* compiler built-in */
@@ -1609,7 +1609,7 @@ pub(crate) mod builtin {
         soft,
         reason = "`bench` is a part of custom test frameworks which are unstable"
     )]
-    #[allow_internal_unstable(test, rustc_attrs)]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro bench($item:item) {
         /* compiler built-in */

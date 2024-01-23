@@ -9,6 +9,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, Level};
 use rustc_expand::base::*;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
+use std::assert_matches::assert_matches;
 use std::iter;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -182,6 +183,16 @@ pub fn expand_test_or_bench(
     // creates $name: $expr
     let field = |name, expr| cx.field_imm(sp, Ident::from_str_and_span(name, sp), expr);
 
+    // Adds `#[coverage(off)]` to a closure, so it won't be instrumented in
+    // `-Cinstrument-coverage` builds.
+    // This requires `#[allow_internal_unstable(coverage_attribute)]` on the
+    // corresponding macro declaration in `core::macros`.
+    let coverage_off = |mut expr: P<ast::Expr>| {
+        assert_matches!(expr.kind, ast::ExprKind::Closure(_));
+        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
+        expr
+    };
+
     let test_fn = if is_bench {
         // A simple ident for a lambda
         let b = Ident::from_str_and_span("b", attr_sp);
@@ -190,8 +201,9 @@ pub fn expand_test_or_bench(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
             thin_vec![
+                // #[coverage(off)]
                 // |b| self::test::assert_test_result(
-                cx.lambda1(
+                coverage_off(cx.lambda1(
                     sp,
                     cx.expr_call(
                         sp,
@@ -206,7 +218,7 @@ pub fn expand_test_or_bench(
                         ],
                     ),
                     b,
-                ), // )
+                )), // )
             ],
         )
     } else {
@@ -214,8 +226,9 @@ pub fn expand_test_or_bench(
             sp,
             cx.expr_path(test_path("StaticTestFn")),
             thin_vec![
+                // #[coverage(off)]
                 // || {
-                cx.lambda0(
+                coverage_off(cx.lambda0(
                     sp,
                     // test::assert_test_result(
                     cx.expr_call(
@@ -230,7 +243,7 @@ pub fn expand_test_or_bench(
                             ), // )
                         ],
                     ), // }
-                ), // )
+                )), // )
             ],
         )
     };
