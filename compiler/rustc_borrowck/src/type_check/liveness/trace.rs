@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::WithSuccessors;
-use rustc_index::bit_set::HybridBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
@@ -135,7 +135,7 @@ struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.
-    defs: HybridBitSet<PointIndex>,
+    defs: BitSet<PointIndex>,
 
     /// Points where the current variable is "use live" -- meaning
     /// that there is a future "full use" that may use its value.
@@ -158,7 +158,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
-            defs: HybridBitSet::new_empty(num_points),
+            defs: BitSet::new_empty(num_points),
             use_live_at: IntervalSet::new(num_points),
             drop_live_at: IntervalSet::new(num_points),
             drop_locations: vec![],

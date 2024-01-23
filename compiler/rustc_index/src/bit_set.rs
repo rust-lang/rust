@@ -284,7 +284,7 @@ impl<T: Idx> BitSet<T> {
         not_already
     }
 
-    fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
+    pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let (start, end) = inclusive_start_end(range, self.domain_size)?;
         let (start_word_index, _) = word_index_and_mask(start);
         let (end_word_index, end_mask) = word_index_and_mask(end);
@@ -1299,7 +1299,7 @@ impl<T: Idx> SparseBitSet<T> {
 }
 
 impl<T: Idx + Ord> SparseBitSet<T> {
-    fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
+    pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let mut last_leq = None;
         for e in self.iter() {
             if range.contains(e) {
