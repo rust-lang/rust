@@ -240,7 +240,7 @@ lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
-lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len -> 
+lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
     [one] an uncommon Unicode codepoint
     *[other] uncommon Unicode codepoints
 }: {$codepoints}
