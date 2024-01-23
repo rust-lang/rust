@@ -6,7 +6,7 @@ use std::{
 };
 
 use rustc_lexer::unescape::{
-    unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
+    unescape_byte, unescape_c_string, unescape_char, unescape_literal, MixedUnit, Mode,
 };
 
 use crate::{
@@ -336,10 +336,9 @@ impl ast::CString {
         let mut buf = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        let mut char_buf = [0u8; 4];
-        let mut extend_unit = |buf: &mut Vec<u8>, unit: CStrUnit| match unit {
-            CStrUnit::Byte(b) => buf.push(b),
-            CStrUnit::Char(c) => buf.extend(c.encode_utf8(&mut char_buf).as_bytes()),
+        let extend_unit = |buf: &mut Vec<u8>, unit: MixedUnit| match unit {
+            MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
+            MixedUnit::HighByte(b) => buf.push(b),
         };
         unescape_c_string(text, Self::MODE, &mut |char_range, unescaped| match (
             unescaped,
