@@ -1,9 +1,8 @@
-//! This test shows that we can even follow projections
-//! into associated types of the same impl if they are
-//! indirectly mentioned in a struct field.
+//! This test shows that we do not treat opaque types
+//! as defined by a method if the opaque type is
+//! only indirectly mentioned in a struct field.
 
 #![feature(impl_trait_in_assoc_type)]
-// check-pass
 
 struct Bar;
 
@@ -16,6 +15,7 @@ impl Trait for Bar {
     type Assoc = impl std::fmt::Debug;
     fn foo() -> Foo {
         Foo { field: () }
+        //~^ ERROR: item constrains opaque type that is not in its signature
     }
 }
 

@@ -23,6 +23,60 @@ pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> 
     res
 }
 
+/// Checks "defining uses" of opaque `impl Trait` in associated types.
+/// These can only be defined by associated items of the same trait.
+#[instrument(skip(tcx), level = "debug")]
+pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> Ty<'_> {
+    let mut parent_def_id = def_id;
+    while tcx.def_kind(parent_def_id) == def::DefKind::OpaqueTy {
+        // Account for `type Alias = impl Trait<Foo = impl Trait>;` (#116031)
+        parent_def_id = tcx.local_parent(parent_def_id);
+    }
+    let impl_def_id = tcx.local_parent(parent_def_id);
+    match tcx.def_kind(impl_def_id) {
+        DefKind::Impl { .. } => {}
+        other => bug!("invalid impl trait in assoc type parent: {other:?}"),
+    }
+
+    let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
+
+    for &assoc_id in tcx.associated_item_def_ids(impl_def_id) {
+        let assoc = tcx.associated_item(assoc_id);
+        match assoc.kind {
+            ty::AssocKind::Const | ty::AssocKind::Fn => {
+                locator.check(assoc_id.expect_local(), ImplTraitSource::AssocTy)
+            }
+            // Associated types don't have bodies, so they can't constrain hidden types
+            ty::AssocKind::Type => {}
+        }
+    }
+
+    if let Some(hidden) = locator.found {
+        // Only check against typeck if we didn't already error
+        if !hidden.ty.references_error() {
+            for concrete_type in locator.typeck_types {
+                if concrete_type.ty != tcx.erase_regions(hidden.ty)
+                    && !(concrete_type, hidden).references_error()
+                {
+                    hidden.report_mismatch(&concrete_type, def_id, tcx).emit();
+                }
+            }
+        }
+
+        hidden.ty
+    } else {
+        let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
+            span: tcx.def_span(def_id),
+            name: tcx.item_name(parent_def_id.to_def_id()),
+            what: "impl",
+        });
+        Ty::new_error(tcx, reported)
+    }
+}
+
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions
 /// laid for "higher-order pattern unification".
 /// This ensures that inference is tractable.
@@ -128,9 +182,15 @@ struct TaitConstraintLocator<'tcx> {
     typeck_types: Vec<ty::OpaqueHiddenType<'tcx>>,
 }
 
+#[derive(Debug)]
+enum ImplTraitSource {
+    AssocTy,
+    TyAlias,
+}
+
 impl TaitConstraintLocator<'_> {
     #[instrument(skip(self), level = "debug")]
-    fn check(&mut self, item_def_id: LocalDefId) {
+    fn check(&mut self, item_def_id: LocalDefId, source: ImplTraitSource) {
         // Don't try to check items that cannot possibly constrain the type.
         if !self.tcx.has_typeck_results(item_def_id) {
             debug!("no constraint: no typeck results");
@@ -182,7 +242,13 @@ impl TaitConstraintLocator<'_> {
                 continue;
             }
             constrained = true;
-            if !self.tcx.opaque_types_defined_by(item_def_id).contains(&self.def_id) {
+            let opaque_types_defined_by = match source {
+                ImplTraitSource::AssocTy => {
+                    self.tcx.impl_trait_in_assoc_types_defined_by(item_def_id)
+                }
+                ImplTraitSource::TyAlias => self.tcx.opaque_types_defined_by(item_def_id),
+            };
+            if !opaque_types_defined_by.contains(&self.def_id) {
                 self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
@@ -240,7 +306,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id);
+            self.check(closure.def_id, ImplTraitSource::TyAlias);
         }
         intravisit::walk_expr(self, ex);
     }
@@ -248,7 +314,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         trace!(?it.owner_id);
         // The opaque type itself or its children are not within its reveal scope.
         if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
+            self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
             intravisit::walk_item(self, it);
         }
     }
@@ -256,13 +322,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         trace!(?it.owner_id);
         // The opaque type itself or its children are not within its reveal scope.
         if it.owner_id.def_id != self.def_id {
-            self.check(it.owner_id.def_id);
+            self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
             intravisit::walk_impl_item(self, it);
         }
     }
     fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
         trace!(?it.owner_id);
-        self.check(it.owner_id.def_id);
+        self.check(it.owner_id.def_id, ImplTraitSource::TyAlias);
         intravisit::walk_trait_item(self, it);
     }
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
