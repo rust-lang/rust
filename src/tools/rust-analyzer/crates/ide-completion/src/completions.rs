@@ -26,7 +26,7 @@ use std::iter;
 
 use hir::{known, HasAttrs, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::{
     context::{
@@ -80,7 +80,11 @@ impl Completions {
     }
 
     pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext<'_>, keyword: &'static str) {
-        let item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), keyword);
+        let item = CompletionItem::new(
+            CompletionItemKind::Keyword,
+            ctx.source_range(),
+            SmolStr::new_static(keyword),
+        );
         item.add_to(self, ctx.db);
     }
 

@@ -440,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.tcx.sess.at_least_rust_2018() {
                     self.dcx().emit_err(MethodCallOnUnknownRawPointee { span });
                 } else {
-                    self.tcx.struct_span_lint_hir(
+                    self.tcx.node_span_lint(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
@@ -1380,7 +1380,7 @@ impl<'tcx> Pick<'tcx> {
             return;
         }
         let def_kind = self.item.kind.as_def_kind();
-        tcx.struct_span_lint_hir(
+        tcx.node_span_lint(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             scope_expr_id,
             span,

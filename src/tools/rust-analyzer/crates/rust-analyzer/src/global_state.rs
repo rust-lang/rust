@@ -299,11 +299,11 @@ impl GlobalState {
                 }
 
                 let text = if let vfs::Change::Create(v) | vfs::Change::Modify(v) = file.change {
-                    String::from_utf8(v).ok().and_then(|text| {
+                    String::from_utf8(v).ok().map(|text| {
                         // FIXME: Consider doing normalization in the `vfs` instead? That allows
                         // getting rid of some locking
                         let (text, line_endings) = LineEndings::normalize(text);
-                        Some((Arc::from(text), line_endings))
+                        (Arc::from(text), line_endings)
                     })
                 } else {
                     None

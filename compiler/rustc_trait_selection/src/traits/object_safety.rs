@@ -161,7 +161,7 @@ fn lint_object_unsafe_trait(
 ) {
     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
     // It's also hard to get a use site span, so we use the method definition span.
-    tcx.struct_span_lint_hir(
+    tcx.node_span_lint(
         WHERE_CLAUSES_OBJECT_SAFETY,
         hir::CRATE_HIR_ID,
         span,

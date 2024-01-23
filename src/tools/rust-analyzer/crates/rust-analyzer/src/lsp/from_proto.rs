@@ -51,7 +51,7 @@ pub(crate) fn text_range(
     let start = offset(line_index, range.start)?;
     let end = offset(line_index, range.end)?;
     match end < start {
-        true => Err(format_err!("Invalid Range").into()),
+        true => Err(format_err!("Invalid Range")),
         false => Ok(TextRange::new(start, end)),
     }
 }

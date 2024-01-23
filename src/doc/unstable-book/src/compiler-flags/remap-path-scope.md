@@ -20,5 +20,5 @@ This flag accepts a comma-separated list of values and may be specified multiple
 ```sh
 # This would produce an absolute path to main.rs in build outputs of
 # "./main.rs".
-rustc --remap-path-prefix=$(PWD)=/remapped -Zremap-path-prefix=object main.rs
+rustc --remap-path-prefix=$(PWD)=/remapped -Zremap-path-scope=object main.rs
 ```

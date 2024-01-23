@@ -682,13 +682,12 @@ version = \"0.0.0\"
     );
 }
 
-#[test]
-fn out_dirs_check() {
+fn out_dirs_check_impl(root_contains_symlink: bool) {
     if skip_slow_tests() {
         return;
     }
 
-    let server = Project::with_fixture(
+    let mut server = Project::with_fixture(
         r###"
 //- /Cargo.toml
 [package]
@@ -745,20 +744,26 @@ fn main() {
     let another_str = include_str!("main.rs");
 }
 "###,
-    )
-    .with_config(serde_json::json!({
-        "cargo": {
-            "buildScripts": {
-                "enable": true
-            },
-            "sysroot": null,
-            "extraEnv": {
-                "RUSTC_BOOTSTRAP": "1"
+    );
+
+    if root_contains_symlink {
+        server = server.with_root_dir_contains_symlink();
+    }
+
+    let server = server
+        .with_config(serde_json::json!({
+            "cargo": {
+                "buildScripts": {
+                    "enable": true
+                },
+                "sysroot": null,
+                "extraEnv": {
+                    "RUSTC_BOOTSTRAP": "1"
+                }
             }
-        }
-    }))
-    .server()
-    .wait_until_workspace_is_loaded();
+        }))
+        .server()
+        .wait_until_workspace_is_loaded();
 
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
@@ -829,6 +834,16 @@ fn main() {
             "targetUri": "file:///[..]src/main.rs"
         }]),
     );
+}
+
+#[test]
+fn out_dirs_check() {
+    out_dirs_check_impl(false);
+}
+
+#[test]
+fn root_contains_symlink_out_dirs_check() {
+    out_dirs_check_impl(true);
 }
 
 #[test]

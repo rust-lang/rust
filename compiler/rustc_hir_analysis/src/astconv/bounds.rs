@@ -329,7 +329,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
 
         let projection_ty = if let ty::AssocKind::Fn = assoc_kind {
-            let mut emitted_bad_param_err = false;
+            let mut emitted_bad_param_err = None;
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
@@ -346,46 +346,30 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         )
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
-                            Ty::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundTy {
-                                    var: ty::BoundVar::from_usize(num_bound_vars),
-                                    kind: ty::BoundTyKind::Param(param.def_id, param.name),
-                                },
-                            )
-                            .into()
+                                )
+                            });
+                            Ty::new_error(tcx, guar).into()
                         }
                         ty::GenericParamDefKind::Const { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
+                                )
+                            });
                             let ty = tcx
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(num_bound_vars),
-                                ty,
-                            )
-                            .into()
+                            ty::Const::new_error(tcx, guar, ty).into()
                         }
                     };
                     num_bound_vars += 1;

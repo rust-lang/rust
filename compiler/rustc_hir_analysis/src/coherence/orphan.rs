@@ -495,7 +495,7 @@ fn lint_auto_trait_impl<'tcx>(
         return;
     }
 
-    tcx.struct_span_lint_hir(
+    tcx.node_span_lint(
         lint::builtin::SUSPICIOUS_AUTO_TRAIT_IMPLS,
         tcx.local_def_id_to_hir_id(impl_def_id),
         tcx.def_span(impl_def_id),

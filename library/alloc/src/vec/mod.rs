@@ -123,7 +123,7 @@ use self::set_len_on_drop::SetLenOnDrop;
 mod set_len_on_drop;
 
 #[cfg(not(no_global_oom_handling))]
-use self::in_place_drop::{InPlaceDrop, InPlaceDstBufDrop};
+use self::in_place_drop::{InPlaceDrop, InPlaceDstDataSrcBufDrop};
 
 #[cfg(not(no_global_oom_handling))]
 mod in_place_drop;
@@ -2166,6 +2166,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Returns a newly allocated vector containing the elements in the range
     /// `[at, len)`. After the call, the original vector will be left containing
     /// the elements `[0, at)` with its previous capacity unchanged.
+    ///
+    /// - If you want to take ownership of the entire contents and capacity of
+    ///   the vector, see [`mem::take`] or [`mem::replace`].
+    /// - If you don't need the returned vector at all, see [`Vec::truncate`].
+    /// - If you want to take ownership of an arbitrary subslice, or you don't
+    ///   necessarily want to store the removed items in a vector, see [`Vec::drain`].
     ///
     /// # Panics
     ///

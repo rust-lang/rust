@@ -359,19 +359,16 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
         }
     }
 
-    if ancestors_at_offset(file.syntax(), offset)
-        .find(|n| {
-            ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
-        })
-        .is_some()
-    {
-        return Some(ExtendedTextEdit {
+    if ancestors_at_offset(file.syntax(), offset).any(|n| {
+        ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
+    }) {
+        Some(ExtendedTextEdit {
             edit: TextEdit::replace(range, "<$0>".to_string()),
             is_snippet: true,
-        });
+        })
+    } else {
+        None
     }
-
-    None
 }
 
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
@@ -384,9 +381,7 @@ fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit>
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
     }
-    if find_node_at_offset::<ast::RetType>(file.syntax(), offset).is_none() {
-        return None;
-    }
+    find_node_at_offset::<ast::RetType>(file.syntax(), offset)?;
 
     Some(TextEdit::insert(after_arrow, " ".to_string()))
 }

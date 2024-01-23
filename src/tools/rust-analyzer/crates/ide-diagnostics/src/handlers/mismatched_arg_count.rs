@@ -24,7 +24,7 @@ pub(crate) fn mismatched_tuple_struct_pat_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0023"),
         message,
-        invalid_args_range(ctx, d.expr_or_pat.clone().map(Into::into), d.expected, d.found),
+        invalid_args_range(ctx, d.expr_or_pat.map(Into::into), d.expected, d.found),
     )
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn mismatched_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0107"),
         message,
-        invalid_args_range(ctx, d.call_expr.clone().map(Into::into), d.expected, d.found),
+        invalid_args_range(ctx, d.call_expr.map(Into::into), d.expected, d.found),
     )
 }
 

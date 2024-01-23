@@ -224,7 +224,7 @@ top_level_options!(
         working_dir: RealFileName [TRACKED],
         color: ColorConfig [UNTRACKED],
 
-        verbose: bool [UNTRACKED],
+        verbose: bool [TRACKED_NO_CRATE_HASH],
     }
 );
 
@@ -1986,7 +1986,7 @@ written to standard error output)"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
     #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
-    verbose_internals: bool = (false, parse_bool, [UNTRACKED],
+    verbose_internals: bool = (false, parse_bool, [TRACKED_NO_CRATE_HASH],
         "in general, enable more debug printouts (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field")]
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],

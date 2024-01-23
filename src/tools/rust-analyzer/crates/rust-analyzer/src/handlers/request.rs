@@ -919,7 +919,7 @@ pub(crate) fn handle_completion_resolve(
     }
 
     if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits.into_iter())
+        original_additional_edits.extend(additional_edits)
     } else {
         original_completion.additional_text_edits = Some(additional_edits);
     }
@@ -1017,8 +1017,10 @@ pub(crate) fn handle_rename(
     let _p = profile::span("handle_rename");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    let mut change =
-        snap.analysis.rename(position, &params.new_name)?.map_err(to_proto::rename_error)?;
+    let mut change = snap
+        .analysis
+        .rename(position, &params.new_name, snap.config.rename())?
+        .map_err(to_proto::rename_error)?;
 
     // this is kind of a hack to prevent double edits from happening when moving files
     // When a module gets renamed by renaming the mod declaration this causes the file to move
@@ -1037,11 +1039,7 @@ pub(crate) fn handle_rename(
     {
         for op in ops {
             if let lsp_types::DocumentChangeOperation::Op(doc_change_op) = op {
-                if let Err(err) =
-                    resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))
-                {
-                    return Err(err);
-                }
+                resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))?
             }
         }
     }
@@ -1158,11 +1156,7 @@ pub(crate) fn handle_code_action(
         if let Some(changes) = changes {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) =
-                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
-                    {
-                        return Err(err);
-                    }
+                    resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
                 }
             }
         }
@@ -1254,11 +1248,7 @@ pub(crate) fn handle_code_action_resolve(
         if let Some(changes) = edit.document_changes.as_ref() {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) =
-                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
-                    {
-                        return Err(err);
-                    }
+                    resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
                 }
             }
         }
@@ -1982,20 +1972,19 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = PathBuf::from(&command);
-            let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
+            let workspace = CargoTargetSpec::for_file(snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {
                     // approach: if the command name contains a path separator, join it with the workspace root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
-                    let cmd_path =
-                        if cfg!(windows) && command.contains(&[std::path::MAIN_SEPARATOR, '/']) {
-                            spec.workspace_root.join(cmd).into()
-                        } else if command.contains(std::path::MAIN_SEPARATOR) {
-                            spec.workspace_root.join(cmd).into()
-                        } else {
-                            cmd
-                        };
+                    let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
+                        || (cfg!(windows) && command.contains('/'))
+                    {
+                        spec.workspace_root.join(cmd).into()
+                    } else {
+                        cmd
+                    };
                     process::Command::new(cmd_path)
                 }
                 None => process::Command::new(cmd),

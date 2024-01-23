@@ -1049,7 +1049,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
                         func.decl
                             .inputs
                             .values
-                            .insert(a as _, Argument { name, type_: *ty, is_const: true });
+                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }

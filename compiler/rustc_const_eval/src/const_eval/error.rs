@@ -175,7 +175,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint,
         // We use the root frame for this so the crate that defines the const defines whether the
         // lint is emitted.

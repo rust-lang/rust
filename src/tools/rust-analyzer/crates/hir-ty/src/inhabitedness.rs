@@ -7,7 +7,7 @@ use chalk_ir::{
 };
 use hir_def::{
     attr::Attrs, data::adt::VariantData, visibility::Visibility, AdtId, EnumVariantId, HasModule,
-    Lookup, ModuleId, VariantId,
+    ModuleId, VariantId,
 };
 use rustc_hash::FxHashSet;
 
@@ -30,17 +30,15 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     target_mod: ModuleId,
     db: &dyn HirDatabase,
 ) -> bool {
-    let enum_data = db.enum_data(variant.parent);
-    let vars_attrs = db.variants_attrs(variant.parent);
-    let is_local = variant.parent.lookup(db.upcast()).container.krate() == target_mod.krate();
+    let is_local = variant.module(db.upcast()).krate() == target_mod.krate();
 
     let mut uninhabited_from =
         UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };
     let inhabitedness = uninhabited_from.visit_variant(
         variant.into(),
-        &enum_data.variants[variant.local_id].variant_data,
+        &db.enum_variant_data(variant).variant_data,
         subst,
-        &vars_attrs[variant.local_id],
+        &db.attrs(variant.into()),
         is_local,
     );
     inhabitedness == BREAK_VISIBLY_UNINHABITED
@@ -117,15 +115,14 @@ impl UninhabitedFrom<'_> {
                 self.visit_variant(s.into(), &struct_data.variant_data, subst, &attrs, is_local)
             }
             AdtId::EnumId(e) => {
-                let vars_attrs = self.db.variants_attrs(e);
                 let enum_data = self.db.enum_data(e);
 
-                for (local_id, enum_var) in enum_data.variants.iter() {
+                for &(variant, _) in enum_data.variants.iter() {
                     let variant_inhabitedness = self.visit_variant(
-                        EnumVariantId { parent: e, local_id }.into(),
-                        &enum_var.variant_data,
+                        variant.into(),
+                        &self.db.enum_variant_data(variant).variant_data,
                         subst,
-                        &vars_attrs[local_id],
+                        &self.db.attrs(variant.into()),
                         is_local,
                     );
                     match variant_inhabitedness {

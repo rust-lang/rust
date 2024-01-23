@@ -430,7 +430,7 @@ impl AddToDiagnostic for UnsafeNotInheritedLintNote {
         diag.tool_only_multipart_suggestion(
             fluent::mir_build_wrap_suggestion,
             vec![(body_start, "{ unsafe ".into()), (body_end, "}".into())],
-            Applicability::MaybeIncorrect,
+            Applicability::MachineApplicable,
         );
     }
 }

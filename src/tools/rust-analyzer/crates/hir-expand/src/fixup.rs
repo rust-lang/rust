@@ -68,7 +68,7 @@ pub(crate) fn fixup_syntax(
 
         let node_range = node.text_range();
         if can_handle_error(&node) && has_error_to_handle(&node) {
-            remove.insert(node.clone().into());
+            remove.insert(node.clone());
             // the node contains an error node, we have to completely replace it by something valid
             let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site);
             let idx = original.len() as u32;

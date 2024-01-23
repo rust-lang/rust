@@ -11,8 +11,6 @@ pub use self::rand::hashmap_random_keys;
 pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 #[path = "../unsupported/env.rs"]
 pub mod env;
 pub mod locks;

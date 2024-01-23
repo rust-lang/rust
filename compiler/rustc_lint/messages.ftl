@@ -148,7 +148,7 @@ lint_builtin_unsafe_impl = implementation of an `unsafe` trait
 
 lint_builtin_unsafe_trait = declaration of an `unsafe` trait
 
-lint_builtin_unstable_features = unstable feature
+lint_builtin_unstable_features = use of an unstable feature
 
 lint_builtin_unused_doc_comment = unused doc comment
     .label = rustdoc does not generate documentation for {$kind}
@@ -240,7 +240,10 @@ lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
-lint_identifier_uncommon_codepoints = identifier contains uncommon Unicode codepoints
+lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
+    [one] an uncommon Unicode codepoint
+    *[other] uncommon Unicode codepoints
+}: {$codepoints}
 
 lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
 
@@ -344,6 +347,9 @@ lint_multiple_supertrait_upcastable = `{$ident}` is object-safe and has multiple
 
 lint_node_source = `forbid` level set here
     .note = {$reason}
+
+lint_non_binding_let_multi_drop_fn =
+    consider immediately dropping the value using `drop(..)` after the `let` statement
 
 lint_non_binding_let_multi_suggestion =
     consider immediately dropping the value

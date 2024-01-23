@@ -2,8 +2,7 @@ use std::cell::RefCell;
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::CoroutineTypes;
-use crate::FnCtxt;
+use crate::{CoroutineTypes, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -76,6 +75,12 @@ pub(super) fn check_fn<'a, 'tcx>(
         let ty: Option<&hir::Ty<'_>> = try { inputs_hir?.get(idx)? };
         let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
+        if param.pat.is_never_pattern() {
+            fcx.function_diverges_because_of_empty_arguments.set(Diverges::Always {
+                span: param.pat.span,
+                custom_note: Some("any code following a never pattern is unreachable"),
+            });
+        }
 
         // Check that argument is Sized.
         if !params_can_be_unsized {
@@ -105,6 +110,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.is_whole_body.set(true);
     fcx.check_return_expr(body.value, false);
 
     // Finalize the return check by taking the LUB of the return types

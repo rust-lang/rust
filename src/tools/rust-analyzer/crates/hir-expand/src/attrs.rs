@@ -31,7 +31,7 @@ impl ops::Deref for RawAttrs {
 
     fn deref(&self) -> &[Attr] {
         match &self.entries {
-            Some(it) => &*it,
+            Some(it) => it,
             None => &[],
         }
     }
@@ -79,7 +79,7 @@ impl RawAttrs {
                 Self {
                     entries: Some(Arc::from_iter(a.iter().cloned().chain(b.iter().map(|it| {
                         let mut it = it.clone();
-                        it.id.id = it.id.ast_index() as u32 + last_ast_index
+                        it.id.id = (it.id.ast_index() as u32 + last_ast_index)
                             | (it.id.cfg_attr_index().unwrap_or(0) as u32)
                                 << AttrId::AST_INDEX_BITS;
                         it

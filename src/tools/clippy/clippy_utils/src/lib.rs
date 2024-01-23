@@ -80,6 +80,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
@@ -838,7 +839,7 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
 pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     match &e.kind {
         ExprKind::Lit(lit) => match lit.node {
-            LitKind::Bool(false) | LitKind::Int(0, _) => true,
+            LitKind::Bool(false) | LitKind::Int(Pu128(0), _) => true,
             LitKind::Str(s, _) => s.is_empty(),
             _ => false,
         },

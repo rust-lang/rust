@@ -381,7 +381,7 @@ impl Ctx<'_> {
                         true,
                     )
                     .ok()?;
-                let ast_ty = make::ty(&ty_str).clone_for_update();
+                let ast_ty = make::ty(ty_str).clone_for_update();
 
                 if let Some(adt) = ty.as_adt() {
                     if let ast::Type::PathType(path_ty) = &ast_ty {

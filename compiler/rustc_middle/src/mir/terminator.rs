@@ -3,6 +3,7 @@ use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
 use super::TerminatorKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_macros::HashStable;
 use std::slice;
 
@@ -14,7 +15,8 @@ impl SwitchTargets {
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
-        let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
+        let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
+            targets.map(|(v, t)| (Pu128(v), t)).unzip();
         targets.push(otherwise);
         Self { values, targets }
     }
@@ -22,7 +24,7 @@ impl SwitchTargets {
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
     pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
-        Self { values: smallvec![value], targets: smallvec![then, else_] }
+        Self { values: smallvec![Pu128(value)], targets: smallvec![then, else_] }
     }
 
     /// Inverse of `SwitchTargets::static_if`.
@@ -31,7 +33,7 @@ impl SwitchTargets {
         if let &[value] = &self.values[..]
             && let &[then, else_] = &self.targets[..]
         {
-            Some((value, then, else_))
+            Some((value.get(), then, else_))
         } else {
             None
         }
@@ -75,7 +77,7 @@ impl SwitchTargets {
 }
 
 pub struct SwitchTargetsIter<'a> {
-    inner: iter::Zip<slice::Iter<'a, u128>, slice::Iter<'a, BasicBlock>>,
+    inner: iter::Zip<slice::Iter<'a, Pu128>, slice::Iter<'a, BasicBlock>>,
 }
 
 impl<'a> Iterator for SwitchTargetsIter<'a> {
@@ -83,7 +85,7 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|(val, bb)| (*val, *bb))
+        self.inner.next().map(|(val, bb)| (val.get(), *bb))
     }
 
     #[inline]

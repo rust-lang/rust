@@ -2755,6 +2755,11 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "issue #71668 <https://github.com/rust-lang/rust/issues/71668>",
+        explain_reason: false
+    };
     @edition Edition2024 => Warn;
 }
 
@@ -4602,5 +4607,52 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
+    };
+}
+
+declare_lint! {
+    /// The `private_macro_use` lint detects private macros that are imported
+    /// with `#[macro_use]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs extern crate)
+    /// // extern_macro.rs
+    /// macro_rules! foo_ { () => {}; }
+    /// use foo_ as foo;
+    ///
+    /// // code.rs
+    ///
+    /// #![deny(private_macro_use)]
+    ///
+    /// #[macro_use]
+    /// extern crate extern_macro;
+    ///
+    /// fn main() {
+    ///     foo!();
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: cannot find macro `foo` in this scope
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint arises from overlooking visibility checks for macros
+    /// in an external crate.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub PRIVATE_MACRO_USE,
+    Warn,
+    "detects certain macro bindings that should not be re-exported",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #120192 <https://github.com/rust-lang/rust/issues/120192>",
     };
 }

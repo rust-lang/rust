@@ -103,7 +103,7 @@ impl Assist {
                     let doc = take_until(lines.by_ref(), "```").trim().to_string();
                     assert!(
                         (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
-                            || assist.sections.len() > 0,
+                            || !assist.sections.is_empty(),
                         "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
                         &assist.id,
                         doc,

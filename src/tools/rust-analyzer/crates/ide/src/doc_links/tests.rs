@@ -130,10 +130,10 @@ fn external_docs_doc_builtin_type() {
 //- /main.rs crate:foo
 let x: u3$02 = 0;
 "#,
-        Some(&OsStr::new("/home/user/project")),
+        Some(OsStr::new("/home/user/project")),
         Some(expect![[r#"https://doc.rust-lang.org/nightly/core/primitive.u32.html"#]]),
         Some(expect![[r#"file:///sysroot/share/doc/rust/html/core/primitive.u32.html"#]]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -146,10 +146,10 @@ use foo$0::Foo;
 //- /lib.rs crate:foo
 pub struct Foo;
 "#,
-        Some(&OsStr::new("/home/user/project")),
+        Some(OsStr::new("/home/user/project")),
         Some(expect![[r#"https://docs.rs/foo/*/foo/index.html"#]]),
         Some(expect![[r#"file:///home/user/project/doc/foo/index.html"#]]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -160,10 +160,10 @@ fn external_docs_doc_url_std_crate() {
 //- /main.rs crate:std
 use self$0;
 "#,
-        Some(&OsStr::new("/home/user/project")),
+        Some(OsStr::new("/home/user/project")),
         Some(expect!["https://doc.rust-lang.org/stable/std/index.html"]),
         Some(expect!["file:///sysroot/share/doc/rust/html/std/index.html"]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -174,10 +174,10 @@ fn external_docs_doc_url_struct() {
 //- /main.rs crate:foo
 pub struct Fo$0o;
 "#,
-        Some(&OsStr::new("/home/user/project")),
+        Some(OsStr::new("/home/user/project")),
         Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
         Some(expect![[r#"file:///home/user/project/doc/foo/struct.Foo.html"#]]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -188,10 +188,10 @@ fn external_docs_doc_url_windows_backslash_path() {
 //- /main.rs crate:foo
 pub struct Fo$0o;
 "#,
-        Some(&OsStr::new(r"C:\Users\user\project")),
+        Some(OsStr::new(r"C:\Users\user\project")),
         Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
         Some(expect![[r#"file:///C:/Users/user/project/doc/foo/struct.Foo.html"#]]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -202,10 +202,10 @@ fn external_docs_doc_url_windows_slash_path() {
 //- /main.rs crate:foo
 pub struct Fo$0o;
 "#,
-        Some(&OsStr::new(r"C:/Users/user/project")),
+        Some(OsStr::new(r"C:/Users/user/project")),
         Some(expect![[r#"https://docs.rs/foo/*/foo/struct.Foo.html"#]]),
         Some(expect![[r#"file:///C:/Users/user/project/doc/foo/struct.Foo.html"#]]),
-        Some(&OsStr::new("/sysroot")),
+        Some(OsStr::new("/sysroot")),
     );
 }
 
@@ -662,5 +662,31 @@ pub struct $0Foo;
 pub struct $0Foo;
 "#,
         expect![["[`foo`]"]],
+    );
+}
+
+#[test]
+fn rewrite_intra_doc_link() {
+    check_rewrite(
+        r#"
+        //- minicore: eq, derive
+        //- /main.rs crate:foo
+        //! $0[PartialEq]
+        fn main() {}
+        "#,
+        expect!["[PartialEq](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html)"],
+    );
+}
+
+#[test]
+fn rewrite_intra_doc_link_with_anchor() {
+    check_rewrite(
+        r#"
+        //- minicore: eq, derive
+        //- /main.rs crate:foo
+        //! $0[PartialEq#derivable]
+        fn main() {}
+        "#,
+        expect!["[PartialEq#derivable](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html#derivable)"],
     );
 }

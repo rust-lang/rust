@@ -306,9 +306,7 @@ fn add_custom_postfix_completions(
     postfix_snippet: impl Fn(&str, &str, &str) -> Builder,
     receiver_text: &str,
 ) -> Option<()> {
-    if ImportScope::find_insert_use_container(&ctx.token.parent()?, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.postfix_snippets().filter(|(_, snip)| snip.scope == SnippetScope::Expr).for_each(
         |(trigger, snippet)| {
             let imports = match snippet.imports(ctx) {
