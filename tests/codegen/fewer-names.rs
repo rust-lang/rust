@@ -1,4 +1,3 @@
-// no-system-llvm
 // compile-flags: -Coverflow-checks=no -O
 // revisions: YES NO
 // [YES]compile-flags: -Zfewer-names=yes

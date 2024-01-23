@@ -1,6 +1,5 @@
 //
 // only-macos
-// no-system-llvm
 // compile-flags: -O
 
 #![crate_type = "rlib"]
