@@ -512,6 +512,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         Ok(())
     }
 
+    /// Evaluate the given constant. The `eval` function will do all the required evaluation,
+    /// but this hook has the chance to do some pre/postprocessing.
     #[inline(always)]
     fn eval_mir_constant<F>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
