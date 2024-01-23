@@ -242,9 +242,15 @@ pub struct ClosureArgs<'tcx> {
 
 /// Struct returned by `split()`.
 pub struct ClosureArgsParts<'tcx> {
+    /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
+    /// Represents the maximum calling capability of the closure.
     pub closure_kind_ty: Ty<'tcx>,
+    /// Captures the closure's signature. This closure signature is "tupled", and
+    /// thus has a peculiar signature of `extern "rust-call" fn((Args, ...)) -> Ty`.
     pub closure_sig_as_fn_ptr_ty: Ty<'tcx>,
+    /// The upvars captured by the closure. Remains an inference variable
+    /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
 }
 
@@ -277,15 +283,6 @@ impl<'tcx> ClosureArgs<'tcx> {
         }
     }
 
-    /// Returns `true` only if enough of the synthetic types are known to
-    /// allow using all of the methods on `ClosureArgs` without panicking.
-    ///
-    /// Used primarily by `ty::print::pretty` to be able to handle closure
-    /// types that haven't had their synthetic types substituted in.
-    pub fn is_valid(self) -> bool {
-        self.args.len() >= 3 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
-    }
-
     /// Returns the substitutions of the closure's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
@@ -296,9 +293,9 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        match self.tupled_upvars_ty().kind() {
+        match *self.tupled_upvars_ty().kind() {
             TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Tuple(tys) => tys,
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
@@ -337,10 +334,9 @@ impl<'tcx> ClosureArgs<'tcx> {
 
     /// Extracts the signature from the closure.
     pub fn sig(self) -> ty::PolyFnSig<'tcx> {
-        let ty = self.sig_as_fn_ptr_ty();
-        match ty.kind() {
-            ty::FnPtr(sig) => *sig,
-            _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
+        match *self.sig_as_fn_ptr_ty().kind() {
+            ty::FnPtr(sig) => sig,
+            ty => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {ty:?}"),
         }
     }
 
@@ -356,11 +352,17 @@ pub struct CoroutineArgs<'tcx> {
 }
 
 pub struct CoroutineArgsParts<'tcx> {
+    /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
+    /// The interior type of the coroutine.
+    /// Represents all types that are stored in locals
+    /// in the coroutine's body.
     pub witness: Ty<'tcx>,
+    /// The upvars captured by the closure. Remains an inference variable
+    /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
 }
 
@@ -397,15 +399,6 @@ impl<'tcx> CoroutineArgs<'tcx> {
         }
     }
 
-    /// Returns `true` only if enough of the synthetic types are known to
-    /// allow using all of the methods on `CoroutineArgs` without panicking.
-    ///
-    /// Used primarily by `ty::print::pretty` to be able to handle coroutine
-    /// types that haven't had their synthetic types substituted in.
-    pub fn is_valid(self) -> bool {
-        self.args.len() >= 5 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
-    }
-
     /// Returns the substitutions of the coroutine's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
@@ -425,9 +418,9 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        match self.tupled_upvars_ty().kind() {
+        match *self.tupled_upvars_ty().kind() {
             TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Tuple(tys) => tys,
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
