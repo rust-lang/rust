@@ -232,32 +232,12 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             Ok::<_, NoSolution>(())
         })?,
 
-        ty::Closure(_, args) => {
-            if !args.as_closure().is_valid() {
-                // By the time this code runs, all type variables ought to
-                // be fully resolved.
-
-                tcx.dcx().span_delayed_bug(
-                    span,
-                    format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
-                );
-                return Err(NoSolution);
+        ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
+            for ty in args.as_closure().upvar_tys() {
+                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, ty, constraints)?;
             }
-
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                for ty in args.as_closure().upvar_tys() {
-                    dtorck_constraint_for_ty_inner(
-                        tcx,
-                        param_env,
-                        span,
-                        depth + 1,
-                        ty,
-                        constraints,
-                    )?;
-                }
-                Ok::<_, NoSolution>(())
-            })?
-        }
+            Ok::<_, NoSolution>(())
+        })?,
 
         ty::Coroutine(_, args) => {
             // rust-lang/rust#49918: types can be constructed, stored
@@ -283,15 +263,6 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // derived from lifetimes attached to the upvars and resume
             // argument, and we *do* incorporate those here.
             let args = args.as_coroutine();
-            if !args.is_valid() {
-                // By the time this code runs, all type variables ought to
-                // be fully resolved.
-                tcx.dcx().span_delayed_bug(
-                    span,
-                    format!("upvar_tys for coroutine not found. Expected capture information for coroutine {ty}",),
-                );
-                return Err(NoSolution);
-            }
 
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can check the actual
