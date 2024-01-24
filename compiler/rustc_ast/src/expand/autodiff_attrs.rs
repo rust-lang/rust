@@ -83,7 +83,7 @@ impl FromStr for DiffActivity {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AutoDiffAttrs {
     pub mode: DiffMode,
     pub ret_activity: DiffActivity,
@@ -127,13 +127,13 @@ impl AutoDiffAttrs{
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for AutoDiffAttrs {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.mode.hash_stable(hcx, hasher);
-        self.ret_activity.hash_stable(hcx, hasher);
-        self.input_activity.hash_stable(hcx, hasher);
-    }
-}
+//impl<CTX: HashStableContext> HashStable<CTX> for AutoDiffAttrs {
+//    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+//        self.mode.hash_stable(hcx, hasher);
+//        self.ret_activity.hash_stable(hcx, hasher);
+//        self.input_activity.hash_stable(hcx, hasher);
+//    }
+//}
 
 impl AutoDiffAttrs {
     pub fn inactive() -> Self {
