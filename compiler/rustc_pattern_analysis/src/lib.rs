@@ -123,7 +123,7 @@ pub trait TypeCx: Sized + fmt::Debug {
     ) -> fmt::Result;
 
     /// Raise a bug.
-    fn bug(&self, fmt: fmt::Arguments<'_>) -> !;
+    fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error;
 
     /// Lint that the range `pat` overlapped with all the ranges in `overlaps_with`, where the range
     /// they overlapped over is `overlaps_on`. We only detect singleton overlaps.

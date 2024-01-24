@@ -78,7 +78,7 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
         let mut specialized_columns: Vec<_> =
             (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
         let relevant_patterns =
-            self.patterns.iter().filter(|pat| ctor.is_covered_by(cx, pat.ctor()));
+            self.patterns.iter().filter(|pat| ctor.is_covered_by(cx, pat.ctor()).unwrap_or(false));
         for pat in relevant_patterns {
             let specialized = pat.specialize(ctor, arity);
             for (subpat, column) in specialized.into_iter().zip(&mut specialized_columns) {
