@@ -852,9 +852,22 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({rustc_producer})");
 
-    use rustc_session::RemapFileNameExt;
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
+    debug!(?name_in_debuginfo, "build_compile_unit_di_node");
+
+    // Path of working directory in the root DI node seems to be embedded in
+    // executables. Hence, we trim them when the scope of `unsplit-debuginfo`
+    // is present, as if it is kinda a "unsplit" debuginfo.
+    use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
+    let work_dir = tcx
+        .sess
+        .opts
+        .working_dir
+        .for_scope(tcx.sess, RemapPathScopeComponents::UNSPLIT_DEBUGINFO)
+        .to_string_lossy();
+    debug!(?work_dir, "build_compile_unit_di_node");
+
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames

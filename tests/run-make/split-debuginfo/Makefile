@@ -31,18 +31,17 @@ packed-remapped-object-scope:
 	# binary contains remapped paths
 	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
-	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo || exit 1
 
 	# binary contains no original paths
 	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
 	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
-	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
-	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
 
 	# dSYM bundle contains no remapped paths
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+	# FIXME: dSYM bundle contains `DW_AT_comp_dir` in debug symbol, which shouldn't be remapped.
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo
 
 	# dSYM bundle contains original paths
 	grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo || exit 1
@@ -92,22 +91,20 @@ packed-remapped-split-debuginfo-scope:
 
 	# binary contains no remapped paths
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
-	nm -pa $(TMPDIR)/foo | grep " SO " | grep $(REMAPPED_CWD) || exit 1
-	nm -pa $(TMPDIR)/foo | grep --invert-match " SO " | (! grep $(REMAPPED_CWD)) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
 
 	# binary contains original paths
 	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
 	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
-	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
-	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
 
 	## dSYM bundle contains remapped paths
 	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo || exit 1
 
 	## dSYM bundle contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
-	(! grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo) || exit 1
+	# FIXME: dSYM bundle contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
+	grep --text $(HERE) $(TMPDIR)/foo.dSYM/Contents/Resources/DWARF/foo
 
 	rm -rf $(TMPDIR)/foo.dSYM
 	rm $(TMPDIR)/$(call BIN,foo)
@@ -129,18 +126,17 @@ unpacked-remapped-object-scope:
 	# binary contains remapped paths
 	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
-	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo || exit 1
 
 	# binary contains no original paths
 	# FIXME: As of 2023-12, `OSO` cannot be trimmed. See rust-lang/rust#116948
 	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
-	# FIXME: `SO` in the root debuginfo compile unit didn't get trimed. See rust-lang/rust#116948
-	grep --text $(HERE) $(TMPDIR)/foo || exit 1
+	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
 
 	# object file contains no remapped paths
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.*.o) || exit 1
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o) || exit 1
+	# FIXME: object file contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o || exit 1
 
 	# object file contains original paths
 	grep --text $(HERE) $(TMPDIR)/foo.*.o || exit 1
@@ -190,21 +186,19 @@ unpacked-remapped-split-debuginfo-scope:
 
 	# binary contains no remapped paths
 	(! grep --text $(REMAPPED_OUT) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
-	nm -pa $(TMPDIR)/foo | grep " SO " | grep $(REMAPPED_CWD) || exit 1
-	nm -pa $(TMPDIR)/foo | grep --invert-match " SO " | (! grep $(REMAPPED_CWD)) || exit 1
+	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
 
 	# binary contains original paths
 	grep --text $(TMPDIR) $(TMPDIR)/foo || exit 1
-	# FIXME: binary contains `N_SO` (SO) in debug symbol, which got remapped.
-	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
 
 	# object file contains remapped paths
 	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o || exit 1
 
 	# object file contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo.*.o) || exit 1
-	(! grep --text $(HERE) $(TMPDIR)/foo.*.o) || exit 1
+	# FIXME: object file contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
+	grep --text $(HERE) $(TMPDIR)/foo.*.o || exit 1
 
 	rm $(TMPDIR)/*.o
 	rm $(TMPDIR)/$(call BIN,foo)
@@ -366,14 +360,12 @@ packed-remapped-object-scope:
 
 	# binary contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo || exit 1
 
 	# binary contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: bnary contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(HERE) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(HERE)) || exit 1
+	# FIXME: binary contains `.debug-line` in debug symbol, which didn't get remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(HERE) || exit 1
 
 	# dwp contains no remapped paths
 	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.dwp) || exit 1
@@ -434,14 +426,13 @@ packed-remapped-split-debuginfo-scope:
 	# binary contains remapped dwo path
 	readelf -wi $(TMPDIR)/foo | grep "DW_AT_GNU_dwo_name" | grep $(REMAPPED_OUT) || exit 1
 	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_GNU_dwo_name" | (! grep $(REMAPPED_OUT)) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(REMAPPED_CWD) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(REMAPPED_CWD)) || exit 1
+	# binary contains no remapped cwd path
+	# FIXME: binary contains `.debug-line` in debug symbol, which got remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(REMAPPED_CWD) || exit 1
 
 	# binary contains no original --out-dir (DW_AT_GNU_dwo_name was remapped)
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
 
 	# dwp contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.dwp || exit 1
@@ -634,14 +625,12 @@ unpacked-remapped-object-scope-split:
 
 	# binary contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo || exit 1
-	# FIXME: binary should contains no cwd but now it got `DW_AT_comp_dir`
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo || exit 1
 
 	# binary contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which didn't get remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(HERE) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(HERE)) || exit 1
+	# FIXME: binary contains `.debug-line` in debug symbol, which didn't get remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(HERE) || exit 1
 
 	# dwo contains no remapped paths
 	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.dwo) || exit 1
@@ -672,17 +661,16 @@ unpacked-remapped-object-scope-single:
 
 	# binary contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo || exit 1
-	# FIXME: binary should contains no cwd but now it got `DW_AT_comp_dir`
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo) || exit 1
+	grep --text $(REMAPPED_CWD) $(TMPDIR)/foo || exit 1
 
 	# binary contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which didn't get remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(HERE) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(HERE)) || exit 1
+	# FIXME: binary contains `.debug-line` in debug symbol, which didn't get remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(HERE) || exit 1
 
 	# object file contains no remapped paths
-	(! grep --text $(REMAPPED_CWD) $(TMPDIR)/foo.*.o) || exit 1
+	# FIXME: object file contains `.debug-line` in debug symbol, which didn't get remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(HERE) || exit 1
 	# FIXME: object file contains `DW_AT_GNU_dwo_name` in debug symbol, which got remapped.
 	readelf -wi $(TMPDIR)/foo.*.o | grep "DW_AT_GNU_dwo_name" | grep $(REMAPPED_OUT) || exit 1
 	readelf -wi $(TMPDIR)/foo.*.o | grep --invert-match "DW_AT_GNU_dwo_name" | (! grep $(REMAPPED_OUT)) || exit 1
@@ -779,14 +767,14 @@ unpacked-remapped-split-debuginfo-scope-split:
 	# binary contains remapped dwo path
 	readelf -wi $(TMPDIR)/foo | grep "DW_AT_GNU_dwo_name" | grep $(REMAPPED_OUT) || exit 1
 	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_GNU_dwo_name" | (! grep $(REMAPPED_OUT)) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(REMAPPED_CWD) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(REMAPPED_CWD)) || exit 1
+	# binary contains no remapped cwd path
+	# FIXME: binary contains `.debug-line` in debug symbol, which got remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(REMAPPED_CWD) || exit 1
 
 	# binary contains no original --out-dir (DW_AT_GNU_dwo_name was remapped)
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+	# binary contains original cwd path
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
 
 	# dwo contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.*.dwo || exit 1
@@ -814,21 +802,22 @@ unpacked-remapped-split-debuginfo-scope-single:
 	# binary contains remapped dwo path
 	readelf -wi $(TMPDIR)/foo | grep "DW_AT_GNU_dwo_name" | grep $(REMAPPED_OUT) || exit 1
 	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_GNU_dwo_name" | (! grep $(REMAPPED_OUT)) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	readelf -wi $(TMPDIR)/foo | grep "DW_AT_comp_dir" | grep $(REMAPPED_CWD) || exit 1
-	readelf -wi $(TMPDIR)/foo | grep --invert-match "DW_AT_comp_dir" | (! grep $(REMAPPED_CWD)) || exit 1
+	# binary contains no remapped cwd path
+	# FIXME: binary contains `.debug-line` in debug symbol, which got remapped.
+	readelf -wl $(TMPDIR)/foo | grep $(REMAPPED_CWD) || exit 1
 
 	# binary contains no original --out-dir (DW_AT_GNU_dwo_name was remapped)
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo) || exit 1
-	# FIXME: binary contains `DW_AT_comp_dir` in debug symbol, which got remapped.
-	(! grep --text $(HERE) $(TMPDIR)/foo) || exit 1
+	# binary contains original cwd path
+	grep --text $(HERE) $(TMPDIR)/foo || exit 1
 
 	# object file contains remapped paths
 	grep --text $(REMAPPED_OUT) $(TMPDIR)/foo.*.o || exit 1
 
 	# object file contains no original paths
 	(! grep --text $(TMPDIR) $(TMPDIR)/foo.*.o) || exit 1
-	(! grep --text $(HERE) $(TMPDIR)/foo.*.o) || exit 1
+	# FIXME: object file contains `DW_AT_comp_dir` in debug symbol, which should be remapped.
+	grep --text $(HERE) $(TMPDIR)/foo.*.o || exit 1
 
 	rm $(TMPDIR)/*.o
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
