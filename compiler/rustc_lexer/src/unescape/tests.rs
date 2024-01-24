@@ -100,7 +100,9 @@ fn test_unescape_char_good() {
 fn test_unescape_str_warn() {
     fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
         let mut unescaped = Vec::with_capacity(literal.len());
-        unescape_unicode(literal, Mode::Str, &mut |range, res| unescaped.push((range, res)));
+        let rfc3349 =
+            unescape_unicode(literal, Mode::Str, &mut |range, res| unescaped.push((range, res)));
+        assert_eq!(rfc3349, Rfc3349::Unused); // rfc3349 not relevant for `Mode::Str`
         assert_eq!(unescaped, expected);
     }
 
@@ -124,7 +126,7 @@ fn test_unescape_str_warn() {
 fn test_unescape_str_good() {
     fn check(literal_text: &str, expected: &str) {
         let mut buf = Ok(String::with_capacity(literal_text.len()));
-        unescape_unicode(literal_text, Mode::Str, &mut |range, c| {
+        let rfc3349 = unescape_unicode(literal_text, Mode::Str, &mut |range, c| {
             if let Ok(b) = &mut buf {
                 match c {
                     Ok(c) => b.push(c),
@@ -132,6 +134,7 @@ fn test_unescape_str_good() {
                 }
             }
         });
+        assert_eq!(rfc3349, Rfc3349::Unused); // rfc3349 not relevant for `Mode::Str`
         assert_eq!(buf.as_deref(), Ok(expected))
     }
 
@@ -239,32 +242,43 @@ fn test_unescape_byte_good() {
 
 #[test]
 fn test_unescape_byte_str_good() {
-    fn check(literal_text: &str, expected: &[u8]) {
-        let mut buf = Ok(Vec::with_capacity(literal_text.len()));
-        unescape_unicode(literal_text, Mode::ByteStr, &mut |range, c| {
-            if let Ok(b) = &mut buf {
+    fn check(literal_text: &str, expected: &[u8], rfc3349_expected: Rfc3349) {
+        let mut buf_res = Ok(Vec::with_capacity(literal_text.len()));
+        let rfc3349_actual = unescape_mixed(literal_text, Mode::ByteStr, &mut |range, c| {
+            if let Ok(buf) = &mut buf_res {
                 match c {
-                    Ok(c) => b.push(byte_from_char(c)),
-                    Err(e) => buf = Err((range, e)),
+                    Ok(MixedUnit::Char(c)) => {
+                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                    }
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
+                    Err(e) => buf_res = Err((range, e)),
                 }
             }
         });
-        assert_eq!(buf.as_deref(), Ok(expected))
+        assert_eq!(rfc3349_actual, rfc3349_expected);
+        assert_eq!(buf_res.as_deref(), Ok(expected))
     }
 
-    check("foo", b"foo");
-    check("", b"");
-    check(" \t\n", b" \t\n");
+    check("foo", b"foo", Rfc3349::Unused);
+    check("", b"", Rfc3349::Unused);
+    check(" \t\n", b" \t\n", Rfc3349::Unused);
 
-    check("hello \\\n     world", b"hello world");
-    check("thread's", b"thread's")
+    check("hello \\\n     world", b"hello world", Rfc3349::Unused);
+    check("thread's", b"thread's", Rfc3349::Unused);
+
+    let a_pound_up_smiley = &[0x61, 0xc2, 0xa3, 0xe2, 0x86, 0x91, 0xf0, 0x9f, 0x98, 0x80];
+    check("a£↑😀", a_pound_up_smiley, Rfc3349::Used);
+    check(r"\u{61}\u{a3}\u{2191}\u{1f600}", a_pound_up_smiley, Rfc3349::Used);
+    check(r"\x00\x7f\x80\xffa¥", &[0, 0x7f, 0x80, 0xff, 0x61, 0xc2, 0xa5], Rfc3349::Used);
 }
 
 #[test]
 fn test_unescape_raw_str() {
     fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
         let mut unescaped = Vec::with_capacity(literal.len());
-        unescape_unicode(literal, Mode::RawStr, &mut |range, res| unescaped.push((range, res)));
+        let rfc3349 =
+            unescape_unicode(literal, Mode::RawStr, &mut |range, res| unescaped.push((range, res)));
+        assert_eq!(rfc3349, Rfc3349::Unused); // rfc3349 not relevant for `Mode::RawStr`
         assert_eq!(unescaped, expected);
     }
 
@@ -274,13 +288,20 @@ fn test_unescape_raw_str() {
 
 #[test]
 fn test_unescape_raw_byte_str() {
-    fn check(literal: &str, expected: &[(Range<usize>, Result<char, EscapeError>)]) {
+    fn check(
+        literal: &str,
+        expected: &[(Range<usize>, Result<char, EscapeError>)],
+        rfc3349_expected: Rfc3349,
+    ) {
         let mut unescaped = Vec::with_capacity(literal.len());
-        unescape_unicode(literal, Mode::RawByteStr, &mut |range, res| unescaped.push((range, res)));
+        let rfc3349_actual = unescape_unicode(literal, Mode::RawByteStr, &mut |range, res| {
+            unescaped.push((range, res))
+        });
+        assert_eq!(rfc3349_actual, rfc3349_expected);
         assert_eq!(unescaped, expected);
     }
 
-    check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
-    check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByte))]);
-    check("🦀a", &[(0..4, Err(EscapeError::NonAsciiCharInByte)), (4..5, Ok('a'))]);
+    check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))], Rfc3349::Unused);
+    check("🦀", &[(0..4, Ok('🦀'))], Rfc3349::Used);
+    check("¥a", &[(0..2, Ok('¥')), (2..3, Ok('a'))], Rfc3349::Used);
 }

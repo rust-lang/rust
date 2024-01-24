@@ -1058,6 +1058,7 @@ symbols! {
         mir_unwind_unreachable,
         mir_variant,
         miri,
+        mixed_utf8_literals,
         mmx_reg,
         modifiers,
         module,

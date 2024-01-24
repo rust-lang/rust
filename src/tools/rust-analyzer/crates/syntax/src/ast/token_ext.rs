@@ -193,7 +193,8 @@ pub trait IsString: AstToken {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
+        // Ignores the `Rfc3349` return value, thus permitting mixed utf8 literals.
+        _ = unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
             let text_range =
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
@@ -226,7 +227,8 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
+        // Ignores the `Rfc3349` return value, thus permitting mixed utf8 literals.
+        _ = unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -253,44 +255,18 @@ impl ast::String {
 impl IsString for ast::ByteString {
     const RAW_PREFIX: &'static str = "br";
     const MODE: Mode = Mode::ByteStr;
+
+    fn escaped_char_ranges(
+        &self,
+        cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
+    ) {
+        escaped_char_ranges_impl(self, cb);
+    }
 }
 
 impl ast::ByteString {
     pub fn value(&self) -> Option<Cow<'_, [u8]>> {
-        if self.is_raw() {
-            let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-            return Some(Cow::Borrowed(text.as_bytes()));
-        }
-
-        let text = self.text();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-
-        let mut buf: Vec<u8> = Vec::new();
-        let mut prev_end = 0;
-        let mut has_error = false;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
-            unescaped_char,
-            buf.capacity() == 0,
-        ) {
-            (Ok(c), false) => buf.push(c as u8),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
-            }
-            (Ok(c), true) => {
-                buf.reserve_exact(text.len());
-                buf.extend_from_slice(text[..prev_end].as_bytes());
-                buf.push(c as u8);
-            }
-            (Err(_), _) => has_error = true,
-        });
-
-        match (has_error, buf.capacity() == 0) {
-            (true, _) => None,
-            (false, true) => Some(Cow::Borrowed(text.as_bytes())),
-            (false, false) => Some(Cow::Owned(buf)),
-        }
+        value_impl(self)
     }
 }
 
@@ -302,65 +278,13 @@ impl IsString for ast::CString {
         &self,
         cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
     ) {
-        let text_range_no_quotes = match self.text_range_between_quotes() {
-            Some(it) => it,
-            None => return,
-        };
-
-        let start = self.syntax().text_range().start();
-        let text = &self.text()[text_range_no_quotes - start];
-        let offset = text_range_no_quotes.start() - start;
-
-        unescape_mixed(text, Self::MODE, &mut |range, unescaped_char| {
-            let text_range =
-                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
-            // XXX: This method should only be used for highlighting ranges. The unescaped
-            // char/byte is not used. For simplicity, we return an arbitrary placeholder char.
-            cb(text_range + offset, unescaped_char.map(|_| ' '));
-        });
+        escaped_char_ranges_impl(self, cb);
     }
 }
 
 impl ast::CString {
     pub fn value(&self) -> Option<Cow<'_, [u8]>> {
-        if self.is_raw() {
-            let text = self.text();
-            let text =
-                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-            return Some(Cow::Borrowed(text.as_bytes()));
-        }
-
-        let text = self.text();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-
-        let mut buf = Vec::new();
-        let mut prev_end = 0;
-        let mut has_error = false;
-        let extend_unit = |buf: &mut Vec<u8>, unit: MixedUnit| match unit {
-            MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
-            MixedUnit::HighByte(b) => buf.push(b),
-        };
-        unescape_mixed(text, Self::MODE, &mut |char_range, unescaped| match (
-            unescaped,
-            buf.capacity() == 0,
-        ) {
-            (Ok(u), false) => extend_unit(&mut buf, u),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
-                prev_end = char_range.end
-            }
-            (Ok(u), true) => {
-                buf.reserve_exact(text.len());
-                buf.extend(text[..prev_end].as_bytes());
-                extend_unit(&mut buf, u);
-            }
-            (Err(_), _) => has_error = true,
-        });
-
-        match (has_error, buf.capacity() == 0) {
-            (true, _) => None,
-            (false, true) => Some(Cow::Borrowed(text.as_bytes())),
-            (false, false) => Some(Cow::Owned(buf)),
-        }
+        value_impl(self)
     }
 }
 
@@ -454,6 +378,71 @@ impl ast::FloatNumber {
     pub fn value_f32(&self) -> Result<f32, ParseFloatError> {
         let (text, _) = self.split_into_parts();
         text.replace('_', "").parse::<f32>()
+    }
+}
+
+fn escaped_char_ranges_impl<I: IsString>(
+    this: &I,
+    cb: &mut dyn FnMut(TextRange, Result<char, rustc_lexer::unescape::EscapeError>),
+) {
+    let text_range_no_quotes = match this.text_range_between_quotes() {
+        Some(it) => it,
+        None => return,
+    };
+
+    let start = this.syntax().text_range().start();
+    let text = &this.text()[text_range_no_quotes - start];
+    let offset = text_range_no_quotes.start() - start;
+
+    // Ignores the `Rfc3349` return value, thus permitting mixed utf8 literals.
+    _ = unescape_mixed(text, I::MODE, &mut |range, unescaped_char| {
+        let text_range =
+            TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
+        // XXX: This method should only be used for highlighting ranges. The unescaped
+        // char/byte is not used. For simplicity, we return an arbitrary placeholder char.
+        cb(text_range + offset, unescaped_char.map(|_| ' '));
+    });
+}
+
+fn value_impl<I: IsString>(this: &I) -> Option<Cow<'_, [u8]>> {
+    if this.is_raw() {
+        let text = this.text();
+        let text =
+            &text[this.text_range_between_quotes()? - this.syntax().text_range().start()];
+        return Some(Cow::Borrowed(text.as_bytes()));
+    }
+
+    let text = this.text();
+    let text = &text[this.text_range_between_quotes()? - this.syntax().text_range().start()];
+
+    let mut buf: Vec<u8> = Vec::new();
+    let mut prev_end = 0;
+    let mut has_error = false;
+    let extend_unit = |buf: &mut Vec<u8>, unit: MixedUnit| match unit {
+        MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
+        MixedUnit::HighByte(b) => buf.push(b),
+    };
+    // Ignores the `Rfc3349` return value, thus permitting mixed utf8 literals.
+    _ = unescape_mixed(text, I::MODE, &mut |char_range, unescaped_char| match (
+        unescaped_char,
+        buf.capacity() == 0,
+    ) {
+        (Ok(u), false) => extend_unit(&mut buf, u),
+        (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+            prev_end = char_range.end
+        }
+        (Ok(u), true) => {
+            buf.reserve_exact(text.len());
+            buf.extend(text[..prev_end].as_bytes());
+            extend_unit(&mut buf, u);
+        }
+        (Err(_), _) => has_error = true,
+    });
+
+    match (has_error, buf.capacity() == 0) {
+        (true, _) => None,
+        (false, true) => Some(Cow::Borrowed(text.as_bytes())),
+        (false, false) => Some(Cow::Owned(buf)),
     }
 }
 

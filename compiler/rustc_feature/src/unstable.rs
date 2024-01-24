@@ -523,6 +523,8 @@ declare_features! (
     /// standard library until the soundness issues with specialization
     /// are fixed.
     (unstable, min_specialization, "1.7.0", Some(31844)),
+    /// Allows mixed utf8 b"" and br"" literals.
+    (unstable, mixed_utf8_literals, "CURRENT_RUSTC_VERSION", Some(116907)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows the `#[must_not_suspend]` attribute.

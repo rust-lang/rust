@@ -1,0 +1,33 @@
+error[E0658]: mixed utf8 b"" and br"" literals are experimental
+  --> $DIR/feature-gate-mixed-utf8-literals.rs:2:9
+   |
+LL |     _ = b"a¥🦀";
+   |         ^^^^^^^
+   |
+   = note: see issue #116907 <https://github.com/rust-lang/rust/issues/116907> for more information
+   = help: add `#![feature(mixed_utf8_literals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: mixed utf8 b"" and br"" literals are experimental
+  --> $DIR/feature-gate-mixed-utf8-literals.rs:3:9
+   |
+LL |     _ = br"a¥🦀";
+   |         ^^^^^^^^
+   |
+   = note: see issue #116907 <https://github.com/rust-lang/rust/issues/116907> for more information
+   = help: add `#![feature(mixed_utf8_literals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: mixed utf8 b"" and br"" literals are experimental
+  --> $DIR/feature-gate-mixed-utf8-literals.rs:4:9
+   |
+LL |     _ = b"a\u{a5}\u{1f980}";
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #116907 <https://github.com/rust-lang/rust/issues/116907> for more information
+   = help: add `#![feature(mixed_utf8_literals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

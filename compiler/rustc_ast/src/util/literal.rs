@@ -3,7 +3,7 @@
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
-    byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
+    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -49,7 +49,8 @@ impl LitKind {
 
         // For byte/char/string literals, chars and escapes have already been
         // checked in the lexer (in `cook_lexer_literal`). So we can assume all
-        // chars and escapes are valid here.
+        // chars and escapes are valid here, and ignore `Rfc3349` return
+        // values.
         Ok(match kind {
             token::Bool => {
                 assert!(symbol.is_bool_lit());
@@ -84,7 +85,7 @@ impl LitKind {
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be hot in
                     // programs with many long strings containing escapes.
-                    unescape_unicode(
+                    _ = unescape_unicode(
                         s,
                         Mode::Str,
                         &mut #[inline(always)]
@@ -108,8 +109,11 @@ impl LitKind {
             token::ByteStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_unicode(s, Mode::ByteStr, &mut |_, c| match c {
-                    Ok(c) => buf.push(byte_from_char(c)),
+                _ = unescape_mixed(s, Mode::ByteStr, &mut |_, c| match c {
+                    Ok(MixedUnit::Char(c)) => {
+                        buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
+                    }
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
                     Err(err) => {
                         assert!(!err.is_fatal(), "failed to unescape string literal")
                     }
@@ -125,7 +129,7 @@ impl LitKind {
             token::CStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_mixed(s, Mode::CStr, &mut |_span, c| match c {
+                _ = unescape_mixed(s, Mode::CStr, &mut |_span, c| match c {
                     Ok(MixedUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
