@@ -456,8 +456,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let value = &self.eval_operand(cond, location)?;
         trace!("assertion on {:?} should be {:?}", value, expected);
 
-        let expected = Scalar::from_bool(expected);
         let value_const = self.use_ecx(location, |this| this.ecx.read_scalar(value))?;
+
+        if value_const == Scalar::from_bool(false) {
+            // Skip the assertion if the condition is evaluated to false.
+            return None;
+        }
+
+        let expected = Scalar::from_bool(expected);
 
         if expected != value_const {
             // Poison all places this operand references so that further code
