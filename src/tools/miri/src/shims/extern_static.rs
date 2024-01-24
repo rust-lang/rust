@@ -49,6 +49,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 );
             }
             "freebsd" => {
+                Self::null_ptr_extern_statics(this, &["__cxa_thread_atexit_impl"])?;
                 // "environ"
                 Self::add_extern_static(
                     this,
