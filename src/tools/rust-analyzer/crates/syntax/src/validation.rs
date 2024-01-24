@@ -5,7 +5,7 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_literal, Mode};
+use rustc_lexer::unescape::{self, unescape_c_string, unescape_literal, Mode};
 
 use crate::{
     algo,
@@ -162,7 +162,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_c_string(without_quotes, Mode::CStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
