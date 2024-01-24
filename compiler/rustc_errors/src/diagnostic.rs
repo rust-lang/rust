@@ -519,6 +519,15 @@ impl Diagnostic {
 
     /// Helper for pushing to `self.suggestions`, if available (not disable).
     fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
+        let in_derive = suggestion
+            .substitutions
+            .iter()
+            .any(|subst| subst.parts.iter().any(|part| part.span.in_derive_expansion()));
+        if in_derive {
+            // Ignore if spans is from derive macro.
+            return;
+        }
+
         if let Ok(suggestions) = &mut self.suggestions {
             suggestions.push(suggestion);
         }
