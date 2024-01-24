@@ -28,8 +28,8 @@ if isWindows; then
     # Install pacboy for easily installing packages
     pacman -S --noconfirm pactoys
 
-    # Delete these pre-installed tools because we are using the MSYS2 setup action versions
-    # instead, so we can't accidentally use them.
+    # Delete these pre-installed tools so we can't accidentally use them, because we are using the
+    # MSYS2 setup action versions instead.
     # Delete Windows-Git
     rm -r "/c/Program Files/Git/"
     # Delete pre-installed version of MSYS2

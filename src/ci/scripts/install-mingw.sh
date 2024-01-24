@@ -43,7 +43,7 @@ if isWindows; then
         # Maybe even:
         # pacboy -S --noconfirm clang:p ...
         # It kinda works, for the opposite CI jobs that gcc works for.
-        # the windows part of install-clang.sh has something to say about this.
+        # The windows part of install-clang.sh has comments pertaining to this.
     else
         mingw_dir="mingw${bits}"
 

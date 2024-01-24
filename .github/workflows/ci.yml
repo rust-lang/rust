@@ -96,7 +96,7 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - if: "contains(matrix.os, 'windows')"
-        uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
+        uses: msys2/setup-msys2@v2.22.0
         with:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
@@ -486,7 +486,7 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - if: "contains(matrix.os, 'windows')"
-        uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
+        uses: msys2/setup-msys2@v2.22.0
         with:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
@@ -622,7 +622,7 @@ jobs:
     runs-on: "${{ matrix.os }}"
     steps:
       - if: "contains(matrix.os, 'windows')"
-        uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
+        uses: msys2/setup-msys2@v2.22.0
         with:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
