@@ -296,7 +296,7 @@ Prefer to use single-letter names for generic parameters.
 These rules apply for `where` clauses on any item.
 
 If a where clause is short, and appears on a short one-line function
-declaration with no body or a short associated type with no `=`, format it on
+declaration with no body or on a short type with no `=`, format it on
 the same line as the declaration:
 
 ```rust
