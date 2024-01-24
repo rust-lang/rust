@@ -739,6 +739,12 @@ macro_rules! make_mir_visitor {
                             ) => {
                                 self.visit_args(coroutine_args, location);
                             }
+                            AggregateKind::CoroutineClosure(
+                                _,
+                                coroutine_closure_args,
+                            ) => {
+                                self.visit_args(coroutine_closure_args, location);
+                            }
                         }
 
                         for operand in operands {

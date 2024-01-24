@@ -57,6 +57,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
+        ty::CoroutineClosure(_, args) => Ok(vec![args.as_coroutine_closure().tupled_upvars_ty()]),
+
         ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
             Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
@@ -128,6 +130,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::CoroutineWitness(..)
         | ty::Array(..)
         | ty::Closure(..)
+        | ty::CoroutineClosure(..)
         | ty::Never
         | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(vec![]),
@@ -192,6 +195,8 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
+
+        ty::CoroutineClosure(..) => Err(NoSolution),
 
         ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
@@ -267,6 +272,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
             }
             Ok(Some(closure_args.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
         }
+
+        // Coroutine closures don't implement `Fn` traits the normal way.
+        ty::CoroutineClosure(..) => Err(NoSolution),
+
         ty::Bool
         | ty::Char
         | ty::Int(_)

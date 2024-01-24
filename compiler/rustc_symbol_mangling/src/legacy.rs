@@ -211,6 +211,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
+            | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
 
             // The `pretty_print_type` formatting of array size depends on
@@ -281,7 +282,11 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
-            ty::FnDef(..) | ty::Alias(..) | ty::Closure(..) | ty::Coroutine(..)
+            ty::FnDef(..)
+            | ty::Alias(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
                 if trait_ref.is_none() =>
             {
                 self.print_type(self_ty)

@@ -147,7 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(args).is_none() {
+                if self.closure_kind(adjusted_ty).is_none() {
                     let closure_sig = args.as_closure().sig();
                     let closure_sig = self.instantiate_binder_with_fresh_vars(
                         call_expr.span,
@@ -160,10 +160,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         DeferredCallResolution {
                             call_expr,
                             callee_expr,
-                            adjusted_ty,
+                            closure_ty: adjusted_ty,
                             adjustments,
                             fn_sig: closure_sig,
-                            closure_args: args,
                         },
                     );
                     return Some(CallStep::DeferredClosure(def_id, closure_sig));
@@ -886,10 +885,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 pub struct DeferredCallResolution<'tcx> {
     call_expr: &'tcx hir::Expr<'tcx>,
     callee_expr: &'tcx hir::Expr<'tcx>,
-    adjusted_ty: Ty<'tcx>,
+    closure_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_args: GenericArgsRef<'tcx>,
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {
@@ -898,10 +896,10 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_args).is_some());
+        assert!(fcx.closure_kind(self.closure_ty).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
-        match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {
+        match fcx.try_overloaded_call_traits(self.call_expr, self.closure_ty, None) {
             Some((autoref, method_callee)) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature

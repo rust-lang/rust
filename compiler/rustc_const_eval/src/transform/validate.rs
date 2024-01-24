@@ -665,6 +665,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
+                    ty::CoroutineClosure(_, args) => {
+                        let args = args.as_coroutine_closure();
+                        let Some(&f_ty) = args.upvar_tys().get(f.as_usize()) else {
+                            fail_out_of_bounds(self, location);
+                            return;
+                        };
+                        check_equal(self, location, f_ty);
+                    }
                     &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
@@ -858,6 +866,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     for (src, dest) in std::iter::zip(fields, upvars) {
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
                             self.fail(location, "coroutine field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::CoroutineClosure(_, args) => {
+                    let upvars = args.as_coroutine_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(
+                            location,
+                            "coroutine-closure has the wrong number of initialized fields",
+                        );
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "coroutine-closure field has the wrong type");
                         }
                     }
                 }

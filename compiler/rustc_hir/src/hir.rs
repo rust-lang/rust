@@ -3703,6 +3703,7 @@ impl<'hir> Node<'hir> {
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
         expect_crate,         &'hir Mod<'hir>,          Node::Crate(n),        n;
         expect_infer,         &'hir InferArg,           Node::Infer(n),        n;
+        expect_closure,       &'hir Closure<'hir>, Node::Expr(Expr { kind: ExprKind::Closure(n), .. }), n;
     }
 }
 

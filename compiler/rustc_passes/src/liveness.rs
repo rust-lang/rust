@@ -719,6 +719,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 ty::ClosureKind::FnMut => {}
                 ty::ClosureKind::FnOnce => return succ,
             },
+            ty::CoroutineClosure(_def_id, args) => match args.as_coroutine_closure().kind() {
+                ty::ClosureKind::Fn => {}
+                ty::ClosureKind::FnMut => {}
+                ty::ClosureKind::FnOnce => return succ,
+            },
             ty::Coroutine(..) => return succ,
             _ => {
                 span_bug!(

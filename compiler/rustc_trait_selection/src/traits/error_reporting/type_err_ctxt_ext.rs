@@ -959,9 +959,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Option<ErrorGuaranteed> {
-        if let ty::Closure(closure_def_id, closure_args) = *trait_ref.self_ty().skip_binder().kind()
+        let self_ty = trait_ref.self_ty().skip_binder();
+        if let ty::Closure(closure_def_id, closure_args) = *self_ty.kind()
             && let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
-            && let Some(found_kind) = self.closure_kind(closure_args)
+            && let Some(found_kind) = self.closure_kind(self_ty)
             && !found_kind.extends(expected_kind)
             && let sig = closure_args.as_closure().sig()
             && self.can_sub(
@@ -1875,6 +1876,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Coroutine(..) => Some(18),
                 ty::Foreign(..) => Some(19),
                 ty::CoroutineWitness(..) => Some(20),
+                ty::CoroutineClosure(..) => Some(21),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }

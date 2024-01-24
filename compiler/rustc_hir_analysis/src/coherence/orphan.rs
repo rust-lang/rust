@@ -244,6 +244,7 @@ fn do_orphan_check_impl<'tcx>(
             | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
             ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Bound(..)

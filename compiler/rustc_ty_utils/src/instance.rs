@@ -215,6 +215,7 @@ fn resolve_associated_item<'tcx>(
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)
+                        | ty::CoroutineClosure(..)
                         | ty::Tuple(..) => {}
                         _ => return Ok(None),
                     };

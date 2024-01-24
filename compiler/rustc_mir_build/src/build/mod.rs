@@ -495,7 +495,7 @@ fn construct_fn<'tcx>(
             args.as_coroutine().yield_ty(),
             args.as_coroutine().resume_ty(),
         ))),
-        ty::Closure(..) | ty::FnDef(..) => None,
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 

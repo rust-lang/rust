@@ -170,9 +170,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, args) = match *ty.kind() {
-            ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
-            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args)),
+        let (closure_def_id, args, infer_kind) = match *ty.kind() {
+            ty::Closure(def_id, args) => {
+                (def_id, UpvarArgs::Closure(args), self.closure_kind(ty).is_none())
+            }
+            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args), false),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -187,12 +189,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let closure_def_id = closure_def_id.expect_local();
-
-        let infer_kind = if let UpvarArgs::Closure(closure_args) = args {
-            self.closure_kind(closure_args).is_none().then_some(closure_args)
-        } else {
-            None
-        };
 
         assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
@@ -308,10 +304,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let before_feature_tys = self.final_upvar_tys(closure_def_id);
 
-        if let Some(closure_args) = infer_kind {
+        if infer_kind {
             // Unify the (as yet unbound) type variable in the closure
             // args with the kind we inferred.
-            let closure_kind_ty = closure_args.as_closure().kind_ty();
+            let closure_kind_ty = match args {
+                UpvarArgs::Closure(args) => args.as_closure().kind_ty(),
+                UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().kind_ty(),
+                UpvarArgs::Coroutine(_) => unreachable!("coroutines don't have an inferred kind"),
+            };
             self.demand_eqtype(
                 span,
                 Ty::from_closure_kind(self.tcx, closure_kind),

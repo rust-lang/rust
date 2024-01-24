@@ -128,7 +128,9 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                         ),
                     }
                 }
-                &AggregateKind::Closure(def_id, _) | &AggregateKind::Coroutine(def_id, _) => {
+                &AggregateKind::Closure(def_id, _)
+                | &AggregateKind::CoroutineClosure(def_id, _)
+                | &AggregateKind::Coroutine(def_id, _) => {
                     let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.mir_unsafety_check_result(def_id);

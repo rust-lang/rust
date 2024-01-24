@@ -182,6 +182,7 @@ where
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
+            | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
                 self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
                 if V::SHALLOW {

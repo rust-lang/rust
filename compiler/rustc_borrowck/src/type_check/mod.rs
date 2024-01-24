@@ -808,6 +808,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
+                ty::CoroutineClosure(_, args) => {
+                    return match args.as_coroutine_closure().upvar_tys().get(field.index()) {
+                        Some(&ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: args.as_coroutine_closure().upvar_tys().len(),
+                        }),
+                    };
+                }
                 ty::Coroutine(_, args) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
@@ -1875,6 +1883,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }),
                 }
             }
+            AggregateKind::CoroutineClosure(_, args) => {
+                match args.as_coroutine_closure().upvar_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
+                    None => Err(FieldAccessError::OutOfRange {
+                        field_count: args.as_coroutine_closure().upvar_tys().len(),
+                    }),
+                }
+            }
             AggregateKind::Array(ty) => Ok(ty),
             AggregateKind::Tuple => {
                 unreachable!("This should have been covered in check_rvalues");
@@ -2478,6 +2494,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
                 AggregateKind::Coroutine(_, _) => None,
+                AggregateKind::CoroutineClosure(_, _) => None,
             },
         }
     }
@@ -2705,7 +2722,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => (
+            AggregateKind::Closure(def_id, args)
+            | AggregateKind::CoroutineClosure(def_id, args)
+            | AggregateKind::Coroutine(def_id, args) => (
                 def_id,
                 self.prove_closure_bounds(
                     tcx,
@@ -2754,10 +2773,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
-            DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => {
-                args.as_coroutine().parent_args()
+            DefKind::Closure => {
+                // FIXME(async_closures): It's kind of icky to access HIR here.
+                match tcx.hir_node_by_def_id(def_id).expect_closure().kind {
+                    hir::ClosureKind::Closure => args.as_closure().parent_args(),
+                    hir::ClosureKind::Coroutine(_) => args.as_coroutine().parent_args(),
+                    hir::ClosureKind::CoroutineClosure(_) => {
+                        args.as_coroutine_closure().parent_args()
+                    }
+                }
             }
-            DefKind::Closure => args.as_closure().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };

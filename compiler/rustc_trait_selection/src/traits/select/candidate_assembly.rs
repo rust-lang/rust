@@ -306,11 +306,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(def_id, closure_args) => {
+        let self_ty = obligation.self_ty().skip_binder();
+        match *self_ty.kind() {
+            ty::Closure(def_id, _) => {
                 let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
-                match self.infcx.closure_kind(closure_args) {
+                match self.infcx.closure_kind(self_ty) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
@@ -488,7 +489,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Slice(_)
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
@@ -623,7 +625,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -1000,6 +1003,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Slice(_)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::Tuple(_)
             | ty::CoroutineWitness(..) => {
@@ -1076,7 +1080,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -1139,6 +1144,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never

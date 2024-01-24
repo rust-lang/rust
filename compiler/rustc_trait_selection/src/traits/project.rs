@@ -1854,6 +1854,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::FnPtr(..)
                         | ty::Dynamic(..)
                         | ty::Closure(..)
+                        | ty::CoroutineClosure(..)
                         | ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Never
@@ -1903,6 +1904,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::FnPtr(..)
                         | ty::Dynamic(..)
                         | ty::Closure(..)
+                        | ty::CoroutineClosure(..)
                         | ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Never
