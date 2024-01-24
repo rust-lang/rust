@@ -1,12 +1,12 @@
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::ErrorGuaranteed;
 
+use crate::constructor::{Constructor, SplitConstructorSet};
 use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
-use crate::pat::PatOrWild;
-use crate::rustc::{
-    Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy, RustcMatchCheckCtxt,
-    SplitConstructorSet, WitnessPat,
-};
+use crate::pat::{DeconstructedPat, PatOrWild};
+use crate::rustc::{MatchCtxt, RevealedTy, RustcMatchCheckCtxt, WitnessPat};
+use crate::usefulness::PlaceCtxt;
+use crate::{MatchArm, TypeCx};
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
@@ -19,12 +19,12 @@ use crate::rustc::{
 ///
 /// This is not used in the usefulness algorithm; only in lints.
 #[derive(Debug)]
-pub(crate) struct PatternColumn<'p, 'tcx> {
-    patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>,
+pub(crate) struct PatternColumn<'p, Cx: TypeCx> {
+    patterns: Vec<&'p DeconstructedPat<'p, Cx>>,
 }
 
-impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
-    pub(crate) fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
+impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
+    pub(crate) fn new(arms: &[MatchArm<'p, Cx>]) -> Self {
         let patterns = Vec::with_capacity(arms.len());
         let mut column = PatternColumn { patterns };
         for arm in arms {
@@ -34,7 +34,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     }
     /// Pushes a pattern onto the column, expanding any or-patterns into its subpatterns.
     /// Internal method, prefer [`PatternColumn::new`].
-    fn expand_and_push(&mut self, pat: PatOrWild<'p, RustcMatchCheckCtxt<'p, 'tcx>>) {
+    fn expand_and_push(&mut self, pat: PatOrWild<'p, Cx>) {
         // We flatten or-patterns and skip algorithm-generated wildcards.
         if pat.is_or_pat() {
             self.patterns.extend(
@@ -45,15 +45,12 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         }
     }
 
-    fn head_ty(&self) -> Option<RevealedTy<'tcx>> {
-        self.patterns.first().map(|pat| *pat.ty())
+    fn head_ty(&self) -> Option<&Cx::Ty> {
+        self.patterns.first().map(|pat| pat.ty())
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(
-        &self,
-        pcx: &PlaceCtxt<'_, 'p, 'tcx>,
-    ) -> Result<SplitConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
+    fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, Cx>) -> Result<SplitConstructorSet<Cx>, Cx::Error> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         let ctors_for_ty = &pcx.ctors_for_ty()?;
         Ok(ctors_for_ty.split(column_ctors))
@@ -66,9 +63,9 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     /// which may change the lengths.
     fn specialize(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'p, 'tcx>,
-    ) -> Vec<PatternColumn<'p, 'tcx>> {
+        pcx: &PlaceCtxt<'_, Cx>,
+        ctor: &Constructor<Cx>,
+    ) -> Vec<PatternColumn<'p, Cx>> {
         let arity = ctor.arity(pcx);
         if arity == 0 {
             return Vec::new();
@@ -96,9 +93,9 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
 #[instrument(level = "debug", skip(cx), ret)]
 fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
-    column: &PatternColumn<'p, 'tcx>,
+    column: &PatternColumn<'p, RustcMatchCheckCtxt<'p, 'tcx>>,
 ) -> Result<Vec<WitnessPat<'p, 'tcx>>, ErrorGuaranteed> {
-    let Some(ty) = column.head_ty() else {
+    let Some(&ty) = column.head_ty() else {
         return Ok(Vec::new());
     };
     let pcx = &PlaceCtxt::new_dummy(cx, &ty);
@@ -143,8 +140,8 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 
 pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
-    arms: &[MatchArm<'p, 'tcx>],
-    pat_column: &PatternColumn<'p, 'tcx>,
+    arms: &[MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>],
+    pat_column: &PatternColumn<'p, RustcMatchCheckCtxt<'p, 'tcx>>,
     scrut_ty: RevealedTy<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
