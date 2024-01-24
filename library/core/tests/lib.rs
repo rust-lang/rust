@@ -32,6 +32,7 @@
 #![feature(duration_abs_diff)]
 #![feature(duration_consts_float)]
 #![feature(duration_constants)]
+#![feature(duration_constructors)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(flt2dec)]
