@@ -3155,7 +3155,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 } else {
                     // FIXME: we may suggest array::repeat instead
                     err.help("consider using `core::array::from_fn` to initialize the array");
-                    err.help("see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html# for more information");
+                    err.help("see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information");
                 }
 
                 if self.tcx.sess.is_nightly_build()
