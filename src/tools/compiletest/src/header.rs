@@ -1109,9 +1109,6 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
 }
 
 fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
-    if config.system_llvm && line.starts_with("no-system-llvm") {
-        return IgnoreDecision::Ignore { reason: "ignored when the system LLVM is used".into() };
-    }
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
     {
