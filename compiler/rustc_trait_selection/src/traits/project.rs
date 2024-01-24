@@ -2505,6 +2505,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 let coroutine_ty = sig.to_coroutine(
                     tcx,
                     args.parent_args(),
+                    Ty::from_closure_kind(tcx, goal_kind),
                     tcx.coroutine_for_closure(def_id),
                     tupled_upvars_ty,
                 );
@@ -2533,6 +2534,7 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 let coroutine_ty = sig.to_coroutine(
                     tcx,
                     args.parent_args(),
+                    Ty::from_closure_kind(tcx, goal_kind),
                     tcx.coroutine_for_closure(def_id),
                     tupled_upvars_ty,
                 );

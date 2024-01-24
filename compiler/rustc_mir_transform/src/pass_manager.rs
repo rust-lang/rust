@@ -189,6 +189,12 @@ fn run_passes_inner<'tcx>(
 
         body.pass_count = 1;
     }
+
+    if let Some(coroutine) = body.coroutine.as_mut()
+        && let Some(by_move_body) = coroutine.by_move_body.as_mut()
+    {
+        run_passes_inner(tcx, by_move_body, passes, phase_change, validate_each);
+    }
 }
 
 pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {

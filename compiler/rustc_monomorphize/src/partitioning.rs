@@ -620,7 +620,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::ReifyShim(..)
                 | ty::InstanceDef::FnPtrShim(..)
                 | ty::InstanceDef::ClosureOnceShim { .. }
-                | InstanceDef::ConstructCoroutineInClosureShim { .. }
+                | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+                | ty::InstanceDef::CoroutineByMoveShim { .. }
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
                 | ty::InstanceDef::Virtual(..)
@@ -785,6 +786,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::Intrinsic(..)
         | InstanceDef::ClosureOnceShim { .. }
         | InstanceDef::ConstructCoroutineInClosureShim { .. }
+        | InstanceDef::CoroutineByMoveShim { .. }
         | InstanceDef::DropGlue(..)
         | InstanceDef::CloneShim(..)
         | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,

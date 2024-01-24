@@ -81,6 +81,18 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             }
         },
 
+        ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id } => {
+            return tcx
+                .optimized_mir(coroutine_def_id)
+                .coroutine
+                .as_ref()
+                .unwrap()
+                .by_move_body
+                .as_ref()
+                .unwrap()
+                .clone();
+        }
+
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?

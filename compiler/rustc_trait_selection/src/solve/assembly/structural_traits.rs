@@ -366,6 +366,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                         let coroutine_ty = sig.to_coroutine(
                             tcx,
                             args.parent_args(),
+                            Ty::from_closure_kind(tcx, goal_kind),
                             tcx.coroutine_for_closure(def_id),
                             tupled_upvars_ty,
                         );

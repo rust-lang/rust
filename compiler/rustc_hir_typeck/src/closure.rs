@@ -175,10 +175,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     interior,
                 ));
 
+                let kind_ty = match kind {
+                    hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) => self
+                        .next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::ClosureSynthetic,
+                            span: expr_span,
+                        }),
+                    _ => tcx.types.unit,
+                };
+
                 let coroutine_args = ty::CoroutineArgs::new(
                     tcx,
                     ty::CoroutineArgsParts {
                         parent_args,
+                        kind_ty,
                         resume_ty,
                         yield_ty,
                         return_ty: liberated_sig.output(),
@@ -256,6 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sig.to_coroutine(
                                 tcx,
                                 parent_args,
+                                closure_kind_ty,
                                 tcx.coroutine_for_closure(expr_def_id),
                                 coroutine_upvars_ty,
                             )

@@ -101,6 +101,9 @@ pub enum InstanceDef<'tcx> {
         target_kind: ty::ClosureKind,
     },
 
+    /// TODO:
+    CoroutineByMoveShim { coroutine_def_id: DefId },
+
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
     /// native support.
@@ -186,6 +189,7 @@ impl<'tcx> InstanceDef<'tcx> {
                 coroutine_closure_def_id: def_id,
                 target_kind: _,
             }
+            | ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -206,6 +210,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceDef::CoroutineByMoveShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
@@ -302,6 +307,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | InstanceDef::CoroutineByMoveShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -340,6 +346,7 @@ fn fmt_instance(
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
         InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
+        InstanceDef::CoroutineByMoveShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -631,7 +638,19 @@ impl<'tcx> Instance<'tcx> {
         };
 
         if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
-            Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args: args })
+            let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+            else {
+                bug!()
+            };
+
+            if args.as_coroutine().kind_ty() == id_args.as_coroutine().kind_ty() {
+                Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
+            } else {
+                Some(Instance {
+                    def: ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id },
+                    args,
+                })
+            }
         } else {
             // All other methods should be defaulted methods of the built-in trait.
             // This is important for `Iterator`'s combinators, but also useful for

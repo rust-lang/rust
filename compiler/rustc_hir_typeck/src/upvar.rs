@@ -393,6 +393,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                 coroutine_captures_by_ref_ty,
             );
+
+            let ty::Coroutine(_, args) = *self.typeck_results.borrow().expr_ty(body.value).kind()
+            else {
+                bug!();
+            };
+            self.demand_eqtype(
+                span,
+                args.as_coroutine().kind_ty(),
+                Ty::from_closure_kind(self.tcx, closure_kind),
+            );
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);

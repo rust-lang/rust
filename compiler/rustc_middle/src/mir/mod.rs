@@ -262,6 +262,10 @@ pub struct CoroutineInfo<'tcx> {
     /// Coroutine drop glue. This field is populated after the state transform pass.
     pub coroutine_drop: Option<Body<'tcx>>,
 
+    /// The body of the coroutine, modified to take its upvars by move.
+    /// TODO:
+    pub by_move_body: Option<Body<'tcx>>,
+
     /// The layout of a coroutine. This field is populated after the state transform pass.
     pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
@@ -281,6 +285,7 @@ impl<'tcx> CoroutineInfo<'tcx> {
             coroutine_kind,
             yield_ty: Some(yield_ty),
             resume_ty: Some(resume_ty),
+            by_move_body: None,
             coroutine_drop: None,
             coroutine_layout: None,
         }

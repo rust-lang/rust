@@ -399,6 +399,7 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         parent_args: &'tcx [GenericArg<'tcx>],
+        kind_ty: Ty<'tcx>,
         coroutine_def_id: DefId,
         tupled_upvars_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
@@ -406,6 +407,7 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
             tcx,
             ty::CoroutineArgsParts {
                 parent_args,
+                kind_ty,
                 resume_ty: self.resume_ty,
                 yield_ty: self.yield_ty,
                 return_ty: self.return_ty,
@@ -436,7 +438,13 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
             env_region,
         );
 
-        self.to_coroutine(tcx, parent_args, coroutine_def_id, tupled_upvars_ty)
+        self.to_coroutine(
+            tcx,
+            parent_args,
+            Ty::from_closure_kind(tcx, closure_kind),
+            coroutine_def_id,
+            tupled_upvars_ty,
+        )
     }
 
     /// Given a closure kind, compute the tupled upvars that the given coroutine would return.
@@ -488,6 +496,8 @@ pub struct CoroutineArgs<'tcx> {
 pub struct CoroutineArgsParts<'tcx> {
     /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
+    // TODO: why
+    pub kind_ty: Ty<'tcx>,
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -506,6 +516,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
         CoroutineArgs {
             args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.kind_ty.into(),
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),
                 parts.return_ty.into(),
@@ -519,16 +530,23 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
     fn split(self) -> CoroutineArgsParts<'tcx> {
         match self.args[..] {
-            [ref parent_args @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
-                CoroutineArgsParts {
-                    parent_args,
-                    resume_ty: resume_ty.expect_ty(),
-                    yield_ty: yield_ty.expect_ty(),
-                    return_ty: return_ty.expect_ty(),
-                    witness: witness.expect_ty(),
-                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                }
-            }
+            [
+                ref parent_args @ ..,
+                kind_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                witness,
+                tupled_upvars_ty,
+            ] => CoroutineArgsParts {
+                parent_args,
+                kind_ty: kind_ty.expect_ty(),
+                resume_ty: resume_ty.expect_ty(),
+                yield_ty: yield_ty.expect_ty(),
+                return_ty: return_ty.expect_ty(),
+                witness: witness.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+            },
             _ => bug!("coroutine args missing synthetics"),
         }
     }
@@ -536,6 +554,11 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Returns the substitutions of the coroutine's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
+    }
+
+    // TODO:
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().kind_ty
     }
 
     /// This describes the types that can be contained in a coroutine.
@@ -1628,7 +1651,7 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
             "coroutine constructed with incorrect number of substitutions"
         );
         Ty::new(tcx, Coroutine(def_id, coroutine_args))

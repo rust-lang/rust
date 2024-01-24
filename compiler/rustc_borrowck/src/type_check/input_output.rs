@@ -85,6 +85,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.tcx(),
                     ty::CoroutineArgsParts {
                         parent_args: args.parent_args(),
+                        kind_ty: Ty::from_closure_kind(self.tcx(), args.kind()),
                         resume_ty: next_ty_var(),
                         yield_ty: next_ty_var(),
                         witness: next_ty_var(),

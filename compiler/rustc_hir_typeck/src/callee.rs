@@ -183,6 +183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.to_coroutine(
                         self.tcx,
                         closure_args.parent_args(),
+                        closure_args.kind_ty(),
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),
