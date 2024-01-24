@@ -692,7 +692,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
                         hir::CoroutineSource::Closure,
-                    )) => " of async closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => {
+                        " of async closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
@@ -719,7 +722,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Gen,
                         hir::CoroutineSource::Closure,
-                    )) => " of gen closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
+                        " of gen closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Gen,
@@ -743,7 +749,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::AsyncGen,
                         hir::CoroutineSource::Closure,
-                    )) => " of async gen closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::AsyncGen) => {
+                        " of async gen closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::AsyncGen,

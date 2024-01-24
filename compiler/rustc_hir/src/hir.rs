@@ -952,6 +952,11 @@ pub enum ClosureKind {
     ///  usage (e.g. `let x = || { yield (); }`) or from a desugared expression
     /// (e.g. `async` and `gen` blocks).
     Coroutine(CoroutineKind),
+    /// This is a coroutine-closure, which is a special sugared closure that
+    /// returns one of the sugared coroutine (`async`/`gen`/`async gen`). It
+    /// additionally allows capturing the coroutine's upvars by ref, and therefore
+    /// needs to be specially treated during analysis and borrowck.
+    CoroutineClosure(CoroutineDesugaring),
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the

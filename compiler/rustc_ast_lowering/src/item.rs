@@ -1086,7 +1086,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body.span,
                 coroutine_kind,
                 hir::CoroutineSource::Fn,
-                None,
             );
 
             // FIXME(async_fn_track_caller): Can this be moved above?
@@ -1108,7 +1107,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_span: Span,
         coroutine_kind: CoroutineKind,
         coroutine_source: hir::CoroutineSource,
-        return_type_hint: Option<hir::FnRetTy<'hir>>,
     ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
@@ -1284,7 +1282,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // all async closures would default to `FnOnce` as their calling mode.
             CaptureBy::Ref,
             closure_id,
-            return_type_hint,
+            None,
             body_span,
             desugaring_kind,
             coroutine_source,

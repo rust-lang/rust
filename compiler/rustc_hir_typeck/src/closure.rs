@@ -192,6 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CoroutineTypes { resume_ty, yield_ty }),
                 )
             }
+            hir::ClosureKind::CoroutineClosure(_) => todo!(),
         };
 
         check_fn(
@@ -690,7 +691,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _,
                 ))
                 | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_))
-                | hir::ClosureKind::Closure => astconv.ty_infer(None, decl.output.span()),
+                | hir::ClosureKind::Closure
+                | hir::ClosureKind::CoroutineClosure(_) => {
+                    astconv.ty_infer(None, decl.output.span())
+                }
             },
         };
 

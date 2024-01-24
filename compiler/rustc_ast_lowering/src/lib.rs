@@ -33,6 +33,7 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -296,7 +297,6 @@ enum ImplTraitPosition {
     Path,
     Variable,
     Trait,
-    AsyncBlock,
     Bound,
     Generic,
     ExternFnParam,
@@ -323,7 +323,6 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::Path => "paths",
             ImplTraitPosition::Variable => "the type of variable bindings",
             ImplTraitPosition::Trait => "traits",
-            ImplTraitPosition::AsyncBlock => "async blocks",
             ImplTraitPosition::Bound => "bounds",
             ImplTraitPosition::Generic => "generics",
             ImplTraitPosition::ExternFnParam => "`extern fn` parameters",

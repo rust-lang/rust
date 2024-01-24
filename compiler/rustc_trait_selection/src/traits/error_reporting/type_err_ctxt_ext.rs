@@ -1924,45 +1924,50 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str {
         match kind {
             hir::ClosureKind::Closure => "a closure",
-            hir::ClosureKind::Coroutine(kind) => match kind {
-                hir::CoroutineKind::Coroutine(_) => "a coroutine",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Block,
-                ) => "an async block",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Fn,
-                ) => "an async function",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Closure,
-                ) => "an async closure",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::AsyncGen,
-                    hir::CoroutineSource::Block,
-                ) => "an async gen block",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::AsyncGen,
-                    hir::CoroutineSource::Fn,
-                ) => "an async gen function",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::AsyncGen,
-                    hir::CoroutineSource::Closure,
-                ) => "an async gen closure",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Gen,
-                    hir::CoroutineSource::Block,
-                ) => "a gen block",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Gen,
-                    hir::CoroutineSource::Fn,
-                ) => "a gen function",
-                hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Gen,
-                    hir::CoroutineSource::Closure,
-                ) => "a gen closure",
-            },
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => "a coroutine",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Block,
+            )) => "an async block",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Fn,
+            )) => "an async function",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Closure,
+            ))
+            | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => {
+                "an async closure"
+            }
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Block,
+            )) => "an async gen block",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Fn,
+            )) => "an async gen function",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Closure,
+            ))
+            | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::AsyncGen) => {
+                "an async gen closure"
+            }
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Block,
+            )) => "a gen block",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Fn,
+            )) => "a gen function",
+            hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Closure,
+            ))
+            | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => "a gen closure",
         }
     }
 
