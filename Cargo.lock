@@ -5332,6 +5332,7 @@ version = "0.0.0"
 dependencies = [
  "core",
  "getopts",
+ "libc",
  "panic_abort",
  "panic_unwind",
  "std",
