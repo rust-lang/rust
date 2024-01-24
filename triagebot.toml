@@ -741,6 +741,7 @@ ast_lowering = [
 ]
 debuginfo = [
     "@michaelwoerister",
+    "@davidtwco"
 ]
 fallback = [
     "@Mark-Simulacrum"
