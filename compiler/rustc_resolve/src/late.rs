@@ -4424,35 +4424,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             ExprKind::Type(ref _type_expr, ref _ty) => {
                 visit::walk_expr(self, expr);
             }
-            // `async |x| ...` gets desugared to `|x| async {...}`, so we need to
-            // resolve the arguments within the proper scopes so that usages of them inside the
-            // closure are detected as upvars rather than normal closure arg usages.
-            //
-            // Similarly, `gen |x| ...` gets desugared to `|x| gen {...}`, so we handle that too.
-            ExprKind::Closure(box ast::Closure {
-                coroutine_kind: Some(_),
-                ref fn_decl,
-                ref body,
-                ..
-            }) => {
-                self.with_rib(ValueNS, RibKind::Normal, |this| {
-                    this.with_label_rib(RibKind::FnOrCoroutine, |this| {
-                        // Resolve arguments:
-                        this.resolve_params(&fn_decl.inputs);
-                        // No need to resolve return type --
-                        // the outer closure return type is `FnRetTy::Default`.
-
-                        // Now resolve the inner closure
-                        {
-                            // No need to resolve arguments: the inner closure has none.
-                            // Resolve the return type:
-                            visit::walk_fn_ret_ty(this, &fn_decl.output);
-                            // Resolve the body
-                            this.visit_expr(body);
-                        }
-                    })
-                });
-            }
             // For closures, RibKind::FnOrCoroutine is added in visit_fn
             ExprKind::Closure(box ast::Closure {
                 binder: ClosureBinder::For { ref generic_params, span },
