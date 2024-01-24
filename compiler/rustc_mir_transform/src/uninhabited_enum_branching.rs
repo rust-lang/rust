@@ -95,6 +95,12 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
 
             let mut allowed_variants = if let Ok(layout) = layout {
                 variant_discriminants(&layout, discriminant_ty, tcx)
+            } else if let Some(variant_range) = discriminant_ty.variant_range(tcx) {
+                variant_range
+                    .map(|variant| {
+                        discriminant_ty.discriminant_for_variant(tcx, variant).unwrap().val
+                    })
+                    .collect()
             } else {
                 continue;
             };

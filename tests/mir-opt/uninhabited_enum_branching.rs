@@ -32,11 +32,12 @@ enum Test4 {
     D,
 }
 
+#[repr(i8)]
 enum Test5<T> {
-    A(T),
-    B(T),
-    C,
-    D,
+    A(T) = -1,
+    B(T) = 0,
+    C = 5,
+    D = 3,
 }
 
 struct Plop {
@@ -165,10 +166,9 @@ fn otherwise_t4() {
 fn otherwise_t5_uninhabited_default<T>() {
     // CHECK-LABEL: fn otherwise_t5_uninhabited_default(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb1];
-    // CHECK: bb1: {
-    // CHECK-NOT: unreachable;
-    // CHECK: }
+    // CHECK: switchInt(move [[discr]]) -> [255: bb2, 0: bb3, 5: bb4, 3: bb1, otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
+    // CHECK-NEXT: unreachable;
     match Test5::<T>::C {
         Test5::A(_) => "A(T)",
         Test5::B(_) => "B(T)",
