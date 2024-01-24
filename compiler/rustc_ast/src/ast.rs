@@ -2624,6 +2624,7 @@ pub struct ForeignMod {
 pub struct EnumDef {
     pub variants: ThinVec<Variant>,
 }
+
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Variant {
