@@ -29,7 +29,7 @@ pub struct DeconstructedPat<Cx: TypeCx> {
     /// correspond to a user-supplied pattern.
     data: Option<Cx::PatData>,
     /// Whether removing this arm would change the behavior of the match expression.
-    useful: Cell<bool>,
+    pub(crate) useful: Cell<bool>,
 }
 
 impl<Cx: TypeCx> DeconstructedPat<Cx> {
@@ -112,34 +112,17 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub(crate) fn set_useful(&self) {
         self.useful.set(true)
     }
-    pub(crate) fn is_useful(&self) -> bool {
-        if self.useful.get() {
-            true
-        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_useful()) {
-            // We always expand or patterns in the matrix, so we will never see the actual
-            // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
-            // marked as useful itself, only its children will. We recover this information here.
-            self.set_useful();
-            true
-        } else {
-            false
-        }
-    }
 
-    /// Report the subpatterns that were not useful, if any.
-    pub(crate) fn redundant_subpatterns(&self) -> Vec<&Self> {
-        let mut subpats = Vec::new();
-        self.collect_redundant_subpatterns(&mut subpats);
-        subpats
-    }
-    fn collect_redundant_subpatterns<'a>(&'a self, subpats: &mut Vec<&'a Self>) {
-        // We don't look at subpatterns if we already reported the whole pattern as redundant.
-        if !self.is_useful() {
-            subpats.push(self);
-        } else {
-            for p in self.iter_fields() {
-                p.collect_redundant_subpatterns(subpats);
-            }
+    /// Walk top-down and call `it` in each place where a pattern occurs
+    /// starting with the root pattern `walk` is called on. If `it` returns
+    /// false then we will descend no further but siblings will be processed.
+    pub fn walk<'a>(&'a self, it: &mut impl FnMut(&'a Self) -> bool) {
+        if !it(self) {
+            return;
+        }
+
+        for p in self.iter_fields() {
+            p.walk(it)
         }
     }
 }

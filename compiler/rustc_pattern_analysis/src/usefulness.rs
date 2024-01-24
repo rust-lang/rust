@@ -1599,6 +1599,36 @@ pub enum Usefulness<'p, Cx: TypeCx> {
     Redundant,
 }
 
+/// Report whether this pattern was found useful, and its subpatterns that were not useful if any.
+fn collect_pattern_usefulness<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> Usefulness<'p, Cx> {
+    fn pat_is_useful<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> bool {
+        if pat.useful.get() {
+            true
+        } else if pat.is_or_pat() && pat.iter_fields().any(|f| pat_is_useful(f)) {
+            // We always expand or patterns in the matrix, so we will never see the actual
+            // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
+            // marked as useful itself, only its children will. We recover this information here.
+            true
+        } else {
+            false
+        }
+    }
+
+    let mut redundant_subpats = Vec::new();
+    pat.walk(&mut |p| {
+        if pat_is_useful(p) {
+            // The pattern is useful, so we recurse to find redundant subpatterns.
+            true
+        } else {
+            // The pattern is redundant.
+            redundant_subpats.push(p);
+            false // stop recursing
+        }
+    });
+
+    if pat_is_useful(pat) { Usefulness::Useful(redundant_subpats) } else { Usefulness::Redundant }
+}
+
 /// The output of checking a match for exhaustiveness and arm usefulness.
 pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
@@ -1626,12 +1656,7 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
         .copied()
         .map(|arm| {
             debug!(?arm);
-            // We warn when a pattern is not useful.
-            let usefulness = if arm.pat.is_useful() {
-                Usefulness::Useful(arm.pat.redundant_subpatterns())
-            } else {
-                Usefulness::Redundant
-            };
+            let usefulness = collect_pattern_usefulness(arm.pat);
             (arm, usefulness)
         })
         .collect();
