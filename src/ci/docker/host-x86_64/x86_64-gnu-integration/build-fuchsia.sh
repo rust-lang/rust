@@ -5,7 +5,7 @@
 
 set -euf -o pipefail
 
-INTEGRATION_SHA=ea080c6e400e721e123b0ec751c73619963bf1ca
+INTEGRATION_SHA=8b634b0c1e80a829e46fe9cfa800a9ae72da8b56
 PICK_REFS=(
     refs/changes/86/965586/2
 )
