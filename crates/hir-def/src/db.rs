@@ -194,7 +194,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn fields_attrs_source_map(
         &self,
         def: VariantId,
-    ) -> Arc<ArenaMap<LocalFieldId, Either<AstPtr<ast::TupleField>, AstPtr<ast::RecordField>>>>;
+    ) -> Arc<ArenaMap<LocalFieldId, AstPtr<Either<ast::TupleField, ast::RecordField>>>>;
 
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;

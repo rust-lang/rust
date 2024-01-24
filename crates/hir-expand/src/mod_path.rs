@@ -10,6 +10,7 @@ use crate::{
     hygiene::{marks_rev, SyntaxContextExt, Transparency},
     name::{known, AsName, Name},
     span_map::SpanMapRef,
+    tt,
 };
 use base_db::CrateId;
 use smallvec::SmallVec;
@@ -51,6 +52,10 @@ impl ModPath {
         span_map: SpanMapRef<'_>,
     ) -> Option<ModPath> {
         convert_path(db, None, path, span_map)
+    }
+
+    pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+        convert_path_tt(db, tt)
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -279,6 +284,46 @@ fn convert_path(
     }
 
     Some(mod_path)
+}
+
+fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+    let mut leafs = tt.iter().filter_map(|tt| match tt {
+        tt::TokenTree::Leaf(leaf) => Some(leaf),
+        tt::TokenTree::Subtree(_) => None,
+    });
+    let mut segments = smallvec::smallvec![];
+    let kind = match leafs.next()? {
+        tt::Leaf::Punct(tt::Punct { char: ':', .. }) => match leafs.next()? {
+            tt::Leaf::Punct(tt::Punct { char: ':', .. }) => PathKind::Abs,
+            _ => return None,
+        },
+        tt::Leaf::Ident(tt::Ident { text, span }) if text == "$crate" => {
+            resolve_crate_root(db, span.ctx).map(PathKind::DollarCrate).unwrap_or(PathKind::Crate)
+        }
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::Super(0),
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
+            let mut deg = 1;
+            while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leafs.next() {
+                if text != "super" {
+                    segments.push(Name::new_text_dont_use(text.clone()));
+                    break;
+                }
+                deg += 1;
+            }
+            PathKind::Super(deg)
+        }
+        tt::Leaf::Ident(tt::Ident { text, .. }) if text == "crate" => PathKind::Crate,
+        tt::Leaf::Ident(ident) => {
+            segments.push(Name::new_text_dont_use(ident.text.clone()));
+            PathKind::Plain
+        }
+        _ => return None,
+    };
+    segments.extend(leafs.filter_map(|leaf| match leaf {
+        ::tt::Leaf::Ident(ident) => Some(Name::new_text_dont_use(ident.text.clone())),
+        _ => None,
+    }));
+    Some(ModPath { kind, segments })
 }
 
 pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<CrateId> {
