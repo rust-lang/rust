@@ -41,13 +41,12 @@ pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
 /// allocation is interned immutably; if it is `Mutability::Mut`, then the allocation *must be*
 /// already mutable (as a sanity check).
 ///
-/// `recursive_alloc` is called for all recursively encountered allocations.
+/// Returns an iterator over all relocations referred to by this allocation.
 fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
-    mut recursive_alloc: impl FnMut(&InterpCx<'mir, 'tcx, M>, CtfeProvenance),
-) -> Result<(), ()> {
+) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     let Some((_kind, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
@@ -65,14 +64,10 @@ fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
             assert_eq!(alloc.mutability, Mutability::Mut);
         }
     }
-    // record child allocations
-    for &(_, prov) in alloc.provenance().ptrs().iter() {
-        recursive_alloc(ecx, prov);
-    }
     // link the alloc id to the actual allocation
     let alloc = ecx.tcx.mk_const_alloc(alloc);
     ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
-    Ok(())
+    Ok(alloc.0.0.provenance().ptrs().iter().map(|&(_, prov)| prov))
 }
 
 /// How a constant value should be interned.
@@ -128,7 +123,7 @@ pub fn intern_const_alloc_recursive<
         }
     };
 
-    // Initialize recursive interning.
+    // Intern the base allocation, and initialize todo list for recursive interning.
     let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
     let mut todo = vec![(base_alloc_id, base_mutability)];
     // We need to distinguish "has just been interned" from "was already in `tcx`",
@@ -154,7 +149,10 @@ pub fn intern_const_alloc_recursive<
             continue;
         }
         just_interned.insert(alloc_id);
-        intern_shallow(ecx, alloc_id, mutability, |ecx, prov| {
+        let provs = intern_shallow(ecx, alloc_id, mutability).map_err(|()| {
+            ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
+        })?;
+        for prov in provs {
             let alloc_id = prov.alloc_id();
             if intern_kind != InternKind::Promoted
                 && inner_mutability == Mutability::Not
@@ -169,7 +167,7 @@ pub fn intern_const_alloc_recursive<
                     // during interning is to justify why we intern the *new* allocations immutably,
                     // so we can completely ignore existing allocations. We also don't need to add
                     // this to the todo list, since after all it is already interned.
-                    return;
+                    continue;
                 }
                 // Found a mutable pointer inside a const where inner allocations should be
                 // immutable. We exclude promoteds from this, since things like `&mut []` and
@@ -189,10 +187,7 @@ pub fn intern_const_alloc_recursive<
             // okay with losing some potential for immutability here. This can anyway only affect
             // `static mut`.
             todo.push((alloc_id, inner_mutability));
-        })
-        .map_err(|()| {
-            ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
-        })?;
+        }
     }
     if found_bad_mutable_pointer {
         return Err(ecx
@@ -220,13 +215,13 @@ pub fn intern_const_alloc_for_constprop<
         return Ok(());
     }
     // Move allocation to `tcx`.
-    intern_shallow(ecx, alloc_id, Mutability::Not, |_ecx, _| {
+    for _ in intern_shallow(ecx, alloc_id, Mutability::Not).map_err(|()| err_ub!(DeadLocal))? {
         // We are not doing recursive interning, so we don't currently support provenance.
         // (If this assertion ever triggers, we should just implement a
         // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
         panic!("`intern_const_alloc_for_constprop` called on allocation with nested provenance")
-    })
-    .map_err(|()| err_ub!(DeadLocal).into())
+    }
+    Ok(())
 }
 
 impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
@@ -247,15 +242,14 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.clone().into())?;
         let alloc_id = dest.ptr().provenance.unwrap().alloc_id(); // this was just allocated, it must have provenance
-        intern_shallow(self, alloc_id, Mutability::Not, |ecx, prov| {
+        for prov in intern_shallow(self, alloc_id, Mutability::Not).unwrap() {
             // We are not doing recursive interning, so we don't currently support provenance.
             // (If this assertion ever triggers, we should just implement a
             // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
-            if !ecx.tcx.try_get_global_alloc(prov.alloc_id()).is_some() {
+            if !self.tcx.try_get_global_alloc(prov.alloc_id()).is_some() {
                 panic!("`intern_with_temp_alloc` with nested allocations");
             }
-        })
-        .unwrap();
+        }
         Ok(alloc_id)
     }
 }
