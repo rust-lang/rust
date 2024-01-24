@@ -62,7 +62,7 @@ features = ["c"]
 [1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
 [2]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/lib/builtins
 [3]: https://github.com/rust-lang/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
-[4]: https://travis-ci.org/rust-lang/compiler-builtins
+[4]: https://github.com/rust-lang/compiler-builtins/actions
 
 ### Porting Reminders
 
