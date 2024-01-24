@@ -745,7 +745,7 @@ impl<'a, Cx: TypeCx> Clone for UsefulnessCtxt<'a, Cx> {
 
 /// Context that provides information local to a place under investigation.
 struct PlaceCtxt<'a, Cx: TypeCx> {
-    mcx: UsefulnessCtxt<'a, Cx>,
+    cx: &'a Cx,
     /// Type of the place under investigation.
     ty: &'a Cx::Ty,
 }
@@ -753,7 +753,7 @@ struct PlaceCtxt<'a, Cx: TypeCx> {
 impl<'a, Cx: TypeCx> Copy for PlaceCtxt<'a, Cx> {}
 impl<'a, Cx: TypeCx> Clone for PlaceCtxt<'a, Cx> {
     fn clone(&self) -> Self {
-        Self { mcx: self.mcx, ty: self.ty }
+        Self { cx: self.cx, ty: self.ty }
     }
 }
 
@@ -765,19 +765,19 @@ impl<'a, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, Cx> {
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
-        self.mcx.tycx.ctor_arity(ctor, self.ty)
+        self.cx.ctor_arity(ctor, self.ty)
     }
     fn ctor_sub_tys(
         &'a self,
         ctor: &'a Constructor<Cx>,
     ) -> impl Iterator<Item = Cx::Ty> + ExactSizeIterator + Captures<'a> {
-        self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
+        self.cx.ctor_sub_tys(ctor, self.ty)
     }
     fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
-        self.mcx.tycx.ctors_for_ty(self.ty)
+        self.cx.ctors_for_ty(self.ty)
     }
     fn wild_from_ctor(&self, ctor: Constructor<Cx>) -> WitnessPat<Cx> {
-        WitnessPat::wild_from_ctor(self.mcx.tycx, ctor, self.ty.clone())
+        WitnessPat::wild_from_ctor(self.cx, ctor, self.ty.clone())
     }
 }
 
@@ -1098,7 +1098,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
             wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
         };
         for (i, row) in self.rows().enumerate() {
-            if ctor.is_covered_by(pcx.mcx.tycx, row.head().ctor()) {
+            if ctor.is_covered_by(pcx.cx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
@@ -1478,7 +1478,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { mcx, ty: &ty };
+    let pcx = &PlaceCtxt { cx: mcx.tycx, ty: &ty };
     let ctors_for_ty = pcx.ctors_for_ty()?;
 
     // Whether the place/column we are inspecting is known to contain valid data.
