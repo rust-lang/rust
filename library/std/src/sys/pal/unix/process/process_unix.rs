@@ -147,8 +147,7 @@ impl Command {
         #[cfg(not(target_os = "linux"))]
         let pidfd = -1;
 
-        // Safety: We obtained the pidfd from calling `clone3` with
-        // `CLONE_PIDFD` so it's valid an otherwise unowned.
+        // Safety: We obtained the pidfd (on Linux) using SOCK_SEQPACKET, so it's valid.
         let mut p = unsafe { Process::new(pid, pidfd) };
         let mut bytes = [0; 8];
 
