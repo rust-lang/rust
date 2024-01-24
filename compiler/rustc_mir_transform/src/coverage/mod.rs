@@ -73,7 +73,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     ////////////////////////////////////////////////////
     // Compute coverage spans from the `CoverageGraph`.
     let Some(coverage_spans) =
-        CoverageSpans::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks)
+        spans::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks)
     else {
         // No relevant spans were found in MIR, so skip instrumenting this function.
         return;
