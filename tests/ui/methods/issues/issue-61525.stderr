@@ -27,6 +27,7 @@ LL |         1.query::<dyn ToString>("")
    |
    = note: expected trait object `dyn ToString`
                  found reference `&'static str`
+   = help: `&'static str` implements `ToString` so you could box the found value and coerce it to the trait object `Box<dyn ToString>`, you will have to change the expected type as well
 note: method defined here
   --> $DIR/issue-61525.rs:2:8
    |
