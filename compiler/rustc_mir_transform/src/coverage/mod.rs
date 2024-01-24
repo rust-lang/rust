@@ -59,167 +59,154 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             _ => {}
         }
 
-        trace!("InstrumentCoverage starting for {def_id:?}");
-        Instrumentor::new(tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage done for {def_id:?}");
+        instrument_function_for_coverage(tcx, mir_body);
     }
 }
 
-struct Instrumentor<'a, 'tcx> {
+fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
+    let def_id = mir_body.source.def_id();
+    let _span = debug_span!("instrument_function_for_coverage", ?def_id).entered();
+
+    let hir_info = extract_hir_info(tcx, def_id.expect_local());
+    let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
+
+    ////////////////////////////////////////////////////
+    // Compute coverage spans from the `CoverageGraph`.
+    let Some(coverage_spans) =
+        spans::generate_coverage_spans(mir_body, &hir_info, &basic_coverage_blocks)
+    else {
+        // No relevant spans were found in MIR, so skip instrumenting this function.
+        return;
+    };
+
+    ////////////////////////////////////////////////////
+    // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
+    // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
+    // and all `Expression` dependencies (operands) are also generated, for any other
+    // `BasicCoverageBlock`s not already associated with a coverage span.
+    let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
+    let coverage_counters =
+        CoverageCounters::make_bcb_counters(&basic_coverage_blocks, bcb_has_coverage_spans);
+
+    let mappings = create_mappings(tcx, &hir_info, &coverage_spans, &coverage_counters);
+    if mappings.is_empty() {
+        // No spans could be converted into valid mappings, so skip this function.
+        debug!("no spans could be converted into valid mappings; skipping");
+        return;
+    }
+
+    inject_coverage_statements(
+        mir_body,
+        &basic_coverage_blocks,
+        bcb_has_coverage_spans,
+        &coverage_counters,
+    );
+
+    mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
+        function_source_hash: hir_info.function_source_hash,
+        num_counters: coverage_counters.num_counters(),
+        expressions: coverage_counters.into_expressions(),
+        mappings,
+    }));
+}
+
+/// For each coverage span extracted from MIR, create a corresponding
+/// mapping.
+///
+/// Precondition: All BCBs corresponding to those spans have been given
+/// coverage counters.
+fn create_mappings<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mir_body: &'a mut mir::Body<'tcx>,
-    hir_info: ExtractedHirInfo,
-    basic_coverage_blocks: CoverageGraph,
+    hir_info: &ExtractedHirInfo,
+    coverage_spans: &CoverageSpans,
+    coverage_counters: &CoverageCounters,
+) -> Vec<Mapping> {
+    let source_map = tcx.sess.source_map();
+    let body_span = hir_info.body_span;
+
+    let source_file = source_map.lookup_source_file(body_span.lo());
+    use rustc_session::RemapFileNameExt;
+    let file_name = Symbol::intern(&source_file.name.for_codegen(tcx.sess).to_string_lossy());
+
+    let term_for_bcb = |bcb| {
+        coverage_counters
+            .bcb_counter(bcb)
+            .expect("all BCBs with spans were given counters")
+            .as_term()
+    };
+
+    coverage_spans
+        .all_bcb_mappings()
+        .filter_map(|&BcbMapping { kind: bcb_mapping_kind, span }| {
+            let kind = match bcb_mapping_kind {
+                BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
+            };
+            let code_region = make_code_region(source_map, file_name, span, body_span)?;
+            Some(Mapping { kind, code_region })
+        })
+        .collect::<Vec<_>>()
 }
 
-impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let hir_info = extract_hir_info(tcx, mir_body.source.def_id().expect_local());
-
-        debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
-
-        let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
-
-        Self { tcx, mir_body, hir_info, basic_coverage_blocks }
+/// For each BCB node or BCB edge that has an associated coverage counter,
+/// inject any necessary coverage statements into MIR.
+fn inject_coverage_statements<'tcx>(
+    mir_body: &mut mir::Body<'tcx>,
+    basic_coverage_blocks: &CoverageGraph,
+    bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+    coverage_counters: &CoverageCounters,
+) {
+    // Process the counters associated with BCB nodes.
+    for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
+        let do_inject = match counter_kind {
+            // Counter-increment statements always need to be injected.
+            BcbCounter::Counter { .. } => true,
+            // The only purpose of expression-used statements is to detect
+            // when a mapping is unreachable, so we only inject them for
+            // expressions with one or more mappings.
+            BcbCounter::Expression { .. } => bcb_has_coverage_spans(bcb),
+        };
+        if do_inject {
+            inject_statement(
+                mir_body,
+                make_mir_coverage_kind(counter_kind),
+                basic_coverage_blocks[bcb].leader_bb(),
+            );
+        }
     }
 
-    fn inject_counters(&'a mut self) {
-        ////////////////////////////////////////////////////
-        // Compute coverage spans from the `CoverageGraph`.
-        let Some(coverage_spans) = CoverageSpans::generate_coverage_spans(
-            self.mir_body,
-            &self.hir_info,
-            &self.basic_coverage_blocks,
-        ) else {
-            // No relevant spans were found in MIR, so skip instrumenting this function.
-            return;
+    // Process the counters associated with BCB edges.
+    for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
+        let do_inject = match counter_kind {
+            // Counter-increment statements always need to be injected.
+            BcbCounter::Counter { .. } => true,
+            // BCB-edge expressions never have mappings, so they never need
+            // a corresponding statement.
+            BcbCounter::Expression { .. } => false,
         };
+        if !do_inject {
+            continue;
+        }
 
-        ////////////////////////////////////////////////////
-        // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
-        // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
-        // and all `Expression` dependencies (operands) are also generated, for any other
-        // `BasicCoverageBlock`s not already associated with a coverage span.
-        let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
-        let coverage_counters = CoverageCounters::make_bcb_counters(
-            &self.basic_coverage_blocks,
-            bcb_has_coverage_spans,
+        // We need to inject a coverage statement into a new BB between the
+        // last BB of `from_bcb` and the first BB of `to_bcb`.
+        let from_bb = basic_coverage_blocks[from_bcb].last_bb();
+        let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
+
+        let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
+        debug!(
+            "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
+                requires a new MIR BasicBlock {new_bb:?} for edge counter {counter_kind:?}",
         );
 
-        let mappings = self.create_mappings(&coverage_spans, &coverage_counters);
-        if mappings.is_empty() {
-            // No spans could be converted into valid mappings, so skip this function.
-            debug!("no spans could be converted into valid mappings; skipping");
-            return;
-        }
-
-        self.inject_coverage_statements(bcb_has_coverage_spans, &coverage_counters);
-
-        self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
-            function_source_hash: self.hir_info.function_source_hash,
-            num_counters: coverage_counters.num_counters(),
-            expressions: coverage_counters.into_expressions(),
-            mappings,
-        }));
+        // Inject a counter into the newly-created BB.
+        inject_statement(mir_body, make_mir_coverage_kind(counter_kind), new_bb);
     }
+}
 
-    /// For each coverage span extracted from MIR, create a corresponding
-    /// mapping.
-    ///
-    /// Precondition: All BCBs corresponding to those spans have been given
-    /// coverage counters.
-    fn create_mappings(
-        &self,
-        coverage_spans: &CoverageSpans,
-        coverage_counters: &CoverageCounters,
-    ) -> Vec<Mapping> {
-        let source_map = self.tcx.sess.source_map();
-        let body_span = self.hir_info.body_span;
-
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        use rustc_session::RemapFileNameExt;
-        let file_name =
-            Symbol::intern(&source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
-
-        let term_for_bcb = |bcb| {
-            coverage_counters
-                .bcb_counter(bcb)
-                .expect("all BCBs with spans were given counters")
-                .as_term()
-        };
-
-        coverage_spans
-            .all_bcb_mappings()
-            .filter_map(|&BcbMapping { kind: bcb_mapping_kind, span }| {
-                let kind = match bcb_mapping_kind {
-                    BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
-                };
-                let code_region = make_code_region(source_map, file_name, span, body_span)?;
-                Some(Mapping { kind, code_region })
-            })
-            .collect::<Vec<_>>()
-    }
-
-    /// For each BCB node or BCB edge that has an associated coverage counter,
-    /// inject any necessary coverage statements into MIR.
-    fn inject_coverage_statements(
-        &mut self,
-        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
-        coverage_counters: &CoverageCounters,
-    ) {
-        // Process the counters associated with BCB nodes.
-        for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
-            let do_inject = match counter_kind {
-                // Counter-increment statements always need to be injected.
-                BcbCounter::Counter { .. } => true,
-                // The only purpose of expression-used statements is to detect
-                // when a mapping is unreachable, so we only inject them for
-                // expressions with one or more mappings.
-                BcbCounter::Expression { .. } => bcb_has_coverage_spans(bcb),
-            };
-            if do_inject {
-                inject_statement(
-                    self.mir_body,
-                    self.make_mir_coverage_kind(counter_kind),
-                    self.basic_coverage_blocks[bcb].leader_bb(),
-                );
-            }
-        }
-
-        // Process the counters associated with BCB edges.
-        for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
-            let do_inject = match counter_kind {
-                // Counter-increment statements always need to be injected.
-                BcbCounter::Counter { .. } => true,
-                // BCB-edge expressions never have mappings, so they never need
-                // a corresponding statement.
-                BcbCounter::Expression { .. } => false,
-            };
-            if !do_inject {
-                continue;
-            }
-
-            // We need to inject a coverage statement into a new BB between the
-            // last BB of `from_bcb` and the first BB of `to_bcb`.
-            let from_bb = self.basic_coverage_blocks[from_bcb].last_bb();
-            let to_bb = self.basic_coverage_blocks[to_bcb].leader_bb();
-
-            let new_bb = inject_edge_counter_basic_block(self.mir_body, from_bb, to_bb);
-            debug!(
-                "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
-                requires a new MIR BasicBlock {new_bb:?} for edge counter {counter_kind:?}",
-            );
-
-            // Inject a counter into the newly-created BB.
-            inject_statement(self.mir_body, self.make_mir_coverage_kind(counter_kind), new_bb);
-        }
-    }
-
-    fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
-        match *counter_kind {
-            BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
-            BcbCounter::Expression { id } => CoverageKind::ExpressionUsed { id },
-        }
+fn make_mir_coverage_kind(counter_kind: &BcbCounter) -> CoverageKind {
+    match *counter_kind {
+        BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
+        BcbCounter::Expression { id } => CoverageKind::ExpressionUsed { id },
     }
 }
 
