@@ -141,32 +141,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Some(CallStep::Builtin(adjusted_ty));
             }
 
-            ty::Closure(def_id, args) => {
+            // Check whether this is a call to a closure where we
+            // haven't yet decided on whether the closure is fn vs
+            // fnmut vs fnonce. If so, we have to defer further processing.
+            ty::Closure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
+                let closure_sig = args.as_closure().sig();
+                let closure_sig = self.instantiate_binder_with_fresh_vars(
+                    call_expr.span,
+                    infer::FnCall,
+                    closure_sig,
+                );
+                let adjustments = self.adjust_steps(autoderef);
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: closure_sig,
+                    },
+                );
+                return Some(CallStep::DeferredClosure(def_id, closure_sig));
+            }
 
-                // Check whether this is a call to a closure where we
-                // haven't yet decided on whether the closure is fn vs
-                // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(adjusted_ty).is_none() {
-                    let closure_sig = args.as_closure().sig();
-                    let closure_sig = self.instantiate_binder_with_fresh_vars(
-                        call_expr.span,
-                        infer::FnCall,
-                        closure_sig,
-                    );
-                    let adjustments = self.adjust_steps(autoderef);
-                    self.record_deferred_call_resolution(
-                        def_id,
-                        DeferredCallResolution {
-                            call_expr,
-                            callee_expr,
-                            closure_ty: adjusted_ty,
-                            adjustments,
-                            fn_sig: closure_sig,
-                        },
-                    );
-                    return Some(CallStep::DeferredClosure(def_id, closure_sig));
-                }
+            ty::CoroutineClosure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
+                let def_id = def_id.expect_local();
+                let closure_args = args.as_coroutine_closure();
+                let coroutine_closure_sig = self.instantiate_binder_with_fresh_vars(
+                    call_expr.span,
+                    infer::FnCall,
+                    closure_args.coroutine_closure_sig(),
+                );
+                let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span: callee_expr.span,
+                });
+                let call_sig = self.tcx.mk_fn_sig(
+                    [coroutine_closure_sig.tupled_inputs_ty],
+                    coroutine_closure_sig.to_coroutine(
+                        self.tcx,
+                        closure_args.parent_args(),
+                        self.tcx.coroutine_for_closure(def_id),
+                        tupled_upvars_ty,
+                    ),
+                    coroutine_closure_sig.c_variadic,
+                    coroutine_closure_sig.unsafety,
+                    coroutine_closure_sig.abi,
+                );
+                let adjustments = self.adjust_steps(autoderef);
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: call_sig,
+                    },
+                );
+                return Some(CallStep::DeferredClosure(def_id, call_sig));
             }
 
             // Hack: we know that there are traits implementing Fn for &F
@@ -935,7 +970,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 span_bug!(
                     self.call_expr.span,
                     "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{}`",
-                    self.adjusted_ty
+                    self.closure_ty
                 )
             }
         }

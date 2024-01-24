@@ -1864,6 +1864,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1894,6 +1896,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(_)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1930,6 +1934,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1946,6 +1952,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2054,6 +2062,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2066,6 +2076,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate,
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate

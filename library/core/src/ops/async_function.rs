@@ -106,3 +106,11 @@ mod impls {
         }
     }
 }
+
+mod internal_implementation_detail {
+    // TODO: needs a detailed explanation
+    #[cfg_attr(not(bootstrap), lang = "async_fn_kind_helper")]
+    trait AsyncFnKindHelper<GoalKind> {
+        type Assoc<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
+    }
+}

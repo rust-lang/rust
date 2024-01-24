@@ -607,7 +607,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     AggregateKind::Array(_)
                     | AggregateKind::Tuple
                     | AggregateKind::Closure(_, _)
-                    | AggregateKind::Coroutine(_, _) => VariantIdx::new(0),
+                    | AggregateKind::Coroutine(_, _)
+                    | AggregateKind::CoroutineClosure(_, _) => VariantIdx::new(0),
                 },
             },
 

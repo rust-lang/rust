@@ -2773,15 +2773,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
+            // We don't want to dispatch on 3 different kind of closures here, so take
+            // advantage of the fact that the `parent_args` is the same length as the
+            // `typeck_root_args`.
             DefKind::Closure => {
-                // FIXME(async_closures): It's kind of icky to access HIR here.
-                match tcx.hir_node_by_def_id(def_id).expect_closure().kind {
-                    hir::ClosureKind::Closure => args.as_closure().parent_args(),
-                    hir::ClosureKind::Coroutine(_) => args.as_coroutine().parent_args(),
-                    hir::ClosureKind::CoroutineClosure(_) => {
-                        args.as_coroutine_closure().parent_args()
-                    }
-                }
+                // FIXME(async_closures): It may be useful to add a debug assert here
+                // to actually call `type_of` and check the `parent_args` are the same
+                // length as the `typeck_root_args`.
+                &args[..typeck_root_args.len()]
             }
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),

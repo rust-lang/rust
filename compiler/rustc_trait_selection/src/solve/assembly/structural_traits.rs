@@ -1,11 +1,12 @@
 //! Code which is used by built-in goals that match "structurally", such a auto
 //! traits, `Copy`/`Clone`.
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::LangItem;
 use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::solve::EvalCtxt;
@@ -275,6 +276,114 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 
         // Coroutine closures don't implement `Fn` traits the normal way.
         ty::CoroutineClosure(..) => Err(NoSolution),
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_)
+        | ty::Ref(_, _, _)
+        | ty::Dynamic(_, _, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(..)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Placeholder(..)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Error(_) => Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{self_ty}`")
+        }
+    }
+}
+
+// Returns a binder of the tupled inputs types, output type, and coroutine type
+// from a builtin async closure type.
+pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    self_ty: Ty<'tcx>,
+    goal_kind: ty::ClosureKind,
+    env_region: ty::Region<'tcx>,
+) -> Result<(ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>, Vec<ty::Predicate<'tcx>>), NoSolution>
+{
+    match *self_ty.kind() {
+        ty::CoroutineClosure(def_id, args) => {
+            let args = args.as_coroutine_closure();
+            let kind_ty = args.kind_ty();
+
+            if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+                if !closure_kind.extends(goal_kind) {
+                    return Err(NoSolution);
+                }
+                Ok((
+                    args.coroutine_closure_sig().map_bound(|sig| {
+                        let coroutine_ty = sig.to_coroutine_given_kind_and_upvars(
+                            tcx,
+                            args.parent_args(),
+                            tcx.coroutine_for_closure(def_id),
+                            goal_kind,
+                            env_region,
+                            args.tupled_upvars_ty(),
+                            args.coroutine_captures_by_ref_ty(),
+                        );
+                        (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
+                    }),
+                    vec![],
+                ))
+            } else {
+                let helper_trait_def_id = tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                // FIXME(async_closures): Make this into a lang item.
+                let upvars_projection_def_id = tcx
+                    .associated_items(helper_trait_def_id)
+                    .in_definition_order()
+                    .next()
+                    .unwrap()
+                    .def_id;
+                Ok((
+                    args.coroutine_closure_sig().map_bound(|sig| {
+                        let tupled_upvars_ty = Ty::new_projection(
+                            tcx,
+                            upvars_projection_def_id,
+                            [
+                                ty::GenericArg::from(kind_ty),
+                                Ty::from_closure_kind(tcx, goal_kind).into(),
+                                env_region.into(),
+                                sig.tupled_inputs_ty.into(),
+                                args.tupled_upvars_ty().into(),
+                                args.coroutine_captures_by_ref_ty().into(),
+                            ],
+                        );
+                        let coroutine_ty = sig.to_coroutine(
+                            tcx,
+                            args.parent_args(),
+                            tcx.coroutine_for_closure(def_id),
+                            tupled_upvars_ty,
+                        );
+                        (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
+                    }),
+                    vec![
+                        ty::TraitRef::new(
+                            tcx,
+                            helper_trait_def_id,
+                            [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
+                        )
+                        .to_predicate(tcx),
+                    ],
+                ))
+            }
+        }
+
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..) => Err(NoSolution),
 
         ty::Bool
         | ty::Char

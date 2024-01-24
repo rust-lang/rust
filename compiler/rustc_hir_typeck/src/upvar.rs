@@ -174,6 +174,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(def_id, args) => {
                 (def_id, UpvarArgs::Closure(args), self.closure_kind(ty).is_none())
             }
+            ty::CoroutineClosure(def_id, args) => {
+                (def_id, UpvarArgs::CoroutineClosure(args), self.closure_kind(ty).is_none())
+            }
             ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args), false),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
@@ -331,6 +334,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .closure_kind_origins_mut()
                     .insert(closure_hir_id, origin);
             }
+        }
+
+        if let UpvarArgs::CoroutineClosure(args) = args {
+            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
+                self.tcx,
+                ty::INNERMOST,
+                ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(0),
+                    kind: ty::BoundRegionKind::BrEnv,
+                },
+            );
+            let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
+                self.tcx,
+                self.typeck_results
+                    .borrow()
+                    .closure_min_captures_flattened(
+                        self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
+                    )
+                    // Skip the captures that are just moving the closure's args
+                    // into the coroutine. These are always by move.
+                    .skip(
+                        args.as_coroutine_closure()
+                            .coroutine_closure_sig()
+                            .skip_binder()
+                            .tupled_inputs_ty
+                            .tuple_fields()
+                            .len(),
+                    )
+                    .map(|captured_place| {
+                        let upvar_ty = captured_place.place.ty();
+                        let capture = captured_place.info.capture_kind;
+                        apply_capture_kind_on_capture_ty(
+                            self.tcx,
+                            upvar_ty,
+                            capture,
+                            Some(closure_env_region),
+                        )
+                    }),
+            );
+            let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
+                self.tcx,
+                ty::Binder::bind_with_vars(
+                    self.tcx.mk_fn_sig(
+                        [],
+                        tupled_upvars_ty_for_borrow,
+                        false,
+                        hir::Unsafety::Normal,
+                        rustc_target::spec::abi::Abi::Rust,
+                    ),
+                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
+                        ty::BoundRegionKind::BrEnv,
+                    )]),
+                ),
+            );
+            self.demand_eqtype(
+                span,
+                args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                coroutine_captures_by_ref_ty,
+            );
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);
@@ -602,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // Go through each entry in the current list of min_captures
-            // - if ancestor is found, update it's capture kind to account for current place's
+            // - if ancestor is found, update its capture kind to account for current place's
             // capture information.
             //
             // - if descendant is found, remove it from the list, and update the current place's

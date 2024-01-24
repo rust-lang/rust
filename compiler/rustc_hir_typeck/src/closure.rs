@@ -63,7 +63,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => (None, None),
         };
 
-        let ClosureSignatures { bound_sig, liberated_sig } =
+        let ClosureSignatures { bound_sig, mut liberated_sig } =
             self.sig_of_closure(expr_def_id, closure.fn_decl, closure.kind, expected_sig);
 
         debug!(?bound_sig, ?liberated_sig);
@@ -125,7 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
                     | hir::CoroutineKind::Coroutine(_) => {
                         let yield_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
+                            kind: TypeVariableOriginKind::ClosureSynthetic,
                             span: expr_span,
                         });
                         self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
@@ -137,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // not a problem.
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                         let yield_ty = self.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
+                            kind: TypeVariableOriginKind::ClosureSynthetic,
                             span: expr_span,
                         });
                         self.require_type_is_sized(yield_ty, expr_span, traits::SizedYieldType);
@@ -166,8 +166,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
                 let interior = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: body.value.span,
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
                 });
                 self.deferred_coroutine_interiors.borrow_mut().push((
                     expr_def_id,
@@ -192,7 +192,82 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CoroutineTypes { resume_ty, yield_ty }),
                 )
             }
-            hir::ClosureKind::CoroutineClosure(_) => todo!(),
+            hir::ClosureKind::CoroutineClosure(kind) => {
+                let (bound_return_ty, bound_yield_ty) = match kind {
+                    hir::CoroutineDesugaring::Async => {
+                        (bound_sig.skip_binder().output(), tcx.types.unit)
+                    }
+                    hir::CoroutineDesugaring::Gen | hir::CoroutineDesugaring::AsyncGen => {
+                        todo!("`gen` and `async gen` closures not supported yet")
+                    }
+                };
+                let resume_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
+                let interior = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
+                let closure_kind_ty = self.next_ty_var(TypeVariableOrigin {
+                    // FIXME(eddyb) distinguish closure kind inference variables from the rest.
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
+                let coroutine_captures_by_ref_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
+                let closure_args = ty::CoroutineClosureArgs::new(
+                    tcx,
+                    ty::CoroutineClosureArgsParts {
+                        parent_args,
+                        closure_kind_ty,
+                        signature_parts_ty: Ty::new_fn_ptr(
+                            tcx,
+                            bound_sig.map_bound(|sig| {
+                                tcx.mk_fn_sig(
+                                    [
+                                        resume_ty,
+                                        Ty::new_tup_from_iter(tcx, sig.inputs().iter().copied()),
+                                    ],
+                                    Ty::new_tup(tcx, &[bound_yield_ty, bound_return_ty]),
+                                    sig.c_variadic,
+                                    sig.unsafety,
+                                    sig.abi,
+                                )
+                            }),
+                        ),
+                        tupled_upvars_ty,
+                        coroutine_captures_by_ref_ty,
+                        coroutine_witness_ty: interior,
+                    },
+                );
+
+                let coroutine_upvars_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
+                liberated_sig = tcx.mk_fn_sig(
+                    liberated_sig.inputs().iter().copied(),
+                    tcx.liberate_late_bound_regions(
+                        expr_def_id.to_def_id(),
+                        closure_args.coroutine_closure_sig().map_bound(|sig| {
+                            sig.to_coroutine(
+                                tcx,
+                                parent_args,
+                                tcx.coroutine_for_closure(expr_def_id),
+                                coroutine_upvars_ty,
+                            )
+                        }),
+                    ),
+                    liberated_sig.c_variadic,
+                    liberated_sig.unsafety,
+                    liberated_sig.abi,
+                );
+
+                (Ty::new_coroutine_closure(tcx, expr_def_id.to_def_id(), closure_args.args), None)
+            }
         };
 
         check_fn(

@@ -1149,6 +1149,9 @@ pub fn iter_fields<'tcx>(
         ty::Closure(_, args) => {
             iter_fields(args.as_closure().tupled_upvars_ty(), tcx, param_env, f);
         }
+        ty::CoroutineClosure(_, args) => {
+            iter_fields(args.as_coroutine_closure().tupled_upvars_ty(), tcx, param_env, f);
+        }
         _ => (),
     }
 }

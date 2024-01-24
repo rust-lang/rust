@@ -101,6 +101,42 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
+        ty::CoroutineClosure(def_id, args) => {
+            let sig = args.as_coroutine_closure().coroutine_closure_sig();
+            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+            );
+            let br = ty::BoundRegion {
+                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                kind: ty::BoundRegionKind::BrEnv,
+            };
+            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+            let env_ty = tcx.closure_env_ty(
+                Ty::new_coroutine_closure(tcx, def_id, args),
+                args.as_coroutine_closure().kind(),
+                env_region,
+            );
+
+            let sig = sig.skip_binder();
+            ty::Binder::bind_with_vars(
+                tcx.mk_fn_sig(
+                    iter::once(env_ty).chain([sig.tupled_inputs_ty]),
+                    sig.to_coroutine_given_kind_and_upvars(
+                        tcx,
+                        args.as_coroutine_closure().parent_args(),
+                        tcx.coroutine_for_closure(def_id),
+                        args.as_coroutine_closure().kind(),
+                        env_region,
+                        args.as_coroutine_closure().tupled_upvars_ty(),
+                        args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                    ),
+                    sig.c_variadic,
+                    sig.unsafety,
+                    sig.abi,
+                ),
+                bound_vars,
+            )
+        }
         ty::Coroutine(did, args) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();

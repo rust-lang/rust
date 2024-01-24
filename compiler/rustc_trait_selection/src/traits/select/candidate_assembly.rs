@@ -117,9 +117,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
                 } else if lang_items.async_iterator_trait() == Some(def_id) {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.async_fn_kind_helper() == Some(def_id) {
+                    self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
+                self.assemble_async_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
@@ -332,6 +335,49 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
             _ => {}
+        }
+    }
+
+    fn assemble_async_closure_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let Some(goal_kind) =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id())
+        else {
+            return;
+        };
+
+        match *obligation.self_ty().skip_binder().kind() {
+            ty::CoroutineClosure(_, args) => {
+                if let Some(closure_kind) =
+                    args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn assemble_async_fn_kind_helper_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if let Some(closure_kind) = obligation.self_ty().skip_binder().to_opt_closure_kind()
+            && let Some(goal_kind) =
+                obligation.predicate.skip_binder().trait_ref.args.type_at(1).to_opt_closure_kind()
+        {
+            if closure_kind.extends(goal_kind) {
+                candidates.vec.push(AsyncFnKindHelperCandidate);
+            }
         }
     }
 

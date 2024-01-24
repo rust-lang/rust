@@ -134,6 +134,13 @@ pub enum SelectionCandidate<'tcx> {
         is_const: bool,
     },
 
+    /// Implementation of an `AsyncFn`-family trait by one of the anonymous types
+    /// generated for an `async ||` expression.
+    AsyncClosureCandidate,
+
+    // TODO:
+    AsyncFnKindHelperCandidate,
+
     /// Implementation of a `Coroutine` trait by one of the anonymous types
     /// generated for a coroutine.
     CoroutineCandidate,

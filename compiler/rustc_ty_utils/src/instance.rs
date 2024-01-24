@@ -38,6 +38,7 @@ fn resolve_instance<'tcx>(
                 debug!(" => nontrivial drop glue");
                 match *ty.kind() {
                     ty::Closure(..)
+                    | ty::CoroutineClosure(..)
                     | ty::Coroutine(..)
                     | ty::Tuple(..)
                     | ty::Adt(..)
@@ -279,6 +280,16 @@ fn resolve_associated_item<'tcx>(
                     }),
                     _ => bug!(
                         "no built-in definition for `{trait_ref}::{}` for non-fn type",
+                        tcx.item_name(trait_item_id)
+                    ),
+                }
+            } else if tcx.async_fn_trait_kind_from_def_id(trait_ref.def_id).is_some() {
+                match *rcvr_args.type_at(0).kind() {
+                    ty::CoroutineClosure(closure_def_id, args) => {
+                        Some(Instance::new(closure_def_id, args))
+                    }
+                    _ => bug!(
+                        "no built-in definition for `{trait_ref}::{}` for non-lending-closure type",
                         tcx.item_name(trait_item_id)
                     ),
                 }

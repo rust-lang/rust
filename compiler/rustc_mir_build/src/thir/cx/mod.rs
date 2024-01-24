@@ -127,10 +127,24 @@ impl<'tcx> Cx<'tcx> {
             ty::Coroutine(..) => {
                 Param { ty: closure_ty, pat: None, ty_span: None, self_kind: None, hir_id: None }
             }
-            ty::Closure(_, closure_args) => {
+            ty::Closure(_, args) => {
                 let closure_env_ty = self.tcx.closure_env_ty(
                     closure_ty,
-                    closure_args.as_closure().kind(),
+                    args.as_closure().kind(),
+                    self.tcx.lifetimes.re_erased,
+                );
+                Param {
+                    ty: closure_env_ty,
+                    pat: None,
+                    ty_span: None,
+                    self_kind: None,
+                    hir_id: None,
+                }
+            }
+            ty::CoroutineClosure(_, args) => {
+                let closure_env_ty = self.tcx.closure_env_ty(
+                    closure_ty,
+                    args.as_coroutine_closure().kind(),
                     self.tcx.lifetimes.re_erased,
                 );
                 Param {

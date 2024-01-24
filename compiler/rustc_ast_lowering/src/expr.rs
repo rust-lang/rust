@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use super::errors::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
     ClosureCannotBeStatic, CoroutineTooManyParameters,
@@ -1026,6 +1028,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
+
+        assert_matches!(
+            coroutine_kind,
+            CoroutineKind::Async { .. },
+            "only async closures are supported currently"
+        );
 
         let body = self.with_new_scopes(fn_decl_span, |this| {
             let inner_decl =

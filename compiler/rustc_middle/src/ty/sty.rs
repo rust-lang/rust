@@ -36,6 +36,7 @@ use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::TypeAndMut as IrTypeAndMut;
 
+use super::fold::FnMutDelegate;
 use super::GenericParamDefKind;
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -351,6 +352,27 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
         self.split().signature_parts_ty
     }
 
+    pub fn coroutine_closure_sig(self) -> ty::Binder<'tcx, CoroutineClosureSignature<'tcx>> {
+        let interior = self.coroutine_witness_ty();
+        let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { bug!() };
+        sig.map_bound(|sig| {
+            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
+                bug!();
+            };
+            let [yield_ty, return_ty] = **sig.output().tuple_fields() else { bug!() };
+            CoroutineClosureSignature {
+                interior,
+                tupled_inputs_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                c_variadic: sig.c_variadic,
+                unsafety: sig.unsafety,
+                abi: sig.abi,
+            }
+        })
+    }
+
     pub fn coroutine_captures_by_ref_ty(self) -> Ty<'tcx> {
         self.split().coroutine_captures_by_ref_ty
     }
@@ -360,6 +382,103 @@ impl<'tcx> CoroutineClosureArgs<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
+pub struct CoroutineClosureSignature<'tcx> {
+    pub interior: Ty<'tcx>,
+    pub tupled_inputs_ty: Ty<'tcx>,
+    pub resume_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+    pub c_variadic: bool,
+    pub unsafety: hir::Unsafety,
+    pub abi: abi::Abi,
+}
+
+impl<'tcx> CoroutineClosureSignature<'tcx> {
+    pub fn to_coroutine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_def_id: DefId,
+        tupled_upvars_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let coroutine_args = ty::CoroutineArgs::new(
+            tcx,
+            ty::CoroutineArgsParts {
+                parent_args,
+                resume_ty: self.resume_ty,
+                yield_ty: self.yield_ty,
+                return_ty: self.return_ty,
+                witness: self.interior,
+                tupled_upvars_ty,
+            },
+        );
+
+        Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
+    }
+
+    pub fn to_coroutine_given_kind_and_upvars(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_def_id: DefId,
+        closure_kind: ty::ClosureKind,
+        env_region: ty::Region<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
+            tcx,
+            closure_kind,
+            self.tupled_inputs_ty,
+            closure_tupled_upvars_ty,
+            coroutine_captures_by_ref_ty,
+            env_region,
+        );
+
+        self.to_coroutine(tcx, parent_args, coroutine_def_id, tupled_upvars_ty)
+    }
+
+    /// Given a closure kind, compute the tupled upvars that the given coroutine would return.
+    pub fn tupled_upvars_by_closure_kind(
+        tcx: TyCtxt<'tcx>,
+        kind: ty::ClosureKind,
+        tupled_inputs_ty: Ty<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+        env_region: ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                let ty::FnPtr(sig) = *coroutine_captures_by_ref_ty.kind() else {
+                    bug!();
+                };
+                let coroutine_captures_by_ref_ty = tcx.replace_escaping_bound_vars_uncached(
+                    sig.output().skip_binder(),
+                    FnMutDelegate {
+                        consts: &mut |c, t| ty::Const::new_bound(tcx, ty::INNERMOST, c, t),
+                        types: &mut |t| Ty::new_bound(tcx, ty::INNERMOST, t),
+                        regions: &mut |_| env_region,
+                    },
+                );
+                Ty::new_tup_from_iter(
+                    tcx,
+                    tupled_inputs_ty
+                        .tuple_fields()
+                        .iter()
+                        .chain(coroutine_captures_by_ref_ty.tuple_fields()),
+                )
+            }
+            ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
+                tcx,
+                tupled_inputs_ty
+                    .tuple_fields()
+                    .iter()
+                    .chain(closure_tupled_upvars_ty.tuple_fields()),
+            ),
+        }
+    }
+}
 /// Similar to `ClosureArgs`; see the above documentation for more.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub struct CoroutineArgs<'tcx> {
@@ -1495,7 +1614,7 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             closure_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
             "closure constructed with incorrect substitutions"
         );
         Ty::new(tcx, CoroutineClosure(def_id, closure_args))
@@ -1836,6 +1955,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_coroutine_closure(self) -> bool {
+        matches!(self.kind(), CoroutineClosure(..))
+    }
+
+    #[inline]
     pub fn is_integral(self) -> bool {
         matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
     }
@@ -2144,7 +2268,7 @@ impl<'tcx> Ty<'tcx> {
 
             // "Bound" types appear in canonical queries when the
             // closure type is not yet known
-            Bound(..) | Infer(_) => None,
+            Bound(..) | Param(_) | Infer(_) => None,
 
             Error(_) => Some(ty::ClosureKind::Fn),
 
