@@ -89,6 +89,8 @@
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
+use crate::mem;
+use crate::ptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -733,4 +735,49 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
+}
+
+/// Try to swap two `dyn Any` references.
+///
+/// If the two references refer to the same types, the two values are swapped
+/// and `true` is returned.
+/// If not, the nothing is done and `false` is returned.
+///
+/// # Example
+///
+/// ```rust
+/// # #![feature(any_try_swap)]
+///
+/// use std::any::{Any, try_swap};
+///
+/// let mut a = String::from("a");
+/// let mut b = String::from("b");
+/// let mut c = vec!['c'];
+///
+/// // Swapping two value of the same type works
+/// assert!(try_swap(&mut a as &mut dyn Any, &mut b as &mut dyn Any));
+/// assert_eq!((&*a, &*b), ("b", "a"));
+///
+/// // Swapping two values with different types fails
+/// assert!(!try_swap(&mut a as &mut dyn Any, &mut c as &mut dyn Any));
+/// ```
+#[must_use = "`try_swap` returns `false` if it failed"]
+#[unstable(feature = "any_try_swap", issue = "120319")]
+pub fn try_swap(a: &mut dyn Any, b: &mut dyn Any) -> bool {
+    let swap = (a as &dyn Any).type_id() == (b as &dyn Any).type_id();
+
+    if swap {
+        let len = mem::size_of_val(a);
+
+        // SAFETY: `a` and `b` have the same type.
+        unsafe {
+            ptr::swap_nonoverlapping(
+                a as *mut dyn Any as *mut u8,
+                b as *mut dyn Any as *mut u8,
+                len,
+            );
+        }
+    }
+
+    swap
 }
