@@ -243,15 +243,6 @@ fn aux_build() {
 }
 
 #[test]
-fn no_system_llvm() {
-    let config: Config = cfg().system_llvm(false).build();
-    assert!(!check_ignore(&config, "// no-system-llvm"));
-
-    let config: Config = cfg().system_llvm(true).build();
-    assert!(check_ignore(&config, "// no-system-llvm"));
-}
-
-#[test]
 fn llvm_version() {
     let config: Config = cfg().llvm_version("8.1.2").build();
     assert!(check_ignore(&config, "// min-llvm-version: 9.0"));
@@ -264,6 +255,18 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "// min-llvm-version: 9.0"));
+}
+
+#[test]
+fn system_llvm_version() {
+    let config: Config = cfg().system_llvm(true).llvm_version("17.0.0").build();
+    assert!(check_ignore(&config, "// min-system-llvm-version: 18.0"));
+
+    let config: Config = cfg().system_llvm(true).llvm_version("18.0.0").build();
+    assert!(!check_ignore(&config, "// min-system-llvm-version: 18.0"));
+
+    let config: Config = cfg().llvm_version("17.0.0").build();
+    assert!(!check_ignore(&config, "// min-system-llvm-version: 18.0"));
 }
 
 #[test]
