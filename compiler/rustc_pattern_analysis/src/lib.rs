@@ -108,8 +108,12 @@ pub trait TypeCx: Sized + fmt::Debug {
     /// This must follow the invariants of `ConstructorSet`
     fn ctors_for_ty(&self, ty: &Self::Ty) -> Result<ConstructorSet<Self>, Self::Error>;
 
-    /// Best-effort `Debug` implementation.
-    fn debug_pat(f: &mut fmt::Formatter<'_>, pat: &DeconstructedPat<'_, Self>) -> fmt::Result;
+    /// Write the name of the variant represented by `pat`. Used for the best-effort `Debug` impl of
+    /// `DeconstructedPat`. Only invoqued when `pat.ctor()` is `Struct | Variant(_) | UnionField`.
+    fn write_variant_name(
+        f: &mut fmt::Formatter<'_>,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
+    ) -> fmt::Result;
 
     /// Raise a bug.
     fn bug(&self, fmt: fmt::Arguments<'_>) -> !;
