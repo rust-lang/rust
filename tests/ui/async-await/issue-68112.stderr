@@ -2,7 +2,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:34:5
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
@@ -21,7 +21,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:43:5
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
@@ -40,7 +40,7 @@ error[E0277]: `RefCell<i32>` cannot be shared between threads safely
   --> $DIR/issue-68112.rs:62:5
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
