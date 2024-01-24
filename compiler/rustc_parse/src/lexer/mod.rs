@@ -472,7 +472,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
                     let kind = token::CStrRaw(n_hashes);
-                    self.cook_mixed(kind, Mode::RawCStr, start, end, 3 + n, 1 + n) // cr##" "##
+                    self.cook_unicode(kind, Mode::RawCStr, start, end, 3 + n, 1 + n) // cr##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }

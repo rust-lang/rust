@@ -97,7 +97,13 @@ where
         }
         Str | ByteStr => unescape_non_raw_common(src, mode, callback),
         RawStr | RawByteStr => check_raw_common(src, mode, callback),
-        CStr | RawCStr => unreachable!(),
+        RawCStr => check_raw_common(src, mode, &mut |r, mut result| {
+            if let Ok('\0') = result {
+                result = Err(EscapeError::NulInCStr);
+            }
+            callback(r, result)
+        }),
+        CStr => unreachable!(),
     }
 }
 
@@ -141,24 +147,13 @@ where
     F: FnMut(Range<usize>, Result<MixedUnit, EscapeError>),
 {
     match mode {
-        CStr => {
-            unescape_non_raw_common(src, mode, &mut |r, mut result| {
-                if let Ok(MixedUnit::Char('\0')) = result {
-                    result = Err(EscapeError::NulInCStr);
-                }
-                callback(r, result)
-            });
-        }
-        RawCStr => {
-            check_raw_common(src, mode, &mut |r, mut result| {
-                if let Ok('\0') = result {
-                    result = Err(EscapeError::NulInCStr);
-                }
-                // High bytes aren't possible in raw strings.
-                callback(r, result.map(MixedUnit::Char))
-            });
-        }
-        Char | Byte | Str | RawStr | ByteStr | RawByteStr => unreachable!(),
+        CStr => unescape_non_raw_common(src, mode, &mut |r, mut result| {
+            if let Ok(MixedUnit::Char('\0')) = result {
+                result = Err(EscapeError::NulInCStr);
+            }
+            callback(r, result)
+        }),
+        Char | Byte | Str | RawStr | ByteStr | RawByteStr | RawCStr => unreachable!(),
     }
 }
 
