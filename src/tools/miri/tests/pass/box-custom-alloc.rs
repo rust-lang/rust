@@ -1,6 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(allocator_api)]
+#![allow(incomplete_features)] // for trait upcasting
+#![feature(allocator_api, trait_upcasting)]
 
 use std::alloc::Layout;
 use std::alloc::{AllocError, Allocator};
