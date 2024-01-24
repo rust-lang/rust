@@ -1,5 +1,3 @@
-use std::mem;
-
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
@@ -75,9 +73,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    let check_alignment = mem::replace(&mut ecx.machine.check_alignment, CheckAlignment::No); // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
-    ecx.machine.check_alignment = check_alignment;
 
     debug!("eval_body_using_ecx done: {:?}", ret);
     Ok(ret)
