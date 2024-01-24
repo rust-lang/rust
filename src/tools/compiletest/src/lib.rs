@@ -675,6 +675,8 @@ fn collect_tests_from_dir(
 
     // Add each `.rs` file as a test, and recurse further on any
     // subdirectories we find, except for `aux` directories.
+    // FIXME: this walks full tests tree, even if we have something to ignore
+    // use walkdir/ignore like in tidy?
     for file in fs::read_dir(dir)? {
         let file = file?;
         let file_path = file.path();
