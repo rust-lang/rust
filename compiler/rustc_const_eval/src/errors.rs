@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_errors::{
     DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
     IntoDiagnostic, Level,
@@ -13,12 +15,24 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 use rustc_target::abi::{Size, WrappingRange};
+use rustc_type_ir::Mutability;
+
+use crate::interpret::InternKind;
 
 #[derive(Diagnostic)]
 #[diag(const_eval_dangling_ptr_in_final)]
 pub(crate) struct DanglingPtrInFinal {
     #[primary_span]
     pub span: Span,
+    pub kind: InternKind,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_mutable_ptr_in_final)]
+pub(crate) struct MutablePtrInFinal {
+    #[primary_span]
+    pub span: Span,
+    pub kind: InternKind,
 }
 
 #[derive(Diagnostic)]
@@ -100,8 +114,8 @@ pub(crate) struct TransientMutBorrowErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow_raw, code = "E0658")]
-pub(crate) struct TransientMutBorrowErrRaw {
+#[diag(const_eval_transient_mut_raw, code = "E0658")]
+pub(crate) struct TransientMutRawErr {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -142,8 +156,8 @@ pub(crate) struct UnallowedMutableRefs {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs_raw, code = "E0764")]
-pub(crate) struct UnallowedMutableRefsRaw {
+#[diag(const_eval_unallowed_mutable_raw, code = "E0764")]
+pub(crate) struct UnallowedMutableRaw {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -192,14 +206,6 @@ pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_unsupported_untyped_pointer)]
-#[note]
-pub(crate) struct UnsupportedUntypedPointer {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -615,18 +621,16 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
             PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_static,
 
-            PtrToMut { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_mut,
-            PtrToMut { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_mut,
-
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
+            MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
             OutOfRange { .. } => const_eval_validation_out_of_range,
-            UnsafeCell => const_eval_validation_unsafe_cell,
+            UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
             UninhabitedVal { .. } => const_eval_validation_uninhabited_val,
             InvalidEnumTag { .. } => const_eval_validation_invalid_enum_tag,
             UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
@@ -772,11 +776,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             NullPtr { .. }
             | PtrToStatic { .. }
-            | PtrToMut { .. }
             | MutableRefInConst
+            | MutableRefToImmutable
             | NullFnPtr
             | NeverVal
-            | UnsafeCell
+            | UnsafeCellInImmutable
             | InvalidMetaSliceTooLarge { .. }
             | InvalidMetaTooLarge { .. }
             | DanglingPtrUseAfterFree { .. }
@@ -904,4 +908,15 @@ impl ReportErrorExt for ResourceExhaustionInfo {
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, _: &mut DiagnosticBuilder<'_, G>) {}
+}
+
+impl rustc_errors::IntoDiagnosticArg for InternKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            InternKind::Static(Mutability::Not) => "static",
+            InternKind::Static(Mutability::Mut) => "static_mut",
+            InternKind::Constant => "const",
+            InternKind::Promoted => "promoted",
+        }))
+    }
 }

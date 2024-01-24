@@ -4,7 +4,7 @@ error: coroutine cannot be shared between threads safely
 LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ coroutine is not `Sync`
    |
-   = help: within `{main::{closure#0} upvar_tys=() {main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`
+   = help: within `{main::{closure#0} upvar_tys=() witness={main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`
 note: coroutine is not `Sync` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:20:9
    |
@@ -24,7 +24,7 @@ error: coroutine cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ coroutine is not `Send`
    |
-   = help: within `{main::{closure#1} upvar_tys=() {main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`
+   = help: within `{main::{closure#1} upvar_tys=() witness={main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:27:9
    |

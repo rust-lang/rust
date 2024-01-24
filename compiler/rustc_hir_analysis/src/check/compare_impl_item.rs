@@ -254,7 +254,7 @@ fn compare_method_predicate_entailment<'tcx>(
     // checks. For the comparison to be valid, we need to
     // normalize the associated types in the impl/trait methods
     // first. However, because function types bind regions, just
-    // calling `normalize_associated_types_in` would have no effect on
+    // calling `FnCtxt::normalize` would have no effect on
     // any associated types appearing in the fn arguments or return
     // type.
 

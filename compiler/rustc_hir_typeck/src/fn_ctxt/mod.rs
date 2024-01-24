@@ -353,14 +353,22 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 }
 
-/// Represents a user-provided type in the raw form (never normalized).
+/// The `ty` representation of a user-provided type. Depending on the use-site
+/// we want to either use the unnormalized or the normalized form of this type.
 ///
 /// This is a bridge between the interface of `AstConv`, which outputs a raw `Ty`,
 /// and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
-pub struct RawTy<'tcx> {
+pub struct LoweredTy<'tcx> {
+    /// The unnormalized type provided by the user.
     pub raw: Ty<'tcx>,
 
     /// The normalized form of `raw`, stored here for efficiency.
     pub normalized: Ty<'tcx>,
+}
+
+impl<'tcx> LoweredTy<'tcx> {
+    pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
+        LoweredTy { raw, normalized: fcx.normalize(span, raw) }
+    }
 }

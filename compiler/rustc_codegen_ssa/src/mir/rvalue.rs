@@ -435,7 +435,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                     ty::ClosureKind::FnOnce,
                                 )
-                                .expect("failed to normalize and resolve closure during codegen")
                                 .polymorphize(bx.cx().tcx());
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }

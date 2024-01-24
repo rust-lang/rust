@@ -141,6 +141,13 @@ where
         infcx: &InferCtxt<'tcx>,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        // In the new trait solver, query type ops are performed locally. This
+        // is because query type ops currently use the old canonicalizer, and
+        // that doesn't preserve things like opaques which have been registered
+        // during MIR typeck. Even after the old canonicalizer is gone, it's
+        // probably worthwhile just keeping this run-locally logic, since we
+        // probably don't gain much from caching here given the new solver does
+        // caching internally.
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,

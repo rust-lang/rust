@@ -149,8 +149,7 @@ pub trait CommandExt: Sealed {
     /// The pidfd can be retrieved from the child with [`pidfd`] or [`take_pidfd`].
     ///
     /// A pidfd will only be created if it is possible to do so
-    /// in a guaranteed race-free manner (e.g. if the `clone3` system call
-    /// is supported). Otherwise, [`pidfd`] will return an error.
+    /// in a guaranteed race-free manner. Otherwise, [`pidfd`] will return an error.
     ///
     /// If a pidfd has been successfully created and not been taken from the `Child`
     /// then calls to `kill()`, `wait()` and `try_wait()` will use the pidfd
