@@ -135,20 +135,6 @@ pub trait TypeCx: Sized + fmt::Debug {
     }
 }
 
-/// Context that provides information global to a match.
-pub struct MatchCtxt<'a, Cx: TypeCx> {
-    /// The context for type information.
-    pub tycx: &'a Cx,
-}
-
-impl<'a, Cx: TypeCx> Clone for MatchCtxt<'a, Cx> {
-    fn clone(&self) -> Self {
-        Self { tycx: self.tycx }
-    }
-}
-
-impl<'a, Cx: TypeCx> Copy for MatchCtxt<'a, Cx> {}
-
 /// The arm of a match expression.
 #[derive(Debug)]
 pub struct MatchArm<'p, Cx: TypeCx> {
@@ -175,9 +161,7 @@ pub fn analyze_match<'p, 'tcx>(
 ) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
-    let cx = MatchCtxt { tycx };
-
-    let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity)?;
+    let report = compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity)?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.

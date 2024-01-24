@@ -719,7 +719,7 @@ use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
-use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
+use crate::{Captures, MatchArm, TypeCx};
 
 use self::ValidityConstraint::*;
 
@@ -730,9 +730,22 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// Context that provides information for usefulness checking.
+pub struct UsefulnessCtxt<'a, Cx: TypeCx> {
+    /// The context for type information.
+    pub tycx: &'a Cx,
+}
+
+impl<'a, Cx: TypeCx> Copy for UsefulnessCtxt<'a, Cx> {}
+impl<'a, Cx: TypeCx> Clone for UsefulnessCtxt<'a, Cx> {
+    fn clone(&self) -> Self {
+        Self { tycx: self.tycx }
+    }
+}
+
 /// Context that provides information local to a place under investigation.
 struct PlaceCtxt<'a, Cx: TypeCx> {
-    mcx: MatchCtxt<'a, Cx>,
+    mcx: UsefulnessCtxt<'a, Cx>,
     /// Type of the place under investigation.
     ty: &'a Cx::Ty,
 }
@@ -1358,7 +1371,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 /// We can however get false negatives because exhaustiveness does not explore all cases. See the
 /// section on relevancy at the top of the file.
 fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
-    mcx: MatchCtxt<'_, Cx>,
+    mcx: UsefulnessCtxt<'_, Cx>,
     overlap_range: IntRange,
     matrix: &Matrix<'p, Cx>,
     specialized_matrix: &Matrix<'p, Cx>,
@@ -1431,7 +1444,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx, is_top_level), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
-    mcx: MatchCtxt<'a, Cx>,
+    mcx: UsefulnessCtxt<'a, Cx>,
     matrix: &mut Matrix<'p, Cx>,
     is_top_level: bool,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
@@ -1588,13 +1601,14 @@ pub struct UsefulnessReport<'p, Cx: TypeCx> {
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
-#[instrument(skip(cx, arms), level = "debug")]
+#[instrument(skip(tycx, arms), level = "debug")]
 pub fn compute_match_usefulness<'p, Cx: TypeCx>(
-    cx: MatchCtxt<'_, Cx>,
+    tycx: &Cx,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
+    let cx = UsefulnessCtxt { tycx };
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses =
         compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
