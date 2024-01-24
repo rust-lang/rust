@@ -125,10 +125,11 @@ pub fn intern_const_alloc_recursive<
 
     // Intern the base allocation, and initialize todo list for recursive interning.
     let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
-    let mut todo = vec![(base_alloc_id, base_mutability)];
+    let mut todo: Vec<_> =
+        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().map(|prov| prov).collect();
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
-    let mut just_interned = FxHashSet::default();
+    let mut just_interned: FxHashSet<_> = std::iter::once(base_alloc_id).collect();
     // Whether we encountered a bad mutable pointer.
     // We want to first report "dangling" and then "mutable", so we need to delay reporting these
     // errors.
@@ -142,52 +143,49 @@ pub fn intern_const_alloc_recursive<
     // raw pointers, so we cannot rely on validation to catch them -- and since interning runs
     // before validation, and interning doesn't know the type of anything, this means we can't show
     // better errors. Maybe we should consider doing validation before interning in the future.
-    while let Some((alloc_id, mutability)) = todo.pop() {
+    while let Some(prov) = todo.pop() {
+        let alloc_id = prov.alloc_id();
+        if intern_kind != InternKind::Promoted
+            && inner_mutability == Mutability::Not
+            && !prov.immutable()
+        {
+            if ecx.tcx.try_get_global_alloc(alloc_id).is_some()
+                && !just_interned.contains(&alloc_id)
+            {
+                // This is a pointer to some memory from another constant. We encounter mutable
+                // pointers to such memory since we do not always track immutability through
+                // these "global" pointers. Allowing them is harmless; the point of these checks
+                // during interning is to justify why we intern the *new* allocations immutably,
+                // so we can completely ignore existing allocations. We also don't need to add
+                // this to the todo list, since after all it is already interned.
+                continue;
+            }
+            // Found a mutable pointer inside a const where inner allocations should be
+            // immutable. We exclude promoteds from this, since things like `&mut []` and
+            // `&None::<Cell<i32>>` lead to promotion that can produce mutable pointers. We rely
+            // on the promotion analysis not screwing up to ensure that it is sound to intern
+            // promoteds as immutable.
+            found_bad_mutable_pointer = true;
+        }
         if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {
             // Already interned.
             debug_assert!(!ecx.memory.alloc_map.contains_key(&alloc_id));
             continue;
         }
         just_interned.insert(alloc_id);
-        let provs = intern_shallow(ecx, alloc_id, mutability).map_err(|()| {
+        // We always intern with `inner_mutability`, and furthermore we ensured above that if
+        // that is "immutable", then there are *no* mutable pointers anywhere in the newly
+        // interned memory -- justifying that we can indeed intern immutably. However this also
+        // means we can *not* easily intern immutably here if `prov.immutable()` is true and
+        // `inner_mutability` is `Mut`: there might be other pointers to that allocation, and
+        // we'd have to somehow check that they are *all* immutable before deciding that this
+        // allocation can be made immutable. In the future we could consider analyzing all
+        // pointers before deciding which allocations can be made immutable; but for now we are
+        // okay with losing some potential for immutability here. This can anyway only affect
+        // `static mut`.
+        todo.extend(intern_shallow(ecx, alloc_id, inner_mutability).map_err(|()| {
             ecx.tcx.dcx().emit_err(DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind })
-        })?;
-        for prov in provs {
-            let alloc_id = prov.alloc_id();
-            if intern_kind != InternKind::Promoted
-                && inner_mutability == Mutability::Not
-                && !prov.immutable()
-            {
-                if ecx.tcx.try_get_global_alloc(alloc_id).is_some()
-                    && !just_interned.contains(&alloc_id)
-                {
-                    // This is a pointer to some memory from another constant. We encounter mutable
-                    // pointers to such memory since we do not always track immutability through
-                    // these "global" pointers. Allowing them is harmless; the point of these checks
-                    // during interning is to justify why we intern the *new* allocations immutably,
-                    // so we can completely ignore existing allocations. We also don't need to add
-                    // this to the todo list, since after all it is already interned.
-                    continue;
-                }
-                // Found a mutable pointer inside a const where inner allocations should be
-                // immutable. We exclude promoteds from this, since things like `&mut []` and
-                // `&None::<Cell<i32>>` lead to promotion that can produce mutable pointers. We rely
-                // on the promotion analysis not screwing up to ensure that it is sound to intern
-                // promoteds as immutable.
-                found_bad_mutable_pointer = true;
-            }
-            // We always intern with `inner_mutability`, and furthermore we ensured above that if
-            // that is "immutable", then there are *no* mutable pointers anywhere in the newly
-            // interned memory -- justifying that we can indeed intern immutably. However this also
-            // means we can *not* easily intern immutably here if `prov.immutable()` is true and
-            // `inner_mutability` is `Mut`: there might be other pointers to that allocation, and
-            // we'd have to somehow check that they are *all* immutable before deciding that this
-            // allocation can be made immutable. In the future we could consider analyzing all
-            // pointers before deciding which allocations can be made immutable; but for now we are
-            // okay with losing some potential for immutability here. This can anyway only affect
-            // `static mut`.
-            todo.push((alloc_id, inner_mutability));
-        }
+        })?);
     }
     if found_bad_mutable_pointer {
         return Err(ecx
