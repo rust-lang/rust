@@ -62,13 +62,14 @@ fn test_command_fork_no_unwind() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
+#[cfg(target_os = "linux")] // pidfds are a linux-specific concept
 fn test_command_pidfd() {
     use crate::assert_matches::assert_matches;
     use crate::os::fd::{AsRawFd, RawFd};
     use crate::os::linux::process::{ChildExt, CommandExt};
     use crate::process::Command;
 
+    // pidfds require the pidfd_open syscall
     let our_pid = crate::process::id();
     let pidfd = unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) };
     let pidfd_open_available = if pidfd >= 0 {
@@ -81,7 +82,9 @@ fn test_command_pidfd() {
     // always exercise creation attempts
     let mut child = Command::new("false").create_pidfd(true).spawn().unwrap();
 
-    // but only check if we know that the kernel supports pidfds
+    // but only check if we know that the kernel supports pidfds.
+    // We don't assert the precise value, since the standard library
+    // might have opened other file descriptors before our code runs.
     if pidfd_open_available {
         assert!(child.pidfd().is_ok());
     }
@@ -97,4 +100,17 @@ fn test_command_pidfd() {
     child.kill().expect("failed to kill child");
     let status = child.wait().expect("error waiting on pidfd");
     assert_eq!(status.signal(), Some(libc::SIGKILL));
+
+    let _ = Command::new("echo")
+        .create_pidfd(false)
+        .spawn()
+        .unwrap()
+        .pidfd()
+        .expect_err("pidfd should not have been created when create_pid(false) is set");
+
+    let _ = Command::new("echo")
+        .spawn()
+        .unwrap()
+        .pidfd()
+        .expect_err("pidfd should not have been created");
 }

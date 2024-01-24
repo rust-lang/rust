@@ -12,7 +12,7 @@ use crate::MoveDataParamEnv;
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 use rustc_ast::MetaItem;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -275,7 +275,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &ChunkedBitSet<Local>,
+        flow_state: &BitSet<Local>,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");

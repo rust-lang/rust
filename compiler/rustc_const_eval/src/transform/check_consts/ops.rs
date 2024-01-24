@@ -466,7 +466,7 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         match self.0 {
-            hir::BorrowKind::Raw => ccx.dcx().create_err(errors::UnallowedMutableRefsRaw {
+            hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::UnallowedMutableRaw {
                 span,
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
@@ -491,10 +491,10 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let kind = ccx.const_kind();
         match self.0 {
-            hir::BorrowKind::Raw => ccx.tcx.sess.create_feature_err(
-                errors::TransientMutBorrowErrRaw { span, kind },
-                sym::const_mut_refs,
-            ),
+            hir::BorrowKind::Raw => ccx
+                .tcx
+                .sess
+                .create_feature_err(errors::TransientMutRawErr { span, kind }, sym::const_mut_refs),
             hir::BorrowKind::Ref => ccx.tcx.sess.create_feature_err(
                 errors::TransientMutBorrowErr { span, kind },
                 sym::const_mut_refs,

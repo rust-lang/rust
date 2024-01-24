@@ -643,6 +643,7 @@ compiler-team = [
     "@compiler-errors",
     "@petrochenkov",
     "@davidtwco",
+    "@estebank",
     "@oli-obk",
     "@wesleywiser",
 ]
@@ -693,18 +694,21 @@ incremental = [
 diagnostics = [
     "@compiler-errors",
     "@davidtwco",
+    "@estebank",
     "@oli-obk",
     "@TaKO8Ki",
 ]
 parser = [
     "@compiler-errors",
     "@davidtwco",
+    "@estebank",
     "@nnethercote",
     "@petrochenkov",
 ]
 lexer = [
     "@nnethercote",
     "@petrochenkov",
+    "@estebank",
 ]
 arena = [
     "@nnethercote",
@@ -731,6 +735,7 @@ borrowck = [
 ]
 ast_lowering = [
     "@compiler-errors",
+    "@estebank",
     "@spastorino",
 ]
 fallback = [

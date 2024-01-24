@@ -1028,6 +1028,7 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
+        mir_assume,
         mir_basic_block,
         mir_call,
         mir_cast_transmute,

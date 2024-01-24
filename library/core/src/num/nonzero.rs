@@ -1,6 +1,9 @@
 //! Definitions of integer that is known not to equal zero.
 
+use crate::cmp::Ordering;
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
+use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
 
@@ -30,13 +33,6 @@ mod private {
 pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {
     type NonZero;
 }
-
-#[unstable(
-    feature = "nonzero_internals",
-    reason = "implementation detail which may disappear or be replaced at any time",
-    issue = "none"
-)]
-pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
 
 macro_rules! impl_zeroable_primitive {
     ($NonZero:ident ( $primitive:ty )) => {
@@ -70,6 +66,13 @@ impl_zeroable_primitive!(NonZeroI32(i32));
 impl_zeroable_primitive!(NonZeroI64(i64));
 impl_zeroable_primitive!(NonZeroI128(i128));
 impl_zeroable_primitive!(NonZeroIsize(isize));
+
+#[unstable(
+    feature = "nonzero_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -128,7 +131,7 @@ macro_rules! nonzero_integer {
         ///
         /// [null pointer optimization]: crate::option#representation
         #[$stability]
-        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        #[derive(Copy, Eq)]
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start(1)]
         #[rustc_nonnull_optimization_guaranteed]
@@ -317,7 +320,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub const fn checked_mul(self, other: $Ty) -> Option<$Ty> {
+            pub const fn checked_mul(self, other: Self) -> Option<Self> {
                 if let Some(result) = self.get().checked_mul(other.get()) {
                     // SAFETY:
                     // - `checked_mul` returns `None` on overflow
@@ -326,7 +329,7 @@ macro_rules! nonzero_integer {
                     //   of the sides to be zero
                     //
                     // So the result cannot be zero.
-                    Some(unsafe { $Ty::new_unchecked(result) })
+                    Some(unsafe { Self::new_unchecked(result) })
                 } else {
                     None
                 }
@@ -356,7 +359,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub const fn saturating_mul(self, other: $Ty) -> $Ty {
+            pub const fn saturating_mul(self, other: Self) -> Self {
                 // SAFETY:
                 // - `saturating_mul` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
                 //   all of which are non-zero
@@ -365,7 +368,7 @@ macro_rules! nonzero_integer {
                 //   of the sides to be zero
                 //
                 // So the result cannot be zero.
-                unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
+                unsafe { Self::new_unchecked(self.get().saturating_mul(other.get())) }
             }
 
             /// Multiplies two non-zero integers together,
@@ -403,9 +406,9 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub const unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
+            pub const unsafe fn unchecked_mul(self, other: Self) -> Self {
                 // SAFETY: The caller ensures there is no overflow.
-                unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
+                unsafe { Self::new_unchecked(self.get().unchecked_mul(other.get())) }
             }
 
             /// Raises non-zero value to an integer power.
@@ -433,7 +436,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub const fn checked_pow(self, other: u32) -> Option<$Ty> {
+            pub const fn checked_pow(self, other: u32) -> Option<Self> {
                 if let Some(result) = self.get().checked_pow(other) {
                     // SAFETY:
                     // - `checked_pow` returns `None` on overflow/underflow
@@ -442,7 +445,7 @@ macro_rules! nonzero_integer {
                     //   for base to be zero
                     //
                     // So the result cannot be zero.
-                    Some(unsafe { $Ty::new_unchecked(result) })
+                    Some(unsafe { Self::new_unchecked(result) })
                 } else {
                     None
                 }
@@ -481,7 +484,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub const fn saturating_pow(self, other: u32) -> $Ty {
+            pub const fn saturating_pow(self, other: u32) -> Self {
                 // SAFETY:
                 // - `saturating_pow` returns `u*::MAX`/`i*::MAX`/`i*::MIN` on overflow/underflow,
                 //   all of which are non-zero
@@ -490,7 +493,97 @@ macro_rules! nonzero_integer {
                 //   for base to be zero
                 //
                 // So the result cannot be zero.
-                unsafe { $Ty::new_unchecked(self.get().saturating_pow(other)) }
+                unsafe { Self::new_unchecked(self.get().saturating_pow(other)) }
+            }
+        }
+
+        #[$stability]
+        impl Clone for $Ty {
+            #[inline]
+            fn clone(&self) -> Self {
+                // SAFETY: The contained value is non-zero.
+                unsafe { Self(self.0) }
+            }
+        }
+
+        #[$stability]
+        impl PartialEq for $Ty {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+
+            #[inline]
+            fn ne(&self, other: &Self) -> bool {
+                self.0 != other.0
+            }
+        }
+
+        #[unstable(feature = "structural_match", issue = "31434")]
+        impl StructuralPartialEq for $Ty {}
+
+        #[$stability]
+        impl PartialOrd for $Ty {
+            #[inline]
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+
+            #[inline]
+            fn lt(&self, other: &Self) -> bool {
+                self.0 < other.0
+            }
+
+            #[inline]
+            fn le(&self, other: &Self) -> bool {
+                self.0 <= other.0
+            }
+
+            #[inline]
+            fn gt(&self, other: &Self) -> bool {
+                self.0 > other.0
+            }
+
+            #[inline]
+            fn ge(&self, other: &Self) -> bool {
+                self.0 >= other.0
+            }
+        }
+
+        #[$stability]
+        impl Ord for $Ty {
+            #[inline]
+            fn cmp(&self, other: &Self) -> Ordering {
+                self.0.cmp(&other.0)
+            }
+
+            #[inline]
+            fn max(self, other: Self) -> Self {
+                // SAFETY: The maximum of two non-zero values is still non-zero.
+                unsafe { Self(self.0.max(other.0)) }
+            }
+
+            #[inline]
+            fn min(self, other: Self) -> Self {
+                // SAFETY: The minimum of two non-zero values is still non-zero.
+                unsafe { Self(self.0.min(other.0)) }
+            }
+
+            #[inline]
+            fn clamp(self, min: Self, max: Self) -> Self {
+                // SAFETY: A non-zero value clamped between two non-zero values is still non-zero.
+                unsafe { Self(self.0.clamp(min.0, max.0)) }
+            }
+        }
+
+        #[$stability]
+        impl Hash for $Ty {
+            #[inline]
+            fn hash<H>(&self, state: &mut H)
+            where
+                H: Hasher,
+            {
+                self.0.hash(state)
             }
         }
 
@@ -508,29 +601,32 @@ macro_rules! nonzero_integer {
         #[stable(feature = "nonzero_bitor", since = "1.45.0")]
         impl BitOr for $Ty {
             type Output = Self;
+
             #[inline]
             fn bitor(self, rhs: Self) -> Self::Output {
                 // SAFETY: since `self` and `rhs` are both nonzero, the
                 // result of the bitwise-or will be nonzero.
-                unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
+                unsafe { Self::new_unchecked(self.get() | rhs.get()) }
             }
         }
 
         #[stable(feature = "nonzero_bitor", since = "1.45.0")]
         impl BitOr<$Int> for $Ty {
             type Output = Self;
+
             #[inline]
             fn bitor(self, rhs: $Int) -> Self::Output {
                 // SAFETY: since `self` is nonzero, the result of the
                 // bitwise-or will be nonzero regardless of the value of
                 // `rhs`.
-                unsafe { $Ty::new_unchecked(self.get() | rhs) }
+                unsafe { Self::new_unchecked(self.get() | rhs) }
             }
         }
 
         #[stable(feature = "nonzero_bitor", since = "1.45.0")]
         impl BitOr<$Ty> for $Int {
             type Output = $Ty;
+
             #[inline]
             fn bitor(self, rhs: $Ty) -> Self::Output {
                 // SAFETY: since `rhs` is nonzero, the result of the
@@ -603,6 +699,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         impl Div<$Ty> for $Int {
             type Output = $Int;
+
             /// This operation rounds towards zero,
             /// truncating any fractional part of the exact result, and cannot panic.
             #[inline]
@@ -616,6 +713,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         #[stable(feature = "nonzero_div", since = "1.51.0")]
         impl Rem<$Ty> for $Int {
             type Output = $Int;
+
             /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
             #[inline]
             fn rem(self, other: $Ty) -> $Int {
@@ -630,12 +728,12 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
     ($Ty:ident signed $Int:ty) => {
         #[stable(feature = "signed_nonzero_neg", since = "1.71.0")]
         impl Neg for $Ty {
-            type Output = $Ty;
+            type Output = Self;
 
             #[inline]
-            fn neg(self) -> $Ty {
+            fn neg(self) -> Self {
                 // SAFETY: negation of nonzero cannot yield zero values.
-                unsafe { $Ty::new_unchecked(self.get().neg()) }
+                unsafe { Self::new_unchecked(self.get().neg()) }
             }
         }
 
@@ -703,7 +801,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_add(self, other: $Int) -> Option<$Ty> {
+        pub const fn checked_add(self, other: $Int) -> Option<Self> {
             if let Some(result) = self.get().checked_add(other) {
                 // SAFETY:
                 // - `checked_add` returns `None` on overflow
@@ -712,7 +810,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
                 //   sides to be zero
                 //
                 // So the result cannot be zero.
-                Some(unsafe { $Ty::new_unchecked(result) })
+                Some(unsafe { Self::new_unchecked(result) })
             } else {
                 None
             }
@@ -742,7 +840,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn saturating_add(self, other: $Int) -> $Ty {
+        pub const fn saturating_add(self, other: $Int) -> Self {
             // SAFETY:
             // - `saturating_add` returns `u*::MAX` on overflow, which is non-zero
             // - `self` is non-zero
@@ -750,7 +848,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             //   sides to be zero
             //
             // So the result cannot be zero.
-            unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
+            unsafe { Self::new_unchecked(self.get().saturating_add(other)) }
         }
 
         /// Adds an unsigned integer to a non-zero value,
@@ -779,9 +877,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const unsafe fn unchecked_add(self, other: $Int) -> $Ty {
+        pub const unsafe fn unchecked_add(self, other: $Int) -> Self {
             // SAFETY: The caller ensures there is no overflow.
-            unsafe { $Ty::new_unchecked(self.get().unchecked_add(other)) }
+            unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }
         }
 
         /// Returns the smallest power of two greater than or equal to n.
@@ -812,11 +910,11 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_next_power_of_two(self) -> Option<$Ty> {
+        pub const fn checked_next_power_of_two(self) -> Option<Self> {
             if let Some(nz) = self.get().checked_next_power_of_two() {
                 // SAFETY: The next power of two is positive
                 // and overflow is checked.
-                Some(unsafe { $Ty::new_unchecked(nz) })
+                Some(unsafe { Self::new_unchecked(nz) })
             } else {
                 None
             }
@@ -902,9 +1000,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         pub const fn midpoint(self, rhs: Self) -> Self {
             // SAFETY: The only way to get `0` with midpoint is to have two opposite or
             // near opposite numbers: (-5, 5), (0, 1), (0, 0) which is impossible because
-            // of the unsignedness of this number and also because $Ty is guaranteed to
+            // of the unsignedness of this number and also because `Self` is guaranteed to
             // never being 0.
-            unsafe { $Ty::new_unchecked(self.get().midpoint(rhs.get())) }
+            unsafe { Self::new_unchecked(self.get().midpoint(rhs.get())) }
         }
 
         /// Returns `true` if and only if `self == (1 << k)` for some `k`.
@@ -1000,9 +1098,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn abs(self) -> $Ty {
+        pub const fn abs(self) -> Self {
             // SAFETY: This cannot overflow to zero.
-            unsafe { $Ty::new_unchecked(self.get().abs()) }
+            unsafe { Self::new_unchecked(self.get().abs()) }
         }
 
         /// Checked absolute value.
@@ -1031,10 +1129,10 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn checked_abs(self) -> Option<$Ty> {
+        pub const fn checked_abs(self) -> Option<Self> {
             if let Some(nz) = self.get().checked_abs() {
                 // SAFETY: absolute value of nonzero cannot yield zero values.
-                Some(unsafe { $Ty::new_unchecked(nz) })
+                Some(unsafe { Self::new_unchecked(nz) })
             } else {
                 None
             }
@@ -1066,11 +1164,11 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn overflowing_abs(self) -> ($Ty, bool) {
+        pub const fn overflowing_abs(self) -> (Self, bool) {
             let (nz, flag) = self.get().overflowing_abs();
             (
                 // SAFETY: absolute value of nonzero cannot yield zero values.
-                unsafe { $Ty::new_unchecked(nz) },
+                unsafe { Self::new_unchecked(nz) },
                 flag,
             )
         }
@@ -1105,9 +1203,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn saturating_abs(self) -> $Ty {
+        pub const fn saturating_abs(self) -> Self {
             // SAFETY: absolute value of nonzero cannot yield zero values.
-            unsafe { $Ty::new_unchecked(self.get().saturating_abs()) }
+            unsafe { Self::new_unchecked(self.get().saturating_abs()) }
         }
 
         /// Wrapping absolute value, see
@@ -1138,9 +1236,9 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn wrapping_abs(self) -> $Ty {
+        pub const fn wrapping_abs(self) -> Self {
             // SAFETY: absolute value of nonzero cannot yield zero values.
-            unsafe { $Ty::new_unchecked(self.get().wrapping_abs()) }
+            unsafe { Self::new_unchecked(self.get().wrapping_abs()) }
         }
 
         /// Computes the absolute value of self
@@ -1250,10 +1348,10 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        pub const fn checked_neg(self) -> Option<$Ty> {
+        pub const fn checked_neg(self) -> Option<Self> {
             if let Some(result) = self.get().checked_neg() {
                 // SAFETY: negation of nonzero cannot yield zero values.
-                return Some(unsafe { $Ty::new_unchecked(result) });
+                return Some(unsafe { Self::new_unchecked(result) });
             }
             None
         }
@@ -1282,10 +1380,10 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        pub const fn overflowing_neg(self) -> ($Ty, bool) {
+        pub const fn overflowing_neg(self) -> (Self, bool) {
             let (result, overflow) = self.get().overflowing_neg();
             // SAFETY: negation of nonzero cannot yield zero values.
-            ((unsafe { $Ty::new_unchecked(result) }), overflow)
+            ((unsafe { Self::new_unchecked(result) }), overflow)
         }
 
         /// Saturating negation. Computes `-self`,
@@ -1317,11 +1415,11 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        pub const fn saturating_neg(self) -> $Ty {
+        pub const fn saturating_neg(self) -> Self {
             if let Some(result) = self.checked_neg() {
                 return result;
             }
-            $Ty::MAX
+            Self::MAX
         }
 
         /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
@@ -1349,10 +1447,10 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[inline]
         #[stable(feature = "nonzero_negation_ops", since = "1.71.0")]
         #[rustc_const_stable(feature = "nonzero_negation_ops", since = "1.71.0")]
-        pub const fn wrapping_neg(self) -> $Ty {
+        pub const fn wrapping_neg(self) -> Self {
             let result = self.get().wrapping_neg();
             // SAFETY: negation of nonzero cannot yield zero values.
-            unsafe { $Ty::new_unchecked(result) }
+            unsafe { Self::new_unchecked(result) }
         }
     };
 }

@@ -265,7 +265,12 @@ fn resolve_associated_item<'tcx>(
                 match *rcvr_args.type_at(0).kind() {
                     ty::Closure(closure_def_id, args) => {
                         let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
-                        Instance::resolve_closure(tcx, closure_def_id, args, trait_closure_kind)
+                        Some(Instance::resolve_closure(
+                            tcx,
+                            closure_def_id,
+                            args,
+                            trait_closure_kind,
+                        ))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
                         def: ty::InstanceDef::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
