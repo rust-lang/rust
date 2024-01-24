@@ -22,12 +22,13 @@ use crate::interpret::{
 };
 
 // Returns a pointer to where the result lives
+#[instrument(level = "trace", skip(ecx, body), ret)]
 fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
+    trace!(?ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
         cid.promoted.is_some()
@@ -75,7 +76,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     };
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
-    debug!("eval_body_using_ecx done: {:?}", ret);
     Ok(ret)
 }
 
