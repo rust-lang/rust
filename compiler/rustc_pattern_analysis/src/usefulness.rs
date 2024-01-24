@@ -750,7 +750,10 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
         self.mcx.tycx.ctor_arity(ctor, self.ty)
     }
-    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<Cx>) -> &[Cx::Ty] {
+    pub(crate) fn ctor_sub_tys(
+        &'a self,
+        ctor: &'a Constructor<Cx>,
+    ) -> impl Iterator<Item = Cx::Ty> + ExactSizeIterator + Captures<'a> {
         self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
     }
     pub(crate) fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
@@ -1058,8 +1061,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     ) -> Matrix<'p, Cx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         let arity = ctor_sub_tys.len();
-        let specialized_place_ty =
-            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).cloned().collect();
+        let specialized_place_ty = ctor_sub_tys.chain(self.place_ty[1..].iter().cloned()).collect();
         let ctor_sub_validity = self.place_validity[0].specialize(ctor);
         let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
             .take(arity)

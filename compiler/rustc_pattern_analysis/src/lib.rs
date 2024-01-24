@@ -101,7 +101,11 @@ pub trait TypeCx: Sized + fmt::Debug {
 
     /// The types of the fields for this constructor. The result must have a length of
     /// `ctor_arity()`.
-    fn ctor_sub_tys(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> &[Self::Ty];
+    fn ctor_sub_tys<'a>(
+        &'a self,
+        ctor: &'a Constructor<Self>,
+        ty: &'a Self::Ty,
+    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a>;
 
     /// The set of all the constructors for `ty`.
     ///
