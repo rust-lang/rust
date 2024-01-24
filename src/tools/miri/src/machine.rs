@@ -920,7 +920,21 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        ecx.find_mir_or_eval_fn(instance, abi, args, dest, ret, unwind)
+        // For foreign items, try to see if we can emulate them.
+        if ecx.tcx.is_foreign_item(instance.def_id()) {
+            // An external function call that does not have a MIR body. We either find MIR elsewhere
+            // or emulate its effect.
+            // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
+            // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
+            // foreign function
+            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
+            let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+            let link_name = ecx.item_link_name(instance.def_id());
+            return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
+        }
+
+        // Otherwise, load the MIR.
+        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
     #[inline(always)]
