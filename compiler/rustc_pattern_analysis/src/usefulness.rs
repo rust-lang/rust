@@ -731,19 +731,18 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 }
 
 /// Context that provides information local to a place under investigation.
-pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
-    pub(crate) mcx: MatchCtxt<'a, Cx>,
+struct PlaceCtxt<'a, Cx: TypeCx> {
+    mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
-    pub(crate) ty: &'a Cx::Ty,
+    ty: &'a Cx::Ty,
 }
 
+impl<'a, Cx: TypeCx> Copy for PlaceCtxt<'a, Cx> {}
 impl<'a, Cx: TypeCx> Clone for PlaceCtxt<'a, Cx> {
     fn clone(&self) -> Self {
         Self { mcx: self.mcx, ty: self.ty }
     }
 }
-
-impl<'a, Cx: TypeCx> Copy for PlaceCtxt<'a, Cx> {}
 
 impl<'a, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, Cx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -752,23 +751,20 @@ impl<'a, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, Cx> {
 }
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
-    /// A `PlaceCtxt` when code other than `is_useful` needs one.
-    #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: &'a Cx::Ty) -> Self {
-        PlaceCtxt { mcx, ty }
-    }
-
-    pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
+    fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
         self.mcx.tycx.ctor_arity(ctor, self.ty)
     }
-    pub(crate) fn ctor_sub_tys(
+    fn ctor_sub_tys(
         &'a self,
         ctor: &'a Constructor<Cx>,
     ) -> impl Iterator<Item = Cx::Ty> + ExactSizeIterator + Captures<'a> {
         self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
     }
-    pub(crate) fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
+    fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
         self.mcx.tycx.ctors_for_ty(self.ty)
+    }
+    fn wild_from_ctor(&self, ctor: Constructor<Cx>) -> WitnessPat<Cx> {
+        WitnessPat::wild_from_ctor(self.mcx.tycx, ctor, self.ty.clone())
     }
 }
 
@@ -1089,7 +1085,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
             wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
         };
         for (i, row) in self.rows().enumerate() {
-            if ctor.is_covered_by(pcx, row.head().ctor()) {
+            if ctor.is_covered_by(pcx.mcx.tycx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
@@ -1240,7 +1236,7 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
     /// ```
     fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, Cx>, ctor: &Constructor<Cx>) {
         let len = self.0.len();
-        let arity = ctor.arity(pcx);
+        let arity = pcx.ctor_arity(ctor);
         let fields = self.0.drain((len - arity)..).rev().collect();
         let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty.clone());
         self.0.push(pat);
@@ -1315,20 +1311,20 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
                 *self = Self::empty();
             } else if !report_individual_missing_ctors {
                 // Report `_` as missing.
-                let pat = WitnessPat::wild_from_ctor(pcx, Constructor::Wildcard);
+                let pat = pcx.wild_from_ctor(Constructor::Wildcard);
                 self.push_pattern(pat);
             } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
                 // We need to report a `_` anyway, so listing other constructors would be redundant.
                 // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
                 // up by diagnostics to add a note about why `_` is required here.
-                let pat = WitnessPat::wild_from_ctor(pcx, Constructor::NonExhaustive);
+                let pat = pcx.wild_from_ctor(Constructor::NonExhaustive);
                 self.push_pattern(pat);
             } else {
                 // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
                 // filled with wildcards.
                 let mut ret = Self::empty();
                 for ctor in missing_ctors {
-                    let pat = WitnessPat::wild_from_ctor(pcx, ctor.clone());
+                    let pat = pcx.wild_from_ctor(ctor.clone());
                     // Clone `self` and add `c(_, _, _)` to each of its witnesses.
                     let mut wit_matrix = self.clone();
                     wit_matrix.push_pattern(pat);

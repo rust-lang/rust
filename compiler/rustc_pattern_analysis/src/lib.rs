@@ -183,7 +183,7 @@ pub fn analyze_match<'p, 'tcx>(
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
         let pat_column = PatternColumn::new(arms);
-        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)?;
+        lint_nonexhaustive_missing_variants(tycx, arms, &pat_column, scrut_ty)?;
     }
 
     Ok(report)

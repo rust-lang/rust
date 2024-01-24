@@ -30,7 +30,6 @@ pub type ConstructorSet<'p, 'tcx> =
 pub type DeconstructedPat<'p, 'tcx> =
     crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;

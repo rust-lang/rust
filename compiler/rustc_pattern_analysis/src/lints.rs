@@ -4,8 +4,7 @@ use rustc_span::ErrorGuaranteed;
 use crate::constructor::{Constructor, SplitConstructorSet};
 use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
 use crate::pat::{DeconstructedPat, PatOrWild};
-use crate::rustc::{MatchCtxt, RevealedTy, RustcMatchCheckCtxt, WitnessPat};
-use crate::usefulness::PlaceCtxt;
+use crate::rustc::{RevealedTy, RustcMatchCheckCtxt, WitnessPat};
 use crate::{MatchArm, TypeCx};
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
@@ -50,9 +49,9 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, Cx>) -> Result<SplitConstructorSet<Cx>, Cx::Error> {
+    fn analyze_ctors(&self, cx: &Cx, ty: &Cx::Ty) -> Result<SplitConstructorSet<Cx>, Cx::Error> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
-        let ctors_for_ty = &pcx.ctors_for_ty()?;
+        let ctors_for_ty = cx.ctors_for_ty(ty)?;
         Ok(ctors_for_ty.split(column_ctors))
     }
 
@@ -63,10 +62,11 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
     /// which may change the lengths.
     fn specialize(
         &self,
-        pcx: &PlaceCtxt<'_, Cx>,
+        cx: &Cx,
+        ty: &Cx::Ty,
         ctor: &Constructor<Cx>,
     ) -> Vec<PatternColumn<'p, Cx>> {
-        let arity = ctor.arity(pcx);
+        let arity = ctor.arity(cx, ty);
         if arity == 0 {
             return Vec::new();
         }
@@ -77,7 +77,7 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
         let mut specialized_columns: Vec<_> =
             (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
         let relevant_patterns =
-            self.patterns.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
+            self.patterns.iter().filter(|pat| ctor.is_covered_by(cx, pat.ctor()));
         for pat in relevant_patterns {
             let specialized = pat.specialize(ctor, arity);
             for (subpat, column) in specialized.into_iter().zip(&mut specialized_columns) {
@@ -92,15 +92,14 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
 /// in a given column.
 #[instrument(level = "debug", skip(cx), ret)]
 fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: MatchCtxt<'a, 'p, 'tcx>,
+    cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'p, RustcMatchCheckCtxt<'p, 'tcx>>,
 ) -> Result<Vec<WitnessPat<'p, 'tcx>>, ErrorGuaranteed> {
     let Some(&ty) = column.head_ty() else {
         return Ok(Vec::new());
     };
-    let pcx = &PlaceCtxt::new_dummy(cx, &ty);
 
-    let set = column.analyze_ctors(pcx)?;
+    let set = column.analyze_ctors(cx, &ty)?;
     if set.present.is_empty() {
         // We can't consistently handle the case where no constructors are present (since this would
         // require digging deep through any type in case there's a non_exhaustive enum somewhere),
@@ -109,20 +108,20 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     }
 
     let mut witnesses = Vec::new();
-    if cx.tycx.is_foreign_non_exhaustive_enum(ty) {
+    if cx.is_foreign_non_exhaustive_enum(ty) {
         witnesses.extend(
             set.missing
                 .into_iter()
                 // This will list missing visible variants.
                 .filter(|c| !matches!(c, Constructor::Hidden | Constructor::NonExhaustive))
-                .map(|missing_ctor| WitnessPat::wild_from_ctor(pcx, missing_ctor)),
+                .map(|missing_ctor| WitnessPat::wild_from_ctor(cx, missing_ctor, ty)),
         )
     }
 
     // Recurse into the fields.
     for ctor in set.present {
-        let specialized_columns = column.specialize(pcx, &ctor);
-        let wild_pat = WitnessPat::wild_from_ctor(pcx, ctor);
+        let specialized_columns = column.specialize(cx, &ty, &ctor);
+        let wild_pat = WitnessPat::wild_from_ctor(cx, ctor, ty);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.
             let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i)?;
@@ -138,18 +137,17 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     Ok(witnesses)
 }
 
-pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
-    cx: MatchCtxt<'a, 'p, 'tcx>,
+pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
+    rcx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>],
     pat_column: &PatternColumn<'p, RustcMatchCheckCtxt<'p, 'tcx>>,
     scrut_ty: RevealedTy<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
     if !matches!(
         rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, rcx.match_lint_level).0,
         rustc_session::lint::Level::Allow
     ) {
-        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column)?;
+        let witnesses = collect_nonexhaustive_missing_variants(rcx, pat_column)?;
         if !witnesses.is_empty() {
             // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
             // is not exhaustive enough.
