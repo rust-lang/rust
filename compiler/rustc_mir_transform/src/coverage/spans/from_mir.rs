@@ -12,6 +12,12 @@ use crate::coverage::graph::{
 use crate::coverage::spans::CoverageSpan;
 use crate::coverage::ExtractedHirInfo;
 
+/// Traverses the MIR body to produce an initial collection of coverage-relevant
+/// spans, each associated with a node in the coverage graph (BCB) and possibly
+/// other metadata.
+///
+/// The returned spans are sorted in a specific order that is expected by the
+/// subsequent span-refinement step.
 pub(super) fn mir_to_initial_sorted_coverage_spans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,

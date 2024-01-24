@@ -86,7 +86,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn inject_counters(&'a mut self) {
         ////////////////////////////////////////////////////
         // Compute coverage spans from the `CoverageGraph`.
-        let Some(coverage_spans) = CoverageSpans::generate_coverage_spans(
+        let Some(coverage_spans) = spans::generate_coverage_spans(
             self.mir_body,
             &self.hir_info,
             &self.basic_coverage_blocks,
