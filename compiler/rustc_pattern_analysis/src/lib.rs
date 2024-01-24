@@ -6,6 +6,7 @@ pub mod errors;
 #[cfg(feature = "rustc")]
 pub(crate) mod lints;
 pub mod pat;
+pub mod pat_column;
 #[cfg(feature = "rustc")]
 pub mod rustc;
 pub mod usefulness;
@@ -67,8 +68,9 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 #[cfg(feature = "rustc")]
-use crate::lints::{lint_nonexhaustive_missing_variants, PatternColumn};
+use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat::DeconstructedPat;
+use crate::pat_column::PatternColumn;
 #[cfg(feature = "rustc")]
 use crate::rustc::RustcMatchCheckCtxt;
 #[cfg(feature = "rustc")]

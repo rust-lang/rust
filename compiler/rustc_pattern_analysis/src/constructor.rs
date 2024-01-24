@@ -948,10 +948,10 @@ pub enum ConstructorSet<Cx: TypeCx> {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub(crate) struct SplitConstructorSet<Cx: TypeCx> {
-    pub(crate) present: SmallVec<[Constructor<Cx>; 1]>,
-    pub(crate) missing: Vec<Constructor<Cx>>,
-    pub(crate) missing_empty: Vec<Constructor<Cx>>,
+pub struct SplitConstructorSet<Cx: TypeCx> {
+    pub present: SmallVec<[Constructor<Cx>; 1]>,
+    pub missing: Vec<Constructor<Cx>>,
+    pub missing_empty: Vec<Constructor<Cx>>,
 }
 
 impl<Cx: TypeCx> ConstructorSet<Cx> {
@@ -960,7 +960,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
     #[instrument(level = "debug", skip(self, ctors), ret)]
-    pub(crate) fn split<'a>(
+    pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
     ) -> SplitConstructorSet<Cx>
