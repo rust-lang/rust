@@ -120,7 +120,8 @@ struct QueryModifiers {
 
     /// Forward the result on ensure if the query gets recomputed, and
     /// return `Ok(())` otherwise. Only applicable to queries returning
-    /// `Result<(), ErrorGuaranteed>`
+    /// `Result<T, ErrorGuaranteed>`. The `T` is not returned from `ensure`
+    /// invocations.
     ensure_forwards_result_if_red: Option<Ident>,
 }
 
