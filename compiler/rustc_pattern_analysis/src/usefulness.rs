@@ -466,13 +466,9 @@
 //! first pattern of a row in the matrix is an or-pattern, we expand it by duplicating the rest of
 //! the row as necessary. This is handled automatically in [`Matrix`].
 //!
-//! This makes usefulness tracking subtle, because we also want to compute whether an alternative
-//! of an or-pattern is redundant, e.g. in `Some(_) | Some(0)`. We track usefulness of each
-//! subpattern by interior mutability in [`DeconstructedPat`] with `set_useful`/`is_useful`.
-//!
-//! It's unfortunate that we have to use interior mutability, but believe me (Nadrieril), I have
-//! tried [other](https://github.com/rust-lang/rust/pull/80104)
-//! [solutions](https://github.com/rust-lang/rust/pull/80632) and nothing is remotely as simple.
+//! This makes usefulness tracking subtle, because we also want to compute whether an alternative of
+//! an or-pattern is redundant, e.g. in `Some(_) | Some(0)`. We therefore track usefulness of each
+//! subpattern of the match.
 //!
 //!
 //!
@@ -1462,8 +1458,8 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
-/// usefulness of each row in the matrix (in `row.useful`). We track usefulness of each
-/// subpattern using interior mutability in `DeconstructedPat`.
+/// usefulness of each row in the matrix (in `row.useful`). We track usefulness of each subpattern
+/// in `mcx.useful_subpatterns`.
 ///
 /// The input `Matrix` and the output `WitnessMatrix` together match the type exhaustively.
 ///
