@@ -3,8 +3,7 @@
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
-    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, MixedUnit,
-    Mode,
+    byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -85,7 +84,7 @@ impl LitKind {
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be hot in
                     // programs with many long strings containing escapes.
-                    unescape_literal(
+                    unescape_unicode(
                         s,
                         Mode::Str,
                         &mut #[inline(always)]
@@ -109,7 +108,7 @@ impl LitKind {
             token::ByteStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
+                unescape_unicode(s, Mode::ByteStr, &mut |_, c| match c {
                     Ok(c) => buf.push(byte_from_char(c)),
                     Err(err) => {
                         assert!(!err.is_fatal(), "failed to unescape string literal")
@@ -126,7 +125,7 @@ impl LitKind {
             token::CStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_c_string(s, Mode::CStr, &mut |_span, c| match c {
+                unescape_mixed(s, Mode::CStr, &mut |_span, c| match c {
                     Ok(MixedUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }

@@ -80,12 +80,12 @@ impl EscapeError {
     }
 }
 
-/// Takes a contents of a literal (without quotes) and produces a sequence of
-/// escaped characters or errors.
+/// Takes the contents of a unicode-only (non-mixed-utf8) literal (without
+/// quotes) and produces a sequence of escaped characters or errors.
 ///
 /// Values are returned by invoking `callback`. For `Char` and `Byte` modes,
 /// the callback will be called exactly once.
-pub fn unescape_literal<F>(src: &str, mode: Mode, callback: &mut F)
+pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
@@ -132,7 +132,11 @@ impl From<u8> for MixedUnit {
     }
 }
 
-pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
+/// Takes the contents of a mixed-utf8 literal (without quotes) and produces
+/// a sequence of escaped characters or errors.
+///
+/// Values are returned by invoking `callback`.
+pub fn unescape_mixed<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<MixedUnit, EscapeError>),
 {

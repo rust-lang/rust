@@ -6,7 +6,7 @@ use std::{
 };
 
 use rustc_lexer::unescape::{
-    unescape_byte, unescape_c_string, unescape_char, unescape_literal, MixedUnit, Mode,
+    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
 };
 
 use crate::{
@@ -193,7 +193,7 @@ pub trait IsString: AstToken {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_literal(text, Self::MODE, &mut |range, unescaped_char| {
+        unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
             let text_range =
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             cb(text_range + offset, unescaped_char);
@@ -226,7 +226,7 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Self::MODE, &mut |char_range, unescaped_char| match (
+        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -270,7 +270,7 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = false;
-        unescape_literal(text, Self::MODE, &mut |char_range, unescaped_char| match (
+        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -311,7 +311,7 @@ impl IsString for ast::CString {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_c_string(text, Self::MODE, &mut |range, unescaped_char| {
+        unescape_mixed(text, Self::MODE, &mut |range, unescaped_char| {
             let text_range =
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             // XXX: This method should only be used for highlighting ranges. The unescaped
@@ -340,7 +340,7 @@ impl ast::CString {
             MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
             MixedUnit::HighByte(b) => buf.push(b),
         };
-        unescape_c_string(text, Self::MODE, &mut |char_range, unescaped| match (
+        unescape_mixed(text, Self::MODE, &mut |char_range, unescaped| match (
             unescaped,
             buf.capacity() == 0,
         ) {
