@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::walk_ptrs_ty_depth;
-use clippy_utils::{get_parent_expr, is_diag_trait_item, match_def_path, paths, peel_blocks};
+use clippy_utils::{
+    get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, paths, peel_blocks, strip_pat_refs,
+};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -108,9 +110,12 @@ fn check_qpath(cx: &LateContext<'_>, qpath: hir::QPath<'_>, hir_id: hir::HirId) 
 
 fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     match arg.kind {
-        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+        hir::ExprKind::Closure(&hir::Closure { body, .. })
             // If it's a closure, we need to check what is called.
-            let closure_body = cx.tcx.hir().body(body);
+            if let closure_body = cx.tcx.hir().body(body)
+                && let [param] = closure_body.params
+                && let hir::PatKind::Binding(_, local_id, ..) = strip_pat_refs(param.pat).kind =>
+        {
             let closure_expr = peel_blocks(closure_body.value);
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
@@ -122,14 +127,17 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+                        && path_to_local_id(obj, local_id)
                     {
                         true
                     } else {
                         false
                     }
                 },
-                hir::ExprKind::Call(call, [_]) => {
-                    if let hir::ExprKind::Path(qpath) = call.kind {
+                hir::ExprKind::Call(call, [recv]) => {
+                    if let hir::ExprKind::Path(qpath) = call.kind
+                        && path_to_local_id(recv, local_id)
+                    {
                         check_qpath(cx, qpath, call.hir_id)
                     } else {
                         false

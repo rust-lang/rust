@@ -5,7 +5,8 @@ use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty;
+use rustc_middle::ty::GenericArgKind;
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::iter;
@@ -203,7 +204,7 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_SORT_BY,
             expr.span,
-            "use Vec::sort_by_key here instead",
+            "consider using `sort_by_key`",
             "try",
             format!(
                 "{}.sort{}_by_key(|{}| {})",
@@ -226,7 +227,7 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_SORT_BY,
             expr.span,
-            "use Vec::sort here instead",
+            "consider using `sort`",
             "try",
             format!(
                 "{}.sort{}()",

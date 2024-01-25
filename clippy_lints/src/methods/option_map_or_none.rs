@@ -72,7 +72,7 @@ pub(super) fn check<'tcx>(
                 OPTION_MAP_OR_NONE,
                 expr.span,
                 msg,
-                "try using `map` instead",
+                "consider using `map`",
                 format!("{self_snippet}.map({arg_snippet} {func_snippet})"),
                 Applicability::MachineApplicable,
             );
@@ -85,7 +85,7 @@ pub(super) fn check<'tcx>(
             OPTION_MAP_OR_NONE,
             expr.span,
             msg,
-            "try using `and_then` instead",
+            "consider using `and_then`",
             format!("{self_snippet}.and_then({func_snippet})"),
             Applicability::MachineApplicable,
         );
@@ -97,7 +97,7 @@ pub(super) fn check<'tcx>(
             RESULT_MAP_OR_INTO_OPTION,
             expr.span,
             msg,
-            "try using `ok` instead",
+            "consider using `ok`",
             format!("{self_snippet}.ok()"),
             Applicability::MachineApplicable,
         );
