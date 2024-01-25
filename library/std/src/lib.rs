@@ -354,6 +354,7 @@
 #![feature(map_try_insert)]
 #![feature(new_uninit)]
 #![feature(slice_concat_trait)]
+#![feature(string_allocator_api)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(vec_into_raw_parts)]

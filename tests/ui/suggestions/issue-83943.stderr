@@ -11,6 +11,9 @@ LL | |         "B"
    | |         expected `String`, found `&str`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected struct `String`
+           found reference `&str`
 
 error: aborting due to 1 previous error
 

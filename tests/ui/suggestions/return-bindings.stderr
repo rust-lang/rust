@@ -20,6 +20,8 @@ LL | |
 LL | |     } else {
    | |_____^ expected `String`, found `()`
    |
+   = note: expected struct `String`
+           found unit type `()`
 help: consider returning the local binding `s`
    |
 LL ~     let s: String = if let Some(s) = opt_str {
@@ -52,6 +54,8 @@ LL | |
 LL | |     } else {
    | |_____^ expected `String`, found `()`
    |
+   = note: expected struct `String`
+           found unit type `()`
 help: consider returning the local binding `s`
    |
 LL ~     let s: String = if let Some(s) = opt_str {
@@ -69,6 +73,8 @@ LL | |     } else {
 LL |           String::new()
    |           ^^^^^^^^^^^^^ expected `()`, found `String`
    |
+   = note: expected unit type `()`
+                 found struct `String`
 help: consider returning the local binding `s`
    |
 LL ~     let s = if let Some(s) = opt_str {
@@ -82,6 +88,8 @@ error[E0308]: mismatched types
 LL |         Some(s) => {}
    |                    ^^ expected `String`, found `()`
    |
+   = note: expected struct `String`
+           found unit type `()`
 help: consider returning the local binding `s`
    |
 LL |         Some(s) => { s }
@@ -100,6 +108,8 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+   = note: expected unit type `()`
+                 found struct `String`
 help: consider returning the local binding `s`
    |
 LL |         Some(s) => { s }

@@ -1,11 +1,9 @@
 fn main() {
     let _ = String.new();
-    //~^ ERROR expected value, found struct `String`
-    //~| HELP use the path separator
+    //~^ ERROR expected value, found type alias `String`
 
     let _ = String.default;
-    //~^ ERROR expected value, found struct `String`
-    //~| HELP use the path separator
+    //~^ ERROR expected value, found type alias `String`
 
     let _ = Vec::<()>.with_capacity(1);
     //~^ ERROR expected value, found struct `Vec`

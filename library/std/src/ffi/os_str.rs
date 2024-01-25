@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::collections::TryReserveError;
@@ -10,6 +11,7 @@ use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::slice;
 use crate::str::{from_utf8 as str_from_utf8, FromStr};
+use crate::string::string::String;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -1536,7 +1538,7 @@ impl AsRef<OsStr> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for String {
+impl<A: Allocator> AsRef<OsStr> for String<A> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()

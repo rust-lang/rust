@@ -52,7 +52,7 @@ pub unsafe fn adt_transmutes() {
     // CHECK: as u16 (Transmute);
     // CHECK: as u32 (Transmute);
     // CHECK: as i32 (Transmute);
-    // CHECK: ({{_.*}}.1: std::mem::ManuallyDrop<std::string::String>);
+    // CHECK: ({{_.*}}.1: std::mem::ManuallyDrop<std::string::string::String>);
 
     let _a: u8 = transmute(Some(std::num::NonZeroU8::MAX));
     let _a: i16 = transmute(std::num::Wrapping(0_i16));

@@ -8,7 +8,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    = help: the following other types implement trait `Pattern<'a>`:
              char
              [char; N]
-             &'b String
+             &'b String<A>
              &'b [char; N]
              &'b [char]
              &'c &'b str

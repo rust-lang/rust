@@ -5,8 +5,8 @@
       debug r => _1;
       debug v => _2;
       let mut _0: ();
-      let mut _3: *mut std::string::String;
-      let mut _4: std::string::String;
+      let mut _3: *mut std::string::string::String;
+      let mut _4: std::string::string::String;
       scope 1 {
       }
   

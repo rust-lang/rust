@@ -1333,11 +1333,23 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl Clone for Box<str> {
+impl<A: Allocator + Clone> Clone for Box<str, A> {
     fn clone(&self) -> Self {
-        // this makes a copy of the data
-        let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe { from_boxed_utf8_unchecked(buf) }
+        let alloc = Box::allocator(self).clone();
+        let len = self.len();
+        let buf = RawVec::with_capacity_in(len, alloc);
+        unsafe {
+            ptr::copy_nonoverlapping(self.as_ptr(), buf.ptr(), len);
+            from_boxed_utf8_unchecked(buf.into_box(len).assume_init())
+        }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        if self.len() == other.len() {
+            unsafe { self.as_bytes_mut().copy_from_slice(other.as_bytes()) }
+        } else {
+            *self = other.clone();
+        }
     }
 }
 

@@ -6,7 +6,6 @@ LL |     let _: Alias<()>;
    |
    = help: the following other types implement trait `From<T>`:
              <String as From<char>>
-             <String as From<Box<str>>>
              <String as From<Cow<'a, str>>>
              <String as From<&str>>
              <String as From<&mut str>>

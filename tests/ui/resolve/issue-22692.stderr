@@ -1,23 +1,27 @@
-error[E0423]: expected value, found struct `String`
+error[E0423]: expected value, found type alias `String`
   --> $DIR/issue-22692.rs:2:13
    |
 LL |     let _ = String.new();
-   |             ^^^^^^- help: use the path separator to refer to an item: `::`
+   |             ^^^^^^
+   |
+   = note: can't use a type alias as a constructor
 
-error[E0423]: expected value, found struct `String`
-  --> $DIR/issue-22692.rs:6:13
+error[E0423]: expected value, found type alias `String`
+  --> $DIR/issue-22692.rs:5:13
    |
 LL |     let _ = String.default;
-   |             ^^^^^^- help: use the path separator to refer to an item: `::`
+   |             ^^^^^^
+   |
+   = note: can't use a type alias as a constructor
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:10:13
+  --> $DIR/issue-22692.rs:8:13
    |
 LL |     let _ = Vec::<()>.with_capacity(1);
    |             ^^^^^^^^^- help: use the path separator to refer to an item: `::`
 
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/issue-22692.rs:15:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^
@@ -32,7 +36,7 @@ LL |     <Type!()>::get();
    |     ~~~~~~~~~~~
 
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/issue-22692.rs:15:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^
@@ -47,7 +51,7 @@ LL |     <Type! {}>::get;
    |     ~~~~~~~~~~~~
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:26:9
+  --> $DIR/issue-22692.rs:24:9
    |
 LL |         Vec.new()
    |         ^^^- help: use the path separator to refer to an item: `::`
@@ -58,7 +62,7 @@ LL |     let _ = create!(type method);
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:31:9
+  --> $DIR/issue-22692.rs:29:9
    |
 LL |         Vec.new
    |         ^^^- help: use the path separator to refer to an item: `::`
@@ -69,7 +73,7 @@ LL |     let _ = create!(type field);
    = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/issue-22692.rs:15:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^

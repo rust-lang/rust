@@ -9,7 +9,7 @@
       let mut _6: std::num::Wrapping<i16>;
       let mut _8: Union32;
       let mut _10: Union32;
-      let mut _12: std::mem::MaybeUninit<std::string::String>;
+      let mut _12: std::mem::MaybeUninit<std::string::string::String>;
       scope 1 {
           debug _a => _1;
           let _3: i16;
@@ -24,7 +24,7 @@
                       let _9: i32;
                       scope 5 {
                           debug _a => _9;
-                          let _11: std::mem::ManuallyDrop<std::string::String>;
+                          let _11: std::mem::ManuallyDrop<std::string::string::String>;
                           scope 6 {
                               debug _a => _11;
                           }
@@ -67,8 +67,8 @@
       }
   
       bb1: {
--         _11 = move _12 as std::mem::ManuallyDrop<std::string::String> (Transmute);
-+         _11 = move (_12.1: std::mem::ManuallyDrop<std::string::String>);
+-         _11 = move _12 as std::mem::ManuallyDrop<std::string::string::String> (Transmute);
++         _11 = move (_12.1: std::mem::ManuallyDrop<std::string::string::String>);
           StorageDead(_12);
           _0 = const ();
           StorageDead(_11);

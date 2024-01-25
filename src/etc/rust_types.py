@@ -34,7 +34,7 @@ class RustType(object):
     STD_NONZERO_NUMBER = "StdNonZeroNumber"
 
 
-STD_STRING_REGEX = re.compile(r"^(alloc::(\w+::)+)String$")
+STD_STRING_REGEX = re.compile(r"^(alloc::(\w+::)+)String<.+>$")
 STD_STR_REGEX = re.compile(r"^&(mut )?str$")
 STD_SLICE_REGEX = re.compile(r"^&(mut )?\[.+\]$")
 STD_OS_STRING_REGEX = re.compile(r"^(std::ffi::(\w+::)+)OsString$")
