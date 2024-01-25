@@ -148,12 +148,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    fn expect_hir_owner_node(self, def_id: LocalDefId) -> OwnerNode<'tcx> {
+    pub fn expect_hir_owner_node(self, def_id: LocalDefId) -> OwnerNode<'tcx> {
         self.expect_hir_owner_nodes(def_id).node()
     }
 
     #[inline]
-    fn hir_owner_node(self, owner_id: OwnerId) -> OwnerNode<'tcx> {
+    pub fn hir_owner_node(self, owner_id: OwnerId) -> OwnerNode<'tcx> {
         self.hir_owner_nodes(owner_id).node()
     }
 
@@ -261,10 +261,6 @@ impl<'hir> Map<'hir> {
 
     pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
         self.tcx.opt_hir_owner_node(id)?.generics()
-    }
-
-    pub fn owner(self, id: OwnerId) -> OwnerNode<'hir> {
-        self.tcx.hir_owner_node(id)
     }
 
     pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
@@ -753,10 +749,6 @@ impl<'hir> Map<'hir> {
             "expected foreign mod or inlined parent, found {}",
             self.node_to_string(HirId::make_owner(parent.def_id))
         )
-    }
-
-    pub fn expect_owner(self, def_id: LocalDefId) -> OwnerNode<'hir> {
-        self.tcx.expect_hir_owner_node(def_id)
     }
 
     pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {

@@ -583,7 +583,7 @@ impl UnsafeOpKind {
         suggest_unsafe_block: bool,
     ) {
         let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_owner = tcx.hir().owner(parent_id);
+        let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
