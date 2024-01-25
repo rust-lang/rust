@@ -99,7 +99,7 @@ pub(crate) fn parse_system_registers(
         // supported, it also requires half-float support:
         enable_feature(Feature::asimd, fp && asimd && (!fphp | asimdhp));
         // SIMD extensions require SIMD support:
-        enable_feature(Feature::aes, asimd && bits_shift(aa64isar0, 7, 4) >= 1);
+        enable_feature(Feature::aes, asimd && bits_shift(aa64isar0, 7, 4) >= 2);
         let sha1 = bits_shift(aa64isar0, 11, 8) >= 1;
         let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
         enable_feature(Feature::sha2, asimd && sha1 && sha2);

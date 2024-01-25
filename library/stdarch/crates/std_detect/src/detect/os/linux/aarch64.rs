@@ -252,7 +252,8 @@ impl AtHwcap {
                 let asimd = self.fp && self.asimd && (!self.fphp | self.asimdhp);
                 enable_feature(Feature::asimd, asimd);
                 // Cryptographic extensions require ASIMD
-                enable_feature(Feature::aes, self.aes && asimd);
+                // AES also covers FEAT_PMULL
+                enable_feature(Feature::aes, self.aes && self.pmull && asimd);
                 enable_feature(Feature::sha2, self.sha1 && self.sha2 && asimd);
                 return value;
             }

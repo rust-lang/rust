@@ -30,7 +30,7 @@ features! {
     /// * `"fhm"` - FEAT_FHM
     /// * `"dit"` - FEAT_DIT
     /// * `"flagm"` - FEAT_FLAGM
-    /// * `"ssbs"` - FEAT_SSBS
+    /// * `"ssbs"` - FEAT_SSBS & FEAT_SSBS2
     /// * `"sb"` - FEAT_SB
     /// * `"paca"` - FEAT_PAuth (address authentication)
     /// * `"pacg"` - FEAT_Pauth (generic authentication)
@@ -48,10 +48,10 @@ features! {
     /// * `"bf16"` - FEAT_BF16
     /// * `"rand"` - FEAT_RNG
     /// * `"bti"` - FEAT_BTI
-    /// * `"mte"` - FEAT_MTE
+    /// * `"mte"` - FEAT_MTE & FEAT_MTE2
     /// * `"jsconv"` - FEAT_JSCVT
     /// * `"fcma"` - FEAT_FCMA
-    /// * `"aes"` - FEAT_AES
+    /// * `"aes"` - FEAT_AES & FEAT_PMULL
     /// * `"sha2"` - FEAT_SHA1 & FEAT_SHA256
     /// * `"sha3"` - FEAT_SHA512 & FEAT_SHA3
     /// * `"sm4"` - FEAT_SM3 & FEAT_SM4
@@ -70,7 +70,8 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] asimd: "neon";
     /// FEAT_AdvSIMD (Advanced SIMD/NEON)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] pmull: "pmull";
-    /// FEAT_PMULL (Polynomial Multiply)
+    implied by target_features: ["aes"];
+    /// FEAT_PMULL (Polynomial Multiply) - Implied by `aes` target_feature
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] fp: "fp";
     implied by target_features: ["neon"];
     /// FEAT_FP (Floating point support) - Implied by `neon` target_feature
@@ -101,7 +102,7 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] flagm: "flagm";
     /// FEAT_FLAGM (flag manipulation instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] ssbs: "ssbs";
-    /// FEAT_SSBS (speculative store bypass safe)
+    /// FEAT_SSBS & FEAT_SSBS2 (speculative store bypass safe)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sb: "sb";
     /// FEAT_SB (speculation barrier)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] paca: "paca";
@@ -137,13 +138,13 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] bti: "bti";
     /// FEAT_BTI (Branch Target Identification)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] mte: "mte";
-    /// FEAT_MTE (Memory Tagging Extension)
+    /// FEAT_MTE & FEAT_MTE2 (Memory Tagging Extension)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] jsconv: "jsconv";
     /// FEAT_JSCVT (JavaScript float conversion instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] fcma: "fcma";
     /// FEAT_FCMA (float complex number operations)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] aes: "aes";
-    /// FEAT_AES (AES instructions)
+    /// FEAT_AES (AES SIMD instructions) & FEAT_PMULL (PMULL{2}, 64-bit operand variants)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sha2: "sha2";
     /// FEAT_SHA1 & FEAT_SHA256 (SHA1 & SHA2-256 instructions)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sha3: "sha3";

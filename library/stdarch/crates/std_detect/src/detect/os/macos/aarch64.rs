@@ -89,7 +89,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::bf16, bf16);
     enable_feature(Feature::bti, bti);
     enable_feature(Feature::fcma, fcma);
-    enable_feature(Feature::aes, aes);
+    enable_feature(Feature::aes, aes && pmull);
     enable_feature(Feature::jsconv, jsconv);
     enable_feature(Feature::sha2, sha1 && sha2 && asimd);
     enable_feature(Feature::sha3, sha512 && sha3 && asimd);
