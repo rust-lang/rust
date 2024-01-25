@@ -728,7 +728,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::CoroutineClosure(did, args) => {
-                    // See the above comments.
+                    // See the above comments. The same apply to coroutine-closures.
                     walker.skip_current_subtree();
                     self.compute(args.as_coroutine_closure().tupled_upvars_ty().into());
                     let obligations = self.nominal_obligations(did, args);

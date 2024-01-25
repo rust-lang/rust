@@ -2491,6 +2491,9 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
     // since all this does is make the solver do more work.
     //
     // The code duplication due to the different length args is kind of weird, too.
+    //
+    // See the logic in `structural_traits` in the new solver to understand a bit
+    // more clearly how this *should* look.
     let poly_cache_entry = args.coroutine_closure_sig().map_bound(|sig| {
         let (projection_ty, term) = match tcx.item_name(obligation.predicate.def_id) {
             sym::CallOnceFuture => {

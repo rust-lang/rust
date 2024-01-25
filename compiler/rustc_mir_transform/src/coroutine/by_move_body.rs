@@ -1,3 +1,8 @@
+//! A MIR pass which duplicates a coroutine's body and removes any derefs which
+//! would be present for upvars that are taken by-ref. The result of which will
+//! be a coroutine body that takes all of its upvars by-move, and which we stash
+//! into the `CoroutineInfo` for all coroutines returned by coroutine-closures.
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_middle::mir::visit::MutVisitor;
@@ -87,11 +92,16 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
             && self.by_ref_fields.contains(&idx)
         {
             let (begin, end) = place.projection[1..].split_first().unwrap();
+            // FIXME(async_closures): I'm actually a bit surprised to see that we always
+            // initially deref the by-ref upvars. If this is not actually true, then we
+            // will at least get an ICE that explains why this isn't true :^)
             assert_eq!(*begin, mir::ProjectionElem::Deref);
+            // Peel one ref off of the ty.
+            let peeled_ty = ty.builtin_deref(true).unwrap().ty;
             *place = mir::Place {
                 local: place.local,
                 projection: self.tcx.mk_place_elems_from_iter(
-                    [mir::ProjectionElem::Field(idx, ty.builtin_deref(true).unwrap().ty)]
+                    [mir::ProjectionElem::Field(idx, peeled_ty)]
                         .into_iter()
                         .chain(end.iter().copied()),
                 ),
@@ -101,6 +111,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
     }
 
     fn visit_local_decl(&mut self, local: mir::Local, local_decl: &mut mir::LocalDecl<'tcx>) {
+        // Replace the type of the self arg.
         if local == ty::CAPTURE_STRUCT_LOCAL {
             local_decl.ty = self.by_move_coroutine_ty;
         }

@@ -112,6 +112,10 @@ fn fn_sig_for_fn_abi<'tcx>(
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
 
+            // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
+            // make sure we respect the `target_kind` in that shim.
+            // FIXME(async_closures): This shouldn't be needed, and we should be populating
+            // a separate def-id for these bodies.
             let mut kind = args.as_coroutine_closure().kind();
             if let InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. } = instance.def {
                 kind = target_kind;
@@ -141,6 +145,8 @@ fn fn_sig_for_fn_abi<'tcx>(
             )
         }
         ty::Coroutine(did, args) => {
+            // FIXME(async_closures): This isn't right for `CoroutineByMoveShim`.
+
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();
 

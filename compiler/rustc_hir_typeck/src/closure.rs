@@ -175,6 +175,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     interior,
                 ));
 
+                // Coroutines that come from coroutine closures have not yet determined
+                // their kind ty, so make a fresh infer var which will be constrained
+                // later during upvar analysis. Regular coroutines always have the kind
+                // ty of `().`
                 let kind_ty = match kind {
                     hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure) => self
                         .next_ty_var(TypeVariableOrigin {
@@ -203,6 +207,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
             hir::ClosureKind::CoroutineClosure(kind) => {
+                // async closures always return the type ascribed after the `->` (if present),
+                // and yield `()`.
                 let (bound_return_ty, bound_yield_ty) = match kind {
                     hir::CoroutineDesugaring::Async => {
                         (bound_sig.skip_binder().output(), tcx.types.unit)
@@ -211,6 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         todo!("`gen` and `async gen` closures not supported yet")
                     }
                 };
+                // Compute all of the variables that will be used to populate the coroutine.
                 let resume_ty = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,
@@ -258,20 +265,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,
                 });
+
+                // We need to turn the liberated signature that we got from HIR, which
+                // looks something like `|Args...| -> T`, into a signature that is suitable
+                // for type checking the inner body of the closure, which always returns a
+                // coroutine. To do so, we use the `CoroutineClosureSignature` to compute
+                // the coroutine type, filling in the tupled_upvars_ty and kind_ty with infer
+                // vars which will get constrained during upvar analysis.
+                let coroutine_output_ty = tcx.liberate_late_bound_regions(
+                    expr_def_id.to_def_id(),
+                    closure_args.coroutine_closure_sig().map_bound(|sig| {
+                        sig.to_coroutine(
+                            tcx,
+                            parent_args,
+                            closure_kind_ty,
+                            tcx.coroutine_for_closure(expr_def_id),
+                            coroutine_upvars_ty,
+                        )
+                    }),
+                );
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
-                    tcx.liberate_late_bound_regions(
-                        expr_def_id.to_def_id(),
-                        closure_args.coroutine_closure_sig().map_bound(|sig| {
-                            sig.to_coroutine(
-                                tcx,
-                                parent_args,
-                                closure_kind_ty,
-                                tcx.coroutine_for_closure(expr_def_id),
-                                coroutine_upvars_ty,
-                            )
-                        }),
-                    ),
+                    coroutine_output_ty,
                     liberated_sig.c_variadic,
                     liberated_sig.unsafety,
                     liberated_sig.abi,

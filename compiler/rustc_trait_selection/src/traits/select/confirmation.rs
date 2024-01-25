@@ -88,6 +88,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
 
+            // No nested obligations or confirmation process. The checks that we do in
+            // candidate assembly are sufficient.
             AsyncFnKindHelperCandidate => ImplSource::Builtin(BuiltinImplSource::Misc, vec![]),
 
             CoroutineCandidate => {

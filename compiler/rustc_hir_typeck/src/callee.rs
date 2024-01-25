@@ -166,6 +166,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Some(CallStep::DeferredClosure(def_id, closure_sig));
             }
 
+            // When calling a `CoroutineClosure` that is local to the body, we will
+            // not know what its `closure_kind` is yet. Instead, just fill in the
+            // signature with an infer var for the `tupled_upvars_ty` of the coroutine,
+            // and record a deferred call resolution which will constrain that var
+            // as part of `AsyncFn*` trait confirmation.
             ty::CoroutineClosure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_args = args.as_coroutine_closure();
@@ -183,6 +188,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.to_coroutine(
                         self.tcx,
                         closure_args.parent_args(),
+                        // Inherit the kind ty of the closure, since we're calling this
+                        // coroutine with the most relaxed `AsyncFn*` trait that we can.
+                        // We don't necessarily need to do this here, but it saves us
+                        // computing one more infer var that will get constrained later.
                         closure_args.kind_ty(),
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,

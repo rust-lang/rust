@@ -309,14 +309,19 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 }
 
 // Returns a binder of the tupled inputs types, output type, and coroutine type
-// from a builtin async closure type.
+// from a builtin coroutine-closure type. If we don't yet know the closure kind of
+// the coroutine-closure, emit an additional trait predicate for `AsyncFnKindHelper`
+// which enforces the closure is actually callable with the given trait. When we
+// know the kind already, we can short-circuit this check.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
     env_region: ty::Region<'tcx>,
-) -> Result<(ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>, Vec<ty::Predicate<'tcx>>), NoSolution>
-{
+) -> Result<
+    (ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>, Option<ty::Predicate<'tcx>>),
+    NoSolution,
+> {
     match *self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
@@ -339,7 +344,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                         );
                         (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
                     }),
-                    vec![],
+                    None,
                 ))
             } else {
                 let async_fn_kind_trait_def_id =
@@ -350,6 +355,13 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     .next()
                     .unwrap()
                     .def_id;
+                // When we don't know the closure kind (and therefore also the closure's upvars,
+                // which are computed at the same time), we must delay the computation of the
+                // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
+                // goal functions similarly to the old `ClosureKind` predicate, and ensures that
+                // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
+                // will project to the right upvars for the generator, appending the inputs and
+                // coroutine upvars respecting the closure kind.
                 Ok((
                     args.coroutine_closure_sig().map_bound(|sig| {
                         let tupled_upvars_ty = Ty::new_projection(
@@ -373,14 +385,14 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                         );
                         (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
                     }),
-                    vec![
+                    Some(
                         ty::TraitRef::new(
                             tcx,
                             async_fn_kind_trait_def_id,
                             [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                         )
                         .to_predicate(tcx),
-                    ],
+                    ),
                 ))
             }
         }

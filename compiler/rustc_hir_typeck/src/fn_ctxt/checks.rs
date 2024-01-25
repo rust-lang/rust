@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                // For this check, we do *not* want to treat async coroutine-closures (async blocks)
+                // For this check, we do *not* want to treat async coroutine closures (async blocks)
                 // as proper closures. Doing so would regress type inference when feeding
                 // the return value of an argument-position async block to an argument-position
                 // closure wrapped in a block.

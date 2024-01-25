@@ -275,6 +275,10 @@ pub struct CoroutineClosureArgs<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
+/// See docs for explanation of how each argument is used.
+///
+/// See [`CoroutineClosureSignature`] for how these arguments are put together
+/// to make a callable [`FnSig`] suitable for typeck and borrowck.
 pub struct CoroutineClosureArgsParts<'tcx> {
     /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
@@ -409,17 +413,32 @@ pub struct CoroutineClosureSignature<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
+
+    // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
+    // never actually differ. But we save them rather than recreating them
+    // from scratch just for good measure.
+    /// Always false
     pub c_variadic: bool,
+    /// Always [`hir::Unsafety::Normal`]
     pub unsafety: hir::Unsafety,
+    /// Always [`abi::Abi::RustCall`]
     pub abi: abi::Abi,
 }
 
 impl<'tcx> CoroutineClosureSignature<'tcx> {
+    /// Construct a coroutine from the closure signature. Since a coroutine signature
+    /// is agnostic to the type of generator that is returned (by-ref/by-move),
+    /// the caller must specify what "flavor" of generator that they'd like to
+    /// create. Additionally, they must manually compute the upvars of the closure.
+    ///
+    /// This helper is not really meant to be used directly except for early on
+    /// during typeck, when we want to put inference vars into the kind and upvars tys.
+    /// When the kind and upvars are known, use the other helper functions.
     pub fn to_coroutine(
         self,
         tcx: TyCtxt<'tcx>,
         parent_args: &'tcx [GenericArg<'tcx>],
-        kind_ty: Ty<'tcx>,
+        coroutine_kind_ty: Ty<'tcx>,
         coroutine_def_id: DefId,
         tupled_upvars_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
@@ -427,7 +446,7 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
             tcx,
             ty::CoroutineArgsParts {
                 parent_args,
-                kind_ty,
+                kind_ty: coroutine_kind_ty,
                 resume_ty: self.resume_ty,
                 yield_ty: self.yield_ty,
                 return_ty: self.return_ty,
@@ -439,19 +458,24 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
         Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
     }
 
+    /// Given known upvars and a [`ClosureKind`](ty::ClosureKind), compute the coroutine
+    /// returned by that corresponding async fn trait.
+    ///
+    /// This function expects the upvars to have been computed already, and doesn't check
+    /// that the `ClosureKind` is actually supported by the coroutine-closure.
     pub fn to_coroutine_given_kind_and_upvars(
         self,
         tcx: TyCtxt<'tcx>,
         parent_args: &'tcx [GenericArg<'tcx>],
         coroutine_def_id: DefId,
-        closure_kind: ty::ClosureKind,
+        goal_kind: ty::ClosureKind,
         env_region: ty::Region<'tcx>,
         closure_tupled_upvars_ty: Ty<'tcx>,
         coroutine_captures_by_ref_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
             tcx,
-            closure_kind,
+            goal_kind,
             self.tupled_inputs_ty,
             closure_tupled_upvars_ty,
             coroutine_captures_by_ref_ty,
@@ -461,13 +485,21 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
         self.to_coroutine(
             tcx,
             parent_args,
-            Ty::from_closure_kind(tcx, closure_kind),
+            Ty::from_closure_kind(tcx, goal_kind),
             coroutine_def_id,
             tupled_upvars_ty,
         )
     }
 
-    /// Given a closure kind, compute the tupled upvars that the given coroutine would return.
+    /// Compute the tupled upvars that a coroutine-closure's output coroutine
+    /// would return for the given `ClosureKind`.
+    ///
+    /// When `ClosureKind` is `FnMut`/`Fn`, then this will use the "captures by ref"
+    /// to return a set of upvars which are borrowed with the given `env_region`.
+    ///
+    /// This ensures that the `AsyncFn::call` will return a coroutine whose upvars'
+    /// lifetimes are related to the lifetime of the borrow on the closure made for
+    /// the call. This allows borrowck to enforce the self-borrows correctly.
     pub fn tupled_upvars_by_closure_kind(
         tcx: TyCtxt<'tcx>,
         kind: ty::ClosureKind,

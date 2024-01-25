@@ -121,9 +121,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
 
+                // FIXME: Put these into `else if` blocks above, since they're built-in.
                 self.assemble_closure_candidates(obligation, &mut candidates);
                 self.assemble_async_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
@@ -382,6 +384,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
+        // Check that the self kind extends the goal kind. If it does,
+        // then there's nothing else to check.
         if let Some(closure_kind) = self_ty.to_opt_closure_kind()
             && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
         {

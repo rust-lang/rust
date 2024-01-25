@@ -336,6 +336,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // For coroutine-closures, we additionally must compute the
+        // `coroutine_captures_by_ref_ty` type, which is used to generate the by-ref
+        // version of the coroutine-closure's output coroutine.
         if let UpvarArgs::CoroutineClosure(args) = args {
             let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
                 self.tcx,
@@ -353,7 +356,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
                     )
                     // Skip the captures that are just moving the closure's args
-                    // into the coroutine. These are always by move.
+                    // into the coroutine. These are always by move, and we append
+                    // those later in the `CoroutineClosureSignature` helper functions.
                     .skip(
                         args.as_coroutine_closure()
                             .coroutine_closure_sig()
@@ -365,6 +369,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|captured_place| {
                         let upvar_ty = captured_place.place.ty();
                         let capture = captured_place.info.capture_kind;
+                        // Not all upvars are captured by ref, so use
+                        // `apply_capture_kind_on_capture_ty` to ensure that we
+                        // compute the right captured type.
                         apply_capture_kind_on_capture_ty(
                             self.tcx,
                             upvar_ty,
@@ -394,6 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coroutine_captures_by_ref_ty,
             );
 
+            // Additionally, we can now constrain the coroutine's kind type.
             let ty::Coroutine(_, coroutine_args) =
                 *self.typeck_results.borrow().expr_ty(body.value).kind()
             else {

@@ -1074,6 +1074,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
+            // Lower this as a `CoroutineClosure`. That will ensure that HIR typeck
+            // knows that a `FnDecl` output type like `-> &str` actually means
+            // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async),
             constness: hir::Constness::NotConst,
         });

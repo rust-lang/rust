@@ -61,6 +61,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 )),
                 "this needs to be modified if we're lowering non-async closures"
             );
+            // Make sure to use the args from `DefiningTy` so the right NLL region vids are prepopulated
+            // into the type.
             let args = args.as_coroutine_closure();
             let tupled_upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
                 self.tcx(),
@@ -87,11 +89,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ty::CoroutineArgsParts {
                         parent_args: args.parent_args(),
                         kind_ty: Ty::from_closure_kind(self.tcx(), args.kind()),
+                        return_ty: user_provided_sig.output(),
+                        tupled_upvars_ty,
+                        // For async closures, none of these can be annotated, so just fill
+                        // them with fresh ty vars.
                         resume_ty: next_ty_var(),
                         yield_ty: next_ty_var(),
                         witness: next_ty_var(),
-                        return_ty: user_provided_sig.output(),
-                        tupled_upvars_ty: tupled_upvars_ty,
                     },
                 )
                 .args,

@@ -287,6 +287,13 @@ fn resolve_associated_item<'tcx>(
             {
                 match *rcvr_args.type_at(0).kind() {
                     ty::CoroutineClosure(coroutine_closure_def_id, args) => {
+                        // If we're computing `AsyncFnOnce`/`AsyncFnMut` for a by-ref closure,
+                        // or `AsyncFnOnce` for a by-mut closure, then construct a new body that
+                        // has the right return types.
+                        //
+                        // Specifically, `AsyncFnMut` for a by-ref coroutine-closure just needs
+                        // to have its input and output types fixed (`&mut self` and returning
+                        // `i16` coroutine kind).
                         if target_kind > args.as_coroutine_closure().kind() {
                             Some(Instance {
                                 def: ty::InstanceDef::ConstructCoroutineInClosureShim {

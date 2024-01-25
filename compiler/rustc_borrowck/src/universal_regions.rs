@@ -720,6 +720,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 ty::Binder::dummy(inputs_and_output)
             }
 
+            // Construct the signature of the CoroutineClosure for the purposes of borrowck.
+            // This is pretty straightforward -- we:
+            // 1. first grab the `coroutine_closure_sig`,
+            // 2. compute the self type (`&`/`&mut`/no borrow),
+            // 3. flatten the tupled_input_tys,
+            // 4. construct the correct generator type to return with
+            //    `CoroutineClosureSignature::to_coroutine_given_kind_and_upvars`.
+            // Then we wrap it all up into a list of inputs and output.
             DefiningTy::CoroutineClosure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
