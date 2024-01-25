@@ -167,7 +167,15 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
                     false
                 }
             },
-            ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
+            ExprKind::MethodCall(segment, receiver, &[_arg], _) if segment.ident.name == name.name => {
+                if let Some(ty) = cx.typeck_results().expr_ty_opt(receiver)
+                    && let Some(ty_id) = get_ty_def_id(ty)
+                    && self_arg != ty_id
+                {
+                    // Since this called on a different type, the lint should not be
+                    // triggered here.
+                    return;
+                }
                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                     && trait_id == trait_def_id

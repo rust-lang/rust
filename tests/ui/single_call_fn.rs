@@ -69,6 +69,17 @@ fn e() {
 #[test]
 fn k() {}
 
+mod issue12182 {
+    #[allow(clippy::single_call_fn)]
+    fn print_foo(text: &str) {
+        println!("{text}");
+    }
+
+    fn use_print_foo() {
+        print_foo("foo");
+    }
+}
+
 #[test]
 fn l() {
     k();
