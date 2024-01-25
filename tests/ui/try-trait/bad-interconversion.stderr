@@ -12,6 +12,7 @@ LL |     Ok(Err(123_i32)?)
    = help: the following other types implement trait `From<T>`:
              <u8 as From<bool>>
              <u8 as From<NonZeroU8>>
+             <u8 as From<Char>>
    = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
