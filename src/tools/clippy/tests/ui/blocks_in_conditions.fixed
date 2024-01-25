@@ -85,4 +85,18 @@ fn block_in_match_expr(num: i32) -> i32 {
     }
 }
 
+// issue #12162
+macro_rules! timed {
+    ($name:expr, $body:expr $(,)?) => {{
+        let __scope = ();
+        $body
+    }};
+}
+
+fn issue_12162() {
+    if timed!("check this!", false) {
+        println!();
+    }
+}
+
 fn main() {}

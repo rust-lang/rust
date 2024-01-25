@@ -340,5 +340,22 @@ note: recursive call site
 LL |         Self::default()
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:283:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         let mine = &self.field;
+LL | |         let theirs = &other.field;
+LL | |         mine.eq(theirs)
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:287:9
+   |
+LL |         mine.eq(theirs)
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
 
