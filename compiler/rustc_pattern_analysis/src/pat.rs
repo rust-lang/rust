@@ -142,7 +142,75 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
 /// This is best effort and not good enough for a `Display` impl.
 impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Cx::debug_pat(f, self)
+        let pat = self;
+        let mut first = true;
+        let mut start_or_continue = |s| {
+            if first {
+                first = false;
+                ""
+            } else {
+                s
+            }
+        };
+        let mut start_or_comma = || start_or_continue(", ");
+
+        match pat.ctor() {
+            Struct | Variant(_) | UnionField => {
+                Cx::write_variant_name(f, pat)?;
+                // Without `cx`, we can't know which field corresponds to which, so we can't
+                // get the names of the fields. Instead we just display everything as a tuple
+                // struct, which should be good enough.
+                write!(f, "(")?;
+                for p in pat.iter_fields() {
+                    write!(f, "{}", start_or_comma())?;
+                    write!(f, "{p:?}")?;
+                }
+                write!(f, ")")
+            }
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to detect strings here. However a string literal pattern will never
+            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
+            Ref => {
+                let subpattern = pat.iter_fields().next().unwrap();
+                write!(f, "&{:?}", subpattern)
+            }
+            Slice(slice) => {
+                let mut subpatterns = pat.iter_fields();
+                write!(f, "[")?;
+                match slice.kind {
+                    SliceKind::FixedLen(_) => {
+                        for p in subpatterns {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                    SliceKind::VarLen(prefix_len, _) => {
+                        for p in subpatterns.by_ref().take(prefix_len) {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                        write!(f, "{}", start_or_comma())?;
+                        write!(f, "..")?;
+                        for p in subpatterns {
+                            write!(f, "{}{:?}", start_or_comma(), p)?;
+                        }
+                    }
+                }
+                write!(f, "]")
+            }
+            Bool(b) => write!(f, "{b}"),
+            // Best-effort, will render signed ranges incorrectly
+            IntRange(range) => write!(f, "{range:?}"),
+            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
+            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
+            Str(value) => write!(f, "{value:?}"),
+            Opaque(..) => write!(f, "<constant pattern>"),
+            Or => {
+                for pat in pat.iter_fields() {
+                    write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
+                }
+                Ok(())
+            }
+            Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
+        }
     }
 }
 
@@ -241,8 +309,7 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, Cx>, ctor: Constructor<Cx>) -> Self {
-        let field_tys = pcx.ctor_sub_tys(&ctor);
-        let fields = field_tys.iter().cloned().map(|ty| Self::wildcard(ty)).collect();
+        let fields = pcx.ctor_sub_tys(&ctor).map(|ty| Self::wildcard(ty)).collect();
         Self::new(ctor, fields, pcx.ty.clone())
     }
 

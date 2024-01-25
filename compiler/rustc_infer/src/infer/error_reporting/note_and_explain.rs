@@ -294,6 +294,75 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
+                    (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
+                        if let Some(def_id) = t.principal_def_id()
+                            && tcx.explicit_item_bounds(alias.def_id).skip_binder().iter().any(
+                                |(pred, _span)| match pred.kind().skip_binder() {
+                                    ty::ClauseKind::Trait(trait_predicate)
+                                        if trait_predicate.polarity
+                                            == ty::ImplPolarity::Positive =>
+                                    {
+                                        trait_predicate.def_id() == def_id
+                                    }
+                                    _ => false,
+                                },
+                            ) =>
+                    {
+                        diag.help(format!(
+                            "you can box the `{}` to coerce it to `Box<{}>`, but you'll have to \
+                             change the expected type as well",
+                            values.found, values.expected,
+                        ));
+                    }
+                    (ty::Dynamic(t, _, ty::DynKind::Dyn), _)
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}` so you could box the found value \
+                                 and coerce it to the trait object `Box<dyn {trait_name}>`, you \
+                                 will have to change the expected type as well",
+                                values.found,
+                            ));
+                        }
+                    }
+                    (_, ty::Dynamic(t, _, ty::DynKind::Dyn))
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.expected, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}` so you could change the expected \
+                                 type to `Box<dyn {trait_name}>`",
+                                values.expected,
+                            ));
+                        }
+                    }
+                    (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
+                                 not enabled; that feature it is currently incomplete",
+                                values.found,
+                            ));
+                        }
+                    }
                     (_, ty::Alias(ty::Opaque, opaque_ty))
                     | (ty::Alias(ty::Opaque, opaque_ty), _) => {
                         if opaque_ty.def_id.is_local()

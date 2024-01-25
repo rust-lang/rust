@@ -391,12 +391,18 @@ impl IntRange {
 /// first.
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Finite(lo) = self.lo {
+        if self.is_singleton() {
+            // Only finite ranges can be singletons.
+            let Finite(lo) = self.lo else { unreachable!() };
             write!(f, "{lo}")?;
-        }
-        write!(f, "{}", RangeEnd::Excluded)?;
-        if let Finite(hi) = self.hi {
-            write!(f, "{hi}")?;
+        } else {
+            if let Finite(lo) = self.lo {
+                write!(f, "{lo}")?;
+            }
+            write!(f, "{}", RangeEnd::Excluded)?;
+            if let Finite(hi) = self.hi {
+                write!(f, "{hi}")?;
+            }
         }
         Ok(())
     }
