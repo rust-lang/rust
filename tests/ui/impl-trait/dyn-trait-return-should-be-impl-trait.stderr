@@ -6,6 +6,7 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
+   = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
 
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:7:13
@@ -27,6 +28,7 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |
    = note: expected trait object `(dyn Trait + 'static)`
                     found struct `Struct`
+   = help: `Struct` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
 
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:10:13

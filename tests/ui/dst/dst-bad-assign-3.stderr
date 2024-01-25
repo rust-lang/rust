@@ -8,6 +8,7 @@ LL |     f5.2 = Bar1 {f: 36};
    |
    = note: expected trait object `dyn ToBar`
                     found struct `Bar1`
+   = help: `Bar1` implements `ToBar` so you could box the found value and coerce it to the trait object `Box<dyn ToBar>`, you will have to change the expected type as well
 
 error[E0277]: the size for values of type `dyn ToBar` cannot be known at compilation time
   --> $DIR/dst-bad-assign-3.rs:33:5
