@@ -850,103 +850,6 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
 
         Pat { ty: pat.ty().inner(), span: DUMMY_SP, kind }
     }
-
-    /// Best-effort `Debug` implementation.
-    pub(crate) fn debug_pat(
-        f: &mut fmt::Formatter<'_>,
-        pat: &crate::pat::DeconstructedPat<'_, Self>,
-    ) -> fmt::Result {
-        let mut first = true;
-        let mut start_or_continue = |s| {
-            if first {
-                first = false;
-                ""
-            } else {
-                s
-            }
-        };
-        let mut start_or_comma = || start_or_continue(", ");
-
-        match pat.ctor() {
-            Struct | Variant(_) | UnionField => match pat.ty().kind() {
-                ty::Adt(def, _) if def.is_box() => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    let subpattern = pat.iter_fields().next().unwrap();
-                    write!(f, "box {subpattern:?}")
-                }
-                ty::Adt(..) | ty::Tuple(..) => {
-                    let variant =
-                        match pat.ty().kind() {
-                            ty::Adt(adt, _) => Some(adt.variant(
-                                RustcMatchCheckCtxt::variant_index_for_adt(pat.ctor(), *adt),
-                            )),
-                            ty::Tuple(_) => None,
-                            _ => unreachable!(),
-                        };
-
-                    if let Some(variant) = variant {
-                        write!(f, "{}", variant.name)?;
-                    }
-
-                    // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a tuple
-                    // struct, which should be good enough.
-                    write!(f, "(")?;
-                    for p in pat.iter_fields() {
-                        write!(f, "{}", start_or_comma())?;
-                        write!(f, "{p:?}")?;
-                    }
-                    write!(f, ")")
-                }
-                _ => write!(f, "_"),
-            },
-            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-            // be careful to detect strings here. However a string literal pattern will never
-            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
-            Ref => {
-                let subpattern = pat.iter_fields().next().unwrap();
-                write!(f, "&{:?}", subpattern)
-            }
-            Slice(slice) => {
-                let mut subpatterns = pat.iter_fields();
-                write!(f, "[")?;
-                match slice.kind {
-                    SliceKind::FixedLen(_) => {
-                        for p in subpatterns {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                    }
-                    SliceKind::VarLen(prefix_len, _) => {
-                        for p in subpatterns.by_ref().take(prefix_len) {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                        write!(f, "{}", start_or_comma())?;
-                        write!(f, "..")?;
-                        for p in subpatterns {
-                            write!(f, "{}{:?}", start_or_comma(), p)?;
-                        }
-                    }
-                }
-                write!(f, "]")
-            }
-            Bool(b) => write!(f, "{b}"),
-            // Best-effort, will render signed ranges incorrectly
-            IntRange(range) => write!(f, "{range:?}"),
-            F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            Str(value) => write!(f, "{value}"),
-            Opaque(..) => write!(f, "<constant pattern>"),
-            Or => {
-                for pat in pat.iter_fields() {
-                    write!(f, "{}{:?}", start_or_continue(" | "), pat)?;
-                }
-                Ok(())
-            }
-            Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
-        }
-    }
 }
 
 impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
@@ -978,12 +881,21 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         self.ctors_for_ty(*ty)
     }
 
-    fn debug_pat(
+    fn write_variant_name(
         f: &mut fmt::Formatter<'_>,
         pat: &crate::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
-        Self::debug_pat(f, pat)
+        if let ty::Adt(adt, _) = pat.ty().kind() {
+            if adt.is_box() {
+                write!(f, "Box")?
+            } else {
+                let variant = adt.variant(Self::variant_index_for_adt(pat.ctor(), *adt));
+                write!(f, "{}", variant.name)?;
+            }
+        }
+        Ok(())
     }
+
     fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
         span_bug!(self.scrut_span, "{}", fmt)
     }
