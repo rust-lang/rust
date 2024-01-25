@@ -30,13 +30,13 @@ mod mod3 {
     use mod2::Foo;
 
     #[rustc_clean(cfg="rpass2")]
-    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="rpass3")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
     #[rustc_clean(cfg="rpass2")]
-    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="rpass3")]
+    #[rustc_clean(except="opt_hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

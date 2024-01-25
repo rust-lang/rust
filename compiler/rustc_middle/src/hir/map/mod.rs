@@ -135,12 +135,12 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     fn hir_owner(self, owner: OwnerId) -> Option<OwnerNode<'tcx>> {
-        Some(self.hir_owner_nodes(owner).as_owner()?.node())
+        Some(self.opt_hir_owner_nodes(owner.def_id)?.node())
     }
 
     /// Retrieves the `hir::Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn opt_hir_node(self, id: HirId) -> Option<Node<'tcx>> {
-        let owner = self.hir_owner_nodes(id.owner).as_owner()?;
+        let owner = self.opt_hir_owner_nodes(id.owner)?;
         let node = owner.nodes[id.local_id].as_ref()?;
         Some(node.node)
     }
@@ -213,7 +213,7 @@ impl<'hir> Map<'hir> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
+            let owner = self.tcx.opt_hir_owner_nodes(id.owner)?;
             let node = owner.nodes[id.local_id].as_ref()?;
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
             // HIR indexing should have checked that.
@@ -266,7 +266,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[&id.hir_id.local_id]
+        self.tcx.opt_hir_owner_nodes(id.hir_id.owner).unwrap().bodies[&id.hir_id.local_id]
     }
 
     #[track_caller]

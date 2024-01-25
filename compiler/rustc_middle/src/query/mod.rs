@@ -190,11 +190,11 @@ rustc_queries! {
         desc { |tcx| "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
-    /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
+    /// Gives access to the HIR nodes and bodies inside `key` if it's a HIR owner.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_nodes(key: hir::OwnerId) -> hir::MaybeOwner<&'tcx hir::OwnerNodes<'tcx>> {
+    query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
     }
 
