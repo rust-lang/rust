@@ -89,6 +89,9 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
         }
         ty::Adt(def, _) => {
             let variant = ecx.read_discriminant(&op).ok()?;
+            if op.layout.for_variant(&ecx, variant).abi.is_uninhabited() {
+                return None;
+            }
             let down = ecx.project_downcast(&op, variant).ok()?;
             (def.variants()[variant].fields.len(), Some(variant), down)
         }
