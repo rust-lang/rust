@@ -1403,6 +1403,10 @@ mod prim_usize {}
 /// If `t` points at address `a`, being "dereferenceable" for N bytes means that the memory range
 /// `[a, a + N)` is all contained within a single [allocated object].
 ///
+/// Note that the precise validity invariants for reference types are a work in progress. In the
+/// future, new guarantees may be added. However, the guarantees documented in this section will
+/// never be removed.
+///
 /// [allocated object]: ptr#allocated-object
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref {}
