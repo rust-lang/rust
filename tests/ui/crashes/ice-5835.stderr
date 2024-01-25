@@ -1,5 +1,5 @@
 error: using tabs in doc comments is not recommended
-  --> $DIR/ice-5835.rs:3:10
+  --> $DIR/crashes/ice-5835.rs:3:10
    |
 LL |     /// 位    
    |           ^^^^ help: consider using four spaces per tab
