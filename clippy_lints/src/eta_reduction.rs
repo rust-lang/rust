@@ -21,8 +21,8 @@ use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for closures which just call another function where
-    /// the function can be called directly. `unsafe` functions or calls where types
-    /// get adjusted are ignored.
+    /// the function can be called directly. `unsafe` functions, calls where types
+    /// get adjusted or where the callee is marked `#[track_caller]` are ignored.
     ///
     /// ### Why is this bad?
     /// Needlessly creating a closure adds code for no benefit
@@ -136,7 +136,14 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     .map_or(callee_ty, |a| a.target.peel_refs());
 
                 let sig = match callee_ty_adjusted.kind() {
-                    ty::FnDef(def, _) => cx.tcx.fn_sig(def).skip_binder().skip_binder(),
+                    ty::FnDef(def, _) => {
+                        // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
+                        if cx.tcx.has_attr(*def, sym::track_caller) {
+                            return;
+                        }
+
+                        cx.tcx.fn_sig(def).skip_binder().skip_binder()
+                    },
                     ty::FnPtr(sig) => sig.skip_binder(),
                     ty::Closure(_, subs) => cx
                         .tcx
@@ -186,6 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             },
             ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {
                 if let Some(method_def_id) = typeck.type_dependent_def_id(body.value.hir_id)
+                    && !cx.tcx.has_attr(method_def_id, sym::track_caller)
                     && check_sig(cx, closure, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())
                 {
                     span_lint_and_then(

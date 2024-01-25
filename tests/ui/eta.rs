@@ -346,6 +346,23 @@ fn angle_brackets_and_args() {
     dyn_opt.map(|d| d.method_on_dyn());
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/12199
+fn track_caller_fp() {
+    struct S;
+    impl S {
+        #[track_caller]
+        fn add_location(self) {}
+    }
+
+    #[track_caller]
+    fn add_location() {}
+
+    fn foo(_: fn()) {}
+    fn foo2(_: fn(S)) {}
+    foo(|| add_location());
+    foo2(|s| s.add_location());
+}
+
 fn _late_bound_to_early_bound_regions() {
     struct Foo<'a>(&'a u32);
     impl<'a> Foo<'a> {
