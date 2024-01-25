@@ -201,39 +201,45 @@ impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
     }
 }
 
-pub(crate) struct AssertLint<P> {
-    pub span: Span,
-    pub assert_kind: AssertKind<P>,
-    pub lint_kind: AssertLintKind,
-}
-
-pub(crate) enum AssertLintKind {
-    ArithmeticOverflow,
-    UnconditionalPanic,
+pub(crate) enum AssertLint<P> {
+    ArithmeticOverflow(Span, AssertKind<P>),
+    UnconditionalPanic(Span, AssertKind<P>),
 }
 
 impl<'a, P: std::fmt::Debug> DecorateLint<'a, ()> for AssertLint<P> {
     fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
-        let message = self.assert_kind.diagnostic_message();
-        self.assert_kind.add_args(&mut |name, value| {
+        let span = self.span();
+        let assert_kind = self.panic();
+        let message = assert_kind.diagnostic_message();
+        assert_kind.add_args(&mut |name, value| {
             diag.arg(name, value);
         });
-        diag.span_label(self.span, message);
+        diag.span_label(span, message);
     }
 
     fn msg(&self) -> DiagnosticMessage {
-        match self.lint_kind {
-            AssertLintKind::ArithmeticOverflow => fluent::mir_transform_arithmetic_overflow,
-            AssertLintKind::UnconditionalPanic => fluent::mir_transform_operation_will_panic,
+        match self {
+            AssertLint::ArithmeticOverflow(..) => fluent::mir_transform_arithmetic_overflow,
+            AssertLint::UnconditionalPanic(..) => fluent::mir_transform_operation_will_panic,
         }
     }
 }
 
-impl AssertLintKind {
+impl<P> AssertLint<P> {
     pub fn lint(&self) -> &'static Lint {
         match self {
-            AssertLintKind::ArithmeticOverflow => lint::builtin::ARITHMETIC_OVERFLOW,
-            AssertLintKind::UnconditionalPanic => lint::builtin::UNCONDITIONAL_PANIC,
+            AssertLint::ArithmeticOverflow(..) => lint::builtin::ARITHMETIC_OVERFLOW,
+            AssertLint::UnconditionalPanic(..) => lint::builtin::UNCONDITIONAL_PANIC,
+        }
+    }
+    pub fn span(&self) -> Span {
+        match self {
+            AssertLint::ArithmeticOverflow(sp, _) | AssertLint::UnconditionalPanic(sp, _) => *sp,
+        }
+    }
+    pub fn panic(self) -> AssertKind<P> {
+        match self {
+            AssertLint::ArithmeticOverflow(_, p) | AssertLint::UnconditionalPanic(_, p) => p,
         }
     }
 }

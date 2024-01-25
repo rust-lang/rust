@@ -33,6 +33,7 @@ fn main() {
     INT_MIN % NEG_ONE;
     //~^ ERROR: this operation will panic at runtime
     //~| ERROR: any number modulo -1 will panic/overflow or result in 0
-    // Not caught by lint, we don't look into static items, even if entirely immutable.
+    // ONLY caught by rustc
     INT_MIN % STATIC_NEG_ONE;
+    //~^ ERROR: this operation will panic at runtime
 }
