@@ -56,12 +56,12 @@ pub struct InPublicInterface<'a> {
     pub span: Span,
     pub vis_descr: &'static str,
     pub kind: &'a str,
-    pub vis_sugg: &'static str,
     pub descr: DiagArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
-    pub suggestion: Span,
+    #[suggestion(code = "{vis_sugg}", applicability = "maybe-incorrect", style = "verbose")]
+    pub data: Span,
+    pub vis_sugg: &'static str,
 }
 
 #[derive(Diagnostic)]

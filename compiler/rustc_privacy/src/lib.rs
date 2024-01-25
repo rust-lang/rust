@@ -1358,10 +1358,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 span,
                 vis_descr,
                 kind,
-                vis_sugg,
                 descr: descr.into(),
                 vis_span,
-                suggestion: vis_span,
+                data: vis_span,
+                vis_sugg,
             });
             return false;
         }

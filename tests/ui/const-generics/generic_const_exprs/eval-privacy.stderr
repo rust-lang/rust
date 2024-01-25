@@ -5,10 +5,12 @@ LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^ can't leak private type
 ...
 LL | const fn my_const_fn(val: u8) -> u8 {
-   | -----------------------------------
-   | |
-   | `fn(u8) -> u8 {my_const_fn}` declared as private
-   | help: consider adding `pub` in front of it
+   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+   |
+help: consider adding `pub` in front of it
+   |
+LL | pub {
+   | ~~~
 
 error: aborting due to 1 previous error
 

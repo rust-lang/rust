@@ -55,13 +55,15 @@ error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:22:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `types::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `types::Priv` declared as private
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: type `types::Priv` is more private than the item `Tr::f1`
   --> $DIR/private-in-public-warn.rs:23:9
@@ -127,13 +129,15 @@ error[E0446]: private type `types::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:32:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `types::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `types::Priv` declared as private
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: trait `traits::PrivTr` is more private than the item `traits::Alias`
   --> $DIR/private-in-public-warn.rs:41:5
@@ -312,13 +316,15 @@ error[E0446]: private type `impls::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:109:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `impls::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `impls::Priv` declared as private
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: type `aliases_pub::Priv` is more private than the item `aliases_pub::<impl Pub2>::f`
   --> $DIR/private-in-public-warn.rs:180:9
@@ -336,49 +342,57 @@ error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:183:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `aliases_pub::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `aliases_pub::Priv` declared as private
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:186:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `aliases_pub::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `aliases_pub::Priv` declared as private
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:189:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `aliases_pub::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `aliases_pub::Priv` declared as private
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:192:9
    |
 LL |     struct Priv;
-   |     -----------
-   |     |
-   |     `aliases_pub::Priv` declared as private
-   |     help: consider adding `pub` in front of it
+   |     ----------- `aliases_pub::Priv` declared as private
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: trait `PrivTr1` is more private than the item `aliases_priv::Tr1`
   --> $DIR/private-in-public-warn.rs:222:5
