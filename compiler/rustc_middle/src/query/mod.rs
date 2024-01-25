@@ -977,10 +977,11 @@ rustc_queries! {
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
-    query coerce_unsized_info(key: DefId) -> ty::adjustment::CoerceUnsizedInfo {
+    query coerce_unsized_info(key: DefId) -> Result<ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed> {
         desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        ensure_forwards_result_if_red
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
@@ -1000,8 +1001,9 @@ rustc_queries! {
         desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
     }
 
-    query coherent_trait(def_id: DefId) -> () {
+    query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
+        ensure_forwards_result_if_red
     }
 
     /// Borrow-checks the function body. If this is a closure, returns
@@ -1032,6 +1034,7 @@ rustc_queries! {
             "checking whether impl `{}` follows the orphan rules",
             tcx.def_path_str(key),
         }
+        ensure_forwards_result_if_red
     }
 
     /// Check whether the function has any recursion that could cause the inliner to trigger
@@ -1300,6 +1303,7 @@ rustc_queries! {
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
+        ensure_forwards_result_if_red
     }
     query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
