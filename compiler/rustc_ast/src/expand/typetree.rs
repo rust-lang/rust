@@ -1,7 +1,4 @@
 use std::fmt;
-//use rustc_data_structures::stable_hasher::{HashStable};//, StableHasher};
-//use crate::HashStableContext;
-
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum Kind {
@@ -13,22 +10,6 @@ pub enum Kind {
     Double,
     Unknown,
 }
-//impl<CTX: HashStableContext> HashStable<CTX> for Kind {
-//    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//        clause_kind_discriminant(self).hash_stable(hcx, hasher);
-//    }
-//}
-//fn clause_kind_discriminant(value: &Kind) -> usize {
-//    match value {
-//        Kind::Anything => 0,
-//        Kind::Integer => 1,
-//        Kind::Pointer => 2,
-//        Kind::Half => 3,
-//        Kind::Float => 4,
-//        Kind::Double => 5,
-//        Kind::Unknown => 6,
-//    }
-//}
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TypeTree(pub Vec<Type>);
@@ -40,15 +21,6 @@ pub struct Type {
     pub kind: Kind,
     pub child: TypeTree,
 }
-
-//impl<CTX: HashStableContext> HashStable<CTX> for Type {
-//    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//        self.offset.hash_stable(hcx, hasher);
-//        self.size.hash_stable(hcx, hasher);
-//        self.kind.hash_stable(hcx, hasher);
-//        self.child.0.hash_stable(hcx, hasher);
-//    }
-//}
 
 impl Type {
     pub fn add_offset(self, add: isize) -> Self {

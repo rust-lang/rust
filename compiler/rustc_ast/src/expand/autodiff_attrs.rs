@@ -2,7 +2,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};//, StableO
 use crate::HashStableContext;
 use crate::expand::typetree::TypeTree;
 use thin_vec::ThinVec;
-//use rustc_expand::base::{Annotatable, ExtCtxt};
 use std::str::FromStr;
 
 use crate::NestedMetaItem;
@@ -130,14 +129,6 @@ impl AutoDiffAttrs{
     }
 }
 
-//impl<CTX: HashStableContext> HashStable<CTX> for AutoDiffAttrs {
-//    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//        self.mode.hash_stable(hcx, hasher);
-//        self.ret_activity.hash_stable(hcx, hasher);
-//        self.input_activity.hash_stable(hcx, hasher);
-//    }
-//}
-
 impl AutoDiffAttrs {
     pub fn inactive() -> Self {
         AutoDiffAttrs {
@@ -202,16 +193,3 @@ pub struct AutoDiffItem {
     pub inputs: Vec<TypeTree>,
     pub output: TypeTree,
 }
-
-//impl<CTX: HashStableContext> HashStable<CTX> for AutoDiffItem {
-//    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//        self.source.hash_stable(hcx, hasher);
-//        self.target.hash_stable(hcx, hasher);
-//        self.attrs.hash_stable(hcx, hasher);
-//        for tt in &self.inputs {
-//            tt.0.hash_stable(hcx, hasher);
-//        }
-//        //self.inputs.hash_stable(hcx, hasher);
-//        self.output.0.hash_stable(hcx, hasher);
-//    }
-//}
