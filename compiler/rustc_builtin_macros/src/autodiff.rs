@@ -95,7 +95,7 @@ pub fn expand(
         generics: Generics::default(),
         body: Some(d_body),
     }));
-    let mut tmp = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::autodiff_into)));
+    let mut tmp = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
     let mut attr: ast::Attribute = ast::Attribute {
         kind: ast::AttrKind::Normal(tmp.clone()),
         id: ast::AttrId::from_u32(0),

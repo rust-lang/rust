@@ -693,11 +693,11 @@ fn check_link_name_xor_ordinal(
 }
 
 fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
-    let attrs = tcx.get_attrs(id, sym::autodiff_into);
+    let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs
         .into_iter()
-        .filter(|attr| attr.name_or_empty() == sym::autodiff_into)
+        .filter(|attr| attr.name_or_empty() == sym::rustc_autodiff)
         .collect::<Vec<_>>();
 
     if !attrs.is_empty() {
