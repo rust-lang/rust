@@ -40,7 +40,7 @@ pub enum PathKind {
     Crate,
     /// Absolute path (::foo)
     Abs,
-    // FIXME: Remove this
+    // FIXME: Can we remove this somehow?
     /// `$crate` from macro expansion
     DollarCrate(CrateId),
 }
@@ -59,7 +59,8 @@ impl ModPath {
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
-        let segments = segments.into_iter().collect();
+        let mut segments: SmallVec<_> = segments.into_iter().collect();
+        segments.shrink_to_fit();
         ModPath { kind, segments }
     }
 
