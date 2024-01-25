@@ -205,7 +205,7 @@ pub(crate) fn combine_strs_with_missing_comments(
 
     // We have a missing comment between the first expression and the second expression.
 
-    // Peek the the original source code and find out whether there is a newline between the first
+    // Peek the original source code and find out whether there is a newline between the first
     // expression and the second expression or the missing comment. We will preserve the original
     // layout whenever possible.
     let original_snippet = context.snippet(span);
@@ -663,7 +663,7 @@ impl<'a> CommentRewrite<'a> {
     }
 
     /// Check if any characters were written to the result buffer after the start of the comment.
-    /// when calling [`CommentRewrite::new()`] the result buffer is initiazlied with the opening
+    /// when calling [`CommentRewrite::new()`] the result buffer is initialized with the opening
     /// characters for the comment.
     fn buffer_contains_comment(&self) -> bool {
         // if self.result.len() < self.opener.len() then an empty comment is in the buffer
@@ -1260,15 +1260,15 @@ pub(crate) enum FullCodeCharKind {
     InComment,
     /// Last character of a comment, '\n' for a line comment, '/' for a block comment.
     EndComment,
-    /// Start of a mutlitine string inside a comment
+    /// Start of a multiline string inside a comment
     StartStringCommented,
-    /// End of a mutlitine string inside a comment
+    /// End of a multiline string inside a comment
     EndStringCommented,
     /// Inside a commented string
     InStringCommented,
-    /// Start of a mutlitine string
+    /// Start of a multiline string
     StartString,
-    /// End of a mutlitine string
+    /// End of a multiline string
     EndString,
     /// Inside a string.
     InString,

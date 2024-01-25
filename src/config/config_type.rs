@@ -66,7 +66,7 @@ impl ConfigType for IgnoreList {
 }
 
 macro_rules! create_config {
-    // Options passed in to the macro.
+    // Options passed into the macro.
     //
     // - $i: the ident name of the option
     // - $ty: the type of the option value

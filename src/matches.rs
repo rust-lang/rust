@@ -339,10 +339,10 @@ fn flatten_arm_body<'a>(
                     (true, body)
                 }
             } else {
-                let cond_becomes_muti_line = opt_shape
+                let cond_becomes_multi_line = opt_shape
                     .and_then(|shape| rewrite_cond(context, expr, shape))
                     .map_or(false, |cond| cond.contains('\n'));
-                if cond_becomes_muti_line {
+                if cond_becomes_multi_line {
                     (false, &*body)
                 } else {
                     (can_extend(expr), &*expr)

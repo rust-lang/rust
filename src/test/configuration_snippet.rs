@@ -208,7 +208,7 @@ impl ConfigCodeBlock {
     }
 
     // Extract a code block from the iterator. Behavior:
-    // - Rust code blocks are identifed by lines beginning with "```rust".
+    // - Rust code blocks are identified by lines beginning with "```rust".
     // - One explicit configuration setting is supported per code block.
     // - Rust code blocks with no configuration setting are illegal and cause an
     //   assertion failure, unless the snippet begins with #![rustfmt::skip].

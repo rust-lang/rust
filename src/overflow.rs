@@ -523,7 +523,7 @@ impl<'a> Context<'a> {
                 // However, when the inner function has a prefix or a suffix
                 // (e.g., `foo() as u32`), this budget reduction may produce poorly
                 // formatted code, where a prefix or a suffix being left on its own
-                // line. Here we explicitlly check those cases.
+                // line. Here we explicitly check those cases.
                 if count_newlines(overflowed) == 1 {
                     let rw = self
                         .items

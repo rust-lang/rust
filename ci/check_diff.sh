@@ -28,7 +28,7 @@ function clone_repo() {
     GIT_TERMINAL_PROMPT=0 git clone --quiet $1 --depth 1 $2 && cd $2
 }
 
-# Initialize Git submoduels for the repo.
+# Initialize Git submodules for the repo.
 #
 # Parameters
 # $1: list of directories to initialize
@@ -43,7 +43,7 @@ function init_submodules() {
 # $2: Output file path for the diff
 # $3: Any additional configuration options to pass to rustfmt
 #
-# Globlas:
+# Globals:
 # $OPTIONAL_RUSTFMT_CONFIGS: Optional configs passed to the script from $4
 function create_diff() {
     local config;
@@ -64,7 +64,7 @@ function create_diff() {
 # Parameters
 # $1: Name of the repository (used for logging)
 #
-# Globlas:
+# Globals:
 # $RUSFMT_BIN: Path to the rustfmt master binary. Created when running `compile_rustfmt`
 # $FEATURE_BIN: Path to the rustfmt feature binary. Created when running `compile_rustfmt`
 # $OPTIONAL_RUSTFMT_CONFIGS: Optional configs passed to the script from $4
@@ -101,7 +101,7 @@ function check_diff() {
 # Parameters:
 # $1: Directory where rustfmt will be cloned
 #
-# Globlas:
+# Globals:
 # $REMOTE_REPO: Clone URL to the rustfmt fork that we want to test
 # $FEATURE_BRANCH: Name of the feature branch
 # $OPTIONAL_COMMIT_HASH: Optional commit hash that will be checked out if provided
@@ -111,8 +111,8 @@ function compile_rustfmt() {
     git remote add feature $REMOTE_REPO
     git fetch feature $FEATURE_BRANCH
 
-    CARGO_VERSON=$(cargo --version)
-    echo -e "\ncompiling with $CARGO_VERSON\n"
+    CARGO_VERSION=$(cargo --version)
+    echo -e "\ncompiling with $CARGO_VERSION\n"
 
     # Because we're building standalone binaries we need to set `LD_LIBRARY_PATH` so each
     # binary can find it's runtime dependencies. See https://github.com/rust-lang/rustfmt/issues/5675

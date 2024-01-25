@@ -62,7 +62,7 @@ struct SilentOnIgnoredFilesEmitter {
 }
 
 impl SilentOnIgnoredFilesEmitter {
-    fn handle_non_ignoreable_error(&mut self, db: &Diagnostic) {
+    fn handle_non_ignorable_error(&mut self, db: &Diagnostic) {
         self.has_non_ignorable_parser_errors = true;
         self.can_reset.store(false, Ordering::Release);
         self.emitter.emit_diagnostic(db);
@@ -86,7 +86,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
 
     fn emit_diagnostic(&mut self, db: &Diagnostic) {
         if db.level() == DiagnosticLevel::Fatal {
-            return self.handle_non_ignoreable_error(db);
+            return self.handle_non_ignorable_error(db);
         }
         if let Some(primary_span) = &db.span.primary_span() {
             let file_name = self.source_map.span_to_filename(*primary_span);
@@ -104,7 +104,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
                 }
             };
         }
-        self.handle_non_ignoreable_error(db);
+        self.handle_non_ignorable_error(db);
     }
 }
 
@@ -179,7 +179,7 @@ impl ParseSess {
     ///
     /// * `id` - The name of the module
     /// * `relative` - If Some(symbol), the symbol name is a directory relative to the dir_path.
-    ///   If relative is Some, resolve the submodle at {dir_path}/{symbol}/{id}.rs
+    ///   If relative is Some, resolve the submodule at {dir_path}/{symbol}/{id}.rs
     ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
     /// *  `dir_path` - Module resolution will occur relative to this directory.
     pub(crate) fn default_submod_path(
@@ -190,7 +190,7 @@ impl ParseSess {
     ) -> Result<ModulePathSuccess, ModError<'_>> {
         rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path).or_else(
             |e| {
-                // If resloving a module relative to {dir_path}/{symbol} fails because a file
+                // If resolving a module relative to {dir_path}/{symbol} fails because a file
                 // could not be found, then try to resolve the module relative to {dir_path}.
                 // If we still can't find the module after searching for it in {dir_path},
                 // surface the original error.

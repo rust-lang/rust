@@ -81,7 +81,7 @@ pub(crate) struct FmtVisitor<'a> {
     pub(crate) snippet_provider: &'a SnippetProvider,
     pub(crate) line_number: usize,
     /// List of 1-based line ranges which were annotated with skip
-    /// Both bounds are inclusifs.
+    /// Both bounds are inclusive.
     pub(crate) skipped_range: Rc<RefCell<Vec<(usize, usize)>>>,
     pub(crate) macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,

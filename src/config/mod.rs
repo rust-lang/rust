@@ -287,7 +287,7 @@ impl Config {
                 }
             }
 
-            // If none was found ther either, check in the user's configuration directory.
+            // If none was found there either, check in the user's configuration directory.
             if let Some(mut config_dir) = dirs::config_dir() {
                 config_dir.push("rustfmt");
                 if let Some(path) = get_toml_path(&config_dir)? {
