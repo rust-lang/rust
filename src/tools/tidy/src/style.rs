@@ -373,6 +373,30 @@ pub fn check(path: &Path, bad: &mut bool) {
                     "line longer than {max_columns} chars"
                 );
             }
+            // check comment lengths for rust files
+            else if under_rustfmt
+                && trimmed.starts_with("//")
+                && !line_is_url(is_error_code, max_columns, trimmed)
+            {
+                let stripped = if let Some(stripped) = trimmed.strip_prefix("///") {
+                    stripped
+                } else if let Some(stripped) = trimmed.strip_prefix("//!") {
+                    stripped
+                } else if let Some(stripped) = trimmed.strip_prefix("//") {
+                    stripped
+                } else {
+                    ""
+                };
+
+                if stripped.trim().chars().count() > max_columns {
+                    suppressible_tidy_err!(
+                        err,
+                        skip_line_length,
+                        "comment line longer than {max_columns} chars"
+                    );
+                }
+            };
+
             if !is_style_file && line.contains('\t') {
                 suppressible_tidy_err!(err, skip_tab, "tab character");
             }
