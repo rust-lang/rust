@@ -90,10 +90,13 @@ pub struct AutoDiffAttrs {
     pub input_activity: Vec<DiffActivity>,
 }
 
-fn name(x: &NestedMetaItem) -> String {
+fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
     let segments = &x.meta_item().unwrap().path.segments;
     assert!(segments.len() == 1);
-    segments[0].ident.name.to_string()
+    segments[0].ident
+}
+fn name(x: &NestedMetaItem) -> String {
+    first_ident(x).name.to_string()
 }
 
 impl AutoDiffAttrs{
@@ -139,6 +142,13 @@ impl AutoDiffAttrs {
     pub fn inactive() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Inactive,
+            ret_activity: DiffActivity::None,
+            input_activity: Vec::new(),
+        }
+    }
+    pub fn source() -> Self {
+        AutoDiffAttrs {
+            mode: DiffMode::Source,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }

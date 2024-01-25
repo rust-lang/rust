@@ -1184,7 +1184,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
             println!("item: {:?}", item);
             let source = usage_map.used_map.get(&item).unwrap()
                 .into_iter()
-                .filter_map(|item| match *item {
+                .find_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {
                         let source_id = instance_s.def_id();
                         println!("source_id_inner: {:?}", source_id);
@@ -1205,8 +1205,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
                         None
                     }
                     _ => None,
-                })
-                .next();
+                });
+                //.next();
             println!("source: {:?}", source);
 
             source.map(|inst| {

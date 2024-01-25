@@ -693,16 +693,15 @@ fn check_link_name_xor_ordinal(
 }
 
 fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
-    //let attrs = tcx.get_attrs(id, sym::autodiff_into);
-    let attrs = tcx.get_attrs(id, sym::autodiff);
+    let attrs = tcx.get_attrs(id, sym::autodiff_into);
 
     let attrs = attrs
         .into_iter()
-        .filter(|attr| attr.name_or_empty() == sym::autodiff)
-        //.filter(|attr| attr.name_or_empty() == sym::autodiff_into)
+        .filter(|attr| attr.name_or_empty() == sym::autodiff_into)
         .collect::<Vec<_>>();
-    if attrs.len() > 0 {
-      dbg!("autodiff_attrs len = > 0: {}", attrs.len());
+
+    if !attrs.is_empty() {
+        dbg!("autodiff_attrs amount = {}", attrs.len());
     }
 
     // check for exactly one autodiff attribute on extern block
@@ -723,18 +722,12 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     let list = attr.meta_item_list().unwrap_or_default();
 
     // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
-    if list.len() == 0 {
-        return AutoDiffAttrs {
-            mode: DiffMode::Source,
-            ret_activity: DiffActivity::None,
-            input_activity: Vec::new(),
-        };
-    }
+    if list.len() == 0 { return AutoDiffAttrs::source(); }
 
     let msg_ad_mode = "autodiff attribute must contain autodiff mode";
-    let mode = match &list[0] {
-        NestedMetaItem::MetaItem(MetaItem { path: ref p2, kind: MetaItemKind::Word, .. }) => {
-            p2.segments.first().unwrap().ident
+    let (mode, list) = match list.split_first() {
+        Some((NestedMetaItem::MetaItem(MetaItem { path: ref p1, kind: MetaItemKind::Word, .. }), list)) => {
+            (p1.segments.first().unwrap().ident, list)
         }
         _ => {
             tcx.sess
@@ -749,7 +742,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     // parse mode
     let msg_mode = "mode should be either forward or reverse";
     let mode = match mode.as_str() {
-        //map(|x| x.as_str()) {
         "Forward" => DiffMode::Forward,
         "Reverse" => DiffMode::Reverse,
         _ => {
@@ -763,9 +755,9 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     };
 
     let msg_ret_activity = "autodiff attribute must contain the return activity";
-    let ret_symbol = match &list[1] {
-        NestedMetaItem::MetaItem(MetaItem { path: ref p2, kind: MetaItemKind::Word, .. }) => {
-            p2.segments.first().unwrap().ident
+    let (ret_symbol, list) = match list.split_last() {
+        Some((NestedMetaItem::MetaItem(MetaItem { path: ref p1, kind: MetaItemKind::Word, .. }), list)) => {
+            (p1.segments.first().unwrap().ident, list)
         }
         _ => {
             tcx.sess
@@ -792,7 +784,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
 
     let msg_arg_activity = "autodiff attribute must contain the return activity";
     let mut arg_activities: Vec<DiffActivity> = vec![];
-    for arg in &list[2..] {
+    for arg in list {
         let arg_symbol = match arg {
             NestedMetaItem::MetaItem(MetaItem {
                 path: ref p2, kind: MetaItemKind::Word, ..
@@ -846,6 +838,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
         if ret_activity == DiffActivity::Duplicated
             || ret_activity == DiffActivity::DuplicatedNoNeed
         {
+            dbg!("ret_activity = {:?}", ret_activity);
             tcx.sess
                 .struct_span_err(
                     attr.span, msg_rev_incompatible_arg,

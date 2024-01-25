@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
+#![allow(unused_mut)]
 //use crate::util::check_builtin_macro_attribute;
 //use crate::util::check_autodiff;
 
@@ -9,12 +10,20 @@ use rustc_ast::ptr::P;
 use rustc_ast::{BindingAnnotation, ByRef};
 use rustc_ast::{self as ast, FnHeader, FnSig, Generics, StmtKind, NestedMetaItem, MetaItemKind};
 use rustc_ast::{Fn, ItemKind, Stmt, TyKind, Unsafe, PatKind};
+use rustc_ast::tokenstream::*;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 use rustc_span::Symbol;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::token::{Token, TokenKind};
+
+fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
+    let segments = &x.meta_item().unwrap().path.segments;
+    assert!(segments.len() == 1);
+    segments[0].ident
+}
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -33,7 +42,8 @@ pub fn expand(
             return vec![item];
         }
     };
-    let orig_item: P<ast::Item> = item.clone().expect_item();
+    let mut orig_item: P<ast::Item> = item.clone().expect_item();
+    //dbg!(&orig_item.tokens);
     let primal = orig_item.ident.clone();
 
     // Allow using `#[autodiff(...)]` only on a Fn
@@ -47,6 +57,25 @@ pub fn expand(
             .emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
         return vec![item];
     };
+    // create TokenStream from vec elemtents:
+    // meta_item doesn't have a .tokens field
+    let ts: Vec<Token> = meta_item_vec.clone()[1..].iter().map(|x| {
+        let val = first_ident(x);
+        let t = Token::from_ast_ident(val);
+        t
+    }).collect();
+    let comma: Token = Token::new(TokenKind::Comma, Span::default());
+    let mut ts: Vec<TokenTree> = vec![];
+    for t in meta_item_vec.clone()[1..].iter() {
+        let val = first_ident(t);
+        let t = Token::from_ast_ident(val);
+        ts.push(TokenTree::Token(t, Spacing::Joint));
+        ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
+    }
+    dbg!(&ts);
+    let ts: TokenStream = TokenStream::from_iter(ts);
+    dbg!(&ts);
+
     let x: AutoDiffAttrs = AutoDiffAttrs::from_ast(&meta_item_vec, has_ret);
     dbg!(&x);
     //let span = ecx.with_def_site_ctxt(sig_span);
@@ -66,7 +95,29 @@ pub fn expand(
         generics: Generics::default(),
         body: Some(d_body),
     }));
-    let d_fn = ecx.item(span, d_ident, rustc_ast::AttrVec::default(), asdf);
+    let mut tmp = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::autodiff_into)));
+    let mut attr: ast::Attribute = ast::Attribute {
+        kind: ast::AttrKind::Normal(tmp.clone()),
+        id: ast::AttrId::from_u32(0),
+        style: ast::AttrStyle::Outer,
+        span: span,
+    };
+    orig_item.attrs.push(attr);
+
+    // Now update for d_fn
+    tmp.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
+        dspan: DelimSpan::dummy(),
+        delim: rustc_ast::token::Delimiter::Parenthesis,
+        tokens: ts,
+    });
+    let mut attr2: ast::Attribute = ast::Attribute {
+        kind: ast::AttrKind::Normal(tmp),
+        id: ast::AttrId::from_u32(0),
+        style: ast::AttrStyle::Outer,
+        span: span,
+    };
+    let attr_vec: rustc_ast::AttrVec = thin_vec![attr2];
+    let d_fn = ecx.item(span, d_ident, attr_vec, asdf);
 
     let orig_annotatable = Annotatable::Item(orig_item.clone());
     let d_annotatable = Annotatable::Item(d_fn);

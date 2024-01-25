@@ -269,6 +269,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         dbg!("cg_llvm autodiff");
+        dbg!("Differentiating {} functions", diff_fncs.len());
         unsafe { back::write::differentiate(module, cgcx, diff_fncs, typetrees, config) }
     }
 

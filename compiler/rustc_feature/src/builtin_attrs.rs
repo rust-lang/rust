@@ -361,6 +361,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         large_assignments, experimental!(move_size_limit)
     ),
 
+    // Autodiff
+    ungated!(
+        autodiff_into, Normal,
+        template!(Word, List: r#""...""#),
+        DuplicatesOk,
+    ),
+
     // Entry point:
     gated!(unix_sigpipe, Normal, template!(Word, NameValueStr: "inherit|sig_ign|sig_dfl"), ErrorFollowing, experimental!(unix_sigpipe)),
     ungated!(start, Normal, template!(Word), WarnFollowing),

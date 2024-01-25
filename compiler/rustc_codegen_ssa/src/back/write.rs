@@ -382,6 +382,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
+    dbg!("Differentiating {} functions", autodiff.len());
 
     if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
