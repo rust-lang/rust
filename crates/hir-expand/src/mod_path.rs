@@ -51,7 +51,7 @@ impl ModPath {
         path: ast::Path,
         span_map: SpanMapRef<'_>,
     ) -> Option<ModPath> {
-        convert_path(db, None, path, span_map)
+        convert_path(db, path, span_map)
     }
 
     pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
@@ -199,22 +199,15 @@ fn display_fmt_path(
 
 fn convert_path(
     db: &dyn ExpandDatabase,
-    prefix: Option<ModPath>,
     path: ast::Path,
     span_map: SpanMapRef<'_>,
 ) -> Option<ModPath> {
-    let prefix = match path.qualifier() {
-        Some(qual) => Some(convert_path(db, prefix, qual, span_map)?),
-        None => prefix,
-    };
+    let mut segments = path.segments();
 
-    let segment = path.segment()?;
+    let segment = &segments.next()?;
     let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             if name_ref.text() == "$crate" {
-                if prefix.is_some() {
-                    return None;
-                }
                 ModPath::from_kind(
                     resolve_crate_root(
                         db,
@@ -224,47 +217,50 @@ fn convert_path(
                     .unwrap_or(PathKind::Crate),
                 )
             } else {
-                let mut res = prefix.unwrap_or_else(|| {
-                    ModPath::from_kind(
-                        segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
-                    )
-                });
+                let mut res = ModPath::from_kind(
+                    segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
+                );
                 res.segments.push(name_ref.as_name());
                 res
             }
         }
         ast::PathSegmentKind::SelfTypeKw => {
-            if prefix.is_some() {
-                return None;
-            }
             ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
         }
-        ast::PathSegmentKind::CrateKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            ModPath::from_segments(PathKind::Crate, iter::empty())
-        }
-        ast::PathSegmentKind::SelfKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            ModPath::from_segments(PathKind::Super(0), iter::empty())
-        }
+        ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
+        ast::PathSegmentKind::SelfKw => ModPath::from_segments(PathKind::Super(0), iter::empty()),
         ast::PathSegmentKind::SuperKw => {
-            let nested_super_count = match prefix.map(|p| p.kind) {
-                Some(PathKind::Super(n)) => n,
-                Some(_) => return None,
-                None => 0,
-            };
+            let mut deg = 1;
+            let mut next_segment = None;
+            while let Some(segment) = segments.next() {
+                match segment.kind()? {
+                    ast::PathSegmentKind::SuperKw => deg += 1,
+                    ast::PathSegmentKind::Name(name) => {
+                        next_segment = Some(name.as_name());
+                        break;
+                    }
+                    ast::PathSegmentKind::Type { .. }
+                    | ast::PathSegmentKind::SelfTypeKw
+                    | ast::PathSegmentKind::SelfKw
+                    | ast::PathSegmentKind::CrateKw => return None,
+                }
+            }
 
-            ModPath::from_segments(PathKind::Super(nested_super_count + 1), iter::empty())
+            ModPath::from_segments(PathKind::Super(deg), next_segment)
         }
         ast::PathSegmentKind::Type { .. } => {
             // not allowed in imports
             return None;
         }
     };
+
+    for segment in segments {
+        let name = match segment.kind()? {
+            ast::PathSegmentKind::Name(name) => name.as_name(),
+            _ => return None,
+        };
+        mod_path.segments.push(name);
+    }
 
     // handle local_inner_macros :
     // Basically, even in rustc it is quite hacky:

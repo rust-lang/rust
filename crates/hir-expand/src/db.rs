@@ -1,9 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{
-    salsa::{self, debug::DebugQueryTable},
-    CrateId, FileId, SourceDatabase,
-};
+use base_db::{salsa, CrateId, FileId, SourceDatabase};
 use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};

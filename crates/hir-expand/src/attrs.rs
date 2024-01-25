@@ -219,7 +219,6 @@ impl Attr {
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
-        dbg!(tt);
         let span = tt.first()?.first_span();
         let path_end = tt
             .iter()
