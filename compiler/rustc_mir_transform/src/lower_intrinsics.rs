@@ -87,6 +87,45 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
+                    sym::likely | sym::unlikely | sym::unpredictable => {
+                        let arg;
+                        {
+                            let mut args = args.drain(..);
+                            arg = args.next().unwrap();
+                            assert_eq!(
+                                args.next(),
+                                None,
+                                "Extra argument for {} intrinsic",
+                                intrinsic_name
+                            );
+                        }
+
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(arg.node),
+                            ))),
+                        });
+
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::Expect(
+                                    Operand::Copy(*destination),
+                                    match intrinsic_name {
+                                        sym::likely => ExpectKind::True,
+                                        sym::unlikely => ExpectKind::False,
+                                        sym::unpredictable => ExpectKind::Unpredictable,
+                                        _ => bug!("unexpected intrinsic"),
+                                    },
+                                ),
+                            )),
+                        });
+
+                        let target = target.unwrap();
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::wrapping_add
                     | sym::wrapping_sub
                     | sym::wrapping_mul

@@ -315,6 +315,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
+        bb: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
     ) {
@@ -328,10 +329,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let lltrue = helper.llbb_with_cleanup(self, target);
             let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
+                let expect = if let Some(x) = self.mir[bb].statements.last()
+                    && let mir::StatementKind::Intrinsic(box mir::NonDivergingIntrinsic::Expect(
+                        op,
+                        kind,
+                    )) = &x.kind
+                    && self.codegen_operand(bx, op).immediate() == discr.immediate()
+                {
+                    match kind {
+                        mir::ExpectKind::True => ExpectKind::True,
+                        mir::ExpectKind::False => ExpectKind::False,
+                        mir::ExpectKind::Unpredictable => ExpectKind::Unpredictable,
+                    }
+                } else {
+                    ExpectKind::None
+                };
+
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
-                    1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
+                    0 => bx.cond_br_with_expect(discr.immediate(), llfalse, lltrue, expect),
+                    1 => bx.cond_br_with_expect(discr.immediate(), lltrue, llfalse, expect.not()),
                     _ => bug!(),
                 }
             } else {
@@ -1223,7 +1240,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, targets);
+                self.codegen_switchint_terminator(helper, bx, bb, discr, targets);
                 MergingSucc::False
             }
 

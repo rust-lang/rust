@@ -219,6 +219,9 @@ pub trait MirVisitor {
                 NonDivergingIntrinsic::Assume(operand) => {
                     self.visit_operand(operand, location);
                 }
+                NonDivergingIntrinsic::Expect(operand, ..) => {
+                    self.visit_operand(operand, location);
+                }
                 NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                     src,
                     dst,

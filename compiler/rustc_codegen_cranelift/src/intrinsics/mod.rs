@@ -440,11 +440,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             fx.bcx.ins().trap(TrapCode::User(0));
             return Ok(());
         }
-        sym::likely | sym::unlikely => {
-            intrinsic_args!(fx, args => (a); intrinsic);
-
-            ret.write_cvalue(fx, a);
-        }
         sym::breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
 

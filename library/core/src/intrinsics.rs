@@ -998,6 +998,25 @@ pub const fn unlikely(b: bool) -> bool {
     b
 }
 
+/// Hints to the compiler that branch condition is unpredictable by hardware.
+/// Returns the value passed to it.
+///
+/// Any use other than with `if` statements will probably not have an effect.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_nounwind]
+pub const fn unpredictable(b: bool) -> bool {
+    b
+}
+
 extern "rust-intrinsic" {
     /// Executes a breakpoint trap, for inspection by a debugger.
     ///

@@ -73,6 +73,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.assume(op_val.immediate());
                 }
             }
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(..)) => {}
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
             )) => {

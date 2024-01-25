@@ -1364,7 +1364,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::Intrinsic(box kind) => match kind {
-                NonDivergingIntrinsic::Assume(op) => self.check_operand(op, location),
+                NonDivergingIntrinsic::Assume(op) | NonDivergingIntrinsic::Expect(op, ..) => {
+                    self.check_operand(op, location)
+                }
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     stmt.source_info.span,
                     "Unexpected NonDivergingIntrinsic::CopyNonOverlapping, should only appear after lowering_intrinsics",

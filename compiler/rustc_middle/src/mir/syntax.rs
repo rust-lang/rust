@@ -421,6 +421,23 @@ impl StatementKind<'_> {
     TypeFoldable,
     TypeVisitable
 )]
+pub enum ExpectKind {
+    True,  // condition is probably true
+    False, // condition is probably false
+    Unpredictable,
+}
+
+#[derive(
+    Clone,
+    TyEncodable,
+    TyDecodable,
+    Debug,
+    PartialEq,
+    Hash,
+    HashStable,
+    TypeFoldable,
+    TypeVisitable
+)]
 pub enum NonDivergingIntrinsic<'tcx> {
     /// Denotes a call to the intrinsic function `assume`.
     ///
@@ -429,6 +446,9 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// `x < y` operation, subsequent operations on `x` and `y` could elide various bound checks.
     /// If the argument is `false`, this operation is equivalent to `TerminatorKind::Unreachable`.
     Assume(Operand<'tcx>),
+
+    // Denotes a call to the intrinsic functions `likely`, `unlikely` and `unpredictable`.
+    Expect(Operand<'tcx>, ExpectKind),
 
     /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///

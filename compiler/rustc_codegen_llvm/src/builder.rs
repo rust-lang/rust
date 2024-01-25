@@ -197,6 +197,49 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn cond_br_with_expect(
+        &mut self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+        expect: ExpectKind,
+    ) {
+        // emit the branch instruction
+        let n = unsafe { llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb) };
+
+        // emit expectation metadata
+        match expect {
+            ExpectKind::None => {}
+            ExpectKind::True | ExpectKind::False => unsafe {
+                let s = "branch_weights";
+                let v = [
+                    llvm::LLVMMDStringInContext(
+                        self.cx.llcx,
+                        s.as_ptr() as *const c_char,
+                        s.len() as c_uint,
+                    ),
+                    // 'then' branch weight
+                    self.cx.const_u32(if expect == ExpectKind::True { 2000 } else { 1 }),
+                    // 'else' branch weight
+                    self.cx.const_u32(if expect == ExpectKind::True { 1 } else { 2000 }),
+                ];
+                llvm::LLVMSetMetadata(
+                    n,
+                    llvm::MD_prof as c_uint,
+                    llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+                );
+            },
+            ExpectKind::Unpredictable => unsafe {
+                let v: [&Value; 0] = [];
+                llvm::LLVMSetMetadata(
+                    n,
+                    llvm::MD_unpredictable as c_uint,
+                    llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+                );
+            },
+        }
+    }
+
     fn switch(
         &mut self,
         v: &'ll Value,

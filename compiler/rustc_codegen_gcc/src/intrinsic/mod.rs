@@ -117,12 +117,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
                     self.call(self.type_void(), None, None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
-                sym::likely => {
-                    self.expect(args[0].immediate(), true)
-                }
-                sym::unlikely => {
-                    self.expect(args[0].immediate(), false)
-                }
                 sym::is_val_statically_known => {
                     let a = args[0].immediate();
                     let builtin = self.context.get_builtin_function("__builtin_constant_p");

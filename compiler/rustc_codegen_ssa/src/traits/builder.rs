@@ -29,6 +29,26 @@ pub enum OverflowOp {
     Mul,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ExpectKind {
+    None,
+    True,
+    False,
+    Unpredictable,
+}
+
+impl ExpectKind {
+    #[inline]
+    pub fn not(&self) -> Self {
+        match self {
+            ExpectKind::None => ExpectKind::None,
+            ExpectKind::True => ExpectKind::False,
+            ExpectKind::False => ExpectKind::True,
+            ExpectKind::Unpredictable => ExpectKind::Unpredictable,
+        }
+    }
+}
+
 pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
     + CoverageInfoBuilderMethods<'tcx>
@@ -64,6 +84,22 @@ pub trait BuilderMethods<'a, 'tcx>:
         then_llbb: Self::BasicBlock,
         else_llbb: Self::BasicBlock,
     );
+
+    // Conditional with expectation.
+    //
+    // This function is opt-in for back ends.
+    //
+    // The default implementation calls `cond_br`, i.e., it ignores the expectation.
+    fn cond_br_with_expect(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+        _expect: ExpectKind,
+    ) {
+        self.cond_br(cond, then_llbb, else_llbb)
+    }
+
     fn switch(
         &mut self,
         v: Self::Value,
