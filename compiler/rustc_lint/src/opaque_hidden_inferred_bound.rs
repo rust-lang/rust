@@ -4,7 +4,7 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, print::TraitPredPrintModifiersAndPath, Ty, TypeFoldable,
 };
-use rustc_span::Span;
+use rustc_span::{symbol::kw, Span};
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
@@ -92,6 +92,17 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     opaque.origin,
                     hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_)
                 )
+            {
+                continue;
+            }
+
+            // HACK: `async fn() -> Self` in traits is "ok"...
+            // This is not really that great, but it's similar to why the `-> Self`
+            // return type is well-formed in traits even when `Self` isn't sized.
+            if let ty::Param(param_ty) = *proj_term.kind()
+                && param_ty.name == kw::SelfUpper
+                && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
+                && opaque.in_trait
             {
                 continue;
             }
