@@ -580,7 +580,7 @@ jobs:
       matrix:
         include:
           - name: x86_64-gnu-integration
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
