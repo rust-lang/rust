@@ -916,6 +916,20 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 
+        // FIXME: This is an infinitesimally small portion of the types you can
+        // pass to this intrinsic, if we can ever lazily register intrinsics we
+        // should register these when they're used, that way any type can be
+        // passed.
+        ifn!("llvm.is.constant.i1", fn(i1) -> i1);
+        ifn!("llvm.is.constant.i8", fn(t_i8) -> i1);
+        ifn!("llvm.is.constant.i16", fn(t_i16) -> i1);
+        ifn!("llvm.is.constant.i32", fn(t_i32) -> i1);
+        ifn!("llvm.is.constant.i64", fn(t_i64) -> i1);
+        ifn!("llvm.is.constant.i128", fn(t_i128) -> i1);
+        ifn!("llvm.is.constant.isize", fn(t_isize) -> i1);
+        ifn!("llvm.is.constant.f32", fn(t_f32) -> i1);
+        ifn!("llvm.is.constant.f64", fn(t_f64) -> i1);
+
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(ptr) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
