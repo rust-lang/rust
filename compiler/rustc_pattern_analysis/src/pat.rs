@@ -241,8 +241,7 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, Cx>, ctor: Constructor<Cx>) -> Self {
-        let field_tys = pcx.ctor_sub_tys(&ctor);
-        let fields = field_tys.iter().cloned().map(|ty| Self::wildcard(ty)).collect();
+        let fields = pcx.ctor_sub_tys(&ctor).map(|ty| Self::wildcard(ty)).collect();
         Self::new(ctor, fields, pcx.ty.clone())
     }
 

@@ -3,7 +3,6 @@ use std::fmt;
 use std::iter::once;
 
 use rustc_arena::{DroplessArena, TypedArena};
-use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
@@ -20,7 +19,7 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, TypeCx};
+use crate::{errors, Captures, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -210,11 +209,11 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn ctor_sub_tys(
-        &self,
-        ctor: &Constructor<'p, 'tcx>,
+    pub(crate) fn ctor_sub_tys<'a>(
+        &'a self,
+        ctor: &'a Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> &[RevealedTy<'tcx>] {
+    ) -> impl Iterator<Item = RevealedTy<'tcx>> + ExactSizeIterator + Captures<'a> {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
@@ -222,7 +221,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             cx.dropless_arena.alloc_from_iter(iter.map(|ty| cx.reveal_opaque_ty(ty)))
         }
         let cx = self;
-        match ctor {
+        let slice = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => reveal_and_alloc(cx, fs.iter()),
                 ty::Adt(adt, args) => {
@@ -263,7 +262,8 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
-        }
+        };
+        slice.iter().copied()
     }
 
     /// The number of fields for this constructor.
@@ -964,11 +964,11 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {
         self.ctor_arity(ctor, *ty)
     }
-    fn ctor_sub_tys(
-        &self,
-        ctor: &crate::constructor::Constructor<Self>,
-        ty: &Self::Ty,
-    ) -> &[Self::Ty] {
+    fn ctor_sub_tys<'a>(
+        &'a self,
+        ctor: &'a crate::constructor::Constructor<Self>,
+        ty: &'a Self::Ty,
+    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(
