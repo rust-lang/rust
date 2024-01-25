@@ -4,7 +4,7 @@
   fn adt_transmutes() -> () {
       let mut _0: ();
       let _1: u8;
-      let mut _2: std::option::Option<std::num::NonZeroU8>;
+      let mut _2: std::option::Option<std::num::NonZero<u8>>;
       let mut _4: std::num::Wrapping<i16>;
       let mut _6: std::num::Wrapping<i16>;
       let mut _8: Union32;
@@ -37,7 +37,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = Option::<NonZeroU8>::Some(const _);
+          _2 = Option::<NonZero<u8>>::Some(const _);
           _1 = move _2 as u8 (Transmute);
           StorageDead(_2);
           StorageLive(_3);
