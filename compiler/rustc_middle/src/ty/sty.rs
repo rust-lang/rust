@@ -276,11 +276,31 @@ pub struct CoroutineClosureArgs<'tcx> {
 }
 
 pub struct CoroutineClosureArgsParts<'tcx> {
+    /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
+    /// Represents the maximum calling capability of the closure.
     pub closure_kind_ty: Ty<'tcx>,
+    /// Represents all of the relevant parts of the coroutine returned by this
+    /// coroutine-closure. This signature parts type will have the general
+    /// shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where
+    /// `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the
+    /// coroutine returned by the coroutine-closure.
+    ///
+    /// Use `coroutine_closure_sig` to break up this type rather than using it
+    /// yourself.
     pub signature_parts_ty: Ty<'tcx>,
+    /// The upvars captured by the closure. Remains an inference variable
+    /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
+    /// a function pointer that has the shape `for<'env> fn() -> (&'env T, ...)`.
+    /// This allows us to represent the binder of the self-captures of the closure.
+    ///
+    /// For example, if the coroutine returned by the closure borrows `String`
+    /// from the closure's upvars, this will be `for<'env> fn() -> (&'env String,)`,
+    /// while the `tupled_upvars_ty`, representing the by-move version of the same
+    /// captures, will be `(String,)`.
     pub coroutine_captures_by_ref_ty: Ty<'tcx>,
+    /// Witness type returned by the generator produced by this coroutine-closure.
     pub coroutine_witness_ty: Ty<'tcx>,
 }
 
@@ -496,15 +516,27 @@ pub struct CoroutineArgs<'tcx> {
 pub struct CoroutineArgsParts<'tcx> {
     /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
-    // TODO: why
+
+    /// The coroutines returned by a coroutine-closure's `AsyncFnOnce`/`AsyncFnMut`
+    /// implementations must be distinguished since the former takes the closure's
+    /// upvars by move, and the latter takes the closure's upvars by ref.
+    ///
+    /// This field distinguishes these fields so that codegen can select the right
+    /// body for the coroutine. This has the same type representation as the closure
+    /// kind: `i8`/`i16`/`i32`.
+    ///
+    /// For regular coroutines, this field will always just be `()`.
     pub kind_ty: Ty<'tcx>,
+
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
+
     /// The interior type of the coroutine.
     /// Represents all types that are stored in locals
     /// in the coroutine's body.
     pub witness: Ty<'tcx>,
+
     /// The upvars captured by the closure. Remains an inference variable
     /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
@@ -556,7 +588,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
         self.split().parent_args
     }
 
-    // TODO:
+    // Returns the kind of the coroutine. See docs on the `kind_ty` field.
     pub fn kind_ty(self) -> Ty<'tcx> {
         self.split().kind_ty
     }

@@ -138,7 +138,9 @@ pub enum SelectionCandidate<'tcx> {
     /// generated for an `async ||` expression.
     AsyncClosureCandidate,
 
-    // TODO:
+    /// Implementation of the the `AsyncFnKindHelper` helper trait, which
+    /// is used internally to delay computation for async closures until after
+    /// upvar analysis is performed in HIR typeck.
     AsyncFnKindHelperCandidate,
 
     /// Implementation of a `Coroutine` trait by one of the anonymous types

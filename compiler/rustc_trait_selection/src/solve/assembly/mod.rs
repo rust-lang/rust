@@ -190,7 +190,9 @@ pub(super) trait GoalKind<'tcx>:
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
-    /// TODO:
+    /// Compute the built-in logic of the `AsyncFnKindHelper` helper trait, which
+    /// is used internally to delay computation for async closures until after
+    /// upvar analysis is performed in HIR typeck.
     fn consider_builtin_async_fn_kind_helper_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,

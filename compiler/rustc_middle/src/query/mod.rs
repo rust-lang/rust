@@ -756,7 +756,7 @@ rustc_queries! {
     }
 
     query coroutine_for_closure(def_id: DefId) -> DefId {
-        desc { |_tcx| "TODO" }
+        desc { |_tcx| "Given a coroutine-closure def id, return the def id of the coroutine returned by it" }
         separate_provide_extern
     }
 

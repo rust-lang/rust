@@ -877,7 +877,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::CoroutineClosure(did, args) => {
                 p!(write("{{"));
                 if !self.should_print_verbose() {
-                    p!(write("coroutine closure"));
+                    p!(write("coroutine-closure"));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         if self.tcx().sess.opts.unstable_opts.span_free_formats {

@@ -539,7 +539,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                 )
             }
             mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closure): Lower these to SMIR")
+                todo!("FIXME(async_closures): Lower these to SMIR")
             }
         }
     }

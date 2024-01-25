@@ -47,8 +47,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig,
         );
 
-        // FIXME(async_closures): We must apply the same transformation to our
-        // signature here as we do during closure checking.
+        // FIXME(async_closures): It's kind of wacky that we must apply this
+        // transformation here, since we do the same thing in HIR typeck.
+        // Maybe we could just fix up the canonicalized signature during HIR typeck?
         if let DefiningTy::CoroutineClosure(_, args) =
             self.borrowck_context.universal_regions.defining_ty
         {

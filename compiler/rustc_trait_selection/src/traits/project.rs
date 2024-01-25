@@ -2461,12 +2461,13 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
     let goal_kind =
         tcx.async_fn_trait_kind_from_def_id(obligation.predicate.trait_def_id(tcx)).unwrap();
 
-    let helper_trait_def_id = tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+    let async_fn_kind_helper_trait_def_id =
+        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
     nested.push(obligation.with(
         tcx,
         ty::TraitRef::new(
             tcx,
-            helper_trait_def_id,
+            async_fn_kind_helper_trait_def_id,
             [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
         ),
     ));
@@ -2476,9 +2477,12 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
         ty::ClosureKind::FnOnce => tcx.lifetimes.re_static,
     };
 
-    // FIXME(async_closures): Make this into a lang item.
-    let upvars_projection_def_id =
-        tcx.associated_items(helper_trait_def_id).in_definition_order().next().unwrap().def_id;
+    let upvars_projection_def_id = tcx
+        .associated_items(async_fn_kind_helper_trait_def_id)
+        .filter_by_name_unhygienic(sym::Upvars)
+        .next()
+        .unwrap()
+        .def_id;
 
     // FIXME(async_closures): Confirmation is kind of a mess here. Ideally,
     // we'd short-circuit when we know that the goal_kind >= closure_kind, and not

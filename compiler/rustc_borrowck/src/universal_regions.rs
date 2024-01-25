@@ -98,7 +98,10 @@ pub enum DefiningTy<'tcx> {
     Coroutine(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR is a special kind of closure that returns coroutines.
-    /// TODO: describe how to make the sig...
+    ///
+    /// See the documentation on `CoroutineClosureSignature` for details
+    /// on how to construct the callable signature of the coroutine from
+    /// its args.
     CoroutineClosure(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature

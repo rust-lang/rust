@@ -8,6 +8,7 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
     self, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_span::sym;
 
 use crate::solve::EvalCtxt;
 
@@ -274,7 +275,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
             Ok(Some(closure_args.sig().map_bound(|sig| (sig.inputs()[0], sig.output()))))
         }
 
-        // Coroutine closures don't implement `Fn` traits the normal way.
+        // Coroutine-closures don't implement `Fn` traits the normal way.
         ty::CoroutineClosure(..) => Err(NoSolution),
 
         ty::Bool
@@ -341,11 +342,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     vec![],
                 ))
             } else {
-                let helper_trait_def_id = tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-                // FIXME(async_closures): Make this into a lang item.
+                let async_fn_kind_trait_def_id =
+                    tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
                 let upvars_projection_def_id = tcx
-                    .associated_items(helper_trait_def_id)
-                    .in_definition_order()
+                    .associated_items(async_fn_kind_trait_def_id)
+                    .filter_by_name_unhygienic(sym::Upvars)
                     .next()
                     .unwrap()
                     .def_id;
@@ -375,7 +376,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                     vec![
                         ty::TraitRef::new(
                             tcx,
-                            helper_trait_def_id,
+                            async_fn_kind_trait_def_id,
                             [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
                         )
                         .to_predicate(tcx),

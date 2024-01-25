@@ -101,7 +101,10 @@ pub enum InstanceDef<'tcx> {
         target_kind: ty::ClosureKind,
     },
 
-    /// TODO:
+    /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
+    /// is called on a coroutine-closure whose closure kind is not `FnOnce`. This
+    /// will select the body that is produced by the `ByMoveBody` transform, and thus
+    /// take and use all of its upvars by-move rather than by-ref.
     CoroutineByMoveShim { coroutine_def_id: DefId },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local

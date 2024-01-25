@@ -262,8 +262,16 @@ pub struct CoroutineInfo<'tcx> {
     /// Coroutine drop glue. This field is populated after the state transform pass.
     pub coroutine_drop: Option<Body<'tcx>>,
 
-    /// The body of the coroutine, modified to take its upvars by move.
-    /// TODO:
+    /// The body of the coroutine, modified to take its upvars by move rather than by ref.
+    ///
+    /// This is used by coroutine-closures, which must return a different flavor of coroutine
+    /// when called using `AsyncFnOnce::call_once`. It is produced by the `ByMoveBody` which
+    /// is run right after building the initial MIR, and will only be populated for coroutines
+    /// which come out of the async closure desugaring.
+    ///
+    /// This body should be processed in lockstep with the containing body -- any optimization
+    /// passes, etc, should be applied to this body as well. This is done automatically if
+    /// using `run_passes`.
     pub by_move_body: Option<Body<'tcx>>,
 
     /// The layout of a coroutine. This field is populated after the state transform pass.

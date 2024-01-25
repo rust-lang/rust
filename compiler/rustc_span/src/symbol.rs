@@ -321,6 +321,7 @@ symbols! {
         TyCtxt,
         TyKind,
         Unknown,
+        Upvars,
         Vec,
         VecDeque,
         Wrapper,
