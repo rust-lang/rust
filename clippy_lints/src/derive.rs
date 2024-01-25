@@ -386,7 +386,8 @@ fn check_unsafe_derive_deserialize<'tcx>(
         && cx
             .tcx
             .inherent_impls(def.did())
-            .iter()
+            .into_iter()
+            .flatten()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
@@ -451,12 +452,12 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
-        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, adt.did(),&[])
+        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, adt.did(), &[]))
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[]))
     {
         span_lint_and_sugg(
             cx,

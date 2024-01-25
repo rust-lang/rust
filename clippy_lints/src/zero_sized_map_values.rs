@@ -44,7 +44,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ZeroSizedMapValues => [ZERO_SIZED_MAP_VALUES]);
 
 impl LateLintPass<'_> for ZeroSizedMapValues {
-    fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
+    fn check_ty<'tcx>(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) {
         if !hir_ty.span.from_expansion()
             && !in_trait_impl(cx, hir_ty.hir_id)
             && let ty = ty_from_hir_ty(cx, hir_ty)
@@ -82,7 +82,7 @@ fn in_trait_impl(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     false
 }
 
-fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
+fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     cx.maybe_typeck_results()
         .and_then(|results| {
             if results.hir_owner == hir_ty.hir_id.owner {
