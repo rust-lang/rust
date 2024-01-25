@@ -93,7 +93,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
             // reimplement it even if we wanted to
             cx.tcx.opt_hir_node(hir_id)
         } else {
-            let Some(owner) = cx.tcx.hir_owner_nodes(hir_id.owner).as_owner() else {
+            let Some(owner) = cx.tcx.opt_hir_owner_nodes(hir_id.owner) else {
                 return;
             };
             owner.nodes.get(hir_id.local_id).copied().flatten().map(|p| p.node)
