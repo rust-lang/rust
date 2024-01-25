@@ -1,6 +1,5 @@
 // aux-build:block-on.rs
 // edition:2021
-// build-pass
 
 #![feature(async_closure)]
 
@@ -8,9 +7,9 @@ extern crate block_on;
 
 fn main() {
     block_on::block_on(async {
-        let x = async move |x: &str| {
-            println!("{x}");
-        };
-        x("hello!").await;
+        let c = async |x| {};
+        c(1i32).await;
+        c(2usize).await;
+        //~^ ERROR mismatched types
     });
 }

@@ -394,13 +394,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coroutine_captures_by_ref_ty,
             );
 
-            let ty::Coroutine(_, args) = *self.typeck_results.borrow().expr_ty(body.value).kind()
+            let ty::Coroutine(_, coroutine_args) =
+                *self.typeck_results.borrow().expr_ty(body.value).kind()
             else {
                 bug!();
             };
             self.demand_eqtype(
                 span,
-                args.as_coroutine().kind_ty(),
+                coroutine_args.as_coroutine().kind_ty(),
                 Ty::from_closure_kind(self.tcx, closure_kind),
             );
         }

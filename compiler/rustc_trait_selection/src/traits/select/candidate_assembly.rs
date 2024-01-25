@@ -371,9 +371,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if let Some(closure_kind) = obligation.self_ty().skip_binder().to_opt_closure_kind()
-            && let Some(goal_kind) =
-                obligation.predicate.skip_binder().trait_ref.args.type_at(1).to_opt_closure_kind()
+        let self_ty = obligation.self_ty().skip_binder();
+        let target_kind_ty = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
+
+        // `to_opt_closure_kind` is kind of ICEy when it sees non-int types.
+        if !(self_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+        if !(target_kind_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+
+        if let Some(closure_kind) = self_ty.to_opt_closure_kind()
+            && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
         {
             if closure_kind.extends(goal_kind) {
                 candidates.vec.push(AsyncFnKindHelperCandidate);
