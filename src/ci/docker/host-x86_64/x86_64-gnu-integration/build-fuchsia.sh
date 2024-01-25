@@ -7,7 +7,7 @@ set -euf -o pipefail
 
 INTEGRATION_SHA=8b634b0c1e80a829e46fe9cfa800a9ae72da8b56
 PICK_REFS=(
-    refs/changes/86/965586/2
+    refs/changes/86/965586/9
 )
 
 checkout=fuchsia
