@@ -106,7 +106,18 @@ mod imp {
                     // supported on the current kernel.
                     //
                     // Also fall back in case it is disabled by something like
-                    // seccomp or inside of virtual machines.
+                    // seccomp or inside of docker.
+                    //
+                    // If the `getrandom` syscall is not implemented in the current kernel version it should return an
+                    // `ENOSYS` error. Docker also blocks the whole syscall inside unprivileged containers, and
+                    // returns `EPERM` (instead of `ENOSYS`) when a program tries to invoke the syscall. Because of
+                    // that we need to check for *both* `ENOSYS` and `EPERM`.
+                    //
+                    // Note that Docker's behavior is breaking other projects (notably glibc), so they're planning
+                    // to update their filtering to return `ENOSYS` in a future release:
+                    //
+                    //     https://github.com/moby/moby/issues/42680
+                    //
                     GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
                     return false;
                 } else if err == libc::EAGAIN {
