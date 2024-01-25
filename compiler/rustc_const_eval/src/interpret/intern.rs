@@ -125,6 +125,9 @@ pub fn intern_const_alloc_recursive<
 
     // Intern the base allocation, and initialize todo list for recursive interning.
     let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
+    // First we intern the base allocation, as it requires a different mutability.
+    // This gives us the initial set of nested allocations, which will then all be processed
+    // recursively in the loop below.
     let mut todo: Vec<_> =
         intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().map(|prov| prov).collect();
     // We need to distinguish "has just been interned" from "was already in `tcx`",
