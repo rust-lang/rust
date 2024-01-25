@@ -82,10 +82,24 @@ pub enum InstanceDef<'tcx> {
     /// details on that).
     Virtual(DefId, usize),
 
-    /// `<[FnMut closure] as FnOnce>::call_once`.
+    /// `<[FnMut/Fn closure] as FnOnce>::call_once`.
     ///
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
+    ///
+    /// This generates a body that will just borrow the (owned) self type,
+    /// and dispatch to the `FnMut::call_mut` instance for the closure.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
+
+    /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once` or
+    /// `<[Fn coroutine-closure] as FnMut>::call_mut`.
+    ///
+    /// The body generated here differs significantly from the `ClosureOnceShim`,
+    /// since we need to generate a distinct coroutine type that will move the
+    /// closure's upvars *out* of the closure.
+    ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id: DefId,
+        target_kind: ty::ClosureKind,
+    },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
@@ -168,6 +182,10 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ThreadLocalShim(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim {
+                coroutine_closure_def_id: def_id,
+                target_kind: _,
+            }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -187,6 +205,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Virtual(..)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
@@ -282,6 +301,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -319,6 +339,7 @@ fn fmt_instance(
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),

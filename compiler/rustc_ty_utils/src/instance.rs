@@ -283,10 +283,21 @@ fn resolve_associated_item<'tcx>(
                         tcx.item_name(trait_item_id)
                     ),
                 }
-            } else if tcx.async_fn_trait_kind_from_def_id(trait_ref.def_id).is_some() {
+            } else if let Some(target_kind) = tcx.async_fn_trait_kind_from_def_id(trait_ref.def_id)
+            {
                 match *rcvr_args.type_at(0).kind() {
-                    ty::CoroutineClosure(closure_def_id, args) => {
-                        Some(Instance::new(closure_def_id, args))
+                    ty::CoroutineClosure(coroutine_closure_def_id, args) => {
+                        if target_kind > args.as_coroutine_closure().kind() {
+                            Some(Instance {
+                                def: ty::InstanceDef::ConstructCoroutineInClosureShim {
+                                    coroutine_closure_def_id,
+                                    target_kind,
+                                },
+                                args,
+                            })
+                        } else {
+                            Some(Instance::new(coroutine_closure_def_id, args))
+                        }
                     }
                     _ => bug!(
                         "no built-in definition for `{trait_ref}::{}` for non-lending-closure type",

@@ -3,8 +3,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgs, CAPTURE_STRUCT_LOCAL};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
@@ -65,6 +65,21 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
             build_call_shim(tcx, instance, Some(Adjustment::RefMut), CallKind::Direct(call_mut))
         }
+
+        ty::InstanceDef::ConstructCoroutineInClosureShim {
+            coroutine_closure_def_id,
+            target_kind,
+        } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!("shouldn't be building shim for Fn"),
+            ty::ClosureKind::FnMut => {
+                let body = build_construct_coroutine_by_mut_shim(tcx, coroutine_closure_def_id);
+                // No need to optimize the body, it has already been optimized.
+                return body;
+            }
+            ty::ClosureKind::FnOnce => {
+                build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id)
+            }
+        },
 
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
@@ -980,4 +995,108 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     };
     let source = MirSource::from_instance(ty::InstanceDef::FnPtrAddrShim(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_construct_coroutine_by_move_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coroutine_closure_def_id: DefId,
+) -> Body<'tcx> {
+    let self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
+    let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
+        bug!();
+    };
+
+    let poly_sig = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+        tcx.mk_fn_sig(
+            [self_ty].into_iter().chain(sig.tupled_inputs_ty.tuple_fields()),
+            sig.to_coroutine_given_kind_and_upvars(
+                tcx,
+                args.as_coroutine_closure().parent_args(),
+                tcx.coroutine_for_closure(coroutine_closure_def_id),
+                ty::ClosureKind::FnOnce,
+                tcx.lifetimes.re_erased,
+                args.as_coroutine_closure().tupled_upvars_ty(),
+                args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+            ),
+            sig.c_variadic,
+            sig.unsafety,
+            sig.abi,
+        )
+    });
+    let sig = tcx.liberate_late_bound_regions(coroutine_closure_def_id, poly_sig);
+    let ty::Coroutine(coroutine_def_id, coroutine_args) = *sig.output().kind() else {
+        bug!();
+    };
+
+    let span = tcx.def_span(coroutine_closure_def_id);
+    let locals = local_decls_for_sig(&sig, span);
+
+    let mut fields = vec![];
+    for idx in 1..sig.inputs().len() {
+        fields.push(Operand::Move(Local::from_usize(idx + 1).into()));
+    }
+    for (idx, ty) in args.as_coroutine_closure().upvar_tys().iter().enumerate() {
+        fields.push(Operand::Move(tcx.mk_place_field(
+            Local::from_usize(1).into(),
+            FieldIdx::from_usize(idx),
+            ty,
+        )));
+    }
+
+    let source_info = SourceInfo::outermost(span);
+    let rvalue = Rvalue::Aggregate(
+        Box::new(AggregateKind::Coroutine(coroutine_def_id, coroutine_args)),
+        IndexVec::from_raw(fields),
+    );
+    let stmt = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+    };
+    let statements = vec![stmt];
+    let start_block = BasicBlockData {
+        statements,
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        is_cleanup: false,
+    };
+
+    let source = MirSource::from_instance(ty::InstanceDef::ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id,
+        target_kind: ty::ClosureKind::FnOnce,
+    });
+
+    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_construct_coroutine_by_mut_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coroutine_closure_def_id: DefId,
+) -> Body<'tcx> {
+    let mut body = tcx.optimized_mir(coroutine_closure_def_id).clone();
+    let coroutine_closure_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
+    let ty::CoroutineClosure(_, args) = *coroutine_closure_ty.kind() else {
+        bug!();
+    };
+    let args = args.as_coroutine_closure();
+
+    body.local_decls[RETURN_PLACE].ty =
+        tcx.instantiate_bound_regions_with_erased(args.coroutine_closure_sig().map_bound(|sig| {
+            sig.to_coroutine_given_kind_and_upvars(
+                tcx,
+                args.parent_args(),
+                tcx.coroutine_for_closure(coroutine_closure_def_id),
+                ty::ClosureKind::FnMut,
+                tcx.lifetimes.re_erased,
+                args.tupled_upvars_ty(),
+                args.coroutine_captures_by_ref_ty(),
+            )
+        }));
+    body.local_decls[CAPTURE_STRUCT_LOCAL].ty =
+        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_closure_ty);
+
+    body.source = MirSource::from_instance(ty::InstanceDef::ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id,
+        target_kind: ty::ClosureKind::FnMut,
+    });
+
+    body
 }

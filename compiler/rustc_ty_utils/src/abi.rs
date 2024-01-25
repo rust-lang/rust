@@ -111,11 +111,14 @@ fn fn_sig_for_fn_abi<'tcx>(
                 kind: ty::BoundRegionKind::BrEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(
-                Ty::new_coroutine_closure(tcx, def_id, args),
-                args.as_coroutine_closure().kind(),
-                env_region,
-            );
+
+            let mut kind = args.as_coroutine_closure().kind();
+            if let InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. } = instance.def {
+                kind = target_kind;
+            }
+
+            let env_ty =
+                tcx.closure_env_ty(Ty::new_coroutine_closure(tcx, def_id, args), kind, env_region);
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
@@ -125,7 +128,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         tcx,
                         args.as_coroutine_closure().parent_args(),
                         tcx.coroutine_for_closure(def_id),
-                        args.as_coroutine_closure().kind(),
+                        kind,
                         env_region,
                         args.as_coroutine_closure().tupled_upvars_ty(),
                         args.as_coroutine_closure().coroutine_captures_by_ref_ty(),

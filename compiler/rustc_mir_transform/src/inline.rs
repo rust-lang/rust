@@ -317,6 +317,7 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::ReifyShim(_)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::ThreadLocalShim(..)

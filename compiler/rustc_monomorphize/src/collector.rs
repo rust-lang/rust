@@ -983,6 +983,7 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
+        | InstanceDef::ConstructCoroutineInClosureShim { .. }
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::CloneShim(..)

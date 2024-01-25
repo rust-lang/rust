@@ -1680,6 +1680,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::FnPtrShim(..)
             | ty::InstanceDef::Virtual(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
