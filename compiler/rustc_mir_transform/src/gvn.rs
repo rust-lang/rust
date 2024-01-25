@@ -577,7 +577,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     return None;
                 }
             }
-            ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
+            ProjectionElem::Downcast(name, index) => {
+                if let Some(ct) = self.eval_to_const(value)
+                    && ct.layout.for_variant(&self.ecx, index).abi.is_uninhabited()
+                {
+                    return None;
+                }
+                ProjectionElem::Downcast(name, index)
+            }
             ProjectionElem::Field(f, ty) => {
                 if let Value::Aggregate(_, _, fields) = self.get(value) {
                     return Some(fields[f.as_usize()]);
