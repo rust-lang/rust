@@ -26,45 +26,6 @@ pub(super) struct CoverageSpans {
 }
 
 impl CoverageSpans {
-    /// Extracts coverage-relevant spans from MIR, and associates them with
-    /// their corresponding BCBs.
-    ///
-    /// Returns `None` if no coverage-relevant spans could be extracted.
-    pub(super) fn generate_coverage_spans(
-        mir_body: &mir::Body<'_>,
-        hir_info: &ExtractedHirInfo,
-        basic_coverage_blocks: &CoverageGraph,
-    ) -> Option<Self> {
-        let mut mappings = vec![];
-
-        let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-        mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
-            // Each span produced by the generator represents an ordinary code region.
-            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
-        }));
-
-        if mappings.is_empty() {
-            return None;
-        }
-
-        // Identify which BCBs have one or more mappings.
-        let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        let mut insert = |bcb| {
-            bcb_has_mappings.insert(bcb);
-        };
-        for &BcbMapping { kind, span: _ } in &mappings {
-            match kind {
-                BcbMappingKind::Code(bcb) => insert(bcb),
-            }
-        }
-
-        Some(Self { bcb_has_mappings, mappings })
-    }
-
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
         self.bcb_has_mappings.contains(bcb)
     }
@@ -72,6 +33,43 @@ impl CoverageSpans {
     pub(super) fn all_bcb_mappings(&self) -> impl Iterator<Item = &BcbMapping> {
         self.mappings.iter()
     }
+}
+
+/// Extracts coverage-relevant spans from MIR, and associates them with
+/// their corresponding BCBs.
+///
+/// Returns `None` if no coverage-relevant spans could be extracted.
+pub(super) fn generate_coverage_spans(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Option<CoverageSpans> {
+    let mut mappings = vec![];
+
+    let sorted_spans =
+        from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
+    let coverage_spans = SpansRefiner::refine_sorted_spans(basic_coverage_blocks, sorted_spans);
+    mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
+        // Each span produced by the generator represents an ordinary code region.
+        BcbMapping { kind: BcbMappingKind::Code(bcb), span }
+    }));
+
+    if mappings.is_empty() {
+        return None;
+    }
+
+    // Identify which BCBs have one or more mappings.
+    let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+    let mut insert = |bcb| {
+        bcb_has_mappings.insert(bcb);
+    };
+    for &BcbMapping { kind, span: _ } in &mappings {
+        match kind {
+            BcbMappingKind::Code(bcb) => insert(bcb),
+        }
+    }
+
+    Some(CoverageSpans { bcb_has_mappings, mappings })
 }
 
 /// A BCB is deconstructed into one or more `Span`s. Each `Span` maps to a `CoverageSpan` that
@@ -130,7 +128,7 @@ impl CoverageSpan {
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
 ///  * Carve out (leave uncovered) any span that will be counted by another MIR (notably, closures)
-struct CoverageSpansGenerator<'a> {
+struct SpansRefiner<'a> {
     /// The BasicCoverageBlock Control Flow Graph (BCB CFG).
     basic_coverage_blocks: &'a CoverageGraph,
 
@@ -173,40 +171,15 @@ struct CoverageSpansGenerator<'a> {
     refined_spans: Vec<CoverageSpan>,
 }
 
-impl<'a> CoverageSpansGenerator<'a> {
-    /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
-    /// counted.
-    ///
-    /// The basic steps are:
-    ///
-    /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
-    ///    `BasicCoverageBlockData`.
-    /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
-    ///    are sorted with longer spans before shorter spans; and equal spans are sorted
-    ///    (deterministically) based on "dominator" relationship (if any).
-    /// 3. Traverse the spans in sorted order to identify spans that can be dropped (for instance,
-    ///    if another span or spans are already counting the same code region), or should be merged
-    ///    into a broader combined span (because it represents a contiguous, non-branching, and
-    ///    uninterrupted region of source code).
-    ///
-    ///    Closures are exposed in their enclosing functions as `Assign` `Rvalue`s, and since
-    ///    closures have their own MIR, their `Span` in their enclosing function should be left
-    ///    "uncovered".
-    ///
-    /// Note the resulting vector of `CoverageSpan`s may not be fully sorted (and does not need
-    /// to be).
-    pub(super) fn generate_coverage_spans(
-        mir_body: &mir::Body<'_>,
-        hir_info: &ExtractedHirInfo,
+impl<'a> SpansRefiner<'a> {
+    /// Takes the initial list of (sorted) spans extracted from MIR, and "refines"
+    /// them by merging compatible adjacent spans, removing redundant spans,
+    /// and carving holes in spans when they overlap in unwanted ways.
+    fn refine_sorted_spans(
         basic_coverage_blocks: &'a CoverageGraph,
+        sorted_spans: Vec<CoverageSpan>,
     ) -> Vec<CoverageSpan> {
-        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-
-        let coverage_spans = Self {
+        let this = Self {
             basic_coverage_blocks,
             sorted_spans_iter: sorted_spans.into_iter(),
             some_curr: None,
@@ -217,7 +190,7 @@ impl<'a> CoverageSpansGenerator<'a> {
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
         };
 
-        coverage_spans.to_refined_spans()
+        this.to_refined_spans()
     }
 
     /// Iterate through the sorted `CoverageSpan`s, and return the refined list of merged and
