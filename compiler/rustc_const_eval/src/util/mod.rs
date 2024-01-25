@@ -14,7 +14,7 @@ pub use self::type_name::type_name;
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
 #[inline]
-pub(crate) fn binop_left_homogeneous(op: mir::BinOp) -> bool {
+pub fn binop_left_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
         Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
@@ -26,7 +26,7 @@ pub(crate) fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 /// Classify whether an operator is "right-homogeneous", i.e., the RHS has the
 /// same type as the LHS.
 #[inline]
-pub(crate) fn binop_right_homogeneous(op: mir::BinOp) -> bool {
+pub fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     use rustc_middle::mir::BinOp::*;
     match op {
         Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
