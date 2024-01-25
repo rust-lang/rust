@@ -107,7 +107,10 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Option<ErrorGuaranteed>;
 
-    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+    fn fn_arg_obligation(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> Result<(), ErrorGuaranteed>;
 
     fn try_conversion_context(
         &self,
@@ -142,6 +145,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 (
                     span,
                     predicates
+                        .0
                         .iter()
                         .map(|&predicate| ErrorDescriptor { predicate, index: None })
                         .collect(),
@@ -213,7 +217,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    reported = Some(self.report_fulfillment_error(error));
+                    let guar = self.report_fulfillment_error(error);
+                    reported = Some(guar);
                     // We want to ignore desugarings here: spans are equivalent even
                     // if one is the result of a desugaring and the other is not.
                     let mut span = error.obligation.cause.span;
@@ -224,7 +229,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.reported_trait_errors
                         .borrow_mut()
                         .entry(span)
-                        .or_default()
+                        .or_insert_with(|| (vec![], guar))
+                        .0
                         .push(error.obligation.predicate);
                 }
             }
@@ -447,10 +453,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         {
                             return guar;
                         }
-                        if self.fn_arg_obligation(&obligation) {
-                            // Silence redundant errors on binding acccess that are already
-                            // reported on the binding definition (#56607).
-                            return self.dcx().span_delayed_bug(obligation.cause.span, "error already reported");
+                        // Silence redundant errors on binding acccess that are already
+                        // reported on the binding definition (#56607).
+                        if let Err(guar) = self.fn_arg_obligation(&obligation) {
+                            return guar;
                         }
                         let mut file = None;
                         let (post_message, pre_message, type_def) = self
@@ -981,7 +987,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+    fn fn_arg_obligation(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+    ) -> Result<(), ErrorGuaranteed> {
         if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
             obligation.cause.code()
             && let Some(Node::Expr(arg)) = self.tcx.opt_hir_node(*arg_hir_id)
@@ -991,12 +1000,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 hir::Path { res: hir::def::Res::Local(hir_id), .. },
             )) = arg.kind
             && let Some(Node::Pat(pat)) = self.tcx.opt_hir_node(*hir_id)
-            && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
+            && let Some((preds, guar)) = self.reported_trait_errors.borrow().get(&pat.span)
             && preds.contains(&obligation.predicate)
         {
-            return true;
+            return Err(*guar);
         }
-        false
+        Ok(())
     }
 
     /// When the `E` of the resulting `Result<T, E>` in an expression `foo().bar().baz()?`,
