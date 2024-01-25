@@ -1,7 +1,7 @@
 use std::fmt;
 use std::iter::once;
 
-use rustc_arena::{DroplessArena, TypedArena};
+use rustc_arena::DroplessArena;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
@@ -62,7 +62,7 @@ impl<'tcx> RevealedTy<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct RustcMatchCheckCtxt<'p, 'tcx> {
+pub struct RustcMatchCheckCtxt<'p, 'tcx: 'p> {
     pub tcx: TyCtxt<'tcx>,
     pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
     /// The module in which the match occurs. This is necessary for
@@ -72,8 +72,6 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     /// outside its module and should not be matchable with an empty match statement.
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
-    /// To allocate lowered patterns
-    pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
     /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
@@ -89,13 +87,13 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub known_valid_scrutinee: bool,
 }
 
-impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RustcMatchCheckCtxt").finish()
     }
 }
 
-impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
     /// types, we use the corresponding concrete type if possible.
@@ -844,7 +842,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
