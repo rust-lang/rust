@@ -9,11 +9,9 @@
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(decl_macro)]
-#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

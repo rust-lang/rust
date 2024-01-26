@@ -3,10 +3,8 @@
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(rustc_private)]
 #![feature(try_blocks)]
 #![feature(let_chains)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
