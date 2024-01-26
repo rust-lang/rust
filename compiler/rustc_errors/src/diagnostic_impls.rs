@@ -64,7 +64,7 @@ macro_rules! into_diagnostic_arg_for_number {
             impl IntoDiagnosticArg for $ty {
                 fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
                     // HACK: `FluentNumber` the underline backing struct represent
-                    // numbers using a f64 which can represent all the i128 numbers
+                    // numbers using a f64 which can't represent all the i128 numbers
                     // So in order to be able to use fluent selectors and still
                     // have all the numbers representable we only convert numbers
                     // below a certain threshold.
