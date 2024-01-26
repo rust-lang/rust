@@ -2447,7 +2447,7 @@ impl<'tcx> Ty<'tcx> {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
-    /// Checks if this type is an [`alloc::boxed::Box`].
+    /// Checks if this type is an [`Box`].
     #[inline]
     pub fn is_box(self) -> bool {
         match self.kind() {

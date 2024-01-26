@@ -731,7 +731,7 @@ impl RiscvInterruptKind {
 /// should be passed in order to respect the native ABI.
 ///
 /// Signature contained within this function does not have to match the one present in MIR.
-/// Certain attributtes, like `#[track_caller]` can introduce addtional arguments, which are present in [`FnAbi`], but not in [`rustc_middle::ty::FnSig`].
+/// Certain attributtes, like `#[track_caller]` can introduce addtional arguments, which are present in [`FnAbi`], but not in[`rustc_middle::ty::FnSig`.
 /// This difference is not relevant in most cases, but should still be kept in mind.
 ///
 /// I will do my best to describe this structure, but these

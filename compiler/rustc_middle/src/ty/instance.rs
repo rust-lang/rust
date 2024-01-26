@@ -411,7 +411,7 @@ impl<'tcx> Instance<'tcx> {
         tcx.resolve_instance(tcx.erase_regions(param_env.and((def_id, args))))
     }
 
-    /// Behaves exactly like [`resolve`], but panics on error.
+    /// Behaves exactly like [`Self::resolve`], but panics on error.
     pub fn expect_resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -543,7 +543,7 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    /// Returns an instance representing the function [`drop_in_place`] with its generic argument set to `ty`.
+    /// Returns an instance representing the function [`core::ptr::drop_in_place`] with its generic argument set to `ty`.
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
@@ -642,7 +642,7 @@ impl<'tcx> Instance<'tcx> {
     /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
     /// If a value is not generic, this will do nothing.
     /// This function does not erase lifetimes, so a value like `&'a i32` will remain unchanged.
-    /// For monomorphizing generics while also erasing lifetimes, try using [`instantiate_mir_and_normalize_erasing_regions`].
+    /// For monomorphizing generics while also erasing lifetimes, try using [`Self::instantiate_mir_and_normalize_erasing_regions`].
     pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
@@ -658,8 +658,8 @@ impl<'tcx> Instance<'tcx> {
     /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
     /// This function erases lifetimes, so a value like `&'a i32` will become `&ReErased i32`.
     /// If a value is not generic and has no lifetime info, this will do nothing.
-    /// For monomorphizing generics while preserving lifetimes, use [`instantiate_mir`].
-    /// This function will panic if normalization fails. If you want to handle normalization errors, use [`try_instantiate_mir_and_normalize_erasing_regions`]
+    /// For monomorphizing generics while preserving lifetimes, use [`Self::instantiate_mir`].
+    /// This function will panic if normalization fails. If you want to handle normalization errors, use [`Self::try_instantiate_mir_and_normalize_erasing_regions`]
     #[inline(always)]
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
@@ -677,7 +677,7 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    /// A version of [`instantiate_mir_and_normalize_erasing_regions`] which will returns a [`NormalizationError`] on normalization failure instead of panicking.
+    /// A version of [`Self::instantiate_mir_and_normalize_erasing_regions`] which will returns a [`NormalizationError`] on normalization failure instead of panicking.
     #[inline(always)]
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
