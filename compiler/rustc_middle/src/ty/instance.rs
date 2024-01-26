@@ -341,6 +341,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
+    /// Creates a new instance of type `InstanceDef::Item`, with appropiate `def_id` and `args` set. 
     pub fn new(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
         assert!(
             !args.has_escaping_bound_vars(),
@@ -365,6 +366,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     #[inline]
+    /// Returns the `def_id` of this instance.
     pub fn def_id(&self) -> DefId {
         self.def.def_id()
     }
@@ -408,7 +410,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.erase_regions(args);
         tcx.resolve_instance(tcx.erase_regions(param_env.and((def_id, args))))
     }
-
+    /// Behaves exactly like [`resolve`], but panics on error.
     pub fn expect_resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -524,7 +526,7 @@ impl<'tcx> Instance<'tcx> {
             })
         }
     }
-
+    /// Returns an instance representing closure of type `requested_kind` with `def_id` and subst set to `args`.
     pub fn resolve_closure(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
@@ -538,7 +540,7 @@ impl<'tcx> Instance<'tcx> {
             _ => Instance::new(def_id, args),
         }
     }
-
+    /// Returns an instance representing the function [`drop_in_place`] with its generic argument set to `ty`.
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
@@ -571,7 +573,6 @@ impl<'tcx> Instance<'tcx> {
         debug!(?self_ty, args=?tupled_inputs_ty.tuple_fields());
         Instance { def, args }
     }
-
     pub fn try_resolve_item_for_coroutine(
         tcx: TyCtxt<'tcx>,
         trait_item_id: DefId,
@@ -619,7 +620,6 @@ impl<'tcx> Instance<'tcx> {
             Some(Instance::new(trait_item_id, rcvr_args))
         }
     }
-
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
     /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
     /// cases the MIR body is expressed in terms of the types found in the substitution array.
@@ -633,7 +633,10 @@ impl<'tcx> Instance<'tcx> {
     fn args_for_mir_body(&self) -> Option<GenericArgsRef<'tcx>> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
-
+    /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
+    /// If a value is not generic, this will do nothing.
+    /// This function does not erase lifetimes, so a value like `&'a i32` will remain unchanged.
+    /// For monomorphizing generics while also erasing lifetimes, try using [`instantiate_mir_and_normalize_erasing_regions`].
     pub fn instantiate_mir<T>(&self, tcx: TyCtxt<'tcx>, v: EarlyBinder<&T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
@@ -645,7 +648,11 @@ impl<'tcx> Instance<'tcx> {
             v.instantiate_identity()
         }
     }
-
+    /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
+    /// This function erases lifetimes, so a value like `&'a i32` will become `&ReErased i32`.
+    /// If a value is not generic and has no lifetime info, this will do nothing.
+    /// For monomorphizing generics while preserving lifetimes, use [`instantiate_mir`].
+    /// This function will panic if normalization fails. If you want to handle normalization errors, use [`try_instantiate_mir_and_normalize_erasing_regions`]
     #[inline(always)]
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
@@ -662,7 +669,7 @@ impl<'tcx> Instance<'tcx> {
             tcx.normalize_erasing_regions(param_env, v.skip_binder())
         }
     }
-
+    /// A version of [`instantiate_mir_and_normalize_erasing_regions`] which will returns a [`NormalizationError`] on normalization failure instead of panicking.
     #[inline(always)]
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
@@ -823,6 +830,7 @@ fn needs_fn_once_adapter_shim(
 
 // Set bits represent unused generic parameters.
 // An empty set indicates that all parameters are used.
+/// A data structure used to store information about which generic parameters are in use, and which are not.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Decodable, Encodable, HashStable)]
 pub struct UnusedGenericParams(FiniteBitSet<u32>);
 
@@ -833,36 +841,37 @@ impl Default for UnusedGenericParams {
 }
 
 impl UnusedGenericParams {
+    /// Creates a new [`UnusedGenericParams`] where all generic pameters are set as unused.
     pub fn new_all_unused(amount: u32) -> Self {
         let mut bitset = FiniteBitSet::new_empty();
         bitset.set_range(0..amount);
         Self(bitset)
     }
-
+     /// Creates a new [`UnusedGenericParams`] where all generic pameters are set as used.
     pub fn new_all_used() -> Self {
         Self(FiniteBitSet::new_empty())
     }
-
+    /// Marks a generic paramenter at index `idx` as used.
     pub fn mark_used(&mut self, idx: u32) {
         self.0.clear(idx);
     }
-
+    /// Returns true if generic paramenter at index `idx` unused, and false otherwise.
     pub fn is_unused(&self, idx: u32) -> bool {
         self.0.contains(idx).unwrap_or(false)
     }
-
+    /// Returns true if generic paramenter at index `idx` used, and false otherwise.
     pub fn is_used(&self, idx: u32) -> bool {
         !self.is_unused(idx)
     }
-
+    /// Returns true if all generic parameters are used, and false otherwise.
     pub fn all_used(&self) -> bool {
         self.0.is_empty()
     }
-
+    /// Turns a [`UnusedGenericParams`] into its underlying bit representation.
     pub fn bits(&self) -> u32 {
         self.0.0
     }
-
+    /// Creates a [`UnusedGenericParams`] from its bit representation.
     pub fn from_bits(bits: u32) -> UnusedGenericParams {
         UnusedGenericParams(FiniteBitSet(bits))
     }
