@@ -454,6 +454,25 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().end_with_conditional(None, cond, then_block, else_block)
     }
 
+    fn cond_br_with_expect(
+        &mut self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+        expect: ExpectKind,
+    ) {
+        // emit expectation
+        match expect {
+            ExpectKind::None => {}
+            ExpectKind::True => self.expect(cond.immediate(), true),
+            ExpectKind::False => self.expect(cond.immediate(), false),
+            ExpectKind::Unpredictable => {} // FIXME
+        }
+
+        // emit the branch instruction
+        self.llbb().end_with_conditional(None, cond, then_block, else_block)
+    }
+
     fn switch(&mut self, value: RValue<'gcc>, default_block: Block<'gcc>, cases: impl ExactSizeIterator<Item = (u128, Block<'gcc>)>) {
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
