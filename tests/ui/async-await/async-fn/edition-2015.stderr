@@ -1,0 +1,22 @@
+error: expected one of `:` or `|`, found `)`
+  --> $DIR/edition-2015.rs:3:26
+   |
+LL | fn foo(x: impl async Fn()) -> impl async Fn() {}
+   |                          ^ expected one of `:` or `|`
+
+error: expected one of `(`, `)`, `+`, `,`, `::`, or `<`, found `Fn`
+  --> $DIR/edition-2015.rs:3:22
+   |
+LL | fn foo(x: impl async Fn()) -> impl async Fn() {}
+   |                     -^^ expected one of `(`, `)`, `+`, `,`, `::`, or `<`
+   |                     |
+   |                     help: missing `,`
+
+error: expected one of `(`, `+`, `::`, `<`, `where`, or `{`, found `Fn`
+  --> $DIR/edition-2015.rs:3:42
+   |
+LL | fn foo(x: impl async Fn()) -> impl async Fn() {}
+   |                                          ^^ expected one of `(`, `+`, `::`, `<`, `where`, or `{`
+
+error: aborting due to 3 previous errors
+
