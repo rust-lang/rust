@@ -2788,7 +2788,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
 ///
 /// # Allocation behavior
 ///
-/// In general `Vec` does not guarantee any particular grow/allocation stategy.
+/// In general `Vec` does not guarantee any particular growth or allocation strategy.
 /// That also applies to this trait impl.
 ///
 /// **Note:** This section covers implementation details and is therefore exempt from
@@ -2798,20 +2798,20 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
 /// depending on the supplied iterator:
 ///
 /// * preallocate based on [`Iterator::size_hint()`]
-///   * and panic if the number of items is not outside the provided lower/upper bounds
+///   * and panic if the number of items is outside the provided lower/upper bounds
 /// * use an amortized growth strategy similar to `pushing` one item at a time
 /// * perform the iteration in-place on the original allocation backing the iterator
 ///
 /// The last case warrants some attention. It is an optimization that in many cases reduces peak memory
-/// consumption and improves cache locality. But when a large number of big, short-lived
-/// allocations are created, only a small fraction of their items gets collected, no further use
-/// is made of the spare capacity and the resulting `Vec` is moved into a longer-lived structure
-/// this can lead to the large allocations having their lifetimes unnecessarily extended which
-/// can result in increased memory footprint.
+/// consumption and improves cache locality. But when big, short-lived allocations are created,
+/// only a small fraction of their items get collected, no further use is made of the spare capacity
+/// and the resulting `Vec` is moved into a longer-lived structure, then this can lead to the large
+/// allocations having their lifetimes unnecessarily extended which can result in increased memory
+/// footprint.
 ///
-/// In cases where this is an issue the excess capacity can be discard with [`Vec::shrink_to()`],
-/// [`Vec::shrink_to_fit()`] or by collecting into [`Box<[T]>`][owned slice] instead which additionally reduces
-/// the size of the longlived struct.
+/// In cases where this is an issue, the excess capacity can be discarded with [`Vec::shrink_to()`],
+/// [`Vec::shrink_to_fit()`] or by collecting into [`Box<[T]>`][owned slice] instead, which additionally reduces
+/// the size of the long-lived struct.
 ///
 /// [owned slice]: Box
 ///
@@ -2819,8 +2819,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
 /// # use std::sync::Mutex;
 /// static LONG_LIVED: Mutex<Vec<Vec<u16>>> = Mutex::new(Vec::new());
 ///
-/// // many short-lived allocations
-/// for i in 0..100 {
+/// for i in 0..10 {
 ///     let big_temporary: Vec<u16> = (0..1024).collect();
 ///     // discard most items
 ///     let mut result: Vec<_> = big_temporary.into_iter().filter(|i| i % 100 == 0).collect();
