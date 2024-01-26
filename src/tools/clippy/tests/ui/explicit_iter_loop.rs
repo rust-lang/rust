@@ -5,7 +5,8 @@
     clippy::needless_borrow,
     clippy::deref_addrof,
     clippy::unnecessary_mut_passed,
-    dead_code
+    dead_code,
+    non_local_definitions,
 )]
 
 use core::slice;
