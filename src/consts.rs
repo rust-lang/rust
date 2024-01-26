@@ -235,7 +235,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             if !self.tcx.is_reachable_non_generic(def_id) {
                 #[cfg(feature = "master")]
-                global.add_attribute(VarAttribute::Visibility(Visibility::Hidden));
+                global.add_string_attribute(VarAttribute::Visibility(Visibility::Hidden));
             }
 
             global

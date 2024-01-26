@@ -988,7 +988,6 @@ where
         // one test.
         let count = files.len() / nb_parts + 1;
         let start = current_part * count;
-        let end = current_part * count + count;
         // We remove the files we don't want to test.
         for path in files.iter().skip(start).take(count) {
             remove_file(&rust_path.join(path))?;
@@ -1047,7 +1046,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
             Some(Path::new("rust")),
         )?;
         // Putting back only the failing ones.
-        let path = "failing-ui-tests.txt";
+        let path = "tests/failing-ui-tests.txt";
         if let Ok(files) = std::fs::read_to_string(path) {
             for file in files
                 .split('\n')
@@ -1072,7 +1071,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(env, args, || {
         // Removing the failing tests.
-        let path = "failing-ui-tests.txt";
+        let path = "tests/failing-ui-tests.txt";
         if let Ok(files) = std::fs::read_to_string(path) {
             for file in files
                 .split('\n')

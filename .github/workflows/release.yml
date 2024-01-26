@@ -37,19 +37,11 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep
 
     - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: "master"
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
+          sudo dpkg --force-overwrite -i gcc-13.deb
           echo /usr/lib/ > gcc_path
 
     - name: Set env
@@ -76,7 +68,7 @@ jobs:
         echo -n 'lto = "fat"' >> build_sysroot/Cargo.toml
 
     - name: Add more failing tests because of undefined symbol errors (FIXME)
-      run: cat failing-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |

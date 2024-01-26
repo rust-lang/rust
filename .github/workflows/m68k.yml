@@ -50,14 +50,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install qemu qemu-user-static
 
-    - name: Download GCC artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: m68k.yml
-          name: gcc-m68k-13
-          repo: cross-cg-gcc-tools/cross-gcc
-          branch: master
-          event: push
+    - name: Download artifact
+      run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-13.deb
 
     - name: Download VM artifact
       uses: dawidd6/action-download-artifact@v2
@@ -110,7 +104,7 @@ jobs:
         ./y.sh prepare --cross
 
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |

@@ -19,6 +19,8 @@ gimple*
 res
 test-backend
 gcc_path
+cross_gcc_path
+projects
 benchmarks
 tools/llvm-project
 tools/llvmint

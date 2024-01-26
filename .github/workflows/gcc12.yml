@@ -78,10 +78,10 @@ jobs:
         ./y.sh prepare --libgccjit12-patches
 
     - name: Add more failing tests for GCC 12
-      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
+      run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
 
     - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     - name: Run tests
       run: |
