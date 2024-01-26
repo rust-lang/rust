@@ -945,12 +945,7 @@ LLVMRustOptimize(
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
-        // The ThinLTOPreLink pipeline already includes ThinLTOBuffer passes. However, callback
-        // passes may still run afterwards. This means we need to run the buffer passes again.
-        // FIXME: In LLVM 13, the ThinLTOPreLink pipeline also runs OptimizerLastEPCallbacks
-        // before the RequiredLTOPreLinkPasses, in which case we can remove these hacks.
-        if (OptimizerLastEPCallbacks.empty())
-          NeedThinLTOBufferPasses = false;
+        NeedThinLTOBufferPasses = false;
         for (const auto &C : OptimizerLastEPCallbacks)
           C(MPM, OptLevel);
         break;
