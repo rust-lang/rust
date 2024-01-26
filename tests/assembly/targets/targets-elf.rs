@@ -1,29 +1,5 @@
 // assembly-output: emit-asm
 // ignore-tidy-linelength
-// revisions: aarch64_apple_darwin
-// [aarch64_apple_darwin] compile-flags: --target aarch64-apple-darwin
-// [aarch64_apple_darwin] needs-llvm-components: aarch64
-// revisions: aarch64_apple_ios
-// [aarch64_apple_ios] compile-flags: --target aarch64-apple-ios
-// [aarch64_apple_ios] needs-llvm-components: aarch64
-// revisions: aarch64_apple_ios_macabi
-// [aarch64_apple_ios_macabi] compile-flags: --target aarch64-apple-ios-macabi
-// [aarch64_apple_ios_macabi] needs-llvm-components: aarch64
-// revisions: aarch64_apple_ios_sim
-// [aarch64_apple_ios_sim] compile-flags: --target aarch64-apple-ios-sim
-// [aarch64_apple_ios_sim] needs-llvm-components: aarch64
-// revisions: aarch64_apple_tvos
-// [aarch64_apple_tvos] compile-flags: --target aarch64-apple-tvos
-// [aarch64_apple_tvos] needs-llvm-components: aarch64
-// revisions: aarch64_apple_tvos_sim
-// [aarch64_apple_tvos_sim] compile-flags: --target aarch64-apple-tvos-sim
-// [aarch64_apple_tvos_sim] needs-llvm-components: aarch64
-// revisions: aarch64_apple_watchos
-// [aarch64_apple_watchos] compile-flags: --target aarch64-apple-watchos
-// [aarch64_apple_watchos] needs-llvm-components: aarch64
-// revisions: aarch64_apple_watchos_sim
-// [aarch64_apple_watchos_sim] compile-flags: --target aarch64-apple-watchos-sim
-// [aarch64_apple_watchos_sim] needs-llvm-components: aarch64
 // revisions: aarch64_be_unknown_linux_gnu
 // [aarch64_be_unknown_linux_gnu] compile-flags: --target aarch64_be-unknown-linux-gnu
 // [aarch64_be_unknown_linux_gnu] needs-llvm-components: aarch64
@@ -93,15 +69,6 @@
 // revisions: aarch64_wrs_vxworks
 // [aarch64_wrs_vxworks] compile-flags: --target aarch64-wrs-vxworks
 // [aarch64_wrs_vxworks] needs-llvm-components: aarch64
-// revisions: arm64_32_apple_watchos
-// [arm64_32_apple_watchos] compile-flags: --target arm64_32-apple-watchos
-// [arm64_32_apple_watchos] needs-llvm-components: aarch64
-// revisions: arm64e_apple_darwin
-// [arm64e_apple_darwin] compile-flags: --target arm64e-apple-darwin
-// [arm64e_apple_darwin] needs-llvm-components: aarch64
-// revisions: arm64e_apple_ios
-// [arm64e_apple_ios] compile-flags: --target arm64e-apple-ios
-// [arm64e_apple_ios] needs-llvm-components: aarch64
 // revisions: arm_linux_androideabi
 // [arm_linux_androideabi] compile-flags: --target arm-linux-androideabi
 // [arm_linux_androideabi] needs-llvm-components: arm
@@ -201,18 +168,12 @@
 // revisions: armv7a_none_eabihf
 // [armv7a_none_eabihf] compile-flags: --target armv7a-none-eabihf
 // [armv7a_none_eabihf] needs-llvm-components: arm
-// revisions: armv7k_apple_watchos
-// [armv7k_apple_watchos] compile-flags: --target armv7k-apple-watchos
-// [armv7k_apple_watchos] needs-llvm-components: arm
 // revisions: armv7r_none_eabi
 // [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 // [armv7r_none_eabi] needs-llvm-components: arm
 // revisions: armv7r_none_eabihf
 // [armv7r_none_eabihf] compile-flags: --target armv7r-none-eabihf
 // [armv7r_none_eabihf] needs-llvm-components: arm
-// revisions: armv7s_apple_ios
-// [armv7s_apple_ios] compile-flags: --target armv7s-apple-ios
-// [armv7s_apple_ios] needs-llvm-components: arm
 // FIXME: disabled since it fails on CI saying the csky component is missing
 /*
     revisions: csky_unknown_linux_gnuabiv2
@@ -228,9 +189,6 @@
 // revisions: hexagon_unknown_none_elf
 // [hexagon_unknown_none_elf] compile-flags: --target hexagon-unknown-none-elf
 // [hexagon_unknown_none_elf] needs-llvm-components: hexagon
-// revisions: i386_apple_ios
-// [i386_apple_ios] compile-flags: --target i386-apple-ios
-// [i386_apple_ios] needs-llvm-components: x86
 // revisions: i586_pc_nto_qnx700
 // [i586_pc_nto_qnx700] compile-flags: --target i586-pc-nto-qnx700
 // [i586_pc_nto_qnx700] needs-llvm-components: x86
@@ -243,9 +201,6 @@
 // revisions: i586_unknown_netbsd
 // [i586_unknown_netbsd] compile-flags: --target i586-unknown-netbsd
 // [i586_unknown_netbsd] needs-llvm-components: x86
-// revisions: i686_apple_darwin
-// [i686_apple_darwin] compile-flags: --target i686-apple-darwin
-// [i686_apple_darwin] needs-llvm-components: x86
 // revisions: i686_linux_android
 // [i686_linux_android] compile-flags: --target i686-linux-android
 // [i686_linux_android] needs-llvm-components: x86
@@ -537,21 +492,6 @@
 // revisions: wasm32_wasi_preview2
 // [wasm32_wasi_preview2] compile-flags: --target wasm32-wasi-preview2
 // [wasm32_wasi_preview2] needs-llvm-components: webassembly
-// revisions: x86_64_apple_darwin
-// [x86_64_apple_darwin] compile-flags: --target x86_64-apple-darwin
-// [x86_64_apple_darwin] needs-llvm-components: x86
-// revisions: x86_64_apple_ios
-// [x86_64_apple_ios] compile-flags: --target x86_64-apple-ios
-// [x86_64_apple_ios] needs-llvm-components: x86
-// revisions: x86_64_apple_ios_macabi
-// [x86_64_apple_ios_macabi] compile-flags: --target x86_64-apple-ios-macabi
-// [x86_64_apple_ios_macabi] needs-llvm-components: x86
-// revisions: x86_64_apple_tvos
-// [x86_64_apple_tvos] compile-flags: --target x86_64-apple-tvos
-// [x86_64_apple_tvos] needs-llvm-components: x86
-// revisions: x86_64_apple_watchos_sim
-// [x86_64_apple_watchos_sim] compile-flags: --target x86_64-apple-watchos-sim
-// [x86_64_apple_watchos_sim] needs-llvm-components: x86
 // revisions: x86_64_fortanix_unknown_sgx
 // [x86_64_fortanix_unknown_sgx] compile-flags: --target x86_64-fortanix-unknown-sgx
 // [x86_64_fortanix_unknown_sgx] needs-llvm-components: x86
@@ -618,9 +558,6 @@
 // revisions: x86_64_wrs_vxworks
 // [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 // [x86_64_wrs_vxworks] needs-llvm-components: x86
-// revisions: x86_64h_apple_darwin
-// [x86_64h_apple_darwin] compile-flags: --target x86_64h-apple-darwin
-// [x86_64h_apple_darwin] needs-llvm-components: x86
 
 // Sanity-check that each target can produce assembly code.
 
@@ -636,4 +573,4 @@ pub fn test() -> u8 {
     42
 }
 
-// CHECK: .section
+// CHECK: .text
