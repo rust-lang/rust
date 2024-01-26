@@ -1,5 +1,6 @@
 //@ run-pass
 #![feature(dropck_eyepatch)]
+#![allow(non_local_definitions)]
 
 // The point of this test is to illustrate that the `#[may_dangle]`
 // attribute specifically allows, in the context of a type

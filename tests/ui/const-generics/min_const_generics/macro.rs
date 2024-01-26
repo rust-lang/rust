@@ -1,4 +1,6 @@
 //@ run-pass
+#![allow(non_local_definitions)]
+
 struct Example<const N: usize>;
 
 macro_rules! external_macro {

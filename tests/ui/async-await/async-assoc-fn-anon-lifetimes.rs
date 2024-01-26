@@ -5,6 +5,8 @@
 
 //@ edition:2018
 
+#![allow(non_local_definitions)]
+
 struct A<'a, 'b>(&'a &'b i32);
 struct B<'a>(&'a i32);
 

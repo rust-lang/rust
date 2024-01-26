@@ -4,6 +4,7 @@
 // into the root module soon enough to act as usual items and shadow globs and preludes.
 
 #![feature(decl_macro)]
+#![allow(non_local_definitions)]
 
 // `macro_export` shadows globs
 use inner1::*;
