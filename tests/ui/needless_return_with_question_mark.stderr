@@ -13,5 +13,11 @@ error: unneeded `return` statement with `?` operator
 LL |         return Err(())?;
    |         ^^^^^^^ help: remove it
 
-error: aborting due to 2 previous errors
+error: unneeded `return` statement with `?` operator
+  --> $DIR/needless_return_with_question_mark.rs:118:13
+   |
+LL |             return bar::foo(ok).map(|_| Ok::<(), bar::Error>(()))?;
+   |             ^^^^^^^ help: remove it
+
+error: aborting due to 3 previous errors
 

@@ -104,3 +104,20 @@ fn issue11982() {
         Ok(())
     }
 }
+
+fn issue11982_no_conversion() {
+    mod bar {
+        pub struct Error;
+        pub fn foo(_: bool) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    fn foo(ok: bool) -> Result<(), bar::Error> {
+        if !ok {
+            return bar::foo(ok).map(|_| Ok::<(), bar::Error>(()))?;
+            //~^ ERROR: unneeded `return` statement with `?` operator
+        };
+        Ok(())
+    }
+}
