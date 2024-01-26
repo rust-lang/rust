@@ -1328,6 +1328,9 @@ pub struct GenSig<'tcx> {
 /// - `inputs`: is the list of arguments and their modes.
 /// - `output`: is the return type.
 /// - `c_variadic`: indicates whether this is a C-variadic function.
+/// NOTE: this signature may not match exactly with the signature of a compiled function.
+/// Attributes like `#[track_caller]` may introduce additional arguments, which are not present here, but are represented in [`rustc_target::abi::call::FnAbi`].
+/// If you are interested in the exact signature and the way arguments are aligned/passed, use [`rustc_target::abi::call::FnAbi`].
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct FnSig<'tcx> {
@@ -1338,10 +1341,11 @@ pub struct FnSig<'tcx> {
 }
 
 impl<'tcx> FnSig<'tcx> {
+    /// Inputs of this signature.
     pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
-
+    /// The return type of this siganture.
     pub fn output(&self) -> Ty<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
@@ -1368,17 +1372,21 @@ pub type PolyFnSig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
     #[inline]
+    /// Returns a [`Binder`] containing the inputs of this signature.
     pub fn inputs(&self) -> Binder<'tcx, &'tcx [Ty<'tcx>]> {
         self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
     }
     #[inline]
+    /// Returns a [`Binder`] containing the indexth input of this signature.
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
+    /// Returns a [`Binder`] containing the inputs and outputs of this signature.
     pub fn inputs_and_output(&self) -> ty::Binder<'tcx, &'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
     #[inline]
+    /// Returns a [`Binder`] containing the return type this signature.
     pub fn output(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
@@ -1391,7 +1399,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
     }
-
+    
     pub fn is_fn_trait_compatible(&self) -> bool {
         matches!(
             self.skip_binder(),
