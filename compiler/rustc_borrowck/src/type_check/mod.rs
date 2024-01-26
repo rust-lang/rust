@@ -1099,10 +1099,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
         debug!(?self.user_type_annotations);
+        let tcx = self.tcx();
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
-            self.ascribe_user_type(inferred_ty, annotation, span);
+            if let ty::UserType::TypeOf(def, args) = annotation
+                && let DefKind::InlineConst = tcx.def_kind(def)
+            {
+                self.check_inline_const(inferred_ty, def.expect_local(), args, span);
+            } else {
+                self.ascribe_user_type(inferred_ty, annotation, span);
+            }
         }
     }
 
@@ -1193,6 +1200,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;
 
         Ok(())
+    }
+
+    fn check_inline_const(
+        &mut self,
+        inferred_ty: Ty<'tcx>,
+        def_id: LocalDefId,
+        args: UserArgs<'tcx>,
+        span: Span,
+    ) {
+        assert!(args.user_self_ty.is_none());
+        let tcx = self.tcx();
+        let const_ty = tcx.type_of(def_id).instantiate(tcx, args.args);
+        if let Err(terr) =
+            self.eq_types(const_ty, inferred_ty, Locations::All(span), ConstraintCategory::Boring)
+        {
+            span_bug!(
+                span,
+                "bad inline const pattern: ({:?} = {:?}) {:?}",
+                const_ty,
+                inferred_ty,
+                terr
+            );
+        }
+        let args = self.infcx.resolve_vars_if_possible(args.args);
+        let predicates = self.prove_closure_bounds(tcx, def_id, args, Locations::All(span));
+        self.normalize_and_prove_instantiated_predicates(
+            def_id.to_def_id(),
+            predicates,
+            Locations::All(span),
+        );
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -1851,7 +1888,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
+                        let predicates = self.prove_closure_bounds(
+                            tcx,
+                            def_id,
+                            uv.args,
+                            location.to_locations(),
+                        );
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -2654,9 +2696,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => {
-                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
-            }
+            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => (
+                def_id,
+                self.prove_closure_bounds(
+                    tcx,
+                    def_id.expect_local(),
+                    args,
+                    location.to_locations(),
+                ),
+            ),
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
                 (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
@@ -2675,7 +2723,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
-        location: Location,
+        locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
@@ -2684,7 +2732,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                location.to_locations(),
+                locations,
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
@@ -2710,7 +2758,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) = self.eq_args(
             typeck_root_args,
             parent_args,
-            location.to_locations(),
+            locations,
             ConstraintCategory::BoringNoLocation,
         ) {
             span_mirbug!(
