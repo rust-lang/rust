@@ -454,6 +454,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().end_with_conditional(None, cond, then_block, else_block)
     }
 
+    /* FIXME: implement
     fn cond_br_with_expect(
         &mut self,
         cond: &'ll Value,
@@ -472,6 +473,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // emit the branch instruction
         self.llbb().end_with_conditional(None, cond, then_block, else_block)
     }
+    */
 
     fn switch(&mut self, value: RValue<'gcc>, default_block: Block<'gcc>, cases: impl ExactSizeIterator<Item = (u128, Block<'gcc>)>) {
         let mut gcc_cases = vec![];
