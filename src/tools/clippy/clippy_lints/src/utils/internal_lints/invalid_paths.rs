@@ -71,7 +71,9 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
         SimplifiedType::Str,
     ]
     .iter()
-    .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter().copied());
+    .flat_map(|&ty| cx.tcx.incoherent_impls(ty).into_iter())
+    .flatten()
+    .copied();
     for item_def_id in lang_items.iter().map(|(_, def_id)| def_id).chain(incoherent_impls) {
         let lang_item_path = cx.get_def_path(item_def_id);
         if path_syms.starts_with(&lang_item_path) {

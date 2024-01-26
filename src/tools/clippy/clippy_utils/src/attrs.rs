@@ -1,5 +1,6 @@
 use rustc_ast::{ast, attr};
 use rustc_errors::Applicability;
+use rustc_middle::ty::{AdtDef, TyCtxt};
 use rustc_session::Session;
 use rustc_span::sym;
 use std::str::FromStr;
@@ -158,4 +159,15 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
         .filter(|attr| attr.has_name(sym::doc))
         .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
+}
+
+pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
+    adt.is_variant_list_non_exhaustive()
+        || tcx.has_attr(adt.did(), sym::non_exhaustive)
+        || adt.variants().iter().any(|variant_def| {
+            variant_def.is_field_list_non_exhaustive() || tcx.has_attr(variant_def.def_id, sym::non_exhaustive)
+        })
+        || adt
+            .all_fields()
+            .any(|field_def| tcx.has_attr(field_def.did, sym::non_exhaustive))
 }

@@ -4,7 +4,7 @@ error: called `.collect::<Vec<String>>().join("")` on an iterator
 LL |           .collect::<Vec<String>>()
    |  __________^
 LL | |         .join("");
-   | |_________________^ help: try using: `collect::<String>()`
+   | |_________________^ help: consider using: `collect::<String>()`
    |
    = note: `-D clippy::unnecessary-join` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_join)]`
@@ -15,7 +15,7 @@ error: called `.collect::<Vec<String>>().join("")` on an iterator
 LL |           .collect::<Vec<_>>()
    |  __________^
 LL | |         .join("");
-   | |_________________^ help: try using: `collect::<String>()`
+   | |_________________^ help: consider using: `collect::<String>()`
 
 error: aborting due to 2 previous errors
 

@@ -504,9 +504,8 @@ fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<S
     }
 
     let searcher = AhoCorasickBuilder::new()
-        .dfa(true)
         .match_kind(aho_corasick::MatchKind::LeftmostLongest)
-        .build_with_size::<u16, _, _>(replacements.iter().map(|&(x, _)| x.as_bytes()))
+        .build(replacements.iter().map(|&(x, _)| x.as_bytes()))
         .unwrap();
 
     let mut result = String::with_capacity(contents.len() + 1024);
