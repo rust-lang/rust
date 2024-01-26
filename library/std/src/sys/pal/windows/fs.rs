@@ -1096,7 +1096,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            Err(Error::last_os_error())
+            Err(last_error)
         }
     }
 }
