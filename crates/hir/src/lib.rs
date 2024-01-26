@@ -24,12 +24,12 @@
 mod semantics;
 mod source_analyzer;
 
-mod from_id;
 mod attrs;
+mod from_id;
 mod has_source;
 
-pub mod diagnostics;
 pub mod db;
+pub mod diagnostics;
 pub mod symbols;
 
 mod display;
@@ -70,13 +70,12 @@ use hir_ty::{
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
-    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, ValueTyDefId,
-    WhereClause,
+    GenericArgData, InferenceDiagnostic, Interner, ParamKind, QuantifiedWhereClause, Scalar,
+    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
+    ValueTyDefId, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
-use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
@@ -1592,53 +1591,46 @@ impl DefWithBody {
         }
 
         for diag in source_map.diagnostics() {
-            match diag {
-                BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
-                    InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into(),
-                ),
-                BodyDiagnostic::MacroError { node, message } => acc.push(
-                    MacroError {
-                        node: (*node).map(|it| it.into()),
-                        precise_location: None,
-                        message: message.to_string(),
-                    }
-                    .into(),
-                ),
-                BodyDiagnostic::UnresolvedProcMacro { node, krate } => acc.push(
-                    UnresolvedProcMacro {
-                        node: (*node).map(|it| it.into()),
-                        precise_location: None,
-                        macro_name: None,
-                        kind: MacroKind::ProcMacro,
-                        krate: *krate,
-                    }
-                    .into(),
-                ),
-                BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
-                    UnresolvedMacroCall {
-                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
-                        precise_location: None,
-                        path: path.clone(),
-                        is_bang: true,
-                    }
-                    .into(),
-                ),
+            acc.push(match diag {
+                BodyDiagnostic::InactiveCode { node, cfg, opts } => {
+                    InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
+                }
+                BodyDiagnostic::MacroError { node, message } => MacroError {
+                    node: (*node).map(|it| it.into()),
+                    precise_location: None,
+                    message: message.to_string(),
+                }
+                .into(),
+                BodyDiagnostic::UnresolvedProcMacro { node, krate } => UnresolvedProcMacro {
+                    node: (*node).map(|it| it.into()),
+                    precise_location: None,
+                    macro_name: None,
+                    kind: MacroKind::ProcMacro,
+                    krate: *krate,
+                }
+                .into(),
+                BodyDiagnostic::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
+                    macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
+                    precise_location: None,
+                    path: path.clone(),
+                    is_bang: true,
+                }
+                .into(),
                 BodyDiagnostic::UnreachableLabel { node, name } => {
-                    acc.push(UnreachableLabel { node: *node, name: name.clone() }.into())
+                    UnreachableLabel { node: *node, name: name.clone() }.into()
                 }
                 BodyDiagnostic::UndeclaredLabel { node, name } => {
-                    acc.push(UndeclaredLabel { node: *node, name: name.clone() }.into())
+                    UndeclaredLabel { node: *node, name: name.clone() }.into()
                 }
-            }
+            });
         }
 
         let infer = db.infer(self.into());
-        let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
         let pat_syntax = |pat| source_map.pat_syntax(pat).expect("unexpected synthetic");
         for d in &infer.diagnostics {
-            match d {
-                &hir_ty::InferenceDiagnostic::NoSuchField { field: expr, private } => {
+            acc.push(match d {
+                &InferenceDiagnostic::NoSuchField { field: expr, private } => {
                     let expr_or_pat = match expr {
                         ExprOrPatId::ExprId(expr) => {
                             source_map.field_syntax(expr).map(AstPtr::wrap_left)
@@ -1647,57 +1639,48 @@ impl DefWithBody {
                             source_map.pat_field_syntax(pat).map(AstPtr::wrap_right)
                         }
                     };
-                    acc.push(NoSuchField { field: expr_or_pat, private }.into())
+                    NoSuchField { field: expr_or_pat, private }.into()
                 }
-                &hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    acc.push(
-                        MismatchedArgCount { call_expr: expr_syntax(call_expr), expected, found }
-                            .into(),
-                    )
+                &InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    MismatchedArgCount { call_expr: expr_syntax(call_expr), expected, found }.into()
                 }
-                &hir_ty::InferenceDiagnostic::PrivateField { expr, field } => {
+                &InferenceDiagnostic::PrivateField { expr, field } => {
                     let expr = expr_syntax(expr);
                     let field = field.into();
-                    acc.push(PrivateField { expr, field }.into())
+                    PrivateField { expr, field }.into()
                 }
-                &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
+                &InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
                         ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
                         ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
                     };
                     let item = item.into();
-                    acc.push(PrivateAssocItem { expr_or_pat, item }.into())
+                    PrivateAssocItem { expr_or_pat, item }.into()
                 }
-                hir_ty::InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
+                InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
                     let call_expr = expr_syntax(*call_expr);
-
-                    acc.push(
-                        ExpectedFunction {
-                            call: call_expr,
-                            found: Type::new(db, DefWithBodyId::from(self), found.clone()),
-                        }
-                        .into(),
-                    )
+                    ExpectedFunction {
+                        call: call_expr,
+                        found: Type::new(db, DefWithBodyId::from(self), found.clone()),
+                    }
+                    .into()
                 }
-                hir_ty::InferenceDiagnostic::UnresolvedField {
+                InferenceDiagnostic::UnresolvedField {
                     expr,
                     receiver,
                     name,
                     method_with_same_name_exists,
                 } => {
                     let expr = expr_syntax(*expr);
-
-                    acc.push(
-                        UnresolvedField {
-                            expr,
-                            name: name.clone(),
-                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
-                            method_with_same_name_exists: *method_with_same_name_exists,
-                        }
-                        .into(),
-                    )
+                    UnresolvedField {
+                        expr,
+                        name: name.clone(),
+                        receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                        method_with_same_name_exists: *method_with_same_name_exists,
+                    }
+                    .into()
                 }
-                hir_ty::InferenceDiagnostic::UnresolvedMethodCall {
+                InferenceDiagnostic::UnresolvedMethodCall {
                     expr,
                     receiver,
                     name,
@@ -1705,50 +1688,38 @@ impl DefWithBody {
                     assoc_func_with_same_name,
                 } => {
                     let expr = expr_syntax(*expr);
-
-                    acc.push(
-                        UnresolvedMethodCall {
-                            expr,
-                            name: name.clone(),
-                            receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
-                            field_with_same_name: field_with_same_name
-                                .clone()
-                                .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
-                            assoc_func_with_same_name: *assoc_func_with_same_name,
-                        }
-                        .into(),
-                    )
+                    UnresolvedMethodCall {
+                        expr,
+                        name: name.clone(),
+                        receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
+                        field_with_same_name: field_with_same_name
+                            .clone()
+                            .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
+                        assoc_func_with_same_name: *assoc_func_with_same_name,
+                    }
+                    .into()
                 }
-                &hir_ty::InferenceDiagnostic::UnresolvedAssocItem { id } => {
+                &InferenceDiagnostic::UnresolvedAssocItem { id } => {
                     let expr_or_pat = match id {
                         ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
                         ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
                     };
-                    acc.push(UnresolvedAssocItem { expr_or_pat }.into())
+                    UnresolvedAssocItem { expr_or_pat }.into()
                 }
-                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
-                    expr,
-                    is_break,
-                    bad_value_break,
-                } => {
+                &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                     let expr = expr_syntax(expr);
-                    acc.push(BreakOutsideOfLoop { expr, is_break, bad_value_break }.into())
+                    BreakOutsideOfLoop { expr, is_break, bad_value_break }.into()
                 }
-                hir_ty::InferenceDiagnostic::TypedHole { expr, expected } => {
+                InferenceDiagnostic::TypedHole { expr, expected } => {
                     let expr = expr_syntax(*expr);
-                    acc.push(
-                        TypedHole {
-                            expr,
-                            expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
-                        }
-                        .into(),
-                    )
+
+                    TypedHole {
+                        expr,
+                        expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
+                    }
+                    .into()
                 }
-                &hir_ty::InferenceDiagnostic::MismatchedTupleStructPatArgCount {
-                    pat,
-                    expected,
-                    found,
-                } => {
+                &InferenceDiagnostic::MismatchedTupleStructPatArgCount { pat, expected, found } => {
                     let expr_or_pat = match pat {
                         ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
                         ExprOrPatId::PatId(pat) => {
@@ -1762,11 +1733,9 @@ impl DefWithBody {
                             InFile { file_id, value: ptr }
                         }
                     };
-                    acc.push(
-                        MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into(),
-                    )
+                    MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into()
                 }
-            }
+            });
         }
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
@@ -1805,8 +1774,6 @@ impl DefWithBody {
             }
         }
 
-        let hir_body = db.body(self.into());
-
         if let Ok(borrowck_results) = db.borrowck(self.into()) {
             for borrowck_result in borrowck_results.iter() {
                 let mir_body = &borrowck_result.mir_body;
@@ -1828,7 +1795,7 @@ impl DefWithBody {
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
-                for (binding_id, binding_data) in hir_body.bindings.iter() {
+                for (binding_id, binding_data) in body.bindings.iter() {
                     if binding_data.problems.is_some() {
                         // We should report specific diagnostics for these problems, not `need-mut` and `unused-mut`.
                         continue;

@@ -4,6 +4,7 @@ use std::iter;
 
 use hir_expand::{span_map::SpanMapRef, InFile};
 use la_arena::ArenaMap;
+use stdx::assert_eq_size;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -24,6 +25,7 @@ pub enum RawVisibility {
     /// `pub`.
     Public,
 }
+assert_eq_size!(RawVisibility, 48);
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {

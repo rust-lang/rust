@@ -1,10 +1,8 @@
 //! File and span related types.
-// FIXME: This should be moved into its own crate to get rid of the dependency inversion, base-db
-// has business depending on tt, tt should depend on a span crate only (which unforunately will have
-// to depend on salsa)
 use std::fmt::{self, Write};
 
 use salsa::InternId;
+use stdx::assert_eq_size;
 
 mod map;
 
@@ -38,6 +36,7 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(!0 - 1));
 
 pub type Span = SpanData<SyntaxContextId>;
+assert_eq_size!(Span, 20);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SpanData<Ctx> {

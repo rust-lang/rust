@@ -26,6 +26,7 @@ pub mod span_map;
 mod fixup;
 
 use attrs::collect_attrs;
+use stdx::assert_eq_size;
 use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
@@ -175,6 +176,7 @@ pub struct MacroCallLoc {
     pub kind: MacroCallKind,
     pub call_site: Span,
 }
+assert_eq_size!(MacroCallLoc, 104);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
@@ -185,6 +187,7 @@ pub struct MacroDefId {
     pub allow_internal_unsafe: bool,
     pub span: Span,
 }
+assert_eq_size!(MacroDefId, 44);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {

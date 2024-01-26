@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use stdx::assert_eq_size;
 use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
@@ -13,6 +14,7 @@ use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 /// name without "r#".
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Name(Repr);
+assert_eq_size!(Name, 24);
 
 /// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
