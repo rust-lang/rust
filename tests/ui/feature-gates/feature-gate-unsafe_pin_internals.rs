@@ -7,7 +7,7 @@ use core::{marker::PhantomPinned, pin::Pin};
 
 /// The `unsafe_pin_internals` is indeed unsound.
 fn non_unsafe_pin_new_unchecked<T>(pointer: &mut T) -> Pin<&mut T> {
-    Pin { pointer }
+    Pin { __pointer: pointer }
 }
 
 fn main() {
