@@ -94,7 +94,12 @@ fn line_is_url(is_error_code: bool, columns: usize, line: &str) -> bool {
 
     use self::LIUState::*;
     let mut state: LIUState = EXP_COMMENT_START;
-    let is_url = |w: &str| w.starts_with("http://") || w.starts_with("https://");
+    let is_url = |w: &str| {
+        w.starts_with("http://")
+            || w.starts_with("https://")
+            || w.starts_with("<http://")
+            || w.starts_with("<https://")
+    };
 
     for tok in line.split_whitespace() {
         match (state, tok) {
@@ -110,7 +115,15 @@ fn line_is_url(is_error_code: bool, columns: usize, line: &str) -> bool {
 
             (EXP_LINK_LABEL_OR_URL, w) if is_url(w) => state = EXP_END,
 
-            (EXP_URL, w) if is_url(w) || w.starts_with("../") => state = EXP_END,
+            (EXP_URL, w)
+                if is_url(w)
+                    // FIXME: can we find a better way ?
+                    || w.starts_with("../")
+                    || w.starts_with("crate::")
+                    || w.starts_with("super::") =>
+            {
+                state = EXP_END
+            }
 
             (_, w) if w.len() > columns && is_url(w) => state = EXP_END,
 
@@ -380,16 +393,18 @@ pub fn check(path: &Path, bad: &mut bool) {
                 && !line_is_url(is_error_code, max_columns, trimmed)
             {
                 let stripped = if let Some(stripped) = trimmed.strip_prefix("///") {
-                    stripped
+                    stripped.trim()
                 } else if let Some(stripped) = trimmed.strip_prefix("//!") {
-                    stripped
+                    stripped.trim()
                 } else if let Some(stripped) = trimmed.strip_prefix("//") {
-                    stripped
+                    stripped.trim()
                 } else {
                     ""
                 };
 
-                if stripped.trim().chars().count() > max_columns {
+                if !(stripped.starts_with('|') && stripped.ends_with('|')) // Ignore markdown tables
+                    && stripped.trim().chars().count() > max_columns
+                {
                     suppressible_tidy_err!(
                         err,
                         skip_line_length,
