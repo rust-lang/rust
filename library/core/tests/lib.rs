@@ -1,6 +1,5 @@
 #![feature(alloc_layout_extra)]
 #![feature(array_chunks)]
-#![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
