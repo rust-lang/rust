@@ -26,9 +26,6 @@ LL | enum Node<T, P: PointerFamily> {
 ...
 LL |     let mut list = RcNode::<i32>::new();
    |                                   ^^^ doesn't have a size known at compile-time
-  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
-   |
-   = note: doesn't satisfy `_: Sized`
    |
 note: trait bound `Node<i32, RcFamily>: Sized` was not satisfied
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:18

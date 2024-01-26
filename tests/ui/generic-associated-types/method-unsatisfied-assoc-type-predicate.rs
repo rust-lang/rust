@@ -17,8 +17,7 @@ impl<T: X<Y<i32> = i32>> M for T {}
 
 struct S;
 //~^ NOTE method `f` not found for this
-//~| NOTE doesn't satisfy `<S as X>::Y<i32> = i32`
-//~| NOTE doesn't satisfy `S: M`
+//~| NOTE doesn't satisfy `<S as X>::Y<i32> = i32` or `S: M`
 
 impl X for S {
     type Y<T> = bool;

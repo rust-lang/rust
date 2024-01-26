@@ -9,7 +9,7 @@ use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::StashKey;
 use rustc_errors::{
@@ -547,7 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        let mut bound_spans = vec![];
+        let mut bound_spans: FxHashMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
         let mut unsatisfied_bounds = false;
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
@@ -642,19 +642,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false
                 };
             let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
-                let msg = format!(
-                    "doesn't satisfy `{}`",
-                    if obligation.len() > 50 { quiet } else { obligation }
-                );
+                let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
                 match &self_ty.kind() {
                     // Point at the type that couldn't satisfy the bound.
-                    ty::Adt(def, _) => bound_spans.push((self.tcx.def_span(def.did()), msg)),
+                    ty::Adt(def, _) => {
+                        bound_spans.entry(tcx.def_span(def.did())).or_default().push(msg)
+                    }
                     // Point at the trait object that couldn't satisfy the bound.
                     ty::Dynamic(preds, _, _) => {
                         for pred in preds.iter() {
                             match pred.skip_binder() {
                                 ty::ExistentialPredicate::Trait(tr) => {
-                                    bound_spans.push((self.tcx.def_span(tr.def_id), msg.clone()))
+                                    bound_spans
+                                        .entry(tcx.def_span(tr.def_id))
+                                        .or_default()
+                                        .push(msg.clone());
                                 }
                                 ty::ExistentialPredicate::Projection(_)
                                 | ty::ExistentialPredicate::AutoTrait(_) => {}
@@ -662,8 +664,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     // Point at the closure that couldn't satisfy the bound.
-                    ty::Closure(def_id, _) => bound_spans
-                        .push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`"))),
+                    ty::Closure(def_id, _) => {
+                        bound_spans
+                            .entry(tcx.def_span(*def_id))
+                            .or_default()
+                            .push(format!("`{quiet}`"));
+                    }
                     _ => {}
                 }
             };
@@ -1170,9 +1176,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
 
-        bound_spans.sort();
-        bound_spans.dedup();
-        for (span, msg) in bound_spans.into_iter() {
+        #[allow(rustc::potential_query_instability)] // We immediately sort the resulting Vec.
+        let mut bound_spans: Vec<(Span, Vec<String>)> = bound_spans
+            .into_iter()
+            .map(|(span, mut bounds)| {
+                bounds.sort();
+                bounds.dedup();
+                (span, bounds)
+            })
+            .collect();
+        bound_spans.sort_by_key(|(span, _)| *span);
+        for (span, bounds) in bound_spans {
+            if !tcx.sess.source_map().is_span_accessible(span) {
+                continue;
+            }
+            let msg = match &bounds[..] {
+                [bound] => format!("doesn't satisfy {bound}"),
+                [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
+                [] => unreachable!(),
+            };
             err.span_label(span, msg);
         }
 
