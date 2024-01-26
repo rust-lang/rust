@@ -1399,7 +1399,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
     }
-    
+
     pub fn is_fn_trait_compatible(&self) -> bool {
         matches!(
             self.skip_binder(),
@@ -2331,7 +2331,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
     }
-    /// Checks if this type is a slice or a reference/pointer to a slice. 
+    /// Checks if this type is a slice or a reference/pointer to a slice.
     #[inline]
     pub fn is_array_slice(self) -> bool {
         match self.kind() {
@@ -2345,7 +2345,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_array(self) -> bool {
         matches!(self.kind(), Array(..))
     }
-  
+
     #[inline]
     pub fn is_simd(self) -> bool {
         match self.kind() {
@@ -2512,7 +2512,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_numeric(self) -> bool {
         self.is_integral() || self.is_floating_point()
     }
-    /// Checks if this type is a signed intiger. 
+    /// Checks if this type is a signed intiger.
     #[inline]
     pub fn is_signed(self) -> bool {
         matches!(self.kind(), Int(_))

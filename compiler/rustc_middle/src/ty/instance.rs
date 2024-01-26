@@ -341,7 +341,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    /// Creates a new instance of type `InstanceDef::Item`, with appropiate `def_id` and `args` set. 
+    /// Creates a new instance of type `InstanceDef::Item`, with appropiate `def_id` and `args` set.
     pub fn new(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
         assert!(
             !args.has_escaping_bound_vars(),
@@ -365,8 +365,8 @@ impl<'tcx> Instance<'tcx> {
         Instance::new(def_id, args)
     }
 
-    #[inline]
     /// Returns the `def_id` of this instance.
+    #[inline]
     pub fn def_id(&self) -> DefId {
         self.def.def_id()
     }
@@ -847,7 +847,7 @@ impl UnusedGenericParams {
         bitset.set_range(0..amount);
         Self(bitset)
     }
-     /// Creates a new [`UnusedGenericParams`] where all generic pameters are set as used.
+    /// Creates a new [`UnusedGenericParams`] where all generic pameters are set as used.
     pub fn new_all_used() -> Self {
         Self(FiniteBitSet::new_empty())
     }
