@@ -1187,6 +1187,31 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for Lines<'_> {}
 
+impl<'a> Lines<'a> {
+    /// Returns the remaining lines of the split string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_lines_remainder)]
+    ///
+    /// let mut lines = "a\nb\nc\nd".lines();
+    /// assert_eq!(lines.remainder(), Some("a\nb\nc\nd"));
+    ///
+    /// lines.next();
+    /// assert_eq!(lines.remainder(), Some("b\nc\nd"));
+    ///
+    /// lines.by_ref().for_each(drop);
+    /// assert_eq!(lines.remainder(), None);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "str_lines_remainder", issue = "77998")]
+    pub fn remainder(&self) -> Option<&'a str> {
+        self.0.iter.remainder()
+    }
+}
+
 /// Created with the method [`lines_any`].
 ///
 /// [`lines_any`]: str::lines_any
