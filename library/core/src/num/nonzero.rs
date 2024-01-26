@@ -288,6 +288,43 @@ macro_rules! nonzero_integer {
                 unsafe { intrinsics::cttz_nonzero(self.get() as $UnsignedPrimitive) as u32 }
             }
 
+            /// Returns the number of ones in the binary representation of `self`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(non_zero_count_ones)]
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("# use std::num::{self, ", stringify!($Ty), "};")]
+            ///
+            /// let one = num::NonZeroU32::new(1)?;
+            /// let three = num::NonZeroU32::new(3)?;
+            #[doc = concat!("let a = ", stringify!($Ty), "::new(0b100_0000)?;")]
+            #[doc = concat!("let b = ", stringify!($Ty), "::new(0b100_0011)?;")]
+            ///
+            /// assert_eq!(a.count_ones(), one);
+            /// assert_eq!(b.count_ones(), three);
+            /// # Some(())
+            /// # }
+            /// ```
+            ///
+            #[unstable(feature = "non_zero_count_ones", issue = "120287")]
+            #[rustc_const_unstable(feature = "non_zero_count_ones", issue = "120287")]
+            #[doc(alias = "popcount")]
+            #[doc(alias = "popcnt")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn count_ones(self) -> NonZeroU32 {
+                // SAFETY:
+                // `self` is non-zero, which means it has at least one bit set, which means
+                // that the result of `count_ones` is non-zero.
+                unsafe { NonZeroU32::new_unchecked(self.get().count_ones()) }
+            }
+
             nonzero_integer_signedness_dependent_methods! {
                 Self = $Ty,
                 Primitive = $signedness $Int,

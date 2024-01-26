@@ -375,11 +375,11 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ItemKind::MacroDef(ts) => visitor.visit_mac_def(ts, item.id),
-        ItemKind::Delegation(box Delegation { id: _, qself, path, body }) => {
+        ItemKind::Delegation(box Delegation { id, qself, path, body }) => {
             if let Some(qself) = qself {
                 visitor.visit_ty(&qself.ty);
             }
-            walk_path(visitor, path);
+            visitor.visit_path(path, *id);
             if let Some(body) = body {
                 visitor.visit_block(body);
             }
@@ -502,7 +502,7 @@ where
         }
         GenericArgs::Parenthesized(data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
-            walk_fn_ret_ty(visitor, &data.output);
+            visitor.visit_fn_ret_ty(&data.output);
         }
     }
 }
@@ -713,11 +713,11 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
         AssocItemKind::MacCall(mac) => {
             visitor.visit_mac_call(mac);
         }
-        AssocItemKind::Delegation(box Delegation { id: _, qself, path, body }) => {
+        AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
             if let Some(qself) = qself {
                 visitor.visit_ty(&qself.ty);
             }
-            walk_path(visitor, path);
+            visitor.visit_path(path, *id);
             if let Some(body) = body {
                 visitor.visit_block(body);
             }

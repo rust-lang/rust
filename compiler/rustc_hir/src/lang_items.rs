@@ -143,8 +143,6 @@ language_item_table! {
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
-    /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
-    StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait,          GenericRequirement::None;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
@@ -207,6 +205,10 @@ language_item_table! {
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+
+    AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 

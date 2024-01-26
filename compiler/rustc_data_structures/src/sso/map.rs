@@ -1,6 +1,6 @@
 use crate::fx::FxHashMap;
 use arrayvec::ArrayVec;
-use itertools::Either;
+use either::Either;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;

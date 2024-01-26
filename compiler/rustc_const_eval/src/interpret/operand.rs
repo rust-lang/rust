@@ -643,11 +643,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
-            if layout.is_unsized() {
-                // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
-                // efficiently check whether they are sized. We have to catch that case here.
-                throw_inval!(ConstPropNonsense);
-            }
+            assert!(!layout.is_unsized());
         }
         Ok(OpTy { op, layout })
     }

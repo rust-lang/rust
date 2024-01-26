@@ -39,7 +39,7 @@ pub fn search_for_structural_match_violation<'tcx>(
 
 /// This implements the traversal over the structure of a given type to try to
 /// find instances of ADTs (specifically structs or enums) that do not implement
-/// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
+/// `StructuralPartialEq`.
 struct Search<'tcx> {
     span: Span,
 

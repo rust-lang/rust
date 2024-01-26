@@ -507,9 +507,6 @@ trait Clone: Sized {
 #[lang = "structural_peq"]
 trait StructuralPartialEq {}
 
-#[lang = "structural_teq"]
-trait StructuralEq {}
-
 const fn drop<T: ~const Destruct>(_: T) {}
 
 extern "rust-intrinsic" {

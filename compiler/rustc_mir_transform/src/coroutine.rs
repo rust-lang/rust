@@ -1231,7 +1231,12 @@ fn create_coroutine_drop_shim<'tcx>(
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
     let mut body = body.clone();
-    body.arg_count = 1; // make sure the resume argument is not included here
+    // Take the coroutine info out of the body, since the drop shim is
+    // not a coroutine body itself; it just has its drop built out of it.
+    let _ = body.coroutine.take();
+    // Make sure the resume argument is not included here, since we're
+    // building a body for `drop_in_place`.
+    body.arg_count = 1;
 
     let source_info = SourceInfo::outermost(body.span);
 
