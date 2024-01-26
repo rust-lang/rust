@@ -1293,6 +1293,23 @@ pub struct SuspiciousDoubleRefCloneDiag<'a> {
     pub ty: Ty<'a>,
 }
 
+// non_local_defs.rs
+#[derive(LintDiagnostic)]
+pub enum NonLocalDefinitionsDiag {
+    #[diag(lint_non_local_definitions_impl)]
+    #[help]
+    #[note(lint_non_local)]
+    #[note(lint_exception)]
+    #[note(lint_non_local_definitions_deprecation)]
+    Impl { depth: u32, body_kind_descr: &'static str, body_name: String },
+    #[diag(lint_non_local_definitions_macro_rules)]
+    #[help]
+    #[note(lint_non_local)]
+    #[note(lint_exception)]
+    #[note(lint_non_local_definitions_deprecation)]
+    MacroRules { depth: u32, body_kind_descr: &'static str, body_name: String },
+}
+
 // pass_by_value.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]
