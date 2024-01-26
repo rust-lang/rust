@@ -2531,7 +2531,7 @@ extern "rust-intrinsic" {
     /// or `false`, and the caller has to ensure sound behavior for both cases.
     /// In other words, the following code has *Undefined Behavior*:
     ///
-    /// ```
+    /// ```no_run
     /// #![feature(is_val_statically_known)]
     /// #![feature(core_intrinsics)]
     /// # #![allow(internal_features)]
