@@ -25,7 +25,7 @@ export async function deactivate() {
 export async function activate(
     context: vscode.ExtensionContext,
 ): Promise<RustAnalyzerExtensionApi> {
-    conflictExtDetect();
+    checkConflictingExtensions();
 
     const ctx = new Ctx(context, createCommands(), fetchWorkspace());
     // VS Code doesn't show a notification when an extension fails to activate
@@ -192,7 +192,7 @@ function createCommands(): Record<string, CommandFactory> {
     };
 }
 
-function conflictExtDetect() {
+function checkConflictingExtensions() {
     if (vscode.extensions.getExtension("rust-lang.rust")) {
         vscode.window
             .showWarningMessage(
@@ -205,20 +205,12 @@ function conflictExtDetect() {
     }
 
     if (vscode.extensions.getExtension("panicbit.cargo")) {
-        const isRustAnalyzerCheckOnSave = vscode.workspace
-            .getConfiguration("rust-analyzer")
-            .get("checkOnSave");
-        const isCargoAutomaticCheck = vscode.workspace
-            .getConfiguration("cargo")
-            .get("automaticCheck");
-        if (isRustAnalyzerCheckOnSave && isCargoAutomaticCheck) {
-            vscode.window
-                .showWarningMessage(
-                    `You have Cargo (panicbit.cargo) enabled with 'cargo.automaticCheck' set to true(default), ` +
-                        'you can disable it or set {"cargo.automaticCheck": false} in settings.json to avoid invoke cargo twice',
-                    "Got it",
-                )
-                .then(() => {}, console.error);
-        }
+        vscode.window
+            .showWarningMessage(
+                `You have both the rust-analyzer (rust-lang.rust-analyzer) and Cargo (panicbit.cargo) ` +
+                    'you can disable it or set {"cargo.automaticCheck": false} in settings.json to avoid invoking cargo twice',
+                "Got it",
+            )
+            .then(() => {}, console.error);
     }
 }
