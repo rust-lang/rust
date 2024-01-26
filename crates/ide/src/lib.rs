@@ -21,24 +21,25 @@ macro_rules! eprintln {
 mod fixture;
 
 mod markup;
-mod prime_caches;
 mod navigation_target;
+mod prime_caches;
 
 mod annotations;
 mod call_hierarchy;
-mod signature_help;
 mod doc_links;
-mod highlight_related;
 mod expand_macro;
 mod extend_selection;
+mod fetch_crates;
 mod file_structure;
 mod folding_ranges;
 mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
+mod highlight_related;
 mod hover;
 mod inlay_hints;
+mod interpret_function;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -48,6 +49,8 @@ mod parent_module;
 mod references;
 mod rename;
 mod runnables;
+mod shuffle_crate_graph;
+mod signature_help;
 mod ssr;
 mod static_index;
 mod status;
@@ -56,12 +59,9 @@ mod syntax_tree;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
-mod view_mir;
-mod interpret_function;
 mod view_item_tree;
-mod shuffle_crate_graph;
-mod fetch_crates;
 mod view_memory_layout;
+mod view_mir;
 
 use std::ffi::OsStr;
 

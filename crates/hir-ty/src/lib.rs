@@ -42,9 +42,9 @@ pub mod primitive;
 pub mod traits;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod test_db;
+#[cfg(test)]
+mod tests;
 
 use std::{
     collections::hash_map::Entry,

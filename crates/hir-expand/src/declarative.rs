@@ -1,3 +1,4 @@
+//! Compiled declarative macro expanders (`macro_rules!`` and `macro`)
 use std::sync::OnceLock;
 
 use base_db::{CrateId, Edition, VersionReq};

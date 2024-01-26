@@ -8,11 +8,11 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod parser;
 mod expander;
+mod parser;
 mod syntax_bridge;
-mod tt_iter;
 mod to_parser_input;
+mod tt_iter;
 
 #[cfg(test)]
 mod benchmark;
