@@ -1,6 +1,8 @@
 use crate::ImplTraitPosition;
 
-use super::errors::{GenericTypeWithParentheses, UseAngleBrackets};
+use super::errors::{
+    AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, GenericTypeWithParentheses, UseAngleBrackets,
+};
 use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
 use super::{ImplTraitContext, LoweringContext, ParamMode};
@@ -42,15 +44,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // When we have an `async` kw on a bound, map the trait it resolves to.
         let mut bound_modifier_allowed_features = None;
         if let Some(TraitBoundModifiers { asyncness: BoundAsyncness::Async(_), .. }) = modifiers {
-            if let Res::Def(DefKind::Trait, def_id) = res {
-                if let Some((async_def_id, features)) = self.map_trait_to_async_trait(def_id) {
-                    res = Res::Def(DefKind::Trait, async_def_id);
-                    bound_modifier_allowed_features = Some(features);
-                } else {
-                    panic!();
+            match res {
+                Res::Def(DefKind::Trait, def_id) => {
+                    if let Some((async_def_id, features)) = self.map_trait_to_async_trait(def_id) {
+                        res = Res::Def(DefKind::Trait, async_def_id);
+                        bound_modifier_allowed_features = Some(features);
+                    } else {
+                        self.dcx().emit_err(AsyncBoundOnlyForFnTraits { span: p.span });
+                    }
                 }
-            } else {
-                panic!();
+                Res::Err => {
+                    // No additional error.
+                }
+                _ => {
+                    // This error isn't actually emitted AFAICT, but it's best to keep
+                    // it around in case the resolver doesn't always check the defkind
+                    // of an item or something.
+                    self.dcx().emit_err(AsyncBoundNotOnTrait { span: p.span, descr: res.descr() });
+                }
             }
         }
 
