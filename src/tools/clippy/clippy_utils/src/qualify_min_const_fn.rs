@@ -213,7 +213,9 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op))
+        | StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(op, ..))
+        => check_operand(tcx, op, span, body),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
             rustc_middle::mir::CopyNonOverlapping { dst, src, count },
