@@ -1074,6 +1074,8 @@ pub enum ProjectionElem<V, T> {
     /// "Downcast" to a variant of an enum or a coroutine.
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
+    ///
+    /// This operation itself is never UB, all it does is change the type of the place.
     Downcast(Option<Symbol>, VariantIdx),
 
     /// Like an explicit cast from an opaque type to a concrete type, but without

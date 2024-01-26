@@ -201,25 +201,8 @@ where
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
         // So we just "offset" by 0.
         let layout = base.layout().for_variant(self, variant);
-        // In the future we might want to allow this to permit code like this:
-        // (this is a Rust/MIR pseudocode mix)
-        // ```
-        // enum Option2 {
-        //   Some(i32, !),
-        //   None,
-        // }
-        //
-        // fn panic() -> ! { panic!() }
-        //
-        // let x: Option2;
-        // x.Some.0 = 42;
-        // x.Some.1 = panic();
-        // SetDiscriminant(x, Some);
-        // ```
-        // However, for now we don't generate such MIR, and this check here *has* found real
-        // bugs (see https://github.com/rust-lang/rust/issues/115145), so we will keep rejecting
-        // it.
-        assert!(!layout.abi.is_uninhabited());
+        // This variant may in fact be uninhabited.
+        // See <https://github.com/rust-lang/rust/issues/120337>.
 
         // This cannot be `transmute` as variants *can* have a smaller size than the entire enum.
         base.offset(Size::ZERO, layout, self)
