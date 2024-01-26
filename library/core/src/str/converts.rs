@@ -1,6 +1,6 @@
 //! Ways to create a `str` from bytes slice.
 
-use crate::mem;
+use crate::{mem, ptr};
 
 use super::validations::run_utf8_validation;
 use super::Utf8Error;
@@ -204,4 +204,42 @@ pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // Also, the pointer dereference is safe because that pointer
     // comes from a reference which is guaranteed to be valid for writes.
     unsafe { &mut *(v as *mut [u8] as *mut str) }
+}
+
+/// Creates an `&str` from a pointer and a length.
+///
+/// The pointed-to bytes must be valid UTF-8.
+/// If this might not be the case, use `str::from_utf8(slice::from_raw_parts(ptr, len))`,
+/// which will return an `Err` if the data isn't valid UTF-8.
+///
+/// This function is the `str` equivalent of [`slice::from_raw_parts`](crate::slice::from_raw_parts).
+/// See that function's documentation for safety concerns and examples.
+///
+/// The mutable version of this function is [`from_raw_parts_mut`].
+#[inline]
+#[must_use]
+#[unstable(feature = "str_from_raw_parts", issue = "119206")]
+#[rustc_const_unstable(feature = "str_from_raw_parts", issue = "119206")]
+pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
+    // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
+    unsafe { &*ptr::from_raw_parts(ptr.cast(), len) }
+}
+
+/// Creates an `&mut str` from a pointer and a length.
+///
+/// The pointed-to bytes must be valid UTF-8.
+/// If this might not be the case, use `str::from_utf8_mut(slice::from_raw_parts_mut(ptr, len))`,
+/// which will return an `Err` if the data isn't valid UTF-8.
+///
+/// This function is the `str` equivalent of [`slice::from_raw_parts_mut`](crate::slice::from_raw_parts_mut).
+/// See that function's documentation for safety concerns and examples.
+///
+/// The immutable version of this function is [`from_raw_parts`].
+#[inline]
+#[must_use]
+#[unstable(feature = "str_from_raw_parts", issue = "119206")]
+#[rustc_const_unstable(feature = "const_str_from_raw_parts_mut", issue = "119206")]
+pub const unsafe fn from_raw_parts_mut<'a>(ptr: *mut u8, len: usize) -> &'a str {
+    // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
+    unsafe { &mut *ptr::from_raw_parts_mut(ptr.cast(), len) }
 }
