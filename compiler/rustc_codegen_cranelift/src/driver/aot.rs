@@ -143,6 +143,7 @@ fn emit_cgu(
     debug: Option<DebugContext>,
     unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
+    producer: &str,
 ) -> Result<ModuleCodegenResult, String> {
     let mut product = module.finish();
 
@@ -152,8 +153,14 @@ fn emit_cgu(
 
     unwind_context.emit(&mut product);
 
-    let module_regular =
-        emit_module(output_filenames, prof, product.object, ModuleKind::Regular, name.clone())?;
+    let module_regular = emit_module(
+        output_filenames,
+        prof,
+        product.object,
+        ModuleKind::Regular,
+        name.clone(),
+        producer,
+    )?;
 
     Ok(ModuleCodegenResult {
         module_regular,
@@ -174,6 +181,7 @@ fn emit_module(
     mut object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
     name: String,
+    producer_str: &str,
 ) -> Result<CompiledModule, String> {
     if object.format() == cranelift_object::object::BinaryFormat::Elf {
         let comment_section = object.add_section(
@@ -182,7 +190,7 @@ fn emit_module(
             cranelift_object::object::SectionKind::OtherString,
         );
         let mut producer = vec![0];
-        producer.extend(crate::debuginfo::producer().as_bytes());
+        producer.extend(producer_str.as_bytes());
         producer.push(0);
         object.set_section_data(comment_section, producer, 1);
     }
@@ -321,6 +329,8 @@ fn module_codegen(
             (cgu_name, cx, module, codegened_functions)
         });
 
+    let producer = crate::debuginfo::producer(tcx.sess);
+
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         cx.profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
             cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
@@ -348,6 +358,7 @@ fn module_codegen(
                     cx.debug_context,
                     cx.unwind_context,
                     global_asm_object_file,
+                    &producer,
                 )
             });
         std::mem::drop(token);
@@ -453,6 +464,7 @@ pub(crate) fn run_aot(
             product.object,
             ModuleKind::Allocator,
             "allocator_shim".to_owned(),
+            &crate::debuginfo::producer(tcx.sess),
         ) {
             Ok(allocator_module) => Some(allocator_module),
             Err(err) => tcx.dcx().fatal(err),
@@ -467,7 +479,7 @@ pub(crate) fn run_aot(
 
             let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
             let metadata_cgu_name = cgu_name_builder
-                .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
+                .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
                 .as_str()
                 .to_string();
 
