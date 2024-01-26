@@ -47,9 +47,18 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     };
     visitor.visit_expr(&thir[expr]);
 
+    let origin = match tcx.def_kind(def_id) {
+        DefKind::AssocFn | DefKind::Fn => "function argument",
+        DefKind::Closure => "closure argument",
+        // other types of MIR don't have function parameters, and we don't need to
+        // categorize those for the irrefutable check.
+        _ if thir.params.is_empty() => "",
+        kind => bug!("unexpected function parameters in THIR: {kind:?} {def_id:?}"),
+    };
+
     for param in thir.params.iter() {
         if let Some(box ref pattern) = param.pat {
-            visitor.check_binding_is_irrefutable(pattern, "function argument", None, None);
+            visitor.check_binding_is_irrefutable(pattern, origin, None, None);
         }
     }
     visitor.error
