@@ -1867,9 +1867,9 @@ impl<'tcx> Region<'tcx> {
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
-    // Avoid this in favour of more specific `new_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
+    /// Turns a [`TyKind`] into a [`Ty`]. Use more specific `new_*` methods(such as `new_int`), where possible.
     pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
@@ -1928,12 +1928,12 @@ impl<'tcx> Ty<'tcx> {
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
     }
-
+    /// Creates a new [`Ty`] representing a parameter, with index `index` and name `name`.
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
     }
-
+    /// Creates an new [`Ty`] representing a bound type variable, with debruijn index `index` and bound type `bound_ty`.
     #[inline]
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
@@ -2257,22 +2257,22 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
-
+    /// Checks if this type is of [`TyKind::Never`].
     #[inline]
     pub fn is_never(self) -> bool {
         matches!(self.kind(), Never)
     }
-
+    /// Checks if this type is primitive
     #[inline]
     pub fn is_primitive(self) -> bool {
         self.kind().is_primitive()
     }
-
+    /// Checks if this type is an Algebraic Data Type(a struct, union, or enum).
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
     }
-
+    /// Checks if a type is a reference.
     #[inline]
     pub fn is_ref(self) -> bool {
         matches!(self.kind(), Ref(..))
@@ -2295,23 +2295,22 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_ty_or_numeric_infer(self) -> bool {
         matches!(self.kind(), Infer(_))
     }
-
+    /// Checks if this type is [`core::marker::PhantomData`].
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
     }
-
+    /// Checks if this type is a boolean.
     #[inline]
     pub fn is_bool(self) -> bool {
         *self.kind() == Bool
     }
-
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(self) -> bool {
         *self.kind() == Str
     }
-
+    /// Checks if a type is a parameter type, with index `index`.
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
@@ -2319,12 +2318,12 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
-
+    /// Checks if this type is a silice type.
     #[inline]
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
     }
-
+    /// Checks if this type is a slice or a reference/pointer to a slice. 
     #[inline]
     pub fn is_array_slice(self) -> bool {
         match self.kind() {
@@ -2333,12 +2332,12 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
-
+    /// Checks if this type is an array.
     #[inline]
     pub fn is_array(self) -> bool {
         matches!(self.kind(), Array(..))
     }
-
+  
     #[inline]
     pub fn is_simd(self) -> bool {
         match self.kind() {
@@ -2346,7 +2345,8 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
-
+    /// If the type is a slice, array, or a string slice, it will returns its element type.
+    /// If this type is not one of those, this function will panic.
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
@@ -2380,7 +2380,7 @@ impl<'tcx> Ty<'tcx> {
             _ => bug!("`simd_size_and_type` called on invalid type"),
         }
     }
-
+    /// Checks if this type is a mutable reference or a mutable pointer.
     #[inline]
     pub fn is_mutable_ptr(self) -> bool {
         matches!(
@@ -2398,7 +2398,7 @@ impl<'tcx> Ty<'tcx> {
             _ => None,
         }
     }
-
+    /// Checks if this type is a raw pointer.
     #[inline]
     pub fn is_unsafe_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_))
@@ -2409,7 +2409,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_any_ptr(self) -> bool {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
-
+    /// Checks if this type is an [`alloc::boxed::Box`].
     #[inline]
     pub fn is_box(self) -> bool {
         match self.kind() {
@@ -2417,7 +2417,7 @@ impl<'tcx> Ty<'tcx> {
             _ => false,
         }
     }
-
+    /// Returns the type contained within a `Box<T>`.
     /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(self) -> Ty<'tcx> {
         match self.kind() {
@@ -2449,27 +2449,27 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_floating_point(self) -> bool {
         matches!(self.kind(), Float(_) | Infer(FloatVar(_)))
     }
-
+    /// Checks if this type is an unsized trait object(`dyn Trait`).
     #[inline]
     pub fn is_trait(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::Dyn))
     }
-
+    /// Checks if this type is an sized trait object(`dyn* Trait`).
     #[inline]
     pub fn is_dyn_star(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::DynStar))
     }
-
+    /// Checks if this type is an enum.
     #[inline]
     pub fn is_enum(self) -> bool {
         matches!(self.kind(), Adt(adt_def, _) if adt_def.is_enum())
     }
-
+    /// Checks if this type is an union.
     #[inline]
     pub fn is_union(self) -> bool {
         matches!(self.kind(), Adt(adt_def, _) if adt_def.is_union())
     }
-
+    /// Checks if this type is a closure.
     #[inline]
     pub fn is_closure(self) -> bool {
         matches!(self.kind(), Closure(..))
@@ -2479,7 +2479,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_coroutine(self) -> bool {
         matches!(self.kind(), Coroutine(..))
     }
-
+    /// Checks if this type is an intgeral type(signed, unsigned on infered).
     #[inline]
     pub fn is_integral(self) -> bool {
         matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
@@ -2494,22 +2494,22 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_fresh(self) -> bool {
         matches!(self.kind(), Infer(FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_)))
     }
-
+    /// Checks if this type is a `char`.
     #[inline]
     pub fn is_char(self) -> bool {
         matches!(self.kind(), Char)
     }
-
+    /// Checks if this type is numeric(integral or floating point).
     #[inline]
     pub fn is_numeric(self) -> bool {
         self.is_integral() || self.is_floating_point()
     }
-
+    /// Checks if this type is a signed intiger. 
     #[inline]
     pub fn is_signed(self) -> bool {
         matches!(self.kind(), Int(_))
     }
-
+    /// Checks if this type is `usize` or `isize`.
     #[inline]
     pub fn is_ptr_sized_integral(self) -> bool {
         matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
@@ -2582,7 +2582,7 @@ impl<'tcx> Ty<'tcx> {
             _ => None,
         }
     }
-
+    /// If this type is a function definition or a function pointer, this will retunrn its signature. Otherwise, this function will panic.
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
@@ -2597,12 +2597,12 @@ impl<'tcx> Ty<'tcx> {
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
         }
     }
-
+    /// Checks if this type is a function definition or a function pointer.
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(_))
     }
-
+    /// Checks if this type is a function pointer.
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), FnPtr(_))
@@ -2612,7 +2612,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_impl_trait(self) -> bool {
         matches!(self.kind(), Alias(ty::Opaque, ..))
     }
-
+    /// Returns the `AdtDef` defining this type, if it is an ADT(struct,union or enum). If this type is not an ADT, returns `None`.
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
