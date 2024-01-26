@@ -332,20 +332,6 @@ impl Session {
         }
     }
 
-    // FIXME(matthewjasper) Remove this method, it should never be needed.
-    pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorGuaranteed>
-    where
-        F: FnOnce() -> T,
-    {
-        let old_count = self.dcx().err_count();
-        let result = f();
-        if self.dcx().err_count() == old_count {
-            Ok(result)
-        } else {
-            Err(self.dcx().delayed_bug("`self.err_count()` changed but an error was not emitted"))
-        }
-    }
-
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
@@ -1524,16 +1510,25 @@ pub trait RemapFileNameExt {
     where
         Self: 'a;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_>;
+    /// Returns a possibly remapped filename based on the passed scope and remap cli options.
+    ///
+    /// One and only one scope should be passed to this method. For anything related to
+    /// "codegen" see the [`RemapFileNameExt::for_codegen`] method.
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
 
+    /// Return a possibly remapped filename, to be used in "codegen" related parts.
     fn for_codegen(&self, sess: &Session) -> Self::Output<'_>;
 }
 
 impl RemapFileNameExt for rustc_span::FileName {
     type Output<'a> = rustc_span::FileNameDisplay<'a>;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_> {
-        if sess.opts.unstable_opts.remap_path_scope.contains(scopes) {
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to for_scope"
+        );
+        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
             self.prefer_remapped_unconditionaly()
         } else {
             self.prefer_local()
@@ -1552,8 +1547,12 @@ impl RemapFileNameExt for rustc_span::FileName {
 impl RemapFileNameExt for rustc_span::RealFileName {
     type Output<'a> = &'a Path;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_> {
-        if sess.opts.unstable_opts.remap_path_scope.contains(scopes) {
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to for_scope"
+        );
+        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
             self.remapped_path_if_available()
         } else {
             self.local_path_if_available()

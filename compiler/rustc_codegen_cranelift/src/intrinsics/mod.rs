@@ -443,6 +443,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             ret.write_cvalue(fx, a);
         }
+        sym::is_val_statically_known => {
+            intrinsic_args!(fx, args => (_a); intrinsic);
+
+            let res = fx.bcx.ins().iconst(types::I8, 0);
+            ret.write_cvalue(fx, CValue::by_val(res, ret.layout()));
+        }
         sym::breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
 

@@ -1,4 +1,3 @@
-// no-system-llvm
 // compile-flags: -C opt-level=3
 // aux-build: issue-76387.rs
 // run-pass

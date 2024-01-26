@@ -110,7 +110,7 @@ mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 mir_build_float_pattern = floating-point types cannot be used in patterns
 
 mir_build_indirect_structural_match =
-    to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+    to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
 
 mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
 
@@ -254,7 +254,7 @@ mir_build_non_partial_eq_match =
     to use a constant of type `{$non_peq_ty}` in a pattern, the type must implement `PartialEq`
 
 mir_build_nontrivial_structural_match =
-    to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+    to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
@@ -297,9 +297,9 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
     } into the body
 
 mir_build_type_not_structural =
-     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
 
-mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
+mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 mir_build_type_not_structural_tip = the traits must be derived, manual `impl`s are not sufficient
 

@@ -864,9 +864,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
                 rustc_middle::error::middle_adjust_for_foreign_abi_error
             }
-            InvalidProgramInfo::ConstPropNonsense => {
-                panic!("We had const-prop nonsense, this should never be printed")
-            }
         }
     }
     fn add_args<G: EmissionGuarantee>(
@@ -875,9 +872,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
-            InvalidProgramInfo::TooGeneric
-            | InvalidProgramInfo::AlreadyReported(_)
-            | InvalidProgramInfo::ConstPropNonsense => {}
+            InvalidProgramInfo::TooGeneric | InvalidProgramInfo::AlreadyReported(_) => {}
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `diag` is consumed without it being used.
                 let dummy_level = Level::Bug;

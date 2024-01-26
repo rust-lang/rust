@@ -9,7 +9,7 @@
    LL|       |// a too-large counter ID and silently discard the entire function from its
    LL|       |// coverage reports.
    LL|       |
-   LL|      8|#[derive(Debug, PartialEq, Eq)]
+   LL|       |#[derive(Debug, PartialEq, Eq)]
    LL|       |struct Foo(u32);
    LL|       |
    LL|      1|fn eq_good() {
