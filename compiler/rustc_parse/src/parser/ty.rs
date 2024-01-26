@@ -3,8 +3,8 @@ use super::{Parser, PathStyle, TokenType};
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
     FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
-    ReturnTypesUseThinArrow,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
 };
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
@@ -880,6 +880,17 @@ impl<'a> Parser<'a> {
         };
 
         let asyncness = if self.token.span.at_least_rust_2018() && self.eat_keyword(kw::Async) {
+            self.sess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            BoundAsyncness::Async(self.prev_token.span)
+        } else if self.may_recover()
+            && self.token.span.is_rust_2015()
+            && self.is_kw_followed_by_ident(kw::Async)
+        {
+            self.bump(); // eat `async`
+            self.dcx().emit_err(errors::AsyncBoundModifierIn2015 {
+                span: self.prev_token.span,
+                help: HelpUseLatestEdition::new(),
+            });
             self.sess.gated_spans.gate(sym::async_closure, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else {
