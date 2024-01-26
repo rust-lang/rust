@@ -516,6 +516,9 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
+    /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
+    /// unambiguously sound.
+    (incomplete, min_exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(119612)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.

@@ -1029,6 +1029,7 @@ symbols! {
         min_const_fn,
         min_const_generics,
         min_const_unsafe_fn,
+        min_exhaustive_patterns,
         min_specialization,
         min_type_alias_impl_trait,
         minnumf32,
