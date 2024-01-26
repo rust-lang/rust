@@ -187,7 +187,7 @@ pub trait Unsize<T: ?Sized> {
 /// Required trait for constants used in pattern matches.
 ///
 /// Any type that derives `PartialEq` automatically implements this trait,
-/// *regardless* of whether its type-parameters implement `Eq`.
+/// *regardless* of whether its type-parameters implement `PartialEq`.
 ///
 /// If a `const` item contains some type that does not implement this trait,
 /// then that type either (1.) does not implement `PartialEq` (which means the
@@ -200,7 +200,7 @@ pub trait Unsize<T: ?Sized> {
 /// a pattern match.
 ///
 /// See also the [structural match RFC][RFC1445], and [issue 63438] which
-/// motivated migrating from attribute-based design to this trait.
+/// motivated migrating from an attribute-based design to this trait.
 ///
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
 /// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
@@ -218,7 +218,7 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
-        str /* Technically requires `[u8]: StructuralEq` */,
+        str /* Technically requires `[u8]: StructuralPartialEq` */,
         (),
         {T, const N: usize} [T; N],
         {T} [T],
@@ -275,6 +275,7 @@ marker_impls! {
 #[unstable(feature = "structural_match", issue = "31434")]
 #[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
 #[lang = "structural_teq"]
+#[cfg(bootstrap)]
 pub trait StructuralEq {
     // Empty.
 }
@@ -282,6 +283,7 @@ pub trait StructuralEq {
 // FIXME: Remove special cases of these types from the compiler pattern checking code and always check `T: StructuralEq` instead
 marker_impls! {
     #[unstable(feature = "structural_match", issue = "31434")]
+    #[cfg(bootstrap)]
     StructuralEq for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
@@ -859,6 +861,7 @@ impl<T: ?Sized> Default for PhantomData<T> {
 impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
 
 #[unstable(feature = "structural_match", issue = "31434")]
+#[cfg(bootstrap)]
 impl<T: ?Sized> StructuralEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
@@ -1038,6 +1041,20 @@ pub trait PointerLike {}
 #[unstable(feature = "adt_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
+#[cfg(not(bootstrap))]
+pub trait ConstParamTy: StructuralPartialEq + Eq {}
+
+/// A marker for types which can be used as types of `const` generic parameters.
+///
+/// These types must have a proper equivalence relation (`Eq`) and it must be automatically
+/// derived (`StructuralPartialEq`). There's a hard-coded check in the compiler ensuring
+/// that all fields are also `ConstParamTy`, which implies that recursively, all fields
+/// are `StructuralPartialEq`.
+#[lang = "const_param_ty"]
+#[unstable(feature = "adt_const_params", issue = "95174")]
+#[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+#[allow(multiple_supertrait_upcastable)]
+#[cfg(bootstrap)]
 pub trait ConstParamTy: StructuralEq + StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.

@@ -1360,9 +1360,9 @@ rustc_queries! {
     ///
     /// This is only correct for ADTs. Call `is_structural_eq_shallow` to handle all types
     /// correctly.
-    query has_structural_eq_impls(ty: Ty<'tcx>) -> bool {
+    query has_structural_eq_impl(ty: Ty<'tcx>) -> bool {
         desc {
-            "computing whether `{}` implements `PartialStructuralEq` and `StructuralEq`",
+            "computing whether `{}` implements `StructuralPartialEq`",
             ty
         }
     }

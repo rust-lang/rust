@@ -22,7 +22,7 @@ const WRAP_DOUBLY_INDIRECT_PARAM: & &WrapParam<NoDerive> = & &WrapParam(& & NoDe
 fn main() {
     match WRAP_DOUBLY_INDIRECT_PARAM {
         WRAP_DOUBLY_INDIRECT_PARAM => { panic!("WRAP_DOUBLY_INDIRECT_PARAM matched itself"); }
-        //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ WARN must be annotated with `#[derive(PartialEq)]`
         //~| WARN this was previously accepted
         _ => { println!("WRAP_DOUBLY_INDIRECT_PARAM correctly did not match itself"); }
     }

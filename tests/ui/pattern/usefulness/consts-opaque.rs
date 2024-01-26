@@ -29,65 +29,63 @@ const BAZ: Baz = Baz::Baz1;
 fn main() {
     match FOO {
         FOO => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         _ => {}
     }
 
     match FOO_REF {
         FOO_REF => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Foo(_) => {}
     }
 
     // This used to cause an ICE (https://github.com/rust-lang/rust/issues/78071)
     match FOO_REF_REF {
         FOO_REF_REF => {}
-        //~^ WARNING must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARNING this was previously accepted by the compiler but is being phased out
         Foo(_) => {}
     }
 
     match BAR {
         Bar => {}
         BAR => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR unreachable pattern
         _ => {}
+        //~^ ERROR unreachable pattern
     }
 
     match BAR {
         BAR => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Bar => {}
+        //~^ ERROR unreachable pattern
         _ => {}
+        //~^ ERROR unreachable pattern
     }
 
     match BAR {
         BAR => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        BAR => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        _ => {}
+        BAR => {} // should not be emitting unreachable warning
+        //~^ ERROR unreachable pattern
+        _ => {} // should not be emitting unreachable warning
+        //~^ ERROR unreachable pattern
     }
 
     match BAZ {
         BAZ => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        Baz::Baz1 => {} // should not be emitting unreachable warning
+        //~^ ERROR unreachable pattern
+        _ => {}
+    }
+
+    match BAZ {
         Baz::Baz1 => {}
-        _ => {}
-    }
-
-    match BAZ {
-        Baz::Baz1 => {}
         BAZ => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR unreachable pattern
         _ => {}
     }
 
     match BAZ {
         BAZ => {}
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
         Baz::Baz2 => {}
-        _ => {}
+        _ => {} // should not be emitting unreachable warning
+        //~^ ERROR unreachable pattern
     }
 
     type Quux = fn(usize, usize) -> usize;
