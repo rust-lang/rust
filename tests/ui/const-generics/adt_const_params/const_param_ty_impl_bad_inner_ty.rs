@@ -20,7 +20,7 @@ impl ConstParamTy for [Foo; 4] {}
 
 impl ConstParamTy for (Foo, i32, *const u8) {}
 //~^ ERROR only traits defined in the current crate can be implemented for arbitrary types
-//~| ERROR the trait `ConstParamTy` cannot be implemented for this type
+//~| ERROR the trait `ConstParamTy` may not be implemented for this type
 
 // #119299 (ICE)
 

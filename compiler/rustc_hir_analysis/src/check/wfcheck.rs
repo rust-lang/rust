@@ -939,6 +939,22 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     Ok(())
                 })
             } else {
+                fn ty_is_local(ty: Ty<'_>) -> bool {
+                    match ty.kind() {
+                        ty::Adt(adt_def, ..) => adt_def.did().is_local(),
+                        // Arrays and slices use the inner type's `ConstParamTy`.
+                        ty::Array(ty, ..) => ty_is_local(*ty),
+                        ty::Slice(ty) => ty_is_local(*ty),
+                        // `&` references use the inner type's `ConstParamTy`.
+                        // `&mut` are not supported.
+                        ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
+                        // Say that a tuple is local if any of its components are local.
+                        // This is not strictly correct, but it's likely that the user can fix the local component.
+                        ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
+                        _ => false,
+                    }
+                }
+
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
                     ty::FnPtr(_) => tcx.dcx().struct_span_err(
@@ -962,35 +978,16 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     tcx,
                     tcx.param_env(param.def_id),
                     ty,
-                    cause,
+                    &cause,
                 ) {
                     // Can never implement `ConstParamTy`, don't suggest anything.
-                    Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => false,
+                    Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed(..)) => false,
                     // May be able to implement `ConstParamTy`. Only emit the feature help
                     // if the type is local, since the user may be able to fix the local type.
-                    Err(ConstParamTyImplementationError::InfrigingFields(..)) => {
-                        fn ty_is_local(ty: Ty<'_>) -> bool {
-                            match ty.kind() {
-                                ty::Adt(adt_def, ..) => adt_def.did().is_local(),
-                                // Arrays and slices use the inner type's `ConstParamTy`.
-                                ty::Array(ty, ..) => ty_is_local(*ty),
-                                ty::Slice(ty) => ty_is_local(*ty),
-                                // `&` references use the inner type's `ConstParamTy`.
-                                // `&mut` are not supported.
-                                ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
-                                // Say that a tuple is local if any of its components are local.
-                                // This is not strictly correct, but it's likely that the user can fix the local component.
-                                ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
-                                _ => false,
-                            }
-                        }
-
-                        ty_is_local(ty)
-                    }
-                    // Same as above.
-                    Err(ConstParamTyImplementationError::InfringingInnerTy(def_id)) => {
-                        def_id.is_local()
-                    }
+                    Err(
+                        ConstParamTyImplementationError::InfrigingFields(..)
+                        | ConstParamTyImplementationError::InfringingInnerTy(..),
+                    ) => ty_is_local(ty),
                     // Implments `ConstParamTy`, suggest adding the feature to enable.
                     Ok(..) => true,
                 };

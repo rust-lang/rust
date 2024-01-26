@@ -11,6 +11,7 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, AdtDef, GenericArg, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;
@@ -23,8 +24,8 @@ pub enum CopyImplementationError<'tcx> {
 
 pub enum ConstParamTyImplementationError<'tcx> {
     InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
-    InfringingInnerTy(DefId),
-    NotAnAdtOrBuiltinAllowed,
+    InfringingInnerTy(Vec<DefId>),
+    NotAnAdtOrBuiltinAllowed(Ty<'tcx>),
 }
 
 pub enum InfringingFieldsReason<'tcx> {
@@ -69,7 +70,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         self_type,
         adt,
         args,
-        parent_cause,
+        &parent_cause,
         hir::LangItem::Copy,
     )
     .map_err(CopyImplementationError::InfringingFields)?;
@@ -91,86 +92,97 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
-    parent_cause: ObligationCause<'tcx>,
+    parent_cause: &ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    // Special case for impls like `impl ConstParamTy for &Foo`, where
-    // Foo doesn't `impl ConstParamTy`. These kinds of impls aren't caught
-    // by coherence checking since `core`'s impl is restricted to T: ConstParamTy.
-    // `has_concrete_skeleton()` avoids reporting `core`'s blanket impl.
-    let check_inner_ty = |ty: Ty<'tcx>, cause| {
-        let ty = ty.peel_refs();
-        if ty.has_concrete_skeleton() {
-            type_allowed_to_implement_const_param_ty(tcx, param_env, ty, cause)?;
-            // Check the inner tys in refs, tuples, arrays, or slices implement `ConstParamTy`.
-            // This additional logic is needed because we need to check not only if all fields
-            // of the type implement ConstParamTy, but also that the type itself implements
-            // ConstParamTy. Simply recursing into the inner type only checks the former.
-            // `type_allowed_to_implement_const_param_ty` takes care of other non-ADT types
-            // for us.
-            if let &ty::Adt(adt, _) = ty.kind() {
-                let adt_did = adt.did();
-                let adt_span = tcx.def_span(adt_did);
-                let trait_did = tcx.require_lang_item(hir::LangItem::ConstParamTy, Some(adt_span));
+    // impls like `impl ConstParamTy for &Foo` where Foo doesn't `impl ConstParamTy`
+    // need special-casing. These kinds of impls aren't caught by coherence checking
+    // since `core`'s impl is restricted to T: ConstParamTy.
+    // Additionally, we need to check that the inner tys in refs, tuples, arrays,
+    // or slices implement `ConstParamTy`. Simply recursing into the inner type only
+    // checks if all fields of the type implement ConstParamTy. We only do this for
+    // ADTs because recursing with `type_allowed_to_implement_const_param_ty` takes
+    // care of non-ADTs for us.
+    // `has_concrete_skeletion` avoids reporting `core`'s blanket impls.
 
-                let infcx = tcx.infer_ctxt().build();
-                let ocx = traits::ObligationCtxt::new(&infcx);
+    let mut adts_and_args = Vec::new();
+    let mut inner_tys = Vec::new();
 
-                let ty = ocx.normalize(&ObligationCause::dummy_with_span(adt_span), param_env, ty);
-                let norm_errs = ocx.select_where_possible();
-                if !norm_errs.is_empty() || ty.references_error() {
-                    return Ok(());
-                }
-
-                ocx.register_bound(
-                    ObligationCause::dummy_with_span(adt_span),
-                    param_env,
-                    ty,
-                    trait_did,
-                );
-                let errs = ocx.select_all_or_error();
-                if !errs.is_empty() {
-                    return Err(ConstParamTyImplementationError::InfringingInnerTy(adt_did));
-                }
-            }
-        }
-
-        Ok(())
-    };
-
-    let (adt, args) = match self_type.kind() {
-        // `core` provides these impls, but only where the inner type is `ConstParamTy`,
-        // so we need to check and deny impls where the inner type is not `ConstParamTy`
+    match self_type.kind() {
         &ty::Ref(.., ty, hir::Mutability::Not) | &ty::Array(ty, ..) | &ty::Slice(ty) => {
-            return check_inner_ty(ty, parent_cause);
+            let ty = ty.peel_refs();
+            if !ty.has_concrete_skeleton() {
+                return Ok(());
+            }
+
+            if let &ty::Adt(adt, args) = ty.kind() {
+                adts_and_args.push((adt, args));
+                inner_tys.push((ty, adt.did()));
+            } else {
+                type_allowed_to_implement_const_param_ty(tcx, param_env, ty, parent_cause)?;
+            }
         }
 
         &ty::Tuple(tys) => {
             for ty in tys {
-                check_inner_ty(ty, parent_cause.clone())?;
+                let ty = ty.peel_refs();
+                if !ty.has_concrete_skeleton() {
+                    continue;
+                }
+
+                if let &ty::Adt(adt, args) = ty.kind() {
+                    adts_and_args.push((adt, args));
+                    inner_tys.push((ty, adt.did()));
+                } else {
+                    type_allowed_to_implement_const_param_ty(tcx, param_env, ty, parent_cause)?;
+                }
             }
-            return Ok(());
         }
 
         // `core` provides these impls.
         ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char | ty::Str => return Ok(()),
 
-        &ty::Adt(adt, args) => (adt, args),
+        &ty::Adt(adt, args) => adts_and_args.push((adt, args)),
 
-        _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed),
-    };
+        _ => return Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed(self_type)),
+    }
 
-    all_fields_implement_trait(
-        tcx,
-        param_env,
-        self_type,
-        adt,
-        args,
-        parent_cause,
-        hir::LangItem::ConstParamTy,
-    )
-    .map_err(ConstParamTyImplementationError::InfrigingFields)?;
+    for (adt, args) in adts_and_args {
+        all_fields_implement_trait(
+            tcx,
+            param_env,
+            self_type,
+            adt,
+            args,
+            parent_cause,
+            hir::LangItem::ConstParamTy,
+        )
+        .map_err(ConstParamTyImplementationError::InfrigingFields)?;
+    }
 
-    Ok(())
+    let mut infringing = Vec::new();
+    for (ty, def_id) in inner_tys {
+        let span = tcx.def_span(def_id);
+        if !type_implements_trait(
+            tcx,
+            param_env,
+            self_type,
+            ty,
+            span,
+            ObligationCause::dummy_with_span(span),
+            parent_cause,
+            hir::LangItem::ConstParamTy,
+        )
+        .is_empty()
+        {
+            infringing.push(def_id);
+        }
+    }
+
+    if infringing.is_empty() {
+        Ok(())
+    } else {
+        Err(ConstParamTyImplementationError::InfringingInnerTy(infringing))
+    }
 }
 
 /// Check that all fields of a given `adt` implement `lang_item` trait.
@@ -180,20 +192,14 @@ pub fn all_fields_implement_trait<'tcx>(
     self_type: Ty<'tcx>,
     adt: AdtDef<'tcx>,
     args: &'tcx List<GenericArg<'tcx>>,
-    parent_cause: ObligationCause<'tcx>,
+    parent_cause: &ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
-    let trait_def_id = tcx.require_lang_item(lang_item, Some(parent_cause.span));
-
     let mut infringing = Vec::new();
     for variant in adt.variants() {
         for field in &variant.fields {
-            // Do this per-field to get better error messages.
-            let infcx = tcx.infer_ctxt().build();
-            let ocx = traits::ObligationCtxt::new(&infcx);
-
-            let unnormalized_ty = field.ty(tcx, args);
-            if unnormalized_ty.references_error() {
+            let field_ty = field.ty(tcx, args);
+            if field_ty.references_error() {
                 continue;
             }
 
@@ -216,46 +222,88 @@ pub fn all_fields_implement_trait<'tcx>(
             } else {
                 ObligationCause::dummy_with_span(field_ty_span)
             };
-            let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
-            let normalization_errors = ocx.select_where_possible();
 
-            // NOTE: The post-normalization type may also reference errors,
-            // such as when we project to a missing type or we have a mismatch
-            // between expected and found const-generic types. Don't report an
-            // additional copy error here, since it's not typically useful.
-            if !normalization_errors.is_empty() || ty.references_error() {
-                tcx.dcx().span_delayed_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
-                continue;
-            }
-
-            ocx.register_bound(
-                ObligationCause::dummy_with_span(field_ty_span),
-                param_env,
-                ty,
-                trait_def_id,
-            );
-            let errors = ocx.select_all_or_error();
-            if !errors.is_empty() {
-                infringing.push((field, ty, InfringingFieldsReason::Fulfill(errors)));
-            }
-
-            // Check regions assuming the self type of the impl is WF
-            let outlives_env = OutlivesEnvironment::with_bounds(
-                param_env,
-                infcx.implied_bounds_tys(
+            infringing.extend(
+                type_implements_trait(
+                    tcx,
                     param_env,
-                    parent_cause.body_id,
-                    &FxIndexSet::from_iter([self_type]),
-                ),
+                    self_type,
+                    field_ty,
+                    field_ty_span,
+                    normalization_cause,
+                    parent_cause,
+                    lang_item,
+                )
+                .into_iter()
+                .map(|(ty, reason)| (field, ty, reason)),
             );
-            let errors = infcx.resolve_regions(&outlives_env);
-            if !errors.is_empty() {
-                infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));
-            }
         }
     }
 
     if infringing.is_empty() { Ok(()) } else { Err(infringing) }
+}
+
+fn type_implements_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    self_type: Ty<'tcx>,
+    field_ty: Ty<'tcx>,
+    field_ty_span: Span,
+    normalization_cause: ObligationCause<'tcx>,
+    parent_cause: &ObligationCause<'tcx>,
+    lang_item: LangItem,
+) -> Vec<(Ty<'tcx>, InfringingFieldsReason<'tcx>)> {
+    let trait_def_id = tcx.require_lang_item(lang_item, Some(parent_cause.span));
+
+    let infcx = tcx.infer_ctxt().build();
+    let ocx = traits::ObligationCtxt::new(&infcx);
+
+    let ty = ocx.normalize(&normalization_cause, param_env, field_ty);
+    let normalization_errors = ocx.select_where_possible();
+
+    // NOTE: The post-normalization type may also reference errors,
+    // such as when we project to a missing type or we have a mismatch
+    // between expected and found const-generic types. Don't report an
+    // additional copy error here, since it's not typically useful.
+    if !normalization_errors.is_empty() || ty.references_error() {
+        tcx.dcx().span_delayed_bug(
+            field_ty_span,
+            format!(
+                "couldn't normalize struct field `{field_ty}` when checking {tr} implementation",
+                tr = tcx.def_path_str(trait_def_id)
+            ),
+        );
+        return Vec::new();
+    }
+
+    let mut infringing = Vec::new();
+
+    ocx.register_bound(
+        ObligationCause::dummy_with_span(field_ty_span),
+        param_env,
+        ty,
+        trait_def_id,
+    );
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        infringing.push((ty, InfringingFieldsReason::Fulfill(errors)));
+    }
+
+    // Check regions assuming the self type of the impl is WF
+    let outlives_env = OutlivesEnvironment::with_bounds(
+        param_env,
+        infcx.implied_bounds_tys(
+            param_env,
+            parent_cause.body_id,
+            &FxIndexSet::from_iter([self_type]),
+        ),
+    );
+    let errors = infcx.resolve_regions(&outlives_env);
+    if !errors.is_empty() {
+        infringing.push((ty, InfringingFieldsReason::Regions(errors)));
+    }
+
+    infringing
 }
 
 pub fn check_tys_might_be_eq<'tcx>(

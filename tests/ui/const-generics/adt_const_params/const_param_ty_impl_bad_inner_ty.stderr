@@ -35,12 +35,12 @@ error: the trait `ConstParamTy` cannot be implemented for this type
   --> $DIR/const_param_ty_impl_bad_inner_ty.rs:10:23
    |
 LL | struct Foo;
-   | ---------- this struct does not implement `ConstParamTy`
+   | ---------- this type does not implement `ConstParamTy`
 LL |
 LL | impl ConstParamTy for &Foo {}
    |                       ^^^^
    |
-help: consider annotating this struct with `#[derive(ConstParamTy)]`
+help: consider annotating with `#[derive(ConstParamTy)]`
    |
 LL + #[derive(ConstParamTy)]
 LL | struct Foo;
@@ -50,12 +50,12 @@ error: the trait `ConstParamTy` cannot be implemented for this type
   --> $DIR/const_param_ty_impl_bad_inner_ty.rs:13:23
    |
 LL | struct Foo;
-   | ---------- this struct does not implement `ConstParamTy`
+   | ---------- this type does not implement `ConstParamTy`
 ...
 LL | impl ConstParamTy for &[Foo] {}
    |                       ^^^^^^
    |
-help: consider annotating this struct with `#[derive(ConstParamTy)]`
+help: consider annotating with `#[derive(ConstParamTy)]`
    |
 LL + #[derive(ConstParamTy)]
 LL | struct Foo;
@@ -65,31 +65,22 @@ error: the trait `ConstParamTy` cannot be implemented for this type
   --> $DIR/const_param_ty_impl_bad_inner_ty.rs:17:23
    |
 LL | struct Foo;
-   | ---------- this struct does not implement `ConstParamTy`
+   | ---------- this type does not implement `ConstParamTy`
 ...
 LL | impl ConstParamTy for [Foo; 4] {}
    |                       ^^^^^^^^
    |
-help: consider annotating this struct with `#[derive(ConstParamTy)]`
+help: consider annotating with `#[derive(ConstParamTy)]`
    |
 LL + #[derive(ConstParamTy)]
 LL | struct Foo;
    |
 
-error: the trait `ConstParamTy` cannot be implemented for this type
+error: the trait `ConstParamTy` may not be implemented for this type
   --> $DIR/const_param_ty_impl_bad_inner_ty.rs:21:23
    |
-LL | struct Foo;
-   | ---------- this struct does not implement `ConstParamTy`
-...
 LL | impl ConstParamTy for (Foo, i32, *const u8) {}
-   |                       ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: consider annotating this struct with `#[derive(ConstParamTy)]`
-   |
-LL + #[derive(ConstParamTy)]
-LL | struct Foo;
-   |
+   |                       ^^^^^^^^^^^^^^^^^^^^^ the type `*const u8` is not a structure or enumeration
 
 error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
   --> $DIR/const_param_ty_impl_bad_inner_ty.rs:30:23

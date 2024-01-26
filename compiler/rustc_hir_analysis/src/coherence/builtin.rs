@@ -127,22 +127,31 @@ fn visit_implementation_of_const_param_ty(
     };
 
     let cause = traits::ObligationCause::misc(span, impl_did);
-    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, &cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
             Err(infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span))
         }
-        Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
-            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
+        Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed(ty)) => {
+            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span, ty }))
         }
-        Err(ConstParamTyImplementationError::InfringingInnerTy(def_id)) => {
-            let def_span = tcx.def_span(def_id);
-            tcx.dcx().emit_err(errors::ConstParamTyImplOnInfringingInnerTy {
+        Err(ConstParamTyImplementationError::InfringingInnerTy(def_ids)) => {
+            let mut def_spans = vec![];
+            let mut suggs = vec![];
+            for def_id in def_ids {
+                let def_span = tcx.def_span(def_id);
+                def_spans.push(def_span);
+                if def_id.is_local() {
+                    suggs.push(errors::ConstParamTyImplOnInfringingInnerTySugg {
+                        span: def_span.shrink_to_lo(),
+                    });
+                }
+            }
+            Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnInfringingInnerTy {
                 span,
-                def_span,
-                def_descr: tcx.def_descr(def_id),
-                sugg: def_id.is_local().then_some(def_span.shrink_to_lo()),
-            });
+                def_spans,
+                suggs,
+            }))
         }
     }
 }
