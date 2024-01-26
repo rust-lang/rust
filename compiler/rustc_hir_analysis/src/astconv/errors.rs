@@ -461,22 +461,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return err.emit();
         }
 
-        let mut bound_spans = Vec::new();
+        let mut bound_spans: FxHashMap<Span, Vec<String>> = Default::default();
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
-            let msg = format!(
-                "doesn't satisfy `{}`",
-                if obligation.len() > 50 { quiet } else { obligation }
-            );
+            let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match &self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
-                ty::Adt(def, _) => bound_spans.push((tcx.def_span(def.did()), msg)),
+                ty::Adt(def, _) => {
+                    bound_spans.entry(tcx.def_span(def.did())).or_default().push(msg)
+                }
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
-                                bound_spans.push((tcx.def_span(tr.def_id), msg.clone()))
+                                bound_spans
+                                    .entry(tcx.def_span(tr.def_id))
+                                    .or_default()
+                                    .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
                             | ty::ExistentialPredicate::AutoTrait(_) => {}
@@ -485,7 +487,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
-                    bound_spans.push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`")))
+                    bound_spans
+                        .entry(tcx.def_span(*def_id))
+                        .or_default()
+                        .push(format!("`{quiet}`"));
                 }
                 _ => {}
             }
@@ -554,12 +559,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
-        bound_spans.sort();
-        bound_spans.dedup();
-        for (span, msg) in bound_spans {
+        let mut bound_spans: Vec<(Span, Vec<String>)> = bound_spans
+            .into_iter()
+            .map(|(span, mut bounds)| {
+                bounds.sort();
+                bounds.dedup();
+                (span, bounds)
+            })
+            .collect();
+        bound_spans.sort_by_key(|(span, _)| *span);
+        for (span, bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            let msg = match &bounds[..] {
+                [bound] => format!("doesn't satisfy {bound}"),
+                [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
+                [] => unreachable!(),
+            };
             err.span_label(span, msg);
         }
         add_def_label(&mut err);
