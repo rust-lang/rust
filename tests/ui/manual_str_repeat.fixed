@@ -1,3 +1,4 @@
+#![allow(non_local_definitions)]
 #![warn(clippy::manual_str_repeat)]
 
 use std::borrow::Cow;
