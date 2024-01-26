@@ -6,6 +6,7 @@ mod wildcard_dependencies;
 use cargo_metadata::MetadataCommand;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_session::impl_lint_pass;
@@ -128,6 +129,8 @@ declare_clippy_lint! {
     /// ### Known problems
     /// Because this can be caused purely by the dependencies
     /// themselves, it's not always possible to fix this issue.
+    /// In those cases, you can allow that specific crate using
+    /// the `allowed_duplicate_crates` configuration option.
     ///
     /// ### Example
     /// ```toml
@@ -163,6 +166,7 @@ declare_clippy_lint! {
 }
 
 pub struct Cargo {
+    pub allowed_duplicate_crates: FxHashSet<String>,
     pub ignore_publish: bool,
 }
 
@@ -208,7 +212,7 @@ impl LateLintPass<'_> for Cargo {
         {
             match MetadataCommand::new().exec() {
                 Ok(metadata) => {
-                    multiple_crate_versions::check(cx, &metadata);
+                    multiple_crate_versions::check(cx, &metadata, &self.allowed_duplicate_crates);
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {
