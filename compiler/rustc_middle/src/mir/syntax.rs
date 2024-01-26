@@ -422,8 +422,13 @@ impl StatementKind<'_> {
     TypeVisitable
 )]
 pub enum ExpectKind {
-    True,  // condition is probably true
-    False, // condition is probably false
+    /// condition is probably true
+    True,
+
+    /// condition is probably false
+    False,
+
+    /// condition is unpredictable by hardware
     Unpredictable,
 }
 

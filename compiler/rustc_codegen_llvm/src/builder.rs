@@ -211,6 +211,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         match expect {
             ExpectKind::None => {}
             ExpectKind::True | ExpectKind::False => unsafe {
+                // Use weights 2000 and 1, which is what Clang uses
                 let s = "branch_weights";
                 let v = [
                     llvm::LLVMMDStringInContext(
