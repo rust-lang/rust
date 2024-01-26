@@ -20,12 +20,15 @@ impl<'tcx> InferCtxtRegionExt<'tcx> for InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions(outlives_env, |ty| {
+        self.resolve_regions_with_normalize(outlives_env, |ty, origin| {
             let ty = self.resolve_vars_if_possible(ty);
 
             if self.next_trait_solver() {
                 crate::solve::deeply_normalize(
-                    self.at(&ObligationCause::dummy(), outlives_env.param_env),
+                    self.at(
+                        &ObligationCause::dummy_with_span(origin.span()),
+                        outlives_env.param_env,
+                    ),
                     ty,
                 )
                 .map_err(|_| ty)

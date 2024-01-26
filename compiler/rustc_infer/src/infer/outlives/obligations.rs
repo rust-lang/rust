@@ -68,8 +68,8 @@ use crate::infer::{
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{GenericArgKind, ToPredicate};
 use rustc_span::DUMMY_SP;
 use smallvec::smallvec;
 
@@ -128,7 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn process_registered_region_obligations<E>(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        mut deeply_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+        mut deeply_normalize_ty: impl FnMut(Ty<'tcx>, SubregionOrigin<'tcx>) -> Result<Ty<'tcx>, E>,
     ) -> Result<(), (E, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
@@ -141,20 +141,23 @@ impl<'tcx> InferCtxt<'tcx> {
                 let ty::ClauseKind::TypeOutlives(outlives) = bound_clause.skip_binder() else {
                     return None;
                 };
-                Some(deeply_normalize_ty(outlives.0).map(|ty| {
-                    bound_clause
-                        .rebind(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, outlives.1)))
-                        .to_predicate(self.tcx)
-                }))
+                Some(
+                    deeply_normalize_ty(
+                        outlives.0,
+                        SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
+                    )
+                    .map(|ty| bound_clause.rebind(ty::OutlivesPredicate(ty, outlives.1))),
+                )
             })
-            // FIXME: How do we accurately report an error here :(
+            // FIXME(-Znext-solver): How do we accurately report an error here :(
             .try_collect()
             .map_err(|e| (e, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP)))?;
 
         let my_region_obligations = self.take_registered_region_obligations();
 
         for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
-            let sup_type = deeply_normalize_ty(sup_type).map_err(|e| (e, origin.clone()))?;
+            let sup_type =
+                deeply_normalize_ty(sup_type, origin.clone()).map_err(|e| (e, origin.clone()))?;
             debug!(?sup_type, ?sub_region, ?origin);
 
             let outlives = &mut TypeOutlives::new(
@@ -216,7 +219,7 @@ where
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        caller_bounds: &'cx [ty::Clause<'tcx>],
+        caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
     ) -> Self {
         Self {
             delegate,

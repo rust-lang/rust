@@ -152,9 +152,14 @@ pub(crate) fn type_check<'mir, 'tcx>(
         universal_region_relations,
         region_bound_pairs,
         normalized_inputs_and_output,
+        known_type_outlives_obligations,
     } = free_region_relations::create(
         infcx,
         param_env,
+        // FIXME(-Znext-solver): These are unnormalized. Normalize them.
+        infcx.tcx.arena.alloc_from_iter(
+            param_env.caller_bounds().iter().filter_map(|clause| clause.as_type_outlives_clause()),
+        ),
         implicit_region_bound,
         universal_regions,
         &mut constraints,
@@ -176,6 +181,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         body,
         param_env,
         &region_bound_pairs,
+        known_type_outlives_obligations,
         implicit_region_bound,
         &mut borrowck_context,
     );
@@ -850,6 +856,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -1000,6 +1007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     ) -> Self {
@@ -1010,6 +1018,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_type_annotations: &body.user_type_annotations,
             param_env,
             region_bound_pairs,
+            known_type_outlives_obligations,
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
@@ -1127,7 +1136,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.borrowck_context.universal_regions,
             self.region_bound_pairs,
             self.implicit_region_bound,
-            self.param_env,
+            self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
             category,
@@ -2731,7 +2740,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.borrowck_context.universal_regions,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
-                self.param_env,
+                self.known_type_outlives_obligations,
                 locations,
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.

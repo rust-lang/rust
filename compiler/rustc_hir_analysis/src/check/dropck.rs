@@ -189,7 +189,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 RegionResolutionError::UpperBoundUniverseConflict(a, _, _, _, b) => {
                     format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
                 }
-                RegionResolutionError::CannotNormalize(..) => todo!(),
+                RegionResolutionError::CannotNormalize(..) => unreachable!(),
             };
             guar = Some(
                 struct_span_code_err!(
