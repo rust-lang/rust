@@ -141,6 +141,7 @@ impl<'a> ExtCtxt<'a> {
                 } else {
                     ast::BoundConstness::Never
                 },
+                asyncness: ast::BoundAsyncness::Normal,
             },
         )
     }
