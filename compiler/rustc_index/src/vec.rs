@@ -18,6 +18,7 @@ use crate::{Idx, IndexSlice};
 /// you almost certainly want to use a [`newtype_index!`]-generated type instead.
 ///
 /// This allows to index the IndexVec with the new index type.
+///
 /// [`newtype_index!`]: ../macro.newtype_index.html
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
