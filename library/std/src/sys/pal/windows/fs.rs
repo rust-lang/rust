@@ -1081,9 +1081,9 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
         //
         // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
         let last_error = Error::last_os_error();
-        if last_error.raw_os_error().unwrap() == c::ERROR_FILE_NOT_FOUND && p.exists() {
+        if last_error.raw_os_error().unwrap() == c::ERROR_FILE_NOT_FOUND as i32 && p.exists() {
             return Ok(ReadDir {
-                handle: FindNextFileHandle(file_handle),
+                handle: FindNextFileHandle(find_handle),
                 root: Arc::new(root),
                 first: None,
             });
