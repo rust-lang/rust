@@ -79,7 +79,7 @@ use syntax::SourceFile;
 use triomphe::Arc;
 use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
 
-use crate::navigation_target::{ToNav, TryToNav};
+use crate::navigation_target::ToNav;
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
@@ -104,7 +104,7 @@ pub use crate::{
         SymbolInformationKind,
     },
     move_item::Direction,
-    navigation_target::{NavigationTarget, UpmappingResult},
+    navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
     prime_caches::ParallelPrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,
