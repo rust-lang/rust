@@ -2204,14 +2204,6 @@ impl<T, A: Allocator> Vec<T, A> {
             assert_failed(at, self.len());
         }
 
-        if at == 0 {
-            // the new vector can take over the original buffer and avoid the copy
-            return mem::replace(
-                self,
-                Vec::with_capacity_in(self.capacity(), self.allocator().clone()),
-            );
-        }
-
         let other_len = self.len - at;
         let mut other = Vec::with_capacity_in(other_len, self.allocator().clone());
 
