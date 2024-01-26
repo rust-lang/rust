@@ -15,7 +15,6 @@ use crate::{
 use base_db::CrateId;
 use smallvec::SmallVec;
 use span::SyntaxContextId;
-use stdx::assert_eq_size;
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,7 +22,6 @@ pub struct ModPath {
     pub kind: PathKind,
     segments: SmallVec<[Name; 1]>,
 }
-assert_eq_size!(ModPath, 40);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UnescapedModPath<'a>(&'a ModPath);

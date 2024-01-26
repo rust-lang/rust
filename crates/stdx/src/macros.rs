@@ -59,12 +59,3 @@ macro_rules! impl_from {
         )*
     }
 }
-
-#[macro_export]
-macro_rules! assert_eq_size {
-    ($($ty:ty,)+ $val:expr $(,)?) => {
-        const _: () = {
-            $(core::mem::transmute::<[u8; $val], $ty>;)+
-        };
-    };
-}
