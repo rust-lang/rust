@@ -1,5 +1,3 @@
-// ignore-test This is currently broken
-
 #![allow(incomplete_features)]
 #![feature(inline_const_pat)]
 
