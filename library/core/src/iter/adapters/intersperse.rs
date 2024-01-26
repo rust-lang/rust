@@ -1,5 +1,5 @@
-use core::fmt;
-use core::iter::{Fuse, FusedIterator};
+use crate::fmt;
+use crate::iter::{Fuse, FusedIterator};
 
 /// An iterator adapter that places a separator between all elements.
 ///
