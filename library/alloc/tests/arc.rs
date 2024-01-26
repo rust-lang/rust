@@ -207,5 +207,6 @@ fn weak_may_dangle() {
     //  ~~~~~~~~ borrowed value does not live long enough
     //
     // `val` dropped here while still borrowed
-    // borrow might be used here, when `val` is dropped and runs the `Drop` code for type `std::sync::Weak`
+    // borrow might be used here, when `val` is dropped and runs the `Drop` code for type
+    // `std::sync::Weak`
 }

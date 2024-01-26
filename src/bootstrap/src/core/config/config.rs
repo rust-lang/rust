@@ -140,7 +140,8 @@ impl LldMode {
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
-/// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
+/// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or
+/// build-time parameters.
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
@@ -200,7 +201,8 @@ pub struct Config {
     /// e.g. `--fix-broken` or test arguments.
     pub free_args: Vec<String>,
 
-    /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
+    /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we
+    /// should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
     #[cfg(test)]
@@ -1230,12 +1232,13 @@ impl Config {
 
         // Infer the rest of the configuration.
 
-        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely machine from where it was compiled.
+        // Infer the source directory. This is non-trivial because we want to support a downloaded
+        // bootstrap binary, running on a completely machine from where it was compiled.
         let mut cmd = Command::new("git");
-        // NOTE: we cannot support running from outside the repository because the only path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
-        // We still support running outside the repository if we find we aren't in a git directory.
+        // NOTE: we cannot support running from outside the repository because the only path we have
+        // available is set at compile time, which can be wrong if bootstrap was downloaded
+        // from source. We still support running outside the repository if we find we aren't
+        // in a git directory.
         cmd.arg("rev-parse").arg("--show-toplevel");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
@@ -1245,7 +1248,8 @@ impl Config {
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
             let git_root = String::from_utf8(output.stdout).unwrap();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward
+            // slashes.
             let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
             let s = git_root.to_str().unwrap();
 
@@ -1258,8 +1262,9 @@ impl Config {
             // for example, the build directory is inside of another unrelated git directory.
             // In that case keep the original `CARGO_MANIFEST_DIR` handling.
             //
-            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build
+            // directory is outside the source directory. We could fix that by setting a
+            // variable from all three of python, ./x, and x.ps1.
             if src.join("src").join("stage0.json").exists() {
                 config.src = src;
             }
@@ -1269,7 +1274,8 @@ impl Config {
         }
 
         if cfg!(test) {
-            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+            // Use the build directory of the original x.py invocation, so that we can set
+            // `initial_rustc` properly.
             config.out = Path::new(
                 &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
             )
@@ -1282,7 +1288,8 @@ impl Config {
 
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then
+        // `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
@@ -1408,9 +1415,11 @@ impl Config {
 
         set(&mut config.out, flags.build_dir.or_else(|| build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
-        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        // To avoid writing to random places on the file system, `config.out` needs to be an
+        // absolute path.
         if !config.out.is_absolute() {
-            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            // `canonicalize` requires the path to already exist. Use our vendored copy of
+            // `absolute` instead.
             config.out = crate::utils::helpers::absolute(&config.out);
         }
 
@@ -1573,8 +1582,8 @@ impl Config {
             config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
             // This list is incomplete, please help by expanding it!
             if config.download_rustc_commit.is_some() {
-                // We need the channel used by the downloaded compiler to match the one we set for rustdoc;
-                // otherwise rustdoc-ui tests break.
+                // We need the channel used by the downloaded compiler to match the one we set for
+                // rustdoc; otherwise rustdoc-ui tests break.
                 let ci_channel = t!(fs::read_to_string(config.src.join("src/ci/channel")));
                 let ci_channel = ci_channel.trim_end();
                 if config.channel != ci_channel
@@ -1771,7 +1780,8 @@ impl Config {
                 check_ci_llvm!(optimize_toml);
                 check_ci_llvm!(thin_lto);
                 check_ci_llvm!(release_debuginfo);
-                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
+                // CI-built LLVM can be either dynamic or static. We won't know until we download
+                // it.
                 check_ci_llvm!(link_shared);
                 check_ci_llvm!(static_libstdcpp);
                 check_ci_llvm!(targets);
@@ -1790,7 +1800,8 @@ impl Config {
                 check_ci_llvm!(plugins);
             }
 
-            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
+            // NOTE: can never be hit when downloading from CI, since we call
+            // `check_ci_llvm!(thin_lto)` above.
             if config.llvm_thin_lto && link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
@@ -1926,7 +1937,8 @@ impl Config {
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
             Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
-            // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
+            // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless
+            // explicitly overridden.
             Subcommand::Doc { .. } => {
                 flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
             }
@@ -2140,7 +2152,8 @@ impl Config {
         llvm_link_shared
     }
 
-    /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
+    /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from
+    /// source.
     pub(crate) fn download_rustc(&self) -> bool {
         self.download_rustc_commit().is_some()
     }
@@ -2390,7 +2403,8 @@ impl Config {
     }
 
     /// Returns the last commit in which any of `modified_paths` were changed,
-    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is true.
+    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is
+    /// true.
     pub fn last_modified_commit(
         &self,
         modified_paths: &[&str],

@@ -1407,7 +1407,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 debug!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before
                 // we normalize it, as otherwise types like `<&'a &'b () as Trait>::Assoc`
-                // get normalized away, causing us to ignore the `'b: 'a` bound used by the function.
+                // get normalized away, causing us to ignore the `'b: 'a` bound used by the
+                // function.
                 //
                 // Normalization results in a well formed type if the input is well formed, so we
                 // don't have to check it twice.
@@ -1891,7 +1892,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if len.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
-                            // These are always okay: direct use of a const, or a value that can evidently be copied.
+                            // These are always okay: direct use of a const, or a value that can
+                            // evidently be copied.
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.

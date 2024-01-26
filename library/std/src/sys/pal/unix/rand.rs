@@ -181,8 +181,8 @@ mod imp {
     pub fn fill_bytes(v: &mut [u8]) {
         // All supported versions of macOS (10.12+) support getentropy.
         //
-        // `getentropy` is measurably faster (via Divan) then the other alternatives so its preferred
-        // when usable.
+        // `getentropy` is measurably faster (via Divan) then the other alternatives so its
+        // preferred when usable.
         #[cfg(target_os = "macos")]
         getentropy_fill_bytes(v);
 
@@ -192,8 +192,9 @@ mod imp {
         // its own thread accessed via GCD. This seems needlessly heavyweight for our purposes
         // so we only use it on non-Mac OSes where the better entrypoints are blocked.
         //
-        // `CCRandomGenerateBytes` is used instead of `SecRandomCopyBytes` because the former is accessible
-        // via `libSystem` (libc) while the other needs to link to `Security.framework`.
+        // `CCRandomGenerateBytes` is used instead of `SecRandomCopyBytes` because the former is
+        // accessible via `libSystem` (libc) while the other needs to link to
+        // `Security.framework`.
         //
         // Note that while `getentropy` has a available attribute in the macOS headers, the lack
         // of a header in the iOS (and others) SDK means that its can cause app store rejections.

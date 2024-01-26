@@ -246,8 +246,7 @@ impl<'a> GccLinker<'a> {
         // platforms where currently this is guaranteed to *not* be the case:
         //
         // * On OSX they have their own linker, not binutils'
-        // * For WebAssembly the only functional linker is LLD, which doesn't
-        //   support hint flags
+        // * For WebAssembly the only functional linker is LLD, which doesn't support hint flags
         !self.sess.target.is_like_osx && !self.sess.target.is_like_wasm
     }
 
@@ -956,7 +955,8 @@ impl<'a> Linker for MsvcLinker<'a> {
                     }
                 }
 
-                // This will cause the Microsoft linker to embed .natvis info for all crates into the PDB file
+                // This will cause the Microsoft linker to embed .natvis info for all crates into
+                // the PDB file
                 for path in natvis_debugger_visualizers {
                     let mut arg = OsString::from("/NATVIS:");
                     arg.push(path);
@@ -1198,21 +1198,19 @@ impl<'a> WasmLd<'a> {
         // If the atomics feature is enabled for wasm then we need a whole bunch
         // of flags:
         //
-        // * `--shared-memory` - the link won't even succeed without this, flags
-        //   the one linear memory as `shared`
+        // * `--shared-memory` - the link won't even succeed without this, flags the one linear
+        //   memory as `shared`
         //
-        // * `--max-memory=1G` - when specifying a shared memory this must also
-        //   be specified. We conservatively choose 1GB but users should be able
-        //   to override this with `-C link-arg`.
+        // * `--max-memory=1G` - when specifying a shared memory this must also be specified. We
+        //   conservatively choose 1GB but users should be able to override this with `-C link-arg`.
         //
-        // * `--import-memory` - it doesn't make much sense for memory to be
-        //   exported in a threaded module because typically you're
-        //   sharing memory and instantiating the module multiple times. As a
-        //   result if it were exported then we'd just have no sharing.
+        // * `--import-memory` - it doesn't make much sense for memory to be exported in a threaded
+        //   module because typically you're sharing memory and instantiating the module multiple
+        //   times. As a result if it were exported then we'd just have no sharing.
         //
         // On wasm32-unknown-unknown, we also export symbols for glue code to use:
-        //    * `--export=*tls*` - when `#[thread_local]` symbols are used these
-        //      symbols are how the TLS segments are initialized and configured.
+        //    * `--export=*tls*` - when `#[thread_local]` symbols are used these symbols are how the
+        //      TLS segments are initialized and configured.
         if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
             cmd.arg("--max-memory=1073741824");

@@ -11,14 +11,13 @@
 //!
 //! This module is largely organized by type:
 //!
-//! * [Traits] are the core portion: these traits define what kind of async iterators
-//!   exist and what you can do with them. The methods of these traits are worth
-//!   putting some extra study time into.
+//! * [Traits] are the core portion: these traits define what kind of async iterators exist and what
+//!   you can do with them. The methods of these traits are worth putting some extra study time
+//!   into.
 //! * Functions provide some helpful ways to create some basic async iterators.
-//! * Structs are often the return types of the various methods on this
-//!   module's traits. You'll usually want to look at the method that creates
-//!   the `struct`, rather than the `struct` itself. For more detail about why,
-//!   see '[Implementing Async Iterator](#implementing-async-iterator)'.
+//! * Structs are often the return types of the various methods on this module's traits. You'll
+//!   usually want to look at the method that creates the `struct`, rather than the `struct` itself.
+//!   For more detail about why, see '[Implementing Async Iterator](#implementing-async-iterator)'.
 //!
 //! [Traits]: #traits
 //!

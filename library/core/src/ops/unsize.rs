@@ -93,8 +93,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 /// * OR, all of the following hold
 ///   - `Self` and `T` must have the same type constructor, and only vary in a single type parameter
 ///     formal (the *coerced type*, e.g., `impl DispatchFromDyn<Rc<T>> for Rc<U>` is ok and the
-///     single type parameter (instantiated with `T` or `U`) is the coerced type,
-///     `impl DispatchFromDyn<Arc<T>> for Rc<U>` is not ok).
+///     single type parameter (instantiated with `T` or `U`) is the coerced type, `impl
+///     DispatchFromDyn<Arc<T>> for Rc<U>` is not ok).
 ///   - The definition for `Self` must be a struct.
 ///   - The definition for `Self` must not be `#[repr(packed)]` or `#[repr(C)]`.
 ///   - Other than one-aligned, zero-sized fields, the definition for `Self` must have exactly one

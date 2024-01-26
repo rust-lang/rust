@@ -107,7 +107,6 @@ impl OwnedSlice {
     /// let slice = slice.slice(|slice| &slice[1..][..2]);
     /// assert_eq!(&*slice, [2, 3]);
     /// ```
-    ///
     pub fn slice(self, slicer: impl FnOnce(&[u8]) -> &[u8]) -> OwnedSlice {
         // This is basically identical to `try_slice_owned`,
         // `slicer` can only return slices of its argument or some static data,

@@ -169,14 +169,13 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 /// chaining at the `DiagnosticBuilder` level. Each use of this macro defines
 /// two builder methods at that level, both of which wrap the equivalent method
 /// in `Diagnostic`.
-/// - A `&mut self -> &mut Self` method, with the same name as the underlying
-///   `Diagnostic` method. It is mostly to modify existing diagnostics, either
-///   in a standalone fashion, e.g. `err.code(code)`, or in a chained fashion
-///   to make multiple modifications, e.g. `err.code(code).span(span)`.
-/// - A `self -> Self` method, which has a `with_` prefix added.
-///   It is mostly used in a chained fashion when producing a new diagnostic,
-///   e.g. `let err = struct_err(msg).with_code(code)`, or when emitting a new
-///   diagnostic , e.g. `struct_err(msg).with_code(code).emit()`.
+/// - A `&mut self -> &mut Self` method, with the same name as the underlying `Diagnostic` method.
+///   It is mostly to modify existing diagnostics, either in a standalone fashion, e.g.
+///   `err.code(code)`, or in a chained fashion to make multiple modifications, e.g.
+///   `err.code(code).span(span)`.
+/// - A `self -> Self` method, which has a `with_` prefix added. It is mostly used in a chained
+///   fashion when producing a new diagnostic, e.g. `let err = struct_err(msg).with_code(code)`, or
+///   when emitting a new diagnostic , e.g. `struct_err(msg).with_code(code).emit()`.
 ///
 /// Although the latter method can be used to modify an existing diagnostic,
 /// e.g. `err = err.with_code(code)`, this should be avoided because the former

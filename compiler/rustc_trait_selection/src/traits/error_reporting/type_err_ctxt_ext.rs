@@ -2580,7 +2580,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let between_span =
                                     trait_path_segment.ident.span.between(generic_arg.span_ext);
                                 // get rid of :: between Trait and <type>
-                                // must be '::' between them, otherwise the parser won't accept the code
+                                // must be '::' between them, otherwise the parser won't accept the
+                                // code
                                 suggestions.push((between_span, "".to_string()));
                                 suggestions
                                     .push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
@@ -3140,7 +3141,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 };
                 GetSafeTransmuteErrorAndReason::Error { err_msg, safe_transmute_explanation }
             }
-            // Should never get a Yes at this point! We already ran it before, and did not get a Yes.
+            // Should never get a Yes at this point! We already ran it before, and did not get a
+            // Yes.
             Answer::Yes => span_bug!(
                 span,
                 "Inconsistent rustc_transmute::is_transmutable(...) result, got Yes",

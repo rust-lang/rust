@@ -20,8 +20,8 @@ unsafe impl GlobalAlloc for System {
         // If boot services is valid then SystemTable is not null.
         let system_table = crate::os::uefi::env::system_table().as_ptr().cast();
 
-        // Each loaded image has an image handle that supports `EFI_LOADED_IMAGE_PROTOCOL`. Thus, this
-        // will never fail.
+        // Each loaded image has an image handle that supports `EFI_LOADED_IMAGE_PROTOCOL`. Thus,
+        // this will never fail.
         let mem_type = EFI_MEMORY_TYPE.get_or_init(|| {
             let protocol = helpers::image_handle_protocol::<loaded_image::Protocol>(
                 loaded_image::PROTOCOL_GUID,

@@ -46,8 +46,8 @@
 //! ```
 //!
 //! Our invariant is, that at each step of the iteration:
-//!  - If we didn't run out of access to match, our borrow and access are comparable
-//!    and either equal or disjoint.
+//!  - If we didn't run out of access to match, our borrow and access are comparable and either
+//!    equal or disjoint.
 //!  - If we did run out of access, the borrow can access a part of it.
 
 #![deny(rustc::untranslatable_diagnostic)]

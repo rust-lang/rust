@@ -183,10 +183,10 @@ pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Prov>),
 
-    /// To support alloc-free locals, we are able to write directly to a local. The offset indicates
-    /// where in the local this place is located; if it is `None`, no projection has been applied.
-    /// Such projections are meaningful even if the offset is 0, since they can change layouts.
-    /// (Without that optimization, we'd just always be a `MemPlace`.)
+    /// To support alloc-free locals, we are able to write directly to a local. The offset
+    /// indicates where in the local this place is located; if it is `None`, no projection has
+    /// been applied. Such projections are meaningful even if the offset is 0, since they can
+    /// change layouts. (Without that optimization, we'd just always be a `MemPlace`.)
     /// Note that this only stores the frame index, not the thread this frame belongs to -- that is
     /// implicit. This means a `Place` must never be moved across interpreter thread boundaries!
     ///
@@ -629,8 +629,9 @@ where
                         Operand::Immediate(local_val) => {
                             // Local can be updated in-place.
                             *local_val = src;
-                            // Double-check that the value we are storing and the local fit to each other.
-                            // (*After* doing the update for borrow checker reasons.)
+                            // Double-check that the value we are storing and the local fit to each
+                            // other. (*After* doing the update for
+                            // borrow checker reasons.)
                             if cfg!(debug_assertions) {
                                 let local_layout =
                                     self.layout_of_local(&self.stack()[frame], local, None)?;
@@ -868,7 +869,7 @@ where
         // non-overlapping.)
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
-        self.mem_copy(src.ptr(), dest.ptr(), dest_size, /*nonoverlapping*/ true)?;
+        self.mem_copy(src.ptr(), dest.ptr(), dest_size, /* nonoverlapping */ true)?;
         self.check_misalign(src.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         self.check_misalign(dest.mplace.misaligned, CheckAlignMsg::BasedOn)?;
         Ok(())
@@ -897,7 +898,8 @@ where
                             self.layout_of_local(&self.stack()[frame], local, None)?;
                         assert!(local_layout.is_sized(), "unsized locals cannot be immediate");
                         let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
-                        // Preserve old value. (As an optimization, we can skip this if it was uninit.)
+                        // Preserve old value. (As an optimization, we can skip this if it was
+                        // uninit.)
                         if !matches!(local_val, Immediate::Uninit) {
                             // We don't have to validate as we can assume the local was already
                             // valid for its type. We must not use any part of `place` here, that

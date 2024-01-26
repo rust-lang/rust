@@ -366,16 +366,18 @@ impl InitMaskMaterialized {
     fn find_bit(&self, start: Size, end: Size, is_init: bool) -> Option<Size> {
         /// A fast implementation of `find_bit`,
         /// which skips over an entire block at a time if it's all 0s (resp. 1s),
-        /// and finds the first 1 (resp. 0) bit inside a block using `trailing_zeros` instead of a loop.
+        /// and finds the first 1 (resp. 0) bit inside a block using `trailing_zeros` instead of a
+        /// loop.
         ///
-        /// Note that all examples below are written with 8 (instead of 64) bit blocks for simplicity,
-        /// and with the least significant bit (and lowest block) first:
+        /// Note that all examples below are written with 8 (instead of 64) bit blocks for
+        /// simplicity, and with the least significant bit (and lowest block) first:
         /// ```text
         ///        00000000|00000000
         ///        ^      ^ ^      ^
         /// index: 0      7 8      15
         /// ```
-        /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the first 1 bit.
+        /// Also, if not stated, assume that `is_init = true`, that is, we are searching for the
+        /// first 1 bit.
         fn find_bit_fast(
             init_mask: &InitMaskMaterialized,
             start: Size,
@@ -393,8 +395,9 @@ impl InitMaskMaterialized {
                 //   bits = 0b00111011
                 //   start_bit = 3
                 //   is_init = false
-                // Note that, for the examples in this function, the most significant bit is written first,
-                // which is backwards compared to the comments in `find_bit`/`find_bit_fast`.
+                // Note that, for the examples in this function, the most significant bit is written
+                // first, which is backwards compared to the comments in
+                // `find_bit`/`find_bit_fast`.
 
                 // Invert bits so we're always looking for the first set bit.
                 //        ! 0b00111011
@@ -470,8 +473,9 @@ impl InitMaskMaterialized {
                 //        ^~~~~^
                 //      start end
                 //
-                // An alternative would be to mask off end bits in the same way as we do for start bits,
-                // but performing this check afterwards is faster and simpler to implement.
+                // An alternative would be to mask off end bits in the same way as we do for start
+                // bits, but performing this check afterwards is faster and simpler
+                // to implement.
                 if i < end {
                     return Some(i);
                 } else {
@@ -482,8 +486,8 @@ impl InitMaskMaterialized {
             // Handle remaining blocks.
             //
             // We can skip over an entire block at once if it's all 0s (resp. 1s).
-            // The block marked (3) in this example is the first block that will be handled by this loop,
-            // and it will be skipped for that reason:
+            // The block marked (3) in this example is the first block that will be handled by this
+            // loop, and it will be skipped for that reason:
             //
             //                   (3)
             //                --------
@@ -492,11 +496,13 @@ impl InitMaskMaterialized {
             //        start              end
             if start_block < end_block_inclusive {
                 // This loop is written in a specific way for performance.
-                // Notably: `..end_block_inclusive + 1` is used for an inclusive range instead of `..=end_block_inclusive`,
-                // and `.zip(start_block + 1..)` is used to track the index instead of `.enumerate().skip().take()`,
+                // Notably: `..end_block_inclusive + 1` is used for an inclusive range instead of
+                // `..=end_block_inclusive`, and `.zip(start_block + 1..)` is used
+                // to track the index instead of `.enumerate().skip().take()`,
                 // because both alternatives result in significantly worse codegen.
-                // `end_block_inclusive + 1` is guaranteed not to wrap, because `end_block_inclusive <= end / BLOCK_SIZE`,
-                // and `BLOCK_SIZE` (the number of bits per block) will always be at least 8 (1 byte).
+                // `end_block_inclusive + 1` is guaranteed not to wrap, because `end_block_inclusive
+                // <= end / BLOCK_SIZE`, and `BLOCK_SIZE` (the number of bits per
+                // block) will always be at least 8 (1 byte).
                 for (&bits, block) in init_mask.blocks[start_block + 1..end_block_inclusive + 1]
                     .iter()
                     .zip(start_block + 1..)
@@ -504,7 +510,8 @@ impl InitMaskMaterialized {
                     if let Some(i) = search_block(bits, block, 0, is_init) {
                         // If this is the last block, we may find a matching bit after `end`.
                         //
-                        // For example, we shouldn't successfully find bit (4), because it's after `end`:
+                        // For example, we shouldn't successfully find bit (4), because it's after
+                        // `end`:
                         //
                         //                               (4)
                         //                         -------|
@@ -512,8 +519,9 @@ impl InitMaskMaterialized {
                         //          ^~~~~~~~~~~~~~~~~~^
                         //        start              end
                         //
-                        // As above with example (d), we could handle the end block separately and mask off end bits,
-                        // but unconditionally searching an entire block at once and performing this check afterwards
+                        // As above with example (d), we could handle the end block separately and
+                        // mask off end bits, but unconditionally searching
+                        // an entire block at once and performing this check afterwards
                         // is faster and much simpler to implement.
                         if i < end {
                             return Some(i);
@@ -670,11 +678,12 @@ impl InitMask {
     /// `InitMask::range_as_init_chunks(...).collect::<Vec<_>>()`.
     pub fn prepare_copy(&self, range: AllocRange) -> InitCopy {
         // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
-        // a naive initialization mask copying algorithm would repeatedly have to read the initialization mask from
-        // the source and write it to the destination. Even if we optimized the memory accesses,
-        // we'd be doing all of this `repeat` times.
-        // Therefore we precompute a compressed version of the initialization mask of the source value and
-        // then write it back `repeat` times without computing any more information from the source.
+        // a naive initialization mask copying algorithm would repeatedly have to read the
+        // initialization mask from the source and write it to the destination. Even if we
+        // optimized the memory accesses, we'd be doing all of this `repeat` times.
+        // Therefore we precompute a compressed version of the initialization mask of the source
+        // value and then write it back `repeat` times without computing any more
+        // information from the source.
 
         // A precomputed cache for ranges of initialized / uninitialized bits
         // 0000010010001110 will become

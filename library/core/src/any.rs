@@ -82,7 +82,6 @@
 //!     do_work(&my_i8);
 //! }
 //! ```
-//!
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -647,16 +646,14 @@ impl hash::Hash for TypeId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         // We only hash the lower 64 bits of our (128 bit) internal numeric ID,
         // because:
-        // - The hashing algorithm which backs `TypeId` is expected to be
-        //   unbiased and high quality, meaning further mixing would be somewhat
-        //   redundant compared to choosing (the lower) 64 bits arbitrarily.
-        // - `Hasher::finish` returns a u64 anyway, so the extra entropy we'd
-        //   get from hashing the full value would probably not be useful
-        //   (especially given the previous point about the lower 64 bits being
-        //   high quality on their own).
-        // - It is correct to do so -- only hashing a subset of `self` is still
-        //   with an `Eq` implementation that considers the entire value, as
-        //   ours does.
+        // - The hashing algorithm which backs `TypeId` is expected to be unbiased and high quality,
+        //   meaning further mixing would be somewhat redundant compared to choosing (the lower) 64
+        //   bits arbitrarily.
+        // - `Hasher::finish` returns a u64 anyway, so the extra entropy we'd get from hashing the
+        //   full value would probably not be useful (especially given the previous point about the
+        //   lower 64 bits being high quality on their own).
+        // - It is correct to do so -- only hashing a subset of `self` is still with an `Eq`
+        //   implementation that considers the entire value, as ours does.
         (self.t as u64).hash(state);
     }
 }

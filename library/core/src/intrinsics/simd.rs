@@ -233,8 +233,8 @@ extern "platform-intrinsic" {
     /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
     ///
     /// # Safety
-    /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-    /// type).
+    /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the
+    /// element type).
     ///
     /// `mask` must only contain `0` or `!0` values.
     pub fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
@@ -272,8 +272,8 @@ extern "platform-intrinsic" {
     /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
     ///
     /// # Safety
-    /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-    /// type).
+    /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the
+    /// element type).
     ///
     /// `mask` must only contain `0` or `!0` values.
     pub fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T);

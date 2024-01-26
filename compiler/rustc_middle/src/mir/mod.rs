@@ -351,16 +351,18 @@ pub struct Body<'tcx> {
     /// }
     /// ```
     ///
-    /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
-    /// removed the last mention of all generic params. We do not want to rely on optimizations and
-    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
+    /// **WARNING**: Do not change this flags after the MIR was originally created, even if an
+    /// optimization removed the last mention of all generic params. We do not want to rely on
+    /// optimizations and potentially allow things like `[u8; std::mem::size_of::<T>() * 0]`
+    /// due to this.
     pub is_polymorphic: bool,
 
     /// The phase at which this MIR should be "injected" into the compilation process.
     ///
     /// Everything that comes before this `MirPhase` should be skipped.
     ///
-    /// This is only `Some` if the function that this body comes from was annotated with `rustc_custom_mir`.
+    /// This is only `Some` if the function that this body comes from was annotated with
+    /// `rustc_custom_mir`.
     pub injection_phase: Option<MirPhase>,
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
@@ -1508,9 +1510,8 @@ impl<'tcx> UserTypeProjections {
 ///
 /// * `let x: T = ...` -- here, the `projs` vector is empty.
 ///
-/// * `let (x, _): T = ...` -- here, the `projs` vector would contain
-///   `field[0]` (aka `.0`), indicating that the type of `s` is
-///   determined by finding the type of the `.0` field from `T`.
+/// * `let (x, _): T = ...` -- here, the `projs` vector would contain `field[0]` (aka `.0`),
+///   indicating that the type of `s` is determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjection {

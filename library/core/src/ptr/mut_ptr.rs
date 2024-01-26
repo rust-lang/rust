@@ -239,7 +239,8 @@ impl<T: ?Sized> *mut T {
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
-    /// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+    /// API and its claimed semantics are part of [Exposed
+    /// Provenance][../index.html#exposed-provenance].
     ///
     /// [`from_exposed_addr_mut`]: from_exposed_addr_mut
     #[must_use]
@@ -322,10 +323,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// * The pointer must point to an initialized instance of `T`.
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get mutated (except
+    ///   inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
@@ -386,10 +387,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// * It must be "dereferenceable" in the sense defined in [the module documentation].
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get mutated (except
+    ///   inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
     ///
@@ -430,13 +431,13 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * Both the starting and resulting pointer must be either in bounds or one byte past the end
+    ///   of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
+    /// * The offset being in bounds cannot rely on "wrapping around" the address space. That is,
+    ///   the infinite-precision sum, **in bytes** must fit in a usize.
     ///
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
@@ -644,10 +645,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// * The pointer must point to an initialized instance of `T`.
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get accessed (read or written) through any other pointer.
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get accessed (read
+    ///   or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
@@ -707,10 +708,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// * It must be "dereferenceable" in the sense defined in [the module documentation].
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get accessed (read or written) through any other pointer.
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get accessed (read
+    ///   or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
     ///
@@ -732,8 +733,8 @@ impl<T: ?Sized> *mut T {
     /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
-    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality
+    /// known. But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
     /// The return value may change from `Some` to `None` and vice versa depending on the compiler
     /// version and unsafe code must not
@@ -759,8 +760,8 @@ impl<T: ?Sized> *mut T {
     /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine inequality of two pointers, so this function may
-    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
-    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality
+    /// known. But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
     /// The return value may change from `Some` to `None` and vice versa depending on the compiler
     /// version and unsafe code must not
@@ -802,14 +803,13 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both `self` and `origin` must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * Both `self` and `origin` must be either in bounds or one byte past the end of the same
+    ///   [allocated object].
     ///
-    /// * Both pointers must be *derived from* a pointer to the same object.
-    ///   (See below for an example.)
+    /// * Both pointers must be *derived from* a pointer to the same object. (See below for an
+    ///   example.)
     ///
-    /// * The distance between the pointers, in bytes, must be an exact multiple
-    ///   of the size of `T`.
+    /// * The distance between the pointers, in bytes, must be an exact multiple of the size of `T`.
     ///
     /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
     ///
@@ -940,8 +940,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// - The distance between the pointers must be non-negative (`self >= origin`)
     ///
-    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
-    ///   apply to this method as well; see it for the full details.
+    /// - *All* the safety conditions of [`offset_from`](#method.offset_from) apply to this method
+    ///   as well; see it for the full details.
     ///
     /// Importantly, despite the return type of this method being able to represent
     /// a larger offset, it's still *not permitted* to pass pointers which differ
@@ -993,13 +993,13 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * Both the starting and resulting pointer must be either in bounds or one byte past the end
+    ///   of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum must fit in a `usize`.
+    /// * The offset being in bounds cannot rely on "wrapping around" the address space. That is,
+    ///   the infinite-precision sum must fit in a `usize`.
     ///
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
@@ -1045,7 +1045,8 @@ impl<T: ?Sized> *mut T {
         unsafe { intrinsics::offset(self, count) }
     }
 
-    /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
+    /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as
+    /// isize)`).
     ///
     /// `count` is in units of bytes.
     ///
@@ -1077,13 +1078,13 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * Both the starting and resulting pointer must be either in bounds or one byte past the end
+    ///   of the same [allocated object].
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
-    /// * The offset being in bounds cannot rely on "wrapping around" the address
-    ///   space. That is, the infinite-precision sum must fit in a usize.
+    /// * The offset being in bounds cannot rely on "wrapping around" the address space. That is,
+    ///   the infinite-precision sum must fit in a usize.
     ///
     /// The compiler and standard library generally tries to ensure allocations
     /// never reach a size where an offset is a concern. For instance, `Vec`
@@ -1988,7 +1989,8 @@ impl<T> *mut [T] {
     pub unsafe fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: The assert above is only a safety-net as long as `self.len()` is correct
-        // The actual safety requirements of this function are the same as for `split_at_mut_unchecked`
+        // The actual safety requirements of this function are the same as for
+        // `split_at_mut_unchecked`
         unsafe { self.split_at_mut_unchecked(mid) }
     }
 
@@ -2107,22 +2109,21 @@ impl<T> *mut [T] {
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
-    ///       Slices can never span across multiple allocated objects.
+    ///     * The entire memory range of this slice must be contained within a single [allocated
+    ///       object]! Slices can never span across multiple allocated objects.
     ///
-    ///     * The pointer must be aligned even for zero-length slices. One
-    ///       reason for this is that enum layout optimizations may rely on references
-    ///       (including slices of any length) being aligned and non-null to distinguish
-    ///       them from other data. You can obtain a pointer that is usable as `data`
-    ///       for zero-length slices using [`NonNull::dangling()`].
+    ///     * The pointer must be aligned even for zero-length slices. One reason for this is that
+    ///       enum layout optimizations may rely on references (including slices of any length)
+    ///       being aligned and non-null to distinguish them from other data. You can obtain a
+    ///       pointer that is usable as `data` for zero-length slices using [`NonNull::dangling()`].
     ///
-    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
+    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than
+    ///   `isize::MAX`. See the safety documentation of [`pointer::offset`].
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get mutated (except inside `UnsafeCell`).
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get mutated (except
+    ///   inside `UnsafeCell`).
     ///
     /// This applies even if the result of this method is unused!
     ///
@@ -2159,22 +2160,21 @@ impl<T> *mut [T] {
     /// * The pointer must be [valid] for reads and writes for `ptr.len() * mem::size_of::<T>()`
     ///   many bytes, and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
-    ///       Slices can never span across multiple allocated objects.
+    ///     * The entire memory range of this slice must be contained within a single [allocated
+    ///       object]! Slices can never span across multiple allocated objects.
     ///
-    ///     * The pointer must be aligned even for zero-length slices. One
-    ///       reason for this is that enum layout optimizations may rely on references
-    ///       (including slices of any length) being aligned and non-null to distinguish
-    ///       them from other data. You can obtain a pointer that is usable as `data`
-    ///       for zero-length slices using [`NonNull::dangling()`].
+    ///     * The pointer must be aligned even for zero-length slices. One reason for this is that
+    ///       enum layout optimizations may rely on references (including slices of any length)
+    ///       being aligned and non-null to distinguish them from other data. You can obtain a
+    ///       pointer that is usable as `data` for zero-length slices using [`NonNull::dangling()`].
     ///
-    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
+    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than
+    ///   `isize::MAX`. See the safety documentation of [`pointer::offset`].
     ///
-    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
-    ///   arbitrarily chosen and does not necessarily reflect the actual lifetime of the data.
-    ///   In particular, while this reference exists, the memory the pointer points to must
-    ///   not get accessed (read or written) through any other pointer.
+    /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is arbitrarily
+    ///   chosen and does not necessarily reflect the actual lifetime of the data. In particular,
+    ///   while this reference exists, the memory the pointer points to must not get accessed (read
+    ///   or written) through any other pointer.
     ///
     /// This applies even if the result of this method is unused!
     ///

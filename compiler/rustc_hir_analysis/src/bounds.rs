@@ -79,7 +79,8 @@ impl<'tcx> Bounds<'tcx> {
     pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
         let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
         let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [ty]);
-        // Preferable to put this obligation first, since we report better errors for sized ambiguity.
+        // Preferable to put this obligation first, since we report better errors for sized
+        // ambiguity.
         self.clauses.insert(0, (trait_ref.to_predicate(tcx), span));
     }
 

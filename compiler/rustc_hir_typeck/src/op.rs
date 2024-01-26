@@ -597,7 +597,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             output_ty: Some(output_ty),
                                             ..
                                         } => {
-                                            // Make sure that we're attaching `Output = ..` to the right trait predicate
+                                            // Make sure that we're attaching `Output = ..` to the
+                                            // right trait predicate
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
@@ -822,7 +823,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         // If the previous expression was a block expression, suggest parentheses
                         // (turning this into a binary subtraction operation instead.)
-                        // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
+                        // for example, `{2} - 2` -> `({2}) - 2` (see
+                        // src\test\ui\parser\expr-as-stmt.rs)
                         err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     } else {
                         match actual.kind() {
@@ -1097,10 +1099,9 @@ fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
 /// something like that):
 ///
 /// 1. Builtin operations can trivially be evaluated in constants.
-/// 2. For comparison operators applied to SIMD types the result is
-///    not of type `bool`. For example, `i16x4 == i16x4` yields a
-///    type like `i16x4`. This means that the overloaded trait
-///    `PartialEq` is not applicable.
+/// 2. For comparison operators applied to SIMD types the result is not of type `bool`. For example,
+///    `i16x4 == i16x4` yields a type like `i16x4`. This means that the overloaded trait `PartialEq`
+///    is not applicable.
 ///
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/codegen after

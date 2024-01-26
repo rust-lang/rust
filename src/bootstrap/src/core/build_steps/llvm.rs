@@ -372,10 +372,12 @@ impl Step for Llvm {
             || target.contains("apple-tvos")
             || target.contains("apple-watchos")
         {
-            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
+            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot,
+            // which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
             cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
-            // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
+            // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler
+            // error because "-bitcode_bundle" also gets added.
             cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
             // Zlib fails to link properly, leading to a compiler error.
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
@@ -1320,8 +1322,8 @@ impl Step for Libunwind {
         }
 
         if self.target.contains("x86_64-fortanix-unknown-sgx") || self.target.contains("musl") {
-            // use the same GCC C compiler command to compile C++ code so we do not need to setup the
-            // C++ compiler env variables on the builders.
+            // use the same GCC C compiler command to compile C++ code so we do not need to setup
+            // the C++ compiler env variables on the builders.
             // Don't set this for clang++, as clang++ is able to compile this without libc++.
             if cpp_cfg.get_compiler().is_like_gnu() {
                 cpp_cfg.cpp(false);

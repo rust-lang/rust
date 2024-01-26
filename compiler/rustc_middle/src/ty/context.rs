@@ -266,8 +266,9 @@ impl<'tcx> CtxtInterners<'tcx> {
         untracked: &'a Untracked,
         val: &T,
     ) -> Fingerprint {
-        // It's impossible to hash inference variables (and will ICE), so we don't need to try to cache them.
-        // Without incremental, we rarely stable-hash types, so let's not do it proactively.
+        // It's impossible to hash inference variables (and will ICE), so we don't need to try to
+        // cache them. Without incremental, we rarely stable-hash types, so let's not do it
+        // proactively.
         if flags.flags.intersects(TypeFlags::HAS_INFER) || sess.opts.incremental.is_none() {
             Fingerprint::ZERO
         } else {
@@ -563,9 +564,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 /// by calling `enter` with a closure `f`. That function creates both the
 /// `TyCtxt`, and an `ImplicitCtxt` around it that is put into TLS. Within `f`:
 /// - The `ImplicitCtxt` is available implicitly via TLS.
-/// - The `TyCtxt` is available explicitly via the `tcx` parameter, and also
-///   implicitly within the `ImplicitCtxt`. Explicit access is preferred when
-///   possible.
+/// - The `TyCtxt` is available explicitly via the `tcx` parameter, and also implicitly within the
+///   `ImplicitCtxt`. Explicit access is preferred when possible.
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 #[rustc_pass_by_value]
@@ -861,8 +861,8 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
-    /// This means it is neither an `async` or `gen` construct.
+    /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements
+    /// `Coroutine`. This means it is neither an `async` or `gen` construct.
     pub fn is_general_coroutine(self, def_id: DefId) -> bool {
         matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine(_)))
     }
@@ -875,7 +875,8 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `async gen` construct.
+    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `async gen`
+    /// construct.
     pub fn coroutine_is_async_gen(self, def_id: DefId) -> bool {
         matches!(
             self.coroutine_kind(def_id),
@@ -954,8 +955,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //   `rustc_query_system::query::plumbing::execute_job`.
         // - incremental: for query lookups.
         // - needs_metadata: for putting into crate metadata.
-        // - instrument_coverage: for putting into coverage data (see
-        //   `hash_mir_source`).
+        // - instrument_coverage: for putting into coverage data (see `hash_mir_source`).
         cfg!(debug_assertions)
             || self.sess.opts.incremental.is_some()
             || self.needs_metadata()
@@ -1295,7 +1295,8 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
+    /// Returns a displayable description and article for the given `def_id` (e.g. `("a",
+    /// "struct")`).
     pub fn article_and_description(self, def_id: DefId) -> (&'static str, &'static str) {
         let kind = self.def_kind(def_id);
         (self.def_kind_descr_article(kind, def_id), self.def_kind_descr(kind, def_id))
@@ -1736,9 +1737,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Computes the def-ids of the transitive supertraits of `trait_def_id`. This (intentionally)
-    /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
-    /// to identify which traits may define a given associated type to help avoid cycle errors.
-    /// Returns a `DefId` iterator.
+    /// does not compute the full elaborated super-predicates but just the set of def-ids. It is
+    /// used to identify which traits may define a given associated type to help avoid cycle
+    /// errors. Returns a `DefId` iterator.
     fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let mut set = FxHashSet::default();
         let mut stack = vec![trait_def_id];

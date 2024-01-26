@@ -30,12 +30,11 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     // We deliberately skip *reporting* fulfillment errors (via
     // `report_fulfillment_errors`), for two reasons:
     //
-    // 1. The error messages would mention `std::marker::StructuralPartialEq`
-    //    (a trait which is solely meant as an implementation detail
-    //    for now), and
+    // 1. The error messages would mention `std::marker::StructuralPartialEq` (a trait which is
+    //    solely meant as an implementation detail for now), and
     //
-    // 2. We are sometimes doing future-incompatibility lints for
-    //    now, so we do not want unconditional errors here.
+    // 2. We are sometimes doing future-incompatibility lints for now, so we do not want
+    //    unconditional errors here.
     ocx.select_all_or_error().is_empty()
 }
 

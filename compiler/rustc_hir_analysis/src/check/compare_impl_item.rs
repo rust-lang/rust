@@ -348,7 +348,8 @@ fn compare_method_predicate_entailment<'tcx>(
                 match obligation.predicate.kind().skip_binder() {
                     // We need to register Projection oblgiations too, because we may end up with
                     // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
-                    // If we only register the region outlives obligation, this leads to an unconstrained var.
+                    // If we only register the region outlives obligation, this leads to an
+                    // unconstrained var.
                     // See `implied_bounds_entailment_alias_var.rs` test.
                     ty::PredicateKind::Clause(
                         ty::ClauseKind::RegionOutlives(..)
@@ -660,9 +661,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     match ocx.eq(&cause, param_env, trait_sig, impl_sig) {
         Ok(()) => {}
         Err(terr) => {
-            // This function gets called during `compare_method_predicate_entailment` when normalizing a
-            // signature that contains RPITIT. When the method signatures don't match, we have to
-            // emit an error now because `compare_method_predicate_entailment` will not report the error
+            // This function gets called during `compare_method_predicate_entailment` when
+            // normalizing a signature that contains RPITIT. When the method signatures
+            // don't match, we have to emit an error now because
+            // `compare_method_predicate_entailment` will not report the error
             // when normalization fails.
             let emitted = report_trait_method_mismatch(
                 infcx,
@@ -1746,7 +1748,8 @@ pub(super) fn compare_impl_const_raw(
 
 /// The equivalent of [compare_method_predicate_entailment], but for associated constants
 /// instead of associated functions.
-// FIXME(generic_const_items): If possible extract the common parts of `compare_{type,const}_predicate_entailment`.
+// FIXME(generic_const_items): If possible extract the common parts of
+// `compare_{type,const}_predicate_entailment`.
 fn compare_const_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ct: ty::AssocItem,
@@ -2090,10 +2093,11 @@ pub(super) fn check_type_bounds<'tcx>(
 /// ```
 ///
 /// - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
-/// - `normalize_impl_ty_args` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
+/// - `normalize_impl_ty_args` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and
+///   index 0)
 /// - `normalize_impl_ty` would be `Wrapper<A, B, ^0.0>`
-/// - `rebased_args` would be `[(A, B), u32, ^0.0]`, combining the args from
-///    the *trait* with the generic associated type parameters (as bound vars).
+/// - `rebased_args` would be `[(A, B), u32, ^0.0]`, combining the args from the *trait* with the
+///   generic associated type parameters (as bound vars).
 ///
 /// A note regarding the use of bound vars here:
 /// Imagine as an example

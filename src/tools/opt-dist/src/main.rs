@@ -256,10 +256,12 @@ fn execute_pipeline(
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
-        // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
-        // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
-        // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
-        // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
+        // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT
+        // profiles. Note that we don't remove LLVM artifacts after this step, so that they
+        // are reused in the final dist build. BOLT instrumentation is performed
+        // "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
+        // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they
+        // can be reused.
         timer.section("Stage 3 (BOLT)", |stage| {
             stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
@@ -283,11 +285,12 @@ fn execute_pipeline(
             })?;
             print_free_disk_space()?;
 
-            // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
-            // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
-            // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
-            // therefore it will actually optimize all the hard links, which means that the final
-            // packaged `libLLVM.so` file *will* be BOLT optimized.
+            // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually
+            // hard-linked from several places, and this specific path (`llvm_lib`) will
+            // *not* be packaged into the final dist build. However, when BOLT optimizes
+            // an artifact, it does so *in-place*, therefore it will actually optimize
+            // all the hard links, which means that the final packaged `libLLVM.so` file
+            // *will* be BOLT optimized.
             bolt_optimize(&llvm_lib, &llvm_profile).context("Could not optimize LLVM with BOLT")?;
 
             let rustc_lib = io::find_file_in_dir(&libdir, "librustc_driver", ".so")?;
@@ -326,8 +329,8 @@ fn execute_pipeline(
     // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
     timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
 
-    // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
-    // possible regressions.
+    // After dist has finished, run a subset of the test suite on the optimized artifacts to
+    // discover possible regressions.
     // The tests are not executed for try builds, which can be in various broken states, so we don't
     // want to gatekeep them with tests.
     if !is_try_build() {

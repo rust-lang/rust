@@ -3,20 +3,17 @@
 //! This module contains various tools for comparing and ordering values. In
 //! summary:
 //!
-//! * [`PartialEq<Rhs>`] overloads the `==` and `!=` operators. In cases where
-//!   `Rhs` (the right hand side's type) is `Self`, this trait corresponds to a
-//!   partial equivalence relation.
-//! * [`Eq`] indicates that the overloaded `==` operator corresponds to an
-//!   equivalence relation.
-//! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
-//!   partial orderings between values, respectively. Implementing them overloads
-//!   the `<`, `<=`, `>`, and `>=` operators.
-//! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and
-//!   [`PartialOrd`], and describes an ordering of two values (less, equal, or
-//!   greater).
+//! * [`PartialEq<Rhs>`] overloads the `==` and `!=` operators. In cases where `Rhs` (the right hand
+//!   side's type) is `Self`, this trait corresponds to a partial equivalence relation.
+//! * [`Eq`] indicates that the overloaded `==` operator corresponds to an equivalence relation.
+//! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and partial orderings
+//!   between values, respectively. Implementing them overloads the `<`, `<=`, `>`, and `>=`
+//!   operators.
+//! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and [`PartialOrd`], and
+//!   describes an ordering of two values (less, equal, or greater).
 //! * [`Reverse`] is a struct that allows you to easily reverse an ordering.
-//! * [`max`] and [`min`] are functions that build off of [`Ord`] and allow you
-//!   to find the maximum or minimum of two values.
+//! * [`max`] and [`min`] are functions that build off of [`Ord`] and allow you to find the maximum
+//!   or minimum of two values.
 //!
 //! For more details, see the respective documentation of each item in the list.
 //!
@@ -61,11 +58,11 @@ use self::Ordering::*;
 /// The equality relation `==` must satisfy the following conditions
 /// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
-/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
-///   implies `b == a`**; and
+/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b` implies `b == a`**;
+///   and
 ///
-/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
-///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A: PartialEq<C>`, then **`a ==
+///   b` and `b == c` implies `a == c`**.
 ///
 /// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
 /// (transitive) impls are not forced to exist, but these requirements apply
@@ -676,8 +673,8 @@ impl<T: Clone> Clone for Reverse<T> {
 /// - `partial_cmp(a, b) == Some(cmp(a, b))`.
 /// - `max(a, b) == max_by(a, b, cmp)` (ensured by the default implementation).
 /// - `min(a, b) == min_by(a, b, cmp)` (ensured by the default implementation).
-/// - For `a.clamp(min, max)`, see the [method docs](#method.clamp)
-///   (ensured by the default implementation).
+/// - For `a.clamp(min, max)`, see the [method docs](#method.clamp) (ensured by the default
+///   implementation).
 ///
 /// It's easy to accidentally make `cmp` and `partial_cmp` disagree by
 /// deriving some of the traits and manually implementing others.
@@ -693,7 +690,8 @@ impl<T: Clone> Clone for Reverse<T> {
 /// all `a`, `b` and `c`:
 ///
 /// - exactly one of `a < b`, `a == b` or `a > b` is true; and
-/// - `<` is transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// - `<` is transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and
+///   `>`.
 ///
 /// Mathematically speaking, the `<` operator defines a strict [weak order]. In
 /// cases where `==` conforms to mathematical equality, it also defines a
@@ -741,9 +739,12 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// Lexicographical comparison is an operation with the following properties:
 ///  - Two sequences are compared element by element.
-///  - The first mismatching element defines which sequence is lexicographically less or greater than the other.
-///  - If one sequence is a prefix of another, the shorter sequence is lexicographically less than the other.
-///  - If two sequences have equivalent elements and are of the same length, then the sequences are lexicographically equal.
+///  - The first mismatching element defines which sequence is lexicographically less or greater
+///    than the other.
+///  - If one sequence is a prefix of another, the shorter sequence is lexicographically less than
+///    the other.
+///  - If two sequences have equivalent elements and are of the same length, then the sequences are
+///    lexicographically equal.
 ///  - An empty sequence is lexicographically less than any non-empty sequence.
 ///  - Two empty sequences are lexicographically equal.
 ///

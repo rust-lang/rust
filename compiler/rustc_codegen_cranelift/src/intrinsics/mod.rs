@@ -675,7 +675,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     let msg_str = with_no_visible_paths!({
                         with_no_trimmed_paths!({
                             if layout.abi.is_uninhabited() {
-                                // Use this error even for the other intrinsics as it is more precise.
+                                // Use this error even for the other intrinsics as it is more
+                                // precise.
                                 format!("attempted to instantiate uninhabited type `{}`", ty)
                             } else if intrinsic == sym::assert_zero_valid {
                                 format!(

@@ -98,7 +98,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<Option<ty::Term<'tcx>>, NoSolution> {
         match term.unpack() {
             ty::TermKind::Ty(ty) => {
-                // We do no define opaque types here but instead do so in `relate_rigid_alias_or_opaque`.
+                // We do no define opaque types here but instead do so in
+                // `relate_rigid_alias_or_opaque`.
                 Ok(self
                     .try_normalize_ty_recur(param_env, DefineOpaqueTypes::No, 0, ty)
                     .map(Into::into))

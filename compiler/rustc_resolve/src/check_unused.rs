@@ -10,18 +10,15 @@
 //
 // Checking for unused imports is split into three steps:
 //
-//  - `UnusedImportCheckVisitor` walks the AST to find all the unused imports
-//    inside of `UseTree`s, recording their `NodeId`s and grouping them by
-//    the parent `use` item
+//  - `UnusedImportCheckVisitor` walks the AST to find all the unused imports inside of `UseTree`s,
+//    recording their `NodeId`s and grouping them by the parent `use` item
 //
-//  - `calc_unused_spans` then walks over all the `use` items marked in the
-//    previous step to collect the spans associated with the `NodeId`s and to
-//    calculate the spans that can be removed by rustfix; This is done in a
-//    separate step to be able to collapse the adjacent spans that rustfix
-//    will remove
+//  - `calc_unused_spans` then walks over all the `use` items marked in the previous step to collect
+//    the spans associated with the `NodeId`s and to calculate the spans that can be removed by
+//    rustfix; This is done in a separate step to be able to collapse the adjacent spans that
+//    rustfix will remove
 //
-//  - `check_unused` finally emits the diagnostics based on the data generated
-//    in the last step
+//  - `check_unused` finally emits the diagnostics based on the data generated in the last step
 
 use crate::imports::ImportKind;
 use crate::module_to_string;
@@ -447,9 +444,9 @@ impl Resolver<'_, '_> {
                 continue;
             }
 
-            // If the extern crate is renamed, then we cannot suggest replacing it with a use as this
-            // would not insert the new name into the prelude, where other imports in the crate may be
-            // expecting it.
+            // If the extern crate is renamed, then we cannot suggest replacing it with a use as
+            // this would not insert the new name into the prelude, where other imports
+            // in the crate may be expecting it.
             if extern_crate.renames {
                 continue;
             }

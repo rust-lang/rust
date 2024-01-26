@@ -61,7 +61,8 @@ pkg_type! {
 }
 
 impl PkgType {
-    /// Component name in the manifest. In particular, this includes the `-preview` suffix where appropriate.
+    /// Component name in the manifest. In particular, this includes the `-preview` suffix where
+    /// appropriate.
     pub(crate) fn manifest_component_name(&self) -> String {
         if self.is_preview() {
             format!("{}-preview", self.tarball_component_name())

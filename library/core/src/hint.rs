@@ -69,7 +69,6 @@ use crate::intrinsics;
 ///     do_computation(100, &divisors)
 /// };
 /// assert_eq!(result, 12);
-///
 /// ```
 ///
 /// While using `unreachable_unchecked()` is perfectly sound in the following
@@ -137,7 +136,6 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// # Safety
 ///
 /// `cond` must be `true`.  It's immediate UB to call this with `false`.
-///
 #[inline(always)]
 #[doc(alias = "assume")]
 #[track_caller]
@@ -386,8 +384,8 @@ pub const fn black_box<T>(dummy: T) -> T {
 /// nor `#[must_use]` on a function is appropriate here, so the macro expands
 /// using `core::hint::must_use` instead.
 ///
-/// - We wouldn't want `#[must_use]` on the `struct Error` because that would
-///   make the following unproblematic code trigger a warning:
+/// - We wouldn't want `#[must_use]` on the `struct Error` because that would make the following
+///   unproblematic code trigger a warning:
 ///
 ///   ```
 ///   # struct Error;
@@ -403,12 +401,11 @@ pub const fn black_box<T>(dummy: T) -> T {
 ///   }
 ///   ```
 ///
-/// - Using `#[must_use]` on `fn make_error` can't help because the return value
-///   *is* used, as the right-hand side of a `let` statement. The `let`
-///   statement looks useless but is in fact necessary for ensuring that
-///   temporaries within the `format_args` expansion are not kept alive past the
-///   creation of the `Error`, as keeping them alive past that point can cause
-///   autotrait issues in async code:
+/// - Using `#[must_use]` on `fn make_error` can't help because the return value *is* used, as the
+///   right-hand side of a `let` statement. The `let` statement looks useless but is in fact
+///   necessary for ensuring that temporaries within the `format_args` expansion are not kept alive
+///   past the creation of the `Error`, as keeping them alive past that point can cause autotrait
+///   issues in async code:
 ///
 ///   ```
 ///   # #![feature(hint_must_use)]

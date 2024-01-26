@@ -3,8 +3,8 @@
 //! Note regarding crate disambiguators:
 //!
 //! Some demangled symbol paths can include "crate disambiguator" suffixes, represented as a large
-//! hexadecimal value enclosed in square braces, and appended to the name of the crate. a suffix to the
-//! original crate name. For example, the `core` crate, here, includes a disambiguator:
+//! hexadecimal value enclosed in square braces, and appended to the name of the crate. a suffix to
+//! the original crate name. For example, the `core` crate, here, includes a disambiguator:
 //!
 //! ```rust
 //!     <generics::Firework<f64> as core[a7a74cee373f048]::ops::drop::Drop>::drop
@@ -49,8 +49,8 @@ fn main() -> io::Result<()> {
     // they can also be shorter.
     //
     // Also note that a demangled symbol path may include the `[<digits>]` pattern, with zero-based
-    // indexes (such as for closures, and possibly for types defined in anonymous scopes). Preferably
-    // these should not be stripped.
+    // indexes (such as for closures, and possibly for types defined in anonymous scopes).
+    // Preferably these should not be stripped.
     //
     // The minimum length of 5 digits supports the possibility that some target architecture (maybe
     // a 32-bit or smaller architecture) could generate a hash value with a maximum of 8 digits,

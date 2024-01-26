@@ -117,10 +117,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // failure in pattern matching.
                     // For this reason, we declare those storages as live but we do not schedule
                     // any drop yet- they are scheduled later after the pattern matching.
-                    // The generated MIR will have `StorageDead` whenever the control flow breaks out
-                    // of the parent scope, regardless of the result of the pattern matching.
-                    // However, the drops are inserted in MIR only when the control flow breaks out of
-                    // the scope of the remainder scope associated with this `let .. else` statement.
+                    // The generated MIR will have `StorageDead` whenever the control flow breaks
+                    // out of the parent scope, regardless of the result of the
+                    // pattern matching. However, the drops are inserted in MIR
+                    // only when the control flow breaks out of the scope of the
+                    // remainder scope associated with this `let .. else` statement.
                     // Pictorial explanation of the scope structure:
                     // ┌─────────────────────────────────┐
                     // │  Scope of the enclosing block,  │
@@ -347,8 +348,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // This return type is usually `()`, unless the block is diverging, in which case the
             // return type is `!`. For the unit type, we need to actually return the unit, but in
             // the case of `!`, no return value is required, as the block will never return.
-            // Opaque types of empty bodies also need this unit assignment, in order to infer that their
-            // type is actually unit. Otherwise there will be no defining use found in the MIR.
+            // Opaque types of empty bodies also need this unit assignment, in order to infer that
+            // their type is actually unit. Otherwise there will be no defining use
+            // found in the MIR.
             if destination_ty.is_unit()
                 || matches!(destination_ty.kind(), ty::Alias(ty::Opaque, ..))
             {

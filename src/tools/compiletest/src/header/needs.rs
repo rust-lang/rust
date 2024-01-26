@@ -241,11 +241,12 @@ impl CachedNeedsConditions {
             profiler_support: config.profiler_support,
             xray: config.target_cfg().xray,
 
-            // For tests using the `needs-rust-lld` directive (e.g. for `-Clink-self-contained=+linker`),
-            // we need to find whether `rust-lld` is present in the compiler under test.
+            // For tests using the `needs-rust-lld` directive (e.g. for
+            // `-Clink-self-contained=+linker`), we need to find whether `rust-lld` is
+            // present in the compiler under test.
             //
-            // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
-            // example:
+            // The --compile-lib-path is the path to host shared libraries, but depends on the OS.
+            // For example:
             // - on linux, it can be <sysroot>/lib
             // - on windows, it can be <sysroot>/bin
             //

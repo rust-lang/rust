@@ -160,8 +160,8 @@ impl Hasher for StableHasher {
         // not do this for the value 0xFF, as that is a reserved prefix (a bit like in UTF-8).
         // 2) When we encounter a larger value, we hash a "marker" 0xFF and then the corresponding
         // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
-        // `isize`s that fit within a different amount of bytes, they should always produce a different
-        // byte stream for the hasher.
+        // `isize`s that fit within a different amount of bytes, they should always produce a
+        // different byte stream for the hasher.
         if value < 0xFF {
             self.state.write_u8(value as u8);
         } else {
@@ -176,8 +176,8 @@ impl Hasher for StableHasher {
 /// Note that `HashStable` imposes rather more strict requirements than usual
 /// hash functions:
 ///
-/// - Stable hashes are sometimes used as identifiers. Therefore they must
-///   conform to the corresponding `PartialEq` implementations:
+/// - Stable hashes are sometimes used as identifiers. Therefore they must conform to the
+///   corresponding `PartialEq` implementations:
 ///
 ///     - `x == y` implies `hash_stable(x) == hash_stable(y)`, and
 ///     - `x != y` implies `hash_stable(x) != hash_stable(y)`.
@@ -189,13 +189,11 @@ impl Hasher for StableHasher {
 ///   for an example where violating this invariant has caused trouble in the
 ///   past.
 ///
-/// - `hash_stable()` must be independent of the current
-///    compilation session. E.g. they must not hash memory addresses or other
-///    things that are "randomly" assigned per compilation session.
+/// - `hash_stable()` must be independent of the current compilation session. E.g. they must not
+///   hash memory addresses or other things that are "randomly" assigned per compilation session.
 ///
-/// - `hash_stable()` must be independent of the host architecture. The
-///   `StableHasher` takes care of endianness and `isize`/`usize` platform
-///   differences.
+/// - `hash_stable()` must be independent of the host architecture. The `StableHasher` takes care of
+///   endianness and `isize`/`usize` platform differences.
 pub trait HashStable<CTX> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher);
 }
@@ -228,11 +226,9 @@ pub trait ToStableHashKey<HCX> {
 /// Path, etc.
 ///
 /// But it is not true for:
-///  - `*const T` and `*mut T` because the values of these pointers
-///    will change between sessions.
-///  - `DefIndex`, `CrateNum`, `LocalDefId`, because their concrete
-///    values depend on state that might be different between
-///    compilation sessions.
+///  - `*const T` and `*mut T` because the values of these pointers will change between sessions.
+///  - `DefIndex`, `CrateNum`, `LocalDefId`, because their concrete values depend on state that
+///    might be different between compilation sessions.
 ///
 /// The associated constant `CAN_USE_UNSTABLE_SORT` denotes whether
 /// unstable sorting can be used for this type. Set to true if and
@@ -271,15 +267,17 @@ impl<T: StableOrd> StableCompare for T {
     }
 }
 
-/// Implement HashStable by just calling `Hash::hash()`. Also implement `StableOrd` for the type since
-/// that has the same requirements.
+/// Implement HashStable by just calling `Hash::hash()`. Also implement `StableOrd` for the type
+/// since that has the same requirements.
 ///
-/// **WARNING** This is only valid for types that *really* don't need any context for fingerprinting.
-/// But it is easy to misuse this macro (see [#96013](https://github.com/rust-lang/rust/issues/96013)
-/// for examples). Therefore this macro is not exported and should only be used in the limited cases
+/// **WARNING** This is only valid for types that *really* don't need any context for
+/// fingerprinting. But it is easy to misuse this macro (see [#96013] for examples).
+/// Therefore this macro is not exported and should only be used in the limited cases
 /// here in this module.
 ///
 /// Use `#[derive(HashStable_Generic)]` instead.
+///
+/// [#96013]: https://github.com/rust-lang/rust/issues/96013
 macro_rules! impl_stable_traits_for_trivial_type {
     ($t:ty) => {
         impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {

@@ -307,10 +307,12 @@ where
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         if self.index < self.len {
             let i = self.index;
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
+            // since get_unchecked executes code which can panic we increment the counters
+            // beforehand so that the same index won't be accessed twice, as required by
+            // TrustedRandomAccess
             self.index += 1;
-            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and
+            // `self.b.len()`
             unsafe {
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
@@ -342,8 +344,9 @@ where
         let end = self.index + delta;
         while self.index < end {
             let i = self.index;
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
+            // since get_unchecked executes code which can panic we increment the counters
+            // beforehand so that the same index won't be accessed twice, as required by
+            // TrustedRandomAccess
             self.index += 1;
             if A::MAY_HAVE_SIDE_EFFECT {
                 // SAFETY: the usage of `cmp::min` to calculate `delta`
@@ -396,8 +399,9 @@ where
             }
         }
         if self.index < self.len {
-            // since get_unchecked executes code which can panic we increment the counters beforehand
-            // so that the same index won't be accessed twice, as required by TrustedRandomAccess
+            // since get_unchecked executes code which can panic we increment the counters
+            // beforehand so that the same index won't be accessed twice, as required by
+            // TrustedRandomAccess
             self.len -= 1;
             self.a_len -= 1;
             let i = self.len;
@@ -543,10 +547,10 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 /// 1. `0 <= idx` and `idx < self.size()`.
 /// 2. If `Self: !Clone`, then `self.__iterator_get_unchecked(idx)` is never called with the same
 ///    index on `self` more than once.
-/// 3. After `self.__iterator_get_unchecked(idx)` has been called, then `self.next_back()` will
-///    only be called at most `self.size() - idx - 1` times. If `Self: Clone` and `self` is cloned,
-///    then this number is calculated for `self` and its clone individually,
-///    but `self.next_back()` calls that happened before the cloning count for both `self` and the clone.
+/// 3. After `self.__iterator_get_unchecked(idx)` has been called, then `self.next_back()` will only
+///    be called at most `self.size() - idx - 1` times. If `Self: Clone` and `self` is cloned, then
+///    this number is calculated for `self` and its clone individually, but `self.next_back()` calls
+///    that happened before the cloning count for both `self` and the clone.
 /// 4. After `self.__iterator_get_unchecked(idx)` has been called, then only the following methods
 ///    will be called on `self` or on any new clones of `self`:
 ///     * `std::clone::Clone::clone`
@@ -555,13 +559,13 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///     * `std::iter::ExactSizeIterator::len`
 ///     * `std::iter::Iterator::__iterator_get_unchecked`
 ///     * `std::iter::TrustedRandomAccessNoCoerce::size`
-/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
-///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
-///    been called, then no methods except for the ones listed under 4. are allowed to be called
-///    on the resulting value of type `T`, either. Multiple such coercion steps are allowed.
-///    Regarding 2. and 3., the number of times `__iterator_get_unchecked(idx)` or `next_back()` is
-///    called on `self` and the resulting value of type `T` (and on further coercion results with
-///    sub-subtypes) are added together and their sums must not exceed the specified bounds.
+/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced to `T`. If `self` is
+///    coerced to `T` after `self.__iterator_get_unchecked(idx)` has already been called, then no
+///    methods except for the ones listed under 4. are allowed to be called on the resulting value
+///    of type `T`, either. Multiple such coercion steps are allowed. Regarding 2. and 3., the
+///    number of times `__iterator_get_unchecked(idx)` or `next_back()` is called on `self` and the
+///    resulting value of type `T` (and on further coercion results with sub-subtypes) are added
+///    together and their sums must not exceed the specified bounds.
 ///
 /// Further, given that these conditions are met, it must guarantee that:
 ///
@@ -582,10 +586,10 @@ pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 /// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
 /// without the requirement that subtypes / supertypes implement `TrustedRandomAccessNoCoerce`.
 ///
-/// This trait was created in PR #85874 to fix soundness issue #85873 without performance regressions.
-/// It is subject to change as we might want to build a more generally useful (for performance
-/// optimizations) and more sophisticated trait or trait hierarchy that replaces or extends
-/// [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
+/// This trait was created in PR #85874 to fix soundness issue #85873 without performance
+/// regressions. It is subject to change as we might want to build a more generally useful (for
+/// performance optimizations) and more sophisticated trait or trait hierarchy that replaces or
+/// extends [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]

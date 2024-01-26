@@ -149,7 +149,6 @@ pub use core::time::TryFromFloatSecsError;
 /// [`elapsed`]: Instant::elapsed
 /// [`sub`]: Instant::sub
 /// [`checked_duration_since`]: Instant::checked_duration_since
-///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]

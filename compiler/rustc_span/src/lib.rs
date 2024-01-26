@@ -4,8 +4,8 @@
 //!
 //! - the *span*, represented by [`SpanData`] and related types;
 //! - source code as represented by a [`SourceMap`]; and
-//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically
-//!   in the [`sym`] module.
+//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically in
+//!   the [`sym`] module.
 //!
 //! Unlike most compilers, the span contains not only the position in the source code, but also
 //! various other metadata, such as the edition and macro hygiene. This metadata is stored in
@@ -309,8 +309,9 @@ pub enum FileNameDisplayPreference {
     /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
     /// This is appropriate for paths that get embedded into files produced by the compiler.
     Remapped,
-    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
-    /// This is appropriate for use in user-facing output (such as diagnostics).
+    /// Display the path before the application of rewrite rules provided via
+    /// `--remap-path-prefix`. This is appropriate for use in user-facing output (such as
+    /// diagnostics).
     Local,
     /// Display only the filename, as a way to reduce the verbosity of the output.
     /// This is appropriate for use in user-facing output (such as diagnostics).
@@ -1020,8 +1021,8 @@ pub trait SpanEncoder: Encoder {
     fn encode_symbol(&mut self, symbol: Symbol);
     fn encode_expn_id(&mut self, expn_id: ExpnId);
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext);
-    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
-    /// Therefore, make sure to include the context when encode a `CrateNum`.
+    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a
+    /// tcx. Therefore, make sure to include the context when encode a `CrateNum`.
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);

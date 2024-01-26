@@ -505,7 +505,8 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: external crate `regex` unused in `lint_example`: remove the dependency or add `use regex as _;`
+    /// error: external crate `regex` unused in `lint_example`: remove the dependency or
+    /// add `use regex as _;`
     ///   |
     /// note: the lint level is defined here
     ///  --> src/lib.rs:1:9
@@ -2117,7 +2118,8 @@ declare_lint! {
     ///   |          ^^^ names from parent modules are not accessible without an explicit import
     ///   |
     ///   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become
+    ///              a hard error in a future release!
     ///   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
     /// ```
     ///
@@ -2160,7 +2162,8 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+    /// error: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites
+    ///        with a `use` item to import the macro instead
     ///  --> src/main.rs:3:1
     ///   |
     /// 3 | #[macro_use]
@@ -3354,9 +3357,11 @@ declare_lint! {
     ///   |
     /// 1 | #![deny(repr_transparent_external_private_fields)]
     ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become
+    ///              a hard error in a future release!
     ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and
+    ///           makes it not a breaking change to become non-zero-sized in the future.
     /// ```
     ///
     /// ### Explanation
@@ -3758,10 +3763,13 @@ declare_lint! {
     ///    |     ------------------ in this macro invocation
     ///    |
     ///    = note: `#[warn(proc_macro_back_compat)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become
+    ///               a hard error in a future release!
     ///    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-    ///    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update
+    ///            to the latest version of the `time` crate to avoid breakage
+    ///    = note: this warning originates in a macro
+    ///            (in Nightly builds, run with -Z macro-backtrace for more info)
     /// ```
     ///
     /// ### Explanation
@@ -4027,7 +4035,8 @@ declare_lint! {
     /// LL |         #[warn(non_exhaustive_omitted_patterns)]
     ///    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     ///    = help: ensure that all variants are matched explicitly by adding the suggested match arms
-    ///    = note: the matched value is of type `Bar` and the `non_exhaustive_omitted_patterns` attribute was found
+    ///    = note: the matched value is of type `Bar` and the `non_exhaustive_omitted_patterns` attribute
+    ///            was found
     /// ```
     ///
     /// Warning: setting this to `deny` will make upstream non-breaking changes (adding fields or
@@ -4297,7 +4306,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_macro_export_arguments` lint detects cases where `#[macro_export]` is being used with invalid arguments.
+    /// The `invalid_macro_export_arguments` lint detects cases where `#[macro_export]` is
+    /// being used with invalid arguments.
     ///
     /// ### Example
     ///
@@ -4319,7 +4329,8 @@ declare_lint! {
     /// ### Explanation
     ///
     /// The only valid argument is `#[macro_export(local_inner_macros)]` or no argument (`#[macro_export]`).
-    /// You can't have multiple arguments in a `#[macro_export(..)]`, or mention arguments other than `local_inner_macros`.
+    /// You can't have multiple arguments in a `#[macro_export(..)]`, or mention arguments
+    /// other than `local_inner_macros`.
     ///
     pub INVALID_MACRO_EXPORT_ARGUMENTS,
     Warn,

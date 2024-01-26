@@ -634,8 +634,8 @@ fn convert_while_ascii(b: &[u8], convert: fn(&u8) -> u8) -> Vec<u8> {
 
             let mut bits = 0;
             for j in 0..MAGIC_UNROLL {
-                // read the bytes 1 usize at a time (unaligned since we haven't checked the alignment)
-                // safety: in_chunk is valid bytes in the range
+                // read the bytes 1 usize at a time (unaligned since we haven't checked the
+                // alignment) safety: in_chunk is valid bytes in the range
                 bits |= in_chunk.as_ptr().cast::<usize>().add(j).read_unaligned();
             }
             // if our chunks aren't ascii, then return only the prior bytes as init

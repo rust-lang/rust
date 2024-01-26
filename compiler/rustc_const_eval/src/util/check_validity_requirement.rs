@@ -69,8 +69,8 @@ fn might_permit_raw_init_strict<'tcx>(
     Ok(cx.validate_operand(&ot).is_ok())
 }
 
-/// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for
-/// details.
+/// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function
+/// for details.
 fn might_permit_raw_init_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
@@ -116,7 +116,8 @@ fn might_permit_raw_init_lax<'tcx>(
     // Special magic check for references and boxes (i.e., special pointer types).
     if let Some(pointee) = this.ty.builtin_deref(false) {
         let pointee = cx.layout_of(pointee.ty)?;
-        // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
+        // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are
+        // satisfied.
         if pointee.align.abi.bytes() > 1 {
             // 0x01-filling is not aligned.
             return Ok(false);

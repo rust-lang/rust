@@ -11,7 +11,8 @@
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
 //! from <https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics> to
 //! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs> and add a
-//! `#[rustc_const_unstable(feature = "const_such_and_such", issue = "01234")]` to the intrinsic declaration.
+//! `#[rustc_const_unstable(feature = "const_such_and_such", issue = "01234")]` to the intrinsic
+//! declaration.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done
@@ -37,13 +38,13 @@
 //!
 //! A quick refresher on memory ordering:
 //!
-//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-//!   take place after the barrier.
-//! * Release - a barrier for releasing a lock. Preceding reads and writes
-//!   take place before the barrier.
-//! * Sequentially consistent - sequentially consistent operations are
-//!   guaranteed to happen in order. This is the standard mode for working
-//!   with atomic types and is equivalent to Java's `volatile`.
+//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes take place after the
+//!   barrier.
+//! * Release - a barrier for releasing a lock. Preceding reads and writes take place before the
+//!   barrier.
+//! * Sequentially consistent - sequentially consistent operations are guaranteed to happen in
+//!   order. This is the standard mode for working with atomic types and is equivalent to Java's
+//!   `volatile`.
 
 #![unstable(
     feature = "core_intrinsics",
@@ -919,8 +920,8 @@ extern "rust-intrinsic" {
     /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
     /// on most platforms.
     /// On Unix, the
-    /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
-    /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
+    /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV`
+    /// or `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn abort() -> !;
@@ -1133,17 +1134,18 @@ extern "rust-intrinsic" {
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
     /// will generate code *assuming that you, the programmer, ensure that there will never be
     /// undefined behavior*. It is therefore your responsibility to guarantee that every value
-    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
-    /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
-    /// unsafe**. `transmute` should be the absolute last resort.
+    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this
+    /// condition may lead to unexpected and unstable compilation results. This makes
+    /// `transmute` **incredibly unsafe**. `transmute` should be the absolute last resort.
     ///
     /// Transmuting pointers *to* integers in a `const` context is [undefined behavior][ub],
     /// unless the pointer was originally created *from* an integer.
-    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::invalid],
-    /// but also semantically-equivalent conversions such as punning through `repr(C)` union fields.)
-    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
-    /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
-    /// Rust memory model and should be avoided. See below for alternatives.)
+    /// (That includes this function specifically, integer-to-pointer casts, and helpers like
+    /// [`invalid`][crate::ptr::invalid], but also semantically-equivalent conversions such as
+    /// punning through `repr(C)` union fields.) Any attempt to use the resulting value for
+    /// integer operations will abort const-evaluation. (And even outside `const`, such
+    /// transmutation is touching on many unspecified aspects of the Rust memory model and
+    /// should be avoided. See below for alternatives.)
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
@@ -1328,7 +1330,6 @@ extern "rust-intrinsic" {
     /// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
     ///
     /// Implementing `split_at_mut`:
-    ///
     /// ```
     /// use std::{slice, mem};
     ///
@@ -1789,7 +1790,8 @@ extern "rust-intrinsic" {
     /// May raise an inexact floating-point exception if the argument is not an integer.
     /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
     /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and
+    /// `roundevenf32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
@@ -1801,7 +1803,8 @@ extern "rust-intrinsic" {
     /// May raise an inexact floating-point exception if the argument is not an integer.
     /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
     /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and
+    /// `roundevenf64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
@@ -2339,8 +2342,8 @@ extern "rust-intrinsic" {
     /// Probably will never become stable.
     ///
     /// Do NOT use this intrinsic; "nontemporal" operations do not exist in our memory model!
-    /// It exists to support current stdarch, but the plan is to change stdarch and remove this intrinsic.
-    /// See <https://github.com/rust-lang/rust/issues/114582> for some more discussion.
+    /// It exists to support current stdarch, but the plan is to change stdarch and remove this
+    /// intrinsic. See <https://github.com/rust-lang/rust/issues/114582> for some more discussion.
     #[rustc_nounwind]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
@@ -2527,10 +2530,10 @@ extern "rust-intrinsic" {
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
 ///
-/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
-/// where the names specified will be moved into the macro as captured variables, and defines an item
-/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declarations and can be omitted if there is no generics.
+/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) =>
+/// Expression)` where the names specified will be moved into the macro as captured variables, and
+/// defines an item to call `const_eval_select` on. The tokens inside the square brackets are used
+/// to denote generics for the function declarations and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -2625,9 +2628,8 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///
-/// * The region of memory beginning at `src` with a size of `count *
-///   size_of::<T>()` bytes must *not* overlap with the region of memory
-///   beginning at `dst` with the same size.
+/// * The region of memory beginning at `src` with a size of `count * size_of::<T>()` bytes must
+///   *not* overlap with the region of memory beginning at `dst` with the same size.
 ///
 /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
@@ -2885,8 +2887,9 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
     extern "Rust" {
         /// Miri-provided extern function to promise that a given pointer is properly aligned for
-        /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
-        /// not a power of two. Has no effect when alignment checks are concrete (which is the default).
+        /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align`
+        /// is not a power of two. Has no effect when alignment checks are concrete (which
+        /// is the default).
         fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
     }
 

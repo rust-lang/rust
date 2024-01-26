@@ -220,8 +220,8 @@ impl Scope {
     /// for unwinding, for several reasons:
     ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
     ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * polluting the cleanup MIR with StorageDead creates
-    ///    landing pads even though there's no actual destructors
+    ///  * polluting the cleanup MIR with StorageDead creates landing pads even though there's no
+    ///    actual destructors
     ///  * freeing up stack space has no effect during unwinding
     /// Note that for coroutines we do emit StorageDeads, for the
     /// use of optimizations in the MIR coroutine transform.
@@ -510,8 +510,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `loop` expression and 'break' out on all of the 'else' paths.
     ///
     /// Notes:
-    /// - We don't need to keep a stack of scopes in the `Builder` because the
-    ///   'else' paths will only leave the innermost scope.
+    /// - We don't need to keep a stack of scopes in the `Builder` because the 'else' paths will
+    ///   only leave the innermost scope.
     /// - This is also used for match guards.
     pub(crate) fn in_if_then_scope<F>(
         &mut self,

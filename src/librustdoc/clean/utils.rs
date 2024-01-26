@@ -186,17 +186,17 @@ fn can_elide_generic_arg<'tcx>(
 
     // Theoretically we could now check if either term contains (non-escaping) late-bound regions or
     // projections, relate the two using an `InferCtxt` and check if the resulting obligations hold.
-    // Having projections means that the terms can potentially be further normalized thereby possibly
-    // revealing that they are equal after all. Regarding late-bound regions, they could to be
-    // liberated allowing us to consider more types to be equal by ignoring the names of binders
-    // (e.g., `for<'a> TYPE<'a>` and `for<'b> TYPE<'b>`).
+    // Having projections means that the terms can potentially be further normalized thereby
+    // possibly revealing that they are equal after all. Regarding late-bound regions, they
+    // could to be liberated allowing us to consider more types to be equal by ignoring the
+    // names of binders (e.g., `for<'a> TYPE<'a>` and `for<'b> TYPE<'b>`).
     //
-    // However, we are mostly interested in “reeliding” generic args, i.e., eliding generic args that
-    // were originally elided by the user and later filled in by the compiler contrary to eliding
-    // arbitrary generic arguments if they happen to semantically coincide with the default (of course,
-    // we cannot possibly distinguish these two cases). Therefore and for performance reasons, it
-    // suffices to only perform a syntactic / structural check by comparing the memory addresses of
-    // the interned arguments.
+    // However, we are mostly interested in “reeliding” generic args, i.e., eliding generic args
+    // that were originally elided by the user and later filled in by the compiler contrary to
+    // eliding arbitrary generic arguments if they happen to semantically coincide with the
+    // default (of course, we cannot possibly distinguish these two cases). Therefore and for
+    // performance reasons, it suffices to only perform a syntactic / structural check by
+    // comparing the memory addresses of the interned arguments.
     actual.skip_binder() == default.skip_binder()
 }
 
@@ -589,7 +589,8 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
 /// so that the channel is consistent.
 ///
-/// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
+/// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on
+/// beta/stable.
 pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
 pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
     Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').filter(|c| !c.is_empty()).next().unwrap());

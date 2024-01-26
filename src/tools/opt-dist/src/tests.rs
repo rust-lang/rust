@@ -37,9 +37,9 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
         &rustc_dir.join("lib").join("rustlib").join(host_triple).join("lib"),
     )?;
 
-    // Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually copy libstd
-    // sources to the extracted sysroot. We need sources available so that `-Zsimulate-remapped-rust-src-base`
-    // works correctly.
+    // Extract sources - they aren't in the `rustc-nightly-{host}` tarball, so we need to manually
+    // copy libstd sources to the extracted sysroot. We need sources available so that
+    // `-Zsimulate-remapped-rust-src-base` works correctly.
     copy_directory(
         &extracted_src_dir.join("lib").join("rustlib").join("src"),
         &rustc_dir.join("lib").join("rustlib").join("src"),

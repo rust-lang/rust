@@ -506,8 +506,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     let (fragment, collected_invocations) =
                         self.collect_invocations(fragment, &derive_placeholders);
-                    // We choose to expand any derive invocations associated with this macro invocation
-                    // *before* any macro invocations collected from the output fragment
+                    // We choose to expand any derive invocations associated with this macro
+                    // invocation *before* any macro invocations collected from
+                    // the output fragment
                     derive_invocations.extend(collected_invocations);
                     (fragment, derive_invocations)
                 }
@@ -985,11 +986,9 @@ pub fn ensure_complete_parse<'a>(
 ///
 /// All other `NodeId`s are assigned by `visit_id`.
 /// * `self` is the 'self' parameter for the current method,
-/// * `id` is a mutable reference to the `NodeId` field
-///    of the current AST node.
-/// * `closure` is a closure that executes the
-///   `noop_visit_*` / `noop_flat_map_*` method
-///   for the current AST node.
+/// * `id` is a mutable reference to the `NodeId` field of the current AST node.
+/// * `closure` is a closure that executes the `noop_visit_*` / `noop_flat_map_*` method for the
+///   current AST node.
 macro_rules! assign_id {
     ($self:ident, $id:expr, $closure:expr) => {{
         let old_id = $self.cx.current_expansion.lint_node_id;

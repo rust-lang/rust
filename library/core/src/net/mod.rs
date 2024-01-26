@@ -4,10 +4,10 @@
 //!
 //! # Organization
 //!
-//! * [`IpAddr`] represents IP addresses of either IPv4 or IPv6; [`Ipv4Addr`] and
-//!   [`Ipv6Addr`] are respectively IPv4 and IPv6 addresses
-//! * [`SocketAddr`] represents socket addresses of either IPv4 or IPv6; [`SocketAddrV4`]
-//!   and [`SocketAddrV6`] are respectively IPv4 and IPv6 socket addresses
+//! * [`IpAddr`] represents IP addresses of either IPv4 or IPv6; [`Ipv4Addr`] and [`Ipv6Addr`] are
+//!   respectively IPv4 and IPv6 addresses
+//! * [`SocketAddr`] represents socket addresses of either IPv4 or IPv6; [`SocketAddrV4`] and
+//!   [`SocketAddrV6`] are respectively IPv4 and IPv6 socket addresses
 
 #![stable(feature = "ip_in_core", since = "CURRENT_RUSTC_VERSION")]
 

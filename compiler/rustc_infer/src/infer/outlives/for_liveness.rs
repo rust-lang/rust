@@ -61,8 +61,7 @@ where
             // We can prove that an alias is live two ways:
             // 1. All the components are live.
             //
-            // 2. There is a known outlives bound or where-clause, and that
-            //    region is live.
+            // 2. There is a known outlives bound or where-clause, and that region is live.
             //
             // We search through the item bounds and where clauses for
             // either `'static` or a unique outlives region, and if one is

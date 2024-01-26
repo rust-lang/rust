@@ -206,9 +206,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// 1. Evaluate the scrutinee and add the PlaceMention of it ([Builder::lower_scrutinee]).
     /// 2. Create the decision tree ([Builder::lower_match_tree]).
-    /// 3. Determine the fake borrows that are needed from the places that were
-    ///    matched against and create the required temporaries for them
-    ///    ([Builder::calculate_fake_borrows]).
+    /// 3. Determine the fake borrows that are needed from the places that were matched against and
+    ///    create the required temporaries for them ([Builder::calculate_fake_borrows]).
     /// 4. Create everything else: the guards and the arms ([Builder::lower_match_arms]).
     ///
     /// ## False edges
@@ -1278,8 +1277,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// * `start_block` to the [pre-binding block] of the first pattern,
     /// * the [otherwise block] of the first pattern to the second pattern,
-    /// * the [otherwise block] of the third pattern to a block with an
-    ///   [`Unreachable` terminator](TerminatorKind::Unreachable).
+    /// * the [otherwise block] of the third pattern to a block with an [`Unreachable`
+    ///   terminator](TerminatorKind::Unreachable).
     ///
     /// In addition, we add fake edges from the otherwise blocks to the
     /// pre-binding block of the next candidate in the original set of
@@ -1403,12 +1402,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// In practice there are some complications:
     ///
-    /// * If there's a guard, then the otherwise branch of the first match on
-    ///   `R | S` goes to a test for whether `Q` matches, and the control flow
-    ///   doesn't merge into a single success block until after the guard is
-    ///   tested.
-    /// * If neither `P` or `Q` has any bindings or type ascriptions and there
-    ///   isn't a match guard, then we create a smaller CFG like:
+    /// * If there's a guard, then the otherwise branch of the first match on `R | S` goes to a test
+    ///   for whether `Q` matches, and the control flow doesn't merge into a single success block
+    ///   until after the guard is tested.
+    /// * If neither `P` or `Q` has any bindings or type ascriptions and there isn't a match guard,
+    ///   then we create a smaller CFG like:
     ///
     /// ```text
     ///     ...
@@ -1806,17 +1804,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// to the guards that prevent any mutation of the place being matched.
     /// There are a some subtleties:
     ///
-    /// 1. Borrowing `*x` doesn't prevent assigning to `x`. If `x` is a shared
-    ///    reference, the borrow isn't even tracked. As such we have to add fake
-    ///    borrows of any prefixes of a place
-    /// 2. We don't want `match x { _ => (), }` to conflict with mutable
-    ///    borrows of `x`, so we only add fake borrows for places which are
-    ///    bound or tested by the match.
-    /// 3. We don't want the fake borrows to conflict with `ref mut` bindings,
-    ///    so we use a special BorrowKind for them.
-    /// 4. The fake borrows may be of places in inactive variants, so it would
-    ///    be UB to generate code for them. They therefore have to be removed
-    ///    by a MIR pass run after borrow checking.
+    /// 1. Borrowing `*x` doesn't prevent assigning to `x`. If `x` is a shared reference, the borrow
+    ///    isn't even tracked. As such we have to add fake borrows of any prefixes of a place
+    /// 2. We don't want `match x { _ => (), }` to conflict with mutable borrows of `x`, so we only
+    ///    add fake borrows for places which are bound or tested by the match.
+    /// 3. We don't want the fake borrows to conflict with `ref mut` bindings, so we use a special
+    ///    BorrowKind for them.
+    /// 4. The fake borrows may be of places in inactive variants, so it would be UB to generate
+    ///    code for them. They therefore have to be removed by a MIR pass run after borrow checking.
     fn calculate_fake_borrows<'b>(
         &mut self,
         fake_borrows: &'b FxIndexSet<Place<'tcx>>,
@@ -2032,23 +2027,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //
         // 1. Binding by-value: Things are simple.
         //
-        //    * Establishing `tmp1` creates a reference into the
-        //      matched place. This code is emitted by
-        //      bind_matched_candidate_for_guard.
+        //    * Establishing `tmp1` creates a reference into the matched place. This code is emitted
+        //      by bind_matched_candidate_for_guard.
         //
-        //    * `tmp2` is only initialized "lazily", after we have
-        //      checked the guard. Thus, the code that can trigger
-        //      moves out of the candidate can only fire after the
-        //      guard evaluated to true. This initialization code is
-        //      emitted by bind_matched_candidate_for_arm.
+        //    * `tmp2` is only initialized "lazily", after we have checked the guard. Thus, the code
+        //      that can trigger moves out of the candidate can only fire after the guard evaluated
+        //      to true. This initialization code is emitted by bind_matched_candidate_for_arm.
         //
         // 2. Binding by-reference: Things are tricky.
         //
-        //    * Here, the guard expression wants a `&&` or `&&mut`
-        //      into the original input. This means we need to borrow
-        //      the reference that we create for the arm.
-        //    * So we eagerly create the reference for the arm and then take a
-        //      reference to that.
+        //    * Here, the guard expression wants a `&&` or `&&mut` into the original input. This
+        //      means we need to borrow the reference that we create for the arm.
+        //    * So we eagerly create the reference for the arm and then take a reference to that.
         if let Some((arm, match_scope)) = arm_match_scope
             && let Some(guard) = arm.guard
         {

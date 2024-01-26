@@ -410,9 +410,9 @@ where
             .collect()
     }
 
-    /// Converts the calculated `ParamEnv` and lifetime information to a [`clean::Generics`](Generics), suitable for
-    /// display on the docs page. Cleaning the `Predicates` produces sub-optimal [`WherePredicate`]s,
-    /// so we fix them up:
+    /// Converts the calculated `ParamEnv` and lifetime information to a
+    /// [`clean::Generics`](Generics), suitable for display on the docs page. Cleaning the
+    /// `Predicates` produces sub-optimal [`WherePredicate`]s, so we fix them up:
     ///
     /// * Multiple bounds for the same type are coalesced into one: e.g., `T: Copy`, `T: Debug`
     /// becomes `T: Copy + Debug`

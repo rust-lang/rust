@@ -130,8 +130,8 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
 /// # Parameters
 ///
 /// - `tree`: the tree we wish to convert.
-/// - `outer_trees`: an iterator over trees. We may need to read more tokens from it in order to finish
-///   converting `tree`
+/// - `outer_trees`: an iterator over trees. We may need to read more tokens from it in order to
+///   finish converting `tree`
 /// - `parsing_patterns`: same as [parse].
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`: language features so we can do feature gating.

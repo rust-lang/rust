@@ -241,8 +241,9 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                         // SAFETY: BorrowedBuf guarantees all of its filled bytes are init
                         unsafe { buf.set_len(buf.len() + bytes_read) };
 
-                        // Read again if the buffer still has enough capacity, as BufWriter itself would do
-                        // This will occur if the reader returns short reads
+                        // Read again if the buffer still has enough capacity, as BufWriter itself
+                        // would do This will occur if the reader returns
+                        // short reads
                     }
                     Err(ref e) if e.is_interrupted() => {}
                     Err(e) => return Err(e),

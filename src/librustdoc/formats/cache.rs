@@ -144,8 +144,8 @@ impl Cache {
         Cache { document_private, document_hidden, ..Cache::default() }
     }
 
-    /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
-    /// in `krate` due to the data being moved into the `Cache`.
+    /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that
+    /// was in `krate` due to the data being moved into the `Cache`.
     pub(crate) fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
         let tcx = cx.tcx;
 
@@ -173,7 +173,8 @@ impl Cache {
         for (prim, &def_id) in &cx.cache.primitive_locations {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.
-            // If that restriction is ever lifted, this will have to include the relative paths instead.
+            // If that restriction is ever lifted, this will have to include the relative paths
+            // instead.
             cx.cache
                 .external_paths
                 .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
@@ -312,8 +313,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 // impl Trait for &T { fn method(self); }
                                 //
                                 // When generating a function index with the above shape, we want it
-                                // associated with `T`, not with the primitive reference type. It should
-                                // show up as `T::method`, rather than `reference::method`, in the search
+                                // associated with `T`, not with the primitive reference type. It
+                                // should show up as `T::method`,
+                                // rather than `reference::method`, in the search
                                 // results page.
                                 for_: clean::Type::BorrowedRef { type_, .. },
                                 ..

@@ -136,8 +136,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // doing so ends up causing some other trouble.
             let b = self.normalize(b, Locations::All(span));
 
-            // Note: if we have to introduce new placeholders during normalization above, then we won't have
-            // added those universes to the universe info, which we would want in `relate_tys`.
+            // Note: if we have to introduce new placeholders during normalization above, then we
+            // won't have added those universes to the universe info, which we would
+            // want in `relate_tys`.
             if let Err(terr) =
                 self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
             {

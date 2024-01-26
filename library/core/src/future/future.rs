@@ -47,8 +47,7 @@ pub trait Future {
     /// This function returns:
     ///
     /// - [`Poll::Pending`] if the future is not ready yet
-    /// - [`Poll::Ready(val)`] with the result `val` of this future if it
-    ///   finished successfully.
+    /// - [`Poll::Ready(val)`] with the result `val` of this future if it finished successfully.
     ///
     /// Once a future has finished, clients should not `poll` it again.
     ///

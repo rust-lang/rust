@@ -5,8 +5,8 @@ use crate::sync::atomic::{
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 
 pub struct RwLock {
-    // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers waiting' flag.
-    // Bits 0..30:
+    // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers
+    // waiting' flag. Bits 0..30:
     //   0: Unlocked
     //   1..=0x3FFF_FFFE: Locked by N readers
     //   0x3FFF_FFFF: Write locked
@@ -51,8 +51,9 @@ fn is_read_lockable(state: u32) -> bool {
     //
     // We don't allow read-locking if there's readers waiting, even if the lock is unlocked
     // and there's no writers waiting. The only situation when this happens is after unlocking,
-    // at which point the unlocking thread might be waking up writers, which have priority over readers.
-    // The unlocking thread will clear the readers waiting bit and wake up readers, if necessary.
+    // at which point the unlocking thread might be waking up writers, which have priority over
+    // readers. The unlocking thread will clear the readers waiting bit and wake up readers, if
+    // necessary.
     state & MASK < MAX_READERS && !has_readers_waiting(state) && !has_writers_waiting(state)
 }
 
@@ -306,7 +307,8 @@ impl RwLock {
 
     #[inline]
     fn spin_write(&self) -> u32 {
-        // Stop spinning when it's unlocked or when there's waiting writers, to keep things somewhat fair.
+        // Stop spinning when it's unlocked or when there's waiting writers, to keep things somewhat
+        // fair.
         self.spin_until(|state| is_unlocked(state) || has_writers_waiting(state))
     }
 

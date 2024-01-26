@@ -170,8 +170,8 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was called and initialized `value`.
         // * the closure was called and panicked, so this point is never reached.
         // * the closure was not called, but a previous call initialized `value`.
-        // * the closure was not called because the Once is poisoned, so this point
-        //   is never reached.
+        // * the closure was not called because the Once is poisoned, so this point is never
+        //   reached.
         // So `value` has definitely been initialized and will not be modified again.
         unsafe { &*(*this.data.get()).value }
     }
@@ -212,7 +212,6 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     ///
     /// This method will block the calling thread if another initialization
     /// routine is currently running.
-    ///
     #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)

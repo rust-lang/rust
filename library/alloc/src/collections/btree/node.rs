@@ -23,13 +23,12 @@
 // this module doesn't care whether the entries are sorted, which nodes can be underfull, or
 // even what underfull means. However, we do rely on a few invariants:
 //
-// - Trees must have uniform depth/height. This means that every path down to a leaf from a
-//   given node has exactly the same length.
-// - A node of length `n` has `n` keys, `n` values, and `n + 1` edges.
-//   This implies that even an empty node has at least one edge.
-//   For a leaf node, "having an edge" only means we can identify a position in the node,
-//   since leaf edges are empty and need no data representation. In an internal node,
-//   an edge both identifies a position and contains a pointer to a child node.
+// - Trees must have uniform depth/height. This means that every path down to a leaf from a given
+//   node has exactly the same length.
+// - A node of length `n` has `n` keys, `n` values, and `n + 1` edges. This implies that even an
+//   empty node has at least one edge. For a leaf node, "having an edge" only means we can identify
+//   a position in the node, since leaf edges are empty and need no data representation. In an
+//   internal node, an edge both identifies a position and contains a pointer to a child node.
 
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
@@ -139,46 +138,42 @@ type BoxedNode<K, V> = NonNull<LeafNode<K, V>>;
 /// This type has a number of parameters that controls how it acts:
 /// - `BorrowType`: A dummy type that describes the kind of borrow and carries a lifetime.
 ///    - When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`.
-///    - When this is `ValMut<'a>`, the `NodeRef` acts roughly like `&'a Node`
-///      with respect to keys and tree structure, but also allows many
-///      mutable references to values throughout the tree to coexist.
-///    - When this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
-///      although insert methods allow a mutable pointer to a value to coexist.
-///    - When this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`,
-///      but does not have a destructor, and must be cleaned up manually.
-///    - When this is `Dying`, the `NodeRef` still acts roughly like `Box<Node>`,
-///      but has methods to destroy the tree bit by bit, and ordinary methods,
-///      while not marked as unsafe to call, can invoke UB if called incorrectly.
+///    - When this is `ValMut<'a>`, the `NodeRef` acts roughly like `&'a Node` with respect to keys
+///      and tree structure, but also allows many mutable references to values throughout the tree
+///      to coexist.
+///    - When this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`, although insert
+///      methods allow a mutable pointer to a value to coexist.
+///    - When this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`, but does not have a
+///      destructor, and must be cleaned up manually.
+///    - When this is `Dying`, the `NodeRef` still acts roughly like `Box<Node>`, but has methods to
+///      destroy the tree bit by bit, and ordinary methods, while not marked as unsafe to call, can
+///      invoke UB if called incorrectly.
 ///   Since any `NodeRef` allows navigating through the tree, `BorrowType`
 ///   effectively applies to the entire tree, not just to the node itself.
 /// - `K` and `V`: These are the types of keys and values stored in the nodes.
-/// - `Type`: This can be `Leaf`, `Internal`, or `LeafOrInternal`. When this is
-///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
-///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
-///   `NodeRef` could be pointing to either type of node.
-///   `Type` is named `NodeType` when used outside `NodeRef`.
+/// - `Type`: This can be `Leaf`, `Internal`, or `LeafOrInternal`. When this is `Leaf`, the
+///   `NodeRef` points to a leaf node, when this is `Internal` the `NodeRef` points to an internal
+///   node, and when this is `LeafOrInternal` the `NodeRef` could be pointing to either type of
+///   node. `Type` is named `NodeType` when used outside `NodeRef`.
 ///
 /// Both `BorrowType` and `NodeType` restrict what methods we implement, to
 /// exploit static type safety. There are limitations in the way we can apply
 /// such restrictions:
-/// - For each type parameter, we can only define a method either generically
-///   or for one particular type. For example, we cannot define a method like
-///   `into_kv` generically for all `BorrowType`, or once for all types that
-///   carry a lifetime, because we want it to return `&'a` references.
+/// - For each type parameter, we can only define a method either generically or for one particular
+///   type. For example, we cannot define a method like `into_kv` generically for all `BorrowType`,
+///   or once for all types that carry a lifetime, because we want it to return `&'a` references.
 ///   Therefore, we define it only for the least powerful type `Immut<'a>`.
-/// - We cannot get implicit coercion from say `Mut<'a>` to `Immut<'a>`.
-///   Therefore, we have to explicitly call `reborrow` on a more powerful
-///   `NodeRef` in order to reach a method like `into_kv`.
+/// - We cannot get implicit coercion from say `Mut<'a>` to `Immut<'a>`. Therefore, we have to
+///   explicitly call `reborrow` on a more powerful `NodeRef` in order to reach a method like
+///   `into_kv`.
 ///
 /// All methods on `NodeRef` that return some kind of reference, either:
-/// - Take `self` by value, and return the lifetime carried by `BorrowType`.
-///   Sometimes, to invoke such a method, we need to call `reborrow_mut`.
-/// - Take `self` by reference, and (implicitly) return that reference's
-///   lifetime, instead of the lifetime carried by `BorrowType`. That way,
-///   the borrow checker guarantees that the `NodeRef` remains borrowed as long
-///   as the returned reference is used.
-///   The methods supporting insert bend this rule by returning a raw pointer,
-///   i.e., a reference without any lifetime.
+/// - Take `self` by value, and return the lifetime carried by `BorrowType`. Sometimes, to invoke
+///   such a method, we need to call `reborrow_mut`.
+/// - Take `self` by reference, and (implicitly) return that reference's lifetime, instead of the
+///   lifetime carried by `BorrowType`. That way, the borrow checker guarantees that the `NodeRef`
+///   remains borrowed as long as the returned reference is used. The methods supporting insert bend
+///   this rule by returning a raw pointer, i.e., a reference without any lifetime.
 pub struct NodeRef<BorrowType, K, V, Type> {
     /// The number of levels that the node and the level of leaves are apart, a
     /// constant of the node that cannot be entirely described by `Type`, and that
@@ -502,7 +497,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Borrows exclusive access to an element or slice of the node's storage area for edge contents.
+    /// Borrows exclusive access to an element or slice of the node's storage area for edge
+    /// contents.
     ///
     /// # Safety
     /// `index` is in bounds of 0..CAPACITY + 1
@@ -1193,11 +1189,9 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
     /// Splits the underlying node into three parts:
     ///
-    /// - The node is truncated to only contain the key-value pairs to the left of
-    ///   this handle.
+    /// - The node is truncated to only contain the key-value pairs to the left of this handle.
     /// - The key and value pointed to by this handle are extracted.
-    /// - All the key-value pairs to the right of this handle are put into a newly
-    ///   allocated node.
+    /// - All the key-value pairs to the right of this handle are put into a newly allocated node.
     pub fn split<A: Allocator + Clone>(mut self, alloc: A) -> SplitResult<'a, K, V, marker::Leaf> {
         let mut new_node = LeafNode::new(alloc);
 
@@ -1225,11 +1219,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
     /// Splits the underlying node into three parts:
     ///
-    /// - The node is truncated to only contain the edges and key-value pairs to the
-    ///   left of this handle.
+    /// - The node is truncated to only contain the edges and key-value pairs to the left of this
+    ///   handle.
     /// - The key and value pointed to by this handle are extracted.
-    /// - All the edges and key-value pairs to the right of this handle are put into
-    ///   a newly allocated node.
+    /// - All the edges and key-value pairs to the right of this handle are put into a newly
+    ///   allocated node.
     pub fn split<A: Allocator + Clone>(
         mut self,
         alloc: A,

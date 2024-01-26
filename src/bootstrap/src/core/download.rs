@@ -18,7 +18,8 @@ use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
-/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
+/// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have
+/// access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     #[allow(deprecated)]
     config.try_run(cmd)
@@ -87,7 +88,8 @@ impl Config {
             // don't check for NixOS or `/lib`.
             // NOTE: this intentionally comes after the Linux check:
             // - patchelf only works with ELF files, so no need to run it on Mac or Windows
-            // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
+            // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage
+            //   the global libc.
             if let Some(explicit_value) = self.patch_binaries_for_nix {
                 return explicit_value;
             }
@@ -196,7 +198,8 @@ impl Config {
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
         self.verbose(&format!("download {url}"));
-        // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
+        // Use a temporary file in case we crash while downloading, to avoid a corrupt download in
+        // cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // While bootstrap itself only supports http and https downloads, downstream forks might
         // need to download components from other protocols. The match allows them adding more
@@ -231,7 +234,8 @@ impl Config {
             "3",
             "-SRf",
         ]);
-        // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
+        // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long
+        // enough for progress to be useful.
         if CiEnv::is_ci() {
             curl.arg("-s");
         } else {
@@ -282,8 +286,8 @@ impl Config {
         let mut tar = tar::Archive::new(decompressor);
 
         // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
-        // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
-        // Cache the entries when we extract it so we only have to read it once.
+        // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is
+        // slow. Cache the entries when we extract it so we only have to read it once.
         let mut recorded_entries =
             if dst.ends_with("ci-rustc") { recorded_entries(dst, pattern) } else { None };
 
@@ -376,7 +380,8 @@ enum DownloadSource {
     Dist,
 }
 
-/// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
+/// Functions that are only ever called once, but named for clarify and to avoid thousand-line
+/// functions.
 impl Config {
     pub(crate) fn download_clippy(&self) -> PathBuf {
         self.verbose("downloading stage0 clippy artifacts");
@@ -601,14 +606,15 @@ impl Config {
             DownloadSource::Dist => {
                 let dist_server = env::var("RUSTUP_DIST_SERVER")
                     .unwrap_or(self.stage0_metadata.config.dist_server.to_string());
-                // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+                // NOTE: make `dist` part of the URL because that's how it's stored in
+                // src/stage0.json
                 (dist_server, format!("dist/{key}/{filename}"), true)
             }
         };
 
         // For the beta compiler, put special effort into ensuring the checksums are valid.
-        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
-        // this on each and every nightly ...
+        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to
+        // update this on each and every nightly ...
         let checksum = if should_verify {
             let error = format!(
                 "src/stage0.json doesn't contain a checksum for {url}. \

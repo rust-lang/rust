@@ -331,7 +331,8 @@ fn offset_reference_def_range(
         // NOTE: LinkReplacer also provides `Borrowed` but possibly from other sources,
         // so `locate()` can fall back to use `span`.
         CowStr::Borrowed(s) => {
-            // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
+            // FIXME: remove this function once pulldown_cmark can provide spans for link
+            // definitions.
             unsafe {
                 let s_start = dest.as_ptr();
                 let s_end = s_start.add(s.len());

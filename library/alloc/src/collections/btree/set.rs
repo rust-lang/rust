@@ -875,10 +875,9 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// Returns whether the value was newly inserted. That is:
     ///
-    /// - If the set did not previously contain an equal value, `true` is
-    ///   returned.
-    /// - If the set already contained an equal value, `false` is returned, and
-    ///   the entry is not updated.
+    /// - If the set did not previously contain an equal value, `true` is returned.
+    /// - If the set already contained an equal value, `false` is returned, and the entry is not
+    ///   updated.
     ///
     /// See the [module-level documentation] for more.
     ///

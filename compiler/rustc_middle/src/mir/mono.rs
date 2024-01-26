@@ -466,8 +466,8 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 
     /// CGU names should fulfill the following requirements:
     /// - They should be able to act as a file name on any kind of file system
-    /// - They should not collide with other CGU names, even for different versions
-    ///   of the same crate.
+    /// - They should not collide with other CGU names, even for different versions of the same
+    ///   crate.
     ///
     /// Consequently, we don't use special characters except for '.' and '-' and we
     /// prefix each name with the crate-name and crate-disambiguator.

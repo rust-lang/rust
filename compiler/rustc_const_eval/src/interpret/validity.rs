@@ -80,7 +80,6 @@ macro_rules! throw_validation_failure {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });
 /// ```
-///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
     $( $( $p:pat_param )|+ => $kind: expr ),+ $(,)?
@@ -130,7 +129,8 @@ pub enum CtfeValidationMode {
     /// `inner` says if this is an inner, indirect allocation (as opposed to the top-level const
     /// allocation). Being an inner allocation makes a difference because the top-level allocation
     /// of a `const` is copied for each use, but the inner allocations are implicitly shared.
-    /// `allow_static_ptrs` says if pointers to statics are permitted (which is the case for promoteds in statics).
+    /// `allow_static_ptrs` says if pointers to statics are permitted (which is the case for
+    /// promoteds in statics).
     Const { inner: bool, allow_static_ptrs: bool },
 }
 
@@ -438,9 +438,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             // but never read it (so we never entered `before_access_global`).
                             throw_validation_failure!(self.path, PtrToStatic { ptr_kind });
                         }
-                        // We skip recursively checking other statics. These statics must be sound by
-                        // themselves, and the only way to get broken statics here is by using
-                        // unsafe code.
+                        // We skip recursively checking other statics. These statics must be sound
+                        // by themselves, and the only way to get broken
+                        // statics here is by using unsafe code.
                         // The reasons we don't check other statics is twofold. For one, in all
                         // sound cases, the static was already validated on its own, and second, we
                         // trigger cycle errors if we try to compute the value of the other static

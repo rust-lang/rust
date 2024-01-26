@@ -296,10 +296,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // can result in an error in one of two ways:
     //
     // 1. If no applicable impl or parameter bound can be found.
-    // 2. If the output type parameters in the obligation do not match
-    //    those specified by the impl/bound. For example, if the obligation
-    //    is `Vec<Foo>: Iterable<Bar>`, but the impl specifies
-    //    `impl<T> Iterable<T> for Vec<T>`, than an error would result.
+    // 2. If the output type parameters in the obligation do not match those specified by the
+    //    impl/bound. For example, if the obligation is `Vec<Foo>: Iterable<Bar>`, but the impl
+    //    specifies `impl<T> Iterable<T> for Vec<T>`, than an error would result.
 
     /// Attempts to satisfy the obligation. If successful, this will affect the surrounding
     /// type environment by performing unification.
@@ -861,8 +860,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         )
                                 {
                                     // If the result is something that we can cache, then mark this
-                                    // entry as 'complete'. This will allow us to skip evaluating the
-                                    // subobligations at all the next time we evaluate the projection
+                                    // entry as 'complete'. This will allow us to skip evaluating
+                                    // the subobligations at all
+                                    // the next time we evaluate the projection
                                     // predicate.
                                     self.infcx
                                         .inner
@@ -1242,8 +1242,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// - is a defaulted trait,
     /// - it also appears in the backtrace at some position `X`,
-    /// - all the predicates at positions `X..` between `X` and the top are
-    ///   also defaulted traits.
+    /// - all the predicates at positions `X..` between `X` and the top are also defaulted traits.
     pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
@@ -1843,9 +1842,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                     && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
-                    // See issue #84398. In short, we can generate multiple ParamCandidates which are
-                    // the same except for unused bound vars. Just pick the one with the fewest bound vars
-                    // or the current one if tied (they should both evaluate to the same answer). This is
+                    // See issue #84398. In short, we can generate multiple ParamCandidates which
+                    // are the same except for unused bound vars. Just pick the
+                    // one with the fewest bound vars or the current one if tied
+                    // (they should both evaluate to the same answer). This is
                     // probably best characterized as a "hack", since we might prefer to just do our
                     // best to *not* create essentially duplicate candidates in the first place.
                     DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
@@ -2353,8 +2353,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //
         // The strategy is to:
         //
-        // 1. Instantiate those regions to placeholder regions (e.g.,
-        //    `for<'a> &'a i32` becomes `&0 i32`.
+        // 1. Instantiate those regions to placeholder regions (e.g., `for<'a> &'a i32` becomes `&0
+        //    i32`.
         // 2. Produce something like `&'0 i32 : Copy`
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 
@@ -2851,9 +2851,8 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - `E` generates various cache entries which have cyclic dependencies on `B`
     ///   - `A B D E F` and so forth
     ///   - the DFN of `F` for example would be 5
-    /// - then we determine that `E` is in error -- we will then clear
-    ///   all cache values whose DFN is >= 4 -- in this case, that
-    ///   means the cached value for `F`.
+    /// - then we determine that `E` is in error -- we will then clear all cache values whose DFN
+    ///   is >= 4 -- in this case, that means the cached value for `F`.
     map: RefCell<FxIndexMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
 
     /// The stack of args that we assume to be true because a `WF(arg)` predicate

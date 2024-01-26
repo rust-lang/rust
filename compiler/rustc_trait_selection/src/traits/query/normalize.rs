@@ -66,11 +66,12 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
         // through tys and consts in a `TypeFoldable`. Importantly, it skips binders, leaving us
         // with trying to normalize with escaping bound vars.
         //
-        // Here, we just add the universes that we *would* have created had we passed through the binders.
+        // Here, we just add the universes that we *would* have created had we passed through the
+        // binders.
         //
-        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really necessary.
-        // The rest of the code is already set up to be lazy about replacing bound vars,
-        // and only when we actually have to normalize.
+        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really
+        // necessary. The rest of the code is already set up to be lazy about replacing
+        // bound vars, and only when we actually have to normalize.
         let universes = if value.has_escaping_bound_vars() {
             let mut max_visitor =
                 MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };

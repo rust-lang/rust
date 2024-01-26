@@ -20,11 +20,11 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// The need for this type arises from the fact that:
 ///
-/// * On Unix systems, strings are often arbitrary sequences of non-zero
-///   bytes, in many cases interpreted as UTF-8.
+/// * On Unix systems, strings are often arbitrary sequences of non-zero bytes, in many cases
+///   interpreted as UTF-8.
 ///
-/// * On Windows, strings are often arbitrary sequences of non-zero 16-bit
-///   values, interpreted as UTF-16 when it is valid to do so.
+/// * On Windows, strings are often arbitrary sequences of non-zero 16-bit values, interpreted as
+///   UTF-16 when it is valid to do so.
 ///
 /// * In Rust, strings are always valid UTF-8, which may contain zeros.
 ///
@@ -145,9 +145,9 @@ impl OsString {
     /// Converts bytes to an `OsString` without checking that the bytes contains
     /// valid [`OsStr`]-encoded data.
     ///
-    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
-    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
-    /// ASCII.
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of
+    /// UTF-8. By being a self-synchronizing superset of UTF-8, this encoding is also a superset
+    /// of 7-bit ASCII.
     ///
     /// See the [module's toplevel documentation about conversions][conversions] for safe,
     /// cross-platform [conversions] from/to native representations.
@@ -156,11 +156,12 @@ impl OsString {
     ///
     /// As the encoding is unspecified, callers must pass in bytes that originated as a mixture of
     /// validated UTF-8 and bytes from [`OsStr::as_encoded_bytes`] from within the same rust version
-    /// built for the same target platform.  For example, reconstructing an `OsString` from bytes sent
-    /// over the network or stored in a file will likely violate these safety rules.
+    /// built for the same target platform.  For example, reconstructing an `OsString` from bytes
+    /// sent over the network or stored in a file will likely violate these safety rules.
     ///
-    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_encoded_bytes`] can be
-    /// split either immediately before or immediately after any valid non-empty UTF-8 substring.
+    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_encoded_bytes`] can
+    /// be split either immediately before or immediately after any valid non-empty UTF-8
+    /// substring.
     ///
     /// # Example
     ///
@@ -206,9 +207,9 @@ impl OsString {
     /// Converts the `OsString` into a byte slice.  To convert the byte slice back into an
     /// `OsString`, use the [`OsStr::from_encoded_bytes_unchecked`] function.
     ///
-    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
-    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
-    /// ASCII.
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of
+    /// UTF-8. By being a self-synchronizing superset of UTF-8, this encoding is also a superset
+    /// of 7-bit ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
     /// be treated as opaque and only comparable within the same rust version built for the same
@@ -734,9 +735,9 @@ impl OsStr {
     /// Converts a slice of bytes to an OS string slice without checking that the string contains
     /// valid `OsStr`-encoded data.
     ///
-    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
-    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
-    /// ASCII.
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of
+    /// UTF-8. By being a self-synchronizing superset of UTF-8, this encoding is also a superset
+    /// of 7-bit ASCII.
     ///
     /// See the [module's toplevel documentation about conversions][conversions] for safe,
     /// cross-platform [conversions] from/to native representations.
@@ -748,8 +749,9 @@ impl OsStr {
     /// built for the same target platform.  For example, reconstructing an `OsStr` from bytes sent
     /// over the network or stored in a file will likely violate these safety rules.
     ///
-    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_encoded_bytes`] can be
-    /// split either immediately before or immediately after any valid non-empty UTF-8 substring.
+    /// Due to the encoding being self-synchronizing, the bytes from [`OsStr::as_encoded_bytes`] can
+    /// be split either immediately before or immediately after any valid non-empty UTF-8
+    /// substring.
     ///
     /// # Example
     ///
@@ -947,9 +949,9 @@ impl OsStr {
     /// Converts an OS string slice to a byte slice.  To convert the byte slice back into an OS
     /// string slice, use the [`OsStr::from_encoded_bytes_unchecked`] function.
     ///
-    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
-    /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit
-    /// ASCII.
+    /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of
+    /// UTF-8. By being a self-synchronizing superset of UTF-8, this encoding is also a superset
+    /// of 7-bit ASCII.
     ///
     /// Note: As the encoding is unspecified, any sub-slice of bytes that is not valid UTF-8 should
     /// be treated as opaque and only comparable within the same rust version built for the same

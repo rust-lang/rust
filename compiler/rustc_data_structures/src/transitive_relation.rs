@@ -217,9 +217,8 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     ///
     /// - `a < X` and `b < X`
     /// - there is no `Y != X` such that `a < Y` and `Y < X`
-    ///   - except for the case where `X < a` (i.e., a strongly connected
-    ///     component in the graph). In that case, the smallest
-    ///     representative of the SCC is returned (as determined by the
+    ///   - except for the case where `X < a` (i.e., a strongly connected component in the graph).
+    ///     In that case, the smallest representative of the SCC is returned (as determined by the
     ///     internal indices).
     ///
     /// Note that this set can, in principle, have any size.
@@ -249,16 +248,13 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
             // where a < c and b < c. In fact, there may be many such
             // values. So here is what we do:
             //
-            // 1. Find the vector `[X | a < X && b < X]` of all values
-            //    `X` where `a < X` and `b < X`. In terms of the
-            //    graph, this means all values reachable from both `a`
-            //    and `b`. Note that this vector is also a set, but we
-            //    use the term vector because the order matters
-            //    to the steps below.
-            //    - This vector contains upper bounds, but they are
-            //      not minimal upper bounds. So you may have e.g.
-            //      `[x, y, tcx, z]` where `x < tcx` and `y < tcx` and
-            //      `z < x` and `z < y`:
+            // 1. Find the vector `[X | a < X && b < X]` of all values `X` where `a < X` and `b <
+            //    X`. In terms of the graph, this means all values reachable from both `a` and `b`.
+            //    Note that this vector is also a set, but we use the term vector because the order
+            //    matters to the steps below.
+            //    - This vector contains upper bounds, but they are not minimal upper bounds. So you
+            //      may have e.g. `[x, y, tcx, z]` where `x < tcx` and `y < tcx` and `z < x` and `z
+            //      < y`:
             //
             //           z --+---> x ----+----> tcx
             //               |           |
@@ -268,19 +264,16 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
             //      In this case, we really want to return just `[z]`.
             //      The following steps below achieve this by gradually
             //      reducing the list.
-            // 2. Pare down the vector using `pare_down`. This will
-            //    remove elements from the vector that can be reached
-            //    by an earlier element.
-            //    - In the example above, this would convert `[x, y,
-            //      tcx, z]` to `[x, y, z]`. Note that `x` and `y` are
-            //      still in the vector; this is because while `z < x`
-            //      (and `z < y`) holds, `z` comes after them in the
-            //      vector.
+            // 2. Pare down the vector using `pare_down`. This will remove elements from the vector
+            //    that can be reached by an earlier element.
+            //    - In the example above, this would convert `[x, y, tcx, z]` to `[x, y, z]`. Note
+            //      that `x` and `y` are still in the vector; this is because while `z < x` (and `z
+            //      < y`) holds, `z` comes after them in the vector.
             // 3. Reverse the vector and repeat the pare down process.
-            //    - In the example above, we would reverse to
-            //      `[z, y, x]` and then pare down to `[z]`.
-            // 4. Reverse once more just so that we yield a vector in
-            //    increasing order of index. Not necessary, but why not.
+            //    - In the example above, we would reverse to `[z, y, x]` and then pare down to
+            //      `[z]`.
+            // 4. Reverse once more just so that we yield a vector in increasing order of index. Not
+            //    necessary, but why not.
             //
             // I believe this algorithm yields a minimal set. The
             // argument is that, after step 2, we know that no element

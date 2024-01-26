@@ -13,9 +13,11 @@ pub struct Mmap(Vec<u8>);
 impl Mmap {
     /// # Safety
     ///
-    /// The given file must not be mutated (i.e., not written, not truncated, ...) until the mapping is closed.
+    /// The given file must not be mutated (i.e., not written, not truncated, ...) until the mapping
+    /// is closed.
     ///
-    /// However in practice most callers do not ensure this, so uses of this function are likely unsound.
+    /// However in practice most callers do not ensure this, so uses of this function are likely
+    /// unsound.
     #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
         // Safety: the caller must ensure that this is safe.

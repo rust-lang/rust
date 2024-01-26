@@ -133,11 +133,10 @@
 ///
 /// * Function item types (i.e., the distinct types defined for each function)
 /// * Function pointer types (e.g., `fn() -> i32`)
-/// * Closure types, if they capture no value from the environment
-///   or if all such captured values implement `Clone` themselves.
-///   Note that variables captured by shared reference always implement `Clone`
-///   (even if the referent doesn't),
-///   while variables captured by mutable reference never implement `Clone`.
+/// * Closure types, if they capture no value from the environment or if all such captured values
+///   implement `Clone` themselves. Note that variables captured by shared reference always
+///   implement `Clone` (even if the referent doesn't), while variables captured by mutable
+///   reference never implement `Clone`.
 ///
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]

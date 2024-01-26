@@ -119,7 +119,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 }
                 Abi::Scalar(_) => {
                     // All fields of Scalar layouts must have been handled by this point.
-                    // Vector layouts have additional fields for each element of the vector, so don't panic in that case.
+                    // Vector layouts have additional fields for each element of the vector, so
+                    // don't panic in that case.
                     bug!(
                         "offset of non-ZST field `{:?}` does not match layout `{:#?}`",
                         field,

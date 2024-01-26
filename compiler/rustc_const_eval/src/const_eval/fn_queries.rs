@@ -63,8 +63,8 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
                     return hir::Constness::Const;
                 }
 
-                // If the function itself is not annotated with `const`, it may still be a `const fn`
-                // if it resides in a const trait impl.
+                // If the function itself is not annotated with `const`, it may still be a `const
+                // fn` if it resides in a const trait impl.
                 let is_const = is_parent_const_impl_raw(tcx, def_id);
                 if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
             } else {

@@ -109,9 +109,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     //
     // - Unconstrained floats are replaced with `f64`.
     //
-    // - Non-numerics may get replaced with `()` or `!`, depending on
-    //   how they were categorized by `calculate_diverging_fallback`
-    //   (and the setting of `#![feature(never_type_fallback)]`).
+    // - Non-numerics may get replaced with `()` or `!`, depending on how they were categorized by
+    //   `calculate_diverging_fallback` (and the setting of `#![feature(never_type_fallback)]`).
     //
     // Fallback becomes very dubious if we have encountered
     // type-checking errors. In that case, fallback to Error.
@@ -223,12 +222,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// along with anything that would flow into `?V`.
     ///
     /// The algorithm we use:
-    /// * Identify all variables that are coerced *into* by a
-    ///   diverging variable. Do this by iterating over each
-    ///   diverging, unsolved variable and finding all variables
-    ///   reachable from there. Call that set `D`.
-    /// * Walk over all unsolved, non-diverging variables, and find
-    ///   any variable that has an edge into `D`.
+    /// * Identify all variables that are coerced *into* by a diverging variable. Do this by
+    ///   iterating over each diverging, unsolved variable and finding all variables reachable from
+    ///   there. Call that set `D`.
+    /// * Walk over all unsolved, non-diverging variables, and find any variable that has an edge
+    ///   into `D`.
     fn calculate_diverging_fallback(
         &self,
         unresolved_variables: &[Ty<'tcx>],

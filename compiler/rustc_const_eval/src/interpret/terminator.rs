@@ -28,8 +28,8 @@ use crate::fluent_generated as fluent;
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
-    /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
-    /// make the place inaccessible for the duration of the function call.
+    /// Allow for the argument to be passed in-place: destroy the value originally stored at that
+    /// place and make the place inaccessible for the duration of the function call.
     InPlace(PlaceTy<'tcx, Prov>),
 }
 
@@ -43,8 +43,8 @@ impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
-    /// original memory occurs.
+    /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of
+    /// the original memory occurs.
     pub fn copy_fn_arg(
         &self,
         arg: &FnArg<'tcx, M::Provenance>,
@@ -55,8 +55,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Make a copy of the given fn_args. Any `InPlace` are degenerated to copies, no protection of the
-    /// original memory occurs.
+    /// Make a copy of the given fn_args. Any `InPlace` are degenerated to copies, no protection of
+    /// the original memory occurs.
     pub fn copy_fn_args(
         &self,
         args: &[FnArg<'tcx, M::Provenance>],
@@ -338,11 +338,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let callee = unfold(callee)?;
         // Now see if these inner types are compatible.
 
-        // Compatible pointer types. For thin pointers, we have to accept even non-`repr(transparent)`
-        // things as compatible due to `DispatchFromDyn`. For instance, `Rc<i32>` and `*mut i32`
-        // must be compatible. So we just accept everything with Pointer ABI as compatible,
-        // even if this will accept some code that is not stably guaranteed to work.
-        // This also handles function pointers.
+        // Compatible pointer types. For thin pointers, we have to accept even
+        // non-`repr(transparent)` things as compatible due to `DispatchFromDyn`. For
+        // instance, `Rc<i32>` and `*mut i32` must be compatible. So we just accept
+        // everything with Pointer ABI as compatible, even if this will accept some code
+        // that is not stably guaranteed to work. This also handles function pointers.
         let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.abi {
             abi::Abi::Scalar(s) => match s.primitive() {
                 abi::Primitive::Pointer(addr_space) => Some(addr_space),
@@ -408,8 +408,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ) -> InterpResult<'tcx, bool> {
-        // We do not want to accept things as ABI-compatible that just "happen to be" compatible on the current target,
-        // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
+        // We do not want to accept things as ABI-compatible that just "happen to be" compatible on
+        // the current target, so we implement a type-based check that reflects the
+        // guaranteed rules for ABI compatibility.
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
             assert!(caller_abi.eq_abi(callee_abi));
@@ -482,8 +483,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op(&caller_arg_copy, &callee_arg, /*allow_transmute*/ true)?;
-        // If this was an in-place pass, protect the place it comes from for the duration of the call.
+        self.copy_op(&caller_arg_copy, &callee_arg, /* allow_transmute */ true)?;
+        // If this was an in-place pass, protect the place it comes from for the duration of the
+        // call.
         if let FnArg::InPlace(place) = caller_arg {
             M::protect_in_place_function_argument(self, place)?;
         }
@@ -711,7 +713,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             )?;
                         }
                     }
-                    // If the callee needs a caller location, pretend we consume one more argument from the ABI.
+                    // If the callee needs a caller location, pretend we consume one more argument
+                    // from the ABI.
                     if instance.def.requires_caller_location(*self.tcx) {
                         callee_args_abis.next().unwrap();
                     }
@@ -744,8 +747,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Ok(()) => Ok(()),
                 }
             }
-            // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
-            // codegen'd / interpreted as virtual calls through the vtable.
+            // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must
+            // be codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceDef::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers". So we have to go search for a
@@ -766,9 +769,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let val = self.read_immediate(&receiver)?;
                             break self.ref_to_mplace(&val)?;
                         }
-                        ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
+                        ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), /* no immediate unsized values */
                         ty::Dynamic(.., ty::DynStar) => {
-                            // Not clear how to handle this, so far we assume the receiver is always a pointer.
+                            // Not clear how to handle this, so far we assume the receiver is always
+                            // a pointer.
                             span_bug!(
                                 self.cur_span(),
                                 "by-value calls on a `dyn*`... are those a thing?"
@@ -776,7 +780,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
-                            // (The rules for `DispatchFromDyn` ensure there's exactly one such field.)
+                            // (The rules for `DispatchFromDyn` ensure there's exactly one such
+                            // field.)
                             let (idx, _) = receiver.layout.non_1zst_field(self).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
@@ -785,7 +790,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 };
 
-                // Obtain the underlying trait we are working on, and the adjusted receiver argument.
+                // Obtain the underlying trait we are working on, and the adjusted receiver
+                // argument.
                 let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {

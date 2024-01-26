@@ -35,16 +35,14 @@
 //! As for what happens behind the scenes, when optimizations are enabled the
 //! final generated machine code might look very different from the code:
 //!
-//! - The first store to `C` might be moved before the store to `A` or `B`,
-//!   _as if_ we had written `C = 4; A = 3; B = 4`.
+//! - The first store to `C` might be moved before the store to `A` or `B`, _as if_ we had written
+//!   `C = 4; A = 3; B = 4`.
 //!
-//! - Assignment of `A + B` to `A` might be removed, since the sum can be stored
-//!   in a temporary location until it gets printed, with the global variable
-//!   never getting updated.
+//! - Assignment of `A + B` to `A` might be removed, since the sum can be stored in a temporary
+//!   location until it gets printed, with the global variable never getting updated.
 //!
-//! - The final result could be determined just by looking at the code
-//!   at compile time, so [constant folding] might turn the whole
-//!   block into a simple `println!("7 4 4")`.
+//! - The final result could be determined just by looking at the code at compile time, so [constant
+//!   folding] might turn the whole block into a simple `println!("7 4 4")`.
 //!
 //! The compiler is allowed to perform any combination of these
 //! optimizations, as long as the final optimized code, when executed,
@@ -68,25 +66,22 @@
 //! Instructions can execute in a different order from the one we define, due to
 //! various reasons:
 //!
-//! - The **compiler** reordering instructions: If the compiler can issue an
-//!   instruction at an earlier point, it will try to do so. For example, it
-//!   might hoist memory loads at the top of a code block, so that the CPU can
-//!   start [prefetching] the values from memory.
+//! - The **compiler** reordering instructions: If the compiler can issue an instruction at an
+//!   earlier point, it will try to do so. For example, it might hoist memory loads at the top of a
+//!   code block, so that the CPU can start [prefetching] the values from memory.
 //!
 //!   In single-threaded scenarios, this can cause issues when writing
 //!   signal handlers or certain kinds of low-level code.
 //!   Use [compiler fences] to prevent this reordering.
 //!
-//! - A **single processor** executing instructions [out-of-order]:
-//!   Modern CPUs are capable of [superscalar] execution,
-//!   i.e., multiple instructions might be executing at the same time,
-//!   even though the machine code describes a sequential process.
+//! - A **single processor** executing instructions [out-of-order]: Modern CPUs are capable of
+//!   [superscalar] execution, i.e., multiple instructions might be executing at the same time, even
+//!   though the machine code describes a sequential process.
 //!
 //!   This kind of reordering is handled transparently by the CPU.
 //!
-//! - A **multiprocessor** system executing multiple hardware threads
-//!   at the same time: In multi-threaded scenarios, you can use two
-//!   kinds of primitives to deal with synchronization:
+//! - A **multiprocessor** system executing multiple hardware threads at the same time: In
+//!   multi-threaded scenarios, you can use two kinds of primitives to deal with synchronization:
 //!   - [memory fences] to ensure memory accesses are made visible to
 //!   other CPUs in the right order.
 //!   - [atomic operations] to ensure simultaneous access to the same
@@ -114,33 +109,28 @@
 //! The following is an overview of the available synchronization
 //! objects:
 //!
-//! - [`Arc`]: Atomically Reference-Counted pointer, which can be used
-//!   in multithreaded environments to prolong the lifetime of some
-//!   data until all the threads have finished using it.
+//! - [`Arc`]: Atomically Reference-Counted pointer, which can be used in multithreaded environments
+//!   to prolong the lifetime of some data until all the threads have finished using it.
 //!
-//! - [`Barrier`]: Ensures multiple threads will wait for each other
-//!   to reach a point in the program, before continuing execution all
-//!   together.
+//! - [`Barrier`]: Ensures multiple threads will wait for each other to reach a point in the
+//!   program, before continuing execution all together.
 //!
-//! - [`Condvar`]: Condition Variable, providing the ability to block
-//!   a thread while waiting for an event to occur.
+//! - [`Condvar`]: Condition Variable, providing the ability to block a thread while waiting for an
+//!   event to occur.
 //!
-//! - [`mpsc`]: Multi-producer, single-consumer queues, used for
-//!   message-based communication. Can provide a lightweight
-//!   inter-thread synchronisation mechanism, at the cost of some
-//!   extra memory.
+//! - [`mpsc`]: Multi-producer, single-consumer queues, used for message-based communication. Can
+//!   provide a lightweight inter-thread synchronisation mechanism, at the cost of some extra
+//!   memory.
 //!
-//! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
-//!   most one thread at a time is able to access some data.
+//! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at most one thread at a time is able
+//!   to access some data.
 //!
 //! - [`Once`]: Used for a thread-safe, one-time global initialization routine
 //!
-//! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
-//!   global variable.
+//! - [`OnceLock`]: Used for thread-safe, one-time initialization of a global variable.
 //!
-//! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
-//!   multiple readers at the same time, while allowing only one
-//!   writer at a time. In some cases, this can be more efficient than
+//! - [`RwLock`]: Provides a mutual exclusion mechanism which allows multiple readers at the same
+//!   time, while allowing only one writer at a time. In some cases, this can be more efficient than
 //!   a mutex.
 //!
 //! [`Arc`]: crate::sync::Arc

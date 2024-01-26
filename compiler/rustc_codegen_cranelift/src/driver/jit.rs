@@ -170,7 +170,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
             AbiParam::new(jit_module.target_config().pointer_type()),
             AbiParam::new(jit_module.target_config().pointer_type()),
         ],
-        returns: vec![AbiParam::new(jit_module.target_config().pointer_type() /*isize*/)],
+        returns: vec![AbiParam::new(jit_module.target_config().pointer_type() /* isize */)],
         call_conv: jit_module.target_config().default_call_conv,
     };
     let start_func_id = jit_module.declare_function("main", Linkage::Import, &start_sig).unwrap();
@@ -204,7 +204,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     // Handle messages
     loop {
         match rx.recv().unwrap() {
-            // lazy JIT compilation request - compile requested instance and return pointer to result
+            // lazy JIT compilation request - compile requested instance and return pointer to
+            // result
             UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx } => {
                 tx.send(jit_fn(instance_ptr, trampoline_ptr))
                     .expect("jitted runtime hung up before response to lazy JIT request was sent");

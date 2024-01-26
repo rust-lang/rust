@@ -58,9 +58,9 @@ pub fn target() -> Target {
     //      i386/udivdi3.S
     //      i386/umoddi3.S
     // Possible solution:
-    //   1. Eliminate Intrinsics generation.
-    //      1.1 Choose different target to bypass isTargetKnownWindowsMSVC().
-    //      1.2 Remove the "Setup Windows compiler runtime calls" in LLVM
+    //   1. Eliminate Intrinsics generation. 1.1 Choose different target to bypass
+    //      isTargetKnownWindowsMSVC(). 1.2 Remove the "Setup Windows compiler runtime calls" in
+    //      LLVM
     //   2. Implement Intrinsics.
     //   We evaluated all options.
     //   #2 is hard because we need implement the intrinsics (_aulldiv) generated

@@ -238,7 +238,7 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
     // Simulates consumption of an rvalue
     fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
         match rvalue {
-            &Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            &Rvalue::Ref(_ /* rgn */, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Fake => {
                         (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
@@ -275,9 +275,11 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
 
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
+            | Rvalue::UnaryOp(_ /* un_op */, operand)
+            | Rvalue::Cast(_ /* cast_kind */, operand, _ /* ty */)
+            | Rvalue::ShallowInitBox(operand, _ /* ty */) => {
+                self.consume_operand(location, operand)
+            }
 
             &Rvalue::CopyForDeref(place) => {
                 let op = &Operand::Copy(place);

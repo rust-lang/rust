@@ -106,7 +106,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
              trait here instead: `trait NewTrait: {} {{}}`",
                 regular_traits
                     .iter()
-                    // FIXME: This should `print_sugared`, but also needs to integrate projection bounds...
+                    // FIXME: This should `print_sugared`, but also needs to integrate projection
+                    // bounds...
                     .map(|t| t.trait_ref().print_only_trait_path().to_string())
                     .collect::<Vec<_>>()
                     .join(" + "),
@@ -211,10 +212,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        // `dyn Trait<Assoc = Foo>` desugars to (not Rust syntax) `dyn Trait where <Self as Trait>::Assoc = Foo`.
-        // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
-        // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
-        // corresponding `Projection` clause
+        // `dyn Trait<Assoc = Foo>` desugars to (not Rust syntax) `dyn Trait where <Self as
+        // Trait>::Assoc = Foo`. So every `Projection` clause is an `Assoc = Foo` bound.
+        // `associated_types` contains all associated types's `DefId`, so the following loop
+        // removes all the `DefIds` of the associated types that have a corresponding
+        // `Projection` clause
         for def_ids in associated_types.values_mut() {
             for (projection_bound, span) in &projection_bounds {
                 let def_id = projection_bound.projection_def_id();
@@ -228,8 +230,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
             }
-            // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
-            // type in the `dyn Trait`.
+            // If the associated type has a `where Self: Sized` bound, we do not need to constrain
+            // the associated type in the `dyn Trait`.
             def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
@@ -320,8 +322,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bound.map_bound(|mut b| {
                     assert_eq!(b.projection_ty.self_ty(), dummy_self);
 
-                    // Like for trait refs, verify that `dummy_self` did not leak inside default type
-                    // parameters.
+                    // Like for trait refs, verify that `dummy_self` did not leak inside default
+                    // type parameters.
                     let references_self = b.projection_ty.args.iter().skip(1).any(|arg| {
                         if arg.walk().any(|arg| arg == dummy_self.into()) {
                             return true;

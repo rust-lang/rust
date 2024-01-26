@@ -4,8 +4,8 @@ use crate::sealed::Sealed;
 use crate::sys::os_str::Buf;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-// Note: this file is currently reused in other `std::os::{platform}::ffi` modules to reduce duplication.
-// Keep this in mind when applying changes to this file that only apply to `unix`.
+// Note: this file is currently reused in other `std::os::{platform}::ffi` modules to reduce
+// duplication. Keep this in mind when applying changes to this file that only apply to `unix`.
 
 /// Platform-specific extensions to [`OsString`].
 ///

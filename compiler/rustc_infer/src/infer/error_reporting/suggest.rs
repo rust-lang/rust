@@ -218,7 +218,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 _ => Some(ConsiderAddingAwait::BothFuturesHelp),
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
-                // FIXME: Seems like we can't have a suggestion and a note with different spans in a single subdiagnostic
+                // FIXME: Seems like we can't have a suggestion and a note with different spans in a
+                // single subdiagnostic
                 diag.subdiagnostic(ConsiderAddingAwait::FutureSugg {
                     span: exp_span.shrink_to_hi(),
                 });
@@ -521,8 +522,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         None
     }
 
-    /// For "one type is more general than the other" errors on closures, suggest changing the lifetime
-    /// of the parameters to accept all lifetimes.
+    /// For "one type is more general than the other" errors on closures, suggest changing the
+    /// lifetime of the parameters to accept all lifetimes.
     pub(super) fn suggest_for_all_lifetime_closure(
         &self,
         span: Span,
@@ -576,8 +577,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && !found_region.is_bound()
                     && let hir::TyKind::Infer = arg_hir.kind
                 {
-                    // If the expected region is late bound, the found region is not, and users are asking compiler
-                    // to infer the type, we can suggest adding `: &_`.
+                    // If the expected region is late bound, the found region is not, and users are
+                    // asking compiler to infer the type, we can suggest adding
+                    // `: &_`.
                     if param_hir.pat.span == param_hir.ty_span {
                         // for `|x|`, `|_|`, `|x: impl Foo|`
                         let Ok(pat) =

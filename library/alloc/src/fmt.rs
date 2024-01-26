@@ -176,27 +176,25 @@
 //!
 //! These are all flags altering the behavior of the formatter.
 //!
-//! * `+` - This is intended for numeric types and indicates that the sign
-//!         should always be printed. By default only the negative sign of signed values
-//!         is printed, and the sign of positive or unsigned values is omitted.
-//!         This flag indicates that the correct sign (`+` or `-`) should always be printed.
+//! * `+` - This is intended for numeric types and indicates that the sign should always be printed.
+//!   By default only the negative sign of signed values is printed, and the sign of positive or
+//!   unsigned values is omitted. This flag indicates that the correct sign (`+` or `-`) should
+//!   always be printed.
 //! * `-` - Currently not used
-//! * `#` - This flag indicates that the "alternate" form of printing should
-//!         be used. The alternate forms are:
+//! * `#` - This flag indicates that the "alternate" form of printing should be used. The alternate
+//!   forms are:
 //!     * `#?` - pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
 //!     * `#x` - precedes the argument with a `0x`
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
 //!     * `#o` - precedes the argument with a `0o`
-//! * `0` - This is used to indicate for integer formats that the padding to `width` should
-//!         both be done with a `0` character as well as be sign-aware. A format
-//!         like `{:08}` would yield `00000001` for the integer `1`, while the
-//!         same format would yield `-0000001` for the integer `-1`. Notice that
-//!         the negative version has one fewer zero than the positive version.
-//!         Note that padding zeros are always placed after the sign (if any)
-//!         and before the digits. When used together with the `#` flag, a similar
-//!         rule applies: padding zeros are inserted after the prefix but before
-//!         the digits. The prefix is included in the total width.
+//! * `0` - This is used to indicate for integer formats that the padding to `width` should both be
+//!   done with a `0` character as well as be sign-aware. A format like `{:08}` would yield
+//!   `00000001` for the integer `1`, while the same format would yield `-0000001` for the integer
+//!   `-1`. Notice that the negative version has one fewer zero than the positive version. Note that
+//!   padding zeros are always placed after the sign (if any) and before the digits. When used
+//!   together with the `#` flag, a similar rule applies: padding zeros are inserted after the
+//!   prefix but before the digits. The prefix is included in the total width.
 //!
 //! ## Precision
 //!
@@ -222,8 +220,8 @@
 //! 3. An asterisk `.*`:
 //!
 //!    `.*` means that this `{...}` is associated with *two* format inputs rather than one:
-//!    - If a format string in the fashion of `{:<spec>.*}` is used, then the first input holds
-//!      the `usize` precision, and the second holds the value to print.
+//!    - If a format string in the fashion of `{:<spec>.*}` is used, then the first input holds the
+//!      `usize` precision, and the second holds the value to print.
 //!    - If a format string in the fashion of `{<arg>:<spec>.*}` is used, then the `<arg>` part
 //!      refers to the value to print, and the `precision` is taken like it was specified with an
 //!      omitted positional parameter (`{}` instead of `{<arg>:}`).
@@ -327,8 +325,10 @@
 //! - `text` must not contain any `'{'` or `'}'` characters,
 //! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
 //!   meaning and is completely optional,
-//! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize` and
-//! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
+//! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize`
+//!   and
+//! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined
+//!   by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
 //!
 //! # Formatting traits
 //!
@@ -437,13 +437,13 @@
 //!
 //! These two formatting traits have distinct purposes:
 //!
-//! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully
-//!   represented as a UTF-8 string at all times. It is **not** expected that
-//!   all types implement the [`Display`] trait.
-//! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
-//!   Output will typically represent the internal state as faithfully as possible.
-//!   The purpose of the [`Debug`] trait is to facilitate debugging Rust code. In
-//!   most cases, using `#[derive(Debug)]` is sufficient and recommended.
+//! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully represented
+//!   as a UTF-8 string at all times. It is **not** expected that all types implement the
+//!   [`Display`] trait.
+//! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types. Output
+//!   will typically represent the internal state as faithfully as possible. The purpose of the
+//!   [`Debug`] trait is to facilitate debugging Rust code. In most cases, using `#[derive(Debug)]`
+//!   is sufficient and recommended.
 //!
 //! Some examples of the output from both traits:
 //!

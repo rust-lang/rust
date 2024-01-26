@@ -331,7 +331,6 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 /// additional step of eagerly folding the associated types in the where
 /// clauses of the impl. In this example, that means replacing
 /// `<Self as Foo>::Bar` with `Ty` in the first impl.
-///
 // FIXME: This is only necessary as `<Self as Trait>::Assoc: ItemBound`
 // bounds in impls are trivially proven using the item bound candidates.
 // This is unsound in general and once that is fixed, we don't need to

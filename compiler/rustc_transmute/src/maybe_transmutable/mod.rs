@@ -173,19 +173,21 @@ where
             let answer = if dst_state == self.dst.accepting {
                 // truncation: `size_of(Src) >= size_of(Dst)`
                 //
-                // Why is truncation OK to do? Because even though the Src is bigger, all we care about
-                // is whether we have enough data for the Dst to be valid in accordance with what its
-                // type dictates.
-                // For example, in a u8 to `()` transmutation, we have enough data available from the u8
-                // to transmute it to a `()` (though in this case does `()` really need any data to
-                // begin with? It doesn't). Same thing with u8 to fieldless struct.
-                // Now then, why is something like u8 to bool not allowed? That is not because the bool
-                // is smaller in size, but rather because those 2 bits that we are re-interpreting from
+                // Why is truncation OK to do? Because even though the Src is bigger, all we care
+                // about is whether we have enough data for the Dst to be valid in
+                // accordance with what its type dictates.
+                // For example, in a u8 to `()` transmutation, we have enough data available from
+                // the u8 to transmute it to a `()` (though in this case does `()`
+                // really need any data to begin with? It doesn't). Same thing with
+                // u8 to fieldless struct. Now then, why is something like u8 to
+                // bool not allowed? That is not because the bool is smaller in
+                // size, but rather because those 2 bits that we are re-interpreting from
                 // the u8 could introduce invalid states for the bool type.
                 //
-                // So, if it's possible to transmute to a smaller Dst by truncating, and we can guarantee
-                // that none of the actually-used data can introduce an invalid state for Dst's type, we
-                // are able to safely transmute, even with truncation.
+                // So, if it's possible to transmute to a smaller Dst by truncating, and we can
+                // guarantee that none of the actually-used data can introduce an
+                // invalid state for Dst's type, we are able to safely transmute,
+                // even with truncation.
                 Answer::Yes
             } else if src_state == self.src.accepting {
                 // extension: `size_of(Src) >= size_of(Dst)`
@@ -196,14 +198,17 @@ where
                 }
             } else {
                 let src_quantifier = if self.assume.validity {
-                    // if the compiler may assume that the programmer is doing additional validity checks,
-                    // (e.g.: that `src != 3u8` when the destination type is `bool`)
-                    // then there must exist at least one transition out of `src_state` such that the transmute is viable...
+                    // if the compiler may assume that the programmer is doing additional validity
+                    // checks, (e.g.: that `src != 3u8` when the destination
+                    // type is `bool`) then there must exist at least one
+                    // transition out of `src_state` such that the transmute is viable...
                     Quantifier::ThereExists
                 } else {
-                    // if the compiler cannot assume that the programmer is doing additional validity checks,
-                    // then for all transitions out of `src_state`, such that the transmute is viable...
-                    // then there must exist at least one transition out of `dst_state` such that the transmute is viable...
+                    // if the compiler cannot assume that the programmer is doing additional
+                    // validity checks, then for all transitions out of
+                    // `src_state`, such that the transmute is viable...
+                    // then there must exist at least one transition out of `dst_state` such that
+                    // the transmute is viable...
                     Quantifier::ForAll
                 };
 
@@ -217,7 +222,8 @@ where
                             {
                                 self.answer_memo(cache, src_state_prime, dst_state_prime)
                             } else if let Some(dst_state_prime) =
-                                // otherwise, see if `dst_state` has any outgoing `Uninit` transitions
+                                // otherwise, see if `dst_state` has any outgoing `Uninit`
+                                // transitions
                                 // (any init byte is a valid uninit byte)
                                 self.dst.byte_from(dst_state, Byte::Uninit)
                             {

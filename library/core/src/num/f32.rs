@@ -947,8 +947,9 @@ impl f32 {
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a
+    /// NaN operand is conserved; see [explanation of NaN as a special value](f32) for more
+    /// info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -982,8 +983,9 @@ impl f32 {
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
-    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a
+    /// NaN operand is conserved; see [explanation of NaN as a special value](f32) for more
+    /// info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -1084,7 +1086,6 @@ impl f32 {
     /// ```
     /// assert_ne!((1f32).to_bits(), 1f32 as u32); // to_bits() is not casting!
     /// assert_eq!((12.5f32).to_bits(), 0x41480000);
-    ///
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -1124,7 +1125,8 @@ impl f32 {
                     panic!("const-eval error: cannot use f32::to_bits on a subnormal number")
                 }
                 FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
-                    // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
+                    // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a
+                    // bitcopy.
                     unsafe { mem::transmute::<f32, u32>(ct) }
                 }
             }

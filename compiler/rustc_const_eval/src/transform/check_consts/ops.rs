@@ -33,7 +33,8 @@ pub enum DiagnosticImportance {
     /// An operation that must be removed for const-checking to pass.
     Primary,
 
-    /// An operation that causes const-checking to fail, but is usually a side-effect of a `Primary` operation elsewhere.
+    /// An operation that causes const-checking to fail, but is usually a side-effect of a
+    /// `Primary` operation elsewhere.
     Secondary,
 }
 

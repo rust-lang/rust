@@ -63,8 +63,8 @@ pub trait FromRawHandle {
     ///
     /// The `handle` passed in must:
     ///   - be an [owned handle][io-safety]; in particular, it must be open.
-    ///   - be a handle for a resource that may be freed via [`CloseHandle`]
-    ///     (as opposed to `RegCloseKey` or other close functions).
+    ///   - be a handle for a resource that may be freed via [`CloseHandle`] (as opposed to
+    ///     `RegCloseKey` or other close functions).
     ///
     /// Note that the handle *may* have the value `INVALID_HANDLE_VALUE` (-1),
     /// which is sometimes a valid handle value. See [here] for the full story.

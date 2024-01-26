@@ -222,7 +222,8 @@ fn do_orphan_check_impl<'tcx>(
                     // }
                     // impl<T: ?Sized> AutoTrait for S<T>::This {}
                     // ```
-                    // FIXME(inherent_associated_types): The example code above currently leads to a cycle
+                    // FIXME(inherent_associated_types): The example code above currently leads to a
+                    // cycle
                     AliasKind::Inherent => "associated type",
                 };
                 (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
@@ -487,8 +488,8 @@ fn lint_auto_trait_impl<'tcx>(
     //
     // What we do here is a bit simpler:
     //
-    // - badly check if an auto impl candidate definitely does not apply
-    //   for the given simplified type
+    // - badly check if an auto impl candidate definitely does not apply for the given simplified
+    //   type
     // - if so, do not lint
     if fast_reject_auto_impl(tcx, trait_ref.def_id, self_ty) {
         // ok

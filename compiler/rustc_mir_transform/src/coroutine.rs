@@ -754,10 +754,10 @@ struct LivenessInfo {
 /// given coroutine.
 ///
 /// The basic idea is as follows:
-/// - a local is live until we encounter a `StorageDead` statement. In
-///   case none exist, the local is considered to be always live.
-/// - a local has to be stored if it is either directly used after the
-///   the suspend point, or if it is live and has been previously borrowed.
+/// - a local is live until we encounter a `StorageDead` statement. In case none exist, the local is
+///   considered to be always live.
+/// - a local has to be stored if it is either directly used after the the suspend point, or if it
+///   is live and has been previously borrowed.
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,

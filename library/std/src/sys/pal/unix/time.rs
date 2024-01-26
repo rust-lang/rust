@@ -140,13 +140,12 @@ impl Timespec {
             // NOTE(eddyb) two aspects of this `if`-`else` are required for LLVM
             // to optimize it into a branchless form (see also #75545):
             //
-            // 1. `self.tv_sec - other.tv_sec` shows up as a common expression
-            //    in both branches, i.e. the `else` must have its `- 1`
-            //    subtraction after the common one, not interleaved with it
-            //    (it used to be `self.tv_sec - 1 - other.tv_sec`)
+            // 1. `self.tv_sec - other.tv_sec` shows up as a common expression in both branches,
+            //    i.e. the `else` must have its `- 1` subtraction after the common one, not
+            //    interleaved with it (it used to be `self.tv_sec - 1 - other.tv_sec`)
             //
-            // 2. the `Duration::new` call (or any other additional complexity)
-            //    is outside of the `if`-`else`, not duplicated in both branches
+            // 2. the `Duration::new` call (or any other additional complexity) is outside of the
+            //    `if`-`else`, not duplicated in both branches
             //
             // Ideally this code could be rearranged such that it more
             // directly expresses the lower-cost behavior we want from it.

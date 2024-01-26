@@ -107,8 +107,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
         // universes `n`, this algorithm compresses them in place so that:
         //
         // - the new universe indices are as small as possible
-        // - we only create a new universe if we would otherwise put a placeholder in
-        //   the same compressed universe as an existential which cannot name it
+        // - we only create a new universe if we would otherwise put a placeholder in the same
+        //   compressed universe as an existential which cannot name it
         //
         // Let's walk through an example:
         // - var_infos: [E0, U1, E5, U2, E2, E6, U6], curr_compressed_uv: 0, next_orig_uv: 0

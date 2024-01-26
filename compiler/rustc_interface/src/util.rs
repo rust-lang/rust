@@ -534,7 +534,8 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
     }
 }
 
-/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)" when invoked by an in-tree tool.
+/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)" when invoked by an in-tree
+/// tool.
 pub macro version_str() {
     option_env!("CFG_VERSION")
 }

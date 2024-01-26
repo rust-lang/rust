@@ -1,8 +1,8 @@
 /// Type metadata identifiers for LLVM Control Flow Integrity (CFI) and cross-language LLVM CFI
 /// support.
 ///
-/// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
-/// see design document in the tracking issue #89653.
+/// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust
+/// compiler, see design document in the tracking issue #89653.
 use bitflags::bitflags;
 use rustc_middle::ty::{FnSig, Instance, Ty, TyCtxt};
 use rustc_target::abi::call::FnAbi;

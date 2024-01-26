@@ -114,7 +114,8 @@ impl<'tcx> BasicBlocks<'tcx> {
     ///  3) For each `TerminatorKind::SwitchInt`, the `targets` remains the same and the terminator
     ///     kind is not changed.
     ///
-    /// If any of these conditions cannot be upheld, you should call [`BasicBlocks::invalidate_cfg_cache`].
+    /// If any of these conditions cannot be upheld, you should call
+    /// [`BasicBlocks::invalidate_cfg_cache`].
     #[inline]
     pub fn as_mut_preserves_cfg(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &mut self.basic_blocks

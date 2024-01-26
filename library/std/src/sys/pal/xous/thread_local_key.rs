@@ -113,10 +113,10 @@ pub unsafe fn destroy(_key: Key) {
 // registered but cannot be unregistered. There's various simplifying reasons
 // for doing this, the big ones being:
 //
-// 1. Currently we don't even support deallocating TLS keys, so normal operation
-//    doesn't need to deallocate a destructor.
-// 2. There is no point in time where we know we can unregister a destructor
-//    because it could always be getting run by some remote thread.
+// 1. Currently we don't even support deallocating TLS keys, so normal operation doesn't need to
+//    deallocate a destructor.
+// 2. There is no point in time where we know we can unregister a destructor because it could always
+//    be getting run by some remote thread.
 //
 // Typically processes have a statically known set of TLS keys which is pretty
 // small, and we'd want to keep this memory alive for the whole process anyway

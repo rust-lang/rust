@@ -235,7 +235,8 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
 
         // On multiarch linux systems, there will be multiarch directory named
         // with the architecture(e.g `x86_64-linux-gnu`) under the `lib` directory.
-        // Which cause us to mistakenly end up in the lib directory instead of the sysroot directory.
+        // Which cause us to mistakenly end up in the lib directory instead of the sysroot
+        // directory.
         if sysroot_dir.ends_with("lib") {
             sysroot_dir =
                 sysroot_dir.parent().map(|real_sysroot| real_sysroot.to_owned()).ok_or_else(

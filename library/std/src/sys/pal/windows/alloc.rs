@@ -54,7 +54,7 @@ extern "system" {
     //  - `hHeap` must be a non-null handle returned by `GetProcessHeap`.
     //  - `dwFlags` must be set to zero.
     //  - `lpMem` must be a non-null pointer to an allocated block returned by `HeapAlloc` or
-    //     `HeapReAlloc`, that has not already been freed.
+    //    `HeapReAlloc`, that has not already been freed.
     // If the block was successfully reallocated at a new location, pointers pointing to
     // the freed memory, such as `lpMem`, must not be dereferenced ever again.
     //
@@ -75,7 +75,7 @@ extern "system" {
     //  - `hHeap` must be a non-null handle returned by `GetProcessHeap`.
     //  - `dwFlags` must be set to zero.
     //  - `lpMem` must be a pointer to an allocated block returned by `HeapAlloc` or `HeapReAlloc`,
-    //     that has not already been freed.
+    //    that has not already been freed.
     // If the block was successfully freed, pointers pointing to the freed memory, such as `lpMem`,
     // must not be dereferenced ever again.
     //
@@ -86,7 +86,8 @@ extern "system" {
 }
 
 // Cached handle to the default heap of the current process.
-// Either a non-null handle returned by `GetProcessHeap`, or null when not yet initialized or `GetProcessHeap` failed.
+// Either a non-null handle returned by `GetProcessHeap`, or null when not yet initialized or
+// `GetProcessHeap` failed.
 static HEAP: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 
 // Get a handle to the default heap of the current process, or null if the operation fails.
@@ -100,7 +101,8 @@ fn init_or_get_process_heap() -> c::HANDLE {
         let heap = unsafe { GetProcessHeap() };
         if !heap.is_null() {
             // SAFETY: No locking is needed because within the same process,
-            // successful calls to `GetProcessHeap` will always return the same value, even on different threads.
+            // successful calls to `GetProcessHeap` will always return the same value, even on
+            // different threads.
             HEAP.store(heap, Ordering::Release);
 
             // SAFETY: `HEAP` contains a non-null handle returned by `GetProcessHeap`
@@ -181,13 +183,14 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
 // All pointers returned by this allocator have, in addition to the guarantees of `GlobalAlloc`, the
 // following properties:
 //
-// If the pointer was allocated or reallocated with a `layout` specifying an alignment <= `MIN_ALIGN`
-// the pointer will be aligned to at least `MIN_ALIGN` and point to the start of the allocated block.
+// If the pointer was allocated or reallocated with a `layout` specifying an alignment <=
+// `MIN_ALIGN` the pointer will be aligned to at least `MIN_ALIGN` and point to the start of the
+// allocated block.
 //
 // If the pointer was allocated or reallocated with a `layout` specifying an alignment > `MIN_ALIGN`
-// the pointer will be aligned to the specified alignment and not point to the start of the allocated block.
-// Instead there will be a header readable directly before the returned pointer, containing the actual
-// location of the start of the block.
+// the pointer will be aligned to the specified alignment and not point to the start of the
+// allocated block. Instead there will be a header readable directly before the returned pointer,
+// containing the actual location of the start of the block.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
     #[inline]

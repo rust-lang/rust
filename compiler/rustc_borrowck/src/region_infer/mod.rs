@@ -1185,10 +1185,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// quantified regions. To convert this into a single universal
     /// region we do as follows:
     ///
-    /// - Ignore the CFG points in `'r`. All universally quantified regions
-    ///   include the CFG anyhow.
-    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
-    ///   a result `'y`.
+    /// - Ignore the CFG points in `'r`. All universally quantified regions include the CFG anyhow.
+    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding a result `'y`.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         debug!(r = %self.region_value_str(r));
@@ -1741,7 +1739,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 placeholder,
             });
 
-            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+            // Stop after the first error, it gets too noisy otherwise, and does not provide more
+            // information.
             break;
         }
         debug!("check_bound_universal_region: all bounds satisfied");
@@ -1793,10 +1792,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// This is true under two conditions:
     ///
     /// - `r == fr2`
-    /// - `fr2` is `'static` and `r` is some placeholder in a universe
-    ///   that cannot be named by `fr1`; in that case, we will require
-    ///   that `fr1: 'static` because it is the only way to `fr1: r` to
-    ///   be satisfied. (See `add_incompatible_universe`.)
+    /// - `fr2` is `'static` and `r` is some placeholder in a universe that cannot be named by
+    ///   `fr1`; in that case, we will require that `fr1: 'static` because it is the only way to
+    ///   `fr1: r` to be satisfied. (See `add_incompatible_universe`.)
     pub(crate) fn provides_universal_region(
         &self,
         r: RegionVid,
@@ -2071,8 +2069,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple `ConstraintCategory::Predicate`
-        // constraints. Currently, we just pick the first one.
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first
+        // one.
         let cause_code = path
             .iter()
             .find_map(|constraint| {

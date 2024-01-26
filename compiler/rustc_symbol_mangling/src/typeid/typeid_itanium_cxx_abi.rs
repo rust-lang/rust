@@ -1,12 +1,12 @@
-/// Type metadata identifiers (using Itanium C++ ABI mangling for encoding) for LLVM Control Flow
-/// Integrity (CFI) and cross-language LLVM CFI support.
+/// Type metadata identifiers (using Itanium C++ ABI mangling for encoding) for LLVM Control
+/// Flow Integrity (CFI) and cross-language LLVM CFI support.
 ///
-/// Encodes type metadata identifiers for LLVM CFI and cross-language LLVM CFI support using Itanium
-/// C++ ABI mangling for encoding with vendor extended type qualifiers and types for Rust types that
-/// are not used across the FFI boundary.
+/// Encodes type metadata identifiers for LLVM CFI and cross-language LLVM CFI support using
+/// Itanium C++ ABI mangling for encoding with vendor extended type qualifiers and types for
+/// Rust types that are not used across the FFI boundary.
 ///
-/// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
-/// see design document in the tracking issue #89653.
+/// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust
+/// compiler, see design document in the tracking issue #89653.
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;

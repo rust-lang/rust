@@ -18,8 +18,8 @@ fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Option<Symbol> {
     if let Some(value) = cx.sess.opts.logical_env.get(var) {
         return Some(Symbol::intern(value));
     }
-    // If the environment variable was not defined with the `--env-set` option, we try to retrieve it
-    // from rustc's environment.
+    // If the environment variable was not defined with the `--env-set` option, we try to retrieve
+    // it from rustc's environment.
     env::var(var).ok().as_deref().map(Symbol::intern)
 }
 

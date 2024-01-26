@@ -1636,11 +1636,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksMut<'a, T: 'a> {
     /// # Safety
-    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
-    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
-    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
-    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
-    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`.
+    /// Normally, those requirements would mean that we could instead use a `&mut [T]` here,
+    /// but we cannot because `__iterator_get_unchecked` needs to return `&mut [T]`, which
+    /// guarantees certain aliasing properties that we cannot uphold if we hold on to the full
+    /// original `&mut [T]`. Wrapping a raw slice instead lets us hand out non-overlapping
+    /// `&mut [T]` subslices of the slice we wrap.
     v: *mut [T],
     chunk_size: usize,
     _marker: PhantomData<&'a mut T>,
@@ -1998,11 +1999,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksExactMut<'a, T: 'a> {
     /// # Safety
-    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
-    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
-    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
-    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
-    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`.
+    /// Normally, those requirements would mean that we could instead use a `&mut [T]` here,
+    /// but we cannot because `__iterator_get_unchecked` needs to return `&mut [T]`, which
+    /// guarantees certain aliasing properties that we cannot uphold if we hold on to the full
+    /// original `&mut [T]`. Wrapping a raw slice instead lets us hand out non-overlapping
+    /// `&mut [T]` subslices of the slice we wrap.
     v: *mut [T],
     rem: &'a mut [T], // The iterator never yields from here, so this can be unique
     chunk_size: usize,
@@ -2704,11 +2706,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksMut<'a, T: 'a> {
     /// # Safety
-    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
-    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
-    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
-    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
-    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`.
+    /// Normally, those requirements would mean that we could instead use a `&mut [T]` here,
+    /// but we cannot because `__iterator_get_unchecked` needs to return `&mut [T]`, which
+    /// guarantees certain aliasing properties that we cannot uphold if we hold on to the full
+    /// original `&mut [T]`. Wrapping a raw slice instead lets us hand out non-overlapping
+    /// `&mut [T]` subslices of the slice we wrap.
     v: *mut [T],
     chunk_size: usize,
     _marker: PhantomData<&'a mut T>,
@@ -3074,11 +3077,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksExactMut<'a, T: 'a> {
     /// # Safety
-    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
-    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
-    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
-    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
-    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`.
+    /// Normally, those requirements would mean that we could instead use a `&mut [T]` here,
+    /// but we cannot because `__iterator_get_unchecked` needs to return `&mut [T]`, which
+    /// guarantees certain aliasing properties that we cannot uphold if we hold on to the full
+    /// original `&mut [T]`. Wrapping a raw slice instead lets us hand out non-overlapping
+    /// `&mut [T]` subslices of the slice we wrap.
     v: *mut [T],
     rem: &'a mut [T],
     chunk_size: usize,

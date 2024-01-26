@@ -277,13 +277,11 @@ enum LifetimeUseSet {
 #[derive(Copy, Clone, Debug)]
 enum LifetimeRibKind {
     // -- Ribs introducing named lifetimes
-    //
     /// This rib declares generic parameters.
     /// Only for this kind the `LifetimeRib::bindings` field can be non-empty.
     Generics { binder: NodeId, span: Span, kind: LifetimeBinderKind },
 
     // -- Ribs introducing unnamed lifetimes
-    //
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -304,7 +302,6 @@ enum LifetimeRibKind {
     Elided(LifetimeRes),
 
     // -- Barrier ribs that stop lifetime lookup, or continue it but produce an error later.
-    //
     /// Give a hard error when either `&` or `'_` is written. Used to
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
@@ -614,10 +611,12 @@ struct DiagnosticMetadata<'ast> {
 
     current_pat: Option<&'ast Pat>,
 
-    /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
+    /// Used to detect possible `if let` written without `let` and to provide structured
+    /// suggestion.
     in_if_condition: Option<&'ast Expr>,
 
-    /// Used to detect possible new binding written without `let` and to provide structured suggestion.
+    /// Used to detect possible new binding written without `let` and to provide structured
+    /// suggestion.
     in_assignment: Option<&'ast Expr>,
     is_assign_rhs: bool,
 
@@ -982,11 +981,13 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
-                            // Be sure not to set this until the function signature has been resolved.
+                            // Be sure not to set this until the function signature has been
+                            // resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
                             // We only care block in the same function
                             this.last_block_rib = None;
-                            // Resolve the function body, potentially inside the body of an async closure
+                            // Resolve the function body, potentially inside the body of an async
+                            // closure
                             this.with_lifetime_rib(
                                 LifetimeRibKind::Elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
@@ -1026,7 +1027,8 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                         // Ignore errors in function bodies if this is rustdoc
                         // Be sure not to set this until the function signature has been resolved.
                         let previous_state = replace(&mut this.in_func_body, true);
-                        // Resolve the function body, potentially inside the body of an async closure
+                        // Resolve the function body, potentially inside the body of an async
+                        // closure
                         this.with_lifetime_rib(
                             LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| this.visit_expr(body),
@@ -4722,9 +4724,10 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::MacCall(..) => {}
             ItemKind::Delegation(..) => {
                 // Delegated functions have lifetimes, their count is not necessarily zero.
-                // But skipping the delegation items here doesn't mean that the count will be considered zero,
-                // it means there will be a panic when retrieving the count,
-                // but for delegation items we are never actually retrieving that count in practice.
+                // But skipping the delegation items here doesn't mean that the count will be
+                // considered zero, it means there will be a panic when retrieving
+                // the count, but for delegation items we are never actually
+                // retrieving that count in practice.
             }
         }
         visit::walk_item(self, item)

@@ -116,8 +116,8 @@ pub trait Translate {
                     do yeet primary
                 }
 
-                // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
-                // just hide it and try with the fallback bundle.
+                // ..otherwise, for end users, an error about this wouldn't be useful or actionable,
+                // so just hide it and try with the fallback bundle.
                 Some(Err(primary)) => translate_with_bundle(self.fallback_fluent_bundle())
                     .map_err(|fallback| primary.and(fallback))?,
 

@@ -450,7 +450,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         if !data.self_ty().has_escaping_bound_vars() {
             // FIXME(inherent_associated_types): Should this happen inside of a snapshot?
-            // FIXME(inherent_associated_types): This is incompatible with the new solver and lazy norm!
+            // FIXME(inherent_associated_types): This is incompatible with the new solver and lazy
+            // norm!
             let args = traits::project::compute_inherent_assoc_ty_args(
                 &mut traits::SelectionContext::new(self.infcx),
                 self.param_env,
@@ -556,12 +557,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             ));
                         }
                         ty::ConstKind::Expr(_) => {
-                            // FIXME(generic_const_exprs): this doesn't verify that given `Expr(N + 1)` the
-                            // trait bound `typeof(N): Add<typeof(1)>` holds. This is currently unnecessary
-                            // as `ConstKind::Expr` is only produced via normalization of `ConstKind::Unevaluated`
-                            // which means that the `DefId` would have been typeck'd elsewhere. However in
-                            // the future we may allow directly lowering to `ConstKind::Expr` in which case
-                            // we would not be proving bounds we should.
+                            // FIXME(generic_const_exprs): this doesn't verify that given `Expr(N +
+                            // 1)` the trait bound `typeof(N):
+                            // Add<typeof(1)>` holds. This is currently unnecessary
+                            // as `ConstKind::Expr` is only produced via normalization of
+                            // `ConstKind::Unevaluated` which means that
+                            // the `DefId` would have been typeck'd elsewhere. However in
+                            // the future we may allow directly lowering to `ConstKind::Expr` in
+                            // which case we would not be proving bounds
+                            // we should.
 
                             let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                                 ty::ClauseKind::ConstEvaluatable(ct),
@@ -776,13 +780,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // Inference variables are the complicated case, since we don't
                 // know what type they are. We do two things:
                 //
-                // 1. Check if they have been resolved, and if so proceed with
-                //    THAT type.
-                // 2. If not, we've at least simplified things (e.g., we went
-                //    from `Vec<$0>: WF` to `$0: WF`), so we can
-                //    register a pending obligation and keep
-                //    moving. (Goal is that an "inductive hypothesis"
-                //    is satisfied to ensure termination.)
+                // 1. Check if they have been resolved, and if so proceed with THAT type.
+                // 2. If not, we've at least simplified things (e.g., we went from `Vec<$0>: WF` to
+                //    `$0: WF`), so we can register a pending obligation and keep moving. (Goal is
+                //    that an "inductive hypothesis" is satisfied to ensure termination.)
                 // See also the comment on `fn obligations`, describing "livelock"
                 // prevention, which happens before this can be reached.
                 ty::Infer(_) => {

@@ -235,8 +235,8 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         let guar = diag.emit();
 
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
-        // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
-        // tcx.arena.alloc is pretty much equal to leaking).
+        // min_specialization. Since this is an error path anyways, leaking doesn't matter (and
+        // really, tcx.arena.alloc is pretty much equal to leaking).
         Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
     }
 }
@@ -346,7 +346,8 @@ fn find_item_ty_spans(
                 });
                 if check_params && let Some(args) = path.segments.last().unwrap().args {
                     let params_in_repr = tcx.params_in_repr(def_id);
-                    // the domain size check is needed because the HIR may not be well-formed at this point
+                    // the domain size check is needed because the HIR may not be well-formed at
+                    // this point
                     for (i, arg) in args.args.iter().enumerate().take(params_in_repr.domain_size())
                     {
                         if let hir::GenericArg::Type(ty) = arg

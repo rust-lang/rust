@@ -111,7 +111,6 @@ macro_rules! bit_relations_inherent_impls {
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
-///
 #[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
 #[derive(Eq, PartialEq, Hash)]
 pub struct BitSet<T> {

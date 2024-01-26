@@ -189,9 +189,11 @@ impl<A: Ord> SliceOrd for A {
 impl SliceOrd for u8 {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        // Since the length of a slice is always less than or equal to isize::MAX, this never underflows.
+        // Since the length of a slice is always less than or equal to isize::MAX, this never
+        // underflows.
         let diff = left.len() as isize - right.len() as isize;
-        // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates flags.
+        // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates
+        // flags.
         let len = if left.len() < right.len() { left.len() } else { right.len() };
         // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
         // We use the minimum of both lengths which guarantees that both regions are

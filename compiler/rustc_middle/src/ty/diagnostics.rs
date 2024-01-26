@@ -351,7 +351,8 @@ pub fn suggest_constraining_type_params<'a>(
         //
         //    Message:
         //      trait Foo<T=()> {... }
-        //                - help: consider further restricting this type parameter with `where T: Zar`
+        //                - help: consider further restricting this type parameter with `where T:
+        //                  Zar`
         //
         //    Suggestion:
         //      trait Foo<T=()> {... }

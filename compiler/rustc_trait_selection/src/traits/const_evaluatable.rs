@@ -62,9 +62,10 @@ pub fn is_const_evaluatable<'tcx>(
 
         match unexpanded_ct.kind() {
             ty::ConstKind::Expr(_) => {
-                // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete, but
-                // currently it is not possible to evaluate `ConstKind::Expr` so we are unable to tell if it
-                // is evaluatable or not. For now we just ICE until this is implemented.
+                // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete,
+                // but currently it is not possible to evaluate `ConstKind::Expr` so
+                // we are unable to tell if it is evaluatable or not. For now we
+                // just ICE until this is implemented.
                 Err(NotConstEvaluatable::Error(tcx.dcx().span_delayed_bug(
                     span,
                     "evaluating `ConstKind::Expr` is not currently supported",
@@ -191,13 +192,15 @@ fn satisfied_from_param_env<'tcx>(
             if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)
             } else {
-                // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s args.
-                // This is currently unobservable as `<T as Trait<{ U + 1 }>>::ASSOC` creates an anon const
-                // with its own `ConstEvaluatable` bound in the param env which we will visit separately.
+                // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s
+                // args. This is currently unobservable as `<T as Trait<{ U + 1
+                // }>>::ASSOC` creates an anon const with its own `ConstEvaluatable`
+                // bound in the param env which we will visit separately.
                 //
-                // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
-                // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
-                // all of the `ConstEvaluatable` bounds rather than having a visitor here.
+                // If we start allowing directly writing `ConstKind::Expr` without an intermediate
+                // anon const this will be incorrect. It might be worth
+                // investigating making `predicates_of` elaborate all of the
+                // `ConstEvaluatable` bounds rather than having a visitor here.
                 ControlFlow::Continue(())
             }
         }

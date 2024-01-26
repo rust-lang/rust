@@ -294,7 +294,8 @@ pub(crate) fn maybe_incremental(cmd: &mut Command) {
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         cmd.env("CARGO_BUILD_INCREMENTAL", "false");
     } else {
-        // Force incr comp even in release mode unless in CI or incremental builds are explicitly disabled
+        // Force incr comp even in release mode unless in CI or incremental builds are explicitly
+        // disabled
         cmd.env("CARGO_BUILD_INCREMENTAL", "true");
     }
 }

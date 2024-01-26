@@ -99,7 +99,8 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                     Self::GenericType(_) => Ok(true),
                     pred => {
                         // A type which is cyclic when monomorphized can happen here since the
-                        // layout error would only trigger later. See e.g. `tests/ui/sized/recursive-type-2.rs`.
+                        // layout error would only trigger later. See e.g.
+                        // `tests/ui/sized/recursive-type-2.rs`.
                         if eval_stack.contains(&t) {
                             return Ok(true); // Recover; this will error later.
                         }

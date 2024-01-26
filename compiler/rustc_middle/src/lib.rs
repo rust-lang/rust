@@ -3,15 +3,12 @@
 //! "family". Some prominent examples (note that each of these modules
 //! has their own README with further details).
 //!
-//! - **HIR.** The "high-level (H) intermediate representation (IR)" is
-//!   defined in the `hir` module.
-//! - **MIR.** The "mid-level (M) intermediate representation (IR)" is
-//!   defined in the `mir` module. This module contains only the
-//!   *definition* of the MIR; the passes that transform and operate
+//! - **HIR.** The "high-level (H) intermediate representation (IR)" is defined in the `hir` module.
+//! - **MIR.** The "mid-level (M) intermediate representation (IR)" is defined in the `mir` module.
+//!   This module contains only the *definition* of the MIR; the passes that transform and operate
 //!   on MIR are found in `rustc_const_eval` crate.
-//! - **Types.** The internal representation of types used in rustc is
-//!   defined in the `ty` module. This includes the **type context**
-//!   (or `tcx`), which is the central context during most of
+//! - **Types.** The internal representation of types used in rustc is defined in the `ty` module.
+//!   This includes the **type context** (or `tcx`), which is the central context during most of
 //!   compilation, containing the interners and other things.
 //!
 //! For more information about how rustc works, see the [rustc dev guide].

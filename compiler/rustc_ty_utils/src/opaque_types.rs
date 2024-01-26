@@ -164,13 +164,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     CheckRegions::FromFunction,
                 ) {
                     Ok(()) => {
-                        // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
-                        // supported at all, so this is sound to do, but once we want to support them, you'll
+                        // FIXME: implement higher kinded lifetime bounds on nested opaque types.
+                        // They are not supported at all, so this is sound
+                        // to do, but once we want to support them, you'll
                         // start seeing the error below.
 
-                        // Collect opaque types nested within the associated type bounds of this opaque type.
-                        // We use identity args here, because we already know that the opaque type uses
-                        // only generic parameters, and thus substituting would not give us more information.
+                        // Collect opaque types nested within the associated type bounds of this
+                        // opaque type. We use identity args here, because
+                        // we already know that the opaque type uses
+                        // only generic parameters, and thus substituting would not give us more
+                        // information.
                         for (pred, span) in self
                             .tcx
                             .explicit_item_bounds(alias_ty.def_id)

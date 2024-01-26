@@ -418,8 +418,9 @@ impl<T> Cell<T> {
     /// # Panics
     ///
     /// This function will panic if `self` and `other` are different `Cell`s that partially overlap.
-    /// (Using just standard library methods, it is impossible to create such partially overlapping `Cell`s.
-    /// However, unsafe code is allowed to e.g. create two `&Cell<[i32; 2]>` that partially overlap.)
+    /// (Using just standard library methods, it is impossible to create such partially overlapping
+    /// `Cell`s. However, unsafe code is allowed to e.g. create two `&Cell<[i32; 2]>` that
+    /// partially overlap.)
     ///
     /// # Examples
     ///
@@ -1373,19 +1374,19 @@ impl<'b> BorrowRef<'b> {
         let b = borrow.get().wrapping_add(1);
         if !is_reading(b) {
             // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
-            // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow
-            //    due to Rust's reference aliasing rules
-            // 2. It was isize::MAX (the max amount of reading borrows) and it overflowed
-            //    into isize::MIN (the max amount of writing borrows) so we can't allow
-            //    an additional read borrow because isize can't represent so many read borrows
-            //    (this can only happen if you mem::forget more than a small constant amount of
-            //    `Ref`s, which is not good practice)
+            // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow due to
+            //    Rust's reference aliasing rules
+            // 2. It was isize::MAX (the max amount of reading borrows) and it overflowed into
+            //    isize::MIN (the max amount of writing borrows) so we can't allow an additional
+            //    read borrow because isize can't represent so many read borrows (this can only
+            //    happen if you mem::forget more than a small constant amount of `Ref`s, which is
+            //    not good practice)
             None
         } else {
             // Incrementing borrow can result in a reading value (> 0) in these cases:
             // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
-            // 2. It was > 0 and < isize::MAX, i.e. there were read borrows, and isize
-            //    is large enough to represent having one more read borrow
+            // 2. It was > 0 and < isize::MAX, i.e. there were read borrows, and isize is large
+            //    enough to represent having one more read borrow
             borrow.set(b);
             Some(BorrowRef { borrow })
         }
@@ -1852,8 +1853,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// `UnsafeCell<T>` opts-out of the immutability guarantee for `&T`: a shared reference
 /// `&UnsafeCell<T>` may point to data that is being mutated. This is called "interior mutability".
 ///
-/// All other types that allow internal mutability, such as [`Cell<T>`] and [`RefCell<T>`], internally
-/// use `UnsafeCell` to wrap their data.
+/// All other types that allow internal mutability, such as [`Cell<T>`] and [`RefCell<T>`],
+/// internally use `UnsafeCell` to wrap their data.
 ///
 /// Note that only the immutability guarantee for shared references is affected by `UnsafeCell`. The
 /// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
@@ -1879,8 +1880,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// until the reference expires. As a special exception, given an `&T`, any part of it that is
 /// inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
 /// last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-/// of what a reference points to, this means the memory an `&T` points to can be deallocated only if
-/// *every part of it* (including padding) is inside an `UnsafeCell`.
+/// of what a reference points to, this means the memory an `&T` points to can be deallocated only
+/// if *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
 ///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
 /// live memory and the compiler is allowed to insert spurious reads if it can prove that this

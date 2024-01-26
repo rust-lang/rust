@@ -553,18 +553,15 @@ fn resolve_local<'tcx>(
     // We express the rules more formally based on 3 grammars (defined
     // fully in the helpers below that implement them):
     //
-    // 1. `E&`, which matches expressions like `&<rvalue>` that
-    //    own a pointer into the stack.
+    // 1. `E&`, which matches expressions like `&<rvalue>` that own a pointer into the stack.
     //
-    // 2. `P&`, which matches patterns like `ref x` or `(ref x, ref
-    //    y)` that produce ref bindings into the value they are
-    //    matched against or something (at least partially) owned by
-    //    the value they are matched against. (By partially owned,
-    //    I mean that creating a binding into a ref-counted or managed value
-    //    would still count.)
+    // 2. `P&`, which matches patterns like `ref x` or `(ref x, ref y)` that produce ref bindings
+    //    into the value they are matched against or something (at least partially) owned by the
+    //    value they are matched against. (By partially owned, I mean that creating a binding into a
+    //    ref-counted or managed value would still count.)
     //
-    // 3. `ET`, which matches both rvalues like `foo()` as well as places
-    //    based on rvalues like `foo().x[2].y`.
+    // 3. `ET`, which matches both rvalues like `foo()` as well as places based on rvalues like
+    //    `foo().x[2].y`.
     //
     // A subexpression `<rvalue>` that appears in a let initializer
     // `let pat [: ty] = expr` has an extended temporary lifetime if

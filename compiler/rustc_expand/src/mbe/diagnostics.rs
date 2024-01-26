@@ -26,7 +26,8 @@ pub(super) fn failed_to_match_macro<'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     let sess = &cx.sess.parse_sess;
 
-    // An error occurred, try the expansion again, tracking the expansion closely for better diagnostics.
+    // An error occurred, try the expansion again, tracking the expansion closely for better
+    // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
     let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut tracker);
@@ -202,7 +203,8 @@ impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
     }
 }
 
-/// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
+/// Currently used by macro_rules! compilation to extract a little information from the `Failure`
+/// case.
 pub struct FailureForwarder;
 
 impl<'matcher> Tracker<'matcher> for FailureForwarder {

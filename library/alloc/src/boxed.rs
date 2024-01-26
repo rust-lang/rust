@@ -1074,8 +1074,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// the cleanup.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw_with_allocator(b)` instead of `b.into_raw_with_allocator()`. This
-    /// is so that there is no conflict with a method on the inner type.
+    /// to call it as `Box::into_raw_with_allocator(b)` instead of `b.into_raw_with_allocator()`.
+    /// This is so that there is no conflict with a method on the inner type.
     ///
     /// # Examples
     /// Converting the raw pointer back into a `Box` with [`Box::from_raw_in`]
@@ -1125,8 +1125,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
         // raw pointer for the type system. Turning it directly into a raw pointer would not be
         // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw pointer
-        // behaves correctly.
+        // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw
+        // pointer behaves correctly.
         let alloc = unsafe { ptr::read(&b.1) };
         (Unique::from(Box::leak(b)), alloc)
     }
@@ -2098,15 +2098,13 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
  *  this impl.
  *
  *  We chose this API instead of the alternative for a few reasons:
- *      - Logically, it is helpful to understand pinning in regard to the
- *        memory region being pointed to. For this reason none of the
- *        standard library pointer types support projecting through a pin
- *        (Box<T> is the only pointer type in std for which this would be
- *        safe.)
- *      - It is in practice very useful to have Box<T> be unconditionally
- *        Unpin because of trait objects, for which the structural auto
- *        trait functionality does not apply (e.g., Box<dyn Foo> would
- *        otherwise not be Unpin).
+ *      - Logically, it is helpful to understand pinning in regard to the memory region being
+ *        pointed to. For this reason none of the standard library pointer types support
+ *        projecting through a pin (Box<T> is the only pointer type in std for which this would
+ *        be safe.)
+ *      - It is in practice very useful to have Box<T> be unconditionally Unpin because of trait
+ *        objects, for which the structural auto trait functionality does not apply (e.g.,
+ *        Box<dyn Foo> would otherwise not be Unpin).
  *
  *  Another type with the same semantics as Box but only a conditional
  *  implementation of `Unpin` (where `T: Unpin`) would be valid/safe, and

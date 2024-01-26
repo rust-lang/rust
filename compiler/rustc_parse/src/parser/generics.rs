@@ -174,8 +174,8 @@ impl<'a> Parser<'a> {
             let param =
                 self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
                     if this.eat_keyword_noexpect(kw::SelfUpper) {
-                        // `Self` as a generic param is invalid. Here we emit the diagnostic and continue parsing
-                        // as if `Self` never existed.
+                        // `Self` as a generic param is invalid. Here we emit the diagnostic and
+                        // continue parsing as if `Self` never existed.
                         this.dcx().emit_err(UnexpectedSelfInGenericParameters {
                             span: this.prev_token.span,
                         });
@@ -233,7 +233,8 @@ impl<'a> Parser<'a> {
                             }
                             Err(err) => {
                                 err.cancel();
-                                // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
+                                // FIXME - maybe we should overwrite 'self' outside of
+                                // `collect_tokens`?
                                 this.restore_snapshot(snapshot);
                                 return Ok((None, TrailingToken::None));
                             }

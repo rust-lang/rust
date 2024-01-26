@@ -281,8 +281,8 @@ macro_rules! uint_impl {
             intrinsics::bswap(self as $ActualT) as Self
         }
 
-        /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// Reverses the order of bits in the integer. The least significant bit becomes the most significant,
+        ///                 bit second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///

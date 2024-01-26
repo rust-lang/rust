@@ -224,8 +224,8 @@ impl TestDesc {
         }
     }
 
-    /// Returns None for ignored test or tests that are just run, otherwise returns a description of the type of test.
-    /// Descriptions include "should panic", "compile fail" and "compile".
+    /// Returns None for ignored test or tests that are just run, otherwise returns a description of
+    /// the type of test. Descriptions include "should panic", "compile fail" and "compile".
     pub fn test_mode(&self) -> Option<&'static str> {
         if self.ignore {
             return None;

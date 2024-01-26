@@ -157,7 +157,8 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             // If we know that all values of the return type are structurally matchable, there's no
             // need to run dataflow.
-            // Opaque types do not participate in const generics or pattern matching, so we can safely count them out.
+            // Opaque types do not participate in const generics or pattern matching, so we can
+            // safely count them out.
             _ if ccx.body.return_ty().has_opaque_types()
                 || !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
             {
@@ -518,18 +519,21 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // In a const fn all borrows are transient or point to the places given via
                         // references in the arguments (so we already checked them with
                         // TransientCellBorrow/CellBorrow as appropriate).
-                        // The borrow checker guarantees that no new non-transient borrows are created.
-                        // NOTE: Once we have heap allocations during CTFE we need to figure out
-                        // how to prevent `const fn` to create long-lived allocations that point
+                        // The borrow checker guarantees that no new non-transient borrows are
+                        // created. NOTE: Once we have heap allocations
+                        // during CTFE we need to figure out how to prevent
+                        // `const fn` to create long-lived allocations that point
                         // to (interior) mutable memory.
                         hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
                         _ => {
-                            // Locals with StorageDead are definitely not part of the final constant value, and
-                            // it is thus inherently safe to permit such locals to have their
+                            // Locals with StorageDead are definitely not part of the final constant
+                            // value, and it is thus inherently safe to
+                            // permit such locals to have their
                             // address taken as we can't end up with a reference to them in the
                             // final value.
-                            // Note: This is only sound if every local that has a `StorageDead` has a
-                            // `StorageDead` in every control flow path leading to a `return` terminator.
+                            // Note: This is only sound if every local that has a `StorageDead` has
+                            // a `StorageDead` in every control flow
+                            // path leading to a `return` terminator.
                             if self.local_has_storage_dead(place.local) {
                                 self.check_op(ops::TransientCellBorrow);
                             } else {
@@ -733,9 +737,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Check that all trait bounds that are marked as `~const` can be satisfied.
                 //
-                // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
-                // which path expressions are getting called on and which path expressions are only used
-                // as function pointers. This is required for correctness.
+                // Typeck only does a "non-const" check since it operates on HIR and cannot
+                // distinguish which path expressions are getting called on and
+                // which path expressions are only used as function pointers. This
+                // is required for correctness.
                 let infcx = tcx.infer_ctxt().build();
                 let ocx = ObligationCtxt::new(&infcx);
 
@@ -765,7 +770,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // we don't error, since that is handled by typeck. We try to resolve
                     // the trait into the concrete method, and uses that for const stability
                     // checks.
-                    // FIXME(effects) we might consider moving const stability checks to typeck as well.
+                    // FIXME(effects) we might consider moving const stability checks to typeck as
+                    // well.
                     if tcx.features().effects {
                         is_trait = true;
 
@@ -773,8 +779,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             Instance::resolve(tcx, param_env, callee, fn_args)
                             && let InstanceDef::Item(def) = instance.def
                         {
-                            // Resolve a trait method call to its concrete implementation, which may be in a
-                            // `const` trait impl. This is only used for the const stability check below, since
+                            // Resolve a trait method call to its concrete implementation, which may
+                            // be in a `const` trait impl. This is only
+                            // used for the const stability check below, since
                             // we want to look at the concrete impl's stability.
                             fn_args = instance.args;
                             callee = def;
@@ -810,7 +817,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 }
 
-                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
+                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is
+                // `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
@@ -864,8 +872,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         return;
                     }
 
-                    // If this crate is not using stability attributes, or the caller is not claiming to be a
-                    // stable `const fn`, that is all that is required.
+                    // If this crate is not using stability attributes, or the caller is not
+                    // claiming to be a stable `const fn`, that is all that is
+                    // required.
                     if !self.ccx.is_const_stable_const_fn() {
                         trace!("crate not using stability attributes or caller not stably const");
                         return;
@@ -889,8 +898,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` functions, and these have no way to get marked `const`. So instead we
-                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
+                    // `extern` functions, and these have no way to get marked `const`. So instead
+                    // we use `rustc_const_(un)stable` attributes to mean that
+                    // the intrinsic is `const`
                     if self.ccx.is_const_stable_const_fn() || tcx.is_intrinsic(callee) {
                         self.check_op(ops::FnCallUnstable(callee, None));
                         return;

@@ -61,7 +61,8 @@ pub trait Direction {
         A: Analysis<'tcx>;
 }
 
-/// Dataflow that runs from the exit of a block (the terminator), to its entry (the first statement).
+/// Dataflow that runs from the exit of a block (the terminator), to its entry (the first
+/// statement).
 pub struct Backward;
 
 impl Direction for Backward {
@@ -400,7 +401,8 @@ impl Direction for Forward {
                 let statement = &block_data.statements[from.statement_index];
                 analysis.apply_statement_effect(state, statement, location);
 
-                // If we only needed to apply the after effect of the statement at `idx`, we are done.
+                // If we only needed to apply the after effect of the statement at `idx`, we are
+                // done.
                 if from == to {
                     return;
                 }

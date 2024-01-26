@@ -479,12 +479,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
                 //
-                // 1. This macro was defined by `macro`, and thus isn't covered by the case
-                //    above.
-                // 2. This macro isn't marked with `#[macro_export]`, and thus isn't covered
-                //    by the case above.
-                // 3. We're inlining, since a reexport where inlining has been requested
-                //    should be inlined even if it is also documented at the top level.
+                // 1. This macro was defined by `macro`, and thus isn't covered by the case above.
+                // 2. This macro isn't marked with `#[macro_export]`, and thus isn't covered by the
+                //    case above.
+                // 3. We're inlining, since a reexport where inlining has been requested should be
+                //    inlined even if it is also documented at the top level.
 
                 let def_id = item.owner_id.to_def_id();
                 let is_macro_2_0 = !macro_def.macro_rules;

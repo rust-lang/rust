@@ -122,7 +122,8 @@ where
     F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
 {
     with_context(|context| {
-        // The two gcx have different invariant lifetimes, so we need to erase them for the comparison.
+        // The two gcx have different invariant lifetimes, so we need to erase them for the
+        // comparison.
         assert!(ptr::eq(
             context.tcx.gcx as *const _ as *const (),
             tcx.gcx as *const _ as *const ()

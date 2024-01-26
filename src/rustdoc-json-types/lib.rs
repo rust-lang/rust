@@ -53,8 +53,9 @@ pub struct ItemSummary {
     ///
     /// Note that items can appear in multiple paths, and the one chosen is implementation
     /// defined. Currently, this is the full path to where the item was defined. Eg
-    /// [`String`] is currently `["alloc", "string", "String"]` and [`HashMap`][`std::collections::HashMap`]
-    /// is `["std", "collections", "hash", "map", "HashMap"]`, but this is subject to change.
+    /// [`String`] is currently `["alloc", "string", "String"]` and
+    /// [`HashMap`][`std::collections::HashMap`] is `["std", "collections", "hash", "map", "HashMap"]`,
+    /// but this is subject to change.
     pub path: Vec<String>,
     /// Whether this item is a struct, trait, macro, etc.
     pub kind: ItemKind,
@@ -72,13 +73,15 @@ pub struct Item {
     /// The source location of this item (absent if it came from a macro expansion or inline
     /// assembly).
     pub span: Option<Span>,
-    /// By default all documented items are public, but you can tell rustdoc to output private items
-    /// so this field is needed to differentiate.
+    /// By default all documented items are public, but you can tell rustdoc to output private
+    /// items so this field is needed to differentiate.
     pub visibility: Visibility,
     /// The full markdown docstring of this item. Absent if there is no documentation at all,
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
-    /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
+    /// This mapping resolves [intra-doc links] from the docstring to their IDs
+    ///
+    /// [intra-doc links]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
     pub links: FxHashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,

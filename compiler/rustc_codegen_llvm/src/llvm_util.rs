@@ -366,7 +366,8 @@ fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &ll
         .supported_target_features()
         .iter()
         .map(|(feature, _gate)| {
-            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
+            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
+            // strings.
             let llvm_feature = to_llvm_features(sess, *feature).llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {

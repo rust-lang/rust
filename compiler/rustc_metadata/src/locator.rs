@@ -12,10 +12,9 @@
 //! Concretely speaking, the compiler follows roughly these steps to get here:
 //!
 //! 1. Discover a set of `extern crate` statements.
-//! 2. Transform these directives into crate names. If the directive does not
-//!    have an explicit name, then the identifier is the name.
-//! 3. For each of these crate names, find a corresponding crate on the
-//!    filesystem.
+//! 2. Transform these directives into crate names. If the directive does not have an explicit name,
+//!    then the identifier is the name.
+//! 3. For each of these crate names, find a corresponding crate on the filesystem.
 //!
 //! Sounds easy, right? Let's walk into some of the nuances.
 //!
@@ -70,15 +69,14 @@
 //! This is a pretty tricky area of loading crates. Given a file, how do we know
 //! whether it's the right crate? Currently, the rules look along these lines:
 //!
-//! 1. Does the filename match an rlib/dylib pattern? That is to say, does the
-//!    filename have the right prefix/suffix?
-//! 2. Does the filename have the right prefix for the crate name being queried?
-//!    This is filtering for files like `libfoo*.rlib` and such. If the crate
-//!    we're looking for was originally compiled with -C extra-filename, the
-//!    extra filename will be included in this prefix to reduce reading
-//!    metadata from crates that would otherwise share our prefix.
-//! 3. Is the file an actual rust library? This is done by loading the metadata
-//!    from the library and making sure it's actually there.
+//! 1. Does the filename match an rlib/dylib pattern? That is to say, does the filename have the
+//!    right prefix/suffix?
+//! 2. Does the filename have the right prefix for the crate name being queried? This is filtering
+//!    for files like `libfoo*.rlib` and such. If the crate we're looking for was originally
+//!    compiled with -C extra-filename, the extra filename will be included in this prefix to reduce
+//!    reading metadata from crates that would otherwise share our prefix.
+//! 3. Is the file an actual rust library? This is done by loading the metadata from the library and
+//!    making sure it's actually there.
 //! 4. Does the name in the metadata agree with the name of the library?
 //! 5. Does the target in the metadata agree with the current target?
 //! 6. Does the SVH match? (more on this later)
@@ -814,8 +812,8 @@ fn get_metadata_section<'p>(
                 compressed_bytes
             } else {
                 debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-                // Assume the decompressed data will be at least the size of the compressed data, so we
-                // don't have to grow the buffer as much.
+                // Assume the decompressed data will be at least the size of the compressed data, so
+                // we don't have to grow the buffer as much.
                 let mut inflated = Vec::with_capacity(compressed_bytes.len());
                 FrameDecoder::new(&*compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
                     MetadataError::LoadFailure(format!(

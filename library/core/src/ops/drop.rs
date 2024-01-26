@@ -9,9 +9,10 @@
 /// [the reference]: https://doc.rust-lang.org/reference/destructors.html
 ///
 /// This destructor consists of two components:
-/// - A call to `Drop::drop` for that value, if this special `Drop` trait is implemented for its type.
-/// - The automatically generated "drop glue" which recursively calls the destructors
-///     of all the fields of this value.
+/// - A call to `Drop::drop` for that value, if this special `Drop` trait is implemented for its
+///   type.
+/// - The automatically generated "drop glue" which recursively calls the destructors of all the
+///   fields of this value.
 ///
 /// As Rust automatically calls the destructors of all contained fields,
 /// you don't have to implement `Drop` in most cases. But there are some cases where
@@ -61,8 +62,8 @@
 /// Dropping HasDrop!
 /// ```
 ///
-/// Even if we remove the implementation of `Drop` for `HasTwoDrop`, the destructors of its fields are still called.
-/// This would result in
+/// Even if we remove the implementation of `Drop` for `HasTwoDrop`, the destructors of its fields
+/// are still called. This would result in
 ///
 /// ```test
 /// Running!
@@ -76,7 +77,8 @@
 /// the method has been called. As `Drop::drop` does not take ownership of its input,
 /// Rust prevents misuse by not allowing you to call `Drop::drop` directly.
 ///
-/// In other words, if you tried to explicitly call `Drop::drop` in the above example, you'd get a compiler error.
+/// In other words, if you tried to explicitly call `Drop::drop` in the above example, you'd get a
+/// compiler error.
 ///
 /// If you'd like to explicitly call the destructor of a value, [`mem::drop`] can be used instead.
 ///

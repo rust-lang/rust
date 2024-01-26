@@ -11,14 +11,12 @@
 //!
 //! This module is largely organized by type:
 //!
-//! * [Traits] are the core portion: these traits define what kind of iterators
-//!   exist and what you can do with them. The methods of these traits are worth
-//!   putting some extra study time into.
+//! * [Traits] are the core portion: these traits define what kind of iterators exist and what you
+//!   can do with them. The methods of these traits are worth putting some extra study time into.
 //! * [Functions] provide some helpful ways to create some basic iterators.
-//! * [Structs] are often the return types of the various methods on this
-//!   module's traits. You'll usually want to look at the method that creates
-//!   the `struct`, rather than the `struct` itself. For more detail about why,
-//!   see '[Implementing Iterator](#implementing-iterator)'.
+//! * [Structs] are often the return types of the various methods on this module's traits. You'll
+//!   usually want to look at the method that creates the `struct`, rather than the `struct` itself.
+//!   For more detail about why, see '[Implementing Iterator](#implementing-iterator)'.
 //!
 //! [Traits]: #traits
 //! [Functions]: #functions
@@ -203,8 +201,8 @@
 //! returning themselves. This means two things:
 //!
 //! 1. If you're writing an [`Iterator`], you can use it with a `for` loop.
-//! 2. If you're creating a collection, implementing [`IntoIterator`] for it
-//!    will allow your collection to be used with the `for` loop.
+//! 2. If you're creating a collection, implementing [`IntoIterator`] for it will allow your
+//!    collection to be used with the `for` loop.
 //!
 //! # Iterating by reference
 //!

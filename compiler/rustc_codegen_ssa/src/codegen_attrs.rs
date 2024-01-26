@@ -522,15 +522,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     //
     // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
     //
-    // At this point, `unsafe` has already been checked and `#[target_feature]` only affects codegen.
-    // Emitting both `#[inline(always)]` and `#[target_feature]` can potentially result in an
-    // ICE, because LLVM errors when the function fails to be inlined due to a target feature
-    // mismatch.
+    // At this point, `unsafe` has already been checked and `#[target_feature]` only affects
+    // codegen. Emitting both `#[inline(always)]` and `#[target_feature]` can potentially result
+    // in an ICE, because LLVM errors when the function fails to be inlined due to a target
+    // feature mismatch.
     //
     // Using `#[inline(always)]` implies that this closure will most likely be inlined into
     // its parent function, which effectively inherits the features anyway. Boxing this closure
     // would result in this closure being compiled without the inherited target features, but this
-    // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
+    // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the
+    // attribute.
     if tcx.features().target_feature_11
         && tcx.is_closure_or_coroutine(did.to_def_id())
         && codegen_fn_attrs.inline != InlineAttr::Always
@@ -646,17 +647,19 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         sole_meta_list
     {
         // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
-        // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
+        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport
+        // (defined in llvm/include/llvm/Object/COFFImportFile.h), which we use to
+        // communicate import information to LLVM for `#[link(kind = "raw-dylib"_])`, is
+        // also defined to be uint16_t.
         //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
-        // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import library
-        // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
-        // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
-        // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
-        // about LINK.EXE failing.)
+        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for
+        // this: both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file
+        // that specifies a zero ordinal. However, llvm-dlltool is perfectly happy to
+        // generate an import library for such a .DEF file, and MSVC's LINK.EXE is also
+        // perfectly happy to consume an import library produced by LLVM with an ordinal of
+        // 0, and it generates an .EXE.  (I don't know yet if the resulting EXE runs, as I
+        // haven't yet built the necessary DLL -- see earlier comment about LINK.EXE
+        // failing.)
         if *ordinal <= u16::MAX as u128 {
             Some(*ordinal as u16)
         } else {

@@ -232,25 +232,31 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
     fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 
-    /// Sets a raw attribute on the command, providing extended configuration options for Windows processes.
+    /// Sets a raw attribute on the command, providing extended configuration options for Windows
+    /// processes.
     ///
-    /// This method allows you to specify custom attributes for a child process on Windows systems using raw attribute values.
-    /// Raw attributes provide extended configurability for process creation, but their usage can be complex and potentially unsafe.
+    /// This method allows you to specify custom attributes for a child process on Windows systems
+    /// using raw attribute values. Raw attributes provide extended configurability for process
+    /// creation, but their usage can be complex and potentially unsafe.
     ///
-    /// The `attribute` parameter specifies the raw attribute to be set, while the `value` parameter holds the value associated with that attribute.
-    /// Please refer to the [`windows-rs`](https://microsoft.github.io/windows-docs-rs/doc/windows/) documentation or the [`Win32 API documentation`](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute) for detailed information about available attributes and their meanings.
+    /// The `attribute` parameter specifies the raw attribute to be set, while the `value` parameter
+    /// holds the value associated with that attribute. Please refer to the [`windows-rs`] documentation
+    /// or the [`Win32 API documentation`] for detailed information about available attributes
+    /// and their meanings.
     ///
     /// # Note
     ///
     /// The maximum number of raw attributes is the value of [`u32::MAX`].
-    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error` indicating that the maximum number of attributes has been exceeded.
-    /// # Safety
+    /// If this limit is exceeded, the call to [`process::Command::spawn`] will return an `Error`
+    /// indicating that the maximum number of attributes has been exceeded. # Safety
     ///
-    /// The usage of raw attributes is potentially unsafe and should be done with caution. Incorrect attribute values or improper configuration can lead to unexpected behavior or errors.
+    /// The usage of raw attributes is potentially unsafe and should be done with caution. Incorrect
+    /// attribute values or improper configuration can lead to unexpected behavior or errors.
     ///
     /// # Example
     ///
-    /// The following example demonstrates how to create a child process with a specific parent process ID using a raw attribute.
+    /// The following example demonstrates how to create a child process with a specific parent
+    /// process ID using a raw attribute.
     ///
     /// ```rust
     /// #![feature(windows_process_extensions_raw_attribute)]
@@ -284,7 +290,12 @@ pub trait CommandExt: Sealed {
     ///
     /// # Safety Note
     ///
-    /// Remember that improper use of raw attributes can lead to undefined behavior or security vulnerabilities. Always consult the documentation and ensure proper attribute values are used.
+    /// Remember that improper use of raw attributes can lead to undefined behavior or security
+    /// vulnerabilities. Always consult the documentation and ensure proper attribute values are
+    /// used.
+    ///
+    /// [`windows-rs`]: https://microsoft.github.io/windows-docs-rs/doc/windows/
+    /// [`Win32 API documentation`]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
     unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
         &mut self,

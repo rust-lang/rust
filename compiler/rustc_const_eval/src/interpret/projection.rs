@@ -1,10 +1,12 @@
-//! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
+//! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy,
+//! PlaceTy.
 //!
-//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
-//! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
-//! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
-//! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,
-//! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
+//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something
+//! custom if not". For PlaceTy, the custom thing is basically always to call `force_allocation` and
+//! then use the MPlaceTy logic anyway. For OpTy, the custom thing on field pojections has to be
+//! pretty clever (since `Operand::Immediate` can have fields), but for array/slice operations it
+//! only has to worry about `Operand::Uninit`. That makes the value part trivial, but we still need
+//! to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
 use std::marker::PhantomData;
@@ -112,7 +114,8 @@ impl<'tcx, 'a, Prov: Provenance, P: Projectable<'tcx, Prov>> ArrayIterator<'tcx,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, Option<(u64, P)>> {
         let Some(idx) = self.range.next() else { return Ok(None) };
-        // We use `Wrapping` here since the offset has already been checked when the iterator was created.
+        // We use `Wrapping` here since the offset has already been checked when the iterator was
+        // created.
         Ok(Some((
             idx,
             self.base.offset_with_meta(
@@ -155,7 +158,8 @@ where
         let (meta, offset) = if field_layout.is_unsized() {
             if base.layout().is_sized() {
                 // An unsized field of a sized type? Sure...
-                // But const-prop actually feeds us such nonsense MIR! (see test `const_prop/issue-86351.rs`)
+                // But const-prop actually feeds us such nonsense MIR! (see test
+                // `const_prop/issue-86351.rs`)
                 throw_inval!(ConstPropNonsense);
             }
             let base_meta = base.meta();
@@ -175,8 +179,9 @@ where
                     (base_meta, offset.align_to(align))
                 }
                 None if offset == Size::ZERO => {
-                    // If the offset is 0, then rounding it up to alignment wouldn't change anything,
-                    // so we can do this even for types where we cannot determine the alignment.
+                    // If the offset is 0, then rounding it up to alignment wouldn't change
+                    // anything, so we can do this even for types where we
+                    // cannot determine the alignment.
                     (base_meta, offset)
                 }
                 None => {
@@ -201,8 +206,8 @@ where
     ) -> InterpResult<'tcx, P> {
         assert!(!base.meta().has_meta());
         // Downcasts only change the layout.
-        // (In particular, no check about whether this is even the active variant -- that's by design,
-        // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
+        // (In particular, no check about whether this is even the active variant -- that's by
+        // design, see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
         // So we just "offset" by 0.
         let layout = base.layout().for_variant(self, variant);
         if layout.abi.is_uninhabited() {
@@ -326,7 +331,8 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout().fields {
-            abi::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
+            abi::FieldsShape::Array { stride, .. } => stride * from, /* `Size` multiplication is */
+            // checked
             _ => {
                 span_bug!(
                     self.cur_span(),

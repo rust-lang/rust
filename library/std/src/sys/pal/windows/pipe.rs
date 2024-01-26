@@ -504,10 +504,8 @@ impl<'a> AsyncPipe<'a> {
     ///
     /// Returns values:
     ///
-    /// * `true` - finished any pending read and the pipe is not at EOF (keep
-    ///            going)
-    /// * `false` - finished any pending read and pipe is at EOF (stop issuing
-    ///             reads)
+    /// * `true` - finished any pending read and the pipe is not at EOF (keep going)
+    /// * `false` - finished any pending read and pipe is at EOF (stop issuing reads)
     fn result(&mut self) -> io::Result<bool> {
         let amt = match self.state {
             State::NotReading => return Ok(true),

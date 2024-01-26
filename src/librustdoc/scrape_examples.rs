@@ -177,14 +177,15 @@ where
         };
 
         // If this span comes from a macro expansion, then the source code may not actually show
-        // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
+        // a use of the given item, so it would be a poor example. Hence, we skip all uses in
+        // macros.
         if call_span.from_expansion() {
             trace!("Rejecting expr from macro: {call_span:?}");
             return;
         }
 
-        // If the enclosing item has a span coming from a proc macro, then we also don't want to include
-        // the example.
+        // If the enclosing item has a span coming from a proc macro, then we also don't want to
+        // include the example.
         let enclosing_item_span =
             tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
@@ -192,8 +193,8 @@ where
             return;
         }
 
-        // If the enclosing item doesn't actually enclose the call, this means we probably have a weird
-        // macro issue even though the spans aren't tagged as being from an expansion.
+        // If the enclosing item doesn't actually enclose the call, this means we probably have a
+        // weird macro issue even though the spans aren't tagged as being from an expansion.
         if !enclosing_item_span.contains(call_span) {
             warn!(
                 "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call."
@@ -286,7 +287,8 @@ pub(crate) fn run(
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
-        // If two different versions of the crate in the dependency tree, then examples will be collected from both.
+        // If two different versions of the crate in the dependency tree, then examples will be
+        // collected from both.
         let all_crates = tcx
             .crates(())
             .iter()

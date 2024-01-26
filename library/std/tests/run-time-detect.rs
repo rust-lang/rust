@@ -136,7 +136,8 @@ fn x86_all() {
     println!("fxsr: {:?}", is_x86_feature_detected!("fxsr"));
     println!("gfni: {:?}", is_x86_feature_detected!("gfni"));
     println!("lzcnt: {:?}", is_x86_feature_detected!("lzcnt"));
-    //println!("movbe: {:?}", is_x86_feature_detected!("movbe")); // movbe is unsupported as a target feature
+    //println!("movbe: {:?}", is_x86_feature_detected!("movbe")); // movbe is unsupported as a
+    // target feature
     println!("pclmulqdq: {:?}", is_x86_feature_detected!("pclmulqdq"));
     println!("popcnt: {:?}", is_x86_feature_detected!("popcnt"));
     println!("rdrand: {:?}", is_x86_feature_detected!("rdrand"));

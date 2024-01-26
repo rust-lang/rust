@@ -173,9 +173,10 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             }
             if let Some(for_did) = for_.def_id(&cx.cache) {
                 if type_did_to_deref_target.insert(for_did, target).is_none() {
-                    // Since only the `DefId` portion of the `Type` instances is known to be same for both the
-                    // `Deref` target type and the impl for type positions, this map of types is keyed by
-                    // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
+                    // Since only the `DefId` portion of the `Type` instances is known to be same
+                    // for both the `Deref` target type and the impl for type
+                    // positions, this map of types is keyed by `DefId` and for
+                    // convenience uses a special cleaner that accepts `DefId`s directly.
                     if cleaner.keep_impl_with_def_id(for_did.into()) {
                         let mut targets = DefIdSet::default();
                         targets.insert(for_did);

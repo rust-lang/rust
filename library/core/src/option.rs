@@ -6,10 +6,9 @@
 //! they have a number of uses:
 //!
 //! * Initial values
-//! * Return values for functions that are not defined
-//!   over their entire input range (partial functions)
-//! * Return value for otherwise reporting simple errors, where [`None`] is
-//!   returned on error
+//! * Return values for functions that are not defined over their entire input range (partial
+//!   functions)
+//! * Return value for otherwise reporting simple errors, where [`None`] is returned on error
 //! * Optional struct fields
 //! * Struct fields that can be loaned or "taken"
 //! * Optional function arguments
@@ -39,10 +38,8 @@
 //!     None    => println!("Cannot divide by 0"),
 //! }
 //! ```
-//!
 //
 // FIXME: Show how `Option` is used in practice, with lots of methods
-//
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
@@ -92,7 +89,6 @@
 //!         _ => None,
 //!     }
 //! }
-//!
 //! ```
 //!
 //! With this:
@@ -135,7 +131,8 @@
 //! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                      |
 //! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                     |
 //!
-//! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
+//! [^extern_fn]: this remains true for any argument/return types and any
+//! other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num
@@ -168,8 +165,8 @@
 //! * [`as_mut`] converts from <code>[&mut] [Option]\<T></code> to <code>[Option]<[&mut] T></code>
 //! * [`as_deref`] converts from <code>[&][][Option]\<T></code> to
 //!   <code>[Option]<[&]T::[Target]></code>
-//! * [`as_deref_mut`] converts from <code>[&mut] [Option]\<T></code> to
-//!   <code>[Option]<[&mut] T::[Target]></code>
+//! * [`as_deref_mut`] converts from <code>[&mut] [Option]\<T></code> to <code>[Option]<[&mut]
+//!   T::[Target]></code>
 //! * [`as_pin_ref`] converts from <code>[Pin]<[&][][Option]\<T>></code> to
 //!   <code>[Option]<[Pin]<[&]T>></code>
 //! * [`as_pin_mut`] converts from <code>[Pin]<[&mut] [Option]\<T>></code> to
@@ -193,10 +190,9 @@
 //! * [`expect`] panics with a provided custom message
 //! * [`unwrap`] panics with a generic message
 //! * [`unwrap_or`] returns the provided default value
-//! * [`unwrap_or_default`] returns the default value of the type `T`
-//!   (which must implement the [`Default`] trait)
-//! * [`unwrap_or_else`] returns the result of evaluating the provided
-//!   function
+//! * [`unwrap_or_default`] returns the default value of the type `T` (which must implement the
+//!   [`Default`] trait)
+//! * [`unwrap_or_else`] returns the result of evaluating the provided function
 //!
 //! [`expect`]: Option::expect
 //! [`unwrap`]: Option::unwrap
@@ -208,12 +204,11 @@
 //!
 //! These methods transform [`Option`] to [`Result`]:
 //!
-//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
-//!   [`Err(err)`] using the provided default `err` value
-//! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
-//!   a value of [`Err`] using the provided function
-//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
-//!   [`Result`] of an [`Option`]
+//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to [`Err(err)`] using the provided
+//!   default `err` value
+//! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to a value of [`Err`] using
+//!   the provided function
+//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a [`Result`] of an [`Option`]
 //!
 //! [`Err(err)`]: Err
 //! [`Ok(v)`]: Ok
@@ -224,14 +219,12 @@
 //!
 //! These methods transform the [`Some`] variant:
 //!
-//! * [`filter`] calls the provided predicate function on the contained
-//!   value `t` if the [`Option`] is [`Some(t)`], and returns [`Some(t)`]
-//!   if the function returns `true`; otherwise, returns [`None`]
-//! * [`flatten`] removes one level of nesting from an
-//!   [`Option<Option<T>>`]
-//! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
-//!   provided function to the contained value of [`Some`] and leaving
-//!   [`None`] values unchanged
+//! * [`filter`] calls the provided predicate function on the contained value `t` if the [`Option`]
+//!   is [`Some(t)`], and returns [`Some(t)`] if the function returns `true`; otherwise, returns
+//!   [`None`]
+//! * [`flatten`] removes one level of nesting from an [`Option<Option<T>>`]
+//! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the provided function to the
+//!   contained value of [`Some`] and leaving [`None`] values unchanged
 //!
 //! [`Some(t)`]: Some
 //! [`filter`]: Option::filter
@@ -241,23 +234,20 @@
 //! These methods transform [`Option<T>`] to a value of a possibly
 //! different type `U`:
 //!
-//! * [`map_or`] applies the provided function to the contained value of
-//!   [`Some`], or returns the provided default value if the [`Option`] is
-//!   [`None`]
-//! * [`map_or_else`] applies the provided function to the contained value
-//!   of [`Some`], or returns the result of evaluating the provided
-//!   fallback function if the [`Option`] is [`None`]
+//! * [`map_or`] applies the provided function to the contained value of [`Some`], or returns the
+//!   provided default value if the [`Option`] is [`None`]
+//! * [`map_or_else`] applies the provided function to the contained value of [`Some`], or returns
+//!   the result of evaluating the provided fallback function if the [`Option`] is [`None`]
 //!
 //! [`map_or`]: Option::map_or
 //! [`map_or_else`]: Option::map_or_else
 //!
 //! These methods combine the [`Some`] variants of two [`Option`] values:
 //!
-//! * [`zip`] returns [`Some((s, o))`] if `self` is [`Some(s)`] and the
-//!   provided [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
-//! * [`zip_with`] calls the provided function `f` and returns
-//!   [`Some(f(s, o))`] if `self` is [`Some(s)`] and the provided
-//!   [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
+//! * [`zip`] returns [`Some((s, o))`] if `self` is [`Some(s)`] and the provided [`Option`] value is
+//!   [`Some(o)`]; otherwise, returns [`None`]
+//! * [`zip_with`] calls the provided function `f` and returns [`Some(f(s, o))`] if `self` is
+//!   [`Some(s)`] and the provided [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
 //!
 //! [`Some(f(s, o))`]: Some
 //! [`Some(o)`]: Some
@@ -370,12 +360,9 @@
 //!
 //! Iterators over [`Option<T>`] come in three types:
 //!
-//! * [`into_iter`] consumes the [`Option`] and produces the contained
-//!   value
-//! * [`iter`] produces an immutable reference of type `&T` to the
-//!   contained value
-//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
-//!   contained value
+//! * [`into_iter`] consumes the [`Option`] and produces the contained value
+//! * [`iter`] produces an immutable reference of type `&T` to the contained value
+//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the contained value
 //!
 //! [`into_iter`]: Option::into_iter
 //! [`iter`]: Option::iter
@@ -474,13 +461,11 @@
 //! [`Option<T>`]:
 //!
 //! * [`insert`] inserts a value, dropping any old contents
-//! * [`get_or_insert`] gets the current value, inserting a provided
-//!   default value if it is [`None`]
-//! * [`get_or_insert_default`] gets the current value, inserting the
-//!   default value of type `T` (which must implement [`Default`]) if it is
-//!   [`None`]
-//! * [`get_or_insert_with`] gets the current value, inserting a default
-//!   computed by the provided function if it is [`None`]
+//! * [`get_or_insert`] gets the current value, inserting a provided default value if it is [`None`]
+//! * [`get_or_insert_default`] gets the current value, inserting the default value of type `T`
+//!   (which must implement [`Default`]) if it is [`None`]
+//! * [`get_or_insert_with`] gets the current value, inserting a default computed by the provided
+//!   function if it is [`None`]
 //!
 //! [`get_or_insert`]: Option::get_or_insert
 //! [`get_or_insert_default`]: Option::get_or_insert_default
@@ -490,11 +475,10 @@
 //! These methods transfer ownership of the contained value of an
 //! [`Option`]:
 //!
-//! * [`take`] takes ownership of the contained value of an [`Option`], if
-//!   any, replacing the [`Option`] with [`None`]
-//! * [`replace`] takes ownership of the contained value of an [`Option`],
-//!   if any, replacing the [`Option`] with a [`Some`] containing the
-//!   provided value
+//! * [`take`] takes ownership of the contained value of an [`Option`], if any, replacing the
+//!   [`Option`] with [`None`]
+//! * [`replace`] takes ownership of the contained value of an [`Option`], if any, replacing the
+//!   [`Option`] with a [`Some`] containing the provided value
 //!
 //! [`replace`]: Option::replace
 //! [`take`]: Option::take
@@ -883,7 +867,8 @@ impl<T> Option<T> {
     ///
     /// For more detail on expect message styles and the reasoning behind our
     /// recommendation please refer to the section on ["Common Message
-    /// Styles"](../../std/error/index.html#common-message-styles) in the [`std::error`](../../std/error/index.html) module docs.
+    /// Styles"](../../std/error/index.html#common-message-styles) in the
+    /// [`std::error`](../../std/error/index.html) module docs.
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1045,7 +1030,8 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value (if `Some`) or returns `None` (if `None`).
+    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value (if `Some`)
+    /// or returns `None` (if `None`).
     ///
     /// # Examples
     ///
@@ -1411,8 +1397,7 @@ impl<T> Option<T> {
     /// Returns [`None`] if the option is [`None`], otherwise calls `predicate`
     /// with the wrapped value and returns:
     ///
-    /// - [`Some(t)`] if `predicate` returns `true` (where `t` is the wrapped
-    ///   value), and
+    /// - [`Some(t)`] if `predicate` returns `true` (where `t` is the wrapped value), and
     /// - [`None`] if `predicate` returns `false`.
     ///
     /// This function works similar to [`Iterator::filter()`]. You can imagine
@@ -2096,10 +2081,10 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     ///
     /// # Examples
     ///
-    /// Converts an <code>[Option]<[String]></code> into an <code>[Option]<[usize]></code>, preserving
-    /// the original. The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `from` to first take an [`Option`] to a reference
-    /// to the value inside the original.
+    /// Converts an <code>[Option]<[String]></code> into an <code>[Option]<[usize]></code>,
+    /// preserving the original. The [`map`] method takes the `self` argument by value,
+    /// consuming the original, so this technique uses `from` to first take an [`Option`] to a
+    /// reference to the value inside the original.
     ///
     /// [`map`]: Option::map
     /// [String]: ../../std/string/struct.String.html "String"

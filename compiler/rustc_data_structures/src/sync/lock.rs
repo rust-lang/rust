@@ -1,5 +1,5 @@
-//! This module implements a lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
-//! It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync` traits.
+//! This module implements a lock which only uses synchronization if `might_be_dyn_thread_safe` is
+//! true. It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync` traits.
 //!
 //! When `cfg(parallel_compiler)` is not set, the lock is instead a wrapper around `RefCell`.
 

@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
         index_expr: &'tcx hir::Expr<'tcx>,
         idx_ty: Ty<'tcx>,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
+    ) -> Option<(/* index type */ Ty<'tcx>, /* element type */ Ty<'tcx>)> {
         // FIXME(#18741) -- this is almost but not quite the same as the
         // autoderef that normal method probing does. They could likely be
         // consolidated.
@@ -105,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef: &Autoderef<'a, 'tcx>,
         index_ty: Ty<'tcx>,
         index_expr: &hir::Expr<'_>,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
+    ) -> Option<(/* index type */ Ty<'tcx>, /* element type */ Ty<'tcx>)> {
         let adjusted_ty =
             self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
         debug!(
@@ -327,8 +327,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
                             *deref = OverloadedDeref { region, mutbl, span: deref.span };
                         }
-                        // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
-                        // This helps avoid accidental drops.
+                        // If this is a union field, also throw an error for `DerefMut` of
+                        // `ManuallyDrop` (see RFC 2514). This helps avoid
+                        // accidental drops.
                         if inside_union
                             && source.ty_adt_def().is_some_and(|adt| adt.is_manually_drop())
                         {

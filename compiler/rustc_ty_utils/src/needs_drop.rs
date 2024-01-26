@@ -341,8 +341,8 @@ fn adt_drop_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
-    // This is for the "adt_drop_tys" query, that considers all `Drop` impls, therefore all dtors are
-    // significant.
+    // This is for the "adt_drop_tys" query, that considers all `Drop` impls, therefore all dtors
+    // are significant.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_args)`
@@ -365,7 +365,8 @@ fn adt_significant_drop_tys(
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).instantiate_identity(), // identical to `tcx.make_adt(def, identity_args)`
+        tcx.type_of(def_id).instantiate_identity(), /* identical to `tcx.make_adt(def,
+                                                     * identity_args)` */
         tcx.param_env(def_id),
         adt_consider_insignificant_dtor(tcx),
         true,

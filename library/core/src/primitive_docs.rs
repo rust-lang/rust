@@ -267,7 +267,6 @@ mod prim_bool {}
 /// [`File`]: ../std/fs/struct.File.html
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
-///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 
@@ -439,7 +438,6 @@ mod prim_char {}
 ///     returns_i64();
 /// };
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit {}
 
@@ -591,7 +589,8 @@ mod prim_pointer {}
 /// There are two syntactic forms for creating an array:
 ///
 /// * A list with each element, i.e., `[x, y, z]`.
-/// * A repeat expression `[expr; N]` where `N` is how many times to repeat `expr` in the array. `expr` must either be:
+/// * A repeat expression `[expr; N]` where `N` is how many times to repeat `expr` in the array.
+///   `expr` must either be:
 ///
 ///   * A value of a type implementing the [`Copy`] trait
 ///   * A `const` value
@@ -749,8 +748,8 @@ mod prim_pointer {}
 /// viable/desired, there are multiple alternatives:
 /// * use `iter`, equivalent to the old behavior, creating references
 /// * use [`IntoIterator::into_iter`], equivalent to the post-2021 behavior (Rust 1.53+)
-/// * replace `for ... in array.into_iter() {` with `for ... in array {`,
-///   equivalent to the post-2021 behavior (Rust 1.53+)
+/// * replace `for ... in array.into_iter() {` with `for ... in array {`, equivalent to the
+///   post-2021 behavior (Rust 1.53+)
 ///
 /// ```rust,edition2018
 /// // Rust 2015 and 2018:
@@ -870,10 +869,9 @@ mod prim_array {}
 /// the element type of the slice is `i32`, the element type of the iterator is
 /// `&mut i32`.
 ///
-/// * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
-///   iterators.
-/// * Further methods that return iterators are [`.split`], [`.splitn`],
-///   [`.chunks`], [`.windows`] and more.
+/// * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default iterators.
+/// * Further methods that return iterators are [`.split`], [`.splitn`], [`.chunks`], [`.windows`]
+///   and more.
 ///
 /// [`Hash`]: core::hash::Hash
 /// [`.iter`]: slice::iter
@@ -1002,7 +1000,6 @@ mod prim_str {}
 /// sequentially until the first non-equal set is found.
 ///
 /// For more about tuples, see [the book](../book/ch03-02-data-types.html#the-tuple-type).
-///
 // Hardcoded anchor in src/librustdoc/html/format.rs
 // linked to as `#trait-implementations-1`
 /// # Trait implementations
@@ -1081,7 +1078,6 @@ mod prim_str {}
 /// let array: [u32; 3] = [1, 2, 3];
 /// let tuple: (u32, u32, u32) = array.into();
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple {}
 
@@ -1110,45 +1106,38 @@ impl<T> (T,) {}
 /// Additionally, `f32` can represent some special values:
 ///
 /// - −0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so −0.0 is a
-///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry
-///   the sign bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and
-///   a negative number rounded to a value smaller than a float can represent also produces −0.0.
-/// - [∞](#associatedconstant.INFINITY) and
-///   [−∞](#associatedconstant.NEG_INFINITY): these result from calculations
-///   like `1.0 / 0.0`.
-/// - [NaN (not a number)](#associatedconstant.NAN): this value results from
-///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
-///   behavior:
-///   - It is not equal to any float, including itself! This is the reason `f32`
-///     doesn't implement the `Eq` trait.
-///   - It is also neither smaller nor greater than any float, making it
-///     impossible to sort by the default comparison operation, which is the
-///     reason `f32` doesn't implement the `Ord` trait.
-///   - It is also considered *infectious* as almost all calculations where one
-///     of the operands is NaN will also result in NaN. The explanations on this
-///     page only explicitly document behavior on NaN operands if this default
-///     is deviated from.
-///   - Lastly, there are multiple bit patterns that are considered NaN.
-///     Rust does not currently guarantee that the bit patterns of NaN are
-///     preserved over arithmetic operations, and they are not guaranteed to be
-///     portable or even fully deterministic! This means that there may be some
-///     surprising results upon inspecting the bit patterns,
-///     as the same calculations might produce NaNs with different bit patterns.
+///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry the sign
+///   bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and a negative number
+///   rounded to a value smaller than a float can represent also produces −0.0.
+/// - [∞](#associatedconstant.INFINITY) and [−∞](#associatedconstant.NEG_INFINITY): these result
+///   from calculations like `1.0 / 0.0`.
+/// - [NaN (not a number)](#associatedconstant.NAN): this value results from calculations like
+///   `(-1.0).sqrt()`. NaN has some potentially unexpected behavior:
+///   - It is not equal to any float, including itself! This is the reason `f32` doesn't implement
+///     the `Eq` trait.
+///   - It is also neither smaller nor greater than any float, making it impossible to sort by the
+///     default comparison operation, which is the reason `f32` doesn't implement the `Ord` trait.
+///   - It is also considered *infectious* as almost all calculations where one of the operands is
+///     NaN will also result in NaN. The explanations on this page only explicitly document behavior
+///     on NaN operands if this default is deviated from.
+///   - Lastly, there are multiple bit patterns that are considered NaN. Rust does not currently
+///     guarantee that the bit patterns of NaN are preserved over arithmetic operations, and they
+///     are not guaranteed to be portable or even fully deterministic! This means that there may be
+///     some surprising results upon inspecting the bit patterns, as the same calculations might
+///     produce NaNs with different bit patterns.
 ///
 /// When a primitive operation (addition, subtraction, multiplication, or
 /// division) is performed on this type, the result is rounded according to the
 /// roundTiesToEven direction defined in IEEE 754-2008. That means:
 ///
-/// - The result is the representable value closest to the true value, if there
-///   is a unique closest representable value.
-/// - If the true value is exactly half-way between two representable values,
-///   the result is the one with an even least-significant binary digit.
-/// - If the true value's magnitude is ≥ `f32::MAX` + 2<sup>(`f32::MAX_EXP` −
-///   `f32::MANTISSA_DIGITS` − 1)</sup>, the result is ∞ or −∞ (preserving the
-///   true value's sign).
-/// - If the result of a sum exactly equals zero, the outcome is +0.0 unless
-///   both arguments were negative, then it is -0.0. Subtraction `a - b` is
-///   regarded as a sum `a + (-b)`.
+/// - The result is the representable value closest to the true value, if there is a unique closest
+///   representable value.
+/// - If the true value is exactly half-way between two representable values, the result is the one
+///   with an even least-significant binary digit.
+/// - If the true value's magnitude is ≥ `f32::MAX` + 2<sup>(`f32::MAX_EXP` − `f32::MANTISSA_DIGITS`
+///   − 1)</sup>, the result is ∞ or −∞ (preserving the true value's sign).
+/// - If the result of a sum exactly equals zero, the outcome is +0.0 unless both arguments were
+///   negative, then it is -0.0. Subtraction `a - b` is regarded as a sum `a + (-b)`.
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
@@ -1339,7 +1328,8 @@ mod prim_usize {}
 /// The following traits are implemented on `&T` references if the underlying `T` also implements
 /// that trait:
 ///
-/// * All the traits in [`std::fmt`] except [`fmt::Pointer`] (which is implemented regardless of the type of its referent) and [`fmt::Write`]
+/// * All the traits in [`std::fmt`] except [`fmt::Pointer`] (which is implemented regardless of the
+///   type of its referent) and [`fmt::Write`]
 /// * [`PartialOrd`]
 /// * [`Ord`]
 /// * [`PartialEq`]
@@ -1505,7 +1495,8 @@ mod prim_ref {}
 /// However, a direct cast back is not possible. You need to use `transmute`:
 ///
 /// ```rust
-/// # #[cfg(not(miri))] { // FIXME: use strict provenance APIs once they are stable, then remove this `cfg`
+/// # #[cfg(not(miri))] { // FIXME: use strict provenance APIs once they are stable,
+///                          then remove this `cfg`
 /// # let fnptr: fn(i32) -> i32 = |x| x+2;
 /// # let fnptr_addr = fnptr as usize;
 /// let fnptr = fnptr_addr as *const ();
@@ -1563,9 +1554,9 @@ mod prim_ref {}
 /// - Any two `fn` (function pointer) types are ABI-compatible with each other if they have the same
 ///   ABI string or the ABI string only differs in a trailing `-unwind`, independent of the rest of
 ///   their signature. (This means you can pass `fn()` to a function expecting `fn(i32)`, and the
-///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
-///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
-///   almost certainly UB to later call that function pointer.)
+///   call will be valid ABI-wise. The callee receives the result of transmuting the function
+///   pointer from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's
+///   just almost certainly UB to later call that function pointer.)
 /// - Any two types with size 0 and alignment 1 are ABI-compatible.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).

@@ -51,8 +51,8 @@ macro_rules! pluralize {
 #[derive(Copy, Clone, Debug, Hash, Encodable, Decodable, Serialize, Deserialize)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Applicability {
-    /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
-    /// This suggestion should be automatically applied.
+    /// The suggestion is definitely what the user intended, or maintains the exact meaning of the
+    /// code. This suggestion should be automatically applied.
     ///
     /// In case of multiple `MachineApplicable` suggestions (whether as part of
     /// the same `multipart_suggestion` or not), all of them should be
@@ -350,11 +350,10 @@ pub struct FutureIncompatibleInfo {
 ///
 /// Future-incompatible lints come in roughly two categories:
 ///
-/// 1. There was a mistake in the compiler (such as a soundness issue), and
-///    we're trying to fix it, but it may be a breaking change.
-/// 2. A change across an Edition boundary, typically used for the
-///    introduction of new language features that can't otherwise be
-///    introduced in a backwards-compatible way.
+/// 1. There was a mistake in the compiler (such as a soundness issue), and we're trying to fix it,
+///    but it may be a breaking change.
+/// 2. A change across an Edition boundary, typically used for the introduction of new language
+///    features that can't otherwise be introduced in a backwards-compatible way.
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/bug-fix-procedure.html> and
 /// <https://rustc-dev-guide.rust-lang.org/diagnostics.html#future-incompatible-lints>
@@ -789,9 +788,8 @@ pub type RegisteredTools = FxIndexSet<Ident>;
 /// Commands to view and test the documentation:
 ///
 /// * `./x.py doc --stage=1 src/doc/rustc --open`: Builds the rustc book and opens it.
-/// * `./x.py test src/tools/lint-docs`: Validates that the lint docs have the
-///   correct style, and that the code example actually emits the expected
-///   lint.
+/// * `./x.py test src/tools/lint-docs`: Validates that the lint docs have the correct style, and
+///   that the code example actually emits the expected lint.
 ///
 /// If you have already built the compiler, and you want to make changes to
 /// just the doc comments, then use the `--keep-stage=0` flag with the above

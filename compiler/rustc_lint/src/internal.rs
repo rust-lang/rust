@@ -18,11 +18,14 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 declare_tool_lint! {
-    /// The `default_hash_type` lint detects use of [`std::collections::HashMap`]/[`std::collections::HashSet`],
+    /// The `default_hash_type` lint detects use of [`HashMap`]/[`HashSet`],
     /// suggesting the use of `FxHashMap`/`FxHashSet`.
     ///
     /// This can help as `FxHasher` can perform better than the default hasher. DOS protection is not
     /// required as input is assumed to be trusted.
+    ///
+    /// [`HashMap`]: std::collections::HashMap
+    /// [`HashSet`]: std::collections::HashSet
     pub rustc::DEFAULT_HASH_TYPES,
     Allow,
     "forbid HashMap and HashSet and suggest the FxHash* variants",
@@ -74,9 +77,11 @@ declare_tool_lint! {
     /// The `potential_query_instability` lint detects use of methods which can lead to
     /// potential query instability, such as iterating over a `HashMap`.
     ///
-    /// Due to the [incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html) model,
-    /// queries must return deterministic, stable results. `HashMap` iteration order can change between compilations,
-    /// and will introduce instability if query results expose the order.
+    /// Due to the [incremental compilation] model, queries must return deterministic, stable results.
+    /// `HashMap` iteration order can change between compilations, and will introduce instability if query
+    /// results expose the order.
+    ///
+    /// [incremental compilation]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     pub rustc::POTENTIAL_QUERY_INSTABILITY,
     Allow,
     "require explicit opt-in when using potentially unstable methods or functions",
@@ -170,8 +175,8 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 None
                             }
                         }
-                        // Can't unify these two branches because qpath below is `&&` and above is `&`
-                        // and `A | B` paths don't play well together with adjustments, apparently.
+                        // Can't unify these two branches because qpath below is `&&` and above is
+                        // `&` and `A | B` paths don't play well together with adjustments, apparently.
                         Some(Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. })) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
@@ -343,7 +348,9 @@ declare_tool_lint! {
     /// The `untranslatable_diagnostic` lint detects diagnostics created
     /// without using translatable Fluent strings.
     ///
-    /// More details on translatable diagnostics can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html).
+    /// More details on translatable diagnostics can be found [here].
+    ///
+    /// [here]: https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html
     pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
     Allow,
     "prevent creation of diagnostics which cannot be translated",
@@ -355,7 +362,9 @@ declare_tool_lint! {
     /// and inside an `IntoDiagnostic`/`AddToDiagnostic` implementation,
     /// or a `#[derive(Diagnostic)]`/`#[derive(Subdiagnostic)]` expansion.
     ///
-    /// More details on diagnostics implementations can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
+    /// More details on diagnostics implementations can be found [here].
+    ///
+    /// [here]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
     Allow,
     "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",

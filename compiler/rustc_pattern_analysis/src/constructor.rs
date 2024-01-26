@@ -38,7 +38,7 @@
 //! constructors:
 //! - Whose union covers the whole type, and
 //! - That have no non-trivial intersection with any of the constructors in the column (i.e. they're
-//!     each either disjoint with or covered by any given column constructor).
+//!   each either disjoint with or covered by any given column constructor).
 //!
 //! We compute this in two steps: first [`TypeCx::ctors_for_ty`] determines the
 //! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
@@ -196,7 +196,8 @@ pub enum MaybeInfiniteInt {
     /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
     #[non_exhaustive]
     Finite(u128),
-    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
+    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive
+    /// range.
     JustAfterMax,
     PosInfinity,
 }
@@ -308,7 +309,8 @@ impl IntRange {
     /// intersections between an output range and a column range are inclusions. No output range
     /// straddles the boundary of one of the inputs.
     ///
-    /// Additionally, we track for each output range whether it is covered by one of the column ranges or not.
+    /// Additionally, we track for each output range whether it is covered by one of the column
+    /// ranges or not.
     ///
     /// The following input:
     /// ```text
@@ -532,7 +534,8 @@ impl Slice {
     ///
     /// If `self` is fixed-length, it is returned as-is.
     ///
-    /// Additionally, we track for each output slice whether it is covered by one of the column slices or not.
+    /// Additionally, we track for each output slice whether it is covered by one of the column
+    /// slices or not.
     fn split(
         self,
         column_slices: impl Iterator<Item = Slice>,
@@ -582,9 +585,9 @@ impl Slice {
                 }
 
                 smaller_lengths = match self.array_len {
-                    // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
-                    // is fixed-length or variable-length, it will be the only relevant slice to output
-                    // here.
+                    // The only admissible fixed-length slice is one of the array size. Whether
+                    // `max_slice` is fixed-length or variable-length, it will
+                    // be the only relevant slice to output here.
                     Some(_) => 0..0, // empty range
                     // We need to cover all arities in the range `(arity..infinity)`. We split that
                     // range into two: lengths smaller than `max_slice.arity()` are treated
@@ -681,8 +684,8 @@ pub enum Constructor<Cx: TypeCx> {
     /// We use this for variants behind an unstable gate as well as
     /// `#[doc(hidden)]` ones.
     Hidden,
-    /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
-    /// top of the file.
+    /// Fake extra constructor for constructors that are not seen in the matrix, as explained at
+    /// the top of the file.
     Missing,
 }
 
@@ -787,9 +790,9 @@ pub enum VariantVisibility {
     /// Variant behind an unstable gate or with the `#[doc(hidden)]` attribute. It will not be
     /// mentioned in diagnostics unless the user mentioned it first.
     Hidden,
-    /// Variant that matches no value. E.g. `Some::<Option<!>>` if the `exhaustive_patterns` feature
-    /// is enabled. Like `Hidden`, it will not be mentioned in diagnostics unless the user mentioned
-    /// it first.
+    /// Variant that matches no value. E.g. `Some::<Option<!>>` if the `exhaustive_patterns`
+    /// feature is enabled. Like `Hidden`, it will not be mentioned in diagnostics unless the
+    /// user mentioned it first.
     Empty,
 }
 

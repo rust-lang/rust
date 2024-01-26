@@ -359,8 +359,8 @@ impl<'tcx> Operand<'tcx> {
         }
     }
 
-    /// Returns the `ConstOperand` that is the target of this `Operand`, or `None` if this `Operand` is a
-    /// place.
+    /// Returns the `ConstOperand` that is the target of this `Operand`, or `None` if this `Operand`
+    /// is a place.
     pub fn constant(&self) -> Option<&ConstOperand<'tcx>> {
         match self {
             Operand::Constant(x) => Some(&**x),

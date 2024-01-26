@@ -214,7 +214,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
         }
 
         // Check for union fields. For this we traverse right-to-left, as the last `Deref` changes
-        // whether we *read* the union field or potentially *write* to it (if this place is being assigned to).
+        // whether we *read* the union field or potentially *write* to it (if this place is being
+        // assigned to).
         let mut saw_deref = false;
         for (base, proj) in place.iter_projections().rev() {
             if proj == ProjectionElem::Deref {
@@ -241,7 +242,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     // old value is being dropped.
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     if assigned_ty.needs_drop(self.tcx, self.param_env) {
-                        // This would be unsafe, but should be outright impossible since we reject such unions.
+                        // This would be unsafe, but should be outright impossible since we reject
+                        // such unions.
                         self.tcx.dcx().span_delayed_bug(
                             self.source_info.span,
                             format!("union fields that need dropping should be impossible: {assigned_ty}")
@@ -260,7 +262,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
 impl<'tcx> UnsafetyChecker<'_, 'tcx> {
     fn require_unsafe(&mut self, kind: UnsafetyViolationKind, details: UnsafetyViolationDetails) {
-        // Violations can turn out to be `UnsafeFn` during analysis, but they should not start out as such.
+        // Violations can turn out to be `UnsafeFn` during analysis, but they should not start out
+        // as such.
         assert_ne!(kind, UnsafetyViolationKind::UnsafeFn);
 
         let source_info = self.source_info;

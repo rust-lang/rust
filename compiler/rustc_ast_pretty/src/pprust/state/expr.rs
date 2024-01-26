@@ -375,12 +375,12 @@ impl<'a> State<'a> {
             }
             // We are given `(let _ = a) OP b`.
             //
-            // - When `OP <= LAnd` we should print `let _ = a OP b` to avoid redundant parens
-            //   as the parser will interpret this as `(let _ = a) OP b`.
+            // - When `OP <= LAnd` we should print `let _ = a OP b` to avoid redundant parens as the
+            //   parser will interpret this as `(let _ = a) OP b`.
             //
-            // - Otherwise, e.g. when we have `(let a = b) < c` in AST,
-            //   parens are required since the parser would interpret `let a = b < c` as
-            //   `let a = (b < c)`. To achieve this, we force parens.
+            // - Otherwise, e.g. when we have `(let a = b) < c` in AST, parens are required since
+            //   the parser would interpret `let a = b < c` as `let a = (b < c)`. To achieve this,
+            //   we force parens.
             (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
                 parser::PREC_FORCE_PAREN
             }

@@ -4,7 +4,8 @@
 //! Paths in macros, imports, expressions, types, patterns are resolved here.
 //! Label and lifetime names are resolved here as well.
 //!
-//! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
+//! Type-relative name resolution (methods, fields, associated items) happens in
+//! `rustc_hir_analysis`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
@@ -443,9 +444,9 @@ enum ModuleKind {
     ///
     /// This could be:
     ///
-    /// * A normal module – either `mod from_file;` or `mod from_block { }` –
-    ///   or the crate root (which is conceptually a top-level module).
-    ///   Note that the crate root's [name][Self::name] will be [`kw::Empty`].
+    /// * A normal module – either `mod from_file;` or `mod from_block { }` – or the crate root
+    ///   (which is conceptually a top-level module). Note that the crate root's [name][Self::name]
+    ///   will be [`kw::Empty`].
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
     Def(DefKind, DefId, Symbol),
@@ -487,7 +488,8 @@ type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution
 
 /// One node in the tree of modules.
 ///
-/// Note that a "module" in resolve is broader than a `mod` that you declare in Rust code. It may be one of these:
+/// Note that a "module" in resolve is broader than a `mod` that you declare in Rust code. It may be
+/// one of these:
 ///
 /// * `mod`
 /// * crate root (aka, top-level anonymous module)
@@ -1237,7 +1239,8 @@ impl<'tcx> Resolver<'_, 'tcx> {
             self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
+        // FIXME: remove `def_span` body, pass in the right spans here and call
+        // `tcx.at().create_def()`
         let def_id = self.tcx.create_def(parent, name, def_kind);
 
         // Create the definition.

@@ -311,8 +311,8 @@ pub trait Iterator {
     ///
     /// `advance_by(n)` will return `Ok(())` if the iterator successfully advances by
     /// `n` elements, or a `Err(NonZeroUsize)` with value `k` if [`None`] is encountered,
-    /// where `k` is remaining number of steps that could not be advanced because the iterator ran out.
-    /// If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
+    /// where `k` is remaining number of steps that could not be advanced because the iterator ran
+    /// out. If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
     /// Otherwise, `k` is always less than `n`.
     ///
     /// Calling `advance_by(0)` can do meaningful work, for example [`Flatten`]
@@ -537,8 +537,8 @@ pub trait Iterator {
     /// If either iterator returns [`None`], [`next`] from the zipped iterator
     /// will return [`None`].
     /// If the zipped iterator has no more elements to return then each further attempt to advance
-    /// it will first try to advance the first iterator at most one time and if it still yielded an item
-    /// try to advance the second iterator at most one time.
+    /// it will first try to advance the first iterator at most one time and if it still yielded an
+    /// item try to advance the second iterator at most one time.
     ///
     /// To 'undo' the result of zipping up two iterators, see [`unzip`].
     ///
@@ -2059,17 +2059,17 @@ pub trait Iterator {
     ///
     /// `try_collect()` is a variation of [`collect()`][`collect`] that allows fallible
     /// conversions during collection. Its main use case is simplifying conversions from
-    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`]
-    /// types (e.g. [`Result`]).
+    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for
+    /// other [`Try`] types (e.g. [`Result`]).
     ///
-    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements [`FromIterator`];
-    /// only the inner type produced on `Try::Output` must implement it. Concretely,
-    /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
-    /// [`FromIterator`], even though [`ControlFlow`] doesn't.
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements
+    /// [`FromIterator`]; only the inner type produced on `Try::Output` must implement it.
+    /// Concretely, this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because
+    /// `Vec<i32>` implements [`FromIterator`], even though [`ControlFlow`] doesn't.
     ///
     /// Also, if a failure is encountered during `try_collect()`, the iterator is still valid and
-    /// may continue to be used, in which case it will continue iterating starting after the element that
-    /// triggered the failure. See the last example below for an example of how this works.
+    /// may continue to be used, in which case it will continue iterating starting after the element
+    /// that triggered the failure. See the last example below for an example of how this works.
     ///
     /// # Examples
     /// Successfully collecting an iterator of `Option<i32>` into `Option<Vec<i32>>`:
@@ -2550,8 +2550,8 @@ pub trait Iterator {
     /// value, if the accumulator type and item type is the same.
     ///
     /// Note: `fold()` combines elements in a *left-associative* fashion. For associative
-    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
-    /// operators like `-` the order will affect the final result.
+    /// operators like `+`, the order the elements are combined in is not important, but for
+    /// non-associative operators like `-` the order will affect the final result.
     /// For a *right-associative* version of `fold()`, see [`DoubleEndedIterator::rfold()`].
     ///
     /// # Note to Implementors
@@ -2968,8 +2968,9 @@ pub trait Iterator {
     /// the first true result or the first error.
     ///
     /// The return type of this method depends on the return type of the closure.
-    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>, E>`.
-    /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>,
+    /// E>`. If you return `Option<bool>` from the closure, you'll get an
+    /// `Option<Option<Self::Item>>`.
     ///
     /// # Examples
     ///
@@ -3083,7 +3084,6 @@ pub trait Iterator {
     ///
     /// // The returned index depends on iterator state
     /// assert_eq!(iter.position(|&x| x == 4), Some(0));
-    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -3646,8 +3646,9 @@ pub trait Iterator {
     ///
     /// An empty iterator returns the one value of the type.
     ///
-    /// `product()` can be used to multiply any type implementing [`Product`][`core::iter::Product`],
-    /// including [`Option`][`Option::product`] and [`Result`][`Result::product`].
+    /// `product()` can be used to multiply any type implementing
+    /// [`Product`][`core::iter::Product`], including [`Option`][`Option::product`] and
+    /// [`Result`][`Result::product`].
     ///
     /// # Panics
     ///
@@ -3675,8 +3676,8 @@ pub trait Iterator {
         Product::product(self)
     }
 
-    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
-    /// of another.
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this
+    /// [`Iterator`] with those of another.
     ///
     /// # Examples
     ///
@@ -3698,8 +3699,8 @@ pub trait Iterator {
         self.cmp_by(other, |x, y| x.cmp(&y))
     }
 
-    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
-    /// of another with respect to the specified comparison function.
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this
+    /// [`Iterator`] with those of another with respect to the specified comparison function.
     ///
     /// # Examples
     ///
@@ -3773,7 +3774,6 @@ pub trait Iterator {
     /// assert_eq!([2.0, f64::NAN].iter().partial_cmp([1.0, f64::NAN].iter()), Some(Ordering::Greater));
     /// assert_eq!([f64::NAN, 1.0].iter().partial_cmp([f64::NAN, 2.0].iter()), None);
     /// ```
-    ///
     #[stable(feature = "iter_order", since = "1.5.0")]
     #[rustc_do_not_const_check]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
@@ -3785,8 +3785,8 @@ pub trait Iterator {
         self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
     }
 
-    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
-    /// of another with respect to the specified comparison function.
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this
+    /// [`Iterator`] with those of another with respect to the specified comparison function.
     ///
     /// # Examples
     ///
@@ -3917,8 +3917,8 @@ pub trait Iterator {
         !self.eq(other)
     }
 
-    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
-    /// less than those of another.
+    /// Determines if the elements of this [`Iterator`] are
+    /// [lexicographically](Ord#lexicographical-comparison) less than those of another.
     ///
     /// # Examples
     ///
@@ -3939,8 +3939,8 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Less)
     }
 
-    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
-    /// less or equal to those of another.
+    /// Determines if the elements of this [`Iterator`] are
+    /// [lexicographically](Ord#lexicographical-comparison) less or equal to those of another.
     ///
     /// # Examples
     ///
@@ -3961,8 +3961,8 @@ pub trait Iterator {
         matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
-    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
-    /// greater than those of another.
+    /// Determines if the elements of this [`Iterator`] are
+    /// [lexicographically](Ord#lexicographical-comparison) greater than those of another.
     ///
     /// # Examples
     ///
@@ -3983,8 +3983,9 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
-    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
-    /// greater than or equal to those of another.
+    /// Determines if the elements of this [`Iterator`] are
+    /// [lexicographically](Ord#lexicographical-comparison) greater than or equal to those of
+    /// another.
     ///
     /// # Examples
     ///
@@ -4130,9 +4131,9 @@ pub trait Iterator {
 
 /// Compares two iterators element-wise using the given function.
 ///
-/// If `ControlFlow::Continue(())` is returned from the function, the comparison moves on to the next
-/// elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration and
-/// returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
+/// If `ControlFlow::Continue(())` is returned from the function, the comparison moves on to the
+/// next elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration
+/// and returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
 /// `ControlFlow::Continue(ord)` is returned where `ord` is the result of comparing the lengths of
 /// the iterators.
 ///

@@ -178,8 +178,9 @@ impl ExternalCrate {
         }
 
         // See if there's documentation generated into the local directory
-        // WARNING: since rustdoc creates these directories as it generates documentation, this check is only accurate before rendering starts.
-        // Make sure to call `location()` by that time.
+        // WARNING: since rustdoc creates these directories as it generates documentation, this
+        // check is only accurate before rendering starts. Make sure to call `location()` by
+        // that time.
         let local_location = dst.join(self.name(tcx).as_str());
         if local_location.is_dir() {
             return Local;
@@ -322,7 +323,8 @@ pub(crate) struct Item {
 }
 
 /// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
-/// If you want to see the debug output for attributes and the `kind` as well, use `{:#?}` instead of `{:?}`.
+/// If you want to see the debug output for attributes and the `kind` as well, use `{:#?}` instead
+/// of `{:?}`.
 impl fmt::Debug for Item {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let alternate = f.alternate();
@@ -1920,8 +1922,9 @@ impl PrimitiveType {
         static PRIMITIVE_LOCATIONS: OnceCell<FxHashMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
             let mut primitive_locations = FxHashMap::default();
-            // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
-            // This is a degenerate case that I don't plan to support.
+            // NOTE: technically this misses crates that are only passed with `--extern` and not
+            // loaded when checking the crate. This is a degenerate case that I don't
+            // plan to support.
             for &crate_num in tcx.crates(()) {
                 let e = ExternalCrate { crate_num };
                 let crate_name = e.name(tcx);
@@ -2298,12 +2301,12 @@ pub(crate) struct TypeAlias {
     /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
     /// to be shown directly on the typedef page.
     pub(crate) inner_type: Option<TypeAliasInnerType>,
-    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
-    /// alias instead of the final type. This will always have the final type, regardless of whether
-    /// `type_` came from HIR or from metadata.
+    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a
+    /// type alias instead of the final type. This will always have the final type, regardless
+    /// of whether `type_` came from HIR or from metadata.
     ///
-    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
-    /// final type).
+    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold
+    /// the final type).
     pub(crate) item_type: Option<Type>,
 }
 
@@ -2358,8 +2361,8 @@ pub(crate) enum ConstantKind {
     /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
     /// `BodyId`, we need to handle it on its own.
     ///
-    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
-    /// by a DefId. So this field must be different from `Extern`.
+    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely
+    /// identified by a DefId. So this field must be different from `Extern`.
     TyConst { expr: Box<str> },
     /// A constant (expression) that's not an item or associated item. These are usually found
     /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also

@@ -316,7 +316,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
-    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
+    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be
+    /// in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
         alloc_size: Size,
@@ -454,7 +455,6 @@ pub enum UnsupportedOpInfo {
     UnsizedLocal,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
-    //
     /// Overwriting parts of a pointer; without knowing absolute addresses, the resulting state
     /// cannot be represented by the CTFE interpreter.
     OverwritePartialPointer(Pointer<AllocId>),
@@ -522,8 +522,8 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl InterpError<'_> {
     /// Some errors do string formatting even if the error is never printed.
-    /// To avoid performance issues, there are places where we want to be sure to never raise these formatting errors,
-    /// so this method lets us detect them and `bug!` on unexpected errors.
+    /// To avoid performance issues, there are places where we want to be sure to never raise these
+    /// formatting errors, so this method lets us detect them and `bug!` on unexpected errors.
     pub fn formatted_string(&self) -> bool {
         matches!(
             self,

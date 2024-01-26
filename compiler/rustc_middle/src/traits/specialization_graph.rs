@@ -14,14 +14,12 @@ use rustc_span::symbol::sym;
 ///
 /// The graph provides two key services:
 ///
-/// - Construction. This implicitly checks for overlapping impls (i.e., impls
-///   that overlap but where neither specializes the other -- an artifact of the
-///   simple "chain" rule.
+/// - Construction. This implicitly checks for overlapping impls (i.e., impls that overlap but where
+///   neither specializes the other -- an artifact of the simple "chain" rule.
 ///
-/// - Parent extraction. In particular, the graph can give you the *immediate*
-///   parents of a given specializing impl, which is needed for extracting
-///   default items amongst other things. In the simple "chain" rule, every impl
-///   has at most one parent.
+/// - Parent extraction. In particular, the graph can give you the *immediate* parents of a given
+///   specializing impl, which is needed for extracting default items amongst other things. In the
+///   simple "chain" rule, every impl has at most one parent.
 #[derive(TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct Graph {
     /// All impls have a parent; the "root" impls have as their parent the `def_id`
@@ -49,9 +47,11 @@ impl Graph {
 /// purposes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
 pub enum OverlapMode {
-    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for crate-local types)
+    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for
+    /// crate-local types)
     Stable,
-    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of the where-clauses.
+    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of
+    /// the where-clauses.
     WithNegative,
     /// Just check for negative impls, not for "where clause not implemented": used for testing.
     Strict,

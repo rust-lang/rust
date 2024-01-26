@@ -6,8 +6,8 @@
 //!
 //! Some useful guidelines:
 //!
-//! * Use declare_* family of methods if you are declaring, but are not
-//!   interested in defining the Value they return.
+//! * Use declare_* family of methods if you are declaring, but are not interested in defining the
+//!   Value they return.
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 

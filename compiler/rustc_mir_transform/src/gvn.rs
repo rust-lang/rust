@@ -136,8 +136,8 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 // Try to get some insight.
                 AssignedValue::Rvalue(rvalue) => {
                     let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-                    // reusable if we have an exact type match.
+                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                    // `local` as reusable if we have an exact type match.
                     if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
                         return;
                     }
@@ -249,7 +249,8 @@ struct VnState<'body, 'tcx> {
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
-    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
+    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a
+    /// loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: &'body Dominators<BasicBlock>,
@@ -400,7 +401,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
                         let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
-                        self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
+                        self.ecx.copy_op(op, &field_dest, /* allow_transmute */ false).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
                     self.ecx
@@ -441,7 +442,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let pointer = self.evaluated[local].as_ref()?;
                 let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
                 for proj in place.projection.iter().skip(1) {
-                    // We have no call stack to associate a local with a value, so we cannot interpret indexing.
+                    // We have no call stack to associate a local with a value, so we cannot
+                    // interpret indexing.
                     if matches!(proj, ProjectionElem::Index(_)) {
                         return None;
                     }
@@ -1079,7 +1081,8 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
+    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
+    // avoid.
     if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
         return None;
     }

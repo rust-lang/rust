@@ -73,11 +73,10 @@ type Dtor = unsafe extern "C" fn(*mut u8);
 // To accomplish this feat, we perform a number of threads, all contained
 // within this module:
 //
-// * All TLS destructors are tracked by *us*, not the Windows runtime. This
-//   means that we have a global list of destructors for each TLS key that
-//   we know about.
-// * When a thread exits, we run over the entire list and run dtors for all
-//   non-null keys. This attempts to match Unix semantics in this regard.
+// * All TLS destructors are tracked by *us*, not the Windows runtime. This means that we have a
+//   global list of destructors for each TLS key that we know about.
+// * When a thread exits, we run over the entire list and run dtors for all non-null keys. This
+//   attempts to match Unix semantics in this regard.
 //
 // For more details and nitty-gritty, see the code sections below!
 //
@@ -188,10 +187,10 @@ unsafe impl Sync for StaticKey {}
 // registered but cannot be unregistered. There's various simplifying reasons
 // for doing this, the big ones being:
 //
-// 1. Currently we don't even support deallocating TLS keys, so normal operation
-//    doesn't need to deallocate a destructor.
-// 2. There is no point in time where we know we can unregister a destructor
-//    because it could always be getting run by some remote thread.
+// 1. Currently we don't even support deallocating TLS keys, so normal operation doesn't need to
+//    deallocate a destructor.
+// 2. There is no point in time where we know we can unregister a destructor because it could always
+//    be getting run by some remote thread.
 //
 // Typically processes have a statically known set of TLS keys which is pretty
 // small, and we'd want to keep this memory alive for the whole process anyway

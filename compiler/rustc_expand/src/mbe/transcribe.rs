@@ -334,9 +334,9 @@ pub(super) fn transcribe<'a>(
 ///
 /// So this function replaces the original location with the metavariable location in all cases
 /// except these two:
-/// - The metavariable is an element of undelimited sequence `$($tt)*`.
-///   These are typically used for passing larger amounts of code, and tokens in that code usually
-///   combine with each other and not with tokens outside of the sequence.
+/// - The metavariable is an element of undelimited sequence `$($tt)*`. These are typically used for
+///   passing larger amounts of code, and tokens in that code usually combine with each other and
+///   not with tokens outside of the sequence.
 /// - The metavariable span comes from a different crate, then we prefer the more local span.
 ///
 /// FIXME: Find a way to keep both original and metavariable spans for all tokens without
@@ -455,9 +455,9 @@ impl LockstepIterSize {
 ///
 /// Example: `$($($x $y)+*);+` -- we need to make sure that `x` and `y` repeat the same amount as
 /// each other at the given depth when the macro was invoked. If they don't it might mean they were
-/// declared at depths which weren't equal or there was a compiler bug. For example, if we have 3 repetitions of
-/// the outer sequence and 4 repetitions of the inner sequence for `x`, we should have the same for
-/// `y`; otherwise, we can't transcribe them both at the given depth.
+/// declared at depths which weren't equal or there was a compiler bug. For example, if we have 3
+/// repetitions of the outer sequence and 4 repetitions of the inner sequence for `x`, we should
+/// have the same for `y`; otherwise, we can't transcribe them both at the given depth.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
     interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
@@ -509,8 +509,8 @@ fn lockstep_iter_size(
 ///
 /// * `[ $( ${count(foo)} ),* ]` will return [2, 1] with a, b = 2 and c = 1
 /// * `[ $( ${count(foo, 0)} ),* ]` will be the same as `[ $( ${count(foo)} ),* ]`
-/// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
-///   declared inside a single repetition and the index `1` implies two nested repetitions.
+/// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is declared
+///   inside a single repetition and the index `1` implies two nested repetitions.
 fn count_repetitions<'a>(
     cx: &ExtCtxt<'a>,
     depth_user: usize,

@@ -926,8 +926,9 @@ fn read_link() {
         // junction
         assert_eq!(check!(fs::read_link(r"C:\Users\Default User")), Path::new(r"C:\Users\Default"));
         // junction with special permissions
-        // Since not all localized windows versions contain the folder "Documents and Settings" in english,
-        // we will briefly check, if it exists and otherwise skip the test. Except during CI we will always execute the test.
+        // Since not all localized windows versions contain the folder "Documents and Settings" in
+        // english, we will briefly check, if it exists and otherwise skip the test. Except
+        // during CI we will always execute the test.
         if Path::new(r"C:\Documents and Settings\").exists() || env::var_os("CI").is_some() {
             assert_eq!(
                 check!(fs::read_link(r"C:\Documents and Settings\")),

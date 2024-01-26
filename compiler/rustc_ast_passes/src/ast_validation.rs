@@ -1224,9 +1224,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 WherePredicate::BoundPredicate(bound_pred) => {
-                    // This is slightly complicated. Our representation for poly-trait-refs contains a single
-                    // binder and thus we only allow a single level of quantification. However,
-                    // the syntax of Rust permits quantification in two places in where clauses,
+                    // This is slightly complicated. Our representation for poly-trait-refs contains
+                    // a single binder and thus we only allow a single level of
+                    // quantification. However, the syntax of Rust permits
+                    // quantification in two places in where clauses,
                     // e.g., `T: for <'a> Foo<'a>` and `for <'a, 'b> &'b T: Foo<'a>`. If both are
                     // defined, then error.
                     if !bound_pred.bound_generic_params.is_empty() {
@@ -1288,8 +1289,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             errors::TildeConstReason::TraitImpl { span }
                         }
                         &DisallowTildeConstContext::Impl(span) => {
-                            // FIXME(effects): Consider providing a help message or even a structured
-                            // suggestion for moving such bounds to the assoc const fns if available.
+                            // FIXME(effects): Consider providing a help message or even a
+                            // structured suggestion for moving such
+                            // bounds to the assoc const fns if available.
                             errors::TildeConstReason::Impl { span }
                         }
                         &DisallowTildeConstContext::TraitAssocTy(span) => {

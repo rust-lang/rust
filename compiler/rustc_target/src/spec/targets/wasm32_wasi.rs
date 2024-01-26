@@ -12,15 +12,13 @@
 //! The Rust target definition here is interesting in a few ways. We want to
 //! serve two use cases here with this target:
 //!
-//! * First, we want Rust usage of the target to be as hassle-free as possible,
-//!   ideally avoiding the need to configure and install a local wasm32-wasi
-//!   toolchain.
+//! * First, we want Rust usage of the target to be as hassle-free as possible, ideally avoiding the
+//!   need to configure and install a local wasm32-wasi toolchain.
 //!
-//! * Second, one of the primary use cases of LLVM's new wasm backend and the
-//!   wasm support in LLD is that any compiled language can interoperate with
-//!   any other. To that the `wasm32-wasi` target is the first with a viable C
-//!   standard library and sysroot common definition, so we want Rust and C/C++
-//!   code to interoperate when compiled to `wasm32-unknown-unknown`.
+//! * Second, one of the primary use cases of LLVM's new wasm backend and the wasm support in LLD is
+//!   that any compiled language can interoperate with any other. To that the `wasm32-wasi` target
+//!   is the first with a viable C standard library and sysroot common definition, so we want Rust
+//!   and C/C++ code to interoperate when compiled to `wasm32-unknown-unknown`.
 //!
 //! You'll note, however, that the two goals above are somewhat at odds with one
 //! another. To attempt to solve both use cases in one go we define a target
@@ -47,18 +45,16 @@
 //! For the second goal we repurpose the `target-feature` flag, meaning that
 //! you'll need to do a few things to have C/Rust code interoperate.
 //!
-//! 1. All Rust code needs to be compiled with `-C target-feature=-crt-static`,
-//!    indicating that the bundled C standard library in the Rust sysroot will
-//!    not be used.
+//! 1. All Rust code needs to be compiled with `-C target-feature=-crt-static`, indicating that the
+//!    bundled C standard library in the Rust sysroot will not be used.
 //!
-//! 2. If you're using rustc to build a linked artifact then you'll need to
-//!    specify `-C linker` to a `clang` binary that supports
-//!    `wasm32-wasi` and is configured with the `wasm32-wasi` sysroot. This
-//!    will cause Rust code to be linked against the libc.a that the specified
-//!    `clang` provides.
+//! 2. If you're using rustc to build a linked artifact then you'll need to specify `-C linker` to a
+//!    `clang` binary that supports `wasm32-wasi` and is configured with the `wasm32-wasi` sysroot.
+//!    This will cause Rust code to be linked against the libc.a that the specified `clang`
+//!    provides.
 //!
-//! 3. If you're building a staticlib and integrating Rust code elsewhere, then
-//!    compiling with `-C target-feature=-crt-static` is all you need to do.
+//! 3. If you're building a staticlib and integrating Rust code elsewhere, then compiling with `-C
+//!    target-feature=-crt-static` is all you need to do.
 //!
 //! You can configure the linker via Cargo using the
 //! `CARGO_TARGET_WASM32_WASI_LINKER` env var. Be sure to also set

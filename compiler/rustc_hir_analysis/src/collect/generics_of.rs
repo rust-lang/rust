@@ -48,7 +48,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             if in_param_ty {
                 // We do not allow generic parameters in anon consts if we are inside
-                // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
+                // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is
+                // not allowed.
                 None
             } else if tcx.features().generic_const_exprs {
                 let parent_node = tcx.hir().get_parent(hir_id);
@@ -67,23 +68,28 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //        ^         ^ param_id
                     //        ^ parent_def_id
                     //
-                    // then we only want to return generics for params to the left of `N`. If we don't do that we
-                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
+                    // then we only want to return generics for params to the left of `N`. If we
+                    // don't do that we end up with that const looking like:
+                    // `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
-                    // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
-                    // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
+                    // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo
+                    // { .. }` as we substitute the defaults with the partially
+                    // built args when we build the args. Subst'ing the `N#0` on
+                    // the unevaluated const indexes into the empty args we're in the process of
+                    // building.
                     //
-                    // We fix this by having this function return the parent's generics ourselves and truncating the
-                    // generics to only include non-forward declared params (with the exception of the `Self` ty)
+                    // We fix this by having this function return the parent's generics ourselves
+                    // and truncating the generics to only include non-forward
+                    // declared params (with the exception of the `Self` ty)
                     //
                     // For the above code example that means we want `args: []`
-                    // For the following struct def we want `args: [N#0]` when generics_of is called on
-                    // the def id of the `{ N + 1 }` anon const
+                    // For the following struct def we want `args: [N#0]` when generics_of is called
+                    // on the def id of the `{ N + 1 }` anon const
                     // struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //
-                    // This has some implications for how we get the predicates available to the anon const
-                    // see `explicit_predicates_of` for more information on this
+                    // This has some implications for how we get the predicates available to the
+                    // anon const see `explicit_predicates_of` for more
+                    // information on this
                     let generics = tcx.generics_of(parent_def_id.to_def_id());
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
@@ -93,8 +99,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
                     return ty::Generics {
                         // we set the parent of these generics to be our parent's parent so that we
-                        // dont end up with args: [N, M, N] for the const default on a struct like this:
-                        // struct Foo<const N: usize, const M: usize = { ... }>;
+                        // dont end up with args: [N, M, N] for the const default on a struct like
+                        // this: struct Foo<const N: usize, const M: usize =
+                        // { ... }>;
                         parent: generics.parent,
                         parent_count: generics.parent_count,
                         params,

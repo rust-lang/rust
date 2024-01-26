@@ -486,7 +486,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given a function call like `Foo::bar::<T1,...Tn>(...)`:
     ///
     /// * `self`:                  the surrounding `FnCtxt` (!)
-    /// * `span`:                  the span of the call, excluding arguments (`Foo::bar::<T1, ...Tn>`)
+    /// * `span`:                  the span of the call, excluding arguments (`Foo::bar::<T1,
+    ///   ...Tn>`)
     /// * `method_name`:           the identifier of the function within the container type (`bar`)
     /// * `self_ty`:               the type to search within (`Foo`)
     /// * `self_ty_span`           the span for the type being searched within (span of `Foo`)

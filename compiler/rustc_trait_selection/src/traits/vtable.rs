@@ -38,17 +38,16 @@ fn prepare_vtable_segments_inner<'tcx, T>(
     mut segment_visitor: impl FnMut(VtblSegment<'tcx>) -> ControlFlow<T>,
 ) -> ControlFlow<T> {
     // The following constraints holds for the final arrangement.
-    // 1. The whole virtual table of the first direct super trait is included as the
-    //    the prefix. If this trait doesn't have any super traits, then this step
-    //    consists of the dsa metadata.
-    // 2. Then comes the proper pointer metadata(vptr) and all own methods for all
-    //    other super traits except those already included as part of the first
-    //    direct super trait virtual table.
+    // 1. The whole virtual table of the first direct super trait is included as the the prefix. If
+    //    this trait doesn't have any super traits, then this step consists of the dsa metadata.
+    // 2. Then comes the proper pointer metadata(vptr) and all own methods for all other super
+    //    traits except those already included as part of the first direct super trait virtual
+    //    table.
     // 3. finally, the own methods of this trait.
 
     // This has the advantage that trait upcasting to the first direct super trait on each level
-    // is zero cost, and to another trait includes only replacing the pointer with one level indirection,
-    // while not using too much extra memory.
+    // is zero cost, and to another trait includes only replacing the pointer with one level
+    // indirection, while not using too much extra memory.
 
     // For a single inheritance relationship like this,
     //   D --> C --> B --> A
@@ -92,12 +91,12 @@ fn prepare_vtable_segments_inner<'tcx, T>(
     visited.insert(predicate);
 
     // the main traversal loop:
-    // basically we want to cut the inheritance directed graph into a few non-overlapping slices of nodes
-    // such that each node is emitted after all its descendants have been emitted.
-    // so we convert the directed graph into a tree by skipping all previously visited nodes using a visited set.
-    // this is done on the fly.
-    // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking upwards, and it
-    // stops after it finds a node that has a next-sibling node.
+    // basically we want to cut the inheritance directed graph into a few non-overlapping slices of
+    // nodes such that each node is emitted after all its descendants have been emitted.
+    // so we convert the directed graph into a tree by skipping all previously visited nodes using a
+    // visited set. this is done on the fly.
+    // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking
+    // upwards, and it stops after it finds a node that has a next-sibling node.
     // This next-sibling node will used as the starting point of next slice.
 
     // Example:
@@ -107,12 +106,13 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
     // Starting point 0 stack [D]
     // Loop run #0: Stack after diving in is [D B A], A is "childless"
-    // after this point, all newly visited nodes won't have a vtable that equals to a prefix of this one.
-    // Loop run #0: Emitting the slice [B A] (in reverse order), B has a next-sibling node, so this slice stops here.
-    // Loop run #0: Stack after exiting out is [D C], C is the next starting point.
-    // Loop run #1: Stack after diving in is [D C], C is "childless", since its child A is skipped(already emitted).
-    // Loop run #1: Emitting the slice [D C] (in reverse order). No one has a next-sibling node.
-    // Loop run #1: Stack after exiting out is []. Now the function exits.
+    // after this point, all newly visited nodes won't have a vtable that equals to a prefix of this
+    // one. Loop run #0: Emitting the slice [B A] (in reverse order), B has a next-sibling node,
+    // so this slice stops here. Loop run #0: Stack after exiting out is [D C], C is the next
+    // starting point. Loop run #1: Stack after diving in is [D C], C is "childless", since its
+    // child A is skipped(already emitted). Loop run #1: Emitting the slice [D C] (in reverse
+    // order). No one has a next-sibling node. Loop run #1: Stack after exiting out is []. Now
+    // the function exits.
 
     'outer: loop {
         // dive deeper into the stack, recording the path
@@ -148,15 +148,16 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             }
         }
 
-        // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
+        // emit innermost item, move to next sibling and stop there if possible, otherwise jump to
+        // outer level.
         while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
             segment_visitor(VtblSegment::TraitOwnEntries {
                 trait_ref: inner_most_trait_ref,
                 emit_vptr: emit_vptr && !tcx.sess.opts.unstable_opts.no_trait_vptr,
             })?;
 
-            // If we've emitted (fed to `segment_visitor`) a trait that has methods present in the vtable,
-            // we'll need to emit vptrs from now on.
+            // If we've emitted (fed to `segment_visitor`) a trait that has methods present in the
+            // vtable, we'll need to emit vptrs from now on.
             if !emit_vptr_on_new_entry
                 && has_own_existential_vtable_entries(tcx, inner_most_trait_ref.def_id())
             {

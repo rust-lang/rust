@@ -158,7 +158,8 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
 fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     match relocation_model {
         RelocModel::Static => llvm::RelocModel::Static,
-        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra attribute.
+        // LLVM doesn't have a PIE relocation model, it represents PIE as PIC with an extra
+        // attribute.
         RelocModel::Pic | RelocModel::Pie => llvm::RelocModel::PIC,
         RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
         RelocModel::Ropi => llvm::RelocModel::ROPI,
@@ -691,11 +692,10 @@ pub(crate) unsafe fn codegen(
         }
 
         // Two things to note:
-        // - If object files are just LLVM bitcode we write bitcode, copy it to
-        //   the .o file, and delete the bitcode if it wasn't otherwise
-        //   requested.
-        // - If we don't have the integrated assembler then we need to emit
-        //   asm from LLVM and use `gcc` to create the object file.
+        // - If object files are just LLVM bitcode we write bitcode, copy it to the .o file, and
+        //   delete the bitcode if it wasn't otherwise requested.
+        // - If we don't have the integrated assembler then we need to emit asm from LLVM and use
+        //   `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -954,27 +954,24 @@ unsafe fn embed_bitcode(
     // To handle this is a bit different depending on the object file format
     // used by the backend, broken down into a few different categories:
     //
-    // * Mach-O - this is for macOS. Inspecting the source code for the native
-    //   linker here shows that the `.llvmbc` and `.llvmcmd` sections are
-    //   automatically skipped by the linker. In that case there's nothing extra
-    //   that we need to do here.
+    // * Mach-O - this is for macOS. Inspecting the source code for the native linker here shows
+    //   that the `.llvmbc` and `.llvmcmd` sections are automatically skipped by the linker. In that
+    //   case there's nothing extra that we need to do here.
     //
-    // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and
-    //   `.llvmcmd` sections, so there's nothing extra we need to do.
+    // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and `.llvmcmd` sections, so
+    //   there's nothing extra we need to do.
     //
-    // * COFF - if we don't do anything the linker will by default copy all
-    //   these sections to the output artifact, not what we want! To subvert
-    //   this we want to flag the sections we inserted here as
-    //   `IMAGE_SCN_LNK_REMOVE`.
+    // * COFF - if we don't do anything the linker will by default copy all these sections to the
+    //   output artifact, not what we want! To subvert this we want to flag the sections we inserted
+    //   here as `IMAGE_SCN_LNK_REMOVE`.
     //
-    // * ELF - this is very similar to COFF above. One difference is that these
-    //   sections are removed from the output linked artifact when
-    //   `--gc-sections` is passed, which we pass by default. If that flag isn't
-    //   passed though then these sections will show up in the final output.
+    // * ELF - this is very similar to COFF above. One difference is that these sections are removed
+    //   from the output linked artifact when `--gc-sections` is passed, which we pass by default.
+    //   If that flag isn't passed though then these sections will show up in the final output.
     //   Additionally the flag that we need to set here is `SHF_EXCLUDE`.
     //
-    // * XCOFF - AIX linker ignores content in .ipa and .info if no auxiliary
-    //   symbol associated with these sections.
+    // * XCOFF - AIX linker ignores content in .ipa and .info if no auxiliary symbol associated with
+    //   these sections.
     //
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that

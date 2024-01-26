@@ -158,16 +158,14 @@ fn generic_arg_mismatch_err(
 /// we can append those and move on. Otherwise, it invokes the
 /// three callback functions:
 ///
-/// - `args_for_def_id`: given the `DefId` `P`, supplies back the
-///   generic arguments that were given to that parent from within
-///   the path; so e.g., if you have `<T as Foo>::Bar`, the `DefId`
-///   might refer to the trait `Foo`, and the arguments might be
-///   `[T]`. The boolean value indicates whether to infer values
-///   for arguments whose values were not explicitly provided.
-/// - `provided_kind`: given the generic parameter and the value from `args_for_def_id`,
-///   instantiate a `GenericArg`.
-/// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
-///   creates a suitable inference variable.
+/// - `args_for_def_id`: given the `DefId` `P`, supplies back the generic arguments that were given
+///   to that parent from within the path; so e.g., if you have `<T as Foo>::Bar`, the `DefId` might
+///   refer to the trait `Foo`, and the arguments might be `[T]`. The boolean value indicates
+///   whether to infer values for arguments whose values were not explicitly provided.
+/// - `provided_kind`: given the generic parameter and the value from `args_for_def_id`, instantiate
+///   a `GenericArg`.
+/// - `inferred_kind`: if no parameter was provided, and inference is enabled, then creates a
+///   suitable inference variable.
 pub fn create_args_for_parent_generic_args<'tcx, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -262,9 +260,11 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // impl const PartialEq for () {}
                             // ```
                             //
-                            // Since this is a const impl, we need to insert a host arg at the end of
-                            // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
-                            // To work around this, we infer all arguments until we reach the host param.
+                            // Since this is a const impl, we need to insert a host arg at the end
+                            // of `PartialEq`'s generics, but this
+                            // errors since `Rhs` isn't specified.
+                            // To work around this, we infer all arguments until we reach the host
+                            // param.
                             args.push(ctx.inferred_kind(Some(&args), param, infer_args));
                             params.next();
                         }
@@ -308,7 +308,8 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // an additional error, as the user already knows what's wrong.
                             if arg_count.correct.is_ok() {
                                 // We're going to iterate over the parameters to sort them out, and
-                                // show that order to the user as a possible order for the parameters
+                                // show that order to the user as a possible order for the
+                                // parameters
                                 let mut param_types_present = defs
                                     .params
                                     .iter()
@@ -362,13 +363,12 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                     // We should never be able to reach this point with well-formed input.
                     // There are three situations in which we can encounter this issue.
                     //
-                    //  1. The number of arguments is incorrect. In this case, an error
-                    //     will already have been emitted, and we can ignore it.
-                    //  2. There are late-bound lifetime parameters present, yet the
-                    //     lifetime arguments have also been explicitly specified by the
-                    //     user.
-                    //  3. We've inferred some lifetimes, which have been provided later (i.e.
-                    //     after a type or const). We want to throw an error in this case.
+                    //  1. The number of arguments is incorrect. In this case, an error will already
+                    //     have been emitted, and we can ignore it.
+                    //  2. There are late-bound lifetime parameters present, yet the lifetime
+                    //     arguments have also been explicitly specified by the user.
+                    //  3. We've inferred some lifetimes, which have been provided later (i.e. after
+                    //     a type or const). We want to throw an error in this case.
 
                     if arg_count.correct.is_ok()
                         && arg_count.explicit_late_bound == ExplicitLateBound::No

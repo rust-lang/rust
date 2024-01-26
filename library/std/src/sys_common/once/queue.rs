@@ -1,17 +1,13 @@
 // Each `Once` has one word of atomic state, and this state is CAS'd on to
 // determine what to do. There are four possible state of a `Once`:
 //
-// * Incomplete - no initialization has run yet, and no thread is currently
-//                using the Once.
-// * Poisoned - some thread has previously attempted to initialize the Once, but
-//              it panicked, so the Once is now poisoned. There are no other
-//              threads currently accessing this Once.
-// * Running - some thread is currently attempting to run initialization. It may
-//             succeed, so all future threads need to wait for it to finish.
-//             Note that this state is accompanied with a payload, described
-//             below.
-// * Complete - initialization has completed and all future calls should finish
-//              immediately.
+// * Incomplete - no initialization has run yet, and no thread is currently using the Once.
+// * Poisoned - some thread has previously attempted to initialize the Once, but it panicked, so the
+//   Once is now poisoned. There are no other threads currently accessing this Once.
+// * Running - some thread is currently attempting to run initialization. It may succeed, so all
+//   future threads need to wait for it to finish. Note that this state is accompanied with a
+//   payload, described below.
+// * Complete - initialization has completed and all future calls should finish immediately.
 //
 // With 4 states we need 2 bits to encode this, and we use the remaining bits
 // in the word we have allocated as a queue of threads waiting for the thread
@@ -26,34 +22,29 @@
 // Atomic orderings:
 // When running `Once` we deal with multiple atomics:
 // `Once.state_and_queue` and an unknown number of `Waiter.signaled`.
-// * `state_and_queue` is used (1) as a state flag, (2) for synchronizing the
-//   result of the `Once`, and (3) for synchronizing `Waiter` nodes.
-//     - At the end of the `call` function we have to make sure the result
-//       of the `Once` is acquired. So every load which can be the only one to
-//       load COMPLETED must have at least acquire ordering, which means all
-//       three of them.
-//     - `WaiterQueue::drop` is the only place that may store COMPLETED, and
-//       must do so with release ordering to make the result available.
-//     - `wait` inserts `Waiter` nodes as a pointer in `state_and_queue`, and
-//       needs to make the nodes available with release ordering. The load in
-//       its `compare_exchange` can be relaxed because it only has to compare
-//       the atomic, not to read other data.
-//     - `WaiterQueue::drop` must see the `Waiter` nodes, so it must load
-//       `state_and_queue` with acquire ordering.
-//     - There is just one store where `state_and_queue` is used only as a
-//       state flag, without having to synchronize data: switching the state
-//       from INCOMPLETE to RUNNING in `call`. This store can be Relaxed,
-//       but the read has to be Acquire because of the requirements mentioned
+// * `state_and_queue` is used (1) as a state flag, (2) for synchronizing the result of the `Once`,
+//   and (3) for synchronizing `Waiter` nodes.
+//     - At the end of the `call` function we have to make sure the result of the `Once` is
+//       acquired. So every load which can be the only one to load COMPLETED must have at least
+//       acquire ordering, which means all three of them.
+//     - `WaiterQueue::drop` is the only place that may store COMPLETED, and must do so with release
+//       ordering to make the result available.
+//     - `wait` inserts `Waiter` nodes as a pointer in `state_and_queue`, and needs to make the
+//       nodes available with release ordering. The load in its `compare_exchange` can be relaxed
+//       because it only has to compare the atomic, not to read other data.
+//     - `WaiterQueue::drop` must see the `Waiter` nodes, so it must load `state_and_queue` with
+//       acquire ordering.
+//     - There is just one store where `state_and_queue` is used only as a state flag, without
+//       having to synchronize data: switching the state from INCOMPLETE to RUNNING in `call`. This
+//       store can be Relaxed, but the read has to be Acquire because of the requirements mentioned
 //       above.
-// * `Waiter.signaled` is both used as a flag, and to protect a field with
-//   interior mutability in `Waiter`. `Waiter.thread` is changed in
-//   `WaiterQueue::drop` which then sets `signaled` with release ordering.
-//   After `wait` loads `signaled` with acquire ordering and sees it is true,
-//   it needs to see the changes to drop the `Waiter` struct correctly.
-// * There is one place where the two atomics `Once.state_and_queue` and
-//   `Waiter.signaled` come together, and might be reordered by the compiler or
-//   processor. Because both use acquire ordering such a reordering is not
-//   allowed, so no need for `SeqCst`.
+// * `Waiter.signaled` is both used as a flag, and to protect a field with interior mutability in
+//   `Waiter`. `Waiter.thread` is changed in `WaiterQueue::drop` which then sets `signaled` with
+//   release ordering. After `wait` loads `signaled` with acquire ordering and sees it is true, it
+//   needs to see the changes to drop the `Waiter` struct correctly.
+// * There is one place where the two atomics `Once.state_and_queue` and `Waiter.signaled` come
+//   together, and might be reordered by the compiler or processor. Because both use acquire
+//   ordering such a reordering is not allowed, so no need for `SeqCst`.
 
 use crate::cell::Cell;
 use crate::fmt;

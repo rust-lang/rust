@@ -2003,8 +2003,8 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
-    /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
-    /// The span is that of the `=` sign.
+    /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore
+    /// expression. The span is that of the `=` sign.
     AssignDesugar(Span),
 }
 
@@ -2406,8 +2406,8 @@ impl<'hir> Ty<'hir> {
         my_visitor.0
     }
 
-    /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
-    /// use inference to provide suggestions for the appropriate type if possible.
+    /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only
+    /// to use inference to provide suggestions for the appropriate type if possible.
     pub fn is_suggestable_infer_ty(&self) -> bool {
         fn are_suggestable_generic_args(generic_args: &[GenericArg<'_>]) -> bool {
             generic_args.iter().any(|arg| match arg {

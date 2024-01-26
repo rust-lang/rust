@@ -24,7 +24,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
             {
                 continue;
             }
-            // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
+            // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides
+            // blanket impls
             let trait_impls = cx.tcx.trait_impls_of(trait_def_id);
             'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
                 trace!(

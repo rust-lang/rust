@@ -472,7 +472,8 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
-    /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
+    /// assert_eq!(Duration::new(100, 400_000_000)
+    ///     .abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
     #[unstable(feature = "duration_abs_diff", issue = "117618")]
     #[must_use = "this returns the result of the operation, \
@@ -1374,7 +1375,8 @@ impl Duration {
     ///
     /// [`from_secs_f32`]: Duration::from_secs_f32
     ///
-    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not
+    /// finite.
     ///
     /// # Examples
     /// ```
@@ -1442,7 +1444,8 @@ impl Duration {
     ///
     /// [`from_secs_f64`]: Duration::from_secs_f64
     ///
-    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not finite.
+    /// This constructor will return an `Err` if `secs` is negative, overflows `Duration` or not
+    /// finite.
     ///
     /// # Examples
     /// ```

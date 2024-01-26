@@ -46,8 +46,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                     continue;
                 };
 
-                // If we can't get a span of the backtick, because it is in a `#[doc = ""]` attribute,
-                // use the span of the entire attribute as a fallback.
+                // If we can't get a span of the backtick, because it is in a `#[doc = ""]`
+                // attribute, use the span of the entire attribute as a fallback.
                 let span = source_span_for_markdown_range(
                     tcx,
                     &dox,

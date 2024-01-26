@@ -53,8 +53,9 @@ pub struct CStore {
     /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
     /// If the above is true, then this field denotes the kind of the found allocator.
     allocator_kind: Option<AllocatorKind>,
-    /// This crate needs an allocation error handler and either provides it itself, or finds it in a dependency.
-    /// If the above is true, then this field denotes the kind of the found allocator.
+    /// This crate needs an allocation error handler and either provides it itself, or finds it in
+    /// a dependency. If the above is true, then this field denotes the kind of the found
+    /// allocator.
     alloc_error_handler_kind: Option<AllocatorKind>,
     /// This crate has a `#[global_allocator]` item.
     has_global_allocator: bool,

@@ -46,8 +46,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// When performing a substitution, we must take care not to introduce uses of dangling locals.
 /// To ensure this, we walk the body with the `MaybeStorageDead` dataflow analysis:
-/// - if we want to replace `*x` by reborrow `*y` and `y` may be dead, we allow replacement and
-///   mark storage statements on `y` for removal;
+/// - if we want to replace `*x` by reborrow `*y` and `y` may be dead, we allow replacement and mark
+///   storage statements on `y` for removal;
 /// - if we want to replace `*x` by non-reborrow `y` and `y` must be live, we allow replacement;
 /// - if we want to replace `*x` by non-reborrow `y` and `y` may be dead, we do not replace.
 ///
@@ -147,12 +147,12 @@ fn compute_replacement<'tcx>(
     // First, we recall that DEF is checked to dominate USE. Now imagine for the sake of
     // contradiction there is a DEF -> SL -> USE path. Consider two cases:
     //
-    // - DEF dominates SL. We always have UB the first time control flow reaches DEF,
-    //   because the storage of `a` is dead. Since DEF dominates USE, that means we cannot
-    //   reach USE and so our optimization is ok.
+    // - DEF dominates SL. We always have UB the first time control flow reaches DEF, because the
+    //   storage of `a` is dead. Since DEF dominates USE, that means we cannot reach USE and so our
+    //   optimization is ok.
     //
-    // - DEF does not dominate SL. Then there is a `START_BLOCK -> SL` path not including DEF.
-    //   But we can extend this path to USE, meaning there is also a `START_BLOCK -> USE` path not
+    // - DEF does not dominate SL. Then there is a `START_BLOCK -> SL` path not including DEF. But
+    //   we can extend this path to USE, meaning there is also a `START_BLOCK -> USE` path not
     //   including DEF. This violates the DEF dominates USE condition, and so is impossible.
     let is_constant_place = |place: Place<'_>| {
         // We only allow `Deref` as the first projection, to avoid surprises.

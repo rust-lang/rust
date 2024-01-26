@@ -1,8 +1,8 @@
 //! This crates defines the type inference engine.
 //!
-//! - **Type inference.** The type inference code can be found in the `infer` module;
-//!   this code handles low-level equality and subtyping operations. The
-//!   type check pass in the compiler is found in the `rustc_hir_analysis` crate.
+//! - **Type inference.** The type inference code can be found in the `infer` module; this code
+//!   handles low-level equality and subtyping operations. The type check pass in the compiler is
+//!   found in the `rustc_hir_analysis` crate.
 //!
 //! For more information about how rustc works, see the [rustc dev guide].
 //!

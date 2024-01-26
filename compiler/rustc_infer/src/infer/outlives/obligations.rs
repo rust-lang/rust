@@ -6,17 +6,14 @@
 //! When we process a given `T: 'a` obligation, we may produce two
 //! kinds of constraints for the region inferencer:
 //!
-//! - Relationships between inference variables and other regions.
-//!   For example, if we have `&'?0 u32: 'a`, then we would produce
-//!   a constraint that `'a <= '?0`.
-//! - "Verifys" that must be checked after inferencing is done.
-//!   For example, if we know that, for some type parameter `T`,
-//!   `T: 'a + 'b`, and we have a requirement that `T: '?1`,
-//!   then we add a "verify" that checks that `'?1 <= 'a || '?1 <= 'b`.
-//!   - Note the difference with the previous case: here, the region
-//!     variable must be less than something else, so this doesn't
-//!     affect how inference works (it finds the smallest region that
-//!     will do); it's just a post-condition that we have to check.
+//! - Relationships between inference variables and other regions. For example, if we have `&'?0
+//!   u32: 'a`, then we would produce a constraint that `'a <= '?0`.
+//! - "Verifys" that must be checked after inferencing is done. For example, if we know that, for
+//!   some type parameter `T`, `T: 'a + 'b`, and we have a requirement that `T: '?1`, then we add a
+//!   "verify" that checks that `'?1 <= 'a || '?1 <= 'b`.
+//!   - Note the difference with the previous case: here, the region variable must be less than
+//!     something else, so this doesn't affect how inference works (it finds the smallest region
+//!     that will do); it's just a post-condition that we have to check.
 //!
 //! **The key point is that once this function is done, we have
 //! reduced all of our "type-region outlives" obligations into relationships
@@ -339,10 +336,11 @@ where
         // }` in the trait definition.
         approx_env_bounds.retain(|bound_outlives| {
             // OK to skip binder because we only manipulate and compare against other
-            // values from the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
-            // in `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region.
-            // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
-            // will be invoked with `['b => ^1]` and so we will get `^1` returned.
+            // values from the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item:
+            // 'a` in `bound`, the `'a` will be a `^1` (bound, debruijn index ==
+            // innermost) region. If the declaration is `trait Trait<'b> { type Item:
+            // 'b; }`, then `projection_declared_bounds_from_trait` will be invoked with
+            // `['b => ^1]` and so we will get `^1` returned.
             let bound = bound_outlives.skip_binder();
             let ty::Alias(_, alias_ty) = bound.0.kind() else { bug!("expected AliasTy") };
             self.verify_bound.declared_bounds_from_definition(*alias_ty).all(|r| r != bound.1)
@@ -381,8 +379,7 @@ where
         //
         // - OutlivesProjectionEnv: these would translate to the requirement that `'b:'r`
         // - OutlivesProjectionTraitDef: these would translate to the requirement that `'b:'r`
-        // - OutlivesProjectionComponent: this would require `'b:'r`
-        //   in addition to other conditions
+        // - OutlivesProjectionComponent: this would require `'b:'r` in addition to other conditions
         if !trait_bounds.is_empty()
             && trait_bounds[1..]
                 .iter()

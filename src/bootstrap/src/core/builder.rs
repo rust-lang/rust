@@ -206,8 +206,8 @@ pub enum PathSet {
     ///
     /// NOTE: the paths within a set should always be aliases of one another.
     /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
-    /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
-    /// to build them separately.
+    /// but `library/core` and `library/std` generally should not, unless there's no way (for that
+    /// Step) to build them separately.
     Set(BTreeSet<TaskPath>),
     /// A "suite" of paths.
     ///
@@ -274,9 +274,11 @@ impl PathSet {
         }
     }
 
-    /// A convenience wrapper for Steps which know they have no aliases and all their sets contain only a single path.
+    /// A convenience wrapper for Steps which know they have no aliases and all their sets contain
+    /// only a single path.
     ///
-    /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or [`ShouldRun::alias`].
+    /// This can be used with [`ShouldRun::crate_or_deps`], [`ShouldRun::path`], or
+    /// [`ShouldRun::alias`].
     #[track_caller]
     pub fn assert_single_path(&self) -> &TaskPath {
         match self {
@@ -376,7 +378,8 @@ impl StepDescription {
         remap_paths(&mut paths);
 
         // Handle all test suite paths.
-        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
+        // (This is separate from the loop below to avoid having to handle multiple paths in
+        // `is_suite_path` somehow.)
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if let Some(suite) = should_run.is_suite_path(&path) {
@@ -505,7 +508,8 @@ impl<'a> ShouldRun<'a> {
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
     /// `paths`.
     ///
-    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
+    /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where
+    /// possible.
     ///
     /// [`path`]: ShouldRun::path
     pub fn paths(mut self, paths: &[&str]) -> Self {
@@ -579,8 +583,9 @@ impl<'a> ShouldRun<'a> {
     /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
     /// cargo invocation, which are put into separate sets because they aren't aliases.
     ///
-    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
-    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
+    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same
+    /// thing (for now, just `all_krates` and `paths`, but we may want to add an `aliases`
+    /// function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
         paths: &mut Vec<&Path>,
@@ -1055,7 +1060,8 @@ impl<'a> Builder<'a> {
 
                 if self.compiler.stage == 0 {
                     // The stage 0 compiler for the build triple is always pre-built.
-                    // Ensure that `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use it when run.
+                    // Ensure that `libLLVM.so` ends up in the target libdir, so that ui-fulldeps
+                    // tests can use it when run.
                     dist::maybe_install_llvm_target(
                         builder,
                         self.compiler.host,
@@ -1177,7 +1183,8 @@ impl<'a> Builder<'a> {
         ));
 
         if run_compiler.stage == 0 {
-            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
+            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta
+            // clippy.
             let cargo_clippy = self.build.config.download_clippy();
             let mut cmd = Command::new(cargo_clippy);
             cmd.env("PATH", &path);
@@ -1638,7 +1645,8 @@ impl<'a> Builder<'a> {
         // NOTE: we intentionally use RUSTC_WRAPPER so that we can support clippy - RUSTC is not
         // respected by clippy-driver; RUSTC_WRAPPER happens earlier, before clippy runs.
         cargo.env("RUSTC_WRAPPER", self.bootstrap_out.join("rustc"));
-        // NOTE: we also need to set RUSTC so cargo can run `rustc -vV`; apparently that ignores RUSTC_WRAPPER >:(
+        // NOTE: we also need to set RUSTC so cargo can run `rustc -vV`; apparently that ignores
+        // RUSTC_WRAPPER >:(
         cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
 
         // Someone might have set some previous rustc wrapper (e.g.
@@ -2264,10 +2272,12 @@ impl<'a> Builder<'a> {
     }
 }
 
-/// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler later.
+/// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler
+/// later.
 ///
-/// `-Z crate-attr` flags will be applied recursively on the target code using the `rustc_parse::parser::Parser`.
-/// See `rustc_builtin_macros::cmdline_attrs::inject` for more information.
+/// `-Z crate-attr` flags will be applied recursively on the target code using the
+/// `rustc_parse::parser::Parser`. See `rustc_builtin_macros::cmdline_attrs::inject` for more
+/// information.
 #[derive(Debug, Clone)]
 struct Rustflags(String, TargetSelection);
 
@@ -2279,8 +2289,8 @@ impl Rustflags {
     }
 
     /// By default, cargo will pick up on various variables in the environment. However, bootstrap
-    /// reuses those variables to pass additional flags to rustdoc, so by default they get overridden.
-    /// Explicitly add back any previous value in the environment.
+    /// reuses those variables to pass additional flags to rustdoc, so by default they get
+    /// overridden. Explicitly add back any previous value in the environment.
     ///
     /// `prefix` is usually `RUSTFLAGS` or `RUSTDOCFLAGS`.
     fn propagate_cargo_env(&mut self, prefix: &str) {

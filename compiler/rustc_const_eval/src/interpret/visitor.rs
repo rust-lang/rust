@@ -89,8 +89,8 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
         match *ty.kind() {
             // If it is a trait object, switch to the real type that was used to create it.
             ty::Dynamic(_, _, ty::Dyn) => {
-                // Dyn types. This is unsized, and the actual dynamic type of the data is given by the
-                // vtable stored in the place metadata.
+                // Dyn types. This is unsized, and the actual dynamic type of the data is given by
+                // the vtable stored in the place metadata.
                 // unsized values are never immediate, so we can assert_mem_place
                 let op = v.to_op(self.ecx())?;
                 let dest = op.assert_mem_place();
@@ -128,8 +128,9 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 assert_eq!(v.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
                 let (unique_ptr, alloc) =
                     (self.ecx().project_field(v, 0)?, self.ecx().project_field(v, 1)?);
-                // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
-                // (which means another 2 fields, the second of which is a `PhantomData`)
+                // Unfortunately there is some type junk in the way here: `unique_ptr` is a
+                // `Unique`... (which means another 2 fields, the second of which is
+                // a `PhantomData`)
                 assert_eq!(unique_ptr.layout().fields.count(), 2);
                 let (nonnull_ptr, phantom) = (
                     self.ecx().project_field(&unique_ptr, 0)?,
@@ -182,13 +183,15 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
             // with *its* fields.
             Variants::Multiple { .. } => {
                 let idx = self.read_discriminant(v)?;
-                // There are 3 cases where downcasts can turn a Scalar/ScalarPair into a different ABI which
-                // could be a problem for `ImmTy` (see layout_sanity_check):
-                // - variant.size == Size::ZERO: works fine because `ImmTy::offset` has a special case for
-                //   zero-sized layouts.
-                // - variant.fields.count() == 0: works fine because `ImmTy::offset` has a special case for
-                //   zero-field aggregates.
-                // - variant.abi.is_uninhabited(): triggers UB in `read_discriminant` so we never get here.
+                // There are 3 cases where downcasts can turn a Scalar/ScalarPair into a different
+                // ABI which could be a problem for `ImmTy` (see
+                // layout_sanity_check):
+                // - variant.size == Size::ZERO: works fine because `ImmTy::offset` has a special
+                //   case for zero-sized layouts.
+                // - variant.fields.count() == 0: works fine because `ImmTy::offset` has a special
+                //   case for zero-field aggregates.
+                // - variant.abi.is_uninhabited(): triggers UB in `read_discriminant` so we never
+                //   get here.
                 let inner = self.ecx().project_downcast(v, idx)?;
                 trace!("walk_value: variant layout: {:#?}", inner.layout());
                 // recurse with the inner type

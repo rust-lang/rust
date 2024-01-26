@@ -89,8 +89,7 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 /// In fact, there are only a few options for the types in the constraint:
 ///     - an obviously-unsized type
 ///     - a type parameter or projection whose Sizedness can't be known
-///     - a tuple of type parameters or projections, if there are multiple
-///       such.
+///     - a tuple of type parameters or projections, if there are multiple such.
 ///     - an Error, if a type is infinitely sized
 fn adt_sized_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -399,7 +399,6 @@ impl UnixStream {
     /// Set the socket option `SO_PASSCRED`.
     ///
     /// # Examples
-    ///
     #[cfg_attr(
         any(
             target_os = "android",
@@ -458,7 +457,6 @@ impl UnixStream {
     }
 
     /// Set the id of the socket for network filtering purpose
-    ///
     #[cfg_attr(
         any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
         doc = "```no_run"
@@ -559,7 +557,6 @@ impl UnixStream {
     /// On success, returns the number of bytes read.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -608,7 +605,6 @@ impl UnixStream {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]

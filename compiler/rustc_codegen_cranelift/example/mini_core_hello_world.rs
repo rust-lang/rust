@@ -431,7 +431,8 @@ extern "C" {
     fn WaitForSingleObject(hHandle: LPVOID, dwMilliseconds: DWORD) -> DWORD;
 
     fn CreateThread(
-        lpThreadAttributes: LPVOID, // Technically LPSECURITY_ATTRIBUTES, but we don't use it anyway
+        lpThreadAttributes: LPVOID, /* Technically LPSECURITY_ATTRIBUTES, but we don't use it
+                                     * anyway */
         dwStackSize: usize,
         lpStartAddress: extern "C" fn(_: *mut c_void) -> *mut c_void,
         lpParameter: LPVOID,

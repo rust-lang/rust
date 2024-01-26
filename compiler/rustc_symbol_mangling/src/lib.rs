@@ -9,30 +9,27 @@
 //!
 //! There are a few issues to handle:
 //!
-//!  - Linkers operate on a flat namespace, so we have to flatten names.
-//!    We do this using the C++ namespace-mangling technique. Foo::bar
-//!    symbols and such.
+//!  - Linkers operate on a flat namespace, so we have to flatten names. We do this using the C++
+//!    namespace-mangling technique. Foo::bar symbols and such.
 //!
-//!  - Symbols for distinct items with the same *name* need to get different
-//!    linkage-names. Examples of this are monomorphizations of functions or
-//!    items within anonymous scopes that end up having the same path.
+//!  - Symbols for distinct items with the same *name* need to get different linkage-names. Examples
+//!    of this are monomorphizations of functions or items within anonymous scopes that end up
+//!    having the same path.
 //!
-//!  - Symbols in different crates but with same names "within" the crate need
-//!    to get different linkage-names.
+//!  - Symbols in different crates but with same names "within" the crate need to get different
+//!    linkage-names.
 //!
-//!  - Symbol names should be deterministic: Two consecutive runs of the
-//!    compiler over the same code base should produce the same symbol names for
-//!    the same items.
+//!  - Symbol names should be deterministic: Two consecutive runs of the compiler over the same code
+//!    base should produce the same symbol names for the same items.
 //!
-//!  - Symbol names should not depend on any global properties of the code base,
-//!    so that small modifications to the code base do not result in all symbols
-//!    changing. In previous versions of the compiler, symbol names incorporated
-//!    the SVH (Stable Version Hash) of the crate. This scheme turned out to be
-//!    infeasible when used in conjunction with incremental compilation because
-//!    small code changes would invalidate all symbols generated previously.
+//!  - Symbol names should not depend on any global properties of the code base, so that small
+//!    modifications to the code base do not result in all symbols changing. In previous versions of
+//!    the compiler, symbol names incorporated the SVH (Stable Version Hash) of the crate. This
+//!    scheme turned out to be infeasible when used in conjunction with incremental compilation
+//!    because small code changes would invalidate all symbols generated previously.
 //!
-//!  - Even symbols from different versions of the same crate should be able to
-//!    live next to each other without conflict.
+//!  - Even symbols from different versions of the same crate should be able to live next to each
+//!    other without conflict.
 //!
 //! In order to fulfill the above requirements the following scheme is used by
 //! the compiler:
@@ -42,38 +39,31 @@
 //! to the symbol being named, but does not show up in the regular path needs to
 //! be fed into this hash:
 //!
-//! - Different monomorphizations of the same item have the same path but differ
-//!   in their concrete type parameters, so these parameters are part of the
-//!   data being digested for the symbol hash.
+//! - Different monomorphizations of the same item have the same path but differ in their concrete
+//!   type parameters, so these parameters are part of the data being digested for the symbol hash.
 //!
-//! - Rust allows items to be defined in anonymous scopes, such as in
-//!   `fn foo() { { fn bar() {} } { fn bar() {} } }`. Both `bar` functions have
-//!   the path `foo::bar`, since the anonymous scopes do not contribute to the
-//!   path of an item. The compiler already handles this case via so-called
-//!   disambiguating `DefPaths` which use indices to distinguish items with the
-//!   same name. The DefPaths of the functions above are thus `foo[0]::bar[0]`
-//!   and `foo[0]::bar[1]`. In order to incorporate this disambiguation
-//!   information into the symbol name too, these indices are fed into the
-//!   symbol hash, so that the above two symbols would end up with different
-//!   hash values.
+//! - Rust allows items to be defined in anonymous scopes, such as in `fn foo() { { fn bar() {} } {
+//!   fn bar() {} } }`. Both `bar` functions have the path `foo::bar`, since the anonymous scopes do
+//!   not contribute to the path of an item. The compiler already handles this case via so-called
+//!   disambiguating `DefPaths` which use indices to distinguish items with the same name. The
+//!   DefPaths of the functions above are thus `foo[0]::bar[0]` and `foo[0]::bar[1]`. In order to
+//!   incorporate this disambiguation information into the symbol name too, these indices are fed
+//!   into the symbol hash, so that the above two symbols would end up with different hash values.
 //!
 //! The two measures described above suffice to avoid intra-crate conflicts. In
 //! order to also avoid inter-crate conflicts two more measures are taken:
 //!
-//! - The name of the crate containing the symbol is prepended to the symbol
-//!   name, i.e., symbols are "crate qualified". For example, a function `foo` in
-//!   module `bar` in crate `baz` would get a symbol name like
-//!   `baz::bar::foo::{hash}` instead of just `bar::foo::{hash}`. This avoids
+//! - The name of the crate containing the symbol is prepended to the symbol name, i.e., symbols are
+//!   "crate qualified". For example, a function `foo` in module `bar` in crate `baz` would get a
+//!   symbol name like `baz::bar::foo::{hash}` instead of just `bar::foo::{hash}`. This avoids
 //!   simple conflicts between functions from different crates.
 //!
-//! - In order to be able to also use symbols from two versions of the same
-//!   crate (which naturally also have the same name), a stronger measure is
-//!   required: The compiler accepts an arbitrary "disambiguator" value via the
-//!   `-C metadata` command-line argument. This disambiguator is then fed into
-//!   the symbol hash of every exported item. Consequently, the symbols in two
-//!   identical crates but with different disambiguators are not in conflict
-//!   with each other. This facility is mainly intended to be used by build
-//!   tools like Cargo.
+//! - In order to be able to also use symbols from two versions of the same crate (which naturally
+//!   also have the same name), a stronger measure is required: The compiler accepts an arbitrary
+//!   "disambiguator" value via the `-C metadata` command-line argument. This disambiguator is then
+//!   fed into the symbol hash of every exported item. Consequently, the symbols in two identical
+//!   crates but with different disambiguators are not in conflict with each other. This facility is
+//!   mainly intended to be used by build tools like Cargo.
 //!
 //! A note on symbol name stability
 //! -------------------------------
@@ -194,15 +184,14 @@ fn compute_symbol_name<'tcx>(
     //
     // * This can be overridden with the `#[link_name]` attribute
     //
-    // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the
-    //   same-named symbol when imported from different wasm modules will get
-    //   hooked up incorrectly. As a result foreign symbols, on the wasm target,
-    //   with a wasm import module, get mangled. Additionally our codegen will
-    //   deduplicate symbols based purely on the symbol name, but for wasm this
-    //   isn't quite right because the same-named symbol on wasm can come from
-    //   different modules. For these reasons if `#[link(wasm_import_module)]`
-    //   is present we mangle everything on wasm because the demangled form will
-    //   show up in the `wasm-import-name` custom attribute in LLVM IR.
+    // * On the wasm32 targets there is a bug (or feature) in LLD [1] where the same-named symbol
+    //   when imported from different wasm modules will get hooked up incorrectly. As a result
+    //   foreign symbols, on the wasm target, with a wasm import module, get mangled. Additionally
+    //   our codegen will deduplicate symbols based purely on the symbol name, but for wasm this
+    //   isn't quite right because the same-named symbol on wasm can come from different modules.
+    //   For these reasons if `#[link(wasm_import_module)]` is present we mangle everything on wasm
+    //   because the demangled form will show up in the `wasm-import-name` custom attribute in LLVM
+    //   IR.
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
     if tcx.is_foreign_item(def_id)

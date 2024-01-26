@@ -94,8 +94,8 @@ use std::rc::Rc;
 /// `mbe::TokenTree`, but designed specifically for fast and easy traversal during matching.
 /// Notable differences to `mbe::TokenTree`:
 /// - It is non-recursive, i.e. there is no nesting.
-/// - The end pieces of each sequence (the separator, if present, and the Kleene op) are
-///   represented explicitly, as is the very end of the matcher.
+/// - The end pieces of each sequence (the separator, if present, and the Kleene op) are represented
+///   explicitly, as is the very end of the matcher.
 ///
 /// This means a matcher can be represented by `&[MatcherLoc]`, and traversal mostly involves
 /// simply incrementing the current matcher position index by one.
@@ -564,8 +564,9 @@ impl TtParser {
                             self.bb_mps.push(mp);
                         }
                     } else {
-                        // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually used.
-                        // Both this check and the one in `nameize` are necessary, surprisingly.
+                        // E.g. `$e` instead of `$e:expr`, reported as a hard error if actually
+                        // used. Both this check and the one in `nameize`
+                        // are necessary, surprisingly.
                         return Some(Error(span, "missing fragment specifier".to_string()));
                     }
                 }

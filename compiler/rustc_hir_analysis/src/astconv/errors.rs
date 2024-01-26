@@ -411,10 +411,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
     ) -> ErrorGuaranteed {
-        // FIXME(fmease): This was copied in parts from an old version of `rustc_hir_typeck::method::suggest`.
-        // Either
-        // * update this code by applying changes similar to #106702 or by taking a
-        //   Vec<(DefId, (DefId, DefId), Option<Vec<FulfillmentError<'tcx>>>)> or
+        // FIXME(fmease): This was copied in parts from an old version of
+        // `rustc_hir_typeck::method::suggest`. Either
+        // * update this code by applying changes similar to #106702 or by taking a Vec<(DefId,
+        //   (DefId, DefId), Option<Vec<FulfillmentError<'tcx>>>)> or
         // * deduplicate this code across the two crates.
 
         let tcx = self.tcx();
@@ -528,8 +528,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
 
-        // FIXME(fmease): `rustc_hir_typeck::method::suggest` uses a `skip_list` to filter out some bounds.
-        // I would do the same here if it didn't mean more code duplication.
+        // FIXME(fmease): `rustc_hir_typeck::method::suggest` uses a `skip_list` to filter out some
+        // bounds. I would do the same here if it didn't mean more code duplication.
         let mut bounds: Vec<_> = fulfillment_errors
             .into_iter()
             .map(|error| error.root_obligation.predicate)
@@ -889,7 +889,8 @@ pub(crate) fn fn_trait_to_string(
                 _ => tcx.sess.source_map().span_to_snippet(ty.span),
             }
             .map(|s| {
-                // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
+                // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a
+                // comma
                 if parenthesized || s.is_empty() { format!("({s})") } else { format!("({s},)") }
             })
             .ok(),

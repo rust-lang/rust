@@ -42,8 +42,9 @@ pub struct Std {
     ///
     /// This shouldn't be used from other steps; see the comment on [`Rustc`].
     crates: Interned<Vec<String>>,
-    /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
-    /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
+    /// When using download-rustc, we need to use a new build of `std` for running unit tests of
+    /// Std itself, but we need to use the downloaded copy of std for linking to rustdoc. Allow
+    /// this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
     is_for_mir_opt_tests: bool,
@@ -418,13 +419,14 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
     let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
-        // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce `submodules = false`, so this is a no-op.
-        // But, the user could still decide to manually use an in-tree submodule.
+        // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce
+        // `submodules = false`, so this is a no-op. But, the user could still decide to
+        // manually use an in-tree submodule.
         //
-        // NOTE: if we're using system llvm, we'll end up building a version of `compiler-rt` that doesn't match the LLVM we're linking to.
-        // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
-        // the compiler_builtins build script that makes me nervous, though:
-        // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
+        // NOTE: if we're using system llvm, we'll end up building a version of `compiler-rt` that
+        // doesn't match the LLVM we're linking to. That's probably ok? At least, the
+        // difference wasn't enforced before. There's a comment in the compiler_builtins
+        // build script that makes me nervous, though: https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
         builder.update_submodule(&Path::new("src").join("llvm-project"));
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
         if !compiler_builtins_root.exists() {
@@ -568,9 +570,11 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
 
-        // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::Crate`.
+        // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the
+        // same check in `test::Crate`.
         let (libdir, hostdir) = if self.force_recompile && builder.download_rustc() {
-            // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
+            // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile`
+            // argument there too
             let lib = builder.sysroot_libdir_relative(self.compiler);
             let sysroot = builder.ensure(crate::core::build_steps::compile::Sysroot {
                 compiler: self.compiler,
@@ -810,8 +814,9 @@ impl Step for Rustc {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut crates = run.builder.in_tree_crates("rustc-main", None);
         for (i, krate) in crates.iter().enumerate() {
-            // We can't allow `build rustc` as an alias for this Step, because that's reserved by `Assemble`.
-            // Ideally Assemble would use `build compiler` instead, but that seems too confusing to be worth the breaking change.
+            // We can't allow `build rustc` as an alias for this Step, because that's reserved by
+            // `Assemble`. Ideally Assemble would use `build compiler` instead, but that
+            // seems too confusing to be worth the breaking change.
             if krate.name == "rustc-main" {
                 crates.swap_remove(i);
                 break;
@@ -842,7 +847,8 @@ impl Step for Rustc {
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
-            // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps tests).
+            // NOTE: this path is only taken for tools linking to rustc-dev (including ui-fulldeps
+            // tests).
             cp_rustc_component_to_ci_sysroot(
                 builder,
                 compiler,
@@ -1091,7 +1097,8 @@ pub fn rustc_cargo_env(
     if builder.config.llvm_enabled() {
         let building_is_expensive =
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).is_err();
-        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
+        // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1
+        // compiler
         let can_skip_build = builder.kind == Kind::Check && builder.top_stage == stage;
         let should_skip_build = building_is_expensive && can_skip_build;
         if !should_skip_build {
@@ -1497,14 +1504,16 @@ impl Step for Sysroot {
             dist::maybe_install_llvm_target(builder, compiler.host, &sysroot);
         }
 
-        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages
+        // other than 0.
         if builder.download_rustc() && compiler.stage != 0 {
             assert_eq!(
                 builder.config.build, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
 
-            // #102002, cleanup old toolchain folders when using download-rustc so people don't use them by accident.
+            // #102002, cleanup old toolchain folders when using download-rustc so people don't use
+            // them by accident.
             for stage in 0..=2 {
                 if stage != compiler.stage {
                     let dir = sysroot_dir(stage);
@@ -1515,12 +1524,13 @@ impl Step for Sysroot {
             }
 
             // Copy the compiler into the correct sysroot.
-            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're requested with `builder.ensure(Rustc)`.
-            // This fixes an issue where we'd have multiple copies of libc in the sysroot with no way to tell which to load.
+            // NOTE(#108767): We intentionally don't copy `rustc-dev` artifacts until they're
+            // requested with `builder.ensure(Rustc)`. This fixes an issue where we'd
+            // have multiple copies of libc in the sysroot with no way to tell which to load.
             // There are a few quirks of bootstrap that interact to make this reliable:
             // 1. The order `Step`s are run is hard-coded in `builder.rs` and not configurable. This
-            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter to
-            //    fail because of duplicate metadata.
+            //    avoids e.g. reordering `test::UiFulldeps` before `test::Ui` and causing the latter
+            //    to fail because of duplicate metadata.
             // 2. The sysroot is deleted and recreated between each invocation, so running `x test
             //    ui-fulldeps && x test ui` can't cause failures.
             let mut filtered_files = Vec::new();
@@ -1541,7 +1551,8 @@ impl Step for Sysroot {
             let filtered_extensions = [
                 OsStr::new("rmeta"),
                 OsStr::new("rlib"),
-                // FIXME: this is wrong when compiler.host != build, but we don't support that today
+                // FIXME: this is wrong when compiler.host != build, but we don't support that
+                // today
                 OsStr::new(std::env::consts::DLL_EXTENSION),
             ];
             let ci_rustc_dir = builder.config.ci_rustc_dir();
@@ -1657,7 +1668,8 @@ impl Step for Assemble {
         //        use that to bootstrap this compiler forward.
         let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
-        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages
+        // other than 0.
         if builder.download_rustc() {
             let sysroot =
                 builder.ensure(Sysroot { compiler: target_compiler, force_recompile: false });
@@ -1679,8 +1691,8 @@ impl Step for Assemble {
         builder.ensure(Rustc::new(build_compiler, target_compiler.host));
 
         // FIXME: For now patch over problems noted in #90244 by early returning here, even though
-        // we've not properly assembled the target sysroot. A full fix is pending further investigation,
-        // for now full bootstrap usage is rare enough that this is OK.
+        // we've not properly assembled the target sysroot. A full fix is pending further
+        // investigation, for now full bootstrap usage is rare enough that this is OK.
         if target_compiler.stage >= 3 && !builder.config.full_bootstrap {
             return target_compiler;
         }

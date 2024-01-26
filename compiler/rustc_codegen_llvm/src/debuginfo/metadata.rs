@@ -571,15 +571,18 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
                         // If the compiler's working directory (which also is the DW_AT_comp_dir of
                         // the compilation unit) is a prefix of the path we are about to emit, then
                         // only emit the part relative to the working directory.
-                        // Because of path remapping we sometimes see strange things here: `abs_path`
-                        // might actually look like a relative path
-                        // (e.g. `<crate-name-and-version>/src/lib.rs`), so if we emit it without
-                        // taking the working directory into account, downstream tooling will
-                        // interpret it as `<working-directory>/<crate-name-and-version>/src/lib.rs`,
-                        // which makes no sense. Usually in such cases the working directory will also
-                        // be remapped to `<crate-name-and-version>` or some other prefix of the path
-                        // we are remapping, so we end up with
-                        // `<crate-name-and-version>/<crate-name-and-version>/src/lib.rs`.
+                        // Because of path remapping we sometimes see strange things here:
+                        // `abs_path` might actually look like a relative
+                        // path (e.g. `<crate-name-and-version>/src/lib.
+                        // rs`), so if we emit it without taking the working
+                        // directory into account, downstream tooling will
+                        // interpret it as
+                        // `<working-directory>/<crate-name-and-version>/src/lib.rs`,
+                        // which makes no sense. Usually in such cases the working directory will
+                        // also be remapped to `<crate-name-and-version>` or
+                        // some other prefix of the path we are remapping,
+                        // so we end up with `<crate-name-and-version>/
+                        // <crate-name-and-version>/src/lib.rs`.
                         // By moving the working directory portion into the `directory` part of the
                         // DIFile, we allow LLVM to emit just the relative path for DWARF, while
                         // still emitting the correct absolute path for CodeView.

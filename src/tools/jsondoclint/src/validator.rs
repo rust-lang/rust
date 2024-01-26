@@ -17,11 +17,11 @@ const LOCAL_CRATE_ID: u32 = 0;
 /// The Validator walks over the JSON tree, and ensures it is well formed.
 /// It is made of several parts.
 ///
-/// - `check_*`: These take a type from [`rustdoc_json_types`], and check that
-///              it is well formed. This involves calling `check_*` functions on
-///              fields of that item, and `add_*` functions on [`Id`]s.
-/// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if
-///            the `Id` is a kind expected in this suituation.
+/// - `check_*`: These take a type from [`rustdoc_json_types`], and check that it is well formed.
+///   This involves calling `check_*` functions on fields of that item, and `add_*` functions on
+///   [`Id`]s.
+/// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if the `Id` is a
+///   kind expected in this suituation.
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
@@ -393,8 +393,8 @@ impl<'a> Validator<'a> {
     }
 
     fn check_item_info(&mut self, id: &Id, item_info: &ItemSummary) {
-        // FIXME: Their should be a better way to determine if an item is local, rather than relying on `LOCAL_CRATE_ID`,
-        // which encodes rustc implementation details.
+        // FIXME: Their should be a better way to determine if an item is local, rather than relying
+        // on `LOCAL_CRATE_ID`, which encodes rustc implementation details.
         if item_info.crate_id == LOCAL_CRATE_ID && !self.krate.index.contains_key(id) {
             self.errs.push(Error {
                 id: id.clone(),

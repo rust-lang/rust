@@ -1,7 +1,7 @@
 //! An immutable, owned value (except for interior mutability).
 //!
-//! The purpose of `Frozen` is to make a value immutable for the sake of defensive programming. For example,
-//! suppose we have the following:
+//! The purpose of `Frozen` is to make a value immutable for the sake of defensive programming. For
+//! example, suppose we have the following:
 //!
 //! ```rust
 //! struct Bar { /* some data */ }
@@ -43,7 +43,7 @@
 //!
 //! - `Frozen` doesn't try to defend against interior mutability (e.g. `Frozen<RefCell<Bar>>`).
 //! - `Frozen` doesn't pin it's contents (e.g. one could still do `foo.computed =
-//!    Frozen::freeze(new_bar)`).
+//!   Frozen::freeze(new_bar)`).
 
 /// An owned immutable value.
 #[derive(Debug)]

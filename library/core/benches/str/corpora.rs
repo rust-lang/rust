@@ -7,8 +7,8 @@
 //! - The `SMALL` string is generally around 30-40 bytes.
 //! - The `MEDIUM` string is generally around 600-700 bytes.
 //! - The `LARGE` string is the `MEDIUM` string repeated 8x, and is around 5kb.
-//! - The `HUGE` string is the `LARGE` string repeated 8x (or the `MEDIUM`
-//!   string repeated 64x), and is around 40kb.
+//! - The `HUGE` string is the `LARGE` string repeated 8x (or the `MEDIUM` string repeated 64x), and
+//!   is around 40kb.
 //!
 //! Except for `mod emoji` (which is just a bunch of emoji), the strings were
 //! pulled from (localizations of) rust-lang.org.

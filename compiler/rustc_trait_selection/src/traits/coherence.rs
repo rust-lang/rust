@@ -357,8 +357,8 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative predicates
-    // do not need intercrate mode enabled.
+    // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative
+    // predicates do not need intercrate mode enabled.
     let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
@@ -627,28 +627,25 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///
-/// 1. Order the parameters in the trait-ref in subst order - Self first,
-///    others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
-/// 2. Of these type parameters, there is at least one type parameter
-///    in which, walking the type as a tree, you can reach a type local
-///    to C where all types in-between are fundamental types. Call the
-///    first such parameter the "local key parameter".
-///     - e.g., `Box<LocalType>` is OK, because you can visit LocalType
-///       going through `Box`, which is fundamental.
-///     - similarly, `FundamentalPair<Vec<()>, Box<LocalType>>` is OK for
-///       the same reason.
-///     - but (knowing that `Vec<T>` is non-fundamental, and assuming it's
-///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
-///       the local type and the type parameter.
-/// 3. Before this local type, no generic type parameter of the impl must
-///    be reachable through fundamental types.
+/// 1. Order the parameters in the trait-ref in subst order - Self first, others linearly (e.g., `<U
+///    as Foo<V, W>>` is U < V < W).
+/// 2. Of these type parameters, there is at least one type parameter in which, walking the type as
+///    a tree, you can reach a type local to C where all types in-between are fundamental types.
+///    Call the first such parameter the "local key parameter".
+///     - e.g., `Box<LocalType>` is OK, because you can visit LocalType going through `Box`, which
+///       is fundamental.
+///     - similarly, `FundamentalPair<Vec<()>, Box<LocalType>>` is OK for the same reason.
+///     - but (knowing that `Vec<T>` is non-fundamental, and assuming it's not local),
+///       `Vec<LocalType>` is bad, because `Vec<->` is between the local type and the type
+///       parameter.
+/// 3. Before this local type, no generic type parameter of the impl must be reachable through
+///    fundamental types.
 ///     - e.g. `impl<T> Trait<LocalType> for Vec<T>` is fine, as `Vec` is not fundamental.
-///     - while `impl<T> Trait<LocalType> for Box<T>` results in an error, as `T` is
-///       reachable through the fundamental type `Box`.
-/// 4. Every type in the local key parameter not known in C, going
-///    through the parameter's type tree, must appear only as a subtree of
-///    a type local to C, with only fundamental types between the type
-///    local to C and the local key parameter.
+///     - while `impl<T> Trait<LocalType> for Box<T>` results in an error, as `T` is reachable
+///       through the fundamental type `Box`.
+/// 4. Every type in the local key parameter not known in C, going through the parameter's type
+///    tree, must appear only as a subtree of a type local to C, with only fundamental types between
+///    the type local to C and the local key parameter.
 ///     - e.g., `Vec<LocalType<T>>>` (or equivalently `Box<Vec<LocalType<T>>>`)
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
@@ -660,35 +657,30 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// The orphan rules actually serve several different purposes:
 ///
-/// 1. They enable link-safety - i.e., 2 mutually-unknowing crates (where
-///    every type local to one crate is unknown in the other) can't implement
-///    the same trait-ref. This follows because it can be seen that no such
-///    type can orphan-check in 2 such crates.
+/// 1. They enable link-safety - i.e., 2 mutually-unknowing crates (where every type local to one
+///    crate is unknown in the other) can't implement the same trait-ref. This follows because it
+///    can be seen that no such type can orphan-check in 2 such crates.
 ///
 ///    To check that a local impl follows the orphan rules, we check it in
 ///    InCrate::Local mode, using type parameters for the "generic" types.
 ///
-/// 2. They ground negative reasoning for coherence. If a user wants to
-///    write both a conditional blanket impl and a specific impl, we need to
-///    make sure they do not overlap. For example, if we write
-///    ```ignore (illustrative)
-///    impl<T> IntoIterator for Vec<T>
-///    impl<T: Iterator> IntoIterator for T
-///    ```
-///    We need to be able to prove that `Vec<$0>: !Iterator` for every type $0.
-///    We can observe that this holds in the current crate, but we need to make
-///    sure this will also hold in all unknown crates (both "independent" crates,
-///    which we need for link-safety, and also child crates, because we don't want
-///    child crates to get error for impl conflicts in a *dependency*).
+/// 2. They ground negative reasoning for coherence. If a user wants to write both a conditional
+///    blanket impl and a specific impl, we need to make sure they do not overlap. For example, if
+///    we write ```ignore (illustrative) impl<T> IntoIterator for Vec<T> impl<T: Iterator>
+///    IntoIterator for T ``` We need to be able to prove that `Vec<$0>: !Iterator` for every type
+///    $0. We can observe that this holds in the current crate, but we need to make sure this will
+///    also hold in all unknown crates (both "independent" crates, which we need for link-safety,
+///    and also child crates, because we don't want child crates to get error for impl conflicts in
+///    a *dependency*).
 ///
 ///    For that, we only allow negative reasoning if, for every assignment to the
 ///    inference variables, every unknown crate would get an orphan error if they
 ///    try to implement this trait-ref. To check for this, we use InCrate::Remote
 ///    mode. That is sound because we already know all the impls from known crates.
 ///
-/// 3. For non-`#[fundamental]` traits, they guarantee that parent crates can
-///    add "non-blanket" impls without breaking negative reasoning in dependent
-///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
+/// 3. For non-`#[fundamental]` traits, they guarantee that parent crates can add "non-blanket"
+///    impls without breaking negative reasoning in dependent crates. This is the "rebalancing
+///    coherence" (RFC 1023) restriction.
 ///
 ///    For that, we only a allow crate to perform negative reasoning on
 ///    non-local-non-`#[fundamental]` only if there's a local key parameter as per (2).
@@ -1037,7 +1029,8 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
                         Ok(Ok(())) => warn!("expected an unknowable trait ref: {trait_ref:?}"),
                         Ok(Err(conflict)) => {
                             if !trait_ref.references_error() {
-                                // Normalize the trait ref for diagnostics, ignoring any errors if this fails.
+                                // Normalize the trait ref for diagnostics, ignoring any errors if
+                                // this fails.
                                 let trait_ref =
                                     deeply_normalize_for_diagnostics(infcx, param_env, trait_ref);
 

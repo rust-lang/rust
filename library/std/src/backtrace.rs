@@ -38,15 +38,13 @@
 //! The `Backtrace::capture` function might not actually capture a backtrace by
 //! default. Its behavior is governed by two environment variables:
 //!
-//! * `RUST_LIB_BACKTRACE` - if this is set to `0` then `Backtrace::capture`
-//!   will never capture a backtrace. Any other value set will enable
-//!   `Backtrace::capture`.
+//! * `RUST_LIB_BACKTRACE` - if this is set to `0` then `Backtrace::capture` will never capture a
+//!   backtrace. Any other value set will enable `Backtrace::capture`.
 //!
-//! * `RUST_BACKTRACE` - if `RUST_LIB_BACKTRACE` is not set, then this variable
-//!   is consulted with the same rules of `RUST_LIB_BACKTRACE`.
+//! * `RUST_BACKTRACE` - if `RUST_LIB_BACKTRACE` is not set, then this variable is consulted with
+//!   the same rules of `RUST_LIB_BACKTRACE`.
 //!
-//! * If neither of the above env vars are set, then `Backtrace::capture` will
-//!   be disabled.
+//! * If neither of the above env vars are set, then `Backtrace::capture` will be disabled.
 //!
 //! Capturing a backtrace can be a quite expensive runtime operation, so the
 //! environment variables allow either forcibly disabling this runtime

@@ -154,9 +154,8 @@ impl Step for ToolStateCheck {
     ///   NOTE: There is intent to change this, see
     ///   <https://github.com/rust-lang/rust/issues/65000>.
     /// * All "stable" tools must be test-pass on the stable or beta branches.
-    /// * During beta promotion week, a PR is not allowed to "regress" a
-    ///   stable tool. That is, the status is not allowed to get worse
-    ///   (test-pass to test-fail or build-fail).
+    /// * During beta promotion week, a PR is not allowed to "regress" a stable tool. That is, the
+    ///   status is not allowed to get worse (test-pass to test-fail or build-fail).
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run() {
             return;
@@ -366,13 +365,12 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///
 ///   1. Generate a new Personal access token:
 ///
-///       * Login to the bot account, and go to Settings -> Developer settings ->
-///           Personal access tokens
+///       * Login to the bot account, and go to Settings -> Developer settings -> Personal access
+///         tokens
 ///       * Click "Generate new token"
 ///       * Enable the "public_repo" permission, then click "Generate token"
-///       * Copy the generated token (should be a 40-digit hexadecimal number).
-///           Save it somewhere secure, as the token would be gone once you leave
-///           the page.
+///       * Copy the generated token (should be a 40-digit hexadecimal number). Save it somewhere
+///         secure, as the token would be gone once you leave the page.
 ///
 ///   2. Update the variable group in Azure Pipelines
 ///
@@ -380,8 +378,8 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///
 ///   4. Replace the email address below if the bot account identity is changed
 ///
-///       * See <https://help.github.com/articles/about-commit-email-addresses/>
-///           if a private email by GitHub is wanted.
+///       * See <https://help.github.com/articles/about-commit-email-addresses/> if a private email
+///         by GitHub is wanted.
 fn commit_toolstate_change(current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;

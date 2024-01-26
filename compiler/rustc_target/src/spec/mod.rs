@@ -500,8 +500,8 @@ impl ToJson for LinkerFlavorCli {
 
 /// The different `-Clink-self-contained` options that can be specified in a target spec:
 /// - enabling or disabling in bulk
-/// - some target-specific pieces of inference to determine whether to use self-contained linking
-///   if `-Clink-self-contained` is not specified explicitly (e.g. on musl/mingw)
+/// - some target-specific pieces of inference to determine whether to use self-contained linking if
+///   `-Clink-self-contained` is not specified explicitly (e.g. on musl/mingw)
 /// - explicitly enabling some of the self-contained linking components, e.g. the linker component
 ///   to use `rust-lld`
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1820,8 +1820,8 @@ pub struct TargetOptions {
     pub os: StaticCow<str>,
     /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
     pub env: StaticCow<str>,
-    /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
-    /// or `"eabihf"`. Defaults to "".
+    /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance,
+    /// `"eabi"` or `"eabihf"`. Defaults to "".
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: StaticCow<str>,
@@ -1948,8 +1948,8 @@ pub struct TargetOptions {
     pub is_like_windows: bool,
     /// Whether the target is like MSVC.
     /// This is a combination of several more specific properties represented as a single flag:
-    ///   - The target has all the properties from `is_like_windows`
-    ///     (for in-tree targets "is_like_msvc ⇒ is_like_windows" is ensured by a unit test),
+    ///   - The target has all the properties from `is_like_windows` (for in-tree targets
+    ///     "is_like_msvc ⇒ is_like_windows" is ensured by a unit test),
     ///   - has some MSVC-specific Windows ABI properties,
     ///   - uses a link.exe-like linker,
     ///   - uses CodeView/PDB for debuginfo and natvis for its visualization,

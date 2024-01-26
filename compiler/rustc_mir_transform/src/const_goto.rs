@@ -96,8 +96,9 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                 if discr.place() == Some(*place) {
                     let switch_ty = place.ty(self.body.local_decls(), self.tcx).ty;
                     debug_assert_eq!(switch_ty, _const.ty());
-                    // We now know that the Switch matches on the const place, and it is statementless
-                    // Now find which value in the Switch matches the const value.
+                    // We now know that the Switch matches on the const place, and it is
+                    // statementless Now find which value in the Switch matches
+                    // the const value.
                     let const_value = _const.const_.try_eval_bits(self.tcx, self.param_env)?;
                     let target_to_use_in_goto = targets.target_for_value(const_value);
                     self.optimizations.push(OptimizationToApply {

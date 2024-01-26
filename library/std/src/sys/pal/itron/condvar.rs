@@ -166,13 +166,12 @@ mod waiter_queue {
 
         /// # Safety
         ///
-        ///  - The caller must own `*waiter_ptr`. The caller will lose the
-        ///    ownership until `*waiter_ptr` is removed from `self`.
+        ///  - The caller must own `*waiter_ptr`. The caller will lose the ownership until
+        ///    `*waiter_ptr` is removed from `self`.
         ///
         ///  - `*waiter_ptr` must be valid until it's removed from the queue.
         ///
         ///  - `*waiter_ptr` must not have been previously inserted to a `WaiterQueue`.
-        ///
         pub unsafe fn insert(&mut self, mut waiter_ptr: NonNull<Waiter>) {
             unsafe {
                 let waiter = waiter_ptr.as_mut();

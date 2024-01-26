@@ -132,10 +132,9 @@ unsafe impl Allocator for ConstAllocator {
             let new_size = new_layout.size();
             let raw_ptr = new_ptr.as_mut_ptr();
             // Safety:
-            // - `grow` returned Ok, so the returned pointer must be valid for
-            //   `new_size` bytes
-            // - `new_size` must be larger than `old_size`, which is an
-            //   invariant which must be upheld by callers.
+            // - `grow` returned Ok, so the returned pointer must be valid for `new_size` bytes
+            // - `new_size` must be larger than `old_size`, which is an invariant which must be
+            //   upheld by callers.
             unsafe {
                 raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
             }

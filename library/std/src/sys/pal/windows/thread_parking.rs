@@ -35,22 +35,18 @@
 // different implementations.
 //
 // Unfortunately, NT Keyed Events are an undocumented Windows API. However:
-// - This API is relatively simple with obvious behaviour, and there are
-//   several (unofficial) articles documenting the details. [1]
-// - `parking_lot` has been using this API for years (on Windows versions
-//   before Windows 8). [2] Many big projects extensively use parking_lot,
-//   such as servo and the Rust compiler itself.
-// - It is the underlying API used by Windows SRW locks and Windows critical
-//   sections. [3] [4]
-// - The source code of the implementations of Wine, ReactOs, and Windows XP
-//   are available and match the expected behaviour.
-// - The main risk with an undocumented API is that it might change in the
-//   future. But since we only use it for older versions of Windows, that's not
-//   a problem.
-// - Even if these functions do not block or wake as we expect (which is
-//   unlikely, see all previous points), this implementation would still be
-//   memory safe. The NT Keyed Events API is only used to sleep/block in the
-//   right place.
+// - This API is relatively simple with obvious behaviour, and there are several (unofficial)
+//   articles documenting the details. [1]
+// - `parking_lot` has been using this API for years (on Windows versions before Windows 8). [2]
+//   Many big projects extensively use parking_lot, such as servo and the Rust compiler itself.
+// - It is the underlying API used by Windows SRW locks and Windows critical sections. [3] [4]
+// - The source code of the implementations of Wine, ReactOs, and Windows XP are available and match
+//   the expected behaviour.
+// - The main risk with an undocumented API is that it might change in the future. But since we only
+//   use it for older versions of Windows, that's not a problem.
+// - Even if these functions do not block or wake as we expect (which is unlikely, see all previous
+//   points), this implementation would still be memory safe. The NT Keyed Events API is only used
+//   to sleep/block in the right place.
 //
 // [1]: http://www.locklessinc.com/articles/keyed_events/
 // [2]: https://github.com/Amanieu/parking_lot/commit/43abbc964e

@@ -80,8 +80,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
     // need to round down.
     //
     // This will only occur if:
-    //  1. The lower 64 bits of the 128-bit representation is 0.
-    //      IE, 5^q fits in single 64-bit word.
+    //  1. The lower 64 bits of the 128-bit representation is 0. IE, 5^q fits in single 64-bit word.
     //  2. The least-significant bit prior to truncated mantissa is odd.
     //  3. All the bits truncated when shifting to mantissa bits + 1 are 0.
     //

@@ -56,7 +56,8 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         // Generating partially-uninit consts is limited to small numbers of chunks,
         // to avoid the cost of generating large complex const expressions.
         // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
-        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
+        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times...
+        // }`.
         let max = cx.sess().opts.unstable_opts.uninit_const_chunk_threshold;
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
@@ -529,8 +530,8 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
                 // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
-                // so we don't need to take care of it here.
+                // that check happens when assigning the `CodegenFnAttrFlags` in
+                // `rustc_hir_analysis`, so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {

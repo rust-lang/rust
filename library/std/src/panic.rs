@@ -284,8 +284,7 @@ pub fn set_backtrace_style(style: BacktraceStyle) {
 /// * `0` for `BacktraceStyle::Off`
 /// * `full` for `BacktraceStyle::Full`
 /// * `1` for `BacktraceStyle::Short`
-/// * Other values are currently `BacktraceStyle::Short`, but this may change in
-///   the future
+/// * Other values are currently `BacktraceStyle::Short`, but this may change in the future
 ///
 /// Returns `None` if backtraces aren't currently supported.
 #[unstable(feature = "panic_backtrace_config", issue = "93346")]

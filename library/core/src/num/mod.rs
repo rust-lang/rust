@@ -1117,7 +1117,8 @@ impl u16 {
     widening_impl! { u16, u32, 16, unsigned }
     midpoint_impl! { u16, u32, unsigned }
 
-    /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
+    /// Checks if the value is a Unicode surrogate code point, which are disallowed values for
+    /// [`char`].
     ///
     /// # Examples
     ///
@@ -1471,9 +1472,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
         // above is a faster (conservative) approximation of this.
         //
-        // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
-        // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
-        // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
+        // Consider radix 16 as it has the highest information density per digit and will thus
+        // overflow the earliest: `u8::MAX` is `ff` - any str of len 2 is guaranteed to not
+        // overflow. `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
         macro_rules! run_unchecked_loop {
             ($unchecked_additive_op:expr) => {
                 for &c in digits {

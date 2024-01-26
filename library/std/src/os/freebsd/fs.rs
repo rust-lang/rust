@@ -74,8 +74,8 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        // The methods below use libc::stat, so they work fine when libc is built with FreeBSD 12 ABI.
-        // This method would just return nonsense.
+        // The methods below use libc::stat, so they work fine when libc is built with FreeBSD 12
+        // ABI. This method would just return nonsense.
         panic!("as_raw_stat not supported with FreeBSD 12 ABI");
     }
     fn st_dev(&self) -> u64 {

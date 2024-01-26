@@ -371,8 +371,9 @@ enum NestedMacroState {
     MacroRules,
     /// The tokens `macro_rules!` were processed.
     MacroRulesNot,
-    /// The tokens `macro_rules!` followed by a name were processed. The name may be either directly
-    /// an identifier or a meta-variable (that hopefully would be instantiated by an identifier).
+    /// The tokens `macro_rules!` followed by a name were processed. The name may be either
+    /// directly an identifier or a meta-variable (that hopefully would be instantiated by an
+    /// identifier).
     MacroRulesNotName,
     /// The keyword `macro` was processed.
     Macro,
@@ -541,9 +542,9 @@ fn check_nested_macro(
         let mut binders = Binders::default();
         check_binders(sess, node_id, lhs, macros, &mut binders, &Stack::Empty, valid);
         check_occurrences(sess, node_id, rhs, macros, &binders, &Stack::Empty, valid);
-        // Since the last semicolon is optional for `macro_rules` macros and decl_macro are not terminated,
-        // we increment our checked position by how many token trees we already checked (the 3
-        // above) before checking for the separator.
+        // Since the last semicolon is optional for `macro_rules` macros and decl_macro are not
+        // terminated, we increment our checked position by how many token trees we already
+        // checked (the 3 above) before checking for the separator.
         i += 3;
         if i == n || !tts[i].is_token(&separator) {
             break;

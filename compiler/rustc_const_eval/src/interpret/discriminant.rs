@@ -106,10 +106,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("discriminant type: {:?}", discr_layout.ty);
 
         // We use "discriminant" to refer to the value associated with a particular enum variant.
-        // This is not to be confused with its "variant index", which is just determining its position in the
-        // declared list of variants -- they can differ with explicitly assigned discriminants.
-        // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
-        // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
+        // This is not to be confused with its "variant index", which is just determining its
+        // position in the declared list of variants -- they can differ with explicitly
+        // assigned discriminants. We use "tag" to refer to how the discriminant is encoded
+        // in memory, which can be either straight-forward (`TagEncoding::Direct`) or with a
+        // niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
             Variants::Single { index } => {
                 // Do some extra checks on enums.
@@ -120,8 +121,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
                     // For consistency with `write_discriminant`, and to make sure that
-                    // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
-                    // for uninhabited variants.
+                    // `project_downcast` cannot fail due to strange layouts, we declare immediate
+                    // UB for uninhabited variants.
                     if op.layout().for_variant(self, index).abi.is_uninhabited() {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
@@ -137,10 +138,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // - The discriminant has a type for typechecking. This is `discr_layout`, and is used for
         //   the `Scalar` we return.
         // - The tag (encoded discriminant) has layout `tag_layout`. This is always an integer type,
-        //   and used to interpret the value we read from the tag field.
-        //   For the return value, a cast to `discr_layout` is performed.
-        // - The field storing the tag has a layout, which is very similar to `tag_layout` but
-        //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
+        //   and used to interpret the value we read from the tag field. For the return value, a
+        //   cast to `discr_layout` is performed.
+        // - The field storing the tag has a layout, which is very similar to `tag_layout` but may
+        //   be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
 
         // Get layout for tag.
         let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
@@ -236,7 +237,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 variant
             }
         };
-        // For consistency with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
+        // For consistency with `write_discriminant`, and to make sure that `project_downcast`
+        // cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
         if op.layout().for_variant(self, index).abi.is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantRead(index))
         }

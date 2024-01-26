@@ -373,11 +373,10 @@ impl Drop for Guard<'_> {
 //
 // The unsafety in this function is twofold:
 //
-// 1. We're looking at the raw bytes of `buf`, so we take on the burden of UTF-8
-//    checks.
-// 2. We're passing a raw buffer to the function `f`, and it is expected that
-//    the function only *appends* bytes to the buffer. We'll get undefined
-//    behavior if existing bytes are overwritten to have non-UTF-8 data.
+// 1. We're looking at the raw bytes of `buf`, so we take on the burden of UTF-8 checks.
+// 2. We're passing a raw buffer to the function `f`, and it is expected that the function only
+//    *appends* bytes to the buffer. We'll get undefined behavior if existing bytes are overwritten
+//    to have non-UTF-8 data.
 pub(crate) unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
@@ -401,11 +400,13 @@ where
 //
 // - avoid allocating unless necessary
 // - avoid overallocating if we know the exact size (#89165)
-// - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
-// - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
-// - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
-//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur initialization cost
-//   proportional to buffer size (#110650)
+// - avoid passing large buffers to readers that always initialize the free capacity if they perform
+//   short reads (#23815, #23820)
+// - pass large buffers to readers that do not initialize the spare capacity. this can amortize
+//   per-call overheads
+// - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they
+//   manage to suffer from both problems at the same time, i.e. small reads suffer from syscall
+//   overhead, all reads incur initialization cost proportional to buffer size (#110650)
 //
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     r: &mut R,
@@ -671,14 +672,12 @@ pub trait Read {
     /// that the buffer `buf` has been filled in with `n` bytes of data from this
     /// source. If `n` is `0`, then it can indicate one of two scenarios:
     ///
-    /// 1. This reader has reached its "end of file" and will likely no longer
-    ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes. As an example,
-    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
-    ///    where returning zero indicates the connection was shut down correctly. While
-    ///    for [`File`], it is possible to reach the end of file and get zero as result,
-    ///    but if more data is appended to the file, future calls to `read` will return
-    ///    more data.
+    /// 1. This reader has reached its "end of file" and will likely no longer be able to produce
+    ///    bytes. Note that this does not mean that the reader will *always* no longer be able to
+    ///    produce bytes. As an example, on Linux, this method will call the `recv` syscall for a
+    ///    [`TcpStream`], where returning zero indicates the connection was shut down correctly.
+    ///    While for [`File`], it is possible to reach the end of file and get zero as result, but
+    ///    if more data is appended to the file, future calls to `read` will return more data.
     /// 2. The buffer specified was 0 bytes in length.
     ///
     /// It is not an error if the returned value `n` is smaller than the buffer size,
@@ -920,8 +919,9 @@ pub trait Read {
 
     /// Pull some bytes from this source into the specified buffer.
     ///
-    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
-    /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
+    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a
+    /// [`BorrowedCursor`] rather than `[u8]` to allow use with uninitialized buffers. The new
+    /// data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
@@ -1465,12 +1465,11 @@ impl<'a> Deref for IoSlice<'a> {
 ///
 /// Writers are defined by two required methods, [`write`] and [`flush`]:
 ///
-/// * The [`write`] method will attempt to write some data into the object,
-///   returning how many bytes were successfully written.
+/// * The [`write`] method will attempt to write some data into the object, returning how many bytes
+///   were successfully written.
 ///
-/// * The [`flush`] method is useful for adapters and explicit buffers
-///   themselves for ensuring that all buffered data has been pushed out to the
-///   'true sink'.
+/// * The [`flush`] method is useful for adapters and explicit buffers themselves for ensuring that
+///   all buffered data has been pushed out to the 'true sink'.
 ///
 /// Writers are intended to be composable with one another. Many implementors
 /// throughout [`std::io`] take and provide types which implement the `Write`

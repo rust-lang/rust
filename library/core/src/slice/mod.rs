@@ -577,10 +577,10 @@ impl<T> [T] {
     /// Returns a reference to an element or subslice depending on the type of
     /// index.
     ///
-    /// - If given a position, returns a reference to the element at that
-    ///   position or `None` if out of bounds.
-    /// - If given a range, returns the subslice corresponding to that range,
-    ///   or `None` if out of bounds.
+    /// - If given a position, returns a reference to the element at that position or `None` if out
+    ///   of bounds.
+    /// - If given a range, returns the subslice corresponding to that range, or `None` if out of
+    ///   bounds.
     ///
     /// # Examples
     ///
@@ -810,19 +810,18 @@ impl<T> [T] {
         let start = self.as_ptr();
         // SAFETY: The `add` here is safe, because:
         //
-        //   - Both pointers are part of the same object, as pointing directly
-        //     past the object also counts.
+        //   - Both pointers are part of the same object, as pointing directly past the object also
+        //     counts.
         //
-        //   - The size of the slice is never larger than isize::MAX bytes, as
-        //     noted here:
+        //   - The size of the slice is never larger than isize::MAX bytes, as noted here:
         //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
         //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
         //       - https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html#safety
         //     (This doesn't seem normative yet, but the very same assumption is
         //     made in many places, including the Index implementation of slices.)
         //
-        //   - There is no wrapping around involved, as slices do not wrap past
-        //     the end of the address space.
+        //   - There is no wrapping around involved, as slices do not wrap past the end of the
+        //     address space.
         //
         // See the documentation of pointer::add.
         let end = unsafe { start.add(self.len()) };
@@ -1412,8 +1411,10 @@ impl<T> [T] {
     /// assert_eq!(slice, &['L', 'o', 'r', 'a', 'x', '?']);
     ///
     /// // These would be unsound:
-    /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
+    /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is
+    ///                                                               not a multiple of 5
+    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks
+    ///                                                               are never allowed
     /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
@@ -2360,7 +2361,6 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
     /// ```
-    ///
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
     pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, T, F>
@@ -3012,8 +3012,8 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and *O*(*m* \* *n* \* log(*n*)) worst-case, where the key function is
-    /// *O*(*m*).
+    /// (i.e., does not allocate), and *O*(*m* \* *n* \* log(*n*)) worst-case, where the key
+    /// function is *O*(*m*).
     ///
     /// # Current implementation
     ///
@@ -3057,14 +3057,15 @@ impl<T> [T] {
     ///
     /// It returns a triplet of the following from the reordered slice:
     /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
-    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
-    /// and greater-than-or-equal-to the value of the element at `index`.
+    /// accordingly, the values in those two subslices will respectively all be
+    /// less-than-or-equal-to and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort,
+    /// which is also the basis for [`sort_unstable`]. The fallback algorithm is Median of
+    /// Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime for
+    /// all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3108,14 +3109,15 @@ impl<T> [T] {
     /// It returns a triplet of the following from
     /// the slice reordered according to the provided comparator function: the subslice prior to
     /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
-    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
-    /// the value of the element at `index`.
+    /// those two subslices will respectively all be less-than-or-equal-to and
+    /// greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort,
+    /// which is also the basis for [`sort_unstable`]. The fallback algorithm is Median of
+    /// Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime for
+    /// all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -3163,14 +3165,15 @@ impl<T> [T] {
     /// It returns a triplet of the following from
     /// the slice reordered according to the provided key extraction function: the subslice prior to
     /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
-    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
-    /// the value of the element at `index`.
+    /// those two subslices will respectively all be less-than-or-equal-to and
+    /// greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort, which is also
-    /// the basis for [`sort_unstable`]. The fallback algorithm is Median of Medians using Tukey's Ninther for
-    /// pivot selection, which guarantees linear runtime for all inputs.
+    /// The current algorithm is an introselect implementation based on Pattern Defeating Quicksort,
+    /// which is also the basis for [`sort_unstable`]. The fallback algorithm is Median of
+    /// Medians using Tukey's Ninther for pivot selection, which guarantees linear runtime for
+    /// all inputs.
     ///
     /// [`sort_unstable`]: slice::sort_unstable
     ///
@@ -4153,8 +4156,8 @@ impl<T> [T] {
     /// (the index of the first element of the second partition).
     ///
     /// The slice is assumed to be partitioned according to the given predicate.
-    /// This means that all elements for which the predicate returns true are at the start of the slice
-    /// and all elements for which the predicate returns false are at the end.
+    /// This means that all elements for which the predicate returns true are at the start of the
+    /// slice and all elements for which the predicate returns false are at the end.
     /// For example, `[7, 15, 3, 5, 4, 12, 6]` is partitioned under the predicate `x % 2 != 0`
     /// (all odd numbers are at the start, all even at the end).
     ///

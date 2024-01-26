@@ -404,7 +404,8 @@ impl fmt::Debug for Command {
 
 // Resolve `exe_path` to the executable name.
 //
-// * If the path is simply a file name then use the paths given by `search_paths` to find the executable.
+// * If the path is simply a file name then use the paths given by `search_paths` to find the
+//   executable.
 // * Otherwise use the `exe_path` as given.
 //
 // This function may also append `.exe` to the name. The rationale for doing so is as follows:

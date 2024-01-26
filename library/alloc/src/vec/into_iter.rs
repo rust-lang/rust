@@ -147,7 +147,8 @@ impl<T, A: Allocator> IntoIter<T, A> {
         }
     }
 
-    /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
+    /// Forgets to Drop the remaining elements while still allowing the backing allocation to be
+    /// freed.
     pub(crate) fn forget_remaining_elements(&mut self) {
         // For the ZST case, it is crucial that we mutate `end` here, not `ptr`.
         // `ptr` must stay aligned, while `end` may be unaligned.
@@ -275,8 +276,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         }
 
         if len < N {
-            // Safety: `len` indicates that this many elements are available and we just checked that
-            // it fits into the array.
+            // Safety: `len` indicates that this many elements are available and we just checked
+            // that it fits into the array.
             unsafe {
                 ptr::copy_nonoverlapping(self.ptr.as_ptr(), raw_ary.as_mut_ptr() as *mut T, len);
                 self.forget_remaining_elements();
@@ -435,7 +436,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
         impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
+                    // `IntoIter::alloc` is not used anymore after this and will be dropped by
+                    // RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
                     let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);

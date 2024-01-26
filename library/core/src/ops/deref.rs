@@ -24,11 +24,10 @@
 ///
 /// If `T` implements `Deref<Target = U>`, and `v` is a value of type `T`, then:
 ///
-/// * In immutable contexts, `*v` (where `T` is neither a reference nor a raw
-///   pointer) is equivalent to `*Deref::deref(&v)`.
+/// * In immutable contexts, `*v` (where `T` is neither a reference nor a raw pointer) is equivalent
+///   to `*Deref::deref(&v)`.
 /// * Values of type `&T` are coerced to values of type `&U`
-/// * `T` implicitly implements all the methods of the type `U` which take the
-///   `&self` receiver.
+/// * `T` implicitly implements all the methods of the type `U` which take the `&self` receiver.
 ///
 /// For more details, visit [the chapter in *The Rust Programming Language*][book]
 /// as well as the reference sections on [the dereference operator][ref-deref-op],
@@ -39,16 +38,14 @@
 /// The same advice applies to both deref traits. In general, deref traits
 /// **should** be implemented if:
 ///
-/// 1. a value of the type transparently behaves like a value of the target
-///    type;
+/// 1. a value of the type transparently behaves like a value of the target type;
 /// 1. the implementation of the deref function is cheap; and
 /// 1. users of the type will not be surprised by any deref coercion behaviour.
 ///
 /// In general, deref traits **should not** be implemented if:
 ///
 /// 1. the deref implementations could fail unexpectedly; or
-/// 1. the type has methods that are likely to collide with methods on the
-///    target type; or
+/// 1. the type has methods that are likely to collide with methods on the target type; or
 /// 1. committing to deref coercion as part of the public API is not desirable.
 ///
 /// Note that there's a large difference between implementing deref traits
@@ -195,8 +192,8 @@ impl<T: ?Sized> Deref for &mut T {
 /// If `T` implements `DerefMut<Target = U>`, and `v` is a value of type `T`,
 /// then:
 ///
-/// * In mutable contexts, `*v` (where `T` is neither a reference nor a raw pointer)
-///   is equivalent to `*DerefMut::deref_mut(&mut v)`.
+/// * In mutable contexts, `*v` (where `T` is neither a reference nor a raw pointer) is equivalent
+///   to `*DerefMut::deref_mut(&mut v)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///

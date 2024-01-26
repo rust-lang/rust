@@ -265,7 +265,8 @@ fn add_query_desc_cached_impl(
         let tcx = args.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
-        // we're taking `key` by reference, but some rustc types usually prefer being passed by value
+        // we're taking `key` by reference, but some rustc types usually prefer being passed by
+        // value
         quote! {
             #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]

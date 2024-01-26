@@ -86,7 +86,8 @@ impl From<Option<AttrWrapper>> for LhsExpr {
 }
 
 impl From<P<Expr>> for LhsExpr {
-    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed { expr, starts_statement: false }`.
+    /// Converts the `expr: P<Expr>` into `LhsExpr::AlreadyParsed { expr, starts_statement: false
+    /// }`.
     ///
     /// This conversion does not allocate.
     fn from(expr: P<Expr>) -> Self {
@@ -952,8 +953,8 @@ impl<'a> Parser<'a> {
     fn parse_expr_dot_or_call_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         loop {
             let has_question = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
-                // we are using noexpect here because we don't expect a `?` directly after a `return`
-                // which could be suggested otherwise
+                // we are using noexpect here because we don't expect a `?` directly after a
+                // `return` which could be suggested otherwise
                 self.eat_noexpect(&token::Question)
             } else {
                 self.eat(&token::Question)
@@ -964,8 +965,8 @@ impl<'a> Parser<'a> {
                 continue;
             }
             let has_dot = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
-                // we are using noexpect here because we don't expect a `.` directly after a `return`
-                // which could be suggested otherwise
+                // we are using noexpect here because we don't expect a `.` directly after a
+                // `return` which could be suggested otherwise
                 self.eat_noexpect(&token::Dot)
             } else {
                 self.eat(&token::Dot)
@@ -1411,7 +1412,8 @@ impl<'a> Parser<'a> {
 
         let restrictions = self.restrictions;
         self.with_res(restrictions - Restrictions::ALLOW_LET, |this| {
-            // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
+            // Note: when adding new syntax here, don't forget to adjust
+            // `TokenKind::can_begin_expr()`.
             let lo = this.token.span;
             if let token::Literal(_) = this.token.kind {
                 // This match arm is a special-case of the `_` match arm below and
@@ -1424,8 +1426,8 @@ impl<'a> Parser<'a> {
                 this.parse_expr_block(None, lo, BlockCheckMode::Default)
             } else if this.check(&token::BinOp(token::Or)) || this.check(&token::OrOr) {
                 this.parse_expr_closure().map_err(|mut err| {
-                    // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
-                    // then suggest parens around the lhs.
+                    // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4
+                    // }` then suggest parens around the lhs.
                     if let Some(sp) = this.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
                         err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     }
@@ -1724,7 +1726,8 @@ impl<'a> Parser<'a> {
                     right: span.shrink_to_hi(),
                 });
 
-                // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to suppress future errors about `break 'label`.
+                // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to
+                // suppress future errors about `break 'label`.
                 let stmt = self.mk_stmt(span, StmtKind::Expr(expr));
                 let blk = self.mk_block(thin_vec![stmt], BlockCheckMode::Default, span);
                 self.mk_expr(span, ExprKind::Block(blk, label))
@@ -2233,10 +2236,11 @@ impl<'a> Parser<'a> {
                 |p| p.parse_expr(),
             ) {
                 Ok(_)
-                    // When the close delim is `)`, `token.kind` is expected to be `token::CloseDelim(Delimiter::Parenthesis)`,
-                    // but the actual `token.kind` is `token::CloseDelim(Delimiter::Bracket)`.
-                    // This is because the `token.kind` of the close delim is treated as the same as
-                    // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
+                    // When the close delim is `)`, `token.kind` is expected to be
+                    // `token::CloseDelim(Delimiter::Parenthesis)`, but the actual `token.kind`
+                    // is `token::CloseDelim(Delimiter::Bracket)`. This is because the `token.kind`
+                    // of the close delim is treated as the same as that of the open delim in
+                    // `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
                     // Therefore, `token.kind` should not be compared here.
                     if snapshot
                         .span_to_snippet(snapshot.token.span)

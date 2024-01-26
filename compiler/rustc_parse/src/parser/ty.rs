@@ -191,7 +191,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() :
+    /// for<'a>`
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
@@ -523,8 +524,8 @@ impl<'a> Parser<'a> {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
             // So we can handle this case as an error here, and suggest `'a mut`.
-            // If there *is* a plus next though, handling the error later provides better suggestions
-            // (like adding parentheses)
+            // If there *is* a plus next though, handling the error later provides better
+            // suggestions (like adding parentheses)
             if !self.look_ahead(1, |t| t.is_like_plus()) {
                 let lifetime_span = self.token.span;
                 let span = and_span.to(lifetime_span);

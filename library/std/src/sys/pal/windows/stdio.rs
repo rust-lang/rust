@@ -287,8 +287,8 @@ impl io::Read for Stdin {
             let mut utf16_buf = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
 
             // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
-            // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
-            // lost.
+            // we can read at most a third of `buf.len()` chars and uphold the guarantee no data
+            // gets lost.
             let amount = cmp::min(buf.len() / 3, utf16_buf.len());
             let read =
                 read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;

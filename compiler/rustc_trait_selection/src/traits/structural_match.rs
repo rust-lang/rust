@@ -13,12 +13,11 @@ use std::ops::ControlFlow;
 /// considered when doing a pattern match on a constant of that
 /// type.
 ///
-///  * This means this method descends into fields of structs/enums,
-///    and also descends into the inner type `T` of `&T` and `&mut T`
+///  * This means this method descends into fields of structs/enums, and also descends into the
+///    inner type `T` of `&T` and `&mut T`
 ///
-///  * The traversal doesn't dereference unsafe pointers (`*const T`,
-///    `*mut T`), and it does not visit the type arguments of an
-///    instantiated generic like `PhantomData<T>`.
+///  * The traversal doesn't dereference unsafe pointers (`*const T`, `*mut T`), and it does not
+///    visit the type arguments of an instantiated generic like `PhantomData<T>`.
 ///
 /// The reason we do this search is Rust currently require all ADTs
 /// reachable from a constant's type to implement the
@@ -97,7 +96,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => {
                 // These primitive types are always structural match.
                 //
-                // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
+                // `Never` is kind of special here, but as it is not inhabitable, this should be
+                // fine.
                 return ControlFlow::Continue(());
             }
 

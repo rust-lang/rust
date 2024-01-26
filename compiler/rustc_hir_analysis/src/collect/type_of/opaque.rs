@@ -208,7 +208,8 @@ impl TaitConstraintLocator<'_> {
         // Use borrowck to get the type with unerased regions.
         let borrowck_results = &self.tcx.mir_borrowck(item_def_id);
 
-        // If the body was tainted, then assume the opaque may have been constrained and just set it to error.
+        // If the body was tainted, then assume the opaque may have been constrained and just set it
+        // to error.
         if let Some(guar) = borrowck_results.tainted_by_errors {
             self.found =
                 Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });

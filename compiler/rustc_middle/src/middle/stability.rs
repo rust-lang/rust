@@ -323,7 +323,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
     /// `id`.
     ///
-    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed. Deprecation warnings will be emitted normally.
+    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed.
+    /// Deprecation warnings will be emitted normally.
     pub fn eval_stability_allow_unstable(
         self,
         def_id: DefId,
@@ -349,8 +350,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version() {
                     // Calculating message for lint involves calling `self.def_path_str`.
-                    // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
-                    // So we skip message calculation altogether, if lint is allowed.
+                    // Which by default to calculate visible path will invoke expensive
+                    // `visible_parent_map` query. So we skip message
+                    // calculation altogether, if lint is allowed.
                     let is_in_effect = depr_attr.is_in_effect();
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
@@ -463,9 +465,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Evaluates the default-impl stability of an item.
     ///
-    /// Returns `EvalResult::Allow` if the item's default implementation is stable, or unstable but the corresponding
-    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
-    /// unstable feature otherwise.
+    /// Returns `EvalResult::Allow` if the item's default implementation is stable, or unstable but
+    /// the corresponding `#![feature]` has been provided. Returns `EvalResult::Deny` which
+    /// describes the offending unstable feature otherwise.
     pub fn eval_default_body_stability(self, def_id: DefId, span: Span) -> EvalResult {
         let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
         if !is_staged_api {
@@ -544,7 +546,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This function will also check if the item is deprecated.
     /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
     ///
-    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed. Deprecation warnings will be emitted normally.
+    /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed.
+    /// Deprecation warnings will be emitted normally.
     ///
     /// Returns `true` if item is allowed aka, stable or unstable under an enabled feature.
     pub fn check_stability_allow_unstable(

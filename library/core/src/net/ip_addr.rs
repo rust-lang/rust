@@ -85,18 +85,21 @@ pub struct Ipv4Addr {
 ///
 /// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
 ///
-/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4 address were defined:
-/// IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible addresses have been officially deprecated.
+/// To assist in the transition from IPv4 to IPv6 two types of IPv6 addresses that embed an IPv4
+/// address were defined: IPv4-compatible and IPv4-mapped addresses. Of these IPv4-compatible
+/// addresses have been officially deprecated.
 ///
 /// Both types of addresses are not assigned any special meaning by this implementation,
-/// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
-/// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
-/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
+/// other than what the relevant standards prescribe. This means that an address like
+/// `::ffff:127.0.0.1`, while representing an IPv4 loopback address, is not itself an IPv6 loopback
+/// address; only `::1` is. To handle these so called "IPv4-in-IPv6" addresses, they have to first
+/// be converted to their canonical IPv4 address.
 ///
 /// ### IPv4-Compatible IPv6 Addresses
 ///
-/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been officially deprecated.
-/// The RFC describes the format of an "IPv4-Compatible IPv6 address" as follows:
+/// IPv4-compatible IPv6 addresses are defined in [IETF RFC 4291 Section 2.5.5.1], and have been
+/// officially deprecated. The RFC describes the format of an "IPv4-Compatible IPv6 address" as
+/// follows:
 ///
 /// ```text
 /// |                80 bits               | 16 |      32 bits        |
@@ -106,8 +109,9 @@ pub struct Ipv4Addr {
 /// ```
 /// So `::a.b.c.d` would be an IPv4-compatible IPv6 address representing the IPv4 address `a.b.c.d`.
 ///
-/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use [`Ipv4Addr::to_ipv6_compatible`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6 address to the canonical IPv4 address.
+/// To convert from an IPv4 address to an IPv4-compatible IPv6 address, use
+/// [`Ipv4Addr::to_ipv6_compatible`]. Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-compatible IPv6
+/// address to the canonical IPv4 address.
 ///
 /// [IETF RFC 4291 Section 2.5.5.1]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.1
 ///
@@ -122,12 +126,13 @@ pub struct Ipv4Addr {
 /// |0000..............................0000|FFFF|    IPv4 address     |
 /// +--------------------------------------+----+---------------------+
 /// ```
-/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
+/// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address
+/// `a.b.c.d`.
 ///
-/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
-/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+/// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use
+/// [`Ipv4Addr::to_ipv6_mapped`]. Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address
+/// to the canonical IPv4 address. Note that this will also convert the IPv6 loopback address `::1`
+/// to `0.0.0.1`. Use [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
 ///
 /// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
@@ -186,7 +191,6 @@ pub struct Ipv6Addr {
 ///     Some(_) => println!("Unknown scope"),
 ///     None => println!("Not a multicast address!")
 /// }
-///
 /// ```
 ///
 /// [IPv6 multicast address]: Ipv6Addr
@@ -406,8 +410,8 @@ impl IpAddr {
         matches!(self, IpAddr::V6(_))
     }
 
-    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
-    /// returns `self` as-is.
+    /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise
+    /// it returns `self` as-is.
     ///
     /// # Examples
     ///
@@ -420,7 +424,8 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V6(localhost_v4.to_ipv6_mapped()).to_canonical(), localhost_v4);
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).to_canonical().is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).is_loopback(), false);
-    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1)).to_canonical().is_loopback(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1))
+    ///     .to_canonical().is_loopback(), true);
     /// ```
     #[inline]
     #[must_use = "this returns the result of the operation, \
@@ -493,7 +498,6 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(0x12, 0x34, 0x56, 0x78);
     /// let addr_bits = addr.to_bits() & 0xffffff00;
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x00), Ipv4Addr::from_bits(addr_bits));
-    ///
     /// ```
     #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
     #[unstable(feature = "ip_bits", issue = "113744")]
@@ -690,7 +694,8 @@ impl Ipv4Addr {
 
     /// Returns [`true`] if the address appears to be globally reachable
     /// as specified by the [IANA IPv4 Special-Purpose Address Registry].
-    /// Whether or not an address is practically reachable will depend on your network configuration.
+    /// Whether or not an address is practically reachable will depend on your network
+    /// configuration.
     ///
     /// Most IPv4 addresses are globally reachable;
     /// unless they are specifically defined as *not* globally reachable.
@@ -707,7 +712,8 @@ impl Ipv4Addr {
     /// - Reserved addresses ([`is_reserved`](Ipv4Addr::is_reserved))
     /// - The [broadcast address] ([`is_broadcast`](Ipv4Addr::is_broadcast))
     ///
-    /// For the complete overview of which addresses are globally reachable, see the table at the [IANA IPv4 Special-Purpose Address Registry].
+    /// For the complete overview of which addresses are globally reachable, see the table at the
+    /// [IANA IPv4 Special-Purpose Address Registry].
     ///
     /// [IANA IPv4 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [unspecified address]: Ipv4Addr::UNSPECIFIED
@@ -945,7 +951,8 @@ impl Ipv4Addr {
     /// `a.b.c.d` becomes `::a.b.c.d`
     ///
     /// Note that IPv4-compatible addresses have been officially deprecated.
-    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using `to_ipv6_mapped` instead.
+    /// If you don't explicitly need an IPv4-compatible address for legacy reasons, consider using
+    /// `to_ipv6_mapped` instead.
     ///
     /// [IPv4-compatible]: Ipv6Addr#ipv4-compatible-ipv6-addresses
     /// [`IPv6` address]: Ipv6Addr
@@ -1070,7 +1077,8 @@ impl fmt::Display for Ipv4Addr {
             const LONGEST_IPV4_ADDR: &str = "255.255.255.255";
 
             let mut buf = DisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
-            // Buffer is long enough for the longest possible IPv4 address, so this should never fail.
+            // Buffer is long enough for the longest possible IPv4 address, so this should never
+            // fail.
             write!(buf, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
 
             fmt.pad(buf.as_str())
@@ -1282,7 +1290,6 @@ impl Ipv6Addr {
     ///         0x90A0, 0xB0C0, 0xD0E0, 0x0000,
     ///     ),
     ///     Ipv6Addr::from_bits(addr_bits));
-    ///
     /// ```
     #[rustc_const_unstable(feature = "ip_bits", issue = "113744")]
     #[unstable(feature = "ip_bits", issue = "113744")]
@@ -1432,7 +1439,8 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if the address appears to be globally reachable
     /// as specified by the [IANA IPv6 Special-Purpose Address Registry].
-    /// Whether or not an address is practically reachable will depend on your network configuration.
+    /// Whether or not an address is practically reachable will depend on your network
+    /// configuration.
     ///
     /// Most IPv6 addresses are globally reachable;
     /// unless they are specifically defined as *not* globally reachable.
@@ -1444,13 +1452,15 @@ impl Ipv6Addr {
     /// - Addresses reserved for benchmarking ([`is_benchmarking`](Ipv6Addr::is_benchmarking))
     /// - Addresses reserved for documentation ([`is_documentation`](Ipv6Addr::is_documentation))
     /// - Unique local addresses ([`is_unique_local`](Ipv6Addr::is_unique_local))
-    /// - Unicast addresses with link-local scope ([`is_unicast_link_local`](Ipv6Addr::is_unicast_link_local))
+    /// - Unicast addresses with link-local scope
+    ///   ([`is_unicast_link_local`](Ipv6Addr::is_unicast_link_local))
     ///
-    /// For the complete overview of which addresses are globally reachable, see the table at the [IANA IPv6 Special-Purpose Address Registry].
+    /// For the complete overview of which addresses are globally reachable, see the table at the
+    /// [IANA IPv6 Special-Purpose Address Registry].
     ///
     /// Note that an address having global scope is not the same as being globally reachable,
-    /// and there is no direct relation between the two concepts: There exist addresses with global scope
-    /// that are not globally reachable (for example unique local addresses),
+    /// and there is no direct relation between the two concepts: There exist addresses with global
+    /// scope that are not globally reachable (for example unique local addresses),
     /// and addresses that are globally reachable without having global scope
     /// (multicast addresses with non-global scope).
     ///
@@ -1586,9 +1596,10 @@ impl Ipv6Addr {
     /// Returns `true` if the address is a unicast address with link-local scope,
     /// as defined in [RFC 4291].
     ///
-    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291 section 2.4].
-    /// Note that this encompasses more addresses than those defined in [RFC 4291 section 2.5.6],
-    /// which describes "Link-Local IPv6 Unicast Addresses" as having the following stricter format:
+    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291
+    /// section 2.4]. Note that this encompasses more addresses than those defined in [RFC 4291
+    /// section 2.5.6], which describes "Link-Local IPv6 Unicast Addresses" as having the
+    /// following stricter format:
     ///
     /// ```text
     /// | 10 bits  |         54 bits         |          64 bits           |
@@ -1596,12 +1607,14 @@ impl Ipv6Addr {
     /// |1111111010|           0             |       interface ID         |
     /// +----------+-------------------------+----------------------------+
     /// ```
-    /// So while currently the only addresses with link-local scope an application will encounter are all in `fe80::/64`,
-    /// this might change in the future with the publication of new standards. More addresses in `fe80::/10` could be allocated,
-    /// and those addresses will have link-local scope.
+    /// So while currently the only addresses with link-local scope an application will encounter
+    /// are all in `fe80::/64`, this might change in the future with the publication of new
+    /// standards. More addresses in `fe80::/10` could be allocated, and those addresses will
+    /// have link-local scope.
     ///
-    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`) that "it is treated as having Link-Local scope",
-    /// this does not mean that the loopback address actually has link-local scope and this method will return `false` on it.
+    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`)
+    /// that "it is treated as having Link-Local scope", this does not mean that the loopback
+    /// address actually has link-local scope and this method will return `false` on it.
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
@@ -1662,8 +1675,9 @@ impl Ipv6Addr {
 
     /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
     ///
-    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
-    /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
+    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering
+    /// the range `2001:0200::/48`. This is corrected in [IETF RFC Errata 1752] to
+    /// `2001:0002::/48`.
     ///
     /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
     /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
@@ -1971,7 +1985,8 @@ impl fmt::Display for Ipv6Addr {
             const LONGEST_IPV6_ADDR: &str = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
 
             let mut buf = DisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
-            // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
+            // Buffer is long enough for the longest possible IPv6 address, so this should never
+            // fail.
             write!(buf, "{}", self).unwrap();
 
             f.pad(buf.as_str())

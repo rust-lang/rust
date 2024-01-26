@@ -74,7 +74,8 @@ impl BorrowedFd<'_> {
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         assert!(fd != u32::MAX as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
+        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only
+        // value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd, _phantom: PhantomData } }
     }
 }
@@ -163,7 +164,8 @@ impl FromRawFd for OwnedFd {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         assert_ne!(fd, u32::MAX as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
+        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only
+        // value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd } }
     }
 }

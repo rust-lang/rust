@@ -89,7 +89,8 @@ pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
 }
 
-// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
+// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this
+// when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
 pub struct EnvStrDebug<'a> {
     slice: &'a [(OsString, OsString)],
 }

@@ -2975,8 +2975,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
     /// `BTreeMap` invariants are maintained. Specifically:
     ///
     /// * The key must remain unique within the tree.
-    /// * The key must remain in sorted order with regards to other elements in
-    ///   the tree.
+    /// * The key must remain in sorted order with regards to other elements in the tree.
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub unsafe fn key_mut_unchecked(&mut self) -> Option<&mut K> {
         self.current.as_mut().map(|current| current.kv_mut().0)
@@ -3149,10 +3148,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// # Panics
     ///
     /// This function panics if:
-    /// - the given key compares less than or equal to the current element (if
-    ///   any).
-    /// - the given key compares greater than or equal to the next element (if
-    ///   any).
+    /// - the given key compares less than or equal to the current element (if any).
+    /// - the given key compares greater than or equal to the next element (if any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn insert_after(&mut self, key: K, value: V) {
         if let Some(current) = self.key() {
@@ -3178,10 +3175,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMut<'a, K, V, A> {
     /// # Panics
     ///
     /// This function panics if:
-    /// - the given key compares greater than or equal to the current element
-    ///   (if any).
-    /// - the given key compares less than or equal to the previous element (if
-    ///   any).
+    /// - the given key compares greater than or equal to the current element (if any).
+    /// - the given key compares less than or equal to the previous element (if any).
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn insert_before(&mut self, key: K, value: V) {
         if let Some(current) = self.key() {

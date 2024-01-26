@@ -13,20 +13,18 @@ use std::ptr;
 use std::slice;
 
 /// `List<T>` is a bit like `&[T]`, but with some critical differences.
-/// - IMPORTANT: Every `List<T>` is *required* to have unique contents. The
-///   type's correctness relies on this, *but it does not enforce it*.
-///   Therefore, any code that creates a `List<T>` must ensure uniqueness
-///   itself. In practice this is achieved by interning.
-/// - The length is stored within the `List<T>`, so `&List<Ty>` is a thin
-///   pointer.
-/// - Because of this, you cannot get a `List<T>` that is a sub-list of another
-///   `List<T>`. You can get a sub-slice `&[T]`, however.
-/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
-///   structs whose size must be minimized.
-/// - Because of the uniqueness assumption, we can use the address of a
-///   `List<T>` for faster equality comparisons and hashing.
-/// - `T` must be `Copy`. This lets `List<T>` be stored in a dropless arena and
-///   iterators return a `T` rather than a `&T`.
+/// - IMPORTANT: Every `List<T>` is *required* to have unique contents. The type's correctness
+///   relies on this, *but it does not enforce it*. Therefore, any code that creates a `List<T>`
+///   must ensure uniqueness itself. In practice this is achieved by interning.
+/// - The length is stored within the `List<T>`, so `&List<Ty>` is a thin pointer.
+/// - Because of this, you cannot get a `List<T>` that is a sub-list of another `List<T>`. You can
+///   get a sub-slice `&[T]`, however.
+/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within structs whose size must be
+///   minimized.
+/// - Because of the uniqueness assumption, we can use the address of a `List<T>` for faster
+///   equality comparisons and hashing.
+/// - `T` must be `Copy`. This lets `List<T>` be stored in a dropless arena and iterators return a
+///   `T` rather than a `&T`.
 /// - `T` must not be zero-sized.
 #[repr(C)]
 pub struct List<T> {

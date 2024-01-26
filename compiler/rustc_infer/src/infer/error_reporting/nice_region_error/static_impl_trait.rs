@@ -104,8 +104,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
                 // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
-                // The desugaring of `async fn`s causes `sup_origin` and `param` to point at the same
-                // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
+                // The desugaring of `async fn`s causes `sup_origin` and `param` to point at the
+                // same place (but with different `ctxt`, hence `overlaps` instead
+                // of `==` above).
                 //
                 // This avoids the following:
                 //
@@ -352,8 +353,9 @@ pub fn suggest_new_region_bound(
                         None
                     };
                     let name = if let Some(name) = &existing_lt_name { name } else { "'a" };
-                    // if there are more than one elided lifetimes in inputs, the explicit `'_` lifetime cannot be used.
-                    // introducing a new lifetime `'a` or making use of one from existing named lifetimes if any
+                    // if there are more than one elided lifetimes in inputs, the explicit `'_`
+                    // lifetime cannot be used. introducing a new lifetime `'a`
+                    // or making use of one from existing named lifetimes if any
                     if let Some(id) = scope_def_id
                         && let Some(generics) = tcx.hir().get_generics(id)
                         && let mut spans_suggs = generics

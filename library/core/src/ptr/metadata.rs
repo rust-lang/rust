@@ -20,8 +20,8 @@ use crate::hash::{Hash, Hasher};
 /// * For structs whose last field is a DST, metadata is the metadata for the last field
 /// * For the `str` type, metadata is the length in bytes as `usize`
 /// * For slice types like `[T]`, metadata is the length in items as `usize`
-/// * For trait objects like `dyn SomeTrait`, metadata is [`DynMetadata<Self>`][DynMetadata]
-///   (e.g. `DynMetadata<dyn SomeTrait>`)
+/// * For trait objects like `dyn SomeTrait`, metadata is [`DynMetadata<Self>`][DynMetadata] (e.g.
+///   `DynMetadata<dyn SomeTrait>`)
 ///
 /// In the future, the Rust language may gain new kinds of types
 /// that have different pointer metadata.

@@ -337,8 +337,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We cannot overflow i64 as a type's size must be <= isize::MAX.
                 let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
                 // The computed offset, in bytes, must not overflow an isize.
-                // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
-                // the difference to be noticeable.
+                // `checked_mul` enforces a too small bound, but no actual allocation can be big
+                // enough for the difference to be noticeable.
                 let offset_bytes =
                     offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
 

@@ -385,48 +385,36 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // type that results from `unify` will be the region we
             // want for the autoref:
             //
-            // - if in sub mode, that means we want to use `'b` (the
-            //   region from the target reference) for both
-            //   pointers [2]. This is because sub mode (somewhat
-            //   arbitrarily) returns the subtype region. In the case
-            //   where we are coercing to a target type, we know we
-            //   want to use that target type region (`'b`) because --
-            //   for the program to type-check -- it must be the
-            //   smaller of the two.
-            //   - One fine point. It may be surprising that we can
-            //     use `'b` without relating `'a` and `'b`. The reason
-            //     that this is ok is that what we produce is
-            //     effectively a `&'b *x` expression (if you could
-            //     annotate the region of a borrow), and regionck has
-            //     code that adds edges from the region of a borrow
-            //     (`'b`, here) into the regions in the borrowed
-            //     expression (`*x`, here). (Search for "link".)
-            // - if in lub mode, things can get fairly complicated. The
-            //   easiest thing is just to make a fresh
-            //   region variable [4], which effectively means we defer
-            //   the decision to region inference (and regionck, which will add
-            //   some more edges to this variable). However, this can wind up
-            //   creating a crippling number of variables in some cases --
-            //   e.g., #32278 -- so we optimize one particular case [3].
-            //   Let me try to explain with some examples:
-            //   - The "running example" above represents the simple case,
-            //     where we have one `&` reference at the outer level and
-            //     ownership all the rest of the way down. In this case,
-            //     we want `LUB('a, 'b)` as the resulting region.
-            //   - However, if there are nested borrows, that region is
-            //     too strong. Consider a coercion from `&'a &'x Rc<T>` to
-            //     `&'b T`. In this case, `'a` is actually irrelevant.
-            //     The pointer we want is `LUB('x, 'b`). If we choose `LUB('a,'b)`
-            //     we get spurious errors (`ui/regions-lub-ref-ref-rc.rs`).
-            //     (The errors actually show up in borrowck, typically, because
-            //     this extra edge causes the region `'a` to be inferred to something
-            //     too big, which then results in borrowck errors.)
-            //   - We could track the innermost shared reference, but there is already
-            //     code in regionck that has the job of creating links between
-            //     the region of a borrow and the regions in the thing being
-            //     borrowed (here, `'a` and `'x`), and it knows how to handle
-            //     all the various cases. So instead we just make a region variable
-            //     and let regionck figure it out.
+            // - if in sub mode, that means we want to use `'b` (the region from the target
+            //   reference) for both pointers [2]. This is because sub mode (somewhat arbitrarily)
+            //   returns the subtype region. In the case where we are coercing to a target type, we
+            //   know we want to use that target type region (`'b`) because -- for the program to
+            //   type-check -- it must be the smaller of the two.
+            //   - One fine point. It may be surprising that we can use `'b` without relating `'a`
+            //     and `'b`. The reason that this is ok is that what we produce is effectively a
+            //     `&'b *x` expression (if you could annotate the region of a borrow), and regionck
+            //     has code that adds edges from the region of a borrow (`'b`, here) into the
+            //     regions in the borrowed expression (`*x`, here). (Search for "link".)
+            // - if in lub mode, things can get fairly complicated. The easiest thing is just to
+            //   make a fresh region variable [4], which effectively means we defer the decision to
+            //   region inference (and regionck, which will add some more edges to this variable).
+            //   However, this can wind up creating a crippling number of variables in some cases --
+            //   e.g., #32278 -- so we optimize one particular case [3]. Let me try to explain with
+            //   some examples:
+            //   - The "running example" above represents the simple case, where we have one `&`
+            //     reference at the outer level and ownership all the rest of the way down. In this
+            //     case, we want `LUB('a, 'b)` as the resulting region.
+            //   - However, if there are nested borrows, that region is too strong. Consider a
+            //     coercion from `&'a &'x Rc<T>` to `&'b T`. In this case, `'a` is actually
+            //     irrelevant. The pointer we want is `LUB('x, 'b`). If we choose `LUB('a,'b)` we
+            //     get spurious errors (`ui/regions-lub-ref-ref-rc.rs`). (The errors actually show
+            //     up in borrowck, typically, because this extra edge causes the region `'a` to be
+            //     inferred to something too big, which then results in borrowck errors.)
+            //   - We could track the innermost shared reference, but there is already code in
+            //     regionck that has the job of creating links between the region of a borrow and
+            //     the regions in the thing being borrowed (here, `'a` and `'x`), and it knows how
+            //     to handle all the various cases. So instead we just make a region variable and
+            //     let regionck figure it out.
             let r = if !self.use_lub {
                 r_b // [2] above
             } else if autoderefs == 1 {
@@ -822,7 +810,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
         //! into a closure or a `proc`.
-        //!
 
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
@@ -854,7 +841,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::IntrinsicCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers
+                    // (RFC 2396).
 
                     if b_sig.unsafety() == hir::Unsafety::Normal
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
@@ -903,7 +891,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a non-capturing closure
         //! into a function pointer.
-        //!
 
         let b = self.shallow_resolve(b);
 
@@ -1303,26 +1290,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 ///
 /// The basic protocol is as follows:
 ///
-/// - Instantiate the `CoerceMany` with an initial `expected_ty`.
-///   This will also serve as the "starting LUB". The expectation is
-///   that this type is something which all of the expressions *must*
-///   be coercible to. Use a fresh type variable if needed.
+/// - Instantiate the `CoerceMany` with an initial `expected_ty`. This will also serve as the
+///   "starting LUB". The expectation is that this type is something which all of the expressions
+///   *must* be coercible to. Use a fresh type variable if needed.
 /// - For each expression whose result is to be coerced, invoke `coerce()` with.
-///   - In some cases we wish to coerce "non-expressions" whose types are implicitly
-///     unit. This happens for example if you have a `break` with no expression,
-///     or an `if` with no `else`. In that case, invoke `coerce_forced_unit()`.
-///   - `coerce()` and `coerce_forced_unit()` may report errors. They hide this
-///     from you so that you don't have to worry your pretty head about it.
-///     But if an error is reported, the final type will be `err`.
-///   - Invoking `coerce()` may cause us to go and adjust the "adjustments" on
-///     previously coerced expressions.
-/// - When all done, invoke `complete()`. This will return the LUB of
-///   all your expressions.
-///   - WARNING: I don't believe this final type is guaranteed to be
-///     related to your initial `expected_ty` in any particular way,
-///     although it will typically be a subtype, so you should check it.
-///   - Invoking `complete()` may cause us to go and adjust the "adjustments" on
-///     previously coerced expressions.
+///   - In some cases we wish to coerce "non-expressions" whose types are implicitly unit. This
+///     happens for example if you have a `break` with no expression, or an `if` with no `else`. In
+///     that case, invoke `coerce_forced_unit()`.
+///   - `coerce()` and `coerce_forced_unit()` may report errors. They hide this from you so that you
+///     don't have to worry your pretty head about it. But if an error is reported, the final type
+///     will be `err`.
+///   - Invoking `coerce()` may cause us to go and adjust the "adjustments" on previously coerced
+///     expressions.
+/// - When all done, invoke `complete()`. This will return the LUB of all your expressions.
+///   - WARNING: I don't believe this final type is guaranteed to be related to your initial
+///     `expected_ty` in any particular way, although it will typically be a subtype, so you should
+///     check it.
+///   - Invoking `complete()` may cause us to go and adjust the "adjustments" on previously coerced
+///     expressions.
 ///
 /// Example:
 ///
@@ -1511,7 +1496,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
-                // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
+                // needed for
+                // tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
                 .eq_exp(
                     DefineOpaqueTypes::Yes,
                     label_expression_as_expected,

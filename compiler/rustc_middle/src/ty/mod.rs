@@ -709,17 +709,14 @@ impl<'tcx> Clause<'tcx> {
         // To achieve this in practice is fairly straightforward. Let's
         // consider the more complicated scenario:
         //
-        // - We start out with `for<'x> T: Foo1<'x>`. In this case, `'x`
-        //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T: Bar1<'x,'b>`,
-        //   where both `'x` and `'b` would have a DB index of 1.
-        //   The substitution from the input trait-ref is therefore going to be
-        //   `'a => 'x` (where `'x` has a DB index of 1).
-        // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
-        //   early-bound parameter and `'b` is a late-bound parameter with a
-        //   DB index of 1.
-        // - If we replace `'a` with `'x` from the input, it too will have
-        //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`
-        //   just as we wanted.
+        // - We start out with `for<'x> T: Foo1<'x>`. In this case, `'x` has a De Bruijn index of 1.
+        //   We want to produce `for<'x,'b> T: Bar1<'x,'b>`, where both `'x` and `'b` would have a
+        //   DB index of 1. The substitution from the input trait-ref is therefore going to be `'a
+        //   => 'x` (where `'x` has a DB index of 1).
+        // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an early-bound parameter and
+        //   `'b` is a late-bound parameter with a DB index of 1.
+        // - If we replace `'a` with `'x` from the input, it too will have a DB index of 1, and thus
+        //   we'll have `for<'x,'b> Bar1<'x,'b>` just as we wanted.
         //
         // There is only one catch. If we just apply the substitution `'a
         // => 'x` to `for<'b> Bar1<'a,'b>`, the substitution code will
@@ -740,14 +737,11 @@ impl<'tcx> Clause<'tcx> {
         // We want to end up with:
         //     for<'x, 'b> T: Bar1<'^0.0, '^0.1>
         // To do this:
-        // 1) We must shift all bound vars in predicate by the length
-        //    of trait ref's bound vars. So, we would end up with predicate like
-        //    Self: Bar1<'a, '^0.1>
-        // 2) We can then apply the trait args to this, ending up with
-        //    T: Bar1<'^0.0, '^0.1>
-        // 3) Finally, to create the final bound vars, we concatenate the bound
-        //    vars of the trait ref with those of the predicate:
-        //    ['x, 'b]
+        // 1) We must shift all bound vars in predicate by the length of trait ref's bound vars. So,
+        //    we would end up with predicate like Self: Bar1<'a, '^0.1>
+        // 2) We can then apply the trait args to this, ending up with T: Bar1<'^0.0, '^0.1>
+        // 3) Finally, to create the final bound vars, we concatenate the bound vars of the trait
+        //    ref with those of the predicate: ['x, 'b]
         let bound_pred = self.kind();
         let pred_bound_vars = bound_pred.bound_vars();
         let trait_bound_vars = trait_ref.bound_vars();
@@ -1513,7 +1507,8 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
-        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
+        // typeck errors have subpar spans for opaque types, so delay error reporting until
+        // borrowck.
         ignore_errors: bool,
     ) -> Self {
         let OpaqueTypeKey { def_id, args } = opaque_type_key;
@@ -2527,7 +2522,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Only applies when `Span` is the result of macro expansion.
     ///
     /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
+    ///   and only when a (some enclosing) macro definition is annotated with
+    ///   `#[collapse_debuginfo]`.
     /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
     ///
     /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.

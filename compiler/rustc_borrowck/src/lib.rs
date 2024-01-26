@@ -291,7 +291,8 @@ fn do_mir_borrowck<'tcx>(
             param_env,
             body: promoted_body,
             move_data: &move_data,
-            location_table: &location_table, // no need to create a real one for the promoted, it is not used
+            location_table: &location_table, /* no need to create a real one for the promoted, it
+                                              * is not used */
             movable_coroutine,
             fn_self_span_reported: Default::default(),
             locals_are_invalidated_at_exit,
@@ -1178,7 +1179,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         match rvalue {
-            &Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            &Rvalue::Ref(_ /* rgn */, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Fake => {
                         (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
@@ -1247,9 +1248,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, operand)
-            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => {
+            | Rvalue::UnaryOp(_ /* un_op */, operand)
+            | Rvalue::Cast(_ /* cast_kind */, operand, _ /* ty */)
+            | Rvalue::ShallowInitBox(operand, _ /* ty */) => {
                 self.consume_operand(location, (operand, span), flow_state)
             }
 
@@ -1714,16 +1715,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         //
         // 1. Move of `a.b.c`, use of `a.b.c`
         // 2. Move of `a.b.c`, use of `a.b.c.d` (without first reinitializing `a.b.c.d`)
-        // 3. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`; note that with
-        //    partial initialization support, one might have `a.x`
-        //    initialized but not `a.b`.
+        // 3. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`; note that with partial initialization
+        //    support, one might have `a.x` initialized but not `a.b`.
         //
         // OK scenarios:
         //
         // 4. Move of `a.b.c`, use of `a.b.d`
         // 5. Uninitialized `a.x`, initialized `a.b`, use of `a.b`
-        // 6. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b`
-        //    must have been initialized for the use to be sound.
+        // 6. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b` must have been initialized for
+        //    the use to be sound.
         // 7. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
 
         // The dataflow tracks shallow prefixes distinctly (that is,
@@ -1817,17 +1817,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Bad scenarios:
         //
-        // 1. Move of `a.b.c`, use of `a` or `a.b`
-        //    partial initialization support, one might have `a.x`
-        //    initialized but not `a.b`.
+        // 1. Move of `a.b.c`, use of `a` or `a.b` partial initialization support, one might have
+        //    `a.x` initialized but not `a.b`.
         // 2. All bad scenarios from `check_if_full_path_is_moved`
         //
         // OK scenarios:
         //
         // 3. Move of `a.b.c`, use of `a.b.d`
         // 4. Uninitialized `a.x`, initialized `a.b`, use of `a.b`
-        // 5. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b`
-        //    must have been initialized for the use to be sound.
+        // 5. Copied `(a.b: &_)`, use of `*(a.b).c`; note that `a.b` must have been initialized for
+        //    the use to be sound.
         // 6. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
 
         self.check_if_full_path_is_moved(location, desired_action, place_span, flow_state);
@@ -2083,7 +2082,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
                 let is_local_mutation_allowed = match mut_borrow_kind {
                     // `ClosureCapture` is used for mutable variable with an immutable binding.
-                    // This is only behaviour difference between `ClosureCapture` and mutable borrows.
+                    // This is only behaviour difference between `ClosureCapture` and mutable
+                    // borrows.
                     MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
                     MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
                         is_local_mutation_allowed
@@ -2395,8 +2395,8 @@ mod error {
         tcx: TyCtxt<'tcx>,
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
-        /// There are situations where many errors can be reported for a single move out (see #53807)
-        /// and we want only the best of those errors.
+        /// There are situations where many errors can be reported for a single move out (see
+        /// #53807) and we want only the best of those errors.
         ///
         /// The `report_use_of_moved_or_uninitialized` function checks this map and replaces the
         /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of
@@ -2404,9 +2404,9 @@ mod error {
         /// error. Once all move errors have been reported, any diagnostics in this map are added
         /// to the buffer to be emitted.
         ///
-        /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
-        /// when errors in the map are being re-added to the error buffer so that errors with the
-        /// same primary span come out in a consistent order.
+        /// `BTreeMap` is used to preserve the order of insertions when iterating. This is
+        /// necessary when errors in the map are being re-added to the error buffer so that
+        /// errors with the same primary span come out in a consistent order.
         buffered_move_errors:
             BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
         buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx>, usize)>,

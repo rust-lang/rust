@@ -51,19 +51,18 @@ pub enum PassWhere {
 /// where `<filter>` takes the following forms:
 ///
 /// - `all` -- dump MIR for all fns, all passes, all everything
-/// - a filter defined by a set of substrings combined with `&` and `|`
-///   (`&` has higher precedence). At least one of the `|`-separated groups
-///   must match; an `|`-separated group matches if all of its `&`-separated
-///   substrings are matched.
+/// - a filter defined by a set of substrings combined with `&` and `|` (`&` has higher precedence).
+///   At least one of the `|`-separated groups must match; an `|`-separated group matches if all of
+///   its `&`-separated substrings are matched.
 ///
 /// Example:
 ///
 /// - `nll` == match if `nll` appears in the name
 /// - `foo & nll` == match if `foo` and `nll` both appear in the name
-/// - `foo & nll | typeck` == match if `foo` and `nll` both appear in the name
-///   or `typeck` appears in the name.
-/// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
-///   or `typeck` and `bar` both appear in the name.
+/// - `foo & nll | typeck` == match if `foo` and `nll` both appear in the name or `typeck` appears
+///   in the name.
+/// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name or `typeck` and
+///   `bar` both appear in the name.
 #[inline]
 pub fn dump_mir<'tcx, F>(
     tcx: TyCtxt<'tcx>,
@@ -1257,7 +1256,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
                     ty::ConstKind::Value(val) => format!("ty::Valtree({})", fmt_valtree(&val)),
-                    // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
+                    // No `ty::` prefix since we also use this to represent errors from
+                    // `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
@@ -1344,8 +1344,10 @@ pub fn write_allocations<'tcx>(
                 Either::Right(std::iter::empty())
             }
             ConstValue::Indirect { alloc_id, .. } => {
-                // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
-                // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
+                // FIXME: we don't actually want to print all of these, since some are printed
+                // nicely directly as values inline in MIR. Really we'd want
+                // `pretty_print_const_value` to decide which allocations to print, instead of
+                // having a separate visitor.
                 Either::Left(std::iter::once(alloc_id))
             }
         }

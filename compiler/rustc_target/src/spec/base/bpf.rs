@@ -13,8 +13,8 @@ pub fn opts(endian: Endian) -> TargetOptions {
         position_independent_executables: true,
         // Disable MergeFunctions since:
         // - older kernels don't support bpf-to-bpf calls
-        // - on newer kernels, userspace still needs to relocate before calling
-        //   BPF_PROG_LOAD and not all BPF libraries do that yet
+        // - on newer kernels, userspace still needs to relocate before calling BPF_PROG_LOAD and
+        //   not all BPF libraries do that yet
         merge_functions: MergeFunctions::Disabled,
         obj_is_bitcode: true,
         requires_lto: false,

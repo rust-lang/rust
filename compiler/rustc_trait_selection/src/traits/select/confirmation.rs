@@ -318,7 +318,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     // If Dst is mutable, check bidirectionally.
                     // For example, transmuting bool -> u8 is OK as long as you can't update that u8
-                    // to be > 1, because you could later transmute the u8 back to a bool and get UB.
+                    // to be > 1, because you could later transmute the u8 back to a bool and get
+                    // UB.
                     match dst.mutability {
                         Mutability::Not => vec![make_obl(src.ty, dst.ty)],
                         Mutability::Mut => vec![make_obl(src.ty, dst.ty), make_obl(dst.ty, src.ty)],
@@ -1016,7 +1017,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if dyn_a == dyn_b =>
             {
                 // See `assemble_candidates_for_unsizing` for more info.
-                // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
+                // We already checked the compatibility of auto traits within
+                // `assemble_candidates_for_unsizing`.
                 let iter = data_a
                     .principal()
                     .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
@@ -1229,7 +1231,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If we have a custom `impl const Drop`, then
         // first check it like a regular impl candidate.
-        // This is copied from confirm_impl_candidate but remaps the predicate to `~const Drop` beforehand.
+        // This is copied from confirm_impl_candidate but remaps the predicate to `~const Drop`
+        // beforehand.
         if let Some(impl_def_id) = impl_def_id {
             let mut new_obligation = obligation.clone();
             new_obligation.predicate = new_obligation.predicate.map_bound(|mut trait_pred| {

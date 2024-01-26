@@ -273,11 +273,13 @@ pub(crate) fn create_config(
                 static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
                 &EMPTY_SET
             };
-            // In case typeck does end up being called, don't ICE in case there were name resolution errors
+            // In case typeck does end up being called, don't ICE in case there were name resolution
+            // errors
             providers.typeck = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
-                // This avoids emitting errors for the parent twice (see similar code in `typeck_with_fallback`)
+                // This avoids emitting errors for the parent twice (see similar code in
+                // `typeck_with_fallback`)
                 let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
                 if typeck_root_def_id != def_id {
                     return tcx.typeck(typeck_root_def_id);

@@ -507,7 +507,6 @@ where
 ///     assert!(request_ref::<MyLittleTeaPot>(dyn_error).is_none());
 /// }
 /// ```
-///
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 #[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/90435
 pub struct Request<'a>(dyn Erased<'a> + 'a);
@@ -766,7 +765,6 @@ impl<'a> Request<'a> {
     /// let parent = Parent(None);
     /// let child = Child { parent };
     /// assert_eq!(Some(99), request_value::<u8>(&child));
-    ///
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
     pub fn would_be_satisfied_by_value_of<T>(&self) -> bool

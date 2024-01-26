@@ -16,8 +16,8 @@ pub struct ChangeInfo {
 pub enum ChangeSeverity {
     /// Used when build configurations continue working as before.
     Info,
-    /// Used when the default value of an option changes, or support for an option is removed entirely,
-    /// potentially requiring developers to update their build configurations.
+    /// Used when the default value of an option changes, or support for an option is removed
+    /// entirely, potentially requiring developers to update their build configurations.
     Warning,
 }
 

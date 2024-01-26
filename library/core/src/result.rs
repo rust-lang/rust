@@ -242,8 +242,7 @@
 //! * [`as_ref`] converts from `&Result<T, E>` to `Result<&T, &E>`
 //! * [`as_mut`] converts from `&mut Result<T, E>` to `Result<&mut T, &mut E>`
 //! * [`as_deref`] converts from `&Result<T, E>` to `Result<&T::Target, &E>`
-//! * [`as_deref_mut`] converts from `&mut Result<T, E>` to
-//!   `Result<&mut T::Target, &mut E>`
+//! * [`as_deref_mut`] converts from `&mut Result<T, E>` to `Result<&mut T::Target, &mut E>`
 //!
 //! [`as_deref`]: Result::as_deref
 //! [`as_deref_mut`]: Result::as_deref_mut
@@ -258,10 +257,9 @@
 //! * [`expect`] panics with a provided custom message
 //! * [`unwrap`] panics with a generic message
 //! * [`unwrap_or`] returns the provided default value
-//! * [`unwrap_or_default`] returns the default value of the type `T`
-//!   (which must implement the [`Default`] trait)
-//! * [`unwrap_or_else`] returns the result of evaluating the provided
-//!   function
+//! * [`unwrap_or_default`] returns the default value of the type `T` (which must implement the
+//!   [`Default`] trait)
+//! * [`unwrap_or_else`] returns the result of evaluating the provided function
 //!
 //! The panicking methods [`expect`] and [`unwrap`] require `E` to
 //! implement the [`Debug`] trait.
@@ -288,13 +286,11 @@
 //!
 //! These methods transform [`Result`] to [`Option`]:
 //!
-//! * [`err`][Result::err] transforms [`Result<T, E>`] into [`Option<E>`],
-//!   mapping [`Err(e)`] to [`Some(e)`] and [`Ok(v)`] to [`None`]
-//! * [`ok`][Result::ok] transforms [`Result<T, E>`] into [`Option<T>`],
-//!   mapping [`Ok(v)`] to [`Some(v)`] and [`Err(e)`] to [`None`]
-//! * [`transpose`] transposes a [`Result`] of an [`Option`] into an
-//!   [`Option`] of a [`Result`]
-//!
+//! * [`err`][Result::err] transforms [`Result<T, E>`] into [`Option<E>`], mapping [`Err(e)`] to
+//!   [`Some(e)`] and [`Ok(v)`] to [`None`]
+//! * [`ok`][Result::ok] transforms [`Result<T, E>`] into [`Option<T>`], mapping [`Ok(v)`] to
+//!   [`Some(v)`] and [`Err(e)`] to [`None`]
+//! * [`transpose`] transposes a [`Result`] of an [`Option`] into an [`Option`] of a [`Result`]
 // Do NOT add link reference definitions for `err` or `ok`, because they
 // will generate numerous incorrect URLs for `Err` and `Ok` elsewhere, due
 // to case folding.
@@ -307,29 +303,25 @@
 //!
 //! This method transforms the contained value of the [`Ok`] variant:
 //!
-//! * [`map`] transforms [`Result<T, E>`] into [`Result<U, E>`] by applying
-//!   the provided function to the contained value of [`Ok`] and leaving
-//!   [`Err`] values unchanged
+//! * [`map`] transforms [`Result<T, E>`] into [`Result<U, E>`] by applying the provided function to
+//!   the contained value of [`Ok`] and leaving [`Err`] values unchanged
 //!
 //! [`map`]: Result::map
 //!
 //! This method transforms the contained value of the [`Err`] variant:
 //!
-//! * [`map_err`] transforms [`Result<T, E>`] into [`Result<T, F>`] by
-//!   applying the provided function to the contained value of [`Err`] and
-//!   leaving [`Ok`] values unchanged
+//! * [`map_err`] transforms [`Result<T, E>`] into [`Result<T, F>`] by applying the provided
+//!   function to the contained value of [`Err`] and leaving [`Ok`] values unchanged
 //!
 //! [`map_err`]: Result::map_err
 //!
 //! These methods transform a [`Result<T, E>`] into a value of a possibly
 //! different type `U`:
 //!
-//! * [`map_or`] applies the provided function to the contained value of
-//!   [`Ok`], or returns the provided default value if the [`Result`] is
-//!   [`Err`]
-//! * [`map_or_else`] applies the provided function to the contained value
-//!   of [`Ok`], or applies the provided default fallback function to the
-//!   contained value of [`Err`]
+//! * [`map_or`] applies the provided function to the contained value of [`Ok`], or returns the
+//!   provided default value if the [`Result`] is [`Err`]
+//! * [`map_or_else`] applies the provided function to the contained value of [`Ok`], or applies the
+//!   provided default fallback function to the contained value of [`Err`]
 //!
 //! [`map_or`]: Result::map_or
 //! [`map_or_else`]: Result::map_or_else
@@ -411,12 +403,9 @@
 //!
 //! Iterators over [`Result<T, E>`] come in three types:
 //!
-//! * [`into_iter`] consumes the [`Result`] and produces the contained
-//!   value
-//! * [`iter`] produces an immutable reference of type `&T` to the
-//!   contained value
-//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
-//!   contained value
+//! * [`into_iter`] consumes the [`Result`] and produces the contained value
+//! * [`iter`] produces an immutable reference of type `&T` to the contained value
+//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the contained value
 //!
 //! See [Iterating over `Option`] for examples of how this can be useful.
 //!
@@ -898,7 +887,8 @@ impl<T, E> Result<T, E> {
         self.as_ref().map(|t| t.deref())
     }
 
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as
+    /// DerefMut>::Target, &mut E>`.
     ///
     /// Coerces the [`Ok`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
     /// and returns the new [`Result`].

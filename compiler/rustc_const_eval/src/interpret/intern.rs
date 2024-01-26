@@ -165,8 +165,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
     }
 
     fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        // Handle Reference types, as these are the only types with provenance supported by const eval.
-        // Raw pointers (and boxes) are handled by the `leftover_allocations` logic.
+        // Handle Reference types, as these are the only types with provenance supported by const
+        // eval. Raw pointers (and boxes) are handled by the `leftover_allocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
@@ -255,9 +255,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
                 // Now, check whether this allocation could contain references.
                 //
-                // Note, this check may sometimes not be cheap, so we only do it when the walk we'd like
-                // to avoid could be expensive: on the potentially larger types, arrays and slices,
-                // rather than on all aggregates unconditionally.
+                // Note, this check may sometimes not be cheap, so we only do it when the walk we'd
+                // like to avoid could be expensive: on the potentially larger
+                // types, arrays and slices, rather than on all aggregates
+                // unconditionally.
                 if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
                     let Some((size, _align)) = self.ecx.size_and_align_of_mplace(mplace)? else {
                         // We do the walk if we can't determine the size of the mplace: we may be
@@ -284,8 +285,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             // If this allocation contains no references to intern, we avoid the potentially costly
             // walk.
             //
-            // We can do this before the checks for interior mutability below, because only references
-            // are relevant in that situation, and we're checking if there are any here.
+            // We can do this before the checks for interior mutability below, because only
+            // references are relevant in that situation, and we're checking if there
+            // are any here.
             if !is_walk_needed(mplace)? {
                 return Ok(());
             }

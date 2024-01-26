@@ -118,7 +118,8 @@ pub const fn from_ref<T>(s: &T) -> &[T; 1] {
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
 }
 
-/// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
+/// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without
+/// copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
 #[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {

@@ -5,17 +5,16 @@
 //!
 //! # Functional outline
 //!
-//! 1. Run tidy with an extra option: `--extra-checks=py,shell`,
-//!    `--extra-checks=py:lint`, or similar. Optionally provide specific
-//!    configuration after a double dash (`--extra-checks=py -- foo.py`)
+//! 1. Run tidy with an extra option: `--extra-checks=py,shell`, `--extra-checks=py:lint`, or
+//!    similar. Optionally provide specific configuration after a double dash (`--extra-checks=py --
+//!    foo.py`)
 //! 2. Build configuration based on args/environment:
 //!    - Formatters by default are in check only mode
 //!    - If in CI (TIDY_PRINT_DIFF=1 is set), check and print the diff
 //!    - If `--bless` is provided, formatters may run
-//!    - Pass any additional config after the `--`. If no files are specified,
-//!      use a default.
-//! 3. Print the output of the given command. If it fails and `TIDY_PRINT_DIFF`
-//!    is set, rerun the tool to print a suggestion diff (for e.g. CI)
+//!    - Pass any additional config after the `--`. If no files are specified, use a default.
+//! 3. Print the output of the given command. If it fails and `TIDY_PRINT_DIFF` is set, rerun the
+//!    tool to print a suggestion diff (for e.g. CI)
 
 use std::ffi::OsStr;
 use std::fmt;

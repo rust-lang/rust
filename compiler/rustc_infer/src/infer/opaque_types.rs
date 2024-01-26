@@ -149,11 +149,13 @@ impl<'tcx> InferCtxt<'tcx> {
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
-                    // We could accept this, but there are various ways to handle this situation, and we don't
-                    // want to make a decision on it right now. Likely this case is so super rare anyway, that
+                    // We could accept this, but there are various ways to handle this situation,
+                    // and we don't want to make a decision on it right now.
+                    // Likely this case is so super rare anyway, that
                     // no one encounters it in practice.
-                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
-                    // where it is of no concern, so we only check for TAITs.
+                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42
+                    // } }`, where it is of no concern, so we only check for
+                    // TAITs.
                     if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {

@@ -5,8 +5,7 @@ pub fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
     // defined in The Paper:
     //
     //       *
-    //    -     +
-    //       o
+    //    - + o
     match (v1, v2) {
         (ty::Invariant, _) | (_, ty::Invariant) => ty::Invariant,
 

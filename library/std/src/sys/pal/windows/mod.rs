@@ -312,8 +312,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
     // have two pieces to take care of:
     //
     // * Nanosecond precision is rounded up
-    // * Greater than u32::MAX milliseconds (50 days) is rounded up to INFINITE
-    //   (never time out).
+    // * Greater than u32::MAX milliseconds (50 days) is rounded up to INFINITE (never time out).
     dur.as_secs()
         .checked_mul(1000)
         .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))

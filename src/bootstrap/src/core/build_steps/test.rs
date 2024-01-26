@@ -605,8 +605,9 @@ impl Step for Miri {
         let host = self.host;
         let target = self.target;
         let compiler = builder.compiler(stage, host);
-        // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
-        // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
+        // We need the stdlib for the *next* stage, as it was built with this compiler that also
+        // built Miri. Except if we are at stage 2, the bootstrap loop is complete and we
+        // can stick with our current stage.
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
         let miri =
@@ -676,9 +677,9 @@ impl Step for Miri {
         }
 
         // # Run `cargo miri test`.
-        // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
-        // that we get the desired output), but that is sufficient to make sure that the libtest harness
-        // itself executes properly under Miri.
+        // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and
+        // ensures that we get the desired output), but that is sufficient to make sure that
+        // the libtest harness itself executes properly under Miri.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1098,7 +1099,8 @@ impl Step for Tidy {
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         cmd.arg(&builder.out);
-        // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs` hasn't been configured.
+        // Tidy is heavily IO constrained. Still respect `-j`, but use a higher limit if `jobs`
+        // hasn't been configured.
         let jobs = builder.config.jobs.unwrap_or_else(|| {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
@@ -1593,12 +1595,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // part test the *API* of the compiler, not how it compiles a given file. As a result, we
         // can run them against the stage 1 sources as long as we build them with the stage 0
         // bootstrap compiler.
-        // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
-        // running compiler in stage 2 when plugins run.
+        // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match
+        // the running compiler in stage 2 when plugins run.
         let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
-            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
-            // to `build.build` in the configuration.
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead
+            // finding an incorrect compiler path on cross-targets, as the stage 0 beta
+            // compiler is always equal to `build.build` in the configuration.
             let build = builder.build.build;
 
             compiler = builder.compiler(compiler.stage - 1, build);
@@ -1855,8 +1857,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
-                // FIXME: missing Rust patches is not the same as being system llvm; we should rename the flag at some point.
-                // Inspecting the tests with `// no-system-llvm` in src/test *looks* like this is doing the right thing, though.
+                // FIXME: missing Rust patches is not the same as being system llvm; we should
+                // rename the flag at some point. Inspecting the tests with `//
+                // no-system-llvm` in src/test *looks* like this is doing the right thing, though.
                 cmd.arg("--system-llvm");
             }
 
@@ -1972,8 +1975,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.env("PATH", new_path);
         }
 
-        // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it exists.
-        // To make the tests work that rely on it not being set, make sure it is not set.
+        // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it
+        // exists. To make the tests work that rely on it not being set, make sure it is not
+        // set.
         cmd.env_remove("CARGO");
 
         cmd.env("RUSTC_BOOTSTRAP", "1");
@@ -2546,9 +2550,9 @@ impl Step for Crate {
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
-                // `std_cargo` actually does the wrong thing: it passes `--sysroot build/host/stage2`,
-                // but we want to use the force-recompile std we just built in `build/host/stage2-test-sysroot`.
-                // Override it.
+                // `std_cargo` actually does the wrong thing: it passes `--sysroot
+                // build/host/stage2`, but we want to use the force-recompile std we
+                // just built in `build/host/stage2-test-sysroot`. Override it.
                 if builder.download_rustc() && compiler.stage > 0 {
                     let sysroot = builder
                         .out
@@ -2655,7 +2659,8 @@ impl Step for CrateRustdoc {
         // host vs target dylibs for rustdoc are consistently tricky to deal
         // with.
         //
-        // Note that this set the host libdir for `download_rustc`, which uses a normal rust distribution.
+        // Note that this set the host libdir for `download_rustc`, which uses a normal rust
+        // distribution.
         let libdir = if builder.download_rustc() {
             builder.rustc_libdir(compiler)
         } else {
@@ -2719,7 +2724,8 @@ impl Step for CrateRustdocJsonTypes {
             &[],
         );
 
-        // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
+        // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are
+        // fishy.
         let libtest_args = if self.host.contains("musl") {
             ["'-Ctarget-feature=-crt-static'"].as_slice()
         } else {
@@ -2884,8 +2890,9 @@ impl Step for Bootstrap {
             .env("BUILD_DIR", &builder.out)
             .env("BUILD_PLATFORM", &builder.build.build.triple)
             .current_dir(builder.src.join("src/bootstrap/"));
-        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
-        // Use `python -m unittest` manually if you want to pass arguments.
+        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo
+        // test are mutually incompatible. Use `python -m unittest` manually if you want to
+        // pass arguments.
         builder.run_delaying_failure(&mut check_bootstrap);
 
         let mut cmd = Command::new(&builder.initial_cargo);

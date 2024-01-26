@@ -398,14 +398,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     self.shortcut_link = None;
                 }
             }
-            // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
-            // [`fn@f`]
+            // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut
+            // link. [`fn@f`]
             Some(Event::Code(text)) => {
                 trace!("saw code {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: this only replaces if the code block is the *entire* text.
-                    // If only part of the link has code highlighting, the disambiguator will not be removed.
-                    // e.g. [fn@`f`]
+                    // If only part of the link has code highlighting, the disambiguator will not be
+                    // removed. e.g. [fn@`f`]
                     // This is a limitation from `collect_intra_doc_links`: it passes a full link,
                     // and does not distinguish at all between code blocks.
                     // So we could never be sure we weren't replacing too much:

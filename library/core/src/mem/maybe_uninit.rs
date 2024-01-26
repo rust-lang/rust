@@ -167,7 +167,8 @@ use crate::slice;
 ///
 /// ## Initializing a struct field-by-field
 ///
-/// You can use `MaybeUninit<T>`, and the [`std::ptr::addr_of_mut`] macro, to initialize structs field by field:
+/// You can use `MaybeUninit<T>`, and the [`std::ptr::addr_of_mut`] macro, to initialize structs
+/// field by field:
 ///
 /// ```rust
 /// use std::mem::MaybeUninit;
@@ -319,7 +320,8 @@ impl<T> MaybeUninit<T> {
     /// Note: in a future Rust version this method may become unnecessary
     /// when Rust allows
     /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
-    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
+    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() };
+    /// 32];`.
     ///
     /// # Examples
     ///
@@ -1014,7 +1016,8 @@ impl<T> MaybeUninit<T> {
         this.as_mut_ptr() as *mut T
     }
 
-    /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
+    /// Copies the elements from `src` to `this`, returning a mutable reference to the now
+    /// initialized contents of `this`.
     ///
     /// If `T` does not implement `Copy`, use [`write_slice_cloned`]
     ///
@@ -1071,8 +1074,8 @@ impl<T> MaybeUninit<T> {
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
     }
 
-    /// Clones the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
-    /// Any already initialized elements will not be dropped.
+    /// Clones the elements from `src` to `this`, returning a mutable reference to the now
+    /// initialized contents of `this`. Any already initialized elements will not be dropped.
     ///
     /// If `T` implements `Copy`, use [`write_slice`]
     ///
@@ -1080,7 +1083,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Panics
     ///
-    /// This function will panic if the two slices have different lengths, or if the implementation of `Clone` panics.
+    /// This function will panic if the two slices have different lengths, or if the implementation
+    /// of `Clone` panics.
     ///
     /// If there is a panic, the already cloned elements will be dropped.
     ///
@@ -1090,8 +1094,20 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
-    /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
+    /// let mut dst = [
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit(),
+    ///     MaybeUninit::uninit()
+    /// ];
+    /// let src = [
+    ///     "wibbly".to_string(),
+    ///     "wobbly".to_string(),
+    ///     "timey".to_string(),
+    ///     "wimey".to_string(),
+    ///     "stuff".to_string()
+    /// ];
     ///
     /// let init = MaybeUninit::write_slice_cloned(&mut dst, &src);
     ///

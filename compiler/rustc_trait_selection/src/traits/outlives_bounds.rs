@@ -42,9 +42,8 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `param_env`, the where-clauses in scope
-    /// - `body_id`, the body-id to use when normalizing assoc types.
-    ///   Note that this may cause outlives obligations to be injected
-    ///   into the inference context with this body-id.
+    /// - `body_id`, the body-id to use when normalizing assoc types. Note that this may cause
+    ///   outlives obligations to be injected into the inference context with this body-id.
     /// - `ty`, the type that we are supposed to assume is WF.
     #[instrument(level = "debug", skip(self, param_env, body_id), ret)]
     fn implied_outlives_bounds(

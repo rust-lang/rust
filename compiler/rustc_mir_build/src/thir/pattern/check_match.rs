@@ -1114,7 +1114,8 @@ fn collect_non_exhaustive_tys<'tcx>(
     }
     if let Constructor::IntRange(range) = pat.ctor() {
         if cx.is_range_beyond_boundaries(range, pat.ty()) {
-            // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
+            // The range denotes the values before `isize::MIN` or the values after
+            // `usize::MAX`/`isize::MAX`.
             non_exhaustive_tys.insert(pat.ty().inner());
         }
     }
@@ -1162,8 +1163,8 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'p>(
             }
             let sp = def.variant(*variant_index).ident(tcx).span;
             if covered.contains(&sp) {
-                // Don't point at variants that have already been covered due to other patterns to avoid
-                // visual clutter.
+                // Don't point at variants that have already been covered due to other patterns to
+                // avoid visual clutter.
                 continue;
             }
             covered.push(sp);

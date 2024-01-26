@@ -256,7 +256,8 @@ fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
 }
 
 fn macos_deployment_target(arch: Arch) -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // If you are looking for the default deployment target, prefer `rustc --print
+    // deployment-target`.
     from_set_deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
@@ -279,8 +280,9 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
     // host OS alone though.
     if os == "macos" {
         let mut env_remove = Vec::with_capacity(2);
-        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
-        // may occur when we're linking a custom build script while targeting iOS for example.
+        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform,
+        // which may occur when we're linking a custom build script while targeting iOS for
+        // example.
         if let Ok(sdkroot) = env::var("SDKROOT") {
             if sdkroot.contains("iPhoneOS.platform")
                 || sdkroot.contains("iPhoneSimulator.platform")
@@ -293,8 +295,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
             }
         }
         // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
-        // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
-        // although this is apparently ignored when using the linker at "/usr/bin/ld".
+        // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/
+        // ld", although this is apparently ignored when using the linker at "/usr/bin/ld".
         env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
@@ -312,13 +314,15 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
 }
 
 fn ios_deployment_target(arch: Arch) -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // If you are looking for the default deployment target, prefer `rustc --print
+    // deployment-target`.
     let (major, minor) = if arch == Arm64e { (14, 0) } else { (10, 0) };
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
 }
 
 fn mac_catalyst_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // If you are looking for the default deployment target, prefer `rustc --print
+    // deployment-target`.
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((14, 0))
 }
 
@@ -344,7 +348,8 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // If you are looking for the default deployment target, prefer `rustc --print
+    // deployment-target`.
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
@@ -364,7 +369,8 @@ pub fn tvos_sim_llvm_target(arch: Arch) -> String {
 }
 
 fn watchos_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
+    // If you are looking for the default deployment target, prefer `rustc --print
+    // deployment-target`.
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 

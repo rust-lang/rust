@@ -435,8 +435,8 @@ impl<'tcx> GenericArgs<'tcx> {
     /// * If `self` is `[Self, S, T]`: the identity args of `f` in the trait.
     /// * If `source_ancestor` is the def_id of the trait.
     /// * If `target_args` is `[U]`, the args for the impl.
-    /// * Then we will return `[U, T]`, the arg for `f` in the impl that
-    ///   are needed for it to match the trait.
+    /// * Then we will return `[U, T]`, the arg for `f` in the impl that are needed for it to match
+    ///   the trait.
     pub fn rebase_onto(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -535,7 +535,8 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 /// `instantiate`.
 ///
 /// If you don't have anything to `instantiate`, you may be looking for
-/// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
+/// [`instantiate_identity`](EarlyBinder::instantiate_identity) or
+/// [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T> {

@@ -2,19 +2,16 @@
 //! `#[rustc_clean]` we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
-//! - `#[rustc_clean(cfg="rev2", except="typeck")]` if we are
-//!   in `#[cfg(rev2)]`, then the fingerprints associated with
-//!   `DepNode::typeck(X)` must be DIFFERENT (`X` is the `DefId` of the
+//! - `#[rustc_clean(cfg="rev2", except="typeck")]` if we are in `#[cfg(rev2)]`, then the
+//!   fingerprints associated with `DepNode::typeck(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
-//! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
-//!   fingerprints must be the SAME (along with all other fingerprints).
+//! - `#[rustc_clean(cfg="rev2")]` same as above, except that the fingerprints must be the SAME
+//!   (along with all other fingerprints).
 //!
-//! - `#[rustc_clean(cfg="rev2", loaded_from_disk='typeck")]` asserts that
-//!   the query result for `DepNode::typeck(X)` was actually
-//!   loaded from disk (not just marked green). This can be useful
-//!   to ensure that a test is actually exercising the deserialization
-//!   logic for a particular query result. This can be combined with
-//!   `except`
+//! - `#[rustc_clean(cfg="rev2", loaded_from_disk='typeck")]` asserts that the query result for
+//!   `DepNode::typeck(X)` was actually loaded from disk (not just marked green). This can be useful
+//!   to ensure that a test is actually exercising the deserialization logic for a particular query
+//!   result. This can be combined with `except`
 //!
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.

@@ -1226,10 +1226,11 @@ impl<'tcx> Ty<'tcx> {
                     _ => self,
                 };
 
-                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of inference
-                // context, or *something* like that, but for now just avoid passing inference
-                // variables to queries that can't cope with them. Instead, conservatively
-                // return "true" (may change drop order).
+                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of
+                // inference context, or *something* like that, but for now just
+                // avoid passing inference variables to queries that can't cope with
+                // them. Instead, conservatively return "true" (may change drop
+                // order).
                 if query_ty.has_infer() {
                     return true;
                 }
@@ -1351,7 +1352,6 @@ impl<'tcx> ExplicitSelf<'tcx> {
     ///     fn method_err3(self: &&T) // ExplicitSelf::ByReference
     /// }
     /// ```
-    ///
     pub fn determine<P>(self_arg_ty: Ty<'tcx>, is_self_ty: P) -> ExplicitSelf<'tcx>
     where
         P: Fn(Ty<'tcx>) -> bool,

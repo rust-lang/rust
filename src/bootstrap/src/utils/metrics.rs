@@ -40,7 +40,8 @@ pub(crate) struct BuildMetrics {
     state: RefCell<MetricsState>,
 }
 
-/// NOTE: this isn't really cloning anything, but `x suggest` doesn't need metrics so this is probably ok.
+/// NOTE: this isn't really cloning anything, but `x suggest` doesn't need metrics so this is
+/// probably ok.
 impl Clone for BuildMetrics {
     fn clone(&self) -> Self {
         Self::init()

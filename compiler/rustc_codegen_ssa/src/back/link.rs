@@ -413,24 +413,23 @@ fn link_rlib<'a>(
         // files" *after* all of the object files in the archive. The reason for
         // this is as follows:
         //
-        // * When performing LTO, this archive will be modified to remove
-        //   objects from above. The reason for this is described below.
+        // * When performing LTO, this archive will be modified to remove objects from above. The
+        //   reason for this is described below.
         //
-        // * When the system linker looks at an archive, it will attempt to
-        //   determine the architecture of the archive in order to see whether its
-        //   linkable.
+        // * When the system linker looks at an archive, it will attempt to determine the
+        //   architecture of the archive in order to see whether its linkable.
         //
         //   The algorithm for this detection is: iterate over the files in the
         //   archive. Skip magical SYMDEF names. Interpret the first file as an
         //   object file. Read architecture from the object file.
         //
-        // * As one can probably see, if "metadata" and "foo.bc" were placed
-        //   before all of the objects, then the architecture of this archive would
-        //   not be correctly inferred once 'foo.o' is removed.
+        // * As one can probably see, if "metadata" and "foo.bc" were placed before all of the
+        //   objects, then the architecture of this archive would not be correctly inferred once
+        //   'foo.o' is removed.
         //
-        // * Most of the time metadata in rlib files is wrapped in a "dummy" object
-        //   file for the target platform so the rlib can be processed entirely by
-        //   normal linkers for the platform. Sometimes this is not possible however.
+        // * Most of the time metadata in rlib files is wrapped in a "dummy" object file for the
+        //   target platform so the rlib can be processed entirely by normal linkers for the
+        //   platform. Sometimes this is not possible however.
         //
         // Basically, all this means is that this code should not move above the
         // code above.
@@ -1421,7 +1420,8 @@ fn print_native_static_libs(
         // Deduplication of successive repeated libraries, see rust-lang/rust#113209
         //
         // note: we don't use PartialEq/Eq because NativeLib transitively depends on local
-        // elements like spans, which we don't care about and would make the deduplication impossible
+        // elements like spans, which we don't care about and would make the deduplication
+        // impossible
         .dedup_by(|l1, l2| l1.name == l2.name && l1.kind == l2.kind && l1.verbatim == l2.verbatim)
         .filter_map(|lib| {
             let name = lib.name;
@@ -1497,7 +1497,8 @@ fn print_native_static_libs(
             if !lib_args.is_empty() {
                 sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
                 // Prefix for greppability
-                // Note: This must not be translated as tools are allowed to depend on this exact string.
+                // Note: This must not be translated as tools are allowed to depend on this exact
+                // string.
                 sess.dcx().note(format!("native-static-libs: {}", &lib_args.join(" ")));
             }
         }
@@ -2412,7 +2413,8 @@ fn add_order_independent_options(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 }
 
-// Write the NatVis debugger visualizer files for each crate to the temp directory and gather the file paths.
+// Write the NatVis debugger visualizer files for each crate to the temp directory and gather the
+// file paths.
 fn collect_natvis_visualizers(
     tmpdir: &Path,
     sess: &Session,
@@ -2503,7 +2505,8 @@ fn add_native_libs_from_crate(
 
                     if bundle && cnum != LOCAL_CRATE {
                         if let Some(filename) = lib.filename {
-                            // If rlib contains native libs as archives, they are unpacked to tmpdir.
+                            // If rlib contains native libs as archives, they are unpacked to
+                            // tmpdir.
                             let path = tmpdir.join(filename.as_str());
                             if whole_archive {
                                 cmd.link_whole_rlib(&path);
@@ -2835,10 +2838,10 @@ fn add_static_crate<'a>(
                 }
 
                 // We skip native libraries because:
-                // 1. This native libraries won't be used from the generated rlib,
-                //    so we can throw them away to avoid the copying work.
-                // 2. We can't allow it to be a single remaining entry in archive
-                //    as some linkers may complain on that.
+                // 1. This native libraries won't be used from the generated rlib, so we can throw
+                //    them away to avoid the copying work.
+                // 2. We can't allow it to be a single remaining entry in archive as some linkers
+                //    may complain on that.
                 if bundled_lib_file_names.contains(&Symbol::intern(f)) {
                     return true;
                 }

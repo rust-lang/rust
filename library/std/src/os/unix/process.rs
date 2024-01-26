@@ -275,8 +275,9 @@ pub trait ExitStatusExt: Sealed {
 
     /// If the process was stopped by a signal, returns that signal.
     ///
-    /// In other words, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the status came from
-    /// a `wait` system call which was passed `WUNTRACED`, and was then converted into an `ExitStatus`.
+    /// In other words, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the
+    /// status came from a `wait` system call which was passed `WUNTRACED`, and was then
+    /// converted into an `ExitStatus`.
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn stopped_signal(&self) -> Option<i32>;
 

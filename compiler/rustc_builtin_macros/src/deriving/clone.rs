@@ -20,15 +20,13 @@ pub fn expand_deriving_clone(
     // some additional `AssertParamIsClone` assertions.
     //
     // We can use the simple form if either of the following are true.
-    // - The type derives Copy and there are no generic parameters. (If we
-    //   used the simple form with generics, we'd have to bound the generics
-    //   with Clone + Copy, and then there'd be no Clone impl at all if the
-    //   user fills in something that is Clone but not Copy. After
-    //   specialization we can remove this no-generics limitation.)
-    // - The item is a union. (Unions with generic parameters still can derive
-    //   Clone because they require Copy for deriving, Clone alone is not
-    //   enough. Whether Clone is implemented for fields is irrelevant so we
-    //   don't assert it.)
+    // - The type derives Copy and there are no generic parameters. (If we used the simple form with
+    //   generics, we'd have to bound the generics with Clone + Copy, and then there'd be no Clone
+    //   impl at all if the user fills in something that is Clone but not Copy. After specialization
+    //   we can remove this no-generics limitation.)
+    // - The item is a union. (Unions with generic parameters still can derive Clone because they
+    //   require Copy for deriving, Clone alone is not enough. Whether Clone is implemented for
+    //   fields is irrelevant so we don't assert it.)
     let bounds;
     let substructure;
     let is_simple;

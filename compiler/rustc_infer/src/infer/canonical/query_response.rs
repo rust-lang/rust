@@ -37,20 +37,19 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// - the instantiated variables `inference_vars` created from the query key
     /// - the result `answer` of the query
-    /// - a fulfillment context `fulfill_cx` that may contain various obligations which
-    ///   have yet to be proven.
+    /// - a fulfillment context `fulfill_cx` that may contain various obligations which have yet to
+    ///   be proven.
     ///
     /// Given this, the function will process the obligations pending
     /// in `fulfill_cx`:
     ///
-    /// - If all the obligations can be proven successfully, it will
-    ///   package up any resulting region obligations (extracted from
-    ///   `infcx`) along with the fully resolved value `answer` into a
+    /// - If all the obligations can be proven successfully, it will package up any resulting region
+    ///   obligations (extracted from `infcx`) along with the fully resolved value `answer` into a
     ///   query result (which is then itself canonicalized).
-    /// - If some obligations can be neither proven nor disproven, then
-    ///   the same thing happens, but the resulting query is marked as ambiguous.
-    /// - Finally, if any of the obligations result in a hard error,
-    ///   then `Err(NoSolution)` is returned.
+    /// - If some obligations can be neither proven nor disproven, then the same thing happens, but
+    ///   the resulting query is marked as ambiguous.
+    /// - Finally, if any of the obligations result in a hard error, then `Err(NoSolution)` is
+    ///   returned.
     #[instrument(skip(self, inference_vars, answer, fulfill_cx), level = "trace")]
     pub fn make_canonicalized_query_response<T>(
         &self,
@@ -225,21 +224,17 @@ impl<'tcx> InferCtxt<'tcx> {
     /// basic operations as `instantiate_query_response_and_region_obligations` but
     /// it returns its result differently:
     ///
-    /// - It creates a substitution `S` that maps from the original
-    ///   query variables to the values computed in the query
-    ///   result. If any errors arise, they are propagated back as an
-    ///   `Err` result.
-    /// - In the case of a successful substitution, we will append
-    ///   `QueryOutlivesConstraint` values onto the
-    ///   `output_query_region_constraints` vector for the solver to
-    ///   use (if an error arises, some values may also be pushed, but
-    ///   they should be ignored).
-    /// - It **can happen** (though it rarely does currently) that
-    ///   equating types and things will give rise to subobligations
-    ///   that must be processed. In this case, those subobligations
-    ///   are propagated back in the return value.
-    /// - Finally, the query result (of type `R`) is propagated back,
-    ///   after applying the substitution `S`.
+    /// - It creates a substitution `S` that maps from the original query variables to the values
+    ///   computed in the query result. If any errors arise, they are propagated back as an `Err`
+    ///   result.
+    /// - In the case of a successful substitution, we will append `QueryOutlivesConstraint` values
+    ///   onto the `output_query_region_constraints` vector for the solver to use (if an error
+    ///   arises, some values may also be pushed, but they should be ignored).
+    /// - It **can happen** (though it rarely does currently) that equating types and things will
+    ///   give rise to subobligations that must be processed. In this case, those subobligations are
+    ///   propagated back in the return value.
+    /// - Finally, the query result (of type `R`) is propagated back, after applying the
+    ///   substitution `S`.
     pub fn instantiate_nll_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -484,8 +479,9 @@ impl<'tcx> InferCtxt<'tcx> {
             var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.universe() != ty::UniverseIndex::ROOT {
-                        // A variable from inside a binder of the query. While ideally these shouldn't
-                        // exist at all, we have to deal with them for now.
+                        // A variable from inside a binder of the query. While ideally these
+                        // shouldn't exist at all, we have to deal with them
+                        // for now.
                         self.instantiate_canonical_var(cause.span, info, |u| {
                             universe_map[u.as_usize()]
                         })

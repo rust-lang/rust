@@ -512,7 +512,6 @@ pub enum RegionVariableOrigin {
     PatternRegion(Span),
 
     /// Regions created by `&` operator.
-    ///
     AddrOfRegion(Span),
     /// Regions created as part of an autoref of a method receiver.
     Autoref(Span),

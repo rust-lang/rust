@@ -29,8 +29,8 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     ) -> bool {
         // If a local variable is immutable, then we only need to track borrows to guard
         // against two kinds of errors:
-        // * The variable being dropped while still borrowed (e.g., because the fn returns
-        //   a reference to a local variable)
+        // * The variable being dropped while still borrowed (e.g., because the fn returns a
+        //   reference to a local variable)
         // * The variable being moved while still borrowed
         //
         // In particular, the variable cannot be mutated -- the "access checks" will fail --

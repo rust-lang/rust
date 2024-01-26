@@ -10,9 +10,9 @@ mod tests;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Abi {
-    // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
-    // hashing tests. These are used in many places, so giving them stable values reduces test
-    // churn. The specific values are meaningless.
+    // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all
+    // the hashing tests. These are used in many places, so giving them stable values reduces
+    // test churn. The specific values are meaningless.
     Rust,
     C {
         unwind: bool,
@@ -72,8 +72,8 @@ impl Abi {
         // * EfiApi is based on Win64 or C, so it also supports it.
         // * System falls back to C for functions with varargs.
         //
-        // * Stdcall does not, because it would be impossible for the callee to clean
-        //   up the arguments. (callee doesn't know how many arguments are there)
+        // * Stdcall does not, because it would be impossible for the callee to clean up the
+        //   arguments. (callee doesn't know how many arguments are there)
         // * Same for Fastcall, Vectorcall and Thiscall.
         // * Other calling conventions are related to hardware or the compiler itself.
         match self {

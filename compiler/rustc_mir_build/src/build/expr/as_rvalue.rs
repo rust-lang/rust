@@ -201,9 +201,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Cast { source } => {
                 let source_expr = &this.thir[source];
 
-                // Casting an enum to an integer is equivalent to computing the discriminant and casting the
-                // discriminant. Previously every backend had to repeat the logic for this operation. Now we
-                // create all the steps directly in MIR with operations all backends need to support anyway.
+                // Casting an enum to an integer is equivalent to computing the discriminant and
+                // casting the discriminant. Previously every backend had to repeat
+                // the logic for this operation. Now we create all the steps
+                // directly in MIR with operations all backends need to support anyway.
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source_expr.ty.kind()
                     && adt_def.is_enum()
                 {

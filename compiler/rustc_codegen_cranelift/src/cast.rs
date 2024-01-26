@@ -103,7 +103,8 @@ pub(crate) fn clif_int_or_float_cast(
                     vec![AbiParam::new(types::I64X2)],
                     &[from],
                 )[0];
-                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
+                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from
+                // i64x2 to i128
                 let ret_ptr = fx.create_stack_slot(16, 16);
                 ret_ptr.store(fx, ret, MemFlags::trusted());
                 ret_ptr.load(fx, types::I128, MemFlags::trusted())

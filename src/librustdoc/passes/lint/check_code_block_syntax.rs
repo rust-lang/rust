@@ -109,8 +109,8 @@ fn check_rust_syntax(
 
         if precise_span {
             if is_ignore {
-                // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
-                // just give a `help` instead.
+                // giving an accurate suggestion is hard because `ignore` might not have come first
+                // in the list. just give a `help` instead.
                 lint.span_help(
                     sp.from_inner(InnerSpan::new(0, 3)),
                     format!("{explanation}: ```text"),

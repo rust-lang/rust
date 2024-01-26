@@ -629,7 +629,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         // First try using a valtree in order to destructure the constant into a pattern.
         // FIXME: replace "try to do a thing, then fall back to another thing"
-        // but something more principled, like a trait query checking whether this can be turned into a valtree.
+        // but something more principled, like a trait query checking whether this can be turned
+        // into a valtree.
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
@@ -645,7 +646,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
                 Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span, None).kind,
                 Err(ErrorHandled::TooGeneric(_)) => {
-                    // If we land here it means the const can't be evaluated because it's `TooGeneric`.
+                    // If we land here it means the const can't be evaluated because it's
+                    // `TooGeneric`.
                     let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
                     PatKind::Error(e)
                 }

@@ -10,8 +10,8 @@ pub enum Stability {
     /// This target feature is stable, it can be used in `#[target_feature]` and
     /// `#[cfg(target_feature)]`.
     Stable,
-    /// This target feature is unstable; using it in `#[target_feature]` or `#[cfg(target_feature)]`
-    /// requires enabling the given nightly feature.
+    /// This target feature is unstable; using it in `#[target_feature]` or
+    /// `#[cfg(target_feature)]` requires enabling the given nightly feature.
     Unstable(Symbol),
 }
 use Stability::*;

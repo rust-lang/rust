@@ -374,8 +374,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
-        //        - In this case, we will do some validation and then fall through to the
-        //          end of the function which evals the assignment.
+        //        - In this case, we will do some validation and then fall through to the end of the
+        //          function which evals the assignment.
         //   2. Working around bugs in other parts of the compiler
         //        - In this case, we'll return `None` from this function to stop evaluation.
         match rvalue {
@@ -612,7 +612,8 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             }
             StatementKind::StorageDead(local) => {
                 let frame = self.ecx.frame_mut();
-                // We don't actually track liveness, so the local remains live. But forget its value.
+                // We don't actually track liveness, so the local remains live. But forget its
+                // value.
                 frame.locals[local].make_live_uninit();
             }
             _ => {}

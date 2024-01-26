@@ -515,8 +515,9 @@ fn infringing_fields_error(
                     // Only note if it's not the root obligation, otherwise it's trivial and
                     // should be self-explanatory (i.e. a field literally doesn't implement Copy).
 
-                    // FIXME: This error could be more descriptive, especially if the error_predicate
-                    // contains a foreign type or if it's a deeply nested type...
+                    // FIXME: This error could be more descriptive, especially if the
+                    // error_predicate contains a foreign type or if it's a
+                    // deeply nested type...
                     if error_predicate != error.root_obligation.predicate {
                         errors
                             .entry((ty.to_string(), error_predicate.to_string()))

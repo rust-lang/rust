@@ -58,7 +58,8 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         unsafe {
             let deque = self.deque.as_ref();
 
-            // We know that `self.idx + self.remaining <= deque.len <= usize::MAX`, so this won't overflow.
+            // We know that `self.idx + self.remaining <= deque.len <= usize::MAX`, so this won't
+            // overflow.
             let logical_remaining_range = self.idx..self.idx + self.remaining;
 
             // SAFETY: `logical_remaining_range` represents the

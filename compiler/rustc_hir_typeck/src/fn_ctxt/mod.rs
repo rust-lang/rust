@@ -87,17 +87,13 @@ pub struct FnCtxt<'a, 'tcx> {
     ///
     /// We currently use this flag only for diagnostic purposes:
     ///
-    /// - To warn about unreachable code: if, after processing a
-    ///   sub-expression but before we have applied the effects of the
-    ///   current node, we see that the flag is set to `Always`, we
-    ///   can issue a warning. This corresponds to something like
-    ///   `foo(return)`; we warn on the `foo()` expression. (We then
-    ///   update the flag to `WarnedAlways` to suppress duplicate
-    ///   reports.) Similarly, if we traverse to a fresh statement (or
-    ///   tail expression) from an `Always` setting, we will issue a
-    ///   warning. This corresponds to something like `{return;
-    ///   foo();}` or `{return; 22}`, where we would warn on the
-    ///   `foo()` or `22`.
+    /// - To warn about unreachable code: if, after processing a sub-expression but before we have
+    ///   applied the effects of the current node, we see that the flag is set to `Always`, we can
+    ///   issue a warning. This corresponds to something like `foo(return)`; we warn on the `foo()`
+    ///   expression. (We then update the flag to `WarnedAlways` to suppress duplicate reports.)
+    ///   Similarly, if we traverse to a fresh statement (or tail expression) from an `Always`
+    ///   setting, we will issue a warning. This corresponds to something like `{return; foo();}`
+    ///   or `{return; 22}`, where we would warn on the `foo()` or `22`.
     ///
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.

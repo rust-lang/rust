@@ -469,7 +469,8 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
     }
 
-    /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
+    /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this
+    /// memory.
     pub fn get_bytes_mut_ptr(
         &mut self,
         cx: &impl HasDataLayout,
@@ -524,8 +525,9 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         if read_provenance {
             assert_eq!(range.size, cx.data_layout().pointer_size);
 
-            // When reading data with provenance, the easy case is finding provenance exactly where we
-            // are reading, then we can put data and provenance back together and return that.
+            // When reading data with provenance, the easy case is finding provenance exactly where
+            // we are reading, then we can put data and provenance back together and
+            // return that.
             if let Some(prov) = self.provenance.get_ptr(range.start) {
                 // Now we can return the bits, with their appropriate provenance.
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));

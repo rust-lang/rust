@@ -93,18 +93,19 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // uses only one memory address in the loop instead of needing to manage two.
             loop {
                 // [long-safety-expl]
-                // SAFETY: callers must ensure `[left, left+mid+right)` are all valid for reading and
-                // writing.
+                // SAFETY: callers must ensure `[left, left+mid+right)` are all valid for reading
+                // and writing.
                 //
-                // - `i` start with `right` so `mid-left <= x+i = x+right = mid-left+right < mid+right`
+                // - `i` start with `right` so `mid-left <= x+i = x+right = mid-left+right <
+                //   mid+right`
                 // - `i <= left+right-1` is always true
-                //   - if `i < left`, `right` is added so `i < left+right` and on the next
-                //     iteration `left` is removed from `i` so it doesn't go further
+                //   - if `i < left`, `right` is added so `i < left+right` and on the next iteration
+                //     `left` is removed from `i` so it doesn't go further
                 //   - if `i >= left`, `left` is removed immediately and so it doesn't go further.
                 // - overflows cannot happen for `i` since the function's safety contract ask for
                 //   `mid+right-1 = x+left+right` to be valid for writing
-                // - underflows cannot happen because `i` must be bigger or equal to `left` for
-                //   a subtraction of `left` to happen.
+                // - underflows cannot happen because `i` must be bigger or equal to `left` for a
+                //   subtraction of `left` to happen.
                 //
                 // So `x+i` is valid for reading and writing if the caller respected the contract
                 tmp = unsafe { x.add(i).replace(tmp) };

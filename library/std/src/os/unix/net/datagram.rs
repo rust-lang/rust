@@ -382,10 +382,10 @@ impl UnixDatagram {
 
     /// Receives data and ancillary data from socket.
     ///
-    /// On success, returns the number of bytes read, if the data was truncated and the address from whence the msg came.
+    /// On success, returns the number of bytes read, if the data was truncated and the address from
+    /// whence the msg came.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -405,8 +405,8 @@ impl UnixDatagram {
     ///     let mut fds = [0; 8];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     let (size, _truncated, sender) = sock.recv_vectored_with_ancillary_from(bufs, &mut ancillary)?;
-    ///     println!("received {size}");
+    ///     let (size, _truncated, sender) = sock.recv_vectored_with_ancillary_from(bufs, &mut
+    /// ancillary)?;     println!("received {size}");
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
@@ -435,7 +435,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes read and if the data was truncated.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -576,7 +575,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -618,7 +616,6 @@ impl UnixDatagram {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -807,7 +804,6 @@ impl UnixDatagram {
     /// Set the socket option `SO_PASSCRED`.
     ///
     /// # Examples
-    ///
     #[cfg_attr(
         any(
             target_os = "android",
@@ -866,7 +862,6 @@ impl UnixDatagram {
     }
 
     /// Set the id of the socket for network filtering purpose
-    ///
     #[cfg_attr(
         any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
         doc = "```no_run"

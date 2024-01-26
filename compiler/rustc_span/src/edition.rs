@@ -3,7 +3,9 @@ use std::str::FromStr;
 
 use rustc_macros::HashStable_Generic;
 
-/// The edition of the compiler. (See [RFC 2052](https://github.com/rust-lang/rfcs/blob/master/text/2052-epochs.md).)
+/// The edition of the compiler. (See [RFC 2052].)
+///
+/// [RFC 2052]: https://github.com/rust-lang/rfcs/blob/master/text/2052-epochs.md
 #[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, Encodable, Decodable, Eq)]
 #[derive(HashStable_Generic)]
 pub enum Edition {

@@ -430,8 +430,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 // This restriction needs to be applied after we have handled adjustments for `move`
-                // closures. We want to make sure any adjustment that might make us move the place into
-                // the closure gets handled.
+                // closures. We want to make sure any adjustment that might make us move the place
+                // into the closure gets handled.
                 let (place, capture_kind) =
                     restrict_precision_for_drop_types(self, place, capture_kind);
 
@@ -572,8 +572,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut possible_descendant = possible_descendant.clone();
                         let backup_path_expr_id = updated_capture_info.path_expr_id;
 
-                        // Truncate the descendant (already in min_captures) to be same as the ancestor to handle any
-                        // possible change in capture mode.
+                        // Truncate the descendant (already in min_captures) to be same as the
+                        // ancestor to handle any possible change in capture
+                        // mode.
                         truncate_place_to_len_and_update_capture_kind(
                             &mut possible_descendant.place,
                             &mut possible_descendant.info.capture_kind,
@@ -611,8 +612,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ancestor_found = true;
                             let backup_path_expr_id = possible_ancestor.info.path_expr_id;
 
-                            // Truncate the descendant (current place) to be same as the ancestor to handle any
-                            // possible change in capture mode.
+                            // Truncate the descendant (current place) to be same as the ancestor to
+                            // handle any possible change in capture
+                            // mode.
                             truncate_place_to_len_and_update_capture_kind(
                                 &mut place,
                                 &mut updated_capture_info.capture_kind,
@@ -945,7 +947,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
-            hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
+            hir::CaptureBy::Value { .. } => ty, /* For move closure the capture kind should be */
+            // by value
             hir::CaptureBy::Ref => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
@@ -1024,8 +1027,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// some path starting at that root variable **might** be affected.
     ///
     /// The output list would include a root variable if:
-    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't
-    ///   enabled, **and**
+    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't enabled,
+    ///   **and**
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop.
     ///
@@ -1124,8 +1127,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// differ between the root variable and the captured paths.
     ///
     /// The output list would include a root variable if:
-    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't
-    ///   enabled, **and**
+    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't enabled,
+    ///   **and**
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop **or**
     /// - One of the paths captured does not implement all the auto-traits its root variable
@@ -1185,7 +1188,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
             capture_diagnostic.sort();
             for captures_info in capture_diagnostic {
-                // Get the auto trait reasons of why migration is needed because of that capture, if there are any
+                // Get the auto trait reasons of why migration is needed because of that capture, if
+                // there are any
                 let capture_trait_reasons =
                     if let Some(reasons) = auto_trait_diagnostic.get(&captures_info) {
                         reasons.clone()
@@ -1196,8 +1200,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check if migration is needed because of drop reorder as a result of that capture
                 let capture_drop_reorder_reason = drop_reorder_diagnostic.contains(&captures_info);
 
-                // Combine all the reasons of why the root variable should be captured as a result of
-                // auto trait implementation issues
+                // Combine all the reasons of why the root variable should be captured as a result
+                // of auto trait implementation issues
                 auto_trait_migration_reasons.extend_unord(capture_trait_reasons.items().copied());
 
                 diagnostics_info.push(MigrationLintNote {
@@ -1288,9 +1292,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// IMP 1 `(Ty(w.c), [ &[] ])`: Notice the single empty slice inside `captured_projs`.
-    ///                             This implies that the `w.c` is completely captured by the closure.
-    ///                             Since drop for this path will be called when the closure is
-    ///                             dropped we don't need to migrate for it.
+    ///                             This implies that the `w.c` is completely captured by the
+    /// closure.                             Since drop for this path will be called when the
+    /// closure is                             dropped we don't need to migrate for it.
     ///
     /// IMP 2 `(Ty((w.p).y), [])`: Notice that `captured_projs` is empty. This implies that this
     ///                             path wasn't captured by the closure. Also note that even
@@ -1371,8 +1375,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Observations:
             // - `captured_by_move_projs` is not empty. Therefore we can call
             //   `captured_by_move_projs.first().unwrap()` safely.
-            // - All entries in `captured_by_move_projs` have at least one projection.
-            //   Therefore we can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
+            // - All entries in `captured_by_move_projs` have at least one projection. Therefore we
+            //   can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
 
             // We don't capture derefs in case of move captures, which would have be applied to
             // access any further paths.
@@ -1382,7 +1386,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             ty::Adt(def, args) => {
                 // Multi-variant enums are captured in entirety,
-                // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
+                // which would've been handled in the case of single empty slice in
+                // `captured_by_move_projs`.
                 assert_eq!(def.variants().len(), 1);
 
                 // Only Field projections can be applied to a non-box Adt.
@@ -1810,8 +1815,8 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
 }
 
 /// Truncate `place` so that an `unsafe` block isn't required to capture it.
-/// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
-///   them completely.
+/// - No projections are applied to raw pointers, since these require unsafe blocks. We capture them
+///   completely.
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
 fn restrict_precision_for_unsafe(
     mut place: Place<'_>,
@@ -2028,8 +2033,8 @@ fn migration_suggestion_for_2229(
 /// expressions reported back to the user as part of diagnostics based on which appears earlier
 /// in the closure. This can be achieved simply by calling
 /// `determine_capture_info(existing_info, current_info)`. This works out because the
-/// expressions that occur earlier in the closure body than the current expression are processed before.
-/// Consider the following example
+/// expressions that occur earlier in the closure body than the current expression are processed
+/// before. Consider the following example
 /// ```rust,no_run
 /// struct Point { x: i32, y: i32 }
 /// let mut p = Point { x: 10, y: 10 };
@@ -2098,8 +2103,8 @@ fn determine_capture_info(
 /// `curr_mode` is the current required capture kind for the place.
 /// Returns the truncated `place` and the updated required capture kind.
 ///
-/// Note: Capture kind changes from `MutBorrow` to `UniqueImmBorrow` if the truncated part of the `place`
-/// contained `Deref` of `&mut`.
+/// Note: Capture kind changes from `MutBorrow` to `UniqueImmBorrow` if the truncated part of the
+/// `place` contained `Deref` of `&mut`.
 fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     place: &mut Place<'tcx>,
     curr_mode: &mut ty::UpvarCapture,

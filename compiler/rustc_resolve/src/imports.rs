@@ -311,7 +311,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
-                        // FIXME: remove `!binding.is_ambiguity()` after delete the warning ambiguity.
+                        // FIXME: remove `!binding.is_ambiguity()` after delete the warning
+                        // ambiguity.
                         if !binding.is_ambiguity()
                             && let NameBindingKind::Import { import: old_import, .. } =
                                 old_binding.kind
@@ -465,7 +466,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed
-    // or indeterminate resolution, also mark such failed imports as used to avoid duplicate diagnostics.
+    // or indeterminate resolution, also mark such failed imports as used to avoid duplicate
+    // diagnostics.
     fn import_dummy_binding(&mut self, import: Import<'a>, is_indeterminate: bool) {
         if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
             if !(is_indeterminate || target_bindings.iter().all(|binding| binding.get().is_none()))
@@ -1081,8 +1083,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     Err(..) => {
                         // FIXME: This assert may fire if public glob is later shadowed by a private
-                        // single import (see test `issue-55884-2.rs`). In theory single imports should
-                        // always block globs, even if they are not yet resolved, so that this kind of
+                        // single import (see test `issue-55884-2.rs`). In theory single imports
+                        // should always block globs, even if they are not
+                        // yet resolved, so that this kind of
                         // self-inconsistent resolution never happens.
                         // Re-enable the assert when the issue is fixed.
                         // assert!(result[ns].get().is_err());

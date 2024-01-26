@@ -166,7 +166,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match self.tcx.try_get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
                 // Thread-local statics do not have a constant address. They *must* be accessed via
-                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant
+                // value.
                 bug!("global memory cannot point to thread-local static")
             }
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
@@ -261,7 +262,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => self.get_alloc_raw(alloc_id)?.size(),
         };
         // This will also call the access hooks.
-        self.mem_copy(ptr, new_ptr.into(), old_size.min(new_size), /*nonoverlapping*/ true)?;
+        self.mem_copy(ptr, new_ptr.into(), old_size.min(new_size), /* nonoverlapping */ true)?;
         self.deallocate_ptr(ptr, old_size_and_align, kind)?;
 
         Ok(new_ptr)
@@ -509,11 +510,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// This function is used by Miri's provenance GC to remove unreachable entries from the dead_alloc_map.
+    /// This function is used by Miri's provenance GC to remove unreachable entries from the
+    /// dead_alloc_map.
     pub fn remove_unreachable_allocs(&mut self, reachable_allocs: &FxHashSet<AllocId>) {
-        // Unlike all the other GC helpers where we check if an `AllocId` is found in the interpreter or
-        // is live, here all the IDs in the map are for dead allocations so we don't
-        // need to check for liveness.
+        // Unlike all the other GC helpers where we check if an `AllocId` is found in the
+        // interpreter or is live, here all the IDs in the map are for dead allocations so
+        // we don't need to check for liveness.
         #[allow(rustc::potential_query_instability)] // Only used from Miri, not queries.
         self.memory.dead_alloc_map.retain(|id, _| reachable_allocs.contains(id));
     }
@@ -542,7 +544,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
                 // Thread-local statics do not have a constant address. They *must* be accessed via
-                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant
+                // value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Notice that every static has two `AllocId` that will resolve to the same
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
@@ -555,12 +558,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
                 if self.tcx.is_foreign_item(def_id) {
-                    // This is unreachable in Miri, but can happen in CTFE where we actually *do* support
-                    // referencing arbitrary (declared) extern statics.
+                    // This is unreachable in Miri, but can happen in CTFE where we actually *do*
+                    // support referencing arbitrary (declared) extern statics.
                     throw_unsup!(ReadExternStatic(def_id));
                 }
 
-                // We don't give a span -- statics don't need that, they cannot be generic or associated.
+                // We don't give a span -- statics don't need that, they cannot be generic or
+                // associated.
                 let val = self.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
                 (val, Some(def_id))
             }
@@ -588,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `InterpResult<'tcx, &Allocation<M::Provenance>>`.
         let a = self.memory.alloc_map.get_or(id, || {
-            let alloc = self.get_global_alloc(id, /*is_write*/ false).map_err(Err)?;
+            let alloc = self.get_global_alloc(id, /* is_write */ false).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
@@ -667,7 +671,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if self.memory.alloc_map.get_mut(id).is_none() {
             // Slow path.
             // Allocation not found locally, go look global.
-            let alloc = self.get_global_alloc(id, /*is_write*/ true)?;
+            let alloc = self.get_global_alloc(id, /* is_write */ true)?;
             let kind = M::GLOBAL_KIND.expect(
                 "I got a global allocation that I have to copy but the machine does \
                     not expect that to happen",
@@ -693,7 +697,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some((alloc_id, offset, prov)) = parts {
             let tcx = self.tcx;
             // FIXME: can we somehow avoid looking up the allocation twice here?
-            // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
+            // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate
+            // `&mut self`.
             let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
             let range = alloc_range(offset, size);
             M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
@@ -745,7 +750,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
                 // Thread-local statics do not have a constant address. They *must* be accessed via
-                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
+                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant
+                // value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
                 let ty = self
@@ -1022,14 +1028,14 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn read_integer(&self, range: AllocRange) -> InterpResult<'tcx, Scalar<Prov>> {
-        self.read_scalar(range, /*read_provenance*/ false)
+        self.read_scalar(range, /* read_provenance */ false)
     }
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
     pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(
             alloc_range(offset, self.tcx.data_layout().pointer_size),
-            /*read_provenance*/ true,
+            /* read_provenance */ true,
         )
     }
 
@@ -1182,11 +1188,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if init.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
-            // is marked as uninitialized but we otherwise omit changing the byte representation which may
-            // be arbitrary for uninitialized bytes.
+            // is marked as uninitialized but we otherwise omit changing the byte representation
+            // which may be arbitrary for uninitialized bytes.
             // This also avoids writing to the target bytes so that the backing allocation is never
-            // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
-            // operating system this can avoid physically allocating the page.
+            // touched if the bytes stay uninitialized for the whole interpreter execution. On
+            // contemporary operating system this can avoid physically allocating the
+            // page.
             dest_alloc
                 .write_uninit(&tcx, dest_range)
                 .map_err(|e| e.to_interp_error(dest_alloc_id))?;
@@ -1255,7 +1262,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Ok((alloc_id, offset, _)) => {
                         let (size, _align, _kind) = self.get_alloc_info(alloc_id);
                         // If the pointer is out-of-bounds, it may be null.
-                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                        // Note that one-past-the-end (offset == size) is still inbounds, and never
+                        // null.
                         offset > size
                     }
                     Err(_offset) => bug!("a non-int scalar is always a pointer"),
@@ -1288,7 +1296,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Turning a "maybe pointer" into a proper pointer (and some information about where it points).
+    /// Turning a "maybe pointer" into a proper pointer (and some information about where it
+    /// points).
     ///
     /// The result must be used immediately; it is not allowed to convert
     /// the returned data back into a `Pointer` and store that in machine state.

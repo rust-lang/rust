@@ -213,10 +213,11 @@ impl CodeSuggestion {
 
         use rustc_span::{CharPos, Pos};
 
-        /// Extracts a substring from the provided `line_opt` based on the specified low and high indices,
-        /// appends it to the given buffer `buf`, and returns the count of newline characters in the substring
-        /// for accurate highlighting.
-        /// If `line_opt` is `None`, a newline character is appended to the buffer, and 0 is returned.
+        /// Extracts a substring from the provided `line_opt` based on the specified low and high
+        /// indices, appends it to the given buffer `buf`, and returns the count of newline
+        /// characters in the substring for accurate highlighting.
+        /// If `line_opt` is `None`, a newline character is appended to the buffer, and 0 is
+        /// returned.
         ///
         /// ## Returns
         ///
@@ -293,11 +294,11 @@ impl CodeSuggestion {
 
                 let mut highlights = vec![];
                 // To build up the result, we do this for each span:
-                // - push the line segment trailing the previous span
-                //   (at the beginning a "phantom" span pointing at the start of the line)
+                // - push the line segment trailing the previous span (at the beginning a "phantom"
+                //   span pointing at the start of the line)
                 // - push lines between the previous and current span (if any)
-                // - if the previous and current span are not on the same line
-                //   push the line segment leading up to the current span
+                // - if the previous and current span are not on the same line push the line segment
+                //   leading up to the current span
                 // - splice in the span substitution
                 //
                 // Finally push the trailing line segment of the last span
@@ -470,12 +471,13 @@ struct DiagCtxtInner {
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 
-    /// Expected [`Diagnostic`][struct@diagnostic::Diagnostic]s store a [`LintExpectationId`] as part of
-    /// the lint level. [`LintExpectationId`]s created early during the compilation
+    /// Expected [`Diagnostic`][struct@diagnostic::Diagnostic]s store a [`LintExpectationId`] as
+    /// part of the lint level. [`LintExpectationId`]s created early during the compilation
     /// (before `HirId`s have been defined) are not stable and can therefore not be
     /// stored on disk. This buffer stores these diagnostics until the ID has been
-    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`][struct@diagnostic::Diagnostic]s are the
-    /// submitted for storage and added to the list of fulfilled expectations.
+    /// replaced by a stable [`LintExpectationId`]. The
+    /// [`Diagnostic`][struct@diagnostic::Diagnostic]s are the submitted for storage and added
+    /// to the list of fulfilled expectations.
     unstable_expect_diagnostics: Vec<Diagnostic>,
 
     /// expected diagnostic will have the level `Expect` which additionally
@@ -1551,8 +1553,8 @@ pub enum Level {
     /// Its `EmissionGuarantee` is `()`.
     Warning,
 
-    /// A message giving additional context. Rare, because notes are more commonly attached to other
-    /// diagnostics such as errors.
+    /// A message giving additional context. Rare, because notes are more commonly attached to
+    /// other diagnostics such as errors.
     ///
     /// Its `EmissionGuarantee` is `()`.
     Note,

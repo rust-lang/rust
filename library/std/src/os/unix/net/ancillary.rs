@@ -723,7 +723,6 @@ impl<'a> SocketAncillary<'a> {
     /// If there is not enough space then no credentials will be appended.
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_CREDENTIALS`, `SCM_CREDS`, or `SCM_CREDS2`.
-    ///
     #[cfg(any(
         doc,
         target_os = "android",

@@ -278,7 +278,6 @@ enum ImplTraitContext {
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
-    ///
     ReturnPositionOpaqueTy {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
@@ -534,8 +533,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `'a` parameter declared on `foo`.
     ///
     /// This function also applies remapping from `get_remapped_def_id`.
-    /// These are used when synthesizing opaque types from `-> impl Trait` return types and so forth.
-    /// For example, in a function like `fn foo<'a>() -> impl Debug + 'a`,
+    /// These are used when synthesizing opaque types from `-> impl Trait` return types and so
+    /// forth. For example, in a function like `fn foo<'a>() -> impl Debug + 'a`,
     /// we would create an opaque type `type FooReturn<'a1> = impl Debug + 'a1`.
     /// When lowering the `Debug + 'a` bounds, we add a remapping to map `'a` to `'a1`.
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
@@ -550,7 +549,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `generics_def_id_map` field.
     fn get_remapped_def_id(&self, local_def_id: LocalDefId) -> LocalDefId {
         // `generics_def_id_map` is a stack of mappings. As we go deeper in impl traits nesting we
-        // push new mappings, so we first need to get the latest (innermost) mappings, hence `iter().rev()`.
+        // push new mappings, so we first need to get the latest (innermost) mappings, hence
+        // `iter().rev()`.
         //
         // Consider:
         //
@@ -560,8 +560,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // `[[fn#'b -> impl_trait#'b], [fn#'b -> impl_sized#'b]]`
         //
-        // for the opaque type generated on `impl Sized + 'b`, we want the result to be: impl_sized#'b.
-        // So, if we were trying to find first from the start (outermost) would give the wrong result, impl_trait#'b.
+        // for the opaque type generated on `impl Sized + 'b`, we want the result to be:
+        // impl_sized#'b. So, if we were trying to find first from the start (outermost)
+        // would give the wrong result, impl_trait#'b.
         self.generics_def_id_map
             .iter()
             .rev()
@@ -1184,7 +1185,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 data.inputs_span.shrink_to_lo().to(data.inputs_span.shrink_to_hi());
             AssocTyParenthesesSub::Empty { parentheses_span }
         }
-        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+        // Suggest replacing parentheses with angle brackets `Trait(params...)` to
+        // `Trait<params...>`
         else {
             // Start of parameters to the 1st argument
             let open_param = data.inputs_span.shrink_to_lo().to(data
@@ -1218,9 +1220,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         });
                     }
                     // We parse const arguments as path types as we cannot distinguish them during
-                    // parsing. We try to resolve that ambiguity by attempting resolution in both the
-                    // type and value namespaces. If we resolved the path in the value namespace, we
-                    // transform it into a generic const argument.
+                    // parsing. We try to resolve that ambiguity by attempting resolution in both
+                    // the type and value namespaces. If we resolved the path in
+                    // the value namespace, we transform it into a generic const
+                    // argument.
                     TyKind::Path(None, path) => {
                         if let Some(res) = self
                             .resolver
@@ -1426,8 +1429,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     Some(this.lower_poly_trait_ref(
                                         ty,
                                         itctx,
-                                        // Still, don't pass along the constness here; we don't want to
-                                        // synthesize any host effect args, it'd only cause problems.
+                                        // Still, don't pass along the constness here; we don't
+                                        // want to
+                                        // synthesize any host effect args, it'd only cause
+                                        // problems.
                                         ast::BoundConstness::Never,
                                     ))
                                 }
@@ -1561,10 +1566,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// ```
     ///
     /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the
-    /// type parameters from the function `test` (this is implemented in the query layer, they aren't
-    /// added explicitly in the HIR). But this includes all the lifetimes, and we only want to
-    /// capture the lifetimes that are referenced in the bounds. Therefore, we add *extra* lifetime parameters
-    /// for the lifetimes that get captured (`'x`, in our example above) and reference those.
+    /// type parameters from the function `test` (this is implemented in the query layer, they
+    /// aren't added explicitly in the HIR). But this includes all the lifetimes, and we only
+    /// want to capture the lifetimes that are referenced in the bounds. Therefore, we add
+    /// *extra* lifetime parameters for the lifetimes that get captured (`'x`, in our example
+    /// above) and reference those.
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_opaque_impl_trait(
         &mut self,
@@ -2140,7 +2146,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             GenericParamKind::Type { default, .. } => {
                 // Not only do we deny type param defaults in binders but we also map them to `None`
-                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                // since later compiler stages cannot handle them (and shouldn't need to be able
+                // to).
                 let default = default
                     .as_ref()
                     .filter(|_| match source {
@@ -2168,8 +2175,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let ty = self
                     .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
 
-                // Not only do we deny const param defaults in binders but we also map them to `None`
-                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                // Not only do we deny const param defaults in binders but we also map them to
+                // `None` since later compiler stages cannot handle them (and
+                // shouldn't need to be able to).
                 let default = default
                     .as_ref()
                     .filter(|_| match source {

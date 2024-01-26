@@ -416,14 +416,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // already tagged with external linkage). This is suboptimal for a few
         // reasons:
         //
-        // * If an object file will never be included in a dynamic library,
-        //   there's no need to attach the dllexport attribute. Most object
-        //   files in Rust are not destined to become part of a dll as binaries
-        //   are statically linked by default.
-        // * If the compiler is emitting both an rlib and a dylib, the same
-        //   source object file is currently used but with MSVC this may be less
-        //   feasible. The compiler may be able to get around this, but it may
-        //   involve some invasive changes to deal with this.
+        // * If an object file will never be included in a dynamic library, there's no need to
+        //   attach the dllexport attribute. Most object files in Rust are not destined to become
+        //   part of a dll as binaries are statically linked by default.
+        // * If the compiler is emitting both an rlib and a dylib, the same source object file is
+        //   currently used but with MSVC this may be less feasible. The compiler may be able to get
+        //   around this, but it may involve some invasive changes to deal with this.
         //
         // The flip side of this situation is that whenever you link to a dll and
         // you import a function from it, the import should be tagged with
@@ -431,14 +429,14 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // `dllimport` for any declarations other than constants (where it is
         // required), which is again suboptimal for even more reasons!
         //
-        // * Calling a function imported from another dll without using
-        //   `dllimport` causes the linker/compiler to have extra overhead (one
-        //   `jmp` instruction on x86) when calling the function.
-        // * The same object file may be used in different circumstances, so a
-        //   function may be imported from a dll if the object is linked into a
-        //   dll, but it may be just linked against if linked into an rlib.
-        // * The compiler has no knowledge about whether native functions should
-        //   be tagged dllimport or not.
+        // * Calling a function imported from another dll without using `dllimport` causes the
+        //   linker/compiler to have extra overhead (one `jmp` instruction on x86) when calling the
+        //   function.
+        // * The same object file may be used in different circumstances, so a function may be
+        //   imported from a dll if the object is linked into a dll, but it may be just linked
+        //   against if linked into an rlib.
+        // * The compiler has no knowledge about whether native functions should be tagged dllimport
+        //   or not.
         //
         // For now the compiler takes the perf hit (I do not have any numbers to
         // this effect) by marking very little as `dllimport` and praying the

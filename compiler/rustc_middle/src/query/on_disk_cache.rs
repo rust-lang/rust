@@ -587,8 +587,9 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
         rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
-            // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
-            // We look up the position of the associated `SyntaxData` and decode it.
+            // This closure is invoked if we haven't already decoded the data for the
+            // `SyntaxContext` we are deserializing. We look up the position of the
+            // associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
                 let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);

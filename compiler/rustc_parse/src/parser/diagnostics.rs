@@ -357,8 +357,9 @@ impl<'a> Parser<'a> {
                             let ident_name = symbol;
                             // at this point, we've found something like
                             // `fn <T>id`
-                            // and current token should be Ident with the item name (i.e. the function name)
-                            // if there is a `<` after the fn name, then don't show a suggestion, show help
+                            // and current token should be Ident with the item name (i.e. the
+                            // function name) if there is a `<` after
+                            // the fn name, then don't show a suggestion, show help
 
                             if !self.look_ahead(1, |t| *t == token::Lt)
                                 && let Ok(snippet) =
@@ -455,7 +456,8 @@ impl<'a> Parser<'a> {
             .map(TokenType::Token)
             .chain(self.expected_tokens.iter().cloned())
             .filter(|token| {
-                // Filter out suggestions that suggest the same token which was found and deemed incorrect.
+                // Filter out suggestions that suggest the same token which was found and deemed
+                // incorrect.
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
                     if let TokenKind::Ident(current_sym, _) = found
                         && let TokenType::Keyword(suggested_sym) = expected
@@ -1057,11 +1059,9 @@ impl<'a> Parser<'a> {
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
-        // 1. A specific token is expected after the path segment.
-        //    eg. `x.foo(`, `x.foo::<u32>(` (parenthesis - method call),
-        //        `Foo::`, or `Foo::<Bar>::` (mod sep - continued path).
-        // 2. No specific token is expected after the path segment.
-        //    eg. `x.foo` (field access)
+        // 1. A specific token is expected after the path segment. eg. `x.foo(`, `x.foo::<u32>(`
+        //    (parenthesis - method call), `Foo::`, or `Foo::<Bar>::` (mod sep - continued path).
+        // 2. No specific token is expected after the path segment. eg. `x.foo` (field access)
         //
         // This function is called after parsing `.foo` and before parsing the token `end` (if
         // present). This includes any angle bracket arguments, such as `.foo::<u32>` or
@@ -1689,7 +1689,8 @@ impl<'a> Parser<'a> {
                     }
                     UnaryFixity::Post => {
                         // won't suggest since we can not handle the precedences
-                        // for example: `a + b++` has been parsed (a + b)++ and we can not suggest here
+                        // for example: `a + b++` has been parsed (a + b)++ and we can not suggest
+                        // here
                         if !matches!(base.kind, ExprKind::Binary(_, _, _)) {
                             self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
                         }

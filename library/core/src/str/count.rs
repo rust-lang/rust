@@ -39,13 +39,12 @@ fn do_count_chars(s: &str) -> usize {
     // For correctness, `CHUNK_SIZE` must be:
     //
     // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
-    // - A multiple of `UNROLL_INNER`, otherwise our `break` inside the
-    //   `body.chunks(CHUNK_SIZE)` loop is incorrect.
+    // - A multiple of `UNROLL_INNER`, otherwise our `break` inside the `body.chunks(CHUNK_SIZE)`
+    //   loop is incorrect.
     //
     // For performance, `CHUNK_SIZE` should be:
     // - Relatively cheap to `/` against (so some simple sum of powers of two).
-    // - Large enough to avoid paying for the cost of the `sum_bytes_in_usize`
-    //   too often.
+    // - Large enough to avoid paying for the cost of the `sum_bytes_in_usize` too often.
     const CHUNK_SIZE: usize = 192;
 
     // Check the properties of `CHUNK_SIZE` and `UNROLL_INNER` that are required

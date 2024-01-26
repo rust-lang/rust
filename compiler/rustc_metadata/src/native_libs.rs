@@ -334,7 +334,8 @@ impl<'tcx> Collector<'tcx> {
                 continue;
             };
 
-            // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
+            // Do this outside of the loop so that `import_name_type` can be specified before
+            // `kind`.
             if let Some((_, span)) = import_name_type {
                 if kind != Some(NativeLibKind::RawDylib) {
                     sess.dcx().emit_err(errors::ImportNameTypeRaw { span });
@@ -515,7 +516,8 @@ impl<'tcx> Collector<'tcx> {
     ) -> DllImport {
         let span = self.tcx.def_span(item);
 
-        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
+        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but
+        // errors on unsupported inputs
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,

@@ -66,8 +66,8 @@ impl DebugContext {
     ) -> (Lrc<SourceFile>, u64, u64) {
         // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
         // In order to have a good line stepping behavior in debugger, we overwrite debug
-        // locations of macro expansions with that of the outermost expansion site (when the macro is
-        // annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
+        // locations of macro expansions with that of the outermost expansion site (when the macro
+        // is annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
         let span = tcx.collapsed_debuginfo(span, function_span);
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {

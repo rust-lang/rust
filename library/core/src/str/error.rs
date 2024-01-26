@@ -82,17 +82,15 @@ impl Utf8Error {
 
     /// Provides more information about the failure:
     ///
-    /// * `None`: the end of the input was reached unexpectedly.
-    ///   `self.valid_up_to()` is 1 to 3 bytes from the end of the input.
-    ///   If a byte stream (such as a file or a network socket) is being decoded incrementally,
-    ///   this could be a valid `char` whose UTF-8 byte sequence is spanning multiple chunks.
+    /// * `None`: the end of the input was reached unexpectedly. `self.valid_up_to()` is 1 to 3
+    ///   bytes from the end of the input. If a byte stream (such as a file or a network socket) is
+    ///   being decoded incrementally, this could be a valid `char` whose UTF-8 byte sequence is
+    ///   spanning multiple chunks.
     ///
-    /// * `Some(len)`: an unexpected byte was encountered.
-    ///   The length provided is that of the invalid byte sequence
-    ///   that starts at the index given by `valid_up_to()`.
-    ///   Decoding should resume after that sequence
-    ///   (after inserting a [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD]) in case of
-    ///   lossy decoding.
+    /// * `Some(len)`: an unexpected byte was encountered. The length provided is that of the
+    ///   invalid byte sequence that starts at the index given by `valid_up_to()`. Decoding should
+    ///   resume after that sequence (after inserting a [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD]) in
+    ///   case of lossy decoding.
     ///
     /// [U+FFFD]: ../../std/char/constant.REPLACEMENT_CHARACTER.html
     #[stable(feature = "utf8_error_error_len", since = "1.20.0")]

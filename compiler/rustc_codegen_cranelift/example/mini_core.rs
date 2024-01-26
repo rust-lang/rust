@@ -608,9 +608,9 @@ pub mod intrinsics {
 }
 
 pub mod libc {
-    // With the new Universal CRT, msvc has switched to all the printf functions being inline wrapper
-    // functions. legacy_stdio_definitions.lib which provides the printf wrapper functions as normal
-    // symbols to link against.
+    // With the new Universal CRT, msvc has switched to all the printf functions being inline
+    // wrapper functions. legacy_stdio_definitions.lib which provides the printf wrapper
+    // functions as normal symbols to link against.
     #[cfg_attr(unix, link(name = "c"))]
     #[cfg_attr(target_env = "msvc", link(name = "legacy_stdio_definitions"))]
     extern "C" {

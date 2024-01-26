@@ -82,10 +82,10 @@ impl<'a> Argument<'a> {
     #[inline(always)]
     fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'b> {
         // SAFETY: `mem::transmute(x)` is safe because
-        //     1. `&'b T` keeps the lifetime it originated with `'b`
-        //              (so as to not have an unbounded lifetime)
-        //     2. `&'b T` and `&'b Opaque` have the same memory layout
-        //              (when `T` is `Sized`, as it is here)
+        //     1. `&'b T` keeps the lifetime it originated with `'b` (so as to not have an unbounded
+        //        lifetime)
+        //     2. `&'b T` and `&'b Opaque` have the same memory layout (when `T` is `Sized`, as it
+        //        is here)
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
         // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)

@@ -285,7 +285,8 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             }
         }
         CommandKind::Is => {
-            // @has <jsonpath> <value> = check *exactly one* item matched by path, and it equals value
+            // @has <jsonpath> <value> = check *exactly one* item matched by path, and it equals
+            // value
             assert_eq!(command.args.len(), 2);
             let val = cache.value().clone();
             let results = select(&val, &command.args[0]).unwrap();
@@ -346,7 +347,8 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 command,
             ))
         } else {
-            // FIXME: In the future, try 'peeling back' each step, and see at what level the match failed
+            // FIXME: In the future, try 'peeling back' each step, and see at what level the match
+            // failed
             Err(CkError::FailedCheck(
                 format!(
                     "`@{} {}` didn't match when it should",

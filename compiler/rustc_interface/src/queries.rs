@@ -28,7 +28,8 @@ use std::sync::Arc;
 
 /// Represent the result of a query.
 ///
-/// This result can be stolen once with the [`steal`] method and generated with the [`compute`] method.
+/// This result can be stolen once with the [`steal`] method and generated with the [`compute`]
+/// method.
 ///
 /// [`steal`]: Steal::steal
 /// [`compute`]: Self::compute

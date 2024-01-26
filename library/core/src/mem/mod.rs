@@ -98,14 +98,14 @@ pub use crate::intrinsics::transmute;
 /// There are two issues with the above example:
 ///
 /// * If more code were added between the construction of `String` and the invocation of
-///   `mem::forget()`, a panic within it would cause a double free because the same memory
-///   is handled by both `v` and `s`.
-/// * After calling `v.as_mut_ptr()` and transmitting the ownership of the data to `s`,
-///   the `v` value is invalid. Even when a value is just moved to `mem::forget` (which won't
-///   inspect it), some types have strict requirements on their values that
-///   make them invalid when dangling or no longer owned. Using invalid values in any
-///   way, including passing them to or returning them from functions, constitutes
-///   undefined behavior and may break the assumptions made by the compiler.
+///   `mem::forget()`, a panic within it would cause a double free because the same memory is
+///   handled by both `v` and `s`.
+/// * After calling `v.as_mut_ptr()` and transmitting the ownership of the data to `s`, the `v`
+///   value is invalid. Even when a value is just moved to `mem::forget` (which won't inspect it),
+///   some types have strict requirements on their values that make them invalid when dangling or no
+///   longer owned. Using invalid values in any way, including passing them to or returning them
+///   from functions, constitutes undefined behavior and may break the assumptions made by the
+///   compiler.
 ///
 /// Switching to `ManuallyDrop` avoids both issues:
 ///
@@ -302,7 +302,6 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// [`*const T`]: primitive@pointer
 /// [`Box<T>`]: ../../std/boxed/struct.Box.html
 /// [`Option<&T>`]: crate::option::Option
-///
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -356,17 +355,14 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
-///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`size_of_val`] on a reference to a type with an extern type tail.
+///     - a [slice], then the length of the slice tail must be an initialized integer, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point to a valid vtable
+///       acquired by an unsizing coercion, and the size of the *entire value* (dynamic tail length
+///       + statically sized prefix) must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to call, but may panic or
+///       otherwise return the wrong value, as the extern type's layout is not known. This is the
+///       same behavior as [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
 /// [`size_of::<T>()`]: size_of
@@ -503,17 +499,14 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
-///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`align_of_val`] on a reference to a type with an extern type tail.
+///     - a [slice], then the length of the slice tail must be an initialized integer, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point to a valid vtable
+///       acquired by an unsizing coercion, and the size of the *entire value* (dynamic tail length
+///       + statically sized prefix) must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to call, but may panic or
+///       otherwise return the wrong value, as the extern type's layout is not known. This is the
+///       same behavior as [`align_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -998,7 +991,8 @@ pub fn drop<T>(_x: T) {}
 /// pub fn copy<T: Copy>(x: &T) -> T { *x }
 /// ```
 ///
-/// It is useful when you want to pass a function pointer to a combinator, rather than defining a new closure.
+/// It is useful when you want to pass a function pointer to a combinator, rather than defining a
+/// new closure.
 ///
 /// Example:
 /// ```

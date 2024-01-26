@@ -33,12 +33,14 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// For any `a`, `b`, and `n`:
     ///
-    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::forward_checked(&a, n) == Some(b)`
-    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::backward_checked(&b, n) == Some(a)`
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::forward_checked(&a, n) ==
+    ///   Some(b)`
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `Step::backward_checked(&b, n) ==
+    ///   Some(a)`
     /// * `steps_between(&a, &b) == Some(n)` only if `a <= b`
     ///   * Corollary: `steps_between(&a, &b) == Some(0)` if and only if `a == b`
-    ///   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
-    ///     this is the case when it would require more than `usize::MAX` steps to get to `b`
+    ///   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`; this is the case
+    ///     when it would require more than `usize::MAX` steps to get to `b`
     /// * `steps_between(&a, &b) == None` if `a > b`
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
@@ -51,11 +53,13 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// For any `a`, `n`, and `m`:
     ///
-    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == Step::forward_checked(a, m).and_then(|x| Step::forward_checked(x, n))`
+    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) ==
+    ///   Step::forward_checked(a, m).and_then(|x| Step::forward_checked(x, n))`
     ///
     /// For any `a`, `n`, and `m` where `n + m` does not overflow:
     ///
-    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) == Step::forward_checked(a, n + m)`
+    /// * `Step::forward_checked(a, n).and_then(|x| Step::forward_checked(x, m)) ==
+    ///   Step::forward_checked(a, n + m)`
     ///
     /// For any `a` and `n`:
     ///
@@ -104,8 +108,8 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a`:
     ///
     /// * if there exists `b` such that `b > a`, it is safe to call `Step::forward_unchecked(a, 1)`
-    /// * if there exists `b`, `n` such that `steps_between(&a, &b) == Some(n)`,
-    ///   it is safe to call `Step::forward_unchecked(a, m)` for any `m <= n`.
+    /// * if there exists `b`, `n` such that `steps_between(&a, &b) == Some(n)`, it is safe to call
+    ///   `Step::forward_unchecked(a, m)` for any `m <= n`.
     ///
     /// For any `a` and `n`, where no overflow occurs:
     ///
@@ -123,8 +127,10 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// For any `a`, `n`, and `m`:
     ///
-    /// * `Step::backward_checked(a, n).and_then(|x| Step::backward_checked(x, m)) == n.checked_add(m).and_then(|x| Step::backward_checked(a, x))`
-    /// * `Step::backward_checked(a, n).and_then(|x| Step::backward_checked(x, m)) == try { Step::backward_checked(a, n.checked_add(m)?) }`
+    /// * `Step::backward_checked(a, n).and_then(|x| Step::backward_checked(x, m)) ==
+    ///   n.checked_add(m).and_then(|x| Step::backward_checked(a, x))`
+    /// * `Step::backward_checked(a, n).and_then(|x| Step::backward_checked(x, m)) == try {
+    ///   Step::backward_checked(a, n.checked_add(m)?) }`
     ///
     /// For any `a` and `n`:
     ///
@@ -173,8 +179,8 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a`:
     ///
     /// * if there exists `b` such that `b < a`, it is safe to call `Step::backward_unchecked(a, 1)`
-    /// * if there exists `b`, `n` such that `steps_between(&b, &a) == Some(n)`,
-    ///   it is safe to call `Step::backward_unchecked(a, m)` for any `m <= n`.
+    /// * if there exists `b`, `n` such that `steps_between(&b, &a) == Some(n)`, it is safe to call
+    ///   `Step::backward_unchecked(a, m)` for any `m <= n`.
     ///
     /// For any `a` and `n`, where no overflow occurs:
     ///
@@ -890,12 +896,11 @@ impl<A: Step> Iterator for ops::Range<A> {
 
 // These macros generate `ExactSizeIterator` impls for various range types.
 //
-// * `ExactSizeIterator::len` is required to always return an exact `usize`,
-//   so no range can be longer than `usize::MAX`.
+// * `ExactSizeIterator::len` is required to always return an exact `usize`, so no range can be
+//   longer than `usize::MAX`.
 // * For integer types in `Range<_>` this is the case for types narrower than or as wide as `usize`.
-//   For integer types in `RangeInclusive<_>`
-//   this is the case for types *strictly narrower* than `usize`
-//   since e.g. `(0..=u64::MAX).len()` would be `u64::MAX + 1`.
+//   For integer types in `RangeInclusive<_>` this is the case for types *strictly narrower* than
+//   `usize` since e.g. `(0..=u64::MAX).len()` would be `u64::MAX + 1`.
 range_exact_iter_impl! {
     usize u8 u16
     isize i8 i16
@@ -958,9 +963,9 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
 // The following invariants for `Step::steps_between` exist:
 //
 // > * `steps_between(&a, &b) == Some(n)` only if `a <= b`
-// >   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
-// >     this is the case when it would require more than `usize::MAX` steps to
-// >     get to `b`
+// > * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
+// > this is the case when it would require more than `usize::MAX` steps to
+// > get to `b`
 // > * `steps_between(&a, &b) == None` if `a > b`
 //
 // The first invariant is what is generally required for `TrustedLen` to be

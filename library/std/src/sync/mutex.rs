@@ -169,7 +169,6 @@ use crate::sys::locks as sys;
 ///
 /// assert_eq!(*res_mutex.lock().unwrap(), 800);
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
 pub struct Mutex<T: ?Sized> {

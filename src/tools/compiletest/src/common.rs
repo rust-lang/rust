@@ -497,7 +497,8 @@ impl TargetCfgs {
         let mut all_pointer_widths = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
-        // we check whether it is a custom target from the user or a synthetic target from bootstrap.
+        // we check whether it is a custom target from the user or a synthetic target from
+        // bootstrap.
         if !targets.contains_key(&config.target) {
             let mut envs: HashMap<String, String> = HashMap::new();
 

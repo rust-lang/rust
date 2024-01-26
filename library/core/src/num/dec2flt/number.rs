@@ -53,10 +53,11 @@ impl Number {
     pub fn try_fast_path<F: RawFloat>(&self) -> Option<F> {
         // Here we need to work around <https://github.com/rust-lang/rust/issues/114479>.
         // The fast path crucially depends on arithmetic being rounded to the correct number of bits
-        // without any intermediate rounding. On x86 (without SSE or SSE2) this requires the precision
-        // of the x87 FPU stack to be changed so that it directly rounds to 64/32 bit.
-        // The `set_precision` function takes care of setting the precision on architectures which
-        // require setting it by changing the global state (like the control word of the x87 FPU).
+        // without any intermediate rounding. On x86 (without SSE or SSE2) this requires the
+        // precision of the x87 FPU stack to be changed so that it directly rounds to 64/32
+        // bit. The `set_precision` function takes care of setting the precision on
+        // architectures which require setting it by changing the global state (like the
+        // control word of the x87 FPU).
         let _cw = set_precision::<F>();
 
         if self.is_fast_path::<F>() {

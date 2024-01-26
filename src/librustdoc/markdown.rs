@@ -158,7 +158,8 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
-    // For markdown files, custom code classes will be disabled until the feature is enabled by default.
+    // For markdown files, custom code classes will be disabled until the feature is enabled by
+    // default.
     find_testable_code(
         &input_str,
         &mut collector,

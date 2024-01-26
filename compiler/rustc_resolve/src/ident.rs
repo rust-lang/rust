@@ -37,7 +37,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         mut visitor: impl FnMut(
             &mut Self,
             Scope<'a>,
-            /*use_prelude*/ bool,
+            /* use_prelude */ bool,
             SyntaxContext,
         ) -> Option<T>,
     ) -> Option<T> {
@@ -48,8 +48,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // 2. "Closed set" below means new names cannot appear after the current resolution attempt.
         // Places to search (in order of decreasing priority):
         // (Type NS)
-        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet
-        //    (open set, not controlled).
+        // 1. FIXME: Ribs (type parameters), there's no necessary infrastructure yet (open set, not
+        //    controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
         // 3. Extern prelude (open, the open part is from macro expansions, not controlled).
@@ -57,8 +57,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // 5. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude (closed, controlled).
         // (Value NS)
-        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet
-        //    (open set, not controlled).
+        // 1. FIXME: Ribs (local variables), there's no necessary infrastructure yet (open set, not
+        //    controlled).
         // 2. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled).
         // 3. Standard library prelude (de-facto closed, controlled).
@@ -1480,9 +1480,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     let res = binding.res();
 
-                    // Mark every privacy error in this path with the res to the last element. This allows us
-                    // to detect the item the user cares about and either find an alternative import, or tell
-                    // the user it is not accessible.
+                    // Mark every privacy error in this path with the res to the last element. This
+                    // allows us to detect the item the user cares about and
+                    // either find an alternative import, or tell the user it is
+                    // not accessible.
                     for error in &mut self.privacy_errors[privacy_errors_len..] {
                         error.outermost_res = Some((res, ident));
                     }

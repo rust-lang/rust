@@ -311,7 +311,8 @@ fn late_arg_as_bound_arg<'tcx>(
 }
 
 impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
-    /// Returns the binders in scope and the type of `Binder` that should be created for a poly trait ref.
+    /// Returns the binders in scope and the type of `Binder` that should be created for a poly
+    /// trait ref.
     fn poly_trait_ref_binder_info(&mut self) -> (Vec<ty::BoundVariableKind>, BinderScopeType) {
         let mut scope = self.scope;
         let mut supertrait_bound_vars = vec![];
@@ -1590,8 +1591,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         // in an arbitrary order.
                         DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
                         DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
-                        // We may also get a `Trait` or `TraitAlias` because of how generics `Self` parameter
-                        // works. Ignore it because it can't have a meaningful lifetime default.
+                        // We may also get a `Trait` or `TraitAlias` because of how generics `Self`
+                        // parameter works. Ignore it because it can't have
+                        // a meaningful lifetime default.
                         DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
                         dk => bug!("unexpected def_kind {:?}", dk),
                     }
@@ -1665,7 +1667,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 s: self.scope,
             };
             // If the binding is parenthesized, then this must be `feature(return_type_notation)`.
-            // In that case, introduce a binder over all of the function's early and late bound vars.
+            // In that case, introduce a binder over all of the function's early and late bound
+            // vars.
             //
             // For example, given
             // ```
@@ -1771,8 +1774,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let Some((def_id, bound_vars)) = stack.pop() else {
                 break None;
             };
-            // See issue #83753. If someone writes an associated type on a non-trait, just treat it as
-            // there being no supertrait HRTBs.
+            // See issue #83753. If someone writes an associated type on a non-trait, just treat it
+            // as there being no supertrait HRTBs.
             match tcx.def_kind(def_id) {
                 DefKind::Trait | DefKind::TraitAlias | DefKind::Impl { .. } => {}
                 _ => break None,
@@ -1949,10 +1952,11 @@ fn is_late_bound_map(
 
     /// Visits a `ty::Ty` collecting information about what generic parameters are constrained.
     ///
-    /// The visitor does not operate on `hir::Ty` so that it can be called on the rhs of a `type Alias<...> = ...;`
-    /// which may live in a separate crate so there would not be any hir available. Instead we use the `type_of`
-    /// query to obtain a `ty::Ty` which will be present even in cross crate scenarios. It also naturally
-    /// handles cycle detection as we go through the query system.
+    /// The visitor does not operate on `hir::Ty` so that it can be called on the rhs of a `type
+    /// Alias<...> = ...;` which may live in a separate crate so there would not be any hir
+    /// available. Instead we use the `type_of` query to obtain a `ty::Ty` which will be present
+    /// even in cross crate scenarios. It also naturally handles cycle detection as we go
+    /// through the query system.
     ///
     /// This is necessary in the first place for the following case:
     /// ```rust,ignore (pseudo-Rust)
@@ -1960,12 +1964,14 @@ fn is_late_bound_map(
     /// fn foo<'a>(_: Alias<'a, ()>) -> Alias<'a, ()> { ... }
     /// ```
     ///
-    /// If we conservatively considered `'a` unconstrained then we could break users who had written code before
-    /// we started correctly handling aliases. If we considered `'a` constrained then it would become late bound
-    /// causing an error during astconv as the `'a` is not constrained by the input type `<() as Trait<'a>>::Assoc`
-    /// but appears in the output type `<() as Trait<'a>>::Assoc`.
+    /// If we conservatively considered `'a` unconstrained then we could break users who had written
+    /// code before we started correctly handling aliases. If we considered `'a` constrained
+    /// then it would become late bound causing an error during astconv as the `'a` is not
+    /// constrained by the input type `<() as Trait<'a>>::Assoc` but appears in the output type
+    /// `<() as Trait<'a>>::Assoc`.
     ///
-    /// We must therefore "look into" the `Alias` to see whether we should consider `'a` constrained or not.
+    /// We must therefore "look into" the `Alias` to see whether we should consider `'a` constrained
+    /// or not.
     ///
     /// See #100508 #85533 #47511 for additional context
     struct ConstrainedCollectorPostAstConv {
@@ -2020,8 +2026,8 @@ fn is_late_bound_map(
                     None,
                     hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
                 )) => {
-                    // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
-                    // args to be unconstrained.
+                    // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not
+                    // just consider args to be unconstrained.
                     let generics = self.tcx.generics_of(alias_def);
                     let mut walker = ConstrainedCollectorPostAstConv {
                         arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),

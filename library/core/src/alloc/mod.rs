@@ -64,8 +64,8 @@ impl fmt::Display for AllocError {
 /// Some of the methods require that a memory block be *currently allocated* via an allocator. This
 /// means that:
 ///
-/// * the starting address for that memory block was previously returned by [`allocate`], [`grow`], or
-///   [`shrink`], and
+/// * the starting address for that memory block was previously returned by [`allocate`], [`grow`],
+///   or [`shrink`], and
 ///
 /// * the memory block has not been subsequently deallocated, where blocks are either deallocated
 ///   directly by being passed to [`deallocate`] or were changed by being passed to [`grow`] or
@@ -94,9 +94,9 @@ impl fmt::Display for AllocError {
 ///
 /// # Safety
 ///
-/// * Memory blocks returned from an allocator that are [*currently allocated*] must point to
-///   valid memory and retain their validity while they are [*currently allocated*] and at
-///   least one of the instance and all of its clones has not been dropped.
+/// * Memory blocks returned from an allocator that are [*currently allocated*] must point to valid
+///   memory and retain their validity while they are [*currently allocated*] and at least one of
+///   the instance and all of its clones has not been dropped.
 ///
 /// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
 ///   allocator. A copied or cloned allocator must behave like the same allocator, and
@@ -109,7 +109,8 @@ impl fmt::Display for AllocError {
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///
-    /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
+    /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees
+    /// of `layout`.
     ///
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
@@ -164,13 +165,14 @@ pub unsafe trait Allocator {
 
     /// Attempts to extend the memory block.
     ///
-    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the allocated
-    /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
-    /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
+    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the
+    /// allocated memory. The pointer is suitable for holding data described by `new_layout`. To
+    /// accomplish this, the allocator may extend the allocation referenced by `ptr` to fit the
+    /// new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
-    /// allocation was grown in-place. The newly returned pointer is the only valid pointer
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if
+    /// the allocation was grown in-place. The newly returned pointer is the only valid pointer
     /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
@@ -179,7 +181,8 @@ pub unsafe trait Allocator {
     /// # Safety
     ///
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
-    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit
+    ///   it.).
     /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
     ///
     /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.
@@ -232,17 +235,18 @@ pub unsafe trait Allocator {
     /// The memory block will contain the following contents after a successful call to
     /// `grow_zeroed`:
     ///   * Bytes `0..old_layout.size()` are preserved from the original allocation.
-    ///   * Bytes `old_layout.size()..old_size` will either be preserved or zeroed, depending on
-    ///     the allocator implementation. `old_size` refers to the size of the memory block prior
-    ///     to the `grow_zeroed` call, which may be larger than the size that was originally
-    ///     requested when it was allocated.
-    ///   * Bytes `old_size..new_size` are zeroed. `new_size` refers to the size of the memory
-    ///     block returned by the `grow_zeroed` call.
+    ///   * Bytes `old_layout.size()..old_size` will either be preserved or zeroed, depending on the
+    ///     allocator implementation. `old_size` refers to the size of the memory block prior to the
+    ///     `grow_zeroed` call, which may be larger than the size that was originally requested when
+    ///     it was allocated.
+    ///   * Bytes `old_size..new_size` are zeroed. `new_size` refers to the size of the memory block
+    ///     returned by the `grow_zeroed` call.
     ///
     /// # Safety
     ///
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
-    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit
+    ///   it.).
     /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
     ///
     /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.
@@ -291,13 +295,14 @@ pub unsafe trait Allocator {
 
     /// Attempts to shrink the memory block.
     ///
-    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the allocated
-    /// memory. The pointer is suitable for holding data described by `new_layout`. To accomplish
-    /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
+    /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the
+    /// allocated memory. The pointer is suitable for holding data described by `new_layout`. To
+    /// accomplish this, the allocator may shrink the allocation referenced by `ptr` to fit the
+    /// new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
-    /// allocation was shrunk in-place. The newly returned pointer is the only valid pointer
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if
+    /// the allocation was shrunk in-place. The newly returned pointer is the only valid pointer
     /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
@@ -306,7 +311,8 @@ pub unsafe trait Allocator {
     /// # Safety
     ///
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
-    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
+    /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit
+    ///   it.).
     /// * `new_layout.size()` must be smaller than or equal to `old_layout.size()`.
     ///
     /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.

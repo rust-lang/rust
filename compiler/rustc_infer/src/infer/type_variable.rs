@@ -226,14 +226,12 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
 
     /// Creates a new type variable.
     ///
-    /// - `diverging`: indicates if this is a "diverging" type
-    ///   variable, e.g.,  one created as the type of a `return`
-    ///   expression. The code in this module doesn't care if a
-    ///   variable is diverging, but the main Rust type-checker will
-    ///   sometimes "unify" such variables with the `!` or `()` types.
-    /// - `origin`: indicates *why* the type variable was created.
-    ///   The code in this module doesn't care, but it can be useful
-    ///   for improving error messages.
+    /// - `diverging`: indicates if this is a "diverging" type variable, e.g.,  one created as the
+    ///   type of a `return` expression. The code in this module doesn't care if a variable is
+    ///   diverging, but the main Rust type-checker will sometimes "unify" such variables with the
+    ///   `!` or `()` types.
+    /// - `origin`: indicates *why* the type variable was created. The code in this module doesn't
+    ///   care, but it can be useful for improving error messages.
     pub fn new_var(
         &mut self,
         universe: ty::UniverseIndex,

@@ -307,9 +307,8 @@ pub enum TokenKind {
 
     /// An embedded AST node, as produced by a macro. This only exists for
     /// historical reasons. We'd like to get rid of it, for multiple reasons.
-    /// - It's conceptually very strange. Saying a token can contain an AST
-    ///   node is like saying, in natural language, that a word can contain a
-    ///   sentence.
+    /// - It's conceptually very strange. Saying a token can contain an AST node is like saying, in
+    ///   natural language, that a word can contain a sentence.
     /// - It requires special handling in a bunch of places in the parser.
     /// - It prevents `Token` from implementing `Copy`.
     /// It adds complexity and likely slows things down. Please don't add new
@@ -701,7 +700,8 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
-    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this
+    /// token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive

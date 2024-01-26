@@ -397,8 +397,8 @@ where
 /// `GenKillAnalysis`. Sometimes we need to store a single transfer function that can be efficiently
 /// applied multiple times, such as when computing the cumulative transfer function for each block.
 /// These cases require a `GenKillSet`, which in turn requires two `BitSet`s of storage. Oftentimes,
-/// however, we only need to apply an effect once. In *these* cases, it is more efficient to pass the
-/// `BitSet` representing the state vector directly into the `*_effect` methods as opposed to
+/// however, we only need to apply an effect once. In *these* cases, it is more efficient to pass
+/// the `BitSet` representing the state vector directly into the `*_effect` methods as opposed to
 /// building up a `GenKillSet` and then throwing it away.
 pub trait GenKill<T> {
     /// Inserts `elem` into the state vector.

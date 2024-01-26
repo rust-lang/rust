@@ -819,8 +819,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// The return tuple fields are:
     /// - a list of all concrete regions bounding the given region.
     /// - the set of all region variables bounding the given region.
-    /// - a `bool` that's true if the returned region variables overlap with
-    ///   those returned by a previous call for another region.
+    /// - a `bool` that's true if the returned region variables overlap with those returned by a
+    ///   previous call for another region.
     fn collect_bounding_regions(
         &self,
         graph: &RegionGraph<'tcx>,

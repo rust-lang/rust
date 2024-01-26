@@ -65,17 +65,17 @@ impl IntoInner<c::sockaddr_in6> for SocketAddrV6 {
 ///
 ///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///
-///  * [`SocketAddrV4`], [`SocketAddrV6`], <code>([IpAddr], [u16])</code>,
-///    <code>([Ipv4Addr], [u16])</code>, <code>([Ipv6Addr], [u16])</code>:
-///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
+///  * [`SocketAddrV4`], [`SocketAddrV6`], <code>([IpAddr], [u16])</code>, <code>([Ipv4Addr],
+///    [u16])</code>, <code>([Ipv6Addr], [u16])</code>: [`to_socket_addrs`] constructs a
+///    [`SocketAddr`] trivially.
 ///
-///  * <code>(&[str], [u16])</code>: <code>&[str]</code> should be either a string representation
-///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
-///    name. [`u16`] is the port number.
+///  * <code>(&[str], [u16])</code>: <code>&[str]</code> should be either a string representation of
+///    an [`IpAddr`] address as expected by [`FromStr`] implementation or a host name. [`u16`] is
+///    the port number.
 ///
-///  * <code>&[str]</code>: the string should be either a string representation of a
-///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
-///    `<host_name>:<port>` pair where `<port>` is a [`u16`] value.
+///  * <code>&[str]</code>: the string should be either a string representation of a [`SocketAddr`]
+///    as expected by its [`FromStr`] implementation or a string like `<host_name>:<port>` pair
+///    where `<port>` is a [`u16`] value.
 ///
 /// This trait allows constructing network objects like [`TcpStream`] or
 /// [`UdpSocket`] easily with values of various types for the bind/connection

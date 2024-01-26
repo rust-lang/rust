@@ -121,8 +121,8 @@ mod os_impl {
             }
         }
 
-        // FIXME: we don't need to look at all binaries, only files that have been modified in this branch
-        // (e.g. using `git ls-files`).
+        // FIXME: we don't need to look at all binaries, only files that have been modified in this
+        // branch (e.g. using `git ls-files`).
         walk_no_read(
             &[path],
             |path, _is_dir| {

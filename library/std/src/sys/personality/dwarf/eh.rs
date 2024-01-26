@@ -165,8 +165,8 @@ fn round_up(unrounded: usize, align: usize) -> Result<usize, ()> {
 
 /// Read a offset (`usize`) from `reader` whose encoding is described by `encoding`.
 ///
-/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
-/// In addition the upper ("application") part must be zero.
+/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB
+/// spec][LSB-dwarf-ext]. In addition the upper ("application") part must be zero.
 ///
 /// # Errors
 /// Returns `Err` if `encoding`
@@ -197,7 +197,8 @@ unsafe fn read_encoded_offset(reader: &mut DwarfReader, encoding: u8) -> Result<
 
 /// Read a pointer from `reader` whose encoding is described by `encoding`.
 ///
-/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB spec][LSB-dwarf-ext].
+/// `encoding` must be a [DWARF Exception Header Encoding as described by the LSB
+/// spec][LSB-dwarf-ext].
 ///
 /// # Errors
 /// Returns `Err` if `encoding`

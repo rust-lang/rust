@@ -338,8 +338,8 @@ where
 
     match state_lock.entry(key) {
         Entry::Vacant(entry) => {
-            // Nothing has computed or is computing the query, so we start a new job and insert it in the
-            // state map.
+            // Nothing has computed or is computing the query, so we start a new job and insert it
+            // in the state map.
             let id = qcx.next_job_id();
             let job = QueryJob::new(id, span, current_job_id);
             entry.insert(QueryResult::Started(job));

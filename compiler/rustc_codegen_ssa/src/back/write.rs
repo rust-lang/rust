@@ -557,8 +557,8 @@ fn produce_final_output_artifacts(
 
     let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
         if compiled_modules.modules.len() == 1 {
-            // 1) Only one codegen unit. In this case it's no difficulty
-            //    to copy `foo.0.x` to `foo.x`.
+            // 1) Only one codegen unit. In this case it's no difficulty to copy `foo.0.x` to
+            //    `foo.x`.
             let module_name = Some(&compiled_modules.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
             let output = crate_output.path(output_type);
@@ -582,16 +582,16 @@ fn produce_final_output_artifacts(
                 .to_owned();
 
             if crate_output.outputs.contains_key(&output_type) {
-                // 2) Multiple codegen units, with `--emit foo=some_name`. We have
-                //    no good solution for this case, so warn the user.
+                // 2) Multiple codegen units, with `--emit foo=some_name`. We have no good solution
+                //    for this case, so warn the user.
                 sess.dcx().emit_warn(errors::IgnoringEmitPath { extension });
             } else if crate_output.single_output_file.is_some() {
-                // 3) Multiple codegen units, with `-o some_name`. We have
-                //    no good solution for this case, so warn the user.
+                // 3) Multiple codegen units, with `-o some_name`. We have no good solution for this
+                //    case, so warn the user.
                 sess.dcx().emit_warn(errors::IgnoringOutput { extension });
             } else {
-                // 4) Multiple codegen units, but no explicit name. We
-                //    just leave the `foo.0.x` files in place.
+                // 4) Multiple codegen units, but no explicit name. We just leave the `foo.0.x`
+                //    files in place.
                 // (We don't have to do any work in this case.)
             }
         }
@@ -642,12 +642,12 @@ fn produce_final_output_artifacts(
         // well.
 
         // Specific rules for keeping .#module-name#.bc:
-        //  - If the user requested bitcode (`user_wants_bitcode`), and
-        //    codegen_units > 1, then keep it.
-        //  - If the user requested bitcode but codegen_units == 1, then we
-        //    can toss .#module-name#.bc because we copied it to .bc earlier.
-        //  - If we're not building an rlib and the user didn't request
-        //    bitcode, then delete .#module-name#.bc.
+        //  - If the user requested bitcode (`user_wants_bitcode`), and codegen_units > 1, then keep
+        //    it.
+        //  - If the user requested bitcode but codegen_units == 1, then we can toss
+        //    .#module-name#.bc because we copied it to .bc earlier.
+        //  - If we're not building an rlib and the user didn't request bitcode, then delete
+        //    .#module-name#.bc.
         // If you change how this works, also update back::link::link_rlib,
         // where .#module-name#.bc files are (maybe) deleted after making an
         // rlib.
@@ -723,20 +723,18 @@ impl<B: WriteBackendMethods> WorkItem<B> {
             // leaves 11 bytes for the CGU name. How we obtain those 11 bytes
             // depends on the CGU name form.
             //
-            // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part
-            //   before the `-cgu.0` is the same for every CGU, so use the
-            //   `cgu.0` part. The number suffix will be different for each
-            //   CGU.
+            // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part before the `-cgu.0`
+            //   is the same for every CGU, so use the `cgu.0` part. The number suffix will be
+            //   different for each CGU.
             //
-            // - Incremental (normal), e.g. `2i52vvl2hco29us0`: use the whole
-            //   name because each CGU will have a unique ASCII hash, and the
-            //   first 11 bytes will be enough to identify it.
+            // - Incremental (normal), e.g. `2i52vvl2hco29us0`: use the whole name because each CGU
+            //   will have a unique ASCII hash, and the first 11 bytes will be enough to identify
+            //   it.
             //
             // - Incremental (with `-Zhuman-readable-cgu-names`), e.g.
-            //   `regex.f10ba03eb5ec7975-re_builder.volatile`: use the whole
-            //   name. The first 11 bytes won't be enough to uniquely identify
-            //   it, but no obvious substring will, and this is a rarely used
-            //   option so it doesn't matter much.
+            //   `regex.f10ba03eb5ec7975-re_builder.volatile`: use the whole name. The first 11
+            //   bytes won't be enough to uniquely identify it, but no obvious substring will, and
+            //   this is a rarely used option so it doesn't matter much.
             //
             assert_eq!(short.len(), 3);
             let name = if let Some(index) = name.find("-cgu.") {
@@ -1136,14 +1134,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // There are a few environmental pre-conditions that shape how the system
     // is set up:
     //
-    // - Error reporting can only happen on the main thread because that's the
-    //   only place where we have access to the compiler `Session`.
+    // - Error reporting can only happen on the main thread because that's the only place where we
+    //   have access to the compiler `Session`.
     // - LLVM work can be done on any thread.
     // - Codegen can only happen on the main thread.
-    // - Each thread doing substantial work must be in possession of a `Token`
+    // - Each thread doing substantial work must be in possession of a `Token` from the `Jobserver`.
+    // - The compiler process always holds one `Token`. Any additional `Tokens` have to be requested
     //   from the `Jobserver`.
-    // - The compiler process always holds one `Token`. Any additional `Tokens`
-    //   have to be requested from the `Jobserver`.
     //
     // Error Reporting
     // ===============

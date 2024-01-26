@@ -46,7 +46,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // It is only a problem for arrays.
             sym::into_iter if let Array(..) = self_ty.kind() => {
                 // In this case, it wasn't really a prelude addition that was the problem.
-                // Instead, the problem is that the array-into_iter hack will no longer apply in Rust 2021.
+                // Instead, the problem is that the array-into_iter hack will no longer apply in
+                // Rust 2021.
                 rustc_lint::ARRAY_INTO_ITER
             }
             _ => return,
@@ -232,8 +233,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // No need to lint if this is an inherent method called on a specific type, like `Vec::foo(...)`,
-        // since such methods take precedence over trait methods.
+        // No need to lint if this is an inherent method called on a specific type, like
+        // `Vec::foo(...)`, since such methods take precedence over trait methods.
         if matches!(pick.kind, probe::PickKind::InherentImplPick) {
             return;
         }
@@ -276,9 +277,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
                     .unwrap_or_else(|| self_ty.to_string());
 
-                // Get the number of generics the self type has (if an Adt) unless we can determine that
-                // the user has written the self type with generics already which we (naively) do by looking
-                // for a "<" in `self_ty_name`.
+                // Get the number of generics the self type has (if an Adt) unless we can determine
+                // that the user has written the self type with generics already
+                // which we (naively) do by looking for a "<" in `self_ty_name`.
                 if !self_ty_name.contains('<') {
                     if let Adt(def, _) = self_ty.kind() {
                         let generics = self.tcx.generics_of(def.did());
@@ -346,8 +347,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // All that is left is `_`! We need to use the full path. It doesn't matter which one we pick,
-        // so just take the first one.
+        // All that is left is `_`! We need to use the full path. It doesn't matter which one we
+        // pick, so just take the first one.
         match import_items[0].kind {
             ItemKind::Use(path, _) => Some(
                 path.segments

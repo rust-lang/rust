@@ -206,8 +206,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
         // - outlives is reflexive, so `'r: 'r` for every region `'r`
         // - `'static: 'r` for every region `'r`
-        // - `'r: 'fn_body` for every (other) universally quantified
-        //   region `'r`, all of which are provided by our caller
+        // - `'r: 'fn_body` for every (other) universally quantified region `'r`, all of which are
+        //   provided by our caller
         let fr_static = self.universal_regions.fr_static;
         let fr_fn_body = self.universal_regions.fr_fn_body;
         for fr in self.universal_regions.universal_regions() {
@@ -225,13 +225,11 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .chain(Some(self.universal_regions.unnormalized_output_ty));
 
         // For each of the input/output types:
-        // - Normalize the type. This will create some region
-        //   constraints, which we buffer up because we are
-        //   not ready to process them yet.
-        // - Then compute the implied bounds. This will adjust
-        //   the `region_bound_pairs` and so forth.
-        // - After this is done, we'll process the constraints, once
-        //   the `relations` is built.
+        // - Normalize the type. This will create some region constraints, which we buffer up
+        //   because we are not ready to process them yet.
+        // - Then compute the implied bounds. This will adjust the `region_bound_pairs` and so
+        //   forth.
+        // - After this is done, we'll process the constraints, once the `relations` is built.
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         let mut constraints = vec![];

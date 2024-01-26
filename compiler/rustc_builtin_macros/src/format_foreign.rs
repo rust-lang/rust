@@ -249,11 +249,11 @@ pub(crate) mod printf {
     /// A general number used in a `printf` formatting directive.
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum Num {
-        // The range of these values is technically bounded by `NL_ARGMAX`... but, at least for GNU
-        // libc, it apparently has no real fixed limit. A `u16` is used here on the basis that it
-        // is *vanishingly* unlikely that *anyone* is going to try formatting something wider, or
-        // with more precision, than 32 thousand positions which is so wide it couldn't possibly fit
-        // on a screen.
+        // The range of these values is technically bounded by `NL_ARGMAX`... but, at least for
+        // GNU libc, it apparently has no real fixed limit. A `u16` is used here on the
+        // basis that it is *vanishingly* unlikely that *anyone* is going to try
+        // formatting something wider, or with more precision, than 32 thousand positions
+        // which is so wide it couldn't possibly fit on a screen.
         /// A specific, fixed value.
         Num(u16),
         /// The value is derived from a positional argument.

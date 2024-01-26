@@ -22,11 +22,10 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// and the type `test_ty` that the type test is being tested against,
 /// returns:
 ///
-/// * `None` if `some_type` cannot be made equal to `test_ty`,
-///   no matter the values of the variables in `exists`.
-/// * `Some(r)` with a suitable bound (typically the value of `bound_region`, modulo
-///   any bound existential variables, which will be substituted) for the
-///   type under test.
+/// * `None` if `some_type` cannot be made equal to `test_ty`, no matter the values of the variables
+///   in `exists`.
+/// * `Some(r)` with a suitable bound (typically the value of `bound_region`, modulo any bound
+///   existential variables, which will be substituted) for the type under test.
 ///
 /// NB: This function uses a simplistic, syntactic version of type equality.
 /// In other words, it may spuriously return `None` even if the type-under-test

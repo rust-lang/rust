@@ -261,8 +261,8 @@ rustc_index::newtype_index! {
 ///     block, in the same BCB. (But, note: Issue #78544: "MIR InstrumentCoverage: Improve coverage
 ///     of `#[should_panic]` tests and `catch_unwind()` handlers")
 ///   * Some BasicBlock terminators support Rust-specific concerns--like borrow-checking--that are
-///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
-///     a `Goto`, and merged with its successor into the same BCB.
+///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as a
+///     `Goto`, and merged with its successor into the same BCB.
 ///
 /// Each BCB with at least one computed coverage span will have no more than one `Counter`.
 /// In some cases, a BCB's execution count can be computed by `Expression`. Additional

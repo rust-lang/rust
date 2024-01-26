@@ -2116,9 +2116,10 @@ mod remove_dir_impl {
                     cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
                 }
                 None => {
-                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
-                    // if the process has the appropriate privileges. This however can causing orphaned
-                    // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
+                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can
+                    // succeed if the process has the appropriate privileges.
+                    // This however can causing orphaned directories requiring
+                    // an fsck e.g. on Solaris and Illumos. So we try recursing
                     // into it first instead of trying to unlink() it.
                     remove_dir_all_recursive(Some(fd), child_name)?;
                 }
@@ -2133,9 +2134,9 @@ mod remove_dir_impl {
     }
 
     fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
-        // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
-        // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
-        // into symlinks.
+        // We cannot just call remove_dir_all_recursive() here because that would not delete a
+        // passed symlink. No need to worry about races, because remove_dir_all_recursive()
+        // does not recurse into symlinks.
         let attr = lstat(p)?;
         if attr.file_type().is_symlink() {
             crate::fs::remove_file(p)

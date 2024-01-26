@@ -1,15 +1,16 @@
 //! This module contains specializations that can offload `io::copy()` operations on file descriptor
-//! containing types (`File`, `TcpStream`, etc.) to more efficient syscalls than `read(2)` and `write(2)`.
+//! containing types (`File`, `TcpStream`, etc.) to more efficient syscalls than `read(2)` and
+//! `write(2)`.
 //!
 //! Specialization is only applied to wholly std-owned types so that user code can't observe
 //! that the `Read` and `Write` traits are not used.
 //!
-//! Since a copy operation involves a reader and writer side where each can consist of different types
-//! and also involve generic wrappers (e.g. `Take`, `BufReader`) it is not practical to specialize
-//! a single method on all possible combinations.
+//! Since a copy operation involves a reader and writer side where each can consist of different
+//! types and also involve generic wrappers (e.g. `Take`, `BufReader`) it is not practical to
+//! specialize a single method on all possible combinations.
 //!
-//! Instead readers and writers are handled separately by the `CopyRead` and `CopyWrite` specialization
-//! traits and then specialized on by the `Copier::copy` method.
+//! Instead readers and writers are handled separately by the `CopyRead` and `CopyWrite`
+//! specialization traits and then specialized on by the `Copier::copy` method.
 //!
 //! `Copier` uses the specialization traits to unpack the underlying file descriptors and
 //! additional prerequisites and constraints imposed by the wrapper types.
@@ -25,19 +26,19 @@
 //!
 //! Advantages of using these syscalls:
 //!
-//! * fewer context switches since reads and writes are coalesced into a single syscall
-//!   and more bytes are transferred per syscall. This translates to higher throughput
-//!   and fewer CPU cycles, at least for sufficiently large transfers to amortize the initial probing.
+//! * fewer context switches since reads and writes are coalesced into a single syscall and more
+//!   bytes are transferred per syscall. This translates to higher throughput and fewer CPU cycles,
+//!   at least for sufficiently large transfers to amortize the initial probing.
 //! * `copy_file_range` creates reflink copies on CoW filesystems, thus moving less data and
 //!   consuming less disk space
-//! * `sendfile` and `splice` can perform zero-copy IO under some circumstances while
-//!   a naive copy loop would move every byte through the CPU.
+//! * `sendfile` and `splice` can perform zero-copy IO under some circumstances while a naive copy
+//!   loop would move every byte through the CPU.
 //!
 //! Drawbacks:
 //!
 //! * copy operations smaller than the default buffer size can under some circumstances, especially
-//!   on older kernels, incur more syscalls than the naive approach would. As mentioned above
-//!   the syscall selection is guided by hints to minimize this possibility but they are not perfect.
+//!   on older kernels, incur more syscalls than the naive approach would. As mentioned above the
+//!   syscall selection is guided by hints to minimize this possibility but they are not perfect.
 //! * optimizations only apply to std types. If a user adds a custom wrapper type, e.g. to report
 //!   progress, they can hit a performance cliff.
 //! * complexity
@@ -108,8 +109,8 @@ impl FdMeta {
     fn potential_sendfile_source(&self) -> bool {
         match self {
             // procfs erroneously shows 0 length on non-empty readable files.
-            // and if a file is truly empty then a `read` syscall will determine that and skip the write syscall
-            // thus there would be benefit from attempting sendfile
+            // and if a file is truly empty then a `read` syscall will determine that and skip the
+            // write syscall thus there would be benefit from attempting sendfile
             FdMeta::Metadata(meta)
                 if meta.file_type().is_file() && meta.len() > 0
                     || meta.file_type().is_block_device() =>
@@ -122,8 +123,9 @@ impl FdMeta {
 
     fn copy_file_range_candidate(&self, f: FdHandle) -> bool {
         match self {
-            // copy_file_range will fail on empty procfs files. `read` can determine whether EOF has been reached
-            // without extra cost and skip the write, thus there is no benefit in attempting copy_file_range
+            // copy_file_range will fail on empty procfs files. `read` can determine whether EOF has
+            // been reached without extra cost and skip the write, thus there is no
+            // benefit in attempting copy_file_range
             FdMeta::Metadata(meta) if f == FdHandle::Input && meta.is_file() && meta.len() > 0 => {
                 true
             }
@@ -155,8 +157,8 @@ fn safe_kernel_copy(source: &FdMeta, sink: &FdMeta) -> bool {
         {
             true
         }
-        // Data going into non-pipes/non-sockets is safe because the "later changes may become visible" issue
-        // only happens for pages sitting in send buffers or pipes.
+        // Data going into non-pipes/non-sockets is safe because the "later changes may become
+        // visible" issue only happens for pages sitting in send buffers or pipes.
         (_, FdMeta::Metadata(meta))
             if !meta.file_type().is_fifo() && !meta.file_type().is_socket() =>
         {
@@ -189,7 +191,8 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
         let r_cfg = reader.properties();
         let w_cfg = writer.properties();
 
-        // before direct operations on file descriptors ensure that all source and sink buffers are empty
+        // before direct operations on file descriptors ensure that all source and sink buffers are
+        // empty
         let mut flush = || -> crate::io::Result<u64> {
             let bytes = reader.drain_to(writer, u64::MAX)?;
             // BufWriter buffered bytes have already been accounted for in earlier write() calls
@@ -218,11 +221,12 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 }
             }
 
-            // on modern kernels sendfile can copy from any mmapable type (some but not all regular files and block devices)
-            // to any writable file descriptor. On older kernels the writer side can only be a socket.
-            // So we just try and fallback if needed.
-            // If current file offsets + write sizes overflow it may also fail, we do not try to fix that and instead
-            // fall back to the generic copy loop.
+            // on modern kernels sendfile can copy from any mmapable type (some but not all regular
+            // files and block devices) to any writable file descriptor. On older
+            // kernels the writer side can only be a socket. So we just try and fallback
+            // if needed. If current file offsets + write sizes overflow it may also
+            // fail, we do not try to fix that and instead fall back to the generic copy
+            // loop.
             if input_meta.potential_sendfile_source() && safe_kernel_copy(&input_meta, &output_meta)
             {
                 let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
@@ -252,7 +256,8 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             }
         }
 
-        // fallback if none of the more specialized syscalls wants to work with these file descriptors
+        // fallback if none of the more specialized syscalls wants to work with these file
+        // descriptors
         match generic_copy(reader, writer) {
             Ok(bytes) => Ok(bytes + written),
             err => err,
@@ -262,9 +267,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
 
 #[rustc_specialization_trait]
 trait CopyRead: Read {
-    /// Implementations that contain buffers (i.e. `BufReader`) must transfer data from their internal
-    /// buffers into `writer` until either the buffers are emptied or `limit` bytes have been
-    /// transferred, whichever occurs sooner.
+    /// Implementations that contain buffers (i.e. `BufReader`) must transfer data from their
+    /// internal buffers into `writer` until either the buffers are emptied or `limit` bytes
+    /// have been transferred, whichever occurs sooner.
     /// If nested buffers are present the outer buffers must be drained first.
     ///
     /// This is necessary to directly bypass the wrapper types while preserving the data order
@@ -574,8 +579,9 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
     match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
         NOT_PROBED => {
             // EPERM can indicate seccomp filters or an immutable file.
-            // To distinguish these cases we probe with invalid file descriptors which should result in EBADF if the syscall is supported
-            // and some other error (ENOSYS or EPERM) if it's not available
+            // To distinguish these cases we probe with invalid file descriptors which should result
+            // in EBADF if the syscall is supported and some other error (ENOSYS or
+            // EPERM) if it's not available
             let result = unsafe {
                 cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
             };
@@ -594,9 +600,10 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
     let mut written = 0u64;
     while written < max_len {
         let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
-        // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
-        // this allows us to copy large chunks without hitting EOVERFLOW,
-        // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
+        // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek
+        // position this allows us to copy large chunks without hitting EOVERFLOW,
+        // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would
+        // be required
         let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
         let copy_result = unsafe {
             // We actually don't have to adjust the offsets,
@@ -608,8 +615,8 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             Ok(0) if written == 0 => {
                 // fallback to work around several kernel bugs where copy_file_range will fail to
                 // copy any bytes and return 0 instead of an error if
-                // - reading virtual files from the proc filesystem which appear to have 0 size
-                //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
+                // - reading virtual files from the proc filesystem which appear to have 0 size but
+                //   are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
                 return CopyResult::Fallback(0);
             }
@@ -624,16 +631,18 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
                         // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
-                        // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
+                        // - copy_file_range file is immutable or syscall is blocked by seccomp¹
+                        //   (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         // - the writer fd was opened with O_APPEND (EBADF²)
                         // and no bytes were written successfully yet. (All these errnos should
                         // not be returned if something was already written, but they happen in
                         // the wild, see #91152.)
                         //
-                        // ¹ these cases should be detected by the initial probe but we handle them here
-                        //   anyway in case syscall interception changes during runtime
-                        // ² actually invalid file descriptors would cause this too, but in that case
+                        // ¹ these cases should be detected by the initial probe but we handle them
+                        // here   anyway in case syscall interception
+                        // changes during runtime ² actually invalid file
+                        // descriptors would cause this too, but in that case
                         //   the fallback code path is expected to encounter the same error again
                         CopyResult::Fallback(0)
                     }

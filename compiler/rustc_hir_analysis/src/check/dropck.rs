@@ -19,17 +19,13 @@ use crate::hir::def_id::{DefId, LocalDefId};
 ///
 /// This means:
 ///
-/// 1. The self type must be nominal (this is already checked during
-///    coherence),
+/// 1. The self type must be nominal (this is already checked during coherence),
 ///
-/// 2. The generic region/type parameters of the impl's self type must
-///    all be parameters of the Drop impl itself (i.e., no
-///    specialization like `impl Drop for Foo<i32>`), and,
+/// 2. The generic region/type parameters of the impl's self type must all be parameters of the Drop
+///    impl itself (i.e., no specialization like `impl Drop for Foo<i32>`), and,
 ///
-/// 3. Any bounds on the generic parameters must be reflected in the
-///    struct/enum definition for the nominal type itself (i.e.
-///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
-///
+/// 3. Any bounds on the generic parameters must be reflected in the struct/enum definition for the
+///    nominal type itself (i.e. cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}

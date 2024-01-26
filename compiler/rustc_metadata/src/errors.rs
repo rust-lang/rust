@@ -643,9 +643,10 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for CannotFindCrate {
                     // Note: Emits the nicer suggestion only for the dev channel.
                     diag.help(fluent::metadata_consider_adding_std);
                 } else {
-                    // NOTE: this suggests using rustup, even though the user may not have it installed.
-                    // That's because they could choose to install it; or this may give them a hint which
-                    // target they need to install from their distro.
+                    // NOTE: this suggests using rustup, even though the user may not have it
+                    // installed. That's because they could choose to install
+                    // it; or this may give them a hint which target they need
+                    // to install from their distro.
                     diag.help(fluent::metadata_consider_downloading_target);
                 }
             }

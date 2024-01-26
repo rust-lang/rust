@@ -585,7 +585,8 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
+    /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation
+    /// fails
     ///
     /// # Examples
     ///
@@ -878,8 +879,8 @@ impl<T, A: Allocator> Rc<T, A> {
         }
     }
 
-    /// Constructs a new `Pin<Rc<T>>` in the provided allocator. If `T` does not implement `Unpin`, then
-    /// `value` will be pinned in memory and unable to be moved.
+    /// Constructs a new `Pin<Rc<T>>` in the provided allocator. If `T` does not implement `Unpin`,
+    /// then `value` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
@@ -1605,8 +1606,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// }
     /// println!("{}", &*x); // Invalid UTF-8 in a str
     /// ```
-    /// Other `Rc` pointers to the same allocation must be to the exact same type, including lifetimes.
-    /// ```no_run
+    /// Other `Rc` pointers to the same allocation must be to the exact same type, including
+    /// lifetimes. ```no_run
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::rc::Rc;
@@ -3008,7 +3009,8 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             ptr as *mut RcBox<T>
         } else {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
+            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped)
+            // T.
             let offset = unsafe { data_offset(ptr) };
             // Thus, we reverse the offset to get the whole RcBox.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.

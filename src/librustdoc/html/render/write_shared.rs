@@ -30,19 +30,17 @@ use crate::visit::DocVisitor;
 use crate::{try_err, try_none};
 
 /// Rustdoc writes out two kinds of shared files:
-///  - Static files, which are embedded in the rustdoc binary and are written with a
-///    filename that includes a hash of their contents. These will always have a new
-///    URL if the contents change, so they are safe to cache with the
-///    `Cache-Control: immutable` directive. They are written under the static.files/
-///    directory and are written when --emit-type is empty (default) or contains
-///    "toolchain-specific". If using the --static-root-path flag, it should point
-///    to a URL path prefix where each of these filenames can be fetched.
-///  - Invocation specific files. These are generated based on the crate(s) being
-///    documented. Their filenames need to be predictable without knowing their
-///    contents, so they do not include a hash in their filename and are not safe to
-///    cache with `Cache-Control: immutable`. They include the contents of the
-///    --resource-suffix flag and are emitted when --emit-type is empty (default)
-///    or contains "invocation-specific".
+///  - Static files, which are embedded in the rustdoc binary and are written with a filename that
+///    includes a hash of their contents. These will always have a new URL if the contents change,
+///    so they are safe to cache with the `Cache-Control: immutable` directive. They are written
+///    under the static.files/ directory and are written when --emit-type is empty (default) or
+///    contains "toolchain-specific". If using the --static-root-path flag, it should point to a URL
+///    path prefix where each of these filenames can be fetched.
+///  - Invocation specific files. These are generated based on the crate(s) being documented. Their
+///    filenames need to be predictable without knowing their contents, so they do not include a
+///    hash in their filename and are not safe to cache with `Cache-Control: immutable`. They
+///    include the contents of the --resource-suffix flag and are emitted when --emit-type is empty
+///    (default) or contains "invocation-specific".
 pub(super) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
@@ -290,7 +288,8 @@ pub(super) fn write_shared(
                 &krate.name(cx.tcx()),
                 hierarchy
                     .to_json_string()
-                    // All these `replace` calls are because we have to go through JS string for JSON content.
+                    // All these `replace` calls are because we have to go through JS string for
+                    // JSON content.
                     .replace('\\', r"\\")
                     .replace('\'', r"\'")
                     // We need to escape double quotes for the JSON.
@@ -477,7 +476,8 @@ else if (window.initSearch) window.initSearch(searchIndex);
                 //
                 // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
                 // to use type unification.
-                // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
+                // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might
+                // regress.
                 let Some(impl_did) = impl_item_id.as_def_id() else { continue };
                 let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
                 let reject_cx =

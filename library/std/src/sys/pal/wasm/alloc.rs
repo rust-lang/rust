@@ -24,32 +24,36 @@ static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and
+        // non-reentrant access. Calling malloc() is safe because preconditions on this
+        // function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and
+        // non-reentrant access. Calling calloc() is safe because preconditions on this
+        // function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling free() is safe because preconditions on this function match the trait method preconditions.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and
+        // non-reentrant access. Calling free() is safe because preconditions on this
+        // function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
-        // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and
+        // non-reentrant access. Calling realloc() is safe because preconditions on this
+        // function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
@@ -94,19 +98,17 @@ mod lock {
             //
             // Possible ideas include:
             //
-            // 1. Attempt to acquire the global lock. If it fails, fall back to
-            //    memory allocation via `memory.grow`. Later just ... somehow
-            //    ... inject this raw page back into the main allocator as it
-            //    gets sliced up over time. This strategy has the downside of
-            //    forcing allocation of a page to happen whenever the main
-            //    thread contents with other threads, which is unfortunate.
+            // 1. Attempt to acquire the global lock. If it fails, fall back to memory allocation
+            //    via `memory.grow`. Later just ... somehow ... inject this raw page back into the
+            //    main allocator as it gets sliced up over time. This strategy has the downside of
+            //    forcing allocation of a page to happen whenever the main thread contents with
+            //    other threads, which is unfortunate.
             //
-            // 2. Maintain a form of "two level" allocator scheme where the main
-            //    thread has its own allocator. Somehow this allocator would
-            //    also be balanced with a global allocator, not only to have
-            //    allocations cross between threads but also to ensure that the
-            //    two allocators stay "balanced" in terms of free'd memory and
-            //    such. This, however, seems significantly complicated.
+            // 2. Maintain a form of "two level" allocator scheme where the main thread has its own
+            //    allocator. Somehow this allocator would also be balanced with a global allocator,
+            //    not only to have allocations cross between threads but also to ensure that the two
+            //    allocators stay "balanced" in terms of free'd memory and such. This, however,
+            //    seems significantly complicated.
             //
             // Out of a lack of other ideas, the current strategy implemented
             // here is to simply spin. Typical spin loop algorithms have some

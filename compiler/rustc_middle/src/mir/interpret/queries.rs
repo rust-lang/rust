@@ -61,8 +61,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
             }
-            // For errors during resolution, we deliberately do not point at the usage site of the constant,
-            // since for these errors the place the constant is used shouldn't matter.
+            // For errors during resolution, we deliberately do not point at the usage site of the
+            // constant, since for these errors the place the constant is used shouldn't
+            // matter.
             Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
         }
@@ -119,8 +120,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 })
             }
-            // For errors during resolution, we deliberately do not point at the usage site of the constant,
-            // since for these errors the place the constant is used shouldn't matter.
+            // For errors during resolution, we deliberately do not point at the usage site of the
+            // constant, since for these errors the place the constant is used shouldn't
+            // matter.
             Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
         }

@@ -364,12 +364,11 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
         //
-        // - The match checks whether the given things (placeholders, etc) appear
-        //   in the types are about to print
-        // - Meanwhile, the `maybe_highlighting_region` calls set up
-        //   highlights so that, if they do appear, we will replace
-        //   them `'0` and whatever. (This replacement takes place
-        //   inside the closure given to `maybe_highlighting_region`.)
+        // - The match checks whether the given things (placeholders, etc) appear in the types are
+        //   about to print
+        // - Meanwhile, the `maybe_highlighting_region` calls set up highlights so that, if they do
+        //   appear, we will replace them `'0` and whatever. (This replacement takes place inside
+        //   the closure given to `maybe_highlighting_region`.)
         //
         // There is some duplication between the calls -- i.e., the
         // `maybe_highlighting_region` checks if (e.g.) `has_sub` is

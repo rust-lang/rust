@@ -5,21 +5,18 @@
 //!
 //! Here are the key differences:
 //!
-//! - This code may choose to bypass some checks (e.g., the occurs check)
-//!   in the case where we know that there are no unbound type inference
-//!   variables. This is the case for NLL, because at NLL time types are fully
-//!   inferred up-to regions.
-//! - This code uses "universes" to handle higher-ranked regions and
-//!   not the leak-check. This is "more correct" than what rustc does
-//!   and we are generally migrating in this direction, but NLL had to
-//!   get there first.
+//! - This code may choose to bypass some checks (e.g., the occurs check) in the case where we know
+//!   that there are no unbound type inference variables. This is the case for NLL, because at NLL
+//!   time types are fully inferred up-to regions.
+//! - This code uses "universes" to handle higher-ranked regions and not the leak-check. This is
+//!   "more correct" than what rustc does and we are generally migrating in this direction, but NLL
+//!   had to get there first.
 //!
 //! Also, this code assumes that there are no bound types at all, not even
 //! free ones. This is ok because:
 //! - we are not relating anything quantified over some type variable
-//! - we will have instantiated all the bound type vars already (the one
-//!   thing we relate in chalk are basically domain goals and their
-//!   constituents)
+//! - we will have instantiated all the bound type vars already (the one thing we relate in chalk
+//!   are basically domain goals and their constituents)
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::traits::ObligationCause;
@@ -618,14 +615,11 @@ where
             // polymorphic. The reason is due to subtyping. To see it,
             // consider that each function can call the other:
             //
-            // - The left function can call the right with `'b` and
-            //   `'c` both equal to `'a`
+            // - The left function can call the right with `'b` and `'c` both equal to `'a`
             //
-            // - The right function can call the left with `'a` set to
-            //   `{P}`, where P is the point in the CFG where the call
-            //   itself occurs. Note that `'b` and `'c` must both
-            //   include P. At the point, the call works because of
-            //   subtyping (i.e., `&'b u32 <: &{P} u32`).
+            // - The right function can call the left with `'a` set to `{P}`, where P is the point
+            //   in the CFG where the call itself occurs. Note that `'b` and `'c` must both include
+            //   P. At the point, the call works because of subtyping (i.e., `&'b u32 <: &{P} u32`).
             let variance = std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
             // Note: the order here is important. Create the placeholders first, otherwise

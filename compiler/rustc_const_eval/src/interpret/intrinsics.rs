@@ -55,7 +55,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
         }
         sym::pref_align_of => {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
+            // Correctly handles non-monomorphic calls, so there is no need for
+            // ensure_monomorphic_enough.
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(*e)))?;
             ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
         }
@@ -64,7 +65,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
         }
         sym::variant_count => match tp_ty.kind() {
-            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
+            // Correctly handles non-monomorphic calls, so there is no need for
+            // ensure_monomorphic_enough.
             ty::Adt(adt, _) => ConstValue::from_target_usize(adt.variants().len() as u64, &tcx),
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
@@ -97,8 +99,8 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
-    /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
-    /// intrinsic handling.
+    /// Here we implement the intrinsics that are common to all Miri instances; individual machines
+    /// can add their own intrinsic handling.
     pub fn emulate_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -156,7 +158,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
                 })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest, /*allow_transmute*/ false)?;
+                self.copy_op(&val, dest, /* allow_transmute */ false)?;
             }
 
             sym::ctpop
@@ -214,7 +216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
-                self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
+                self.copy_intrinsic(&args[0], &args[1], &args[2], /* nonoverlapping */ false)?;
             }
             sym::write_bytes => {
                 self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
@@ -249,8 +251,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             (a, b)
                         }
                         (Err(_), _) | (_, Err(_)) => {
-                            // We managed to find a valid allocation for one pointer, but not the other.
-                            // That means they are definitely not pointing to the same allocation.
+                            // We managed to find a valid allocation for one pointer, but not the
+                            // other. That means they are definitely not
+                            // pointing to the same allocation.
                             throw_ub_custom!(
                                 fluent::const_eval_different_allocations,
                                 name = intrinsic_name,
@@ -352,8 +355,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let layout = self.layout_of(ty)?;
 
                     let msg = match requirement {
-                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                        // error message.
+                        // For *all* intrinsics we first check `is_uninhabited` to give a more
+                        // specific error message.
                         _ if layout.abi.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{ty}`"
                         ),
@@ -390,7 +393,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         self.project_index(&input, i)?.into()
                     };
-                    self.copy_op(&value, &place, /*allow_transmute*/ false)?;
+                    self.copy_op(&value, &place, /* allow_transmute */ false)?;
                 }
             }
             sym::simd_extract => {
@@ -403,12 +406,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(
                     &self.project_index(&input, index)?,
                     dest,
-                    /*allow_transmute*/ false,
+                    /* allow_transmute */ false,
                 )?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
-                self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
+                self.copy_op(&args[0], dest, /* allow_transmute */ false)?;
             }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
@@ -589,8 +592,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let count = self.read_target_usize(count)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
-        // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
-        // but no actual allocation can be big enough for the difference to be noticeable.
+        // `checked_mul` enforces a too small bound (the correct one would probably be
+        // target_isize_max), but no actual allocation can be big enough for the difference
+        // to be noticeable.
         let size = size.checked_mul(count, self).ok_or_else(|| {
             err_ub_custom!(
                 fluent::const_eval_size_overflow,
@@ -619,8 +623,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let byte = self.read_scalar(byte)?.to_u8()?;
         let count = self.read_target_usize(count)?;
 
-        // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
-        // but no actual allocation can be big enough for the difference to be noticeable.
+        // `checked_mul` enforces a too small bound (the correct one would probably be
+        // target_isize_max), but no actual allocation can be big enough for the difference
+        // to be noticeable.
         let len = layout.size.checked_mul(count, self).ok_or_else(|| {
             err_ub_custom!(fluent::const_eval_size_overflow, name = "write_bytes")
         })?;

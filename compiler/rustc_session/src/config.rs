@@ -208,7 +208,6 @@ impl LinkerPluginLto {
 /// - a linker we distribute
 /// - some sanitizer runtime libraries
 /// - all other MinGW libraries and Windows import libs
-///
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct LinkSelfContained {
     /// Whether the user explicitly set `-C link-self-contained` on or off, the historical values.
@@ -3463,7 +3462,8 @@ pub enum Polonius {
     #[default]
     Off,
 
-    /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
+    /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for
+    /// `-Zpolonius`.
     Legacy,
 
     /// In-tree prototype, extending the NLL infrastructure.

@@ -41,9 +41,9 @@ pub enum InstanceDef<'tcx> {
 
     /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
     ///
-    /// Alongside `Virtual`, this is the only `InstanceDef` that does not have its own callable MIR.
-    /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
-    /// caller.
+    /// Alongside `Virtual`, this is the only `InstanceDef` that does not have its own callable
+    /// MIR. Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in
+    /// the caller.
     Intrinsic(DefId),
 
     /// `<T as Trait>::method` where `method` receives unsizeable `self: Self` (part of the

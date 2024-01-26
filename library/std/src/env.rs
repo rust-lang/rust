@@ -578,8 +578,8 @@ impl Error for JoinPathsError {
 ///
 /// # Unix
 ///
-/// - Returns the value of the 'HOME' environment variable if it is set
-///   (including to an empty string).
+/// - Returns the value of the 'HOME' environment variable if it is set (including to an empty
+///   string).
 /// - Otherwise, it tries to determine the home directory by invoking the `getpwuid_r` function
 ///   using the UID of the current user. An empty home directory field returned from the
 ///   `getpwuid_r` function is considered to be a valid value.
@@ -587,10 +587,10 @@ impl Error for JoinPathsError {
 ///
 /// # Windows
 ///
-/// - Returns the value of the 'HOME' environment variable if it is set
-///   (including to an empty string).
-/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set
-///   (including to an empty string).
+/// - Returns the value of the 'HOME' environment variable if it is set (including to an empty
+///   string).
+/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set (including
+///   to an empty string).
 /// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
@@ -686,12 +686,10 @@ pub fn temp_dir() -> PathBuf {
 /// As an example, you can easily introduce a race condition. It goes
 /// like this:
 ///
-/// 1. You get the path to the current executable using `current_exe()`, and
-///    store it in a variable.
-/// 2. Time passes. A malicious actor removes the current executable, and
-///    replaces it with a malicious one.
-/// 3. You then use the stored path to re-execute the current
-///    executable.
+/// 1. You get the path to the current executable using `current_exe()`, and store it in a variable.
+/// 2. Time passes. A malicious actor removes the current executable, and replaces it with a
+///    malicious one.
+/// 3. You then use the stored path to re-execute the current executable.
 ///
 /// You expected to safely execute the current executable, but you're
 /// instead executing something completely different. The code you

@@ -28,12 +28,11 @@
 //! use. `BorrowedFd` values may be used in APIs which provide safe access to
 //! any system call except for:
 //!
-//!  - `close`, because that would end the dynamic lifetime of the resource
-//!    without ending the lifetime of the file descriptor.
+//!  - `close`, because that would end the dynamic lifetime of the resource without ending the
+//!    lifetime of the file descriptor.
 //!
-//!  - `dup2`/`dup3`, in the second argument, because this argument is
-//!    closed and assigned a new resource, which may break the assumptions
-//!    other code using that file descriptor.
+//!  - `dup2`/`dup3`, in the second argument, because this argument is closed and assigned a new
+//!    resource, which may break the assumptions other code using that file descriptor.
 //!
 //! `BorrowedFd` values may be used in APIs which provide safe access to `dup`
 //! system calls, so types implementing `AsFd` or `From<OwnedFd>` should not

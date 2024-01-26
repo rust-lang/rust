@@ -54,7 +54,8 @@ pub(super) fn sanity_check_layout<'tcx>(
         }
         let mut fields = non_zst_fields(cx, layout);
         let Some(first) = fields.next() else {
-            // No fields here, so this could be a primitive or enum -- either way it's not a newtype around a thing
+            // No fields here, so this could be a primitive or enum -- either way it's not a newtype
+            // around a thing
             return *layout;
         };
         if fields.next().is_none() {
@@ -109,7 +110,8 @@ pub(super) fn sanity_check_layout<'tcx>(
                         // Fine.
                     }
                     FieldsShape::Union(..) => {
-                        // FIXME: I guess we could also check something here? Like, look at all fields?
+                        // FIXME: I guess we could also check something here? Like, look at all
+                        // fields?
                         return;
                     }
                     FieldsShape::Arbitrary { .. } => {
@@ -166,7 +168,8 @@ pub(super) fn sanity_check_layout<'tcx>(
                         // Checked below.
                     }
                     FieldsShape::Union(..) => {
-                        // FIXME: I guess we could also check something here? Like, look at all fields?
+                        // FIXME: I guess we could also check something here? Like, look at all
+                        // fields?
                         return;
                     }
                     _ => {

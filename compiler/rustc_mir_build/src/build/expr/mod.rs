@@ -9,14 +9,13 @@
 //! a type that is not `Copy`, then using any of these functions will
 //! "move" the value out of its current home (if any).
 //!
-//! - `expr_into_dest` -- writes the value into a specific location, which
-//!   should be uninitialized
-//! - `as_operand` -- evaluates the value and yields an `Operand`,
-//!   suitable for use as an argument to an `Rvalue`
-//! - `as_temp` -- evaluates into a temporary; this is similar to `as_operand`
-//!   except it always returns a fresh place, even for constants
-//! - `as_rvalue` -- yields an `Rvalue`, suitable for use in an assignment;
-//!   as of this writing, never needed outside of the `expr` module itself
+//! - `expr_into_dest` -- writes the value into a specific location, which should be uninitialized
+//! - `as_operand` -- evaluates the value and yields an `Operand`, suitable for use as an argument
+//!   to an `Rvalue`
+//! - `as_temp` -- evaluates into a temporary; this is similar to `as_operand` except it always
+//!   returns a fresh place, even for constants
+//! - `as_rvalue` -- yields an `Rvalue`, suitable for use in an assignment; as of this writing,
+//!   never needed outside of the `expr` module itself
 //!
 //! Sometimes though want the expression's *location*. An example
 //! would be during a match statement, or the operand of the `&`

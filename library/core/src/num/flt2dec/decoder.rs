@@ -7,9 +7,8 @@ use crate::num::FpCategory;
 ///
 /// - The original value equals to `mant * 2^exp`.
 ///
-/// - Any number from `(mant - minus) * 2^exp` to `(mant + plus) * 2^exp` will
-///   round to the original value. The range is inclusive only when
-///   `inclusive` is `true`.
+/// - Any number from `(mant - minus) * 2^exp` to `(mant + plus) * 2^exp` will round to the original
+///   value. The range is inclusive only when `inclusive` is `true`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Decoded {
     /// The scaled mantissa.
@@ -59,7 +58,7 @@ impl DecodableFloat for f64 {
 
 /// Returns a sign (true when negative) and `FullDecoded` value
 /// from given floating point number.
-pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
+pub fn decode<T: DecodableFloat>(v: T) -> (/* negative? */ bool, FullDecoded) {
     let (mant, exp, sign) = v.integer_decode();
     let even = (mant & 1) == 0;
     let decoded = match v.classify() {

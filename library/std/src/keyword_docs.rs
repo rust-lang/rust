@@ -135,9 +135,9 @@ mod break_keyword {}
 /// ```
 ///
 /// Constants must be explicitly typed; unlike with `let`, you can't ignore their type and let the
-/// compiler figure it out. Any constant value can be defined in a `const`, which in practice happens
-/// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
-/// example, you can't have a [`File`] as a `const`.
+/// compiler figure it out. Any constant value can be defined in a `const`, which in practice
+/// happens to be most things that would be reasonable to have in a constant (barring `const fn`s).
+/// For example, you can't have a [`File`] as a `const`.
 ///
 /// [`File`]: crate::fs::File
 ///
@@ -179,7 +179,8 @@ mod break_keyword {}
 /// ## Other uses of `const`
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
-/// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
+/// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the
+/// [pointer primitive].
 ///
 /// [pointer primitive]: pointer
 /// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
@@ -1801,14 +1802,14 @@ mod trait_keyword {}
 ///
 /// Several of Rust's control structures will check for a `bool` condition evaluating to **true**.
 ///
-///   * The condition in an [`if`] expression must be of type `bool`.
-///     Whenever that condition evaluates to **true**, the `if` expression takes
-///     on the value of the first block. If however, the condition evaluates
-///     to `false`, the expression takes on value of the `else` block if there is one.
+///   * The condition in an [`if`] expression must be of type `bool`. Whenever that condition
+///     evaluates to **true**, the `if` expression takes on the value of the first block. If
+///     however, the condition evaluates to `false`, the expression takes on value of the `else`
+///     block if there is one.
 ///
-///   * [`while`] is another control flow construct expecting a `bool`-typed condition.
-///     As long as the condition evaluates to **true**, the `while` loop will continually
-///     evaluate its associated block.
+///   * [`while`] is another control flow construct expecting a `bool`-typed condition. As long as
+///     the condition evaluates to **true**, the `while` loop will continually evaluate its
+///     associated block.
 ///
 ///   * [`match`] arms can have guard clauses on them.
 ///
@@ -2154,19 +2155,19 @@ mod unsafe_keyword {}
 /// The most basic usage of the keyword is `use path::to::item;`,
 /// though a number of convenient shortcuts are supported:
 ///
-///   * Simultaneously binding a list of paths with a common prefix,
-///     using the glob-like brace syntax `use a::b::{c, d, e::f, g::h::i};`
+///   * Simultaneously binding a list of paths with a common prefix, using the glob-like brace
+///     syntax `use a::b::{c, d, e::f, g::h::i};`
 ///   * Simultaneously binding a list of paths with a common prefix and their common parent module,
 ///     using the [`self`] keyword, such as `use a::b::{self, c, d::e};`
-///   * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
-///     This can also be used with the last two features: `use a::b::{self as ab, c as abc}`.
-///   * Binding all paths matching a given prefix,
-///     using the asterisk wildcard syntax `use a::b::*;`.
-///   * Nesting groups of the previous features multiple times,
-///     such as `use a::b::{self as ab, c, d::{*, e::f}};`
+///   * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`. This
+///     can also be used with the last two features: `use a::b::{self as ab, c as abc}`.
+///   * Binding all paths matching a given prefix, using the asterisk wildcard syntax `use
+///     a::b::*;`.
+///   * Nesting groups of the previous features multiple times, such as `use a::b::{self as ab, c,
+///     d::{*, e::f}};`
 ///   * Reexporting with visibility modifiers such as `pub use a::b;`
-///   * Importing with `_` to only import the methods of a trait without binding it to a name
-///     (to avoid conflict for example): `use ::std::io::Read as _;`.
+///   * Importing with `_` to only import the methods of a trait without binding it to a name (to
+///     avoid conflict for example): `use ::std::io::Read as _;`.
 ///
 /// Using path qualifiers like [`crate`], [`super`] or [`self`] is supported: `use crate::a::b;`.
 ///
@@ -2316,7 +2317,8 @@ mod where_keyword {}
 /// As such the code will not be run immediately, but will only be evaluated when the returned
 /// future is [`.await`]ed.
 ///
-/// We have written an [async book] detailing `async`/`await` and trade-offs compared to using threads.
+/// We have written an [async book] detailing `async`/`await` and trade-offs compared to using
+/// threads.
 ///
 /// ## Editions
 ///

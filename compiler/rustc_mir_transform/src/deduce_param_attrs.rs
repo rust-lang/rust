@@ -44,7 +44,8 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                 // Whether mutating though a `&raw const` is allowed is still undecided, so we
                 // disable any sketchy `readonly` optimizations for now.
                 // But we only need to do this if the pointer would point into the argument.
-                // IOW: for indirect places, like `&raw (*local).field`, this surely cannot mutate `local`.
+                // IOW: for indirect places, like `&raw (*local).field`, this surely cannot mutate
+                // `local`.
                 !place.is_indirect()
             }
             PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {

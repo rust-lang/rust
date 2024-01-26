@@ -263,11 +263,12 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
             {
                 // If the `generic_associated_types_extended` feature is active, then we ignore any
                 // obligations references lifetimes from any universe greater than or equal to the
-                // universe just created. Otherwise, we can end up with something like `for<'a> I: 'a`,
-                // which isn't quite what we want. Ideally, we want either an implied
-                // `for<'a where I: 'a> I: 'a` or we want to "lazily" check these hold when we
-                // substitute concrete regions. There is design work to be done here; until then,
-                // however, this allows experimenting potential GAT features without running into
+                // universe just created. Otherwise, we can end up with something like `for<'a> I:
+                // 'a`, which isn't quite what we want. Ideally, we want either an
+                // implied `for<'a where I: 'a> I: 'a` or we want to "lazily" check
+                // these hold when we substitute concrete regions. There is design
+                // work to be done here; until then, however, this allows
+                // experimenting potential GAT features without running into
                 // well-formedness issues.
                 let new_obligations = obligations
                     .into_iter()
@@ -711,8 +712,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
                 let data = data.fold_with(self);
 
-                // FIXME(inherent_associated_types): Do we need to honor `self.eager_inference_replacement`
-                // here like `ty::Projection`?
+                // FIXME(inherent_associated_types): Do we need to honor
+                // `self.eager_inference_replacement` here like `ty::Projection`?
                 normalize_inherent_projection(
                     self.selcx,
                     self.param_env,
@@ -781,13 +782,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 pub struct BoundVarReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
     // These three maps track the bound variable that were replaced by placeholders. It might be
-    // nice to remove these since we already have the `kind` in the placeholder; we really just need
-    // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
+    // nice to remove these since we already have the `kind` in the placeholder; we really just
+    // need the `var` (but we *could* bring that into scope if we were to track them as we pass
+    // them).
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst, ty::BoundVar>,
-    // The current depth relative to *this* folding, *not* the entire normalization. In other words,
-    // the depth of binders we've passed here.
+    // The current depth relative to *this* folding, *not* the entire normalization. In other
+    // words, the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
     // The `UniverseIndex` of the binding levels above us. These are optional, since we are lazy:
     // we don't actually create a universe until we see a bound var we have to replace.
@@ -963,7 +965,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
     }
 }
 
-/// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
+/// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they
+/// came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
@@ -2473,8 +2476,8 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
-            // a term instead.
+            // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress
+            // type should just take a term instead.
             Progress { term: cache_entry.term, obligations: nested_obligations }
         }
         Err(e) => {

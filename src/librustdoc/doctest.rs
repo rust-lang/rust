@@ -565,8 +565,9 @@ pub(crate) fn make_test(
             let filename = FileName::anon_source_code(s);
             let source = crates + everything_else;
 
-            // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
+            // Any errors in parsing should also appear when the doctest is compiled for real, so
+            // just send all the errors that librustc_ast emits directly into a `Sink`
+            // instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let fallback_bundle = rustc_errors::fallback_fluent_bundle(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
@@ -744,8 +745,9 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(source);
-            // Any errors in parsing should also appear when the doctest is compiled for real, so just
-            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
+            // Any errors in parsing should also appear when the doctest is compiled for real, so
+            // just send all the errors that librustc_ast emits directly into a `Sink`
+            // instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let fallback_bundle = rustc_errors::fallback_fluent_bundle(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
@@ -894,7 +896,6 @@ pub(crate) struct Collector {
     // # Title
     //
     // ## Subtitle
-    //
     // ```rust
     // assert!(true);
     // ```
@@ -998,7 +999,8 @@ impl Tester for Collector {
                 if let Some(local_path) = path.local_path() {
                     local_path.to_path_buf()
                 } else {
-                    // Somehow we got the filename from the metadata of another crate, should never happen
+                    // Somehow we got the filename from the metadata of another crate, should never
+                    // happen
                     unreachable!("doctest from a different crate");
                 }
             }
@@ -1225,7 +1227,8 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         // anything else, this will combine them for us.
         let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
-            // Use the outermost invocation, so that doctest names come from where the docs were written.
+            // Use the outermost invocation, so that doctest names come from where the docs were
+            // written.
             let span = ast_attrs
                 .iter()
                 .find(|attr| attr.doc_str().is_some())

@@ -325,10 +325,8 @@ impl<D: Deps> DepGraphData<D> {
     ///
     /// For cases where you need some other number of arguments:
     ///
-    /// - If you only need one argument, just use `()` for the `arg`
-    ///   parameter.
-    /// - If you need 3+ arguments, use a tuple for the
-    ///   `arg` parameter.
+    /// - If you only need one argument, just use `()` for the `arg` parameter.
+    /// - If you need 3+ arguments, use a tuple for the `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
@@ -341,10 +339,9 @@ impl<D: Deps> DepGraphData<D> {
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
-        // 1. Something is wrong with DepNode creation, either here or
-        //    in `DepGraph::try_mark_green()`.
-        // 2. Two distinct query keys get mapped to the same `DepNode`
-        //    (see for example #48923).
+        // 1. Something is wrong with DepNode creation, either here or in
+        //    `DepGraph::try_mark_green()`.
+        // 2. Two distinct query keys get mapped to the same `DepNode` (see for example #48923).
         assert!(
             !self.dep_node_exists(&key),
             "forcing query with already existing `DepNode`\n\
@@ -428,10 +425,11 @@ impl<D: Deps> DepGraphData<D> {
             }
             _ => {
                 // The dep node indices are hashed here instead of hashing the dep nodes of the
-                // dependencies. These indices may refer to different nodes per session, but this isn't
-                // a problem here because we that ensure the final dep node hash is per session only by
-                // combining it with the per session random number `anon_id_seed`. This hash only need
-                // to map the dependencies to a single value on a per session basis.
+                // dependencies. These indices may refer to different nodes per session, but this
+                // isn't a problem here because we that ensure the final dep node
+                // hash is per session only by combining it with the per session
+                // random number `anon_id_seed`. This hash only need to map the
+                // dependencies to a single value on a per session basis.
                 let mut hasher = StableHasher::new();
                 task_deps.hash(&mut hasher);
 

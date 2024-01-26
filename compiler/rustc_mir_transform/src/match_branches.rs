@@ -92,7 +92,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     // If two statements are exactly the same, we can optimize.
                     (f_s, s_s) if f_s == s_s => {}
 
-                    // If two statements are const bool assignments to the same place, we can optimize.
+                    // If two statements are const bool assignments to the same place, we can
+                    // optimize.
                     (
                         StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
@@ -133,7 +134,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                             // Same value in both blocks. Use statement as is.
                             (*f).clone()
                         } else {
-                            // Different value between blocks. Make value conditional on switch condition.
+                            // Different value between blocks. Make value conditional on switch
+                            // condition.
                             let size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
                             let const_cmp = Operand::const_from_scalar(
                                 tcx,

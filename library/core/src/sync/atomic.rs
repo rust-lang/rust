@@ -107,16 +107,13 @@
 //! atomic types here are all widely available, however, and can generally be
 //! relied upon existing. Some notable exceptions are:
 //!
-//! * PowerPC and MIPS platforms with 32-bit pointers do not have `AtomicU64` or
-//!   `AtomicI64` types.
-//! * ARM platforms like `armv5te` that aren't for Linux only provide `load`
-//!   and `store` operations, and do not support Compare and Swap (CAS)
-//!   operations, such as `swap`, `fetch_add`, etc. Additionally on Linux,
-//!   these CAS operations are implemented via [operating system support], which
-//!   may come with a performance penalty.
-//! * ARM targets with `thumbv6m` only provide `load` and `store` operations,
-//!   and do not support Compare and Swap (CAS) operations, such as `swap`,
-//!   `fetch_add`, etc.
+//! * PowerPC and MIPS platforms with 32-bit pointers do not have `AtomicU64` or `AtomicI64` types.
+//! * ARM platforms like `armv5te` that aren't for Linux only provide `load` and `store` operations,
+//!   and do not support Compare and Swap (CAS) operations, such as `swap`, `fetch_add`, etc.
+//!   Additionally on Linux, these CAS operations are implemented via [operating system support],
+//!   which may come with a performance penalty.
+//! * ARM targets with `thumbv6m` only provide `load` and `store` operations, and do not support
+//!   Compare and Swap (CAS) operations, such as `swap`, `fetch_add`, etc.
 //!
 //! [operating system support]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 //!
@@ -136,11 +133,11 @@
 //!
 //! # Atomic accesses to read-only memory
 //!
-//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
-//! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
-//! operation) can still cause a page fault if the underlying memory page is mapped read-only. Since
-//! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
-//! on read-only memory.
+//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance,
+//! attempting to do a `compare_exchange` that will definitely fail (making it conceptually a
+//! read-only operation) can still cause a page fault if the underlying memory page is mapped
+//! read-only. Since atomic `load`s might be implemented using compare-exchange operations, even a
+//! `load` can fault on read-only memory.
 //!
 //! For the purpose of this section, "read-only memory" is defined as memory that is read-only in
 //! the underlying target, i.e., the pages are mapped with a read-only flag and any attempt to write
@@ -810,10 +807,10 @@ impl AtomicBool {
 
     /// Stores a value into the [`bool`] if the current value is the same as the `current` value.
     ///
-    /// Unlike [`AtomicBool::compare_exchange`], this function is allowed to spuriously fail even when the
-    /// comparison succeeds, which can result in more efficient code on some platforms. The
-    /// return value is a result indicating whether the new value was written and containing the
-    /// previous value.
+    /// Unlike [`AtomicBool::compare_exchange`], this function is allowed to spuriously fail even
+    /// when the comparison succeeds, which can result in more efficient code on some platforms.
+    /// The return value is a result indicating whether the new value was written and containing
+    /// the previous value.
     ///
     /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
     /// ordering of this operation. `success` describes the required ordering for the
@@ -1142,8 +1139,8 @@ impl AtomicBool {
     /// # Considerations
     ///
     /// This method is not magic;  it is not provided by the hardware.
-    /// It is implemented in terms of [`AtomicBool::compare_exchange_weak`], and suffers from the same drawbacks.
-    /// In particular, this method will not circumvent the [ABA Problem].
+    /// It is implemented in terms of [`AtomicBool::compare_exchange_weak`], and suffers from the
+    /// same drawbacks. In particular, this method will not circumvent the [ABA Problem].
     ///
     /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
     ///
@@ -1294,8 +1291,8 @@ impl<T> AtomicPtr<T> {
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
-        //  - the alignment of `*mut T` and `Self` is the same on all platforms
-        //    supported by rust, as verified above.
+        //  - the alignment of `*mut T` and `Self` is the same on all platforms supported by rust,
+        //    as verified above.
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
@@ -1370,8 +1367,8 @@ impl<T> AtomicPtr<T> {
     pub fn from_mut_slice(v: &mut [*mut T]) -> &mut [Self] {
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
-        //  - the alignment of `*mut T` and `Self` is the same on all platforms
-        //    supported by rust, as verified above.
+        //  - the alignment of `*mut T` and `Self` is the same on all platforms supported by rust,
+        //    as verified above.
         unsafe { &mut *(v as *mut [*mut T] as *mut [Self]) }
     }
 
@@ -1589,10 +1586,10 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
-    /// Unlike [`AtomicPtr::compare_exchange`], this function is allowed to spuriously fail even when the
-    /// comparison succeeds, which can result in more efficient code on some platforms. The
-    /// return value is a result indicating whether the new value was written and containing the
-    /// previous value.
+    /// Unlike [`AtomicPtr::compare_exchange`], this function is allowed to spuriously fail even
+    /// when the comparison succeeds, which can result in more efficient code on some platforms.
+    /// The return value is a result indicating whether the new value was written and containing
+    /// the previous value.
     ///
     /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
     /// ordering of this operation. `success` describes the required ordering for the
@@ -1665,8 +1662,8 @@ impl<T> AtomicPtr<T> {
     /// # Considerations
     ///
     /// This method is not magic;  it is not provided by the hardware.
-    /// It is implemented in terms of [`AtomicPtr::compare_exchange_weak`], and suffers from the same drawbacks.
-    /// In particular, this method will not circumvent the [ABA Problem].
+    /// It is implemented in terms of [`AtomicPtr::compare_exchange_weak`], and suffers from the
+    /// same drawbacks. In particular, this method will not circumvent the [ABA Problem].
     ///
     /// [ABA Problem]: https://en.wikipedia.org/wiki/ABA_problem
     ///
@@ -2191,7 +2188,8 @@ macro_rules! atomic_int {
             ///
             /// {
             ///     // Create an atomic view of the allocated value
-            // SAFETY: this is a doc comment, tidy, it can't hurt you (also guaranteed by the construction of `ptr` and the assert above)
+            // SAFETY: this is a doc comment, tidy, it can't hurt you (also guaranteed by
+            // the construction of `ptr` and the assert above)
             #[doc = concat!("    let atomic = unsafe {", stringify!($atomic_type), "::from_ptr(ptr) };")]
             ///
             ///     // Use `atomic` for atomic operations, possibly share it with other threads

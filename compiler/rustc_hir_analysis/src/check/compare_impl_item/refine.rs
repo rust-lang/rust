@@ -132,12 +132,11 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
     // Normalize the bounds. This has two purposes:
     //
-    // 1. Project the RPITIT projections from the trait to the opaques on the impl,
-    //    which means that they don't need to be mapped manually.
+    // 1. Project the RPITIT projections from the trait to the opaques on the impl, which means that
+    //    they don't need to be mapped manually.
     //
-    // 2. Project any other projections that show up in the bound. That makes sure that
-    //    we don't consider `tests/ui/async-await/in-trait/async-associated-types.rs`
-    //    to be refining.
+    // 2. Project any other projections that show up in the bound. That makes sure that we don't
+    //    consider `tests/ui/async-await/in-trait/async-associated-types.rs` to be refining.
     let (trait_bounds, impl_bounds) =
         ocx.normalize(&ObligationCause::dummy(), param_env, (trait_bounds, impl_bounds));
 

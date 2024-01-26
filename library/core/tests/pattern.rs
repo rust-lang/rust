@@ -54,7 +54,8 @@ fn test_simple_iteration() {
         "abcdeabcd",
         'a',
         "forward iteration for ASCII string",
-        // a            b              c              d              e              a              b              c              d              EOF
+        // a            b              c              d              e              a
+        // b              c              d              EOF
         [next, next, next, next, next, next, next, next, next, next],
         [
             Matches(0, 1),
@@ -74,7 +75,8 @@ fn test_simple_iteration() {
         "abcdeabcd",
         'a',
         "reverse iteration for ASCII string",
-        // d            c              b              a            e                d              c              b              a             EOF
+        // d            c              b              a            e                d
+        // c              b              a             EOF
         [
             next_back, next_back, next_back, next_back, next_back, next_back, next_back, next_back,
             next_back, next_back
@@ -106,7 +108,8 @@ fn test_simple_iteration() {
         "我的猫说meow",
         'm',
         "forward iteration for mixed string",
-        // 我           的             猫             说              m                e                o                w                EOF
+        // 我           的             猫             说              m                e
+        // o                w                EOF
         [next, next, next, next, next, next, next, next, next],
         [
             Rejects(0, 3),
@@ -125,7 +128,8 @@ fn test_simple_iteration() {
         "我的猫说meow",
         '猫',
         "reverse iteration for mixed string",
-        // w             o                 e                m                说              猫             的             我             EOF
+        // w             o                 e                m                说              猫
+        // 的             我             EOF
         [
             next_back, next_back, next_back, next_back, next_back, next_back, next_back, next_back,
             next_back
@@ -206,7 +210,8 @@ const STRESS: &str = "Áa🁀bÁꁁfg😁각กᘀ각aÁ각ꁁก😁a";
 
 #[test]
 fn test_stress_indices() {
-    // this isn't really a test, more of documentation on the indices of each character in the stresstest string
+    // this isn't really a test, more of documentation on the indices of each character in the
+    // stresstest string
 
     search_asserts!(
         STRESS,

@@ -13,21 +13,18 @@
 //! uniquely identify a given commit. The fingerprinting approach has
 //! a few advantages:
 //!
-//! * A `DepNode` can simply be serialized to disk and loaded in another session
-//!   without the need to do any "rebasing" (like we have to do for Spans and
-//!   NodeIds) or "retracing" (like we had to do for `DefId` in earlier
-//!   implementations of the dependency graph).
-//! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
-//!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
-//! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
-//!   memory without any post-processing (e.g., "abomination-style" pointer
-//!   reconstruction).
-//! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that
-//!   refer to things that do not exist anymore. In previous implementations
-//!   `DepNode` contained a `DefId`. A `DepNode` referring to something that
-//!   had been removed between the previous and the current compilation session
-//!   could not be instantiated because the current compilation session
-//!   contained no `DefId` for thing that had been removed.
+//! * A `DepNode` can simply be serialized to disk and loaded in another session without the need to
+//!   do any "rebasing" (like we have to do for Spans and NodeIds) or "retracing" (like we had to do
+//!   for `DefId` in earlier implementations of the dependency graph).
+//! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to implement `Copy`, `Sync`,
+//!   `Send`, `Freeze`, etc.
+//! * Since we just have a bit pattern, `DepNode` can be mapped from disk into memory without any
+//!   post-processing (e.g., "abomination-style" pointer reconstruction).
+//! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that refer to things that
+//!   do not exist anymore. In previous implementations `DepNode` contained a `DefId`. A `DepNode`
+//!   referring to something that had been removed between the previous and the current compilation
+//!   session could not be instantiated because the current compilation session contained no `DefId`
+//!   for thing that had been removed.
 //!
 //! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
 //! defines the `DepKind` enum. Each `DepKind` has its own parameters that are
@@ -38,13 +35,12 @@
 //! Because the macro sees what parameters a given `DepKind` requires, it can
 //! "infer" some properties for each kind of `DepNode`:
 //!
-//! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s could represent global concepts with only one value.
-//! * Whether it is possible, in principle, to reconstruct a query key from a
-//!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
-//!   in which case it is possible to map the node's fingerprint back to the
-//!   `DefId` it was computed from. In other cases, too much information gets
-//!   lost during fingerprint computation.
+//! * Whether a `DepNode` of a given kind has any parameters at all. Some `DepNode`s could represent
+//!   global concepts with only one value.
+//! * Whether it is possible, in principle, to reconstruct a query key from a given `DepNode`. Many
+//!   `DepKind`s only require a single `DefId` parameter, in which case it is possible to map the
+//!   node's fingerprint back to the `DefId` it was computed from. In other cases, too much
+//!   information gets lost during fingerprint computation.
 //!
 //! `make_compile_codegen_unit` and `make_compile_mono_items`, together with
 //! `DepNode::new()`, ensures that only valid `DepNode` instances can be
@@ -142,14 +138,14 @@ rustc_query_append!(define_dep_nodes![
     [] fn CompileMonoItem() -> (),
 ]);
 
-// WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
-// Be very careful changing this type signature!
+// WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as
+// keys. Be very careful changing this type signature!
 pub(crate) fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
     DepNode::construct(tcx, dep_kinds::CompileCodegenUnit, &name)
 }
 
-// WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
-// Be very careful changing this type signature!
+// WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as
+// keys. Be very careful changing this type signature!
 pub(crate) fn make_compile_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,

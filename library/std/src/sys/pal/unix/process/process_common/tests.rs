@@ -144,8 +144,8 @@ fn test_program_kind() {
         ("./foo", ProgramKind::Relative),
         ("../foo", ProgramKind::Relative),
         ("dir/foo", ProgramKind::Relative),
-        // Note that paths on Unix can't contain / in them, so this is actually the directory "fo\\"
-        // followed by the file "o".
+        // Note that paths on Unix can't contain / in them, so this is actually the directory
+        // "fo\\" followed by the file "o".
         ("fo\\/o", ProgramKind::Relative),
         ("/foo", ProgramKind::Absolute),
         ("/dir/../foo", ProgramKind::Absolute),

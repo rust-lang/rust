@@ -118,8 +118,8 @@ impl<T> RawVec<T, Global> {
 
 impl<T, A: Allocator> RawVec<T, A> {
     // Tiny Vecs are dumb. Skip to:
-    // - 8 if the element size is 1, because any heap allocators is likely
-    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 8 if the element size is 1, because any heap allocators is likely to round up a request of
+    //   less than 8 bytes to at least 8 bytes.
     // - 4 if elements are moderate-sized (<= 1 KiB).
     // - 1 otherwise, to avoid wasting too much space for very short Vecs.
     pub(crate) const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
@@ -256,10 +256,11 @@ impl<T, A: Allocator> RawVec<T, A> {
         if T::IS_ZST || self.cap.0 == 0 {
             None
         } else {
-            // We could use Layout::array here which ensures the absence of isize and usize overflows
-            // and could hypothetically handle differences between stride and size, but this memory
-            // has already been allocated so we know it can't overflow and currently rust does not
-            // support such types. So we can do better by skipping some checks and avoid an unwrap.
+            // We could use Layout::array here which ensures the absence of isize and usize
+            // overflows and could hypothetically handle differences between stride and
+            // size, but this memory has already been allocated so we know it can't
+            // overflow and currently rust does not support such types. So we can do
+            // better by skipping some checks and avoid an unwrap.
             let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
                 let align = mem::align_of::<T>();
@@ -431,7 +432,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate
+        // more than isize::MAX items
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
     }
@@ -451,7 +453,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than isize::MAX items
+        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate
+        // more than isize::MAX items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
         }

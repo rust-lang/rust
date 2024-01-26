@@ -681,13 +681,11 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// This function, if successful, will return two items:
 ///
-/// * The first is a `ManuallyDrop<WasiFd>`. This represents a pre-opened file
-///   descriptor which we don't have ownership of, but we can use. You shouldn't
-///   actually drop the `fd`.
+/// * The first is a `ManuallyDrop<WasiFd>`. This represents a pre-opened file descriptor which we
+///   don't have ownership of, but we can use. You shouldn't actually drop the `fd`.
 ///
-/// * The second is a path that should be a part of `p` and represents a
-///   relative traversal from the file descriptor specified to the desired
-///   location `p`.
+/// * The second is a path that should be a part of `p` and represents a relative traversal from the
+///   file descriptor specified to the desired location `p`.
 ///
 /// If successful you can use the returned file descriptor to perform
 /// file-descriptor-relative operations on the path returned as well. The

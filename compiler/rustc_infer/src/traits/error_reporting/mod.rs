@@ -130,7 +130,8 @@ pub fn report_object_safety_error<'tcx>(
         let mut potential_solutions: Vec<_> =
             reported_violations.into_iter().map(|violation| violation.solution()).collect();
         potential_solutions.sort();
-        // Allows us to skip suggesting that the same item should be moved to another trait multiple times.
+        // Allows us to skip suggesting that the same item should be moved to another trait multiple
+        // times.
         potential_solutions.dedup();
         for solution in potential_solutions {
             solution.add_to(&mut err);

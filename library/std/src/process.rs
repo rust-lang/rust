@@ -1107,9 +1107,9 @@ impl fmt::Debug for Command {
     /// character.
     ///
     /// The default format approximates a shell invocation of the program along with its
-    /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
-    /// (e.g. due to lack of shell-escaping or differences in path resolution).
-    /// On some platforms you can use [the alternate syntax] to show more fields.
+    /// arguments. It does not include most of the other command properties. The output is not
+    /// guaranteed to work (e.g. due to lack of shell-escaping or differences in path
+    /// resolution). On some platforms you can use [the alternate syntax] to show more fields.
     ///
     /// Note that the debug implementation is platform-specific.
     ///
@@ -1267,7 +1267,6 @@ impl Stdio {
     /// This is an issue when running any program that doesn't guarantee that it reads
     /// its entire stdin before writing more than a pipe buffer's worth of output.
     /// The size of a pipe buffer varies on different targets.
-    ///
     #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio {
@@ -1659,8 +1658,8 @@ impl ExitStatus {
     ///
     /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
     /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
-    /// bits, and that values that didn't come from a program's call to `exit` may be invented by the
-    /// runtime system (often, for example, 255, 254, 127 or 126).
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented by
+    /// the runtime system (often, for example, 255, 254, 127 or 126).
     ///
     /// On Unix, this will return `None` if the process was terminated by a signal.
     /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) is an
@@ -1744,8 +1743,8 @@ impl ExitStatusError {
     ///
     /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
     /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
-    /// bits, and that values that didn't come from a program's call to `exit` may be invented by the
-    /// runtime system (often, for example, 255, 254, 127 or 126).
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented by
+    /// the runtime system (often, for example, 255, 254, 127 or 126).
     ///
     /// On Unix, this will return `None` if the process was terminated by a signal.  If you want to
     /// handle such situations specially, consider using methods from
@@ -2141,7 +2140,6 @@ impl Child {
     ///
     /// assert!(output.status.success());
     /// ```
-    ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
@@ -2290,8 +2288,6 @@ pub fn abort() -> ! {
 ///
 /// println!("My pid is {}", process::id());
 /// ```
-///
-///
 #[must_use]
 #[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {

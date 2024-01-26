@@ -14,16 +14,14 @@
 //! To enforce this requirement on specializations we take the following
 //! approach:
 //!
-//! 1. Match up the args for `impl2` so that the implemented trait and
-//!    self-type match those for `impl1`.
+//! 1. Match up the args for `impl2` so that the implemented trait and self-type match those for
+//!    `impl1`.
 //! 2. Check for any direct use of `'static` in the args of `impl2`.
-//! 3. Check that all of the generic parameters of `impl1` occur at most once
-//!    in the *unconstrained* args for `impl2`. A parameter is constrained if
-//!    its value is completely determined by an associated type projection
-//!    predicate.
-//! 4. Check that all predicates on `impl1` either exist on `impl2` (after
-//!    matching args), or are well-formed predicates for the trait's type
-//!    arguments.
+//! 3. Check that all of the generic parameters of `impl1` occur at most once in the *unconstrained*
+//!    args for `impl2`. A parameter is constrained if its value is completely determined by an
+//!    associated type projection predicate.
+//! 4. Check that all predicates on `impl1` either exist on `impl2` (after matching args), or are
+//!    well-formed predicates for the trait's type arguments.
 //!
 //! ## Example
 //!
@@ -327,8 +325,8 @@ fn check_static_lifetimes<'tcx>(
 /// * A `T: Tr` predicate where `Tr` is an always-applicable trait.
 /// * Present on the base impl `impl2`.
 ///     * This check is done using the `trait_predicates_eq` function below.
-/// * A well-formed predicate of a type argument of the trait being implemented,
-///   including the `Self`-type.
+/// * A well-formed predicate of a type argument of the trait being implemented, including the
+///   `Self`-type.
 #[instrument(level = "debug", skip(tcx))]
 fn check_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -477,12 +475,13 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
         ty::ClauseKind::ConstArgHasType(..) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
-            // about the actual rules that would be sound. Can't just always error here because otherwise
-            // std/core doesn't even compile as they have `const N: usize` in some specializing impls.
+            // about the actual rules that would be sound. Can't just always error here because
+            // otherwise std/core doesn't even compile as they have `const N: usize` in
+            // some specializing impls.
             //
-            // While we do not support constructs like `<T, const N: T>` there is probably no risk of
-            // soundness bugs, but when we support generic const parameter types this will need to be
-            // revisited.
+            // While we do not support constructs like `<T, const N: T>` there is probably no risk
+            // of soundness bugs, but when we support generic const parameter types this
+            // will need to be revisited.
         }
         _ => {
             tcx.dcx()

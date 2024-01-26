@@ -280,8 +280,8 @@ macro_rules! int_impl {
             (self as $UnsignedT).swap_bytes() as Self
         }
 
-        /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// Reverses the order of bits in the integer. The least significant bit becomes the most significant,
+        ///                 bit second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///
@@ -1635,7 +1635,8 @@ macro_rules! int_impl {
         #[inline]
         pub const fn carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
             // note: longer-term this should be done via an intrinsic.
-            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
+            // note: no intermediate overflow is required
+            //       (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
             let (a, b) = self.overflowing_add(rhs);
             let (c, d) = a.overflowing_add(carry as $SelfT);
             (c, b != d)
@@ -1743,7 +1744,8 @@ macro_rules! int_impl {
         #[inline]
         pub const fn borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
             // note: longer-term this should be done via an intrinsic.
-            // note: no intermediate overflow is required (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
+            // note: no intermediate overflow is required
+            //       (https://github.com/rust-lang/rust/issues/85532#issuecomment-1032214946).
             let (a, b) = self.overflowing_sub(rhs);
             let (c, d) = a.overflowing_sub(borrow as $SelfT);
             (c, b != d)

@@ -374,7 +374,8 @@ fn expand_format_args<'hir>(
                     }
                 }
                 &FormatArgsPiece::Placeholder(_) => {
-                    // Inject empty string before placeholders when not already preceded by a literal piece.
+                    // Inject empty string before placeholders when not already preceded by a
+                    // literal piece.
                     if i == 0 || matches!(fmt.template[i - 1], FormatArgsPiece::Placeholder(_)) {
                         Some(ctx.expr_str(fmt.span, kw::Empty))
                     } else {

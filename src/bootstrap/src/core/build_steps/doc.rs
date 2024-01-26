@@ -772,7 +772,8 @@ impl Step for Rustc {
         t!(fs::create_dir_all(&out));
 
         // Build the standard library, so that proc-macros can use it.
-        // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
+        // (Normally, only the metadata would be necessary, but proc-macros are special since they
+        // run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
         builder.ensure(compile::Std::new(compiler, builder.config.build));
 
@@ -787,7 +788,8 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
-        // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+        // Since we always pass --document-private-items, there's no need to warn about linking to
+        // private items.
         cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
@@ -945,7 +947,8 @@ macro_rules! tool_doc {
                 })?
 
                 cargo.rustdocflag("--document-private-items");
-                // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+                // Since we always pass --document-private-items, there's
+                // no need to warn about linking to private items.
                 cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");

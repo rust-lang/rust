@@ -22,7 +22,8 @@ pub(crate) fn maybe_unwrap_bool_not(bcx: &mut FunctionBuilder<'_>, arg: Value) -
     }
 }
 
-/// Returns whether the branch is statically known to be taken or `None` if it isn't statically known.
+/// Returns whether the branch is statically known to be taken or `None` if it isn't statically
+/// known.
 pub(crate) fn maybe_known_branch_taken(
     bcx: &FunctionBuilder<'_>,
     arg: Value,

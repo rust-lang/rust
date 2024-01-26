@@ -107,8 +107,8 @@ use crate::task::{Context, Poll};
 /// ```
 ///
 ///   - Notice how, by virtue of being in an `async` context, we have been able to make the [`pin!`]
-///     macro work, thereby avoiding any need for the `unsafe`
-///     <code>[Pin::new_unchecked](&mut fut)</code> constructor.
+///     macro work, thereby avoiding any need for the `unsafe` <code>[Pin::new_unchecked](&mut
+///     fut)</code> constructor.
 ///
 /// [`pin!`]: crate::pin::pin!
 #[stable(feature = "future_poll_fn", since = "1.64.0")]

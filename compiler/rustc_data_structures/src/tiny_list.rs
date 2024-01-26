@@ -3,10 +3,9 @@
 //! Using this data structure only makes sense under very specific
 //! circumstances:
 //!
-//! - If you have a list that rarely stores more than one element, then this
-//!   data-structure can store the element without allocating and only uses as
-//!   much space as an `Option<(T, usize)>`. If T can double as the `Option`
-//!   discriminant, it will even only be as large as `T, usize`.
+//! - If you have a list that rarely stores more than one element, then this data-structure can
+//!   store the element without allocating and only uses as much space as an `Option<(T, usize)>`.
+//!   If T can double as the `Option` discriminant, it will even only be as large as `T, usize`.
 //!
 //! If you expect to store more than 1 element in the common case, steer clear
 //! and use a `Vec<T>`, `Box<[T]>`, or a `SmallVec<T>`.

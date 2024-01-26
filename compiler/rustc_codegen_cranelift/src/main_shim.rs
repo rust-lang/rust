@@ -62,7 +62,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 AbiParam::new(m.target_config().pointer_type()),
                 AbiParam::new(m.target_config().pointer_type()),
             ],
-            returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
+            returns: vec![AbiParam::new(m.target_config().pointer_type() /* isize */)],
             call_conv: crate::conv_to_call_conv(
                 tcx.sess,
                 tcx.sess.target.options.entry_abi,

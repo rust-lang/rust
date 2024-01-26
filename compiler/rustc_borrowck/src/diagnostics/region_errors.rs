@@ -302,7 +302,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         for nll_error in nll_errors.into_iter() {
             match nll_error {
                 RegionErrorKind::TypeTestError { type_test } => {
-                    // Try to convert the lower-bound region into something named we can print for the user.
+                    // Try to convert the lower-bound region into something named we can print for
+                    // the user.
                     let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
                     let type_test_span = type_test.span;

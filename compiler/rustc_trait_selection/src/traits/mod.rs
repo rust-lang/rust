@@ -287,8 +287,8 @@ pub fn normalize_param_env_or_error<'tcx>(
                     }
                     // While it is pretty sus to be evaluating things with an empty param env, it
                     // should actually be okay since without `feature(generic_const_exprs)` the only
-                    // const arguments that have a non-empty param env are array repeat counts. These
-                    // do not appear in the type system though.
+                    // const arguments that have a non-empty param env are array repeat counts.
+                    // These do not appear in the type system though.
                     c.normalize(self.0, ty::ParamEnv::empty())
                 }
             }

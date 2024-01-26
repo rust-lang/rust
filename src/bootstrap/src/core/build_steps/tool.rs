@@ -118,9 +118,9 @@ impl Step for ToolBuild {
         if !build_success {
             crate::exit!(1);
         } else {
-            // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
-            // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
-            // different so the problem doesn't come up.
+            // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests,
+            // and compiletest confuses HTML tidy with the in-tree tidy. Name the
+            // in-tree tidy something different so the problem doesn't come up.
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
@@ -199,8 +199,8 @@ pub fn prepare_tool_cargo(
     }
 
     // Enable internal lints for clippy and rustdoc
-    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
-    // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
+    // NOTE: this doesn't enable lints for any other tools unless they explicitly add
+    // `#![warn(rustc::internal)]` See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
     //
     // NOTE: We unconditionally set this here to avoid recompiling tools between `x check $tool`
     // and `x test $tool` executions.
@@ -648,7 +648,8 @@ impl Step for RustAnalyzerProcMacroSrv {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
+        // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as
+        // a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
             .default_condition(

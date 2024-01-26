@@ -143,18 +143,16 @@ impl<'tcx> Article for TyKind<'tcx> {
 /// ```
 /// where:
 ///
-/// - 'l0...'li and T0...Tj are the generic parameters
-///   in scope on the function that defined the closure,
-/// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
-///   is rather hackily encoded via a scalar type. See
-///   `Ty::to_opt_closure_kind` for details.
-/// - CS represents the *closure signature*, representing as a `fn()`
-///   type. For example, `fn(u32, u32) -> u32` would mean that the closure
-///   implements `CK<(u32, u32), Output = u32>`, where `CK` is the trait
-///   specified above.
-/// - U is a type parameter representing the types of its upvars, tupled up
-///   (borrowed, if appropriate; that is, if a U field represents a by-ref upvar,
-///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
+/// - 'l0...'li and T0...Tj are the generic parameters in scope on the function that defined the
+///   closure,
+/// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This is rather hackily encoded via a
+///   scalar type. See `Ty::to_opt_closure_kind` for details.
+/// - CS represents the *closure signature*, representing as a `fn()` type. For example, `fn(u32,
+///   u32) -> u32` would mean that the closure implements `CK<(u32, u32), Output = u32>`, where `CK`
+///   is the trait specified above.
+/// - U is a type parameter representing the types of its upvars, tupled up (borrowed, if
+///   appropriate; that is, if a U field represents a by-ref upvar, and the up-var has the type
+///   `Foo`, then that field of U will be `&Foo`).
 ///
 /// So, for example, given this function:
 /// ```ignore (illustrative)
@@ -222,13 +220,10 @@ impl<'tcx> Article for TyKind<'tcx> {
 /// type parameters is similar, but `CK` and `CS` are replaced by the
 /// following type parameters:
 ///
-/// * `GS`: The coroutine's "resume type", which is the type of the
-///   argument passed to `resume`, and the type of `yield` expressions
-///   inside the coroutine.
-/// * `GY`: The "yield type", which is the type of values passed to
-///   `yield` inside the coroutine.
-/// * `GR`: The "return type", which is the type of value returned upon
-///   completion of the coroutine.
+/// * `GS`: The coroutine's "resume type", which is the type of the argument passed to `resume`, and
+///   the type of `yield` expressions inside the coroutine.
+/// * `GY`: The "yield type", which is the type of values passed to `yield` inside the coroutine.
+/// * `GR`: The "return type", which is the type of value returned upon completion of the coroutine.
 /// * `GW`: The "coroutine witness".
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub struct ClosureArgs<'tcx> {
@@ -598,8 +593,8 @@ impl<'tcx> UpvarArgs<'tcx> {
 /// ```
 /// where:
 ///
-/// - 'l0...'li and T0...Tj are the generic parameters
-///   inherited from the item that defined the inline const,
+/// - 'l0...'li and T0...Tj are the generic parameters inherited from the item that defined the
+///   inline const,
 /// - R represents the type of the constant.
 ///
 /// When the inline const is instantiated, `R` is substituted as the actual inferred
@@ -696,9 +691,10 @@ impl<'tcx> ExistentialPredicate<'tcx> {
 pub type PolyExistentialPredicate<'tcx> = Binder<'tcx, ExistentialPredicate<'tcx>>;
 
 impl<'tcx> PolyExistentialPredicate<'tcx> {
-    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
-    /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
-    /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
+    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn
+    /// PartialEq<u32>`), and a concrete type `self_ty`, returns a full predicate where the
+    /// existentially quantified variable `?Self` has been replaced with `self_ty` (e.g.,
+    /// `self_ty: PartialEq<u32>`, in our example).
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Clause<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
@@ -975,7 +971,8 @@ impl BoundVariableKind {
 /// type from `Binder<'tcx, T>` to just `T` (see
 /// e.g., `liberate_late_bound_regions`).
 ///
-/// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
+/// `Decodable` and `Encodable` are implemented for `Binder<T>` using the
+/// `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(HashStable, Lift)]
 pub struct Binder<'tcx, T> {
@@ -1024,8 +1021,8 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// Some examples where `skip_binder` is reasonable:
     ///
     /// - extracting the `DefId` from a PolyTraitRef;
-    /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X` does not reference any regions
+    /// - comparing the self type of a PolyTraitRef to see if it is equal to a type parameter `X`,
+    ///   since the type `X` does not reference any regions
     pub fn skip_binder(self) -> T {
         self.value
     }
@@ -1181,16 +1178,16 @@ pub struct AliasTy<'tcx> {
     /// while for TAIT it is used for the generic parameters of the alias.
     pub args: GenericArgsRef<'tcx>,
 
-    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on whether
-    /// this is a projection or an inherent projection or the `DefId` of the `OpaqueType` item if
-    /// this is an opaque.
+    /// The `DefId` of the `TraitItem` or `ImplItem` for the associated type `N` depending on
+    /// whether this is a projection or an inherent projection or the `DefId` of the
+    /// `OpaqueType` item if this is an opaque.
     ///
     /// During codegen, `tcx.type_of(def_id)` can be used to get the type of the
     /// underlying type if the type is an opaque.
     ///
     /// Note that if this is an associated type, this is not the `DefId` of the
-    /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
-    /// aka. `tcx.parent(def_id)`.
+    /// `TraitRef` containing this associated type, which is in
+    /// `tcx.associated_item(def_id).container`, aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
 
     /// This field exists to prevent the creation of `AliasTy` without using
@@ -1272,7 +1269,8 @@ impl<'tcx> AliasTy<'tcx> {
 
     /// Extracts the underlying trait reference and own args from this projection.
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
-    /// then this function would return a `T: StreamingIterator` trait reference and `['a]` as the own args
+    /// then this function would return a `T: StreamingIterator` trait reference and `['a]` as the
+    /// own args
     pub fn trait_ref_and_own_args(
         self,
         tcx: TyCtxt<'tcx>,
@@ -1301,7 +1299,8 @@ impl<'tcx> AliasTy<'tcx> {
 
 /// The following methods work only with inherent associated type projections.
 impl<'tcx> AliasTy<'tcx> {
-    /// Transform the substitutions to have the given `impl` args as the base and the GAT args on top of that.
+    /// Transform the substitutions to have the given `impl` args as the base and the GAT args on
+    /// top of that.
     ///
     /// Does the following transformation:
     ///

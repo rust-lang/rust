@@ -852,7 +852,8 @@ fn print_crate_info(
 
 /// Prints version information
 ///
-/// NOTE: this is a macro to support drivers built at a different time than the main `rustc_driver` crate.
+/// NOTE: this is a macro to support drivers built at a different time than the main `rustc_driver`
+/// crate.
 pub macro version($early_dcx: expr, $binary: literal, $matches: expr) {
     fn unw(x: Option<&str>) -> &str {
         x.unwrap_or("unknown")
@@ -1190,13 +1191,11 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     //
     // * If the option is stable, we're all good
     // * If the option wasn't passed, we're all good
-    // * If `-Z unstable-options` wasn't passed (and we're not a -Z option
-    //   ourselves), then we require the `-Z unstable-options` flag to unlock
-    //   this option that was passed.
-    // * If we're a nightly compiler, then unstable options are now unlocked, so
-    //   we're good to go.
-    // * Otherwise, if we're an unstable option then we generate an error
-    //   (unstable option being used on stable)
+    // * If `-Z unstable-options` wasn't passed (and we're not a -Z option ourselves), then we
+    //   require the `-Z unstable-options` flag to unlock this option that was passed.
+    // * If we're a nightly compiler, then unstable options are now unlocked, so we're good to go.
+    // * Otherwise, if we're an unstable option then we generate an error (unstable option being
+    //   used on stable)
     nightly_options::check_nightly_options(early_dcx, &matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
@@ -1280,7 +1279,8 @@ fn ice_path() -> &'static Option<PathBuf> {
         let now: OffsetDateTime = SystemTime::now().into();
         let file_now = now
             .format(
-                // Don't use a standard datetime format because Windows doesn't support `:` in paths
+                // Don't use a standard datetime format because Windows doesn't support `:` in
+                // paths
                 &time::format_description::parse("[year]-[month]-[day]T[hour]_[minute]_[second]")
                     .unwrap(),
             )
@@ -1331,15 +1331,17 @@ pub fn install_ice_hook(
             if let Some(msg) = info.payload().downcast_ref::<String>() {
                 if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
                 {
-                    // the error code is already going to be reported when the panic unwinds up the stack
+                    // the error code is already going to be reported when the panic unwinds up the
+                    // stack
                     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
                     let _ = early_dcx.early_err(msg.clone());
                     return;
                 }
             };
 
-            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-            // Don't do this for delayed bugs, which already emit their own more useful backtrace.
+            // Invoke the default handler, which prints the actual panic message and optionally a
+            // backtrace Don't do this for delayed bugs, which already emit their own
+            // more useful backtrace.
             if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
                 default_hook(info);
                 // Separate the output with an empty line

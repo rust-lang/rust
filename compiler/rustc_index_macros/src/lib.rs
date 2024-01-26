@@ -10,12 +10,10 @@ mod newtype;
 ///
 /// There are two ways of interacting with these indices:
 ///
-/// - The `From` impls are the preferred way. So you can do
-///   `S::from(v)` with a `usize` or `u32`. And you can convert back
-///   to an integer with `u32::from(s)`.
+/// - The `From` impls are the preferred way. So you can do `S::from(v)` with a `usize` or `u32`.
+///   And you can convert back to an integer with `u32::from(s)`.
 ///
-/// - Alternatively, you can use the methods `S::new(v)` and `s.index()`
-///   to create/return a value.
+/// - Alternatively, you can use the methods `S::new(v)` and `s.index()` to create/return a value.
 ///
 /// Internally, the index uses a u32, so the index must not exceed
 /// `u32::MAX`.
@@ -23,13 +21,12 @@ mod newtype;
 /// The impls provided by default are Clone, Copy, PartialEq, Eq, and Hash.
 ///
 /// Accepted attributes for customization:
-/// - `#[derive(HashStable_Generic)]`/`#[derive(HashStable)]`: derives
-///   `HashStable`, as normal.
+/// - `#[derive(HashStable_Generic)]`/`#[derive(HashStable)]`: derives `HashStable`, as normal.
 /// - `#[encodable]`: derives `Encodable`/`Decodable`.
 /// - `#[orderable]`: derives `PartialOrd`/`Ord`, plus step-related methods.
 /// - `#[debug_format = "Foo({})"]`: derives `Debug` with particular output.
-/// - `#[max = 0xFFFF_FFFD]`: specifies the max value, which allows niche
-///   optimizations. The default max value is 0xFFFF_FF00.
+/// - `#[max = 0xFFFF_FFFD]`: specifies the max value, which allows niche optimizations. The default
+///   max value is 0xFFFF_FF00.
 /// - `#[gate_rustc_only]`: makes parts of the generated code nightly-only.
 ///
 /// `SpecOptionPartialEq` is specialized by this macro, so using it requires enabling

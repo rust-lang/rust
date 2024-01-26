@@ -2091,8 +2091,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         }
                     }
                 }
-                // For code `if Some(..) = expr `, the type mismatch may be expected `bool` but found `()`,
-                // we try to suggest to add the missing `let` for `if let Some(..) = expr`
+                // For code `if Some(..) = expr `, the type mismatch may be expected `bool` but
+                // found `()`, we try to suggest to add the missing `let` for `if
+                // let Some(..) = expr`
                 (ty::Bool, ty::Tuple(list)) => {
                     if list.len() == 0 {
                         suggestions.extend(self.suggest_let_for_letchains(&trace.cause, span));

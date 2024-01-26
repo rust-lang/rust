@@ -66,7 +66,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub struct Env(!);
 
 impl Env {
-    // FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
+    // FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this
+    // when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
     pub fn str_debug(&self) -> impl fmt::Debug + '_ {
         let Self(inner) = self;
         match *inner {}

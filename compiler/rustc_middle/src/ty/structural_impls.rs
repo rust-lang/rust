@@ -279,7 +279,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
                     bug!("we checked that this is a valtree")
                 };
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                cx.pretty_print_const_valtree(valtree, lifted.ty(), /* print_ty */ true)?;
                 f.write_str(&cx.into_buffer())
             });
         }

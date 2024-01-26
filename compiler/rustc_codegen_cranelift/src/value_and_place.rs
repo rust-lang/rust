@@ -112,8 +112,8 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
-    /// vtable pointer.
+    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as
+    /// the vtable pointer.
     pub(crate) fn dyn_star_force_data_on_stack(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -569,7 +569,8 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F64, types::I64) => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
-                    // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
+                    // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for
+                    // transmutes between vectors and integers.
                     let ptr = fx.create_stack_slot(src_ty.bytes(), src_ty.bytes());
                     ptr.store(fx, data, MemFlags::trusted());
                     ptr.load(fx, dst_ty, MemFlags::trusted())

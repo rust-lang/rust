@@ -165,8 +165,9 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
             }
             // Only check modified files locally to speed up runtime.
-            // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
-            // we also care about CI time less since this is still very fast compared to building the compiler.
+            // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting
+            // regressions slip through; we also care about CI time less since this is
+            // still very fast compared to building the compiler.
             if !CiEnv::is_ci() && paths.is_empty() {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
@@ -275,11 +276,13 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     // spawn more processes than available concurrency to keep the CPU busy
     let max_processes = build.jobs() as usize * 2;
 
-    // spawn child processes on a separate thread so we can batch entries we have received from ignore
+    // spawn child processes on a separate thread so we can batch entries we have received from
+    // ignore
     let thread = std::thread::spawn(move || {
         let mut children = VecDeque::new();
         while let Ok(path) = rx.recv() {
-            // try getting a few more paths from the channel to amortize the overhead of spawning processes
+            // try getting a few more paths from the channel to amortize the overhead of spawning
+            // processes
             let paths: Vec<_> = rx.try_iter().take(7).chain(std::iter::once(path)).collect();
 
             let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);

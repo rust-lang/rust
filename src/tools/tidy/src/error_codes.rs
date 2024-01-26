@@ -2,11 +2,15 @@
 //!
 //! Overview of check:
 //!
-//! 1. We create a list of error codes used by the compiler. Error codes are extracted from `compiler/rustc_error_codes/src/error_codes.rs`.
+//! 1. We create a list of error codes used by the compiler. Error codes are extracted from
+//!    `compiler/rustc_error_codes/src/error_codes.rs`.
 //!
-//! 2. We check that the error code has a long-form explanation in `compiler/rustc_error_codes/src/error_codes/`.
-//!   - The explanation is expected to contain a `doctest` that fails with the correct error code. (`EXEMPT_FROM_DOCTEST` *currently* bypasses this check)
-//!   - Note that other stylistic conventions for markdown files are checked in the `style.rs` tidy check.
+//! 2. We check that the error code has a long-form explanation in
+//!    `compiler/rustc_error_codes/src/error_codes/`.
+//!   - The explanation is expected to contain a `doctest` that fails with the correct error code.
+//!     (`EXEMPT_FROM_DOCTEST` *currently* bypasses this check)
+//!   - Note that other stylistic conventions for markdown files are checked in the `style.rs` tidy
+//!     check.
 //!
 //! 3. We check that the error code has a UI test in `tests/ui/error-codes/`.
 //!   - We ensure that there is both a `Exxxx.rs` file and a corresponding `Exxxx.stderr` file.
@@ -26,7 +30,8 @@ const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/error_codes.rs";
 const ERROR_DOCS_PATH: &str = "compiler/rustc_error_codes/src/error_codes/";
 const ERROR_TESTS_PATH: &str = "tests/ui/error-codes/";
 
-// Error codes that (for some reason) can't have a doctest in their explanation. Error codes are still expected to provide a code example, even if untested.
+// Error codes that (for some reason) can't have a doctest in their explanation. Error codes are
+// still expected to provide a code example, even if untested.
 const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0717"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
@@ -80,7 +85,8 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
         if line.starts_with('E') {
             let split_line = line.split_once(':');
 
-            // Extract the error code from the line, emitting a fatal error if it is not in a correct format.
+            // Extract the error code from the line, emitting a fatal error if it is not in a
+            // correct format.
             let err_code = if let Some(err_code) = split_line {
                 err_code.0.to_owned()
             } else {
@@ -303,7 +309,8 @@ fn check_error_codes_tests(
     }
 }
 
-/// Stage 4: Search `compiler/` and ensure that every error code is actually used by the compiler and that no undocumented error codes exist.
+/// Stage 4: Search `compiler/` and ensure that every error code is actually used by the compiler
+/// and that no undocumented error codes exist.
 fn check_error_codes_used(
     search_paths: &[&Path],
     error_codes: &[String],

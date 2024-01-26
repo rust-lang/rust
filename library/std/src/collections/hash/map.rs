@@ -2884,7 +2884,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///     // Also replace the key with a handle to our other key.
     ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
     /// }
-    ///
     /// ```
     #[inline]
     #[unstable(feature = "map_entry_replace", issue = "44286")]

@@ -95,13 +95,12 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 /// [`BodyWithBorrowckFacts`].
 ///
 /// Note:
-/// *   This function will panic if the required body was already stolen. This
-///     can, for example, happen when requesting a body of a `const` function
-///     because they are evaluated during typechecking. The panic can be avoided
-///     by overriding the `mir_borrowck` query. You can find a complete example
-///     that shows how to do this at `tests/run-make/obtain-borrowck/`.
+/// * This function will panic if the required body was already stolen. This can, for example,
+///   happen when requesting a body of a `const` function because they are evaluated during
+///   typechecking. The panic can be avoided by overriding the `mir_borrowck` query. You can find a
+///   complete example that shows how to do this at `tests/run-make/obtain-borrowck/`.
 ///
-/// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
+/// * Polonius is highly unstable, so expect regular changes in its signature or other details.
 pub fn get_body_with_borrowck_facts(
     tcx: TyCtxt<'_>,
     def: LocalDefId,

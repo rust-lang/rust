@@ -29,9 +29,9 @@ impl<'tcx> PredicateSet<'tcx> {
     ///
     /// Returns whether the predicate was newly inserted. That is:
     /// - If the set did not previously contain this predicate, `true` is returned.
-    /// - If the set already contained this predicate, `false` is returned,
-    ///   and the set is not modified: original predicate is not replaced,
-    ///   and the predicate passed as argument is dropped.
+    /// - If the set already contained this predicate, `false` is returned, and the set is not
+    ///   modified: original predicate is not replaced, and the predicate passed as argument is
+    ///   dropped.
     pub fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
         // We have to be careful here because we want
         //
@@ -273,7 +273,8 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 if data.polarity == ty::ImplPolarity::Negative {
                     return;
                 }
-                // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
+                // Get predicates implied by the trait, or only super predicates if we only care
+                // about self predicates.
                 let predicates = match self.mode {
                     Filter::All => tcx.implied_predicates_of(data.def_id()),
                     Filter::OnlySelf => tcx.super_predicates_of(data.def_id()),

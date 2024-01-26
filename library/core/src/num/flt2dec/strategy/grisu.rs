@@ -165,7 +165,7 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
 pub fn format_shortest_opt<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+) -> Option<(/* digits */ &'a [u8], /* exp */ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -188,8 +188,8 @@ pub fn format_shortest_opt<'a>(
     //
     // 1. we want to keep `floor(plus * cached)` within `u32` since it needs a costly division.
     //    (this is not really avoidable, remainder is required for accuracy estimation.)
-    // 2. the remainder of `floor(plus * cached)` repeatedly gets multiplied by 10,
-    //    and it should not overflow.
+    // 2. the remainder of `floor(plus * cached)` repeatedly gets multiplied by 10, and it should
+    //    not overflow.
     //
     // the first gives `64 + GAMMA <= 32`, while the second gives `10 * 2^-ALPHA <= 2^64`;
     // -60 and -32 is the maximal range with this constraint, and V8 also uses them.
@@ -259,8 +259,8 @@ pub fn format_shortest_opt<'a>(
         // we always have at least one digit to render, as `plus1 >= 10^kappa`
         // invariants:
         // - `delta1int <= remainder < 10^(kappa+1)`
-        // - `plus1int = d[0..n-1] * 10^(kappa+1) + remainder`
-        //   (it follows that `remainder = plus1int % 10^(kappa+1)`)
+        // - `plus1int = d[0..n-1] * 10^(kappa+1) + remainder` (it follows that `remainder =
+        //   plus1int % 10^(kappa+1)`)
 
         // divide `remainder` by `10^kappa`. both are scaled by `2^-e`.
         let q = remainder / ten_kappa;
@@ -410,10 +410,9 @@ pub fn format_shortest_opt<'a>(
             // - when `z(n+1) < 0`:
             //   - TC3a: the precondition is `plus1v_up < plus1w(n) + 10^kappa`. assuming TC2 is
             //     false, `threshold >= plus1w(n) + 10^kappa` so it cannot overflow.
-            //   - TC3b: TC3 becomes `z(n) <= -z(n+1)`, i.e., `plus1v_up - plus1w(n) >=
-            //     plus1w(n+1) - plus1v_up = plus1w(n) + 10^kappa - plus1v_up`. the negated TC1
-            //     gives `plus1v_up > plus1w(n)`, so it cannot overflow or underflow when
-            //     combined with TC3a.
+            //   - TC3b: TC3 becomes `z(n) <= -z(n+1)`, i.e., `plus1v_up - plus1w(n) >= plus1w(n+1)
+            //     - plus1v_up = plus1w(n) + 10^kappa - plus1v_up`. the negated TC1 gives `plus1v_up
+            //     > plus1w(n)`, so it cannot overflow or underflow when combined with TC3a.
             //
             // consequently, we should stop when `TC1 || TC2 || (TC3a && TC3b)`. the following is
             // equal to its inverse, `!TC1 && !TC2 && (!TC3a || !TC3b)`.
@@ -454,7 +453,7 @@ pub fn format_shortest_opt<'a>(
 pub fn format_shortest<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use
@@ -472,7 +471,7 @@ pub fn format_exact_opt<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> Option<(/*digits*/ &'a [u8], /*exp*/ i16)> {
+) -> Option<(/* digits */ &'a [u8], /* exp */ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
@@ -492,13 +491,15 @@ pub fn format_exact_opt<'a>(
     const POW10_UP_TO_9: [u32; 10] =
         [1, 10, 100, 1000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000];
 
-    // We deviate from the original algorithm here and do some early checks to determine if we can satisfy requested_digits.
-    // If we determine that we can't, we exit early and avoid most of the heavy lifting that the algorithm otherwise does.
+    // We deviate from the original algorithm here and do some early checks to determine if we can
+    // satisfy requested_digits. If we determine that we can't, we exit early and avoid most of
+    // the heavy lifting that the algorithm otherwise does.
     //
     // When vfrac is zero, we can easily determine if vint can satisfy requested digits:
-    //      If requested_digits >= 11, vint is not able to exhaust the count by itself since 10^(11 -1) > u32 max value >= vint.
-    //      If vint < 10^(requested_digits - 1), vint cannot exhaust the count.
-    //      Otherwise, vint might be able to exhaust the count and we need to execute the rest of the code.
+    //      If requested_digits >= 11, vint is not able to exhaust the count by itself since 10^(11
+    // -1) > u32 max value >= vint.      If vint < 10^(requested_digits - 1), vint cannot
+    // exhaust the count.      Otherwise, vint might be able to exhaust the count and we need to
+    // execute the rest of the code.
     if (vfrac == 0) && ((requested_digits >= 11) || (vint < POW10_UP_TO_9[requested_digits - 1])) {
         return None;
     }
@@ -556,8 +557,8 @@ pub fn format_exact_opt<'a>(
         // we always have at least one digit to render
         // invariants:
         // - `remainder < 10^(kappa+1)`
-        // - `vint = d[0..n-1] * 10^(kappa+1) + remainder`
-        //   (it follows that `remainder = vint % 10^(kappa+1)`)
+        // - `vint = d[0..n-1] * 10^(kappa+1) + remainder` (it follows that `remainder = vint %
+        //   10^(kappa+1)`)
 
         // divide `remainder` by `10^kappa`. both are scaled by `2^-e`.
         let q = remainder / ten_kappa;
@@ -764,7 +765,7 @@ pub fn format_exact<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
     // SAFETY: The borrow checker is not smart enough to let us use `buf`
     // in the second branch, so we launder the lifetime here. But we only re-use

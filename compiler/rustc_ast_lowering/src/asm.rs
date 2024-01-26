@@ -76,7 +76,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         match clobber_abis.get(&abi) {
                             Some((prev_name, prev_sp)) => {
                                 // Multiple different abi names may actually be the same ABI
-                                // If the specified ABIs are not the same name, alert the user that they resolve to the same ABI
+                                // If the specified ABIs are not the same name, alert the user that
+                                // they resolve to the same ABI
                                 let source_map = self.tcx.sess.source_map();
                                 let equivalent = (source_map.span_to_snippet(*prev_sp)
                                     != source_map.span_to_snippet(*abi_span))
@@ -371,7 +372,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     _ => None,
                                 };
                                 let reg_str = |idx| -> &str {
-                                    // HIR asm doesn't preserve the original alias string of the explicit register,
+                                    // HIR asm doesn't preserve the original alias string of the
+                                    // explicit register,
                                     // so we have to retrieve it from AST
                                     let (op, _): &(InlineAsmOperand, Span) = &asm.operands[idx];
                                     if let Some(ast::InlineAsmRegOrRegClass::Reg(reg_sym)) =

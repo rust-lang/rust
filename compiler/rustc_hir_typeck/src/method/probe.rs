@@ -1910,9 +1910,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// 2. It makes it easier to deal with higher-ranked trait bounds, because we can replace any
     ///    late-bound regions with 'static. Otherwise, if we were going to replace late-bound
     ///    regions with actual region variables as is proper, we'd have to ensure that the same
-    ///    region got replaced with the same variable, which requires a bit more coordination
-    ///    and/or tracking the substitution and
-    ///    so forth.
+    ///    region got replaced with the same variable, which requires a bit more coordination and/or
+    ///    tracking the substitution and so forth.
     fn instantiate_bound_regions_with_erased<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

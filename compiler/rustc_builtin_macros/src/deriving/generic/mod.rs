@@ -5,27 +5,24 @@
 //!
 //! Supported features (fairly exhaustive):
 //!
-//! - Methods taking any number of parameters of any type, and returning
-//!   any type, other than vectors, bottom and closures.
-//! - Generating `impl`s for types with type parameters and lifetimes
-//!   (e.g., `Option<T>`), the parameters are automatically given the
-//!   current trait as a bound. (This includes separate type parameters
-//!   and lifetimes for methods.)
+//! - Methods taking any number of parameters of any type, and returning any type, other than
+//!   vectors, bottom and closures.
+//! - Generating `impl`s for types with type parameters and lifetimes (e.g., `Option<T>`), the
+//!   parameters are automatically given the current trait as a bound. (This includes separate type
+//!   parameters and lifetimes for methods.)
 //! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
 //!
 //! The most important thing for implementors is the `Substructure` and
 //! `SubstructureFields` objects. The latter groups 5 possibilities of the
 //! arguments:
 //!
-//! - `Struct`, when `Self` is a struct (including tuple structs, e.g
-//!   `struct T(i32, char)`).
-//! - `EnumMatching`, when `Self` is an enum and all the arguments are the
-//!   same variant of the enum (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
+//! - `Struct`, when `Self` is a struct (including tuple structs, e.g `struct T(i32, char)`).
+//! - `EnumMatching`, when `Self` is an enum and all the arguments are the same variant of the enum
+//!   (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumTag` when `Self` is an enum, for comparing the enum tags.
-//! - `StaticEnum` and `StaticStruct` for static methods, where the type
-//!   being derived upon is either an enum or struct respectively. (Any
-//!   argument with type Self is just grouped among the non-self
-//!   arguments.)
+//! - `StaticEnum` and `StaticStruct` for static methods, where the type being derived upon is
+//!   either an enum or struct respectively. (Any argument with type Self is just grouped among the
+//!   non-self arguments.)
 //!
 //! In the first two cases, the values from the corresponding fields in
 //! all the arguments are grouped together.
@@ -289,7 +286,7 @@ pub struct FieldInfo {
 /// Fields for a static method
 pub enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
-    Unnamed(Vec<Span>, bool /*is tuple*/),
+    Unnamed(Vec<Span>, bool /* is tuple */),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
@@ -941,11 +938,10 @@ impl<'a> MethodDef<'a> {
 
     // The return value includes:
     // - explicit_self: The `&self` arg, if present.
-    // - selflike_args: Expressions for `&self` (if present) and also any other
-    //   args with the same type (e.g. the `other` arg in `PartialEq::eq`).
+    // - selflike_args: Expressions for `&self` (if present) and also any other args with the same
+    //   type (e.g. the `other` arg in `PartialEq::eq`).
     // - nonselflike_args: Expressions for all the remaining args.
-    // - nonself_arg_tys: Additional information about all the args other than
-    //   `&self`.
+    // - nonself_arg_tys: Additional information about all the args other than `&self`.
     fn extract_arg_details(
         &self,
         cx: &mut ExtCtxt<'_>,

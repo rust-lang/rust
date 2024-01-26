@@ -293,8 +293,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
         mut splice_end: NonNull<Node<T>>,
         splice_length: usize,
     ) {
-        // This method takes care not to create multiple mutable references to whole nodes at the same time,
-        // to maintain validity of aliasing pointers into `element`.
+        // This method takes care not to create multiple mutable references to whole nodes at the
+        // same time, to maintain validity of aliasing pointers into `element`.
         if let Some(mut existing_prev) = existing_prev {
             unsafe {
                 existing_prev.as_mut().next = Some(splice_start);
@@ -1319,7 +1319,8 @@ impl<T> Default for IterMut<'_, T> {
 /// To accommodate this, there is a "ghost" non-element that yields `None` between the head and
 /// tail of the list.
 ///
-/// When created, cursors start at the front of the list, or the "ghost" non-element if the list is empty.
+/// When created, cursors start at the front of the list, or the "ghost" non-element if the list is
+/// empty.
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct Cursor<
     'a,

@@ -20,7 +20,7 @@
 //! the following:
 //! - a set of values that match none of the patterns (if any),
 //! - for each subpattern (taking into account or-patterns), whether removing it would change
-//!     anything about how the match executes, i.e. whether it is useful/not redundant.
+//!   anything about how the match executes, i.e. whether it is useful/not redundant.
 //!
 //! To a first approximation, the algorithm works by exploring all possible values for the type
 //! being matched on, and determining which arm(s) catch which value. To make this tractable we
@@ -90,7 +90,8 @@
 //!
 //! - `matches!(v, _) := true`
 //! - `matches!((v0,  v1), (p0,  p1)) := matches!(v0, p0) && matches!(v1, p1)`
-//! - `matches!(Foo { bar: v0, baz: v1 }, Foo { bar: p0, baz: p1 }) := matches!(v0, p0) && matches!(v1, p1)`
+//! - `matches!(Foo { bar: v0, baz: v1 }, Foo { bar: p0, baz: p1 }) := matches!(v0, p0) &&
+//!   matches!(v1, p1)`
 //! - `matches!(Ok(v0), Ok(p0)) := matches!(v0, p0)`
 //! - `matches!(Ok(v0), Err(p0)) := false` (incompatible variants)
 //! - `matches!(v, 1..=100) := matches!(v, 1) || ... || matches!(v, 100)`
@@ -102,9 +103,9 @@
 //! of whether a constructor is matched by another one is answered by
 //! [`Constructor::is_covered_by`].
 //!
-//! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as wildcards.
-//! Note 2: this only applies to matcheable values. For example a value of type `Rc<u64>` can't be
-//! deconstructed that way.
+//! Note 1: variable bindings (like the `x` in `Some(x)`) match anything, so we treat them as
+//! wildcards. Note 2: this only applies to matcheable values. For example a value of type `Rc<u64>`
+//! can't be deconstructed that way.
 //!
 //!
 //!
@@ -172,18 +173,16 @@
 //! Let `pt_1, .., pt_n` and `qt` be length-m tuples of patterns for the same type `(T_1, .., T_m)`.
 //! We compute `usefulness(tp_1, .., tp_n, tq)` as follows:
 //!
-//! - Base case: `m == 0`.
-//!     The pattern-tuples are all empty, i.e. they're all `()`. Thus `tq` is useful iff there are
-//!     no rows above it, i.e. if `n == 0`. In that case we return `()` as a witness-tuple of
-//!     usefulness of `tq`.
+//! - Base case: `m == 0`. The pattern-tuples are all empty, i.e. they're all `()`. Thus `tq` is
+//!   useful iff there are no rows above it, i.e. if `n == 0`. In that case we return `()` as a
+//!   witness-tuple of usefulness of `tq`.
 //!
-//! - Inductive case: `m > 0`.
-//!     In this naive version, we list all the possible constructors for values of type `T1` (we
-//!     will be more clever in the next section).
+//! - Inductive case: `m > 0`. In this naive version, we list all the possible constructors for
+//!   values of type `T1` (we will be more clever in the next section).
 //!
 //!     - For each such constructor `c` for which `specialize(c, tq)` is not nothing:
-//!         - We recursively compute `usefulness(specialize(c, tp_1) ... specialize(c, tp_n), specialize(c, tq))`,
-//!             where we discard any `specialize(c, p_i)` that returns nothing.
+//!         - We recursively compute `usefulness(specialize(c, tp_1) ... specialize(c, tp_n),
+//!           specialize(c, tq))`, where we discard any `specialize(c, p_i)` that returns nothing.
 //!         - For each witness-tuple `w` found, we apply `unspecialize(c, w)` to it.
 //!
 //!     - We return the all the witnesses found, if any.
@@ -239,7 +238,8 @@
 //!     `witness  = [Variant2(Some(true), 0)]`
 //! ```
 //!
-//! Therefore `usefulness(tp_1, tp_2, tq)` returns the single witness-tuple `[Variant2(Some(true), 0)]`.
+//! Therefore `usefulness(tp_1, tp_2, tq)` returns the single witness-tuple `[Variant2(Some(true),
+//! 0)]`.
 //!
 //!
 //! Computing the set of constructors for a type is done in [`TypeCx::ctors_for_ty`]. See
@@ -317,7 +317,7 @@
 //! Consider the value `(true, true)`:
 //! - Row 2 does not distinguish `(true, true)` and `(false, true)`;
 //! - `false` does not show up in the first column of the match, so without knowing anything else we
-//!     can deduce that `(false, true)` matches the same or fewer rows than `(true, true)`.
+//!   can deduce that `(false, true)` matches the same or fewer rows than `(true, true)`.
 //!
 //! Using those two facts together, we deduce that `(true, true)` will not give us more usefulness
 //! information about row 2 than `(false, true)` would. We say that "`(true, true)` is made
@@ -692,7 +692,8 @@
 //! We conclude:
 //! - Arm 3 is redundant (it was never marked as useful);
 //! - The match is not exhaustive;
-//! - Adding arms with `Pair(Some(1..), true)` and `Pair(None, true)` would make the match exhaustive.
+//! - Adding arms with `Pair(Some(1..), true)` and `Pair(None, true)` would make the match
+//!   exhaustive.
 //!
 //! Note that when we're deep in the algorithm, we don't know what specialization steps got us here.
 //! We can only figure out what our witnesses correspond to by unspecializing back up the stack.
@@ -761,15 +762,15 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
 
 /// Serves two purposes:
 /// - in a wildcard, tracks whether the wildcard matches only valid values (i.e. is a binding `_a`)
-///     or also invalid values (i.e. is a true `_` pattern).
+///   or also invalid values (i.e. is a true `_` pattern).
 /// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
-///     not.
+///   not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
-    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
-    /// `useful && !reachable` arms anyway.
+    /// Option for backwards compatibility: the place is not known to be valid but we allow
+    /// omitting `useful && !reachable` arms anyway.
     MaybeInvalidButAllowOmittingArms,
 }
 
@@ -904,16 +905,16 @@ struct MatrixRow<'p, Cx: TypeCx> {
     pats: PatStack<'p, Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
-    /// When we specialize, we remember which row of the original matrix produced a given row of the
-    /// specialized matrix. When we unspecialize, we use this to propagate usefulness back up the
-    /// callstack.
+    /// When we specialize, we remember which row of the original matrix produced a given row of
+    /// the specialized matrix. When we unspecialize, we use this to propagate usefulness back
+    /// up the callstack.
     parent_row: usize,
     /// False when the matrix is just built. This is set to `true` by
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
     useful: bool,
-    /// Tracks which rows above this one have an intersection with this one, i.e. such that there is
-    /// a value that matches both rows.
+    /// Tracks which rows above this one have an intersection with this one, i.e. such that there
+    /// is a value that matches both rows.
     /// Note: Because of relevancy we may miss some intersections. The intersections we do find are
     /// correct.
     intersects: BitSet<usize>,
@@ -1407,9 +1408,9 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 ///
 /// The key steps are:
 /// - specialization, where we dig into the rows that have a specific constructor and call ourselves
-///     recursively;
+///   recursively;
 /// - unspecialization, where we lift the results from the previous step into results for this step
-///     (using `apply_constructor` and by updating `row.useful` for each parent row).
+///   (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx, is_top_level), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(

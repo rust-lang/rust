@@ -25,8 +25,8 @@ use crate::MirPass;
 /// ```
 ///
 /// For now, this pass is very simple and only capable of eliminating a single copy. A more general
-/// version of copy propagation, such as the one based on non-overlapping live ranges in [#47954] and
-/// [#71003], could yield even more benefits.
+/// version of copy propagation, such as the one based on non-overlapping live ranges in [#47954]
+/// and [#71003], could yield even more benefits.
 ///
 /// [#47954]: https://github.com/rust-lang/rust/pull/47954
 /// [#71003]: https://github.com/rust-lang/rust/pull/71003
@@ -79,8 +79,8 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 
 /// MIR that is eligible for the NRVO must fulfill two conditions:
 ///   1. The return place must not be read prior to the `Return` terminator.
-///   2. A simple assignment of a whole local to the return place (e.g., `_0 = _1`) must be the
-///      only definition of the return place reaching the `Return` terminator.
+///   2. A simple assignment of a whole local to the return place (e.g., `_0 = _1`) must be the only
+///      definition of the return place reaching the `Return` terminator.
 ///
 /// If the MIR fulfills both these conditions, this function returns the `Local` that is assigned
 /// to the return place along all possible paths through the control-flow graph.

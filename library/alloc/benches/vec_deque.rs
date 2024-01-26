@@ -57,7 +57,8 @@ fn bench_try_fold(b: &mut Bencher) {
 }
 
 /// does the memory bookkeeping to reuse the buffer of the Vec between iterations.
-/// `setup` must not modify its argument's length or capacity. `g` must not move out of its argument.
+/// `setup` must not modify its argument's length or capacity. `g` must not move out of its
+/// argument.
 fn into_iter_helper<
     T: Copy,
     F: FnOnce(&mut VecDeque<T>),
@@ -81,9 +82,10 @@ fn into_iter_helper<
 
     mem::forget(it);
 
-    // SAFETY: the provided functions are not allowed to modify the allocation, so the buffer is still alive.
-    // len and capacity are accurate due to the above assertion.
-    // All the elements in the buffer are still valid, because of `T: Copy` which implies `T: !Drop`.
+    // SAFETY: the provided functions are not allowed to modify the allocation, so the buffer is
+    // still alive. len and capacity are accurate due to the above assertion.
+    // All the elements in the buffer are still valid, because of `T: Copy` which implies `T:
+    // !Drop`.
     mem::forget(mem::replace(v, unsafe { Vec::from_raw_parts(ptr, len, len) }));
 }
 

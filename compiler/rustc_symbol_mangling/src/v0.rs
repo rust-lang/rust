@@ -113,8 +113,8 @@ impl<'tcx> SymbolMangler<'tcx> {
     /// Push a `_`-terminated base 62 integer, using the format
     /// specified in the RFC as `<base-62-number>`, that is:
     /// * `x = 0` is encoded as just the `"_"` terminator
-    /// * `x > 0` is encoded as `x - 1` in base 62, followed by `"_"`,
-    ///   e.g. `1` becomes `"0_"`, `62` becomes `"Z_"`, etc.
+    /// * `x > 0` is encoded as `x - 1` in base 62, followed by `"_"`, e.g. `1` becomes `"0_"`, `62`
+    ///   becomes `"Z_"`, etc.
     fn push_integer_62(&mut self, x: u64) {
         if let Some(x) = x.checked_sub(1) {
             base_n::push_str(x as u128, 62, &mut self.out);
@@ -124,8 +124,8 @@ impl<'tcx> SymbolMangler<'tcx> {
 
     /// Push a `tag`-prefixed base 62 integer, when larger than `0`, that is:
     /// * `x = 0` is encoded as `""` (nothing)
-    /// * `x > 0` is encoded as the `tag` followed by `push_integer_62(x - 1)`
-    ///   e.g. `1` becomes `tag + "_"`, `2` becomes `tag + "0_"`, etc.
+    /// * `x > 0` is encoded as the `tag` followed by `push_integer_62(x - 1)` e.g. `1` becomes `tag
+    ///   + "_"`, `2` becomes `tag + "0_"`, etc.
     fn push_opt_integer_62(&mut self, tag: &str, x: u64) {
         if let Some(x) = x.checked_sub(1) {
             self.push(tag);

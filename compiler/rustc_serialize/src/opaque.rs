@@ -270,7 +270,8 @@ impl<'a> MemDecoder<'a> {
 
     #[inline]
     pub fn len(&self) -> usize {
-        // SAFETY: This recovers the length of the original slice, only using members we never modify.
+        // SAFETY: This recovers the length of the original slice, only using members we never
+        // modify.
         unsafe { self.end.sub_ptr(self.start) }
     }
 

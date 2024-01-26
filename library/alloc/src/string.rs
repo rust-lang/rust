@@ -903,8 +903,8 @@ impl String {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * The memory at `buf` needs to have been previously allocated by the
-    ///   same allocator the standard library uses, with a required alignment of exactly 1.
+    /// * The memory at `buf` needs to have been previously allocated by the same allocator the
+    ///   standard library uses, with a required alignment of exactly 1.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the correct value.
     /// * The first `length` bytes at `buf` need to be valid UTF-8.
@@ -928,7 +928,6 @@ impl String {
     ///
     /// unsafe {
     ///     let s = String::from("hello");
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Prevent automatically dropping the String's data
     ///     let mut s = mem::ManuallyDrop::new(s);

@@ -55,7 +55,8 @@ pub enum ConstValue<'tcx> {
 
     /// A value not representable by the other variants; needs to be stored in-memory.
     ///
-    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is fine.
+    /// Must *not* be used for scalars or ZST, but having `&str` or other slices in this variant is
+    /// fine.
     Indirect {
         /// The backing memory of the value. May contain more memory than needed for just the value
         /// if this points into some other larger ConstValue.
@@ -166,7 +167,8 @@ impl<'tcx> ConstValue<'tcx> {
             }
         };
 
-        // This is for diagnostics only, so we are okay to use `inspect_with_uninit_and_ptr_outside_interpreter`.
+        // This is for diagnostics only, so we are okay to use
+        // `inspect_with_uninit_and_ptr_outside_interpreter`.
         let start = start.try_into().unwrap();
         let end = end.try_into().unwrap();
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
@@ -207,9 +209,9 @@ pub enum Const<'tcx> {
     /// An unevaluated mir constant which is not part of the type system.
     ///
     /// Note that `Ty(ty::ConstKind::Unevaluated)` and this variant are *not* identical! `Ty` will
-    /// always flow through a valtree, so all data not captured in the valtree is lost. This variant
-    /// directly uses the evaluated result of the given constant, including e.g. data stored in
-    /// padding.
+    /// always flow through a valtree, so all data not captured in the valtree is lost. This
+    /// variant directly uses the evaluated result of the given constant, including e.g. data
+    /// stored in padding.
     Unevaluated(UnevaluatedConst<'tcx>, Ty<'tcx>),
 
     /// This constant cannot go back into the type system, as it represents
@@ -336,7 +338,8 @@ impl<'tcx> Const<'tcx> {
         int.to_bits(size).ok()
     }
 
-    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given
+    /// type.
     #[inline]
     pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
         self.try_eval_bits(tcx, param_env)

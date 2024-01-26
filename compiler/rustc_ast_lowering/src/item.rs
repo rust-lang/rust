@@ -28,9 +28,9 @@ pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
 
-/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
-/// to the where clause that is preferred, if it exists. Otherwise, it sets the span to the other where
-/// clause if it exists.
+/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set
+/// the span to the where clause that is preferred, if it exists. Otherwise, it sets the span to the
+/// other where clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
     mut where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
@@ -1281,8 +1281,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_kind: Option<CoroutineKind>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        // Don't pass along the user-provided constness of trait associated functions; we don't want to
-        // synthesize a host effect param for them. We reject `const` on them during AST validation.
+        // Don't pass along the user-provided constness of trait associated functions; we don't want
+        // to synthesize a host effect param for them. We reject `const` on them during AST
+        // validation.
         let constness = if kind == FnDeclKind::Inherent { sig.header.constness } else { Const::No };
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, constness, id, &itctx, |this| {
@@ -1372,8 +1373,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
         // these into hir when we lower thee where clauses), but this makes it quite difficult to
-        // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and
-        // where clauses for `?Sized`.
+        // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param
+        // bounds and where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
             let WherePredicate::BoundPredicate(bound_pred) = pred else {
                 continue;

@@ -481,10 +481,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
      * Recursively searches for the most-specific blameable expression.
      * For example, if you have a chain of constraints like:
      * - want `Vec<i32>: Copy`
-     * - because `Option<Vec<i32>>: Copy` needs `Vec<i32>: Copy` because `impl <T: Copy> Copy for Option<T>`
-     * - because `(Option<Vec<i32>, bool)` needs `Option<Vec<i32>>: Copy` because `impl <A: Copy, B: Copy> Copy for (A, B)`
-     * then if you pass in `(Some(vec![1, 2, 3]), false)`, this helper `point_at_specific_expr_if_possible`
-     * will find the expression `vec![1, 2, 3]` as the "most blameable" reason for this missing constraint.
+     * - because `Option<Vec<i32>>: Copy` needs `Vec<i32>: Copy` because `impl <T: Copy> Copy
+     *   for Option<T>`
+     * - because `(Option<Vec<i32>, bool)` needs `Option<Vec<i32>>: Copy` because `impl <A:
+     *   Copy, B: Copy> Copy for (A, B)`
+     * then if you pass in `(Some(vec![1, 2, 3]), false)`, this helper
+     * `point_at_specific_expr_if_possible` will find the expression `vec![1, 2, 3]` as the
+     * "most blameable" reason for this missing constraint.
      *
      * This function only updates the error span.
      */
@@ -553,12 +556,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Without calling this function, the error span will cover the entire argument expression.
     ///
-    /// Before we do any of this logic, we recursively call `point_at_specific_expr_if_possible` on the parent
-    /// obligation. Hence we refine the `expr` "outwards-in" and bail at the first kind of expression/impl we don't recognize.
+    /// Before we do any of this logic, we recursively call `point_at_specific_expr_if_possible` on
+    /// the parent obligation. Hence we refine the `expr` "outwards-in" and bail at the first
+    /// kind of expression/impl we don't recognize.
     ///
-    /// This function returns a `Result<&Expr, &Expr>` - either way, it returns the `Expr` whose span should be
-    /// reported as an error. If it is `Ok`, then it means it refined successful. If it is `Err`, then it may be
-    /// only a partial success - but it cannot be refined even further.
+    /// This function returns a `Result<&Expr, &Expr>` - either way, it returns the `Expr` whose
+    /// span should be reported as an error. If it is `Ok`, then it means it refined successful.
+    /// If it is `Err`, then it may be only a partial success - but it cannot be refined even
+    /// further.
     fn blame_specific_expr_if_possible_for_derived_predicate_obligation(
         &self,
         obligation: &traits::ImplDerivedObligationCause<'tcx>,
@@ -572,9 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr,
         )?;
 
-        // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
-        // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
-        // that struct type.
+        // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the
+        // `Self` type we care about. For the purposes of this function, we hope that it is
+        // a `struct` type, and that our current `expr` is a literal of that struct type.
         let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
             ty::TraitRef::new(
                 self.tcx,
@@ -600,7 +605,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if impl_predicate_index >= impl_predicates.predicates.len() {
-            // This shouldn't happen, but since this is only a diagnostic improvement, avoid breaking things.
+            // This shouldn't happen, but since this is only a diagnostic improvement, avoid
+            // breaking things.
             return Err(expr);
         }
 
@@ -624,13 +630,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - in_ty: `(Option<Vec<T>, bool)`
     /// we would drill until we arrive at `vec![1, 2, 3]`.
     ///
-    /// If successful, we return `Ok(refined_expr)`. If unsuccessful, we return `Err(partially_refined_expr`),
-    /// which will go as far as possible. For example, given `(foo(), false)` instead, we would drill to
-    /// `foo()` and then return `Err("foo()")`.
+    /// If successful, we return `Ok(refined_expr)`. If unsuccessful, we return
+    /// `Err(partially_refined_expr`), which will go as far as possible. For example, given
+    /// `(foo(), false)` instead, we would drill to `foo()` and then return `Err("foo()")`.
     ///
-    /// This means that you can (and should) use the `?` try operator to chain multiple calls to this
-    /// function with different types, since you can only continue drilling the second time if you
-    /// succeeded the first time.
+    /// This means that you can (and should) use the `?` try operator to chain multiple calls to
+    /// this function with different types, since you can only continue drilling the second time
+    /// if you succeeded the first time.
     fn blame_specific_part_of_expr_corresponding_to_generic_param(
         &self,
         param: ty::GenericArg<'tcx>,
@@ -818,13 +824,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // For a typical enum like
                     // `enum Blah<T> { Variant(T) }`
                     // we get the following resolutions:
-                    // - expr_ctor_def_id :::                                   DefId(0:29 ~ source_file[b442]::Blah::Variant::{constructor#0})
-                    // - self.tcx.parent(expr_ctor_def_id) :::                  DefId(0:28 ~ source_file[b442]::Blah::Variant)
-                    // - self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) ::: DefId(0:26 ~ source_file[b442]::Blah)
+                    // - expr_ctor_def_id :::                                   DefId(0:29 ~
+                    //   source_file[b442]::Blah::Variant::{constructor#0})
+                    // - self.tcx.parent(expr_ctor_def_id) :::                  DefId(0:28 ~
+                    //   source_file[b442]::Blah::Variant)
+                    // - self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) ::: DefId(0:26 ~
+                    //   source_file[b442]::Blah)
 
-                    // Therefore, we need to go up once to obtain the variant and up twice to obtain the type.
-                    // Note that this pattern still holds even when we `use` a variant or `use` an enum type to rename it, or chain `use` expressions
-                    // together; this resolution is handled automatically by `qpath_res`.
+                    // Therefore, we need to go up once to obtain the variant and up twice to obtain
+                    // the type. Note that this pattern still holds even when we
+                    // `use` a variant or `use` an enum type to rename it, or chain `use`
+                    // expressions together; this resolution is handled
+                    // automatically by `qpath_res`.
 
                     // FIXME: Deal with type aliases?
                     if in_ty_adt.did() == self.tcx.parent(self.tcx.parent(expr_ctor_def_id)) {
@@ -919,8 +930,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // At this point, none of the basic patterns matched.
         // One major possibility which remains is that we have a function call.
-        // In this case, it's often possible to dive deeper into the call to find something to blame,
-        // but this is not always possible.
+        // In this case, it's often possible to dive deeper into the call to find something to
+        // blame, but this is not always possible.
 
         Err(expr)
     }

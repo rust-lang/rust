@@ -12,8 +12,10 @@ mod unicode_data;
 /// behavior of some `char` and `str` methods and the value of this constant
 /// changes over time. This is *not* considered to be a breaking change.
 ///
-/// The version numbering scheme is explained in
-/// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+/// The version numbering scheme is explained
+/// in [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard].
+///
+/// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard]: https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4.
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 

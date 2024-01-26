@@ -23,8 +23,8 @@ pub(crate) struct RegionName {
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
-/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
-/// This helps to print the right kinds of diagnostics.
+/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get
+/// `Static`. This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
@@ -53,16 +53,18 @@ pub(crate) enum RegionNameSource {
 /// synthesized name, and how to highlight it.
 #[derive(Debug, Clone)]
 pub(crate) enum RegionNameHighlight {
-    /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
+    /// The anonymous region corresponds to a reference that was found by traversing the type in
+    /// the HIR.
     MatchedHirTy(Span),
     /// The anonymous region corresponds to a `'_` in the generics list of a struct/enum/union.
     MatchedAdtAndSegment(Span),
-    /// The anonymous region corresponds to a region where the type annotation is completely missing
-    /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
+    /// The anonymous region corresponds to a region where the type annotation is completely
+    /// missing from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a
+    /// reference.
     CannotMatchHirTy(Span, String),
-    /// The anonymous region corresponds to a region where the type annotation is completely missing
-    /// from the code, and *even if* we print out the full name of the type, the region name won't
-    /// be included. This currently occurs for opaque types like `impl Future`.
+    /// The anonymous region corresponds to a region where the type annotation is completely
+    /// missing from the code, and *even if* we print out the full name of the type, the region
+    /// name won't be included. This currently occurs for opaque types like `impl Future`.
     Occluded(Span, String),
 }
 
@@ -803,8 +805,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// async fn foo() -> i32 { 2 }
     /// ```
     ///
-    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
-    /// returns the `i32`.
+    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements
+    /// `Future<Output=i32>`, returns the `i32`.
     ///
     /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {

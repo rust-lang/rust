@@ -873,8 +873,8 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// its implementation.
     ///
     /// Note:
-    /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
-    ///   You should use the latter for most cases.
+    /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`. You should use the
+    ///   latter for most cases.
     ///
     /// # Examples
     ///
@@ -991,7 +991,6 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(5);
     /// heap.push(2);
     /// assert_eq!(heap.peek(), Some(&5));
-    ///
     /// ```
     ///
     /// # Time complexity

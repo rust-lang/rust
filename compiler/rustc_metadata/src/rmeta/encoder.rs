@@ -386,8 +386,8 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
-// normally need extra variables to avoid errors about multiple mutable borrows.
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which
+// would normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
@@ -398,8 +398,8 @@ macro_rules! record {
     }};
 }
 
-// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
-// normally need extra variables to avoid errors about multiple mutable borrows.
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which
+// would normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
@@ -1019,8 +1019,8 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// - we only compute `mir_for_ctfe` on items with const-eval semantics;
 /// - we skip `optimized_mir` for check runs.
 /// - we only encode `optimized_mir` that could be generated in other crates, that is, a code that
-///   is either generic or has inline hint, and is reachable from the other crates (contained
-///   in reachable set).
+///   is either generic or has inline hint, and is reachable from the other crates (contained in
+///   reachable set).
 ///
 /// Note: Reachable set describes definitions that might be generated or referenced from other
 /// crates and it can be used to limit optimized MIR that needs to be encoded. On the other hand,

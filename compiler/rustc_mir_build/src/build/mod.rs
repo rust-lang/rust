@@ -323,12 +323,11 @@ enum LocalsForNode {
     /// that are referenced in a guard of that match arm. For these,
     /// we have `2` Locals.
     ///
-    /// * `for_arm_body` is the Local used in the arm body (which is
-    ///   just like the `One` case above),
+    /// * `for_arm_body` is the Local used in the arm body (which is just like the `One` case
+    ///   above),
     ///
-    /// * `ref_for_guard` is the Local used in the arm's guard (which
-    ///   is a reference to a temp that is an alias of
-    ///   `for_arm_body`).
+    /// * `ref_for_guard` is the Local used in the arm's guard (which is a reference to a temp that
+    ///   is an alias of `for_arm_body`).
     ForGuard { ref_for_guard: Local, for_arm_body: Local },
 }
 
@@ -361,8 +360,7 @@ struct GuardFrame {
 
 /// `ForGuard` indicates whether we are talking about:
 ///   1. The variable for use outside of guard expressions, or
-///   2. The temp that holds reference to (1.), which is actually what the
-///      guard expressions see.
+///   2. The temp that holds reference to (1.), which is actually what the guard expressions see.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ForGuard {
     RefWithinGuard,

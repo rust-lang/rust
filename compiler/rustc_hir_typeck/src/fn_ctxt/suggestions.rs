@@ -387,10 +387,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
                         && receiver_method.ident.name == sym::clone
                         && method_call_list.contains(&conversion_method.name)
-                    // If receiver is `.clone()` and found type has one of those methods,
-                    // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
-                    // to an owned type (`Vec` or `String`). These conversions clone internally,
-                    // so we remove the user's `clone` call.
+                    // If receiver is `.clone()` and found type has one of those
+                    // methods, we guess that the user wants to
+                    // convert from a slice type (`&[]` or `&str`)
+                    // to an owned type (`Vec` or `String`). These conversions clone
+                    // internally, so we remove the user's
+                    // `clone` call.
                     {
                         vec![(receiver_method.ident.span, conversion_method.name.to_string())]
                     } else if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
@@ -936,7 +938,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bounded_ty,
                     ..
                 }) => {
-                    // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
+                    // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones
+                    // below)
                     let ty = self.astconv().ast_ty_to_ty(bounded_ty);
                     Some((ty, bounds))
                 }
@@ -944,7 +947,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .map(|(ty, bounds)| match ty.kind() {
                 ty::Param(param_ty) if param_ty == expected_ty_as_param => Ok(Some(bounds)),
-                // check whether there is any predicate that contains our `T`, like `Option<T>: Send`
+                // check whether there is any predicate that contains our `T`, like `Option<T>:
+                // Send`
                 _ => match ty.contains(expected) {
                     true => Err(()),
                     false => Ok(None),
@@ -1259,7 +1263,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    /// When expecting a `bool` and finding an `Option`, suggests using `let Some(..)` or `.is_some()`
+    /// When expecting a `bool` and finding an `Option`, suggests using `let Some(..)` or
+    /// `.is_some()`
     pub(crate) fn suggest_option_to_bool(
         &self,
         diag: &mut Diagnostic,
@@ -2416,7 +2421,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })) = self.tcx.hir().find_parent(expr.hir_id)
                     {
                         if mutability.is_mut() {
-                            // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
+                            // Suppressing this diagnostic, we'll properly print it in
+                            // `check_expr_assign`
                             return None;
                         }
                     }
@@ -2582,8 +2588,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some((
                             vec![(prefix_span, String::new())],
                             format!("consider removing the `{}`", remove.trim()),
-                            // Do not remove `&&` to get to bool, because it might be something like
-                            // { a } && b, which we have a separate fixup suggestion that is more
+                            // Do not remove `&&` to get to bool, because it might be something
+                            // like { a } && b, which we have a
+                            // separate fixup suggestion that is more
                             // likely correct...
                             if remove.trim() == "&&" && expected == self.tcx.types.bool {
                                 Applicability::MaybeIncorrect

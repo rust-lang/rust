@@ -198,7 +198,8 @@ pub enum Count<'a> {
     CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
-    /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
+    /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given
+    /// index.
     CountIsStar(usize),
     /// The count is implied and cannot be explicitly specified.
     CountImplied,
@@ -952,11 +953,13 @@ fn find_width_map_from_snippet(
     // Strip quotes.
     let snippet = &snippet[1..snippet.len() - 1];
 
-    // Macros like `println` add a newline at the end. That technically doesn't make them "literals" anymore, but it's fine
-    // since we will never need to point our spans there, so we lie about it here by ignoring it.
-    // Since there might actually be newlines in the source code, we need to normalize away all trailing newlines.
-    // If we only trimmed it off the input, `format!("\n")` would cause a mismatch as here we they actually match up.
-    // Alternatively, we could just count the trailing newlines and only trim one from the input if they don't match up.
+    // Macros like `println` add a newline at the end. That technically doesn't make them "literals"
+    // anymore, but it's fine since we will never need to point our spans there, so we lie about
+    // it here by ignoring it. Since there might actually be newlines in the source code, we
+    // need to normalize away all trailing newlines. If we only trimmed it off the input,
+    // `format!("\n")` would cause a mismatch as here we they actually match up. Alternatively,
+    // we could just count the trailing newlines and only trim one from the input if they don't
+    // match up.
     let input_no_nl = input.trim_end_matches('\n');
     let Some(unescaped) = unescape_string(snippet) else {
         return InputStringKind::NotALiteral;
@@ -965,8 +968,9 @@ fn find_width_map_from_snippet(
     let unescaped_no_nl = unescaped.trim_end_matches('\n');
 
     if unescaped_no_nl != input_no_nl {
-        // The source string that we're pointing at isn't our input, so spans pointing at it will be incorrect.
-        // This can for example happen with proc macros that respan generated literals.
+        // The source string that we're pointing at isn't our input, so spans pointing at it will be
+        // incorrect. This can for example happen with proc macros that respan generated
+        // literals.
         return InputStringKind::NotALiteral;
     }
 

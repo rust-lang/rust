@@ -198,7 +198,6 @@ macro_rules! acquire {
 /// # Examples
 ///
 /// Sharing some immutable data between threads:
-///
 // Note that we **do not** run these tests here. The windows builders get super
 // unhappy if a thread outlives the main thread and then exits at the same time
 // (something deadlocks) so we just avoid this entirely by not running these
@@ -796,8 +795,8 @@ impl<T, A: Allocator> Arc<T, A> {
         }
     }
 
-    /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement `Unpin`,
-    /// then `data` will be pinned in memory and unable to be moved.
+    /// Constructs a new `Pin<Arc<T, A>>` in the provided allocator. If `T` does not implement
+    /// `Unpin`, then `data` will be pinned in memory and unable to be moved.
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
@@ -813,7 +812,8 @@ impl<T, A: Allocator> Arc<T, A> {
         unsafe { Ok(Pin::new_unchecked(Arc::try_new_in(data, alloc)?)) }
     }
 
-    /// Constructs a new `Arc<T, A>` in the provided allocator, returning an error if allocation fails.
+    /// Constructs a new `Arc<T, A>` in the provided allocator, returning an error if allocation
+    /// fails.
     ///
     /// # Examples
     ///
@@ -1124,8 +1124,8 @@ impl<T> Arc<[T]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
     }
 
-    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
-    /// filled with `0` bytes.
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the
+    /// memory being filled with `0` bytes.
     ///
     /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
     /// incorrect usage of this method.
@@ -1196,8 +1196,8 @@ impl<T, A: Allocator> Arc<[T], A> {
         unsafe { Arc::from_ptr_in(Arc::allocate_for_slice_in(len, &alloc), alloc) }
     }
 
-    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
-    /// filled with `0` bytes, in the provided allocator.
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the
+    /// memory being filled with `0` bytes, in the provided allocator.
     ///
     /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
     /// incorrect usage of this method.
@@ -1464,8 +1464,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 
     /// Provides a raw pointer to the data.
     ///
-    /// The counts are not affected in any way and the `Arc` is not consumed. The pointer is valid for
-    /// as long as there are strong counts in the `Arc`.
+    /// The counts are not affected in any way and the `Arc` is not consumed. The pointer is valid
+    /// for as long as there are strong counts in the `Arc`.
     ///
     /// # Examples
     ///
@@ -2033,10 +2033,10 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Arc<T, A> {
         // requires the counter to grow from `isize::MAX` to `usize::MAX` between the increment
         // above and the `abort` below, which seems exceedingly unlikely.
         //
-        // This is a global invariant, and also applies when using a compare-exchange loop to increment
-        // counters in other methods.
-        // Otherwise, the counter could be brought to an almost-overflow using a compare-exchange loop,
-        // and then overflow using a few `fetch_add`s.
+        // This is a global invariant, and also applies when using a compare-exchange loop to
+        // increment counters in other methods.
+        // Otherwise, the counter could be brought to an almost-overflow using a compare-exchange
+        // loop, and then overflow using a few `fetch_add`s.
         if old_size > MAX_REFCOUNT {
             abort();
         }
@@ -2282,8 +2282,8 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// }
     /// println!("{}", &*x); // Invalid UTF-8 in a str
     /// ```
-    /// Other `Arc` pointers to the same allocation must be to the exact same type, including lifetimes.
-    /// ```no_run
+    /// Other `Arc` pointers to the same allocation must be to the exact same type, including
+    /// lifetimes. ```no_run
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -2675,8 +2675,8 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         result
     }
 
-    /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>` in the provided
-    /// allocator.
+    /// Converts a raw pointer previously created by [`into_raw`] back into `Weak<T>` in the
+    /// provided allocator.
     ///
     /// This can be used to safely get a strong reference (by calling [`upgrade`]
     /// later) or to deallocate the weak count by dropping the `Weak<T>`.
@@ -2727,7 +2727,8 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             ptr as *mut ArcInner<T>
         } else {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
+            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped)
+            // T.
             let offset = unsafe { data_offset(ptr) };
             // Thus, we reverse the offset to get the whole RcBox.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
@@ -2785,10 +2786,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         // fetch_add as this function should never take the reference count
         // from zero to one.
         //
-        // Relaxed is fine for the failure case because we don't have any expectations about the new state.
-        // Acquire is necessary for the success case to synchronise with `Arc::new_cyclic`, when the inner
-        // value can be initialized after `Weak` references have already been created. In that case, we
-        // expect to observe the fully initialized value.
+        // Relaxed is fine for the failure case because we don't have any expectations about the new
+        // state. Acquire is necessary for the success case to synchronise with
+        // `Arc::new_cyclic`, when the inner value can be initialized after `Weak`
+        // references have already been created. In that case, we expect to observe the
+        // fully initialized value.
         if self.inner()?.strong.fetch_update(Acquire, Relaxed, checked_increment).is_ok() {
             // SAFETY: pointer is not null, verified in checked_increment
             unsafe { Some(Arc::from_inner_in(self.ptr, self.alloc.clone())) }

@@ -219,8 +219,8 @@ where
         }
 
         if len < N {
-            // SAFETY: `len` indicates that this many elements are available and we just checked that
-            // it fits into the array.
+            // SAFETY: `len` indicates that this many elements are available and we just checked
+            // that it fits into the array.
             unsafe {
                 ptr::copy_nonoverlapping(
                     self.as_ref().as_ptr(),

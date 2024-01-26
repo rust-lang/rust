@@ -442,10 +442,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Two examples will be used to illustrate the span manipulations we're doing:
         //
-        // - Given `use issue_52891::{d, a, e};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `import.use_span` is `issue_52891::{d, a, e};`.
-        // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `import.use_span` is `issue_52891::{d, e, a};`.
+        // - Given `use issue_52891::{d, a, e};` where `a` is a duplicate then `binding_span` is `a`
+        //   and `import.use_span` is `issue_52891::{d, a, e};`.
+        // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is `a`
+        //   and `import.use_span` is `issue_52891::{d, e, a};`.
 
         let (found_closing_brace, span) =
             find_span_of_binding_until_next_binding(self.tcx.sess, binding_span, import.use_span);

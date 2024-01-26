@@ -264,8 +264,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::ForeignMod { .. } => Ok(()),
         hir::ItemKind::TyAlias(hir_ty, ast_generics) => {
             if tcx.type_alias_is_lazy(item.owner_id) {
-                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
-                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
+                // Bounds of lazy type aliases and of eager ones that contain opaque types are
+                // respected. E.g: `type X = impl Trait;`, `type X = (impl Trait,
+                // Y);`.
                 let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
                 check_variances_for_type_defn(tcx, item, ast_generics);
                 res
@@ -382,7 +383,8 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                     ty::AssocKind::Fn => {
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
-                        // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
+                        // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds
+                        // from.
                         let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
                             item_def_id.to_def_id(),
                             tcx.fn_sig(item_def_id).instantiate_identity(),
@@ -925,7 +927,8 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                                 // `&mut` are not supported.
                                 ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
                                 // Say that a tuple is local if any of its components are local.
-                                // This is not strictly correct, but it's likely that the user can fix the local component.
+                                // This is not strictly correct, but it's likely that the user can
+                                // fix the local component.
                                 ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
                                 _ => false,
                             }

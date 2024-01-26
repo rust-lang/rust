@@ -54,7 +54,8 @@ fn compute_slice_length<'tcx>(
                     slice_lengths[local] = Some(*len);
                 }
             }
-            // The length information is stored in the fat pointer, so we treat `operand` as a value.
+            // The length information is stored in the fat pointer, so we treat `operand` as a
+            // value.
             Rvalue::Use(operand) => {
                 if let Some(rhs) = operand.place()
                     && let Some(rhs) = rhs.as_local()

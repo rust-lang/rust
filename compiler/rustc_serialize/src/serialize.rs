@@ -133,12 +133,11 @@ pub trait Decoder {
 /// This can be implemented using the `Encodable`, `TyEncodable` and
 /// `MetadataEncodable` macros.
 ///
-/// * `Encodable` should be used in crates that don't depend on
-///   `rustc_middle`.
+/// * `Encodable` should be used in crates that don't depend on `rustc_middle`.
 /// * `MetadataEncodable` is used in `rustc_metadata` for types that contain
 ///   `rustc_metadata::rmeta::Lazy`.
-/// * `TyEncodable` should be used for types that are only serialized in crate
-///   metadata or the incremental cache. This is most types in `rustc_middle`.
+/// * `TyEncodable` should be used for types that are only serialized in crate metadata or the
+///   incremental cache. This is most types in `rustc_middle`.
 pub trait Encodable<S: Encoder> {
     fn encode(&self, s: &mut S);
 }
@@ -148,12 +147,11 @@ pub trait Encodable<S: Encoder> {
 /// This can be implemented using the `Decodable`, `TyDecodable` and
 /// `MetadataDecodable` macros.
 ///
-/// * `Decodable` should be used in crates that don't depend on
-///   `rustc_middle`.
+/// * `Decodable` should be used in crates that don't depend on `rustc_middle`.
 /// * `MetadataDecodable` is used in `rustc_metadata` for types that contain
 ///   `rustc_metadata::rmeta::Lazy`.
-/// * `TyDecodable` should be used for types that are only serialized in crate
-///   metadata or the incremental cache. This is most types in `rustc_middle`.
+/// * `TyDecodable` should be used for types that are only serialized in crate metadata or the
+///   incremental cache. This is most types in `rustc_middle`.
 pub trait Decodable<D: Decoder>: Sized {
     fn decode(d: &mut D) -> Self;
 }

@@ -295,7 +295,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
             ExprKind::InlineAsm(asm) => {
-                // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
+                // We defer some asm checks as we may not have resolved the input and output types
+                // yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
                 self.check_expr_asm(asm)
             }
@@ -790,7 +791,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let call_expr_ty = self.check_expr_with_hint(call, ret_ty);
 
                 // N.B. don't coerce here, as tail calls can't support most/all coercions
-                // FIXME(explicit_tail_calls): add a diagnostic note that `become` doesn't allow coercions
+                // FIXME(explicit_tail_calls): add a diagnostic note that `become` doesn't allow
+                // coercions
                 self.demand_suptype(expr.span, ret_ty, call_expr_ty);
             }
             None => {
@@ -1540,7 +1542,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element_ty: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
-        // Actual constants as the repeat element get inserted repeatedly instead of getting copied via Copy.
+        // Actual constants as the repeat element get inserted repeatedly instead of getting copied
+        // via Copy.
         match &element.kind {
             hir::ExprKind::ConstBlock(..) => return,
             hir::ExprKind::Path(qpath) => {
@@ -1569,8 +1572,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => traits::IsConstable::No,
         };
 
-        // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
-        // don't copy that one element, we move it. Only check for Copy if the length is larger.
+        // If the length is 0, we don't create any elements, so we don't copy any. If the length is
+        // 1, we don't copy that one element, we move it. Only check for Copy if the length
+        // is larger.
         if count.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
             let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
             let code = traits::ObligationCauseCode::RepeatElementCopy {
@@ -2856,7 +2860,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let fields = &base_def.non_enum_variant().fields;
                         // Some struct, e.g. some that impl `Deref`, have all private fields
                         // because you're expected to deref them to access the _real_ fields.
-                        // This, for example, will help us suggest accessing a field through a `Box<T>`.
+                        // This, for example, will help us suggest accessing a field through a
+                        // `Box<T>`.
                         if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
                             return None;
                         }
@@ -2867,7 +2872,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     field.vis.is_accessible_from(mod_id, tcx)
                                         && self.is_field_suggestable(field, hir_id, span)
                                 })
-                                // For compile-time reasons put a limit on number of fields we search
+                                // For compile-time reasons put a limit on number of fields we
+                                // search
                                 .take(100)
                                 .collect::<Vec<_>>(),
                             *args,

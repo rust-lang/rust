@@ -12,32 +12,28 @@
 //!
 //! More concretely this is implemented via the following protocol:
 //!
-//! 1. For a newly started compilation session, the compiler allocates a
-//!    new `session` directory within the incremental compilation directory.
-//!    This session directory will have a unique name that ends with the suffix
-//!    "-working" and that contains a creation timestamp.
-//! 2. Next, the compiler looks for the newest finalized session directory,
-//!    that is, a session directory from a previous compilation session that
-//!    has been marked as valid and consistent. A session directory is
-//!    considered finalized if the "-working" suffix in the directory name has
+//! 1. For a newly started compilation session, the compiler allocates a new `session` directory
+//!    within the incremental compilation directory. This session directory will have a unique name
+//!    that ends with the suffix "-working" and that contains a creation timestamp.
+//! 2. Next, the compiler looks for the newest finalized session directory, that is, a session
+//!    directory from a previous compilation session that has been marked as valid and consistent. A
+//!    session directory is considered finalized if the "-working" suffix in the directory name has
 //!    been replaced by the SVH of the crate.
-//! 3. Once the compiler has found a valid, finalized session directory, it will
-//!    hard-link/copy its contents into the new "-working" directory. If all
-//!    goes well, it will have its own, private copy of the source directory and
-//!    subsequently not have to worry about synchronizing with other compiler
-//!    processes.
-//! 4. Now the compiler can do its normal compilation process, which involves
-//!    reading and updating its private session directory.
-//! 5. When compilation finishes without errors, the private session directory
-//!    will be in a state where it can be used as input for other compilation
-//!    sessions. That is, it will contain a dependency graph and cache artifacts
-//!    that are consistent with the state of the source code it was compiled
-//!    from, with no need to change them ever again. At this point, the compiler
-//!    finalizes and "publishes" its private session directory by renaming it
-//!    from "s-{timestamp}-{random}-working" to "s-{timestamp}-{SVH}".
-//! 6. At this point the "old" session directory that we copied our data from
-//!    at the beginning of the session has become obsolete because we have just
-//!    published a more current version. Thus the compiler will delete it.
+//! 3. Once the compiler has found a valid, finalized session directory, it will hard-link/copy its
+//!    contents into the new "-working" directory. If all goes well, it will have its own, private
+//!    copy of the source directory and subsequently not have to worry about synchronizing with
+//!    other compiler processes.
+//! 4. Now the compiler can do its normal compilation process, which involves reading and updating
+//!    its private session directory.
+//! 5. When compilation finishes without errors, the private session directory will be in a state
+//!    where it can be used as input for other compilation sessions. That is, it will contain a
+//!    dependency graph and cache artifacts that are consistent with the state of the source code it
+//!    was compiled from, with no need to change them ever again. At this point, the compiler
+//!    finalizes and "publishes" its private session directory by renaming it from
+//!    "s-{timestamp}-{random}-working" to "s-{timestamp}-{SVH}".
+//! 6. At this point the "old" session directory that we copied our data from at the beginning of
+//!    the session has become obsolete because we have just published a more current version. Thus
+//!    the compiler will delete it.
 //!
 //! ## Garbage Collection
 //!

@@ -41,8 +41,8 @@
 //!
 //! - There are two codegen units for every source-level module:
 //! - One for "stable", that is non-generic, code
-//! - One for more "volatile" code, i.e., monomorphized instances of functions
-//!   defined in that module
+//! - One for more "volatile" code, i.e., monomorphized instances of functions defined in that
+//!   module
 //!
 //! In order to see why this heuristic makes sense, let's take a look at when a
 //! codegen unit can get invalidated:
@@ -76,17 +76,16 @@
 //! function call, the body of the function has to be available in the LLVM
 //! module where the call is made. This has a few consequences for partitioning:
 //!
-//! - The partitioning algorithm has to take care of placing functions into all
-//!   codegen units where they should be available for inlining. It also has to
-//!   decide on the correct linkage for these functions.
+//! - The partitioning algorithm has to take care of placing functions into all codegen units where
+//!   they should be available for inlining. It also has to decide on the correct linkage for these
+//!   functions.
 //!
-//! - The partitioning algorithm has to know which functions are likely to get
-//!   inlined, so it can distribute function instantiations accordingly. Since
-//!   there is no way of knowing for sure which functions LLVM will decide to
-//!   inline in the end, we apply a heuristic here: Only functions marked with
-//!   `#[inline]` are considered for inlining by the partitioner. The current
-//!   implementation will not try to determine if a function is likely to be
-//!   inlined by looking at the functions definition.
+//! - The partitioning algorithm has to know which functions are likely to get inlined, so it can
+//!   distribute function instantiations accordingly. Since there is no way of knowing for sure
+//!   which functions LLVM will decide to inline in the end, we apply a heuristic here: Only
+//!   functions marked with `#[inline]` are considered for inlining by the partitioner. The current
+//!   implementation will not try to determine if a function is likely to be inlined by looking at
+//!   the functions definition.
 //!
 //! Note though that as a side-effect of creating a codegen units per
 //! source-level module, functions from the same module will be available for
@@ -851,21 +850,18 @@ fn mono_item_visibility<'tcx>(
         //
         // There's two categories of items here:
         //
-        // * First is weak lang items. These are basically mechanisms for
-        //   libcore to forward-reference symbols defined later in crates like
-        //   the standard library or `#[panic_handler]` definitions. The
-        //   definition of these weak lang items needs to be referencable by
-        //   libcore, so we're no longer a candidate for internalization.
-        //   Removal of these functions can't be done by LLVM but rather must be
-        //   done by the linker as it's a non-local decision.
+        // * First is weak lang items. These are basically mechanisms for libcore to
+        //   forward-reference symbols defined later in crates like the standard library or
+        //   `#[panic_handler]` definitions. The definition of these weak lang items needs to be
+        //   referencable by libcore, so we're no longer a candidate for internalization. Removal of
+        //   these functions can't be done by LLVM but rather must be done by the linker as it's a
+        //   non-local decision.
         //
-        // * Second is "std internal symbols". Currently this is primarily used
-        //   for allocator symbols. Allocators are a little weird in their
-        //   implementation, but the idea is that the compiler, at the last
-        //   minute, defines an allocator with an injected object file. The
-        //   `alloc` crate references these symbols (`__rust_alloc`) and the
-        //   definition doesn't get hooked up until a linked crate artifact is
-        //   generated.
+        // * Second is "std internal symbols". Currently this is primarily used for allocator
+        //   symbols. Allocators are a little weird in their implementation, but the idea is that
+        //   the compiler, at the last minute, defines an allocator with an injected object file.
+        //   The `alloc` crate references these symbols (`__rust_alloc`) and the definition doesn't
+        //   get hooked up until a linked crate artifact is generated.
         //
         //   The symbols synthesized by the compiler (`__rust_alloc`) are thin
         //   veneers around the actual implementation, some other symbol which

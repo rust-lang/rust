@@ -32,7 +32,8 @@ pub enum Immediate<Prov: Provenance = CtfeProvenance> {
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
     /// `Scalar::Initialized`).
     ScalarPair(Scalar<Prov>, Scalar<Prov>),
-    /// A value of fully uninitialized memory. Can have arbitrary size and layout, but must be sized.
+    /// A value of fully uninitialized memory. Can have arbitrary size and layout, but must be
+    /// sized.
     Uninit,
 }
 
@@ -258,7 +259,8 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             self.layout,
         );
         // This makes several assumptions about what layouts we will encounter; we match what
-        // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
+        // codegen does as good as we can (see `extract_field` in
+        // `rustc_codegen_ssa/src/mir/operand.rs`).
         let inner_val: Immediate<_> = match (**self, self.layout.abi) {
             // if the entire value is uninit, then so is the field (can happen in ConstProp)
             (Immediate::Uninit, _) => Immediate::Uninit,
@@ -487,7 +489,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
                 let scalar = alloc.read_scalar(
                     alloc_range(Size::ZERO, size),
-                    /*read_provenance*/ matches!(s, abi::Pointer(_)),
+                    /* read_provenance */ matches!(s, abi::Pointer(_)),
                 )?;
                 Some(ImmTy::from_scalar(scalar, mplace.layout))
             }
@@ -503,11 +505,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
                 let a_val = alloc.read_scalar(
                     alloc_range(Size::ZERO, a_size),
-                    /*read_provenance*/ matches!(a, abi::Pointer(_)),
+                    /* read_provenance */ matches!(a, abi::Pointer(_)),
                 )?;
                 let b_val = alloc.read_scalar(
                     alloc_range(b_offset, b_size),
-                    /*read_provenance*/ matches!(b, abi::Pointer(_)),
+                    /* read_provenance */ matches!(b, abi::Pointer(_)),
                 )?;
                 Some(ImmTy::from_immediate(Immediate::ScalarPair(a_val, b_val), mplace.layout))
             }
@@ -605,8 +607,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(str)
     }
 
-    /// Converts a repr(simd) operand into an operand where `place_index` accesses the SIMD elements.
-    /// Also returns the number of elements.
+    /// Converts a repr(simd) operand into an operand where `place_index` accesses the SIMD
+    /// elements. Also returns the number of elements.
     ///
     /// Can (but does not always) trigger UB if `op` is uninitialized.
     pub fn operand_to_simd(

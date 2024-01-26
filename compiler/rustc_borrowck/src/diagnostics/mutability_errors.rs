@@ -77,8 +77,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 //
                 // - Either we deref an immutable ref to get to our final place.
                 //    - We don't capture derefs of raw ptrs
-                // - Or the final place is immut because the root variable of the capture
-                //   isn't marked mut and we should suggest that to the user.
+                // - Or the final place is immut because the root variable of the capture isn't
+                //   marked mut and we should suggest that to the user.
                 if imm_borrow_derefed {
                     // If we deref an immutable ref then the suggestion here doesn't help.
                     return;
@@ -796,7 +796,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
-                // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
+                // we have an origin for this closure kind starting at this root variable so it's
+                // safe to unwrap here
                 let captured_places =
                     tables.closure_min_captures[&closure_local_def_id].get(&root_hir_id).unwrap();
 

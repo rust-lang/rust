@@ -400,7 +400,7 @@ pub fn suggest_restriction<'tcx>(
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
-    //              -  ^^^^^^^^^ GenericBounds
+    //              - ^^^^^^^^^ GenericBounds
     //              |
     //              &Ident
     super_traits: Option<(&Ident, &hir::GenericBounds<'_>)>,
@@ -741,8 +741,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     real_trait_pred = parent_trait_pred;
                 }
 
-                // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
-                // `ReBound`, and we don't particularly care about the regions.
+                // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not
+                // handle `ReBound`, and we don't particularly care about the
+                // regions.
                 let real_ty =
                     self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
 
@@ -1587,8 +1588,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return true;
                         }
 
-                        // Issue #104961, we need to add parentheses properly for compound expressions
-                        // for example, `x.starts_with("hi".to_string() + "you")`
+                        // Issue #104961, we need to add parentheses properly for compound
+                        // expressions for example,
+                        // `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
                         let Some(body_id) =
                             self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
@@ -1920,7 +1922,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability.is_not() && refs_number > 0 {
-                        // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut buf)
+                        // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut
+                        // buf)
                         if snippet
                             .trim_start_matches(|c: char| c.is_whitespace() || c == '&')
                             .starts_with("mut")
@@ -2877,7 +2880,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             CoroutineInteriorOrUpvar::Upvar(upvar_span) => {
-                // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
+                // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl
+                // `Send`
                 let non_send = match target_ty.kind() {
                     ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(obligation) {
                         Ok(eval) if !eval.may_apply() => Some((ref_ty, mutability.is_mut())),

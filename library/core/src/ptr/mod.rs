@@ -16,10 +16,10 @@
 //! provided at this point are very minimal:
 //!
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
-//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
-//!   be *dereferenceable*: the memory range of the given size starting at the pointer must all be
-//!   within the bounds of a single allocated object. Note that in Rust,
-//!   every (stack-allocated) variable is considered a separate allocated object.
+//! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
+//!   *dereferenceable*: the memory range of the given size starting at the pointer must all be
+//!   within the bounds of a single allocated object. Note that in Rust, every (stack-allocated)
+//!   variable is considered a separate allocated object.
 //! * Even for operations of [size zero][zst], the pointer must not be pointing to deallocated
 //!   memory, i.e., deallocation makes pointers invalid even for zero-sized operations. However,
 //!   casting any non-zero integer *literal* to a pointer is valid for zero-sized accesses, even if
@@ -27,16 +27,14 @@
 //!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
 //!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
 //FIXME: mention `ptr::invalid` above, once it is stable.
-//! * All accesses performed by functions in this module are *non-atomic* in the sense
-//!   of [atomic operations] used to synchronize between threads. This means it is
-//!   undefined behavior to perform two concurrent accesses to the same location from different
-//!   threads unless both accesses only read from memory. Notice that this explicitly
-//!   includes [`read_volatile`] and [`write_volatile`]: Volatile accesses cannot
-//!   be used for inter-thread synchronization.
-//! * The result of casting a reference to a pointer is valid for as long as the
-//!   underlying object is live and no reference (just raw pointers) is used to
-//!   access the same memory. That is, reference and pointer accesses cannot be
-//!   interleaved.
+//! * All accesses performed by functions in this module are *non-atomic* in the sense of [atomic
+//!   operations] used to synchronize between threads. This means it is undefined behavior to
+//!   perform two concurrent accesses to the same location from different threads unless both
+//!   accesses only read from memory. Notice that this explicitly includes [`read_volatile`] and
+//!   [`write_volatile`]: Volatile accesses cannot be used for inter-thread synchronization.
+//! * The result of casting a reference to a pointer is valid for as long as the underlying object
+//!   is live and no reference (just raw pointers) is used to access the same memory. That is,
+//!   reference and pointer accesses cannot be interleaved.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmetic,
 //! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
@@ -263,54 +261,52 @@
 //!
 //! * Access memory through a pointer that does not have provenance over that memory.
 //!
-//! * [`offset`] a pointer to or from an address it doesn't have provenance over.
-//!   This means it's always UB to offset a pointer derived from something deallocated,
-//!   even if the offset is 0. Note that a pointer "one past the end" of its provenance
-//!   is not actually outside its provenance, it just has 0 bytes it can load/store.
+//! * [`offset`] a pointer to or from an address it doesn't have provenance over. This means it's
+//!   always UB to offset a pointer derived from something deallocated, even if the offset is 0.
+//!   Note that a pointer "one past the end" of its provenance is not actually outside its
+//!   provenance, it just has 0 bytes it can load/store.
 //!
 //! But it *is* still sound to:
 //!
-//! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
-//!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
-//!   never be dereferenceable. In general, it is always sound for an integer to pretend
-//!   to be a pointer "for fun" as long as you don't use operations on it which require
-//!   it to be valid (offset, read, write, etc).
+//! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can be used for
+//!   sentinel values like `null` *or* to represent a tagged pointer that will never be
+//!   dereferenceable. In general, it is always sound for an integer to pretend to be a pointer "for
+//!   fun" as long as you don't use operations on it which require it to be valid (offset, read,
+//!   write, etc).
 //!
-//! * Forge an allocation of size zero at any sufficiently aligned non-null address.
-//!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
-//!   for actual forgery (integers cast to pointers). If you borrow some struct's field
-//!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
-//!   that allocation and it will still get invalidated if the allocation gets deallocated.
-//!   In the future we may introduce an API to make such a forged allocation explicit.
+//! * Forge an allocation of size zero at any sufficiently aligned non-null address. i.e. the usual
+//!   "ZSTs are fake, do what you want" rules apply *but* this only applies for actual forgery
+//!   (integers cast to pointers). If you borrow some struct's field that *happens* to be
+//!   zero-sized, the resulting pointer will have provenance tied to that allocation and it will
+//!   still get invalidated if the allocation gets deallocated. In the future we may introduce an
+//!   API to make such a forged allocation explicit.
 //!
-//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers
-//!   which have "no" provenance. Unfortunately there may be practical limits on this for a
-//!   particular platform, and it's an open question as to how to specify this (if at all).
-//!   Notably, [CHERI][] relies on a compression scheme that can't handle a
-//!   pointer getting offset "too far" out of bounds. If this happens, the address
-//!   returned by `addr` will be the value you expect, but the provenance will get invalidated
-//!   and using it to read/write will fault. The details of this are architecture-specific
-//!   and based on alignment, but the buffer on either side of the pointer's range is pretty
-//!   generous (think kilobytes, not bytes).
+//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers which
+//!   have "no" provenance. Unfortunately there may be practical limits on this for a particular
+//!   platform, and it's an open question as to how to specify this (if at all). Notably, [CHERI][]
+//!   relies on a compression scheme that can't handle a pointer getting offset "too far" out of
+//!   bounds. If this happens, the address returned by `addr` will be the value you expect, but the
+//!   provenance will get invalidated and using it to read/write will fault. The details of this are
+//!   architecture-specific and based on alignment, but the buffer on either side of the pointer's
+//!   range is pretty generous (think kilobytes, not bytes).
 //!
-//! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is
-//!   always a coherent answer, even if the pointers are invalid or from different
-//!   address-spaces/provenances. Of course, comparing addresses from different address-spaces
-//!   is generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust
-//!   doesn't prevent that either. Similarly, if you get "lucky" and notice that a pointer
-//!   one-past-the-end is the "same" address as the start of an unrelated allocation, anything
-//!   you do with that fact is *probably* going to be gibberish. The scope of that gibberish
-//!   is kept under control by the fact that the two pointers *still* aren't allowed to access
-//!   the other's allocation (bytes), because they still have different provenance.
+//! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is always a
+//!   coherent answer, even if the pointers are invalid or from different
+//!   address-spaces/provenances. Of course, comparing addresses from different address-spaces is
+//!   generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust doesn't
+//!   prevent that either. Similarly, if you get "lucky" and notice that a pointer one-past-the-end
+//!   is the "same" address as the start of an unrelated allocation, anything you do with that fact
+//!   is *probably* going to be gibberish. The scope of that gibberish is kept under control by the
+//!   fact that the two pointers *still* aren't allowed to access the other's allocation (bytes),
+//!   because they still have different provenance.
 //!
-//! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
-//!   mentioning in more detail because of the limitations of [CHERI][]. Low-bit tagging
-//!   is very robust, and often doesn't even go out of bounds because types ensure
-//!   size >= align (and over-aligning actually gives CHERI more flexibility). Anything
-//!   more complex than this rapidly enters "extremely platform-specific" territory as
-//!   certain things may or may not be allowed based on specific supported operations.
-//!   For instance, ARM explicitly supports high-bit tagging, and so CHERI on ARM inherits
-//!   that and should support it.
+//! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth mentioning
+//!   in more detail because of the limitations of [CHERI][]. Low-bit tagging is very robust, and
+//!   often doesn't even go out of bounds because types ensure size >= align (and over-aligning
+//!   actually gives CHERI more flexibility). Anything more complex than this rapidly enters
+//!   "extremely platform-specific" territory as certain things may or may not be allowed based on
+//!   specific supported operations. For instance, ARM explicitly supports high-bit tagging, and so
+//!   CHERI on ARM inherits that and should support it.
 //!
 //! ## Exposed Provenance
 //!
@@ -423,17 +419,15 @@ mod mut_ptr;
 /// This is semantically equivalent to calling [`ptr::read`] and discarding
 /// the result, but has the following advantages:
 ///
-/// * It is *required* to use `drop_in_place` to drop unsized types like
-///   trait objects, because they can't be read out onto the stack and
-///   dropped normally.
+/// * It is *required* to use `drop_in_place` to drop unsized types like trait objects, because they
+///   can't be read out onto the stack and dropped normally.
 ///
-/// * It is friendlier to the optimizer to do this over [`ptr::read`] when
-///   dropping manually allocated memory (e.g., in the implementations of
-///   `Box`/`Rc`/`Vec`), as the compiler doesn't need to prove that it's
-///   sound to elide the copy.
+/// * It is friendlier to the optimizer to do this over [`ptr::read`] when dropping manually
+///   allocated memory (e.g., in the implementations of `Box`/`Rc`/`Vec`), as the compiler doesn't
+///   need to prove that it's sound to elide the copy.
 ///
-/// * It can be used to drop [pinned] data when `T` is not `repr(packed)`
-///   (pinned data must not be moved before it is dropped).
+/// * It can be used to drop [pinned] data when `T` is not `repr(packed)` (pinned data must not be
+///   moved before it is dropped).
 ///
 /// Unaligned values cannot be dropped in place, they must be copied to an aligned
 /// location first using [`ptr::read_unaligned`]. For packed structs, this move is
@@ -454,14 +448,12 @@ mod mut_ptr;
 ///
 /// * `to_drop` must be nonnull, even if `T` has size 0.
 ///
-/// * The value `to_drop` points to must be valid for dropping, which may mean
-///   it must uphold additional invariants. These invariants depend on the type
-///   of the value being dropped. For instance, when dropping a Box, the box's
-///   pointer to the heap must be valid.
+/// * The value `to_drop` points to must be valid for dropping, which may mean it must uphold
+///   additional invariants. These invariants depend on the type of the value being dropped. For
+///   instance, when dropping a Box, the box's pointer to the heap must be valid.
 ///
-/// * While `drop_in_place` is executing, the only way to access parts of
-///   `to_drop` is through the `&mut self` references supplied to the
-///   `Drop::drop` methods that `drop_in_place` invokes.
+/// * While `drop_in_place` is executing, the only way to access parts of `to_drop` is through the
+///   `&mut self` references supplied to the `Drop::drop` methods that `drop_in_place` invokes.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
@@ -640,10 +632,10 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// and references that have been invalidated due to aliasing accesses cannot be used any more,
 /// even if they have been exposed!
 ///
-/// Note that there is no algorithm that decides which provenance will be used. You can think of this
-/// as "guessing" the right provenance, and the guess will be "maximally in your favor", in the sense
-/// that if there is any way to avoid undefined behavior (while upholding all aliasing requirements),
-/// then that is the guess that will be taken.
+/// Note that there is no algorithm that decides which provenance will be used. You can think of
+/// this as "guessing" the right provenance, and the guess will be "maximally in your favor", in the
+/// sense that if there is any way to avoid undefined behavior (while upholding all aliasing
+/// requirements), then that is the guess that will be taken.
 ///
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
@@ -660,7 +652,8 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed
+/// Provenance][../index.html#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]
@@ -700,7 +693,8 @@ where
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed
+/// Provenance][../index.html#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]
@@ -810,12 +804,11 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// But for the following exceptions, this function is semantically
 /// equivalent to [`mem::swap`]:
 ///
-/// * It operates on raw pointers instead of references. When references are
-///   available, [`mem::swap`] should be preferred.
+/// * It operates on raw pointers instead of references. When references are available,
+///   [`mem::swap`] should be preferred.
 ///
-/// * The two pointed-to values may overlap. If the values do overlap, then the
-///   overlapping region of memory from `x` will be used. This is demonstrated
-///   in the second example below.
+/// * The two pointed-to values may overlap. If the values do overlap, then the overlapping region
+///   of memory from `x` will be used. This is demonstrated in the second example below.
 ///
 /// * The operation is "untyped" in the sense that data may be uninitialized or otherwise violate
 ///   the requirements of `T`. The initialization state is preserved exactly.
@@ -824,9 +817,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid] for both reads and writes. They must remain valid even when the
-///   other pointer is written. (This means if the memory ranges overlap, the two pointers must not
-///   be subject to aliasing restrictions relative to each other.)
+/// * Both `x` and `y` must be [valid] for both reads and writes. They must remain valid even when
+///   the other pointer is written. (This means if the memory ranges overlap, the two pointers must
+///   not be subject to aliasing restrictions relative to each other.)
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
@@ -906,14 +899,12 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid] for both reads and writes of `count *
-///   size_of::<T>()` bytes.
+/// * Both `x` and `y` must be [valid] for both reads and writes of `count * size_of::<T>()` bytes.
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// * The region of memory beginning at `x` with a size of `count *
-///   size_of::<T>()` bytes must *not* overlap with the region of memory
-///   beginning at `y` with the same size.
+/// * The region of memory beginning at `x` with a size of `count * size_of::<T>()` bytes must *not*
+///   overlap with the region of memory beginning at `y` with the same size.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
 /// the pointers must be non-null and properly aligned.
@@ -1077,8 +1068,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 /// * `src` must be [valid] for reads.
 ///
-/// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
-///   case.
+/// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the case.
 ///
 /// * `src` must point to a properly initialized value of type `T`.
 ///
@@ -1188,20 +1178,18 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // of that information.  Thus the implementation here switched to an intrinsic,
     // which lowers to `_0 = *src` in MIR, to address a few issues:
     //
-    // - Using `MaybeUninit::assume_init` after a `copy_nonoverlapping` was not
-    //   turning the untyped copy into a typed load. As such, the generated
-    //   `load` in LLVM didn't get various metadata, such as `!range` (#73258),
-    //   `!nonnull`, and `!noundef`, resulting in poorer optimization.
-    // - Going through the extra local resulted in multiple extra copies, even
-    //   in optimized MIR.  (Ignoring StorageLive/Dead, the intrinsic is one
-    //   MIR statement, while the previous implementation was eight.)  LLVM
-    //   could sometimes optimize them away, but because `read` is at the core
-    //   of so many things, not having them in the first place improves what we
-    //   hand off to the backend.  For example, `mem::replace::<Big>` previously
-    //   emitted 4 `alloca` and 6 `memcpy`s, but is now 1 `alloc` and 3 `memcpy`s.
-    // - In general, this approach keeps us from getting any more bugs (like
-    //   #106369) that boil down to "`read(p)` is worse than `*p`", as this
-    //   makes them look identical to the backend (or other MIR consumers).
+    // - Using `MaybeUninit::assume_init` after a `copy_nonoverlapping` was not turning the untyped
+    //   copy into a typed load. As such, the generated `load` in LLVM didn't get various metadata,
+    //   such as `!range` (#73258), `!nonnull`, and `!noundef`, resulting in poorer optimization.
+    // - Going through the extra local resulted in multiple extra copies, even in optimized MIR.
+    //   (Ignoring StorageLive/Dead, the intrinsic is one MIR statement, while the previous
+    //   implementation was eight.)  LLVM could sometimes optimize them away, but because `read` is
+    //   at the core of so many things, not having them in the first place improves what we hand off
+    //   to the backend.  For example, `mem::replace::<Big>` previously emitted 4 `alloca` and 6
+    //   `memcpy`s, but is now 1 `alloc` and 3 `memcpy`s.
+    // - In general, this approach keeps us from getting any more bugs (like #106369) that boil down
+    //   to "`read(p)` is worse than `*p`", as this makes them look identical to the backend (or
+    //   other MIR consumers).
     //
     // Future enhancements to MIR optimizations might well allow this to return
     // to the previous implementation, rather than using an intrinsic.
@@ -1330,8 +1318,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// * `dst` must be [valid] for writes.
 ///
-/// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
-///   case.
+/// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the case.
 ///
 /// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
@@ -1472,7 +1459,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// unsafe { std::ptr::write_unaligned(unaligned, 42) };
 ///
-/// assert_eq!({packed.unaligned}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// assert_eq!({packed.unaligned}, 42); // `{...}` forces copying the field instead
+/// of creating a reference.
 /// ```
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however

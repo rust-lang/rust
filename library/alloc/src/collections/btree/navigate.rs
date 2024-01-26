@@ -423,7 +423,8 @@ impl<BorrowType: marker::BorrowType, K, V>
 {
     /// Given an internal edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
     /// on the right side, which is either in the same internal node or in an ancestor node.
-    /// If the internal edge is the last one in the tree, returns [`Result::Err`] with the root node.
+    /// If the internal edge is the last one in the tree, returns [`Result::Err`] with the root
+    /// node.
     fn next_kv(
         self,
     ) -> Result<
@@ -455,8 +456,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// # Safety
     /// - The given edge must not have been previously returned by counterpart
     ///   `deallocating_next_back`.
-    /// - The returned KV handle is only valid to access the key and value,
-    ///   and only valid until the next call to a `deallocating_` method.
+    /// - The returned KV handle is only valid to access the key and value, and only valid until the
+    ///   next call to a `deallocating_` method.
     unsafe fn deallocating_next<A: Allocator + Clone>(
         self,
         alloc: A,
@@ -485,10 +486,9 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// will have been deallocated and there is nothing left to return.
     ///
     /// # Safety
-    /// - The given edge must not have been previously returned by counterpart
-    ///   `deallocating_next`.
-    /// - The returned KV handle is only valid to access the key and value,
-    ///   and only valid until the next call to a `deallocating_` method.
+    /// - The given edge must not have been previously returned by counterpart `deallocating_next`.
+    /// - The returned KV handle is only valid to access the key and value, and only valid until the
+    ///   next call to a `deallocating_` method.
     unsafe fn deallocating_next_back<A: Allocator + Clone>(
         self,
         alloc: A,
@@ -587,9 +587,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// # Safety
     /// - There must be another KV in the direction travelled.
-    /// - That KV was not previously returned by counterpart
-    ///   `deallocating_next_back_unchecked` on any copy of the handles
-    ///   being used to traverse the tree.
+    /// - That KV was not previously returned by counterpart `deallocating_next_back_unchecked` on
+    ///   any copy of the handles being used to traverse the tree.
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
@@ -608,9 +607,8 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// # Safety
     /// - There must be another KV in the direction travelled.
-    /// - That leaf edge was not previously returned by counterpart
-    ///   `deallocating_next_unchecked` on any copy of the handles
-    ///   being used to traverse the tree.
+    /// - That leaf edge was not previously returned by counterpart `deallocating_next_unchecked` on
+    ///   any copy of the handles being used to traverse the tree.
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_unchecked` again.

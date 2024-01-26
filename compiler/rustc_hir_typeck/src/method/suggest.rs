@@ -350,7 +350,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         span = item_name.span;
 
-        // Don't show generic arguments when the method can't be found in any implementation (#81576).
+        // Don't show generic arguments when the method can't be found in any implementation
+        // (#81576).
         let mut ty_str_reported = ty_str.clone();
         if let ty::Adt(_, generics) = rcvr_ty.kind() {
             if generics.len() > 0 {
@@ -566,7 +567,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut type_params = FxIndexMap::default();
 
             // Pick out the list of unimplemented traits on the receiver.
-            // This is used for custom error messages with the `#[rustc_on_unimplemented]` attribute.
+            // This is used for custom error messages with the `#[rustc_on_unimplemented]`
+            // attribute.
             let mut unimplemented_traits = FxIndexMap::default();
             let mut unimplemented_traits_only = true;
             for (predicate, _parent_pred, cause) in unsatisfied_predicates {
@@ -1226,10 +1228,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty() {
                 let def_kind = similar_candidate.kind.as_def_kind();
-                // Methods are defined within the context of a struct and their first parameter is always self,
-                // which represents the instance of the struct the method is being called on
-                // Associated functions don’t take self as a parameter and
-                // they are not methods because they don’t have an instance of the struct to work with.
+                // Methods are defined within the context of a struct and their first parameter is
+                // always self, which represents the instance of the struct the
+                // method is being called on Associated functions don’t take self as
+                // a parameter and they are not methods because they don’t have an
+                // instance of the struct to work with.
                 if def_kind == DefKind::AssocFn && similar_candidate.fn_has_self_parameter {
                     err.span_suggestion(
                         span,
@@ -1604,7 +1607,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| {
                     let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
-                    // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
+                    // if the type of first arg is the same as the current impl type, we should take
+                    // the first arg into assoc function
                     if first.peel_refs() == impl_ty {
                         Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
                     } else {
@@ -1660,8 +1664,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Suggest calling a field with a type that implements the `Fn*` traits instead of a method with
-    /// the same name as the field i.e. `(a.my_fn_ptr)(10)` instead of `a.my_fn_ptr(10)`.
+    /// Suggest calling a field with a type that implements the `Fn*` traits instead of a method
+    /// with the same name as the field i.e. `(a.my_fn_ptr)(10)` instead of `a.my_fn_ptr(10)`.
     fn suggest_calling_field_as_fn(
         &self,
         span: Span,
@@ -2705,9 +2709,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return_type,
                 ) {
                     Ok(pick) => {
-                        // If the method is defined for the receiver we have, it likely wasn't `use`d.
-                        // We point at the method, but we just skip the rest of the check for arbitrary
-                        // self types and rely on the suggestion to `use` the trait from
+                        // If the method is defined for the receiver we have, it likely wasn't
+                        // `use`d. We point at the method, but we just skip
+                        // the rest of the check for arbitrary self types
+                        // and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
                         let did = Some(pick.item.container_id(self.tcx));
                         let skip = skippable.contains(&did);
@@ -2720,8 +2725,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         break;
                     }
                     Err(MethodError::Ambiguity(_)) => {
-                        // If the method is defined (but ambiguous) for the receiver we have, it is also
-                        // likely we haven't `use`d it. It may be possible that if we `Box`/`Pin`/etc.
+                        // If the method is defined (but ambiguous) for the receiver we have, it is
+                        // also likely we haven't `use`d it. It may be
+                        // possible that if we `Box`/`Pin`/etc.
                         // the receiver, then it might disambiguate this method, but I think these
                         // suggestions are generally misleading (see #94218).
                         break;
@@ -2881,8 +2887,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // here).
                 unsatisfied_predicates.iter().all(|(p, _, _)| {
                     match p.kind().skip_binder() {
-                        // Hide traits if they are present in predicates as they can be fixed without
-                        // having to implement them.
+                        // Hide traits if they are present in predicates as they can be fixed
+                        // without having to implement them.
                         ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
                             t.def_id() == info.def_id
                         }
@@ -3148,7 +3154,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "NONE".to_string()
                             } else {
                                 param_type.map_or_else(
-                                    || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                                    || "implement".to_string(), /* FIXME: it might only need to
+                                                                 * be imported into scope, not
+                                                                 * implemented. */
                                     ToString::to_string,
                                 )
                             },
@@ -3157,7 +3165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 trait_infos => {
                     let mut msg = message(param_type.map_or_else(
-                        || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                        || "implement".to_string(), /* FIXME: it might only need to be imported
+                                                     * into scope, not implemented. */
                         |param| format!("restrict type parameter `{param}` with"),
                     ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
@@ -3357,7 +3366,8 @@ fn print_disambiguation_help<'tcx>(
                     .map_or("", |mutbl| mutbl.ref_prefix_str()),
             );
 
-            // If the type of first arg of this assoc function is `Self` or current trait impl type or `arbitrary_self_types`, we need to take the receiver as args. Otherwise, we don't.
+            // If the type of first arg of this assoc function is `Self` or current trait impl type
+            // or `arbitrary_self_types`, we need to take the receiver as args. Otherwise, we don't.
             let args = if let Some(first_arg_type) = first_arg_type
                 && (first_arg_type == tcx.types.self_param
                     || first_arg_type == trait_impl_type

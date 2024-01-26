@@ -102,14 +102,14 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 return true;
             }
 
-            // If this crate is not using stability attributes, or this function is not claiming to be a
-            // stable `const fn`, that is all that is required.
+            // If this crate is not using stability attributes, or this function is not claiming to
+            // be a stable `const fn`, that is all that is required.
             if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
                 return true;
             }
 
-            // However, we cannot allow stable `const fn`s to use unstable features without an explicit
-            // opt-in via `rustc_allow_const_fn_unstable`.
+            // However, we cannot allow stable `const fn`s to use unstable features without an
+            // explicit opt-in via `rustc_allow_const_fn_unstable`.
             let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
             attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
         };

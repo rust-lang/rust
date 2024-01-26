@@ -164,7 +164,8 @@ where
 }
 
 /// Emit a lint from a const-eval situation.
-// Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
+// Even if this is unused, please don't remove it -- chances are we will need to emit a lint during
+// const-eval again in the future!
 pub(super) fn lint<'tcx, 'mir, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeInterpreter<'mir, 'tcx>,

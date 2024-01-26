@@ -925,7 +925,8 @@ fn assoc_type(
     if !bounds.is_empty() {
         write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
-    // Render the default before the where-clause which aligns with the new recommended style. See #89122.
+    // Render the default before the where-clause which aligns with the new recommended style. See
+    // #89122.
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
@@ -960,7 +961,8 @@ fn assoc_method(
     let abi = print_abi_with_space(header.abi).to_string();
     let href = assoc_href_attr(meth, link, cx);
 
-    // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
+    // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between
+    // the length calculation and `write!`.
     let generics_len = format!("{:#}", g.print(cx)).len();
     let mut header_len = "fn ".len()
         + vis.len()
@@ -2433,8 +2435,9 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             }
         };
 
-        // To reduce file sizes, we only want to embed the source code needed to understand the example, not
-        // the entire file. So we find the smallest byte range that covers all items enclosing examples.
+        // To reduce file sizes, we only want to embed the source code needed to understand the
+        // example, not the entire file. So we find the smallest byte range that covers all
+        // items enclosing examples.
         assert!(!call_data.locations.is_empty());
         let min_loc =
             call_data.locations.iter().min_by_key(|loc| loc.enclosing_item.byte_span.0).unwrap();
@@ -2448,8 +2451,9 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         // The output code is limited to that byte range.
         let contents_subset = &contents[(byte_min as usize)..(byte_max as usize)];
 
-        // The call locations need to be updated to reflect that the size of the program has changed.
-        // Specifically, the ranges are all subtracted by `byte_min` since that's the new zero point.
+        // The call locations need to be updated to reflect that the size of the program has
+        // changed. Specifically, the ranges are all subtracted by `byte_min` since that's
+        // the new zero point.
         let (mut byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
             .locations
             .iter()
@@ -2531,14 +2535,14 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
     // The call locations are output in sequence, so that sequence needs to be determined.
     // Ideally the most "relevant" examples would be shown first, but there's no general algorithm
     // for determining relevance. We instead proxy relevance with the following heuristics:
-    //   1. Code written to be an example is better than code not written to be an example, e.g.
-    //      a snippet from examples/foo.rs is better than src/lib.rs. We don't know the Cargo
-    //      directory structure in Rustdoc, so we proxy this by prioritizing code that comes from
-    //      a --crate-type bin.
-    //   2. Smaller examples are better than large examples. So we prioritize snippets that have
-    //      the smallest number of lines in their enclosing item.
-    //   3. Finally we sort by the displayed file name, which is arbitrary but prevents the
-    //      ordering of examples from randomly changing between Rustdoc invocations.
+    //   1. Code written to be an example is better than code not written to be an example, e.g. a
+    //      snippet from examples/foo.rs is better than src/lib.rs. We don't know the Cargo
+    //      directory structure in Rustdoc, so we proxy this by prioritizing code that comes from a
+    //      --crate-type bin.
+    //   2. Smaller examples are better than large examples. So we prioritize snippets that have the
+    //      smallest number of lines in their enclosing item.
+    //   3. Finally we sort by the displayed file name, which is arbitrary but prevents the ordering
+    //      of examples from randomly changing between Rustdoc invocations.
     let ordered_locations = {
         fn sort_criterion<'a>(
             (_, call_data): &(&PathBuf, &'a CallData),

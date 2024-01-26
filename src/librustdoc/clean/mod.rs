@@ -1460,8 +1460,9 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                                 }
                             }
                             GenericArgs::Parenthesized { .. } => {
-                                // The only time this happens is if we're inside the rustdoc for Fn(),
-                                // which only has one associated type, which is not a GAT, so whatever.
+                                // The only time this happens is if we're inside the rustdoc for
+                                // Fn(), which only has one
+                                // associated type, which is not a GAT, so whatever.
                             }
                         }
                         bounds.extend(mem::replace(pred_bounds, Vec::new()));
@@ -1678,7 +1679,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
         hir::QPath::Resolved(Some(qself), p) => {
             // Try to normalize `<X as Y>::T` to a type
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as Trait>::Gat<'_>`
+            // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as
+            // Trait>::Gat<'_>`
             if !ty.has_escaping_bound_vars()
                 && let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty))
             {
@@ -1943,16 +1945,19 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
 ) -> bool {
     // Below we quote extracts from https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
 
-    // > If the trait object is used as a type argument of a generic type then the containing type is
+    // > If the trait object is used as a type argument of a generic type then the containing type
+    // > is
     // > first used to try to infer a bound.
     let default = container
         .map_or(ObjectLifetimeDefault::Empty, |container| container.object_lifetime_default(tcx));
 
     // > If there is a unique bound from the containing type then that is the default
-    // If there is a default object lifetime and the given region is lexically equal to it, elide it.
+    // If there is a default object lifetime and the given region is lexically equal to it, elide
+    // it.
     match default {
         ObjectLifetimeDefault::Static => return *region == ty::ReStatic,
-        // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle shadowing correctly.
+        // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc.
+        // to handle shadowing correctly.
         ObjectLifetimeDefault::Arg(default) => return region.get_name() == default.get_name(),
         // > If there is more than one bound from the containing type then an explicit bound must be specified
         // Due to ambiguity there is no default trait-object lifetime and thus elision is impossible.
@@ -1966,19 +1971,21 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
     match *object_region_bounds(tcx, preds) {
         // > If the trait has no lifetime bounds, then the lifetime is inferred in expressions
         // > and is 'static outside of expressions.
-        // FIXME: If we are in an expression context (i.e. fn bodies and const exprs) then the default is
-        // `'_` and not `'static`. Only if we are in a non-expression one, the default is `'static`.
-        // Note however that at the time of this writing it should be fine to disregard this subtlety
-        // as we neither render const exprs faithfully anyway (hiding them in some places or using `_` instead)
-        // nor show the contents of fn bodies.
+        // FIXME: If we are in an expression context (i.e. fn bodies and const exprs) then the
+        // default is `'_` and not `'static`. Only if we are in a non-expression one, the
+        // default is `'static`. Note however that at the time of this writing it should be
+        // fine to disregard this subtlety as we neither render const exprs faithfully
+        // anyway (hiding them in some places or using `_` instead) nor show the contents of
+        // fn bodies.
         [] => *region == ty::ReStatic,
         // > If the trait is defined with a single lifetime bound then that bound is used.
         // > If 'static is used for any lifetime bound then 'static is used.
-        // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle shadowing correctly.
+        // FIXME(fmease): Don't compare lexically but respect de Bruijn indices etc. to handle
+        // shadowing correctly.
         [object_region] => object_region.get_name() == region.get_name(),
         // There are several distinct trait regions and none are `'static`.
-        // Due to ambiguity there is no default trait-object lifetime and thus elision is impossible.
-        // Don't elide the lifetime.
+        // Due to ambiguity there is no default trait-object lifetime and thus elision is
+        // impossible. Don't elide the lifetime.
         _ => false,
     }
 }
@@ -2520,8 +2527,9 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts for the case
-                    // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
+                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts
+                    // for the case where the argument is `host` but for all
+                    // possible cases (e.g., `true`, `false`).
                     hir::GenericArg::Const(hir::ConstArg {
                         is_desugared_from_effects: true,
                         ..

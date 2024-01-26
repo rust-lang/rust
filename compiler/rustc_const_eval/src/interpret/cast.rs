@@ -154,7 +154,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     );
                 }
 
-                self.copy_op(src, dest, /*allow_transmute*/ true)?;
+                self.copy_op(src, dest, /* allow_transmute */ true)?;
             }
         }
         Ok(())
@@ -264,7 +264,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// type (basically everything with a scalar layout) to int/float/char types.
     fn cast_from_int_like(
         &self,
-        scalar: Scalar<M::Provenance>, // input value (there is no ScalarTy so we separate data+layout)
+        scalar: Scalar<M::Provenance>, /* input value (there is no ScalarTy so we separate
+                                        * data+layout) */
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
@@ -381,7 +382,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
                 let val = self.read_immediate(src)?;
                 if data_a.principal() == data_b.principal() {
-                    // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
+                    // A NOP cast that doesn't actually change anything, should be allowed even with
+                    // mismatching vtables.
                     return self.write_immediate(*val, dest);
                 }
                 let (old_data, old_vptr) = val.to_scalar_pair();
@@ -442,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if src_field.layout.is_1zst() && cast_ty_field.is_1zst() {
                         // Skip 1-ZST fields.
                     } else if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
+                        self.copy_op(&src_field, &dst_field, /* allow_transmute */ false)?;
                     } else {
                         if found_cast_field {
                             span_bug!(self.cur_span(), "unsize_into: more than one field to cast");

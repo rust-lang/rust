@@ -17,32 +17,29 @@ use fortanix_sgx_abi::*;
 /// A type that can be safely read from or written to userspace.
 ///
 /// Non-exhaustive list of specific requirements for reading and writing:
-/// * **Type is `Copy`** (and therefore also not `Drop`). Copies will be
-///   created when copying from/to userspace. Destructors will not be called.
-/// * **No references or Rust-style owned pointers** (`Vec`, `Arc`, etc.). When
-///   reading from userspace, references into enclave memory must not be
-///   created. Also, only enclave memory is considered managed by the Rust
-///   compiler's static analysis. When reading from userspace, there can be no
-///   guarantee that the value correctly adheres to the expectations of the
-///   type. When writing to userspace, memory addresses of data in enclave
-///   memory must not be leaked for confidentiality reasons. `User` and
-///   `UserRef` are also not allowed for the same reasons.
-/// * **No fat pointers.** When reading from userspace, the size or vtable
-///   pointer could be automatically interpreted and used by the code. When
-///   writing to userspace, memory addresses of data in enclave memory (such
-///   as vtable pointers) must not be leaked for confidentiality reasons.
+/// * **Type is `Copy`** (and therefore also not `Drop`). Copies will be created when copying
+///   from/to userspace. Destructors will not be called.
+/// * **No references or Rust-style owned pointers** (`Vec`, `Arc`, etc.). When reading from
+///   userspace, references into enclave memory must not be created. Also, only enclave memory is
+///   considered managed by the Rust compiler's static analysis. When reading from userspace, there
+///   can be no guarantee that the value correctly adheres to the expectations of the type. When
+///   writing to userspace, memory addresses of data in enclave memory must not be leaked for
+///   confidentiality reasons. `User` and `UserRef` are also not allowed for the same reasons.
+/// * **No fat pointers.** When reading from userspace, the size or vtable pointer could be
+///   automatically interpreted and used by the code. When writing to userspace, memory addresses of
+///   data in enclave memory (such as vtable pointers) must not be leaked for confidentiality
+///   reasons.
 ///
 /// Non-exhaustive list of specific requirements for reading from userspace:
-/// * **Any bit pattern is valid** for this type (no `enum`s). There can be no
-///   guarantee that the value correctly adheres to the expectations of the
-///   type, so any value must be valid for this type.
+/// * **Any bit pattern is valid** for this type (no `enum`s). There can be no guarantee that the
+///   value correctly adheres to the expectations of the type, so any value must be valid for this
+///   type.
 ///
 /// Non-exhaustive list of specific requirements for writing to userspace:
-/// * **No pointers to enclave memory.** Memory addresses of data in enclave
-///   memory must not be leaked for confidentiality reasons.
-/// * **No internal padding.** Padding might contain previously-initialized
-///   secret data stored at that memory location and must not be leaked for
-///   confidentiality reasons.
+/// * **No pointers to enclave memory.** Memory addresses of data in enclave memory must not be
+///   leaked for confidentiality reasons.
+/// * **No internal padding.** Padding might contain previously-initialized secret data stored at
+///   that memory location and must not be leaked for confidentiality reasons.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub unsafe trait UserSafeSized: Copy + Sized {}
 
@@ -146,8 +143,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
 
     /// # Safety
     /// Behavior is undefined if any of these conditions are violated:
-    /// * `ptr` must be [valid] for writes of `size` many bytes, and it must be
-    ///   properly aligned.
+    /// * `ptr` must be [valid] for writes of `size` many bytes, and it must be properly aligned.
     ///
     /// [valid]: core::ptr#safety
     /// # Panics
@@ -359,7 +355,8 @@ unsafe fn copy_quadwords(src: *const u8, dst: *mut u8, len: usize) {
 
 /// Copies `len` bytes of data from enclave pointer `src` to userspace `dst`
 ///
-/// This function mitigates stale data vulnerabilities by ensuring all writes to untrusted memory are either:
+/// This function mitigates stale data vulnerabilities by ensuring all writes to untrusted memory
+/// are either:
 ///  - preceded by the VERW instruction and followed by the MFENCE; LFENCE instruction sequence
 ///  - or are in multiples of 8 bytes, aligned to an 8-byte boundary
 ///
@@ -423,7 +420,8 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
 
 /// Copies `len` bytes of data from userspace pointer `src` to enclave pointer `dst`
 ///
-/// This function mitigates AEPIC leak vulnerabilities by ensuring all reads from untrusted memory are 8-byte aligned
+/// This function mitigates AEPIC leak vulnerabilities by ensuring all reads from untrusted memory
+/// are 8-byte aligned
 ///
 /// # Panics
 /// This function panics if:

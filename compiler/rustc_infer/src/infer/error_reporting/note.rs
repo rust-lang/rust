@@ -226,7 +226,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     trait_item_def_id,
                     &format!("`{sup}: {sub}`"),
                 );
-                // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
+                // We should only suggest rewriting the `where` clause if the predicate is within
+                // that `where` clause
                 if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
                     && generics.where_clause_span.contains(span)
                 {

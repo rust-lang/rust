@@ -57,7 +57,8 @@ impl Thread {
         #[cfg(target_os = "espidf")]
         if stack > 0 {
             // Only set the stack if a non-zero value is passed
-            // 0 is used as an indication that the default stack size configured in the ESP-IDF menuconfig system should be used
+            // 0 is used as an indication that the default stack size configured in the ESP-IDF
+            // menuconfig system should be used
             assert_eq!(
                 libc::pthread_attr_setstacksize(&mut attr, cmp::max(stack, min_stack_size(&attr))),
                 0
@@ -138,7 +139,8 @@ impl Thread {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
             let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
             let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
-            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            // We have no good way of propagating errors here, but in debug-builds let's check that
+            // this actually worked.
             debug_assert_eq!(res, 0);
         }
     }
@@ -155,7 +157,8 @@ impl Thread {
         unsafe {
             let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
             let res = libc::pthread_setname_np(name.as_ptr());
-            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            // We have no good way of propagating errors here, but in debug-builds let's check that
+            // this actually worked.
             debug_assert_eq!(res, 0);
         }
     }
@@ -207,7 +210,8 @@ impl Thread {
         unsafe {
             let thread_self = libc::find_thread(ptr::null_mut());
             let res = libc::rename_thread(thread_self, name.as_ptr());
-            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            // We have no good way of propagating errors here, but in debug-builds let's check that
+            // this actually worked.
             debug_assert_eq!(res, libc::B_OK);
         }
     }

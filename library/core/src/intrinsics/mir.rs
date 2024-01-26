@@ -49,8 +49,8 @@
 //!
 //! The input to the [`mir!`] macro is:
 //!
-//!  - An optional return type annotation in the form of `type RET = ...;`. This may be required
-//!    if the compiler cannot infer the type of RET.
+//!  - An optional return type annotation in the form of `type RET = ...;`. This may be required if
+//!    the compiler cannot infer the type of RET.
 //!  - A possibly empty list of local declarations. Locals can also be declared inline on
 //!    assignments via `let`. Type inference generally works. Shadowing does not.
 //!  - A list of basic blocks. The first of these is the start block and is where execution begins.
@@ -144,7 +144,6 @@
 //!
 //! We can also set off compilation failures that happen in sufficiently late stages of the
 //! compiler:
-//!
 //! ```rust,compile_fail
 //! #![feature(core_intrinsics, custom_mir)]
 //!
@@ -175,7 +174,6 @@
 //!     )
 //! }
 //! ```
-//!
 //! ```text
 //! error[E0381]: used binding is possibly-uninitialized
 //!   --> test.rs:24:13

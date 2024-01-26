@@ -27,8 +27,8 @@ pub struct Validator {
     /// The phase for which we are upholding the dialect. If the given phase forbids a specific
     /// element, this validator will now emit errors if that specific element is encountered.
     /// Note that phases that change the dialect cause all *following* phases to check the
-    /// invariants of the new dialect. A phase that changes dialects never checks the new invariants
-    /// itself.
+    /// invariants of the new dialect. A phase that changes dialects never checks the new
+    /// invariants itself.
     pub mir_phase: MirPhase,
 }
 

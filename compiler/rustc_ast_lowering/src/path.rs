@@ -192,7 +192,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.lower_parenthesized_parameter_data(data, itctx)
                     }
                     ParenthesizedGenericArgs::Err => {
-                        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+                        // Suggest replacing parentheses with angle brackets `Trait(params...)` to
+                        // `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
                             let open_param = data.inputs_span.shrink_to_lo().to(data

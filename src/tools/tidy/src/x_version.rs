@@ -36,7 +36,8 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
                 continue;
             }
         }
-        // Unwrap the some if x is installed, otherwise return because it's fine if x isn't installed.
+        // Unwrap the some if x is installed, otherwise return because it's fine if x isn't
+        // installed.
         let installed = if let Some(i) = installed { i } else { return };
 
         if let Some(expected) = get_x_wrapper_version(root, cargo) {

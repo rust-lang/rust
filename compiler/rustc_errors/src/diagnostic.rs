@@ -270,8 +270,9 @@ impl Diagnostic {
                 return;
             }
 
-            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
-            // The lint index inside the attribute is manually transferred here.
+            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with
+            // an attribute index. The lint index inside the attribute is manually
+            // transferred here.
             let lint_index = expectation_id.get_lint_index();
             expectation_id.set_lint_index(None);
             let mut stable_id = unstable_to_stable

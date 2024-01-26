@@ -288,8 +288,9 @@ where
                                 inner.type_variables().new_var(self.for_universe, origin);
                             let u = Ty::new_var(self.tcx(), new_var_id);
 
-                            // Record that we replaced `vid` with `new_var_id` as part of a generalization
-                            // operation. This is needed to detect cyclic types. To see why, see the
+                            // Record that we replaced `vid` with `new_var_id` as part of a
+                            // generalization operation. This is needed
+                            // to detect cyclic types. To see why, see the
                             // docs in the `type_variables` module.
                             inner.type_variables().sub(vid, new_var_id);
                             debug!("replacing original vid={:?} with new={:?}", vid, u);

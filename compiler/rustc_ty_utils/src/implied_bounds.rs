@@ -66,9 +66,10 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     let generics = tcx.generics_of(def_id);
 
                     // For each captured opaque lifetime, if it's late-bound (`ReLateParam` in this
-                    // case, since it has been liberated), map it back to the early-bound lifetime of
-                    // the GAT. Since RPITITs also have all of the fn's generics, we slice only
-                    // the end of the list corresponding to the opaque's generics.
+                    // case, since it has been liberated), map it back to the early-bound lifetime
+                    // of the GAT. Since RPITITs also have all of the fn's
+                    // generics, we slice only the end of the list corresponding
+                    // to the opaque's generics.
                     for param in &generics.params[tcx.generics_of(fn_def_id).params.len()..] {
                         let orig_lt =
                             tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());

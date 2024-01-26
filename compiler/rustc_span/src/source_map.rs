@@ -654,7 +654,8 @@ impl SourceMap {
         })
     }
 
-    /// Extends the given `Span` to previous character while the previous character matches the predicate
+    /// Extends the given `Span` to previous character while the previous character matches the
+    /// predicate
     pub fn span_extend_prev_while(
         &self,
         span: Span,
@@ -863,8 +864,8 @@ impl SourceMap {
     /// Returns a new span representing the next character after the end-point of this span.
     /// Special cases:
     /// - if span is a dummy one, returns the same span
-    /// - if next_point reached the end of source, return a span exceeding the end of source,
-    ///   which means sm.span_to_snippet(next_point) will get `Err`
+    /// - if next_point reached the end of source, return a span exceeding the end of source, which
+    ///   means sm.span_to_snippet(next_point) will get `Err`
     /// - respect multi-byte characters
     pub fn next_point(&self, sp: Span) -> Span {
         if sp.is_dummy() {
@@ -873,9 +874,9 @@ impl SourceMap {
         let start_of_next_point = sp.hi().0;
 
         let width = self.find_width_of_character_at_span(sp, true);
-        // If the width is 1, then the next span should only contain the next char besides current ending.
-        // However, in the case of a multibyte character, where the width != 1, the next span should
-        // span multiple bytes to include the whole character.
+        // If the width is 1, then the next span should only contain the next char besides current
+        // ending. However, in the case of a multibyte character, where the width != 1, the
+        // next span should span multiple bytes to include the whole character.
         let end_of_next_point =
             start_of_next_point.checked_add(width).unwrap_or(start_of_next_point);
 

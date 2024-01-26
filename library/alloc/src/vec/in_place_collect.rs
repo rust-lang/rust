@@ -5,9 +5,9 @@
 //!
 //! The specialization in this module applies to iterators in the shape of
 //! `source.adapter().adapter().adapter().collect::<Vec<U>>()`
-//! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`][box] (by conversion to `Vec`)
-//! or [`BinaryHeap<T>`], the adapters guarantee to consume enough items per step to make room
-//! for the results (represented by [`InPlaceIterable`]), provide transitive access to `source`
+//! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`][box] (by conversion
+//! to `Vec`) or [`BinaryHeap<T>`], the adapters guarantee to consume enough items per step to make
+//! room for the results (represented by [`InPlaceIterable`]), provide transitive access to `source`
 //! (via [`SourceIter`]) and thus the underlying allocation.
 //! And finally there are alignment and size constraints to consider, this is currently ensured via
 //! const eval instead of trait bounds in the specialized [`SpecFromIter`] implementation.
@@ -35,7 +35,8 @@
 //! the step of reading a value and getting a reference to write to. Instead raw pointers must be
 //! used on the reader and writer side.
 //!
-//! That writes never clobber a yet-to-be-read items is ensured by the [`InPlaceIterable`] requirements.
+//! That writes never clobber a yet-to-be-read items is ensured by the [`InPlaceIterable`]
+//! requirements.
 //!
 //! # Layout constraints
 //!
@@ -72,8 +73,8 @@
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
-//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
-//! the already collected sink items (`U`) and freeing the allocation.
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle
+//! dropping the already collected sink items (`U`) and freeing the allocation.
 //!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
 //!
@@ -81,8 +82,8 @@
 //!
 //! The main iteration itself is further specialized when the iterator implements
 //! [`TrustedRandomAccessNoCoerce`] to let the optimizer see that it is a counted loop with a single
-//! [induction variable]. This can turn some iterators into a noop, i.e. it reduces them from O(n) to
-//! O(1). This particular optimization is quite fickle and doesn't always work, see [#79308]
+//! [induction variable]. This can turn some iterators into a noop, i.e. it reduces them from O(n)
+//! to O(1). This particular optimization is quite fickle and doesn't always work, see [#79308]
 //!
 //! [#79308]: https://github.com/rust-lang/rust/issues/79308
 //! [induction variable]: https://en.wikipedia.org/wiki/Induction_variable
@@ -254,7 +255,8 @@ where
         debug_assert_eq!(src_buf, src.buf.as_ptr());
         // check InPlaceIterable contract. This is only possible if the iterator advanced the
         // source pointer at all. If it uses unchecked access via TrustedRandomAccess
-        // then the source pointer will stay in its initial position and we can't use it as reference
+        // then the source pointer will stay in its initial position and we can't use it as
+        // reference
         if src.ptr != src_ptr {
             debug_assert!(
                 unsafe { dst_buf.add(len) as *const _ } <= src.ptr.as_ptr(),
@@ -262,13 +264,13 @@ where
             );
         }
 
-        // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
-        // This is safe because
+        // The ownership of the allocation and the new `T` values is temporarily moved into
+        // `dst_guard`. This is safe because
         // * `forget_allocation_drop_remaining` immediately forgets the allocation
         // before any panic can occur in order to avoid any double free, and then proceeds to drop
         // any remaining values at the tail of the source.
-        // * the shrink either panics without invalidating the allocation, aborts or
-        //   succeeds. In the last case we disarm the guard.
+        // * the shrink either panics without invalidating the allocation, aborts or succeeds. In
+        //   the last case we disarm the guard.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
@@ -336,8 +338,9 @@ fn write_in_place_with_drop<T>(
 
 /// Helper trait to hold specialized implementations of the in-place iterate-collect loop
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
-    /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of items
-    /// collected. `end` is the last writable element of the allocation and used for bounds checks.
+    /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of
+    /// items collected. `end` is the last writable element of the allocation and used for
+    /// bounds checks.
     ///
     /// This method is specialized and one of its implementations makes use of
     /// `Iterator::__iterator_get_unchecked` calls with a `TrustedRandomAccessNoCoerce` bound

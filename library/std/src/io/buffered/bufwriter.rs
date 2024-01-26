@@ -61,7 +61,6 @@ use crate::ptr;
 /// By wrapping the stream with a `BufWriter<W>`, these ten writes are all grouped
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
-///
 // HACK(#78696): can't use `crate` for associated items
 /// [`TcpStream::write`]: super::super::super::net::TcpStream::write
 /// [`TcpStream`]: crate::net::TcpStream
@@ -622,7 +621,8 @@ impl<W: ?Sized + Write> Write for BufWriter<W> {
 
                     // This cannot overflow `usize`. If we are here, we've written all of the bytes
                     // so far to our buffer, and we've ensured that we never exceed the buffer's
-                    // capacity. Therefore, `total_written` <= `self.buf.capacity()` <= `usize::MAX`.
+                    // capacity. Therefore, `total_written` <= `self.buf.capacity()` <=
+                    // `usize::MAX`.
                     total_written += buf.len();
                 } else {
                     break;

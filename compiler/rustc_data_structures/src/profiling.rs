@@ -17,14 +17,14 @@
 //!
 //! Events have a few properties:
 //!
-//! - The `event_kind` designates the broad category of an event (e.g. does it
-//!   correspond to the execution of a query provider or to loading something
-//!   from the incr. comp. on-disk cache, etc).
-//! - The `event_id` designates the query invocation or function call it
-//!   corresponds to, possibly including the query key or function arguments.
+//! - The `event_kind` designates the broad category of an event (e.g. does it correspond to the
+//!   execution of a query provider or to loading something from the incr. comp. on-disk cache,
+//!   etc).
+//! - The `event_id` designates the query invocation or function call it corresponds to, possibly
+//!   including the query key or function arguments.
 //! - Each event stores the ID of the thread it was recorded on.
-//! - The timestamp stores beginning and end of the event, or the single point
-//!   in time it occurred at for "instant" events.
+//! - The timestamp stores beginning and end of the event, or the single point in time it occurred
+//!   at for "instant" events.
 //!
 //!
 //! ## Event Filtering
@@ -43,21 +43,17 @@
 //! string at the point where the event is recorded. In order to make this more
 //! efficient `measureme` has two features:
 //!
-//! - Strings can share their content, so that re-occurring parts don't have to
-//!   be copied over and over again. One allocates a string in `measureme` and
-//!   gets back a `StringId`. This `StringId` is then used to refer to that
-//!   string. `measureme` strings are actually DAGs of string components so that
-//!   arbitrary sharing of substrings can be done efficiently. This is useful
-//!   because `event_id`s contain lots of redundant text like query names or
-//!   def-path components.
+//! - Strings can share their content, so that re-occurring parts don't have to be copied over and
+//!   over again. One allocates a string in `measureme` and gets back a `StringId`. This `StringId`
+//!   is then used to refer to that string. `measureme` strings are actually DAGs of string
+//!   components so that arbitrary sharing of substrings can be done efficiently. This is useful
+//!   because `event_id`s contain lots of redundant text like query names or def-path components.
 //!
-//! - `StringId`s can be "virtual" which means that the client picks a numeric
-//!   ID according to some application-specific scheme and can later make that
-//!   ID be mapped to an actual string. This is used to cheaply generate
-//!   `event_id`s while the events actually occur, causing little timing
-//!   distortion, and then later map those `StringId`s, in bulk, to actual
-//!   `event_id` strings. This way the largest part of the tracing overhead is
-//!   localized to one contiguous chunk of time.
+//! - `StringId`s can be "virtual" which means that the client picks a numeric ID according to some
+//!   application-specific scheme and can later make that ID be mapped to an actual string. This is
+//!   used to cheaply generate `event_id`s while the events actually occur, causing little timing
+//!   distortion, and then later map those `StringId`s, in bulk, to actual `event_id` strings. This
+//!   way the largest part of the tracing overhead is localized to one contiguous chunk of time.
 //!
 //! How are these `event_id`s generated in the compiler? For things that occur
 //! infrequently (e.g. "generic activities"), we just allocate the string the
@@ -306,7 +302,6 @@ impl SelfProfilerRef {
     /// Note: recording at least one argument is *required* for the self-profiler to create the
     /// `TimingGuard`. A panic will be triggered if that doesn't happen. This function exists
     /// explicitly to record arguments, so it fails loudly when there are none to record.
-    ///
     #[inline(always)]
     pub fn generic_activity_with_arg_recorder<F>(
         &self,
@@ -512,8 +507,8 @@ pub struct EventArgRecorder<'p> {
 
     /// The interned event arguments to be recorded in the generic activity event.
     ///
-    /// The most common case, when actually recording event arguments, is to have one argument. Then
-    /// followed by recording two, in a couple places.
+    /// The most common case, when actually recording event arguments, is to have one argument.
+    /// Then followed by recording two, in a couple places.
     args: SmallVec<[StringId; 2]>,
 }
 

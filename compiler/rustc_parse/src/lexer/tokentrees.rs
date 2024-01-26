@@ -239,8 +239,9 @@ impl<'sess, 'src> TokenTreesReader<'sess, 'src> {
         let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
         let mut diff_errs = vec![];
         // Suggest removing a `{` we think appears in an `if`/`while` condition
-        // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition, but
-        // we have no way of tracking this in the lexer itself, so we piggyback on the parser
+        // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition,
+        // but we have no way of tracking this in the lexer itself, so we piggyback on the
+        // parser
         let mut in_cond = false;
         while parser.token != token::Eof {
             if let Err(diff_err) = parser.err_diff_marker() {
@@ -258,7 +259,8 @@ impl<'sess, 'src> TokenTreesReader<'sess, 'src> {
                 let maybe_andand = parser.look_ahead(1, |t| t.clone());
                 let maybe_let = parser.look_ahead(2, |t| t.clone());
                 if maybe_andand == token::OpenDelim(Delimiter::Brace) {
-                    // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
+                    // This might be the beginning of the `if`/`while` body (i.e., the end of the
+                    // condition)
                     in_cond = false;
                 } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
                     let mut err = parser.dcx().struct_span_err(

@@ -23,8 +23,7 @@ use crate::task::{Context, Poll};
 /// anticipated, and has the possibility of causing subtle bugs through a
 /// combination of two critical components:
 ///
-/// 1. A data structure is in a temporarily invalid state when the thread
-///    panics.
+/// 1. A data structure is in a temporarily invalid state when the thread panics.
 /// 2. This broken invariant is then later observed.
 ///
 /// Typically in Rust, it is difficult to perform step (2) because catching a

@@ -591,11 +591,10 @@ fn has_allow_dead_code_or_lang_attr(
 // These check_* functions seeds items that
 //   1) We want to explicitly consider as live:
 //     * Item annotated with #[allow(dead_code)]
-//         - This is done so that if we want to suppress warnings for a
-//           group of dead functions, we only have to annotate the "root".
-//           For example, if both `f` and `g` are dead and `f` calls `g`,
-//           then annotating `f` with `#[allow(dead_code)]` will suppress
-//           warning for both `f` and `g`.
+//         - This is done so that if we want to suppress warnings for a group of dead functions, we
+//           only have to annotate the "root". For example, if both `f` and `g` are dead and `f`
+//           calls `g`, then annotating `f` with `#[allow(dead_code)]` will suppress warning for
+//           both `f` and `g`.
 //     * Item annotated with #[lang=".."]
 //         - This is because lang items are always callable from elsewhere.
 //   or

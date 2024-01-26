@@ -8,14 +8,12 @@ use crate::ptr;
 /// Some of the methods require that a memory block be *currently
 /// allocated* via an allocator. This means that:
 ///
-/// * the starting address for that memory block was previously
-///   returned by a previous call to an allocation method
-///   such as `alloc`, and
+/// * the starting address for that memory block was previously returned by a previous call to an
+///   allocation method such as `alloc`, and
 ///
-/// * the memory block has not been subsequently deallocated, where
-///   blocks are deallocated either by being passed to a deallocation
-///   method such as `dealloc` or by being
-///   passed to a reallocation method that returns a non-null pointer.
+/// * the memory block has not been subsequently deallocated, where blocks are deallocated either by
+///   being passed to a deallocation method such as `dealloc` or by being passed to a reallocation
+///   method that returns a non-null pointer.
 ///
 ///
 /// # Example
@@ -91,21 +89,20 @@ use crate::ptr;
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
 ///
-/// * It's undefined behavior if global allocators unwind. This restriction may
-///   be lifted in the future, but currently a panic from any of these
-///   functions may lead to memory unsafety.
+/// * It's undefined behavior if global allocators unwind. This restriction may be lifted in the
+///   future, but currently a panic from any of these functions may lead to memory unsafety.
 ///
-/// * `Layout` queries and calculations in general must be correct. Callers of
-///   this trait are allowed to rely on the contracts defined on each method,
-///   and implementors must ensure such contracts remain true.
+/// * `Layout` queries and calculations in general must be correct. Callers of this trait are
+///   allowed to rely on the contracts defined on each method, and implementors must ensure such
+///   contracts remain true.
 ///
-/// * You must not rely on allocations actually happening, even if there are explicit
-///   heap allocations in the source. The optimizer may detect unused allocations that it can either
-///   eliminate entirely or move to the stack and thus never invoke the allocator. The
-///   optimizer may further assume that allocation is infallible, so code that used to fail due
-///   to allocator failures may now suddenly work because the optimizer worked around the
-///   need for an allocation. More concretely, the following code example is unsound, irrespective
-///   of whether your custom allocator allows counting how many allocations have happened.
+/// * You must not rely on allocations actually happening, even if there are explicit heap
+///   allocations in the source. The optimizer may detect unused allocations that it can either
+///   eliminate entirely or move to the stack and thus never invoke the allocator. The optimizer may
+///   further assume that allocation is infallible, so code that used to fail due to allocator
+///   failures may now suddenly work because the optimizer worked around the need for an allocation.
+///   More concretely, the following code example is unsound, irrespective of whether your custom
+///   allocator allows counting how many allocations have happened.
 ///
 ///   ```rust,ignore (unsound and has placeholders)
 ///   drop(Box::new(42));
@@ -163,11 +160,9 @@ pub unsafe trait GlobalAlloc {
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
     ///
-    /// * `ptr` must denote a block of memory currently allocated via
-    ///   this allocator,
+    /// * `ptr` must denote a block of memory currently allocated via this allocator,
     ///
-    /// * `layout` must be the same layout that was used
-    ///   to allocate that block of memory.
+    /// * `layout` must be the same layout that was used to allocate that block of memory.
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -229,14 +224,12 @@ pub unsafe trait GlobalAlloc {
     ///
     /// * `ptr` must be currently allocated via this allocator,
     ///
-    /// * `layout` must be the same layout that was used
-    ///   to allocate that block of memory,
+    /// * `layout` must be the same layout that was used to allocate that block of memory,
     ///
     /// * `new_size` must be greater than zero.
     ///
-    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
-    ///   must not overflow isize (i.e., the rounded value must be less than or
-    ///   equal to `isize::MAX`).
+    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
+    ///   isize (i.e., the rounded value must be less than or equal to `isize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer

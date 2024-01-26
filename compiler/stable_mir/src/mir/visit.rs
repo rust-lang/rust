@@ -8,8 +8,8 @@
 //!
 //! For every mir item, the trait has a `visit_<item>` and a `super_<item>` method.
 //! - `visit_<item>`, by default, calls `super_<item>`
-//! - `super_<item>`, by default, destructures the `<item>` and calls `visit_<sub_item>` for
-//!   all sub-items that compose the original item.
+//! - `super_<item>`, by default, destructures the `<item>` and calls `visit_<sub_item>` for all
+//!   sub-items that compose the original item.
 //!
 //! In order to implement a visitor, override the `visit_*` methods for the types you are
 //! interested in analyzing, and invoke (within that method call)

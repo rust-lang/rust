@@ -51,7 +51,9 @@ use itertools::Itertools;
 ///         it: &'a clean::Item,
 ///         /* additional fields */
 ///     },
-///     methods = [ /* method names (comma separated; refer to macro definition of `item_template_methods!()`) */ ]
+///     methods = [
+///         /* method names (comma separated; refer to macro definition of `item_template_methods!()`) */
+///     ]
 /// )
 /// ```
 ///
@@ -1387,16 +1389,13 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     //
     // This way:
     //
-    // - There's no need to generate these files for types that have no aliases
-    //   in the current crate. If a dependent crate makes a type alias, it'll
-    //   take care of generating its own docs.
-    // - There's no need to reimplement parts of the type checker in
-    //   JavaScript. The Rust backend does the checking, and includes its
-    //   results in the file.
-    // - Docs defined directly on the type alias are dropped directly in the
-    //   HTML by `render_assoc_items`, and are accessible without JavaScript.
-    //   The JSONP file will not list impl items that are known to be part
-    //   of the main HTML file already.
+    // - There's no need to generate these files for types that have no aliases in the current
+    //   crate. If a dependent crate makes a type alias, it'll take care of generating its own docs.
+    // - There's no need to reimplement parts of the type checker in JavaScript. The Rust backend
+    //   does the checking, and includes its results in the file.
+    // - Docs defined directly on the type alias are dropped directly in the HTML by
+    //   `render_assoc_items`, and are accessible without JavaScript. The JSONP file will not list
+    //   impl items that are known to be part of the main HTML file already.
     //
     // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     // [^115718]: https://github.com/rust-lang/rust/issues/115718

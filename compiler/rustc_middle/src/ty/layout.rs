@@ -1128,14 +1128,13 @@ where
 ///
 /// This takes two primary parameters:
 ///
-/// * `fn_def_id` - the `DefId` of the function. If this is provided then we can
-///   determine more precisely if the function can unwind. If this is not provided
-///   then we will only infer whether the function can unwind or not based on the
-///   ABI of the function. For example, a function marked with `#[rustc_nounwind]`
-///   is known to not unwind even if it's using Rust ABI.
+/// * `fn_def_id` - the `DefId` of the function. If this is provided then we can determine more
+///   precisely if the function can unwind. If this is not provided then we will only infer whether
+///   the function can unwind or not based on the ABI of the function. For example, a function
+///   marked with `#[rustc_nounwind]` is known to not unwind even if it's using Rust ABI.
 ///
-/// * `abi` - this is the ABI that the function is defined with. This is the
-///   primary factor for determining whether a function can unwind or not.
+/// * `abi` - this is the ABI that the function is defined with. This is the primary factor for
+///   determining whether a function can unwind or not.
 ///
 /// Note that in this case unwinding is not necessarily panicking in Rust. Rust
 /// panics are implemented with unwinds on most platform (when
@@ -1157,13 +1156,12 @@ where
 /// This function's answer to whether or not a function can unwind is quite
 /// impactful throughout the compiler. This affects things like:
 ///
-/// * Calling a function which can't unwind means codegen simply ignores any
-///   associated unwinding cleanup.
-/// * Calling a function which can unwind from a function which can't unwind
-///   causes the `abort_unwinding_calls` MIR pass to insert a landing pad that
-///   aborts the process.
-/// * This affects whether functions have the LLVM `nounwind` attribute, which
-///   affects various optimizations and codegen.
+/// * Calling a function which can't unwind means codegen simply ignores any associated unwinding
+///   cleanup.
+/// * Calling a function which can unwind from a function which can't unwind causes the
+///   `abort_unwinding_calls` MIR pass to insert a landing pad that aborts the process.
+/// * This affects whether functions have the LLVM `nounwind` attribute, which affects various
+///   optimizations and codegen.
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {

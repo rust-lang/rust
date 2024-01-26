@@ -279,8 +279,8 @@ impl Command {
     //      1. Thread A of process 1 grabs the malloc() mutex
     //      2. Thread B of process 1 forks(), creating thread C
     //      3. Thread C of process 2 then attempts to malloc()
-    //      4. The memory of process 2 is the same as the memory of
-    //         process 1, so the mutex is locked.
+    //      4. The memory of process 2 is the same as the memory of process 1, so the mutex is
+    //         locked.
     //
     // This situation looks a lot like deadlock, right? It turns out
     // that this is what pthread_atfork() takes care of, which is
@@ -359,7 +359,8 @@ impl Command {
             // pthread_sigmask).
 
             // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward
+            // compatibility.
             //
             // #[unix_sigpipe] is an opportunity to change the default here.
             if !crate::sys::pal::unix_sigpipe_attr_specified() {
@@ -483,8 +484,8 @@ impl Command {
             }
         }
 
-        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have opened
-        // or closed a file descriptor while the posix_spawn() was occurring".
+        // On QNX Neutrino, posix_spawnp can fail with EBADF in case "another thread might have
+        // opened or closed a file descriptor while the posix_spawn() was occurring".
         // Documentation says "... or try calling posix_spawn() again". This is what we do here.
         // See also http://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/p/posix_spawn.html
         #[cfg(all(target_os = "nto", target_env = "nto71"))]
@@ -622,7 +623,8 @@ impl Command {
             // posix_spawnattr_setsigmask).
 
             // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
-            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward
+            // compatibility.
             //
             // #[unix_sigpipe] is an opportunity to change the default here.
             if !unix_sigpipe_attr_specified() {
@@ -823,7 +825,8 @@ impl Process {
         }
         #[cfg(target_os = "linux")]
         if let Some(pid_fd) = self.pidfd.as_ref() {
-            // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending signals will work too
+            // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending
+            // signals will work too
             return cvt(unsafe {
                 libc::syscall(
                     libc::SYS_pidfd_send_signal,

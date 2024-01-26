@@ -815,7 +815,8 @@ impl<'tcx> Cx<'tcx> {
                 self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new)
             }
 
-            // `Self` is used in expression as a tuple struct constructor or a unit struct constructor
+            // `Self` is used in expression as a tuple struct constructor or a unit struct
+            // constructor
             Res::SelfCtor(_) => self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new),
 
             _ => bug!("user_args_applied_to_res: unexpected res {:?} at {:?}", res, hir_id),
@@ -900,7 +901,8 @@ impl<'tcx> Cx<'tcx> {
                 let ty = self.typeck_results().node_type(expr.hir_id);
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
-                    // We return a completely different ExprKind here to account for this special case.
+                    // We return a completely different ExprKind here to account for this special
+                    // case.
                     ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
@@ -1024,11 +1026,12 @@ impl<'tcx> Cx<'tcx> {
             .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
-        // The result of capture analysis in `rustc_hir_analysis/check/upvar.rs`represents a captured path
-        // as it's seen for use within the closure and not at the time of closure creation.
+        // The result of capture analysis in `rustc_hir_analysis/check/upvar.rs`represents a
+        // captured path as it's seen for use within the closure and not at the time of
+        // closure creation.
         //
-        // That is we see expect to see it start from a captured upvar and not something that is local
-        // to the closure's parent.
+        // That is we see expect to see it start from a captured upvar and not something that is
+        // local to the closure's parent.
         let var_hir_id = match place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected an upvar, found {:?}", base),

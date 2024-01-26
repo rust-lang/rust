@@ -279,7 +279,8 @@ pub trait StructuralEq {
     // Empty.
 }
 
-// FIXME: Remove special cases of these types from the compiler pattern checking code and always check `T: StructuralEq` instead
+// FIXME: Remove special cases of these types from the compiler pattern checking code and always
+// check `T: StructuralEq` instead
 marker_impls! {
     #[unstable(feature = "structural_match", issue = "31434")]
     StructuralEq for
@@ -449,11 +450,10 @@ marker_impls! {
 ///
 /// * Function item types (i.e., the distinct types defined for each function)
 /// * Function pointer types (e.g., `fn() -> i32`)
-/// * Closure types, if they capture no value from the environment
-///   or if all such captured values implement `Copy` themselves.
-///   Note that variables captured by shared reference always implement `Copy`
-///   (even if the referent doesn't),
-///   while variables captured by mutable reference never implement `Copy`.
+/// * Closure types, if they capture no value from the environment or if all such captured values
+///   implement `Copy` themselves. Note that variables captured by shared reference always implement
+///   `Copy` (even if the referent doesn't), while variables captured by mutable reference never
+///   implement `Copy`.
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html

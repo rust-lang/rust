@@ -326,11 +326,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// ```
     ///
     /// 1. The `self_ty` here would refer to the type `T`.
-    /// 2. The path in question is the path to the trait `std::ops::Index`,
-    ///    which will have been resolved to a `def_id`
-    /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type
-    ///    parameters are returned in the `GenericArgsRef`, the associated type bindings like
-    ///    `Output = u32` are returned from `create_assoc_bindings_for_generic_args`.
+    /// 2. The path in question is the path to the trait `std::ops::Index`, which will have been
+    ///    resolved to a `def_id`
+    /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type parameters are
+    ///    returned in the `GenericArgsRef`, the associated type bindings like `Output = u32` are
+    ///    returned from `create_assoc_bindings_for_generic_args`.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
     ///
@@ -1210,8 +1210,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) =
                                     &qself.kind
                                 {
-                                    // If the path segment already has type params, we want to overwrite
-                                    // them.
+                                    // If the path segment already has type params, we want to
+                                    // overwrite them.
                                     match &path.segments {
                                         // `segment` is the previous to last element on the path,
                                         // which would normally be the `enum` itself, while the last
@@ -1226,14 +1226,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             },
                                             _,
                                         ] => (
-                                            // We need to include the `::` in `Type::Variant::<Args>`
+                                            // We need to include the `::` in
+                                            // `Type::Variant::<Args>`
                                             // to point the span to `::<Args>`, not just `<Args>`.
                                             ident.span.shrink_to_hi().to(args
                                                 .map_or(ident.span.shrink_to_hi(), |a| a.span_ext)),
                                             false,
                                         ),
                                         [segment] => (
-                                            // We need to include the `::` in `Type::Variant::<Args>`
+                                            // We need to include the `::` in
+                                            // `Type::Variant::<Args>`
                                             // to point the span to `::<Args>`, not just `<Args>`.
                                             segment.ident.span.shrink_to_hi().to(segment
                                                 .args
@@ -1601,9 +1603,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let (ident, def_scope) = tcx.adjust_ident_and_get_scope(name, scope, block);
 
-        // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
-        // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
-        // `ident` again and again.
+        // We have already adjusted the item name above, so compare with
+        // `.normalize_to_macros_2_0()` instead of calling `filter_by_name_and_kind` which
+        // would needlessly normalize the `ident` again and again.
         let item = tcx.associated_items(scope).in_definition_order().find(|i| {
             i.kind.namespace() == Namespace::TypeNS
                 && i.ident(tcx).normalize_to_macros_2_0() == ident
@@ -2577,8 +2579,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
         let args = ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             // We use `generics.count() - lifetimes.len()` here instead of `generics.parent_count`
-            // since return-position impl trait in trait squashes all of the generics from its source fn
-            // into its own generics, so the opaque's "own" params isn't always just lifetimes.
+            // since return-position impl trait in trait squashes all of the generics from its
+            // source fn into its own generics, so the opaque's "own" params isn't
+            // always just lifetimes.
             if let Some(i) = (param.index as usize).checked_sub(generics.count() - lifetimes.len())
             {
                 // Resolve our own lifetime parameters.

@@ -88,7 +88,8 @@ macro_rules! vec {
 ///
 /// A common use for `format!` is concatenation and interpolation of strings.
 /// The same convention is used with [`print!`] and [`write!`] macros,
-/// depending on the intended destination of the string; all these macros internally use [`format_args!`].
+/// depending on the intended destination of the string; all these macros internally use
+/// [`format_args!`].
 ///
 /// To convert a single value to a string, use the [`to_string`] method. This
 /// will use the [`Display`] formatting trait.

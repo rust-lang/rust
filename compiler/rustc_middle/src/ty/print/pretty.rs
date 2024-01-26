@@ -411,13 +411,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             // In local mode, when we encounter a crate other than
             // LOCAL_CRATE, execution proceeds in one of two ways:
             //
-            // 1. For a direct dependency, where user added an
-            //    `extern crate` manually, we put the `extern
-            //    crate` as the parent. So you wind up with
-            //    something relative to the current crate.
-            // 2. For an extern inferred from a path or an indirect crate,
-            //    where there is no explicit `extern crate`, we just prepend
-            //    the crate name.
+            // 1. For a direct dependency, where user added an `extern crate` manually, we put the
+            //    `extern crate` as the parent. So you wind up with something relative to the
+            //    current crate.
+            // 2. For an extern inferred from a path or an indirect crate, where there is no
+            //    explicit `extern crate`, we just prepend the crate name.
             match self.tcx().extern_crate(def_id) {
                 Some(&ExternCrate { src, dependency_of, span, .. }) => match (src, dependency_of) {
                     (ExternCrateSource::Extern(def_id), LOCAL_CRATE) => {
@@ -973,8 +971,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 let own_args = generics.own_args_no_defaults(tcx, trait_ref.args);
 
                 match (entry.return_ty, own_args[0].expect_ty()) {
-                    // We can only print `impl Fn() -> ()` if we have a tuple of args and we recorded
-                    // a return type.
+                    // We can only print `impl Fn() -> ()` if we have a tuple of args and we
+                    // recorded a return type.
                     (Some(return_ty), arg_tys) if matches!(arg_tys.kind(), ty::Tuple(_)) => {
                         let name = if entry.fn_trait_ref.is_some() {
                             "Fn"
@@ -1372,11 +1370,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         {
                             p!(write("{}", snip))
                         } else {
-                            // Do not call `print_value_path` as if a parent of this anon const is an impl it will
-                            // attempt to print out the impl trait ref i.e. `<T as Trait>::{constant#0}`. This would
-                            // cause printing to enter an infinite recursion if the anon const is in the self type i.e.
-                            // `impl<T: Default> Default for [T; 32 - 1 - 1 - 1] {`
-                            // where we would try to print `<[T; /* print `constant#0` again */] as Default>::{constant#0}`
+                            // Do not call `print_value_path` as if a parent of this anon const is
+                            // an impl it will attempt to print out the
+                            // impl trait ref i.e. `<T as Trait>::{constant#0}`. This would
+                            // cause printing to enter an infinite recursion if the anon const is in
+                            // the self type i.e. `impl<T: Default>
+                            // Default for [T; 32 - 1 - 1 - 1] {`
+                            // where we would try to print `<[T; /* print `constant#0` again */] as
+                            // Default>::{constant#0}`
                             p!(write(
                                 "{}::{}",
                                 self.tcx().crate_name(def.krate),
@@ -1450,7 +1451,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                         p!("<too short allocation>")
                                     }
                                 }
-                                // FIXME: for statics, vtables, and functions, we could in principle print more detail.
+                                // FIXME: for statics, vtables, and functions, we could in principle
+                                // print more detail.
                                 Some(GlobalAlloc::Static(def_id)) => {
                                     p!(write("<static({:?})>", def_id))
                                 }
@@ -1464,8 +1466,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::FnPtr(_) => {
-                // FIXME: We should probably have a helper method to share code with the "Byte strings"
-                // printing above (which also has to handle pointers to all sorts of things).
+                // FIXME: We should probably have a helper method to share code with the "Byte
+                // strings" printing above (which also has to handle pointers to all
+                // sorts of things).
                 if let Some(GlobalAlloc::Function(instance)) =
                     self.tcx().try_get_global_alloc(prov.alloc_id())
                 {
@@ -2343,7 +2346,8 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                 match kind {
                     ty::BrAnon | ty::BrEnv => r,
                     _ => {
-                        // Index doesn't matter, since this is just for naming and these never get bound
+                        // Index doesn't matter, since this is just for naming and these never get
+                        // bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
                         *self
                             .region_map

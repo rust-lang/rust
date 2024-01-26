@@ -13,7 +13,6 @@
 //!    {X}    {Y}
 //!       \  /
 //!        {}      <- bottom
-//!
 //! ```
 //!
 //! The defining characteristic of a lattice—the one that differentiates it from a [partially

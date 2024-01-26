@@ -41,8 +41,8 @@ use std::mem;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
-        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
-        // when writing to `self.param_env`.
+        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker
+        // errors when writing to `self.param_env`.
         let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
 
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
@@ -159,9 +159,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        // Conceptually, we've got some number of expected inputs, and some number of provided arguments
-        // and we can form a grid of whether each argument could satisfy a given input:
-        //      in1 | in2 | in3 | ...
+        // Conceptually, we've got some number of expected inputs, and some number of provided
+        // arguments and we can form a grid of whether each argument could satisfy a given
+        // input:      in1 | in2 | in3 | ...
         // arg1  ?  |     |     |
         // arg2     |  ?  |     |
         // arg3     |     |  ?  |
@@ -219,7 +219,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (formal_input_tys.to_vec(), expected_input_tys)
         };
 
-        // If there are no external expectations at the call site, just use the types from the function defn
+        // If there are no external expectations at the call site, just use the types from the
+        // function defn
         let expected_input_tys = if let Some(expected_input_tys) = expected_input_tys {
             assert_eq!(expected_input_tys.len(), formal_input_tys.len());
             expected_input_tys
@@ -247,9 +248,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let checked_ty = self.check_expr_with_expectation(provided_arg, expectation);
 
-            // 2. Coerce to the most detailed type that could be coerced
-            //    to, which is `expected_ty` if `rvalue_hint` returns an
-            //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+            // 2. Coerce to the most detailed type that could be coerced to, which is `expected_ty`
+            //    if `rvalue_hint` returns an `ExpectHasType(expected_ty)`, or the `formal_ty`
+            //    otherwise.
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
 
             // Cause selection errors caused by resolving a single argument to point at the
@@ -264,8 +265,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Compatibility::Incompatible(coerce_error);
             }
 
-            // 3. Check if the formal type is a supertype of the checked one
-            //    and register any such obligations for future type checks
+            // 3. Check if the formal type is a supertype of the checked one and register any such
+            //    obligations for future type checks
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
                 DefineOpaqueTypes::No,
                 formal_input_ty,
@@ -291,10 +292,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut compatibility_diagonal =
             vec![Compatibility::Incompatible(None); provided_args.len()];
 
-        // Keep track of whether we *could possibly* be satisfied, i.e. whether we're on the happy path
-        // if the wrong number of arguments were supplied, we CAN'T be satisfied,
-        // and if we're c_variadic, the supplied arguments must be >= the minimum count from the function
-        // otherwise, they need to be identical, because rust doesn't currently support variadic functions
+        // Keep track of whether we *could possibly* be satisfied, i.e. whether we're on the happy
+        // path if the wrong number of arguments were supplied, we CAN'T be satisfied,
+        // and if we're c_variadic, the supplied arguments must be >= the minimum count from the
+        // function otherwise, they need to be identical, because rust doesn't currently
+        // support variadic functions
         let mut call_appears_satisfied = if c_variadic {
             provided_arg_count >= minimum_input_count
         } else {
@@ -532,18 +534,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let callee_ty = callee_expr
             .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
-        // A "softer" version of the `demand_compatible`, which checks types without persisting them,
-        // and treats error types differently
-        // This will allow us to "probe" for other argument orders that would likely have been correct
+        // A "softer" version of the `demand_compatible`, which checks types without persisting
+        // them, and treats error types differently
+        // This will allow us to "probe" for other argument orders that would likely have been
+        // correct
         let check_compatible = |provided_idx: ProvidedIdx, expected_idx: ExpectedIdx| {
             if provided_idx.as_usize() == expected_idx.as_usize() {
                 return compatibility_diagonal[provided_idx].clone();
             }
 
             let (formal_input_ty, expected_input_ty) = formal_and_expected_inputs[expected_idx];
-            // If either is an error type, we defy the usual convention and consider them to *not* be
-            // coercible. This prevents our error message heuristic from trying to pass errors into
-            // every argument.
+            // If either is an error type, we defy the usual convention and consider them to *not*
+            // be coercible. This prevents our error message heuristic from trying to
+            // pass errors into every argument.
             if (formal_input_ty, expected_input_ty).references_error() {
                 return Compatibility::Incompatible(None);
             }
@@ -1058,8 +1061,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         missing_idxs => {
                             let first_idx = *missing_idxs.first().unwrap();
                             let last_idx = *missing_idxs.last().unwrap();
-                            // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
-                            // It's hard to *really* know where we should provide this error label, so this is a
+                            // NOTE: Because we might be re-arranging arguments, might have extra
+                            // arguments, etc. It's hard to *really*
+                            // know where we should provide this error label, so this is a
                             // decent heuristic
                             let span = if let (Some((_, first_span)), Some((_, last_span))) = (
                                 provided_arg_tys.get(first_idx.to_provided_idx()),
@@ -1448,7 +1452,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (_, Some(init)) => {
                 (Some(init), Some(init.span.find_ancestor_inside(decl.span).unwrap_or(init.span)))
             } // No explicit type; so use the scrutinee.
-            _ => (None, None), // We have `let $pat;`, so the expected type is unconstrained.
+            _ => (None, None),                      /* We have `let $pat;`, so the expected type
+                                                      * is unconstrained. */
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.

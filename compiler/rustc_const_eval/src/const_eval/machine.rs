@@ -265,8 +265,8 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
     /// may not have an address.
     ///
-    /// If `ptr` does have a known address, then we return `Continue(())` and the function call should
-    /// proceed as normal.
+    /// If `ptr` does have a known address, then we return `Continue(())` and the function call
+    /// should proceed as normal.
     ///
     /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
     /// `target_align`, then we call the function again with an dummy address relative to the
@@ -627,8 +627,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             } else if new_steps > start && new_steps.is_power_of_two() {
                 // Only report after a certain number of terminators have been evaluated and the
-                // current number of evaluated terminators is a power of 2. The latter gives us a cheap
-                // way to implement exponential backoff.
+                // current number of evaluated terminators is a power of 2. The latter gives us a
+                // cheap way to implement exponential backoff.
                 let span = ecx.cur_span();
                 ecx.tcx.dcx().emit_warn(LongRunningWarn { span, item_span: ecx.tcx.span });
             }

@@ -133,9 +133,9 @@ fn emit_universal_region_facts(
 ) {
     // 1: universal regions are modeled in Polonius as a pair:
     // - the universal region vid itself.
-    // - a "placeholder loan" associated to this universal region. Since they don't exist in
-    //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
-    //   added to the existing number of loans, as if they succeeded them in the set.
+    // - a "placeholder loan" associated to this universal region. Since they don't exist in the
+    //   `borrow_set`, their `BorrowIndex` are synthesized as the universal region index added to
+    //   the existing number of loans, as if they succeeded them in the set.
     //
     all_facts.universal_region.extend(universal_regions.universal_regions());
     let borrow_count = borrow_set.len();

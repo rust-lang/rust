@@ -231,10 +231,11 @@ impl<'tcx> Const<'tcx> {
             }
         }
 
-        // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
-        // does not provide the parents generics to anonymous constants. We still allow generic const
-        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
-        // ever try to substitute the generic parameters in their bodies.
+        // FIXME(const_generics): We currently have to special case parameters because
+        // `min_const_generics` does not provide the parents generics to anonymous
+        // constants. We still allow generic const parameters by themselves however, e.g.
+        // `N`. These constants would cause an ICE if we were to ever try to substitute the
+        // generic parameters in their bodies.
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
                 _,
@@ -245,8 +246,8 @@ impl<'tcx> Const<'tcx> {
                 let param_ty = tcx.type_of(def_id).instantiate_identity();
                 match tcx.named_bound_var(expr.hir_id) {
                     Some(rbv::ResolvedArg::EarlyBound(_)) => {
-                        // Find the name and index of the const parameter by indexing the generics of
-                        // the parent item and construct a `ParamConst`.
+                        // Find the name and index of the const parameter by indexing the generics
+                        // of the parent item and construct a `ParamConst`.
                         let item_def_id = tcx.parent(def_id);
                         let generics = tcx.generics_of(item_def_id);
                         let index = generics.param_def_id_to_index[&def_id];
@@ -384,7 +385,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given
+    /// type.
     pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u128 {
         self.try_eval_bits(tcx, param_env)
             .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", self.ty(), self))

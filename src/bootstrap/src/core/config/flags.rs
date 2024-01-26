@@ -168,7 +168,8 @@ pub struct Flags {
     /// Skip stage0 compiler validation
     #[arg(global(true), long)]
     pub skip_stage0_validation: bool,
-    /// Additional reproducible artifacts that should be added to the reproducible artifacts archive.
+    /// Additional reproducible artifacts that should be added to the reproducible artifacts
+    /// archive.
     #[arg(global(true), long)]
     pub reproducible_artifact: Vec<String>,
     #[arg(global(true))]
@@ -393,7 +394,8 @@ pub enum Subcommand {
         /// Clean the entire build directory (not used by default)
         all: bool,
         #[arg(long, value_name = "N")]
-        /// Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used.
+        /// Clean a specific stage without touching other artifacts. By default, every stage is
+        /// cleaned if this option is not used.
         stage: Option<u32>,
     },
     /// Build distribution artifacts

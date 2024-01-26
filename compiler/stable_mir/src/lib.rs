@@ -11,8 +11,8 @@
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 //!
-//! This crate shall contain all type definitions and APIs that we expect third-party tools to invoke to
-//! interact with the compiler.
+//! This crate shall contain all type definitions and APIs that we expect third-party tools to
+//! invoke to interact with the compiler.
 //!
 //! The goal is to eventually be published on
 //! [crates.io](https://crates.io).

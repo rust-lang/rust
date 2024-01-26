@@ -2028,7 +2028,8 @@ fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
     builder.install(&source, destination, 0o644);
 }
 
-/// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
+/// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic
+/// linking.
 ///
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
@@ -2043,8 +2044,8 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     //
     // This behavior may be revisited in the future though.
     //
-    // NOTE: this intentionally doesn't use `is_rust_llvm`; whether this is patched or not doesn't matter,
-    // we only care if the shared object itself is managed by bootstrap.
+    // NOTE: this intentionally doesn't use `is_rust_llvm`; whether this is patched or not doesn't
+    // matter, we only care if the shared object itself is managed by bootstrap.
     //
     // If the LLVM is coming from ourselves (just from CI) though, we
     // still want to install it, as it otherwise won't be available.

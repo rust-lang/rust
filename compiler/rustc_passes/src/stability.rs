@@ -170,8 +170,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             const_stab
         });
 
-        // If the current node is a function, has const stability attributes and if it doesn not have an intrinsic ABI,
-        // check if the function/method is const or the parent impl block is const
+        // If the current node is a function, has const stability attributes and if it doesn not
+        // have an intrinsic ABI, check if the function/method is const or the parent impl
+        // block is const
         if let (Some(const_span), Some(fn_sig)) = (const_span, fn_sig) {
             if fn_sig.header.abi != Abi::RustIntrinsic
                 && fn_sig.header.abi != Abi::PlatformIntrinsic
@@ -965,8 +966,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     /// - If it is in `remaining_lib_features` (those features with `#![feature(..)]` attributes in
     ///   the current crate), check if it is stable (or partially stable) and thus an unnecessary
     ///   attribute.
-    /// - If it is in `remaining_implications` (a feature that is referenced by an `implied_by`
-    ///   from the current crate), then remove it from the remaining implications.
+    /// - If it is in `remaining_implications` (a feature that is referenced by an `implied_by` from
+    ///   the current crate), then remove it from the remaining implications.
     ///
     /// Once this function has been invoked for every feature (local crate and all extern crates),
     /// then..

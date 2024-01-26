@@ -594,7 +594,8 @@ impl fmt::Display for SocketAddrV4 {
             const LONGEST_IPV4_SOCKET_ADDR: &str = "255.255.255.255:65536";
 
             let mut buf = DisplayBuffer::<{ LONGEST_IPV4_SOCKET_ADDR.len() }>::new();
-            // Buffer is long enough for the longest possible IPv4 socket address, so this should never fail.
+            // Buffer is long enough for the longest possible IPv4 socket address, so this should
+            // never fail.
             write!(buf, "{}:{}", self.ip(), self.port()).unwrap();
 
             f.pad(buf.as_str())
@@ -628,7 +629,8 @@ impl fmt::Display for SocketAddrV6 {
                 0 => write!(buf, "[{}]:{}", self.ip(), self.port()),
                 scope_id => write!(buf, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
             }
-            // Buffer is long enough for the longest possible IPv6 socket address, so this should never fail.
+            // Buffer is long enough for the longest possible IPv6 socket address, so this should
+            // never fail.
             .unwrap();
 
             f.pad(buf.as_str())

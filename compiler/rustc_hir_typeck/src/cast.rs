@@ -2,8 +2,8 @@
 //!
 //! A cast `e as U` is valid if one of the following holds:
 //! * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
-//! * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
-//!    pointer_kind(`T`) = pointer_kind(`U_0`); *ptr-ptr-cast*
+//! * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or pointer_kind(`T`) =
+//!   pointer_kind(`U_0`); *ptr-ptr-cast*
 //! * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
 //! * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
 //! * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
@@ -11,8 +11,7 @@
 //! * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
 //! * `e` has type `u8` and `U` is `char`; *u8-char-cast*
 //! * `e` has type `&[T; n]` and `U` is `*const T`; *array-ptr-cast*
-//! * `e` is a function pointer type and `U` has type `*T`,
-//!   while `T: Sized`; *fptr-ptr-cast*
+//! * `e` is a function pointer type and `U` has type `*T`, while `T: Sized`; *fptr-ptr-cast*
 //! * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
 //!
 //! where `&.T` and `*T` are references of either mutability,
@@ -612,12 +611,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
                     if self.expr_ty.is_unsafe_ptr() && self.cast_ty.is_unsafe_ptr() {
-                        // When casting a raw pointer to another raw pointer, we cannot convert the cast into
-                        // a coercion because the pointee types might only differ in regions, which HIR typeck
-                        // cannot distinguish. This would cause us to erroneously discard a cast which will
-                        // lead to a borrowck error like #113257.
-                        // We still did a coercion above to unify inference variables for `ptr as _` casts.
-                        // This does cause us to miss some trivial casts in the trival cast lint.
+                        // When casting a raw pointer to another raw pointer, we cannot convert the
+                        // cast into a coercion because the pointee types
+                        // might only differ in regions, which HIR typeck
+                        // cannot distinguish. This would cause us to erroneously discard a cast
+                        // which will lead to a borrowck error like #113257.
+                        // We still did a coercion above to unify inference variables for `ptr as _`
+                        // casts. This does cause us to miss some trivial
+                        // casts in the trival cast lint.
                         debug!(" -> PointerCast");
                     } else {
                         self.trivial_cast_lint(fcx);

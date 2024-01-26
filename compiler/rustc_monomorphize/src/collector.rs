@@ -33,29 +33,24 @@
 //! -----------------
 //! Let's define some terms first:
 //!
-//! - A "mono item" is something that results in a function or global in
-//!   the LLVM IR of a codegen unit. Mono items do not stand on their
-//!   own, they can use other mono items. For example, if function
-//!   `foo()` calls function `bar()` then the mono item for `foo()`
-//!   uses the mono item for function `bar()`. In general, the
-//!   definition for mono item A using a mono item B is that
-//!   the LLVM artifact produced for A uses the LLVM artifact produced
-//!   for B.
+//! - A "mono item" is something that results in a function or global in the LLVM IR of a codegen
+//!   unit. Mono items do not stand on their own, they can use other mono items. For example, if
+//!   function `foo()` calls function `bar()` then the mono item for `foo()` uses the mono item for
+//!   function `bar()`. In general, the definition for mono item A using a mono item B is that the
+//!   LLVM artifact produced for A uses the LLVM artifact produced for B.
 //!
-//! - Mono items and the uses between them form a directed graph,
-//!   where the mono items are the nodes and uses form the edges.
-//!   Let's call this graph the "mono item graph".
+//! - Mono items and the uses between them form a directed graph, where the mono items are the nodes
+//!   and uses form the edges. Let's call this graph the "mono item graph".
 //!
-//! - The mono item graph for a program contains all mono items
-//!   that are needed in order to produce the complete LLVM IR of the program.
+//! - The mono item graph for a program contains all mono items that are needed in order to produce
+//!   the complete LLVM IR of the program.
 //!
 //! The purpose of the algorithm implemented in this module is to build the
 //! mono item graph for the current crate. It runs in two phases:
 //!
 //! 1. Discover the roots of the graph by traversing the HIR of the crate.
-//! 2. Starting from the roots, find uses by inspecting the MIR
-//!    representation of the item corresponding to a given node, until no more
-//!    new nodes are found.
+//! 2. Starting from the roots, find uses by inspecting the MIR representation of the item
+//!    corresponding to a given node, until no more new nodes are found.
 //!
 //! ### Discovering roots
 //! The roots of the mono item graph correspond to the public non-generic
@@ -141,15 +136,13 @@
 //! ------------------------------
 //! Mono item collection can be performed in one of two modes:
 //!
-//! - Lazy mode means that items will only be instantiated when actually
-//!   used. The goal is to produce the least amount of machine code
-//!   possible.
+//! - Lazy mode means that items will only be instantiated when actually used. The goal is to
+//!   produce the least amount of machine code possible.
 //!
-//! - Eager mode is meant to be used in conjunction with incremental compilation
-//!   where a stable set of mono items is more important than a minimal
-//!   one. Thus, eager mode will instantiate drop-glue for every drop-able type
-//!   in the crate, even if no drop call for that type exists (yet). It will
-//!   also instantiate default implementations of trait methods, something that
+//! - Eager mode is meant to be used in conjunction with incremental compilation where a stable set
+//!   of mono items is more important than a minimal one. Thus, eager mode will instantiate
+//!   drop-glue for every drop-able type in the crate, even if no drop call for that type exists
+//!   (yet). It will also instantiate default implementations of trait methods, something that
 //!   otherwise is only done on demand.
 //!
 //!
@@ -711,7 +704,8 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             // we monomorphized in the current crate. We can't get a `HirId` for things
             // in other crates.
             // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-            // but correct span? This would make the lint at least accept crate-level lint attributes.
+            // but correct span? This would make the lint at least accept crate-level lint
+            // attributes.
             return;
         };
         self.tcx.emit_spanned_lint(

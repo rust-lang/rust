@@ -443,7 +443,8 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// The attributes are complete if all attributes are either a doc comment or a builtin attribute other than `cfg_attr`
+/// The attributes are complete if all attributes are either a doc comment or a builtin attribute
+/// other than `cfg_attr`
 pub fn is_complete(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().all(|attr| {
         attr.is_doc_comment()

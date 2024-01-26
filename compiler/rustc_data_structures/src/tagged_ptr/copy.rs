@@ -159,11 +159,11 @@ where
     /// (e.g., `Rc::clone` vs cloning the inner value).
     pub(super) fn with_pointer_ref<R>(&self, f: impl FnOnce(&P) -> R) -> R {
         // Safety:
-        // - `self.raw.pointer_raw()` is originally returned from `P::into_ptr`
-        //   and as such is valid for `P::from_ptr`.
+        // - `self.raw.pointer_raw()` is originally returned from `P::into_ptr` and as such is valid
+        //   for `P::from_ptr`.
         //   - This also allows us to not care whatever `f` panics or not.
-        // - Even though we create a copy of the pointer, we store it inside
-        //   `ManuallyDrop` and only access it by-ref, so we don't double-drop.
+        // - Even though we create a copy of the pointer, we store it inside `ManuallyDrop` and only
+        //   access it by-ref, so we don't double-drop.
         //
         // Semantically this is just `f(&self.pointer)` (where `self.pointer`
         // is non-packed original pointer).

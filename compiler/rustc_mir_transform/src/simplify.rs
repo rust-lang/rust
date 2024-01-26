@@ -393,7 +393,8 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // fixedpoint where there are no more unused locals.
     remove_unused_definitions_helper(&mut used_locals, body);
 
-    // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
+    // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the
+    // `Local`s.
     let map = make_local_map(&mut body.local_decls, &used_locals);
 
     // Only bother running the `LocalUpdater` if we actually found locals to remove.

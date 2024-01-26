@@ -383,7 +383,8 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_ref(&mut self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
         match kind {
             // Reject these borrow types just to be safe.
-            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
+            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a
+            // usecase.
             BorrowKind::Fake | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
                 return Err(Unpromotable);
             }
@@ -464,7 +465,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs_ty.kind() {
-                    // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
+                    // Raw and fn pointer operations are not allowed inside consts and thus not
+                    // promotable.
                     assert!(matches!(
                         op,
                         BinOp::Eq

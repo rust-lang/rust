@@ -82,7 +82,8 @@ pub trait Interner: Sized {
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 
-    // FIXME: We should not have all these constructors on `Interner`, but as functions on some trait.
+    // FIXME: We should not have all these constructors on `Interner`, but as functions on some
+    // trait.
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;

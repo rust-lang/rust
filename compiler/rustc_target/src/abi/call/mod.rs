@@ -243,9 +243,8 @@ pub struct Uniform {
     /// The total size of the argument, which can be:
     /// * equal to `unit.size` (one scalar/vector),
     /// * a multiple of `unit.size` (an array of scalar/vectors),
-    /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e., `{ i64, i64, i32 }` for
-    ///   64-bit integers with a total size of 20 bytes.
+    /// * if `unit.kind` is `Integer`, the last element can be shorter, i.e., `{ i64, i64, i32 }`
+    ///   for 64-bit integers with a total size of 20 bytes.
     pub total: Size,
 }
 
@@ -457,12 +456,14 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                             let field = layout.field(cx, i);
                             if field.is_1zst() {
                                 // No data here and no impact on layout, can be ignored.
-                                // (We might be able to also ignore all aligned ZST but that's less clear.)
+                                // (We might be able to also ignore all aligned ZST but that's less
+                                // clear.)
                                 continue;
                             }
 
                             if !is_union && total != layout.fields.offset(i) {
-                                // This field isn't just after the previous one we considered, abort.
+                                // This field isn't just after the previous one we considered,
+                                // abort.
                                 return Err(Heterogeneous);
                             }
 
@@ -545,7 +546,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
-    /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
+    /// This defines the "default ABI" for that type, that is then later adjusted in
+    /// `fn_abi_adjust_for_abi`.
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
@@ -591,7 +593,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Indirect { .. } => {
                 self.mode = PassMode::Direct(ArgAttributes::new());
             }
-            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => return, // already direct
+            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => return, /* already direct */
             _ => panic!("Tried to make {:?} direct", self.mode),
         }
     }
@@ -671,8 +673,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
     /// function call ABIs".
     pub fn eq_abi(&self, other: &Self) -> bool {
-        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-        // at the type.
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will
+        // look at the type.
         self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }

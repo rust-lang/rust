@@ -940,8 +940,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     .map(|c| c.result)
                     .collect::<Vec<_>>();
                 if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
-                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
+                    // We strongly prefer alias and param-env bounds here, even if they affect
+                    // inference. See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
                     return Ok(result);
                 }
             }

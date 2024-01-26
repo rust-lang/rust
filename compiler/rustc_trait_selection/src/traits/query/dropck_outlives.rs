@@ -18,7 +18,6 @@ use rustc_span::{Span, DUMMY_SP};
 ///
 /// Note also that `needs_drop` requires a "global" type (i.e., one
 /// with erased regions), but this function does not.
-///
 // FIXME(@lcnr): remove this module and move this function somewhere else.
 pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {

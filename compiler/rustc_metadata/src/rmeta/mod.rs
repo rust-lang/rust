@@ -219,8 +219,8 @@ pub(crate) struct CrateHeader {
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
     ///
-    /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
-    /// time ProcMacroData changes.
+    /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`]
+    /// every time ProcMacroData changes.
     pub(crate) is_proc_macro_crate: bool,
 }
 
@@ -489,8 +489,8 @@ bitflags::bitflags! {
 ///
 /// [ a a a a a c d d ]
 ///
-/// `a` bits represent the span length. We have 5 bits, so we can store lengths up to 30 inline, with
-/// an all-1s pattern representing that the length is stored separately.
+/// `a` bits represent the span length. We have 5 bits, so we can store lengths up to 30 inline,
+/// with an all-1s pattern representing that the length is stored separately.
 ///
 /// `c` represents whether the span context is zero (and then it is not stored as a separate varint)
 /// for direct span encodings, and whether the offset is absolute or relative otherwise (zero for

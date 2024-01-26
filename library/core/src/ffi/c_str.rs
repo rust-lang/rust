@@ -151,7 +151,6 @@ impl Error for FromBytesWithNulError {
 /// within the slice.
 ///
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
-///
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub struct FromBytesUntilNulError(());
@@ -202,17 +201,18 @@ impl CStr {
     ///
     /// # Safety
     ///
-    /// * The memory pointed to by `ptr` must contain a valid nul terminator at the
-    ///   end of the string.
+    /// * The memory pointed to by `ptr` must contain a valid nul terminator at the end of the
+    ///   string.
     ///
-    /// * `ptr` must be [valid] for reads of bytes up to and including the nul terminator.
-    ///   This means in particular:
+    /// * `ptr` must be [valid] for reads of bytes up to and including the nul terminator. This
+    ///   means in particular:
     ///
-    ///     * The entire memory range of this `CStr` must be contained within a single allocated object!
+    ///     * The entire memory range of this `CStr` must be contained within a single allocated
+    ///       object!
     ///     * `ptr` must be non-null even for a zero-length cstr.
     ///
-    /// * The memory referenced by the returned `CStr` must not be mutated for
-    ///   the duration of lifetime `'a`.
+    /// * The memory referenced by the returned `CStr` must not be mutated for the duration of
+    ///   lifetime `'a`.
     ///
     /// * The nul terminator must be within `isize::MAX` from `ptr`
     ///
@@ -222,10 +222,10 @@ impl CStr {
     ///
     /// # Caveat
     ///
-    /// The lifetime for the returned slice is inferred from its usage. To prevent accidental misuse,
-    /// it's suggested to tie the lifetime to whichever source lifetime is safe in the context,
-    /// such as by providing a helper function taking the lifetime of a host value for the slice,
-    /// or by explicit annotation.
+    /// The lifetime for the returned slice is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for
+    /// the slice, or by explicit annotation.
     ///
     /// # Examples
     ///
@@ -301,7 +301,6 @@ impl CStr {
     /// let c_str = CStr::from_bytes_until_nul(&buffer[..]).unwrap();
     /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
     /// ```
-    ///
     #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {

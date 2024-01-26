@@ -1454,7 +1454,8 @@ pub enum ExprKind {
     /// An indexing operation (e.g., `foo[2]`).
     /// The span represents the span of the `[2]`, including brackets.
     Index(P<Expr>, P<Expr>, Span),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assignment).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring
+    /// assignment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
     /// An underscore, used in destructuring assignment to ignore a value.
     Underscore,

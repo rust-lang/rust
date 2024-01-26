@@ -120,8 +120,8 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val))
         }
 
-        // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
-        // agree with runtime equality tests.
+        // Technically we could allow function pointers (represented as `ty::Instance`), but this is
+        // not guaranteed to agree with runtime equality tests.
         ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Ref(_, _, _)  => {
@@ -177,8 +177,8 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
     }
 }
 
-/// Valtrees don't store the `MemPlaceMeta` that all dynamically sized values have in the interpreter.
-/// This function reconstructs it.
+/// Valtrees don't store the `MemPlaceMeta` that all dynamically sized values have in the
+/// interpreter. This function reconstructs it.
 fn reconstruct_place_meta<'tcx>(
     layout: TyAndLayout<'tcx>,
     valtree: ty::ValTree<'tcx>,

@@ -216,11 +216,13 @@ impl<T> FromDyn<T> {
     }
 }
 
-// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
+// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is
+// true.
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSend> Send for FromDyn<T> {}
 
-// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
+// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is
+// true.
 #[cfg(parallel_compiler)]
 unsafe impl<T: DynSync> Sync for FromDyn<T> {}
 

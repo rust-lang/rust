@@ -104,7 +104,8 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// some global state.
 /// The `Debug` rendering is used to display bare provenance, and for the default impl of `fmt`.
 pub trait Provenance: Copy + fmt::Debug + 'static {
-    /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
+    /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical
+    /// address.
     /// - If `false`, the offset *must* be relative. This means the bytes representing a pointer are
     ///   different from what the Abstract Machine prescribes, so the interpreter must prevent any
     ///   operation that would inspect the underlying bytes of a pointer, such as ptr-to-int
@@ -119,10 +120,12 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
     /// identify the allocation this ptr points to (i.e., this must return `Some`).
     /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
-    /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
+    /// (Identifying the offset in that allocation, however, is harder -- use
+    /// `Memory::ptr_get_alloc` for that.)
     fn get_alloc_id(self) -> Option<AllocId>;
 
-    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
+    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes
+    /// have different provenance.
     fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
 }
 
@@ -234,7 +237,8 @@ impl Provenance for AllocId {
 #[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub struct Pointer<Prov = CtfeProvenance> {
-    pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)
+    pub(super) offset: Size, /* kept private to avoid accidental misinterpretation (meaning
+                              * depends on `Prov` type) */
     pub provenance: Prov,
 }
 
@@ -329,9 +333,10 @@ impl<'tcx, Prov> Pointer<Prov> {
         Pointer { provenance, offset }
     }
 
-    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the type `Prov`!
-    /// This function must only be used in the implementation of `Machine::ptr_get_alloc`,
-    /// and when a `Pointer` is taken apart to be stored efficiently in an `Allocation`.
+    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the
+    /// type `Prov`! This function must only be used in the implementation of
+    /// `Machine::ptr_get_alloc`, and when a `Pointer` is taken apart to be stored efficiently
+    /// in an `Allocation`.
     #[inline(always)]
     pub fn into_parts(self) -> (Prov, Size) {
         (self.provenance, self.offset)

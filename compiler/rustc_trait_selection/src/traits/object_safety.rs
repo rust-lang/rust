@@ -402,8 +402,9 @@ pub fn object_safety_violations_for_assoc_item(
             {
                 vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]
             } else {
-                // We will permit associated types if they are explicitly mentioned in the trait object.
-                // We can't check this here, as here we only check if it is guaranteed to not be possible.
+                // We will permit associated types if they are explicitly mentioned in the trait
+                // object. We can't check this here, as here we only check if it is
+                // guaranteed to not be possible.
                 Vec::new()
             }
         }

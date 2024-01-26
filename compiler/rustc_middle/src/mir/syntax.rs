@@ -54,42 +54,46 @@ pub enum MirPhase {
     Built,
     /// The MIR used for most analysis.
     ///
-    /// The only semantic change between analysis and built MIR is constant promotion. In built MIR,
-    /// sequences of statements that would generally be subject to constant promotion are
+    /// The only semantic change between analysis and built MIR is constant promotion. In built
+    /// MIR, sequences of statements that would generally be subject to constant promotion are
     /// semantically constants, while in analysis MIR all constants are explicit.
     ///
-    /// The result of const promotion is available from the `mir_promoted` and `promoted_mir` queries.
+    /// The result of const promotion is available from the `mir_promoted` and `promoted_mir`
+    /// queries.
     ///
     /// This is the version of MIR used by borrowck and friends.
     Analysis(AnalysisPhase),
     /// The MIR used for CTFE, optimizations, and codegen.
     ///
-    /// The semantic changes that occur in the lowering from analysis to runtime MIR are as follows:
+    /// The semantic changes that occur in the lowering from analysis to runtime MIR are as
+    /// follows:
     ///
-    ///  - Drops: In analysis MIR, `Drop` terminators represent *conditional* drops; roughly speaking,
-    ///    if dataflow analysis determines that the place being dropped is uninitialized, the drop will
-    ///    not be executed. The exact semantics of this aren't written down anywhere, which means they
-    ///    are essentially "what drop elaboration does." In runtime MIR, the drops are unconditional;
-    ///    when a `Drop` terminator is reached, if the type has drop glue that drop glue is always
-    ///    executed. This may be UB if the underlying place is not initialized.
-    ///  - Packed drops: Places might in general be misaligned - in most cases this is UB, the exception
-    ///    is fields of packed structs. In analysis MIR, `Drop(P)` for a `P` that might be misaligned
-    ///    for this reason implicitly moves `P` to a temporary before dropping. Runtime MIR has no such
-    ///    rules, and dropping a misaligned place is simply UB.
-    ///  - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In runtime
-    ///    MIR, this is UB.
-    ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same way
-    ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
-    ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
-    ///    can still occur at `Rvalue::{Ref,AddrOf}`).
-    ///  - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code has
-    ///    access to. This occurs in coroutine bodies. Such locals do not behave like other locals,
-    ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
-    ///    all coroutine bodies are lowered and so all places that look like locals really are locals.
+    ///  - Drops: In analysis MIR, `Drop` terminators represent *conditional* drops; roughly
+    ///    speaking, if dataflow analysis determines that the place being dropped is uninitialized,
+    ///    the drop will not be executed. The exact semantics of this aren't written down anywhere,
+    ///    which means they are essentially "what drop elaboration does." In runtime MIR, the drops
+    ///    are unconditional; when a `Drop` terminator is reached, if the type has drop glue that
+    ///    drop glue is always executed. This may be UB if the underlying place is not initialized.
+    ///  - Packed drops: Places might in general be misaligned - in most cases this is UB, the
+    ///    exception is fields of packed structs. In analysis MIR, `Drop(P)` for a `P` that might
+    ///    be misaligned for this reason implicitly moves `P` to a temporary before dropping.
+    ///    Runtime MIR has no such rules, and dropping a misaligned place is simply UB.
+    ///  - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In
+    ///    runtime MIR, this is UB.
+    ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same
+    ///    way that Rust itself has them. Where exactly these are is generally subject to change,
+    ///    and so we don't document this here. Runtime MIR has most retags explicit (though
+    ///    implicit retags can still occur at `Rvalue::{Ref,AddrOf}`).
+    ///  - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user
+    ///    code has access to. This occurs in coroutine bodies. Such locals do not behave like
+    ///    other locals, because they eg may be aliased in surprising ways. Runtime MIR has no such
+    ///    special locals - all coroutine bodies are lowered and so all places that look like
+    ///    locals really are locals.
     ///
-    /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
-    /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
-    /// transformations which may suppress such errors should not run on analysis MIR.
+    /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a
+    /// part of analysis to runtime MIR lowering. To ensure lints are reported reliably, this
+    /// means that transformations which may suppress such errors should not run on analysis
+    /// MIR.
     Runtime(RuntimePhase),
 }
 
@@ -258,20 +262,20 @@ pub enum StatementKind<'tcx> {
     ///
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
-    /// committing to whatever part of the memory model we would need to decide on to make the above
-    /// paragraph precise. Do we want to?
+    /// committing to whatever part of the memory model we would need to decide on to make the
+    /// above paragraph precise. Do we want to?
     ///
     /// Assignments in which the types of the place and rvalue differ are not well-formed.
     ///
-    /// **Needs clarification**: Do we ever want to worry about non-free (in the body) lifetimes for
-    /// the typing requirement in post drop-elaboration MIR? I think probably not - I'm not sure we
-    /// could meaningfully require this anyway. How about free lifetimes? Is ignoring this
-    /// interesting for optimizations? Do we want to allow such optimizations?
+    /// **Needs clarification**: Do we ever want to worry about non-free (in the body) lifetimes
+    /// for the typing requirement in post drop-elaboration MIR? I think probably not - I'm not
+    /// sure we could meaningfully require this anyway. How about free lifetimes? Is ignoring
+    /// this interesting for optimizations? Do we want to allow such optimizations?
     ///
     /// **Needs clarification**: We currently require that the LHS place not overlap with any place
     /// read as part of computation of the RHS for some rvalues (generally those not producing
-    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
-    /// it is also unclear in what order the components are evaluated.
+    /// primitives). This requirement is under discussion in [#68364]. As a part of this
+    /// discussion, it is also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///
@@ -335,9 +339,9 @@ pub enum StatementKind<'tcx> {
     /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
-    /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
-    /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
-    /// `PlaceMention(PLACE)`.
+    /// This statement exists to preserve a trace of a scrutinee matched against a wildcard
+    /// binding. This is especially useful for `let _ = PLACE;` bindings that desugar to a
+    /// single `PlaceMention(PLACE)`.
     ///
     /// When executed at runtime, this computes the given place, but then discards
     /// it without doing a load. It is UB if the place is not pointing to live memory.
@@ -431,11 +435,11 @@ pub enum NonDivergingIntrinsic<'tcx> {
 
     /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///
-    /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
-    /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
-    /// `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning with the first byte of
-    /// the `src` place are copied to the contiguous range of bytes beginning with the first byte
-    /// of `dest`.
+    /// First, all three operands are evaluated. `src` and `dest` must each be a reference,
+    /// pointer, or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`.
+    /// Then, `src` and `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning
+    /// with the first byte of the `src` place are copied to the contiguous range of bytes
+    /// beginning with the first byte of `dest`.
     ///
     /// **Needs clarification**: In what order are operands computed and dereferenced? It should
     /// probably match the order for assignment, but that is also undecided.
@@ -569,7 +573,8 @@ impl CallSource {
 ///
 /// The basic block pointed to by a `Cleanup` unwind action must have its `cleanup` flag set.
 /// `cleanup` basic blocks have a couple restrictions:
-///  1. All `unwind` fields in them must be `UnwindAction::Terminate` or `UnwindAction::Unreachable`.
+///  1. All `unwind` fields in them must be `UnwindAction::Terminate` or
+///     `UnwindAction::Unreachable`.
 ///  2. `Return` terminators are not allowed in them. `Terminate` and `Resume` terminators are.
 ///  3. All other basic blocks (in the current body) that are reachable from `cleanup` basic blocks
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
@@ -648,8 +653,10 @@ pub enum TerminatorKind<'tcx> {
     /// **Needs clarification**: End of that sentence. This in effect should document the exact
     /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
     ///
-    /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
-    /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
+    /// > The drop glue is executed if, among all statements executed within this `Body`, an
+    /// > assignment to
+    /// > the place or one of its "parents" occurred more recently than a move out of it. This does
+    /// > not
     /// > consider indirect assignments.
     ///
     /// The `replace` flag indicates whether this terminator was created as part of an assignment.
@@ -692,10 +699,11 @@ pub enum TerminatorKind<'tcx> {
 
     /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
     /// initiates a panic. Initiating a panic corresponds to a `Call` terminator with some
-    /// unspecified constant as the function to call, all the operands stored in the `AssertMessage`
-    /// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
-    /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
-    /// assertion does not fail, execution continues at the specified basic block.
+    /// unspecified constant as the function to call, all the operands stored in the
+    /// `AssertMessage` as parameters, and `None` for the destination. Keep in mind that the
+    /// `cleanup` path is not necessarily executed even in the case of a panic, for example in
+    /// `-C panic=abort`. If the assertion does not fail, execution continues at the specified
+    /// basic block.
     ///
     /// When overflow checking is disabled and this is run-time MIR (as opposed to compile-time MIR
     /// that is used for CTFE), the following variants of this terminator behave as `goto target`:
@@ -712,11 +720,12 @@ pub enum TerminatorKind<'tcx> {
     /// Marks a suspend point.
     ///
     /// Like `Return` terminators in coroutine bodies, this computes `value` and then a
-    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
-    /// the return place of the function calling this one, and execution continues in the calling
-    /// function. When next invoked with the same first argument, execution of this function
-    /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
-    /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
+    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned
+    /// to the return place of the function calling this one, and execution continues in the
+    /// calling function. When next invoked with the same first argument, execution of this
+    /// function continues at the `resume` basic block, with the second argument written to the
+    /// `resume_arg` place. If the coroutine is dropped before then, the `drop` basic block is
+    /// invoked.
     ///
     /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
@@ -734,8 +743,8 @@ pub enum TerminatorKind<'tcx> {
 
     /// Indicates the end of dropping a coroutine.
     ///
-    /// Semantically just a `return` (from the coroutines drop glue). Only permitted in the same situations
-    /// as `yield`.
+    /// Semantically just a `return` (from the coroutines drop glue). Only permitted in the same
+    /// situations as `yield`.
     ///
     /// **Needs clarification**: Is that even correct? The coroutine drop code is always confusing
     /// to me, because it's not even really in the current body.
@@ -759,8 +768,8 @@ pub enum TerminatorKind<'tcx> {
     },
 
     /// A terminator for blocks that only take one path in reality, but where we reserve the right
-    /// to unwind in borrowck, even if it won't happen in practice. This can arise in infinite loops
-    /// with no function calls for example.
+    /// to unwind in borrowck, even if it won't happen in practice. This can arise in infinite
+    /// loops with no function calls for example.
     ///
     /// At runtime this is semantically just a goto.
     ///
@@ -981,10 +990,9 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    length of the subslice.
 ///  - [`Index`](ProjectionElem::Index): Like `ConstantIndex`, only legal on `[T; N]` or `[T]`.
 ///    However, `Index` additionally takes a local from which the value of the index is computed at
-///    runtime. Computing the value of the index involves interpreting the `Local` as a
-///    `Place { local, projection: [] }`, and then computing its value as if done via
-///    [`Operand::Copy`]. The array/slice is then indexed with the resulting value. The local must
-///    have type `usize`.
+///    runtime. Computing the value of the index involves interpreting the `Local` as a `Place {
+///    local, projection: [] }`, and then computing its value as if done via [`Operand::Copy`]. The
+///    array/slice is then indexed with the resulting value. The local must have type `usize`.
 ///  - [`Deref`](ProjectionElem::Deref): Derefs are the last type of projection, and the most
 ///    complicated. They are only legal on parent places that are references, pointers, or `Box`. A
 ///    `Deref` projection begins by loading a value from the parent place, as if by
@@ -1083,8 +1091,8 @@ pub enum ProjectionElem<V, T> {
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
     ///
-    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
-    /// some type metadata of the interpreter or codegen backend.
+    /// This projection doesn't impact the runtime behavior of the program except for potentially
+    /// changing some type metadata of the interpreter or codegen backend.
     ///
     /// This goal is achieved with mir_transform pass `Subtyper`, which runs right after
     /// borrowchecker, as we only care about subtyping that can affect trait selection and
@@ -1195,8 +1203,8 @@ pub enum Rvalue<'tcx> {
 
     /// Creates a pointer/reference to the given thread local.
     ///
-    /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern a
-    /// `*const T`, and if neither of those apply a `&T`.
+    /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern
+    /// a `*const T`, and if neither of those apply a `&T`.
     ///
     /// **Note:** This is a runtime operation that actually executes code and is in this sense more
     /// like a function call. Also, eliminating dead stores of this rvalue causes `fn main() {}` to
@@ -1280,8 +1288,8 @@ pub enum Rvalue<'tcx> {
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
     ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
+    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`.
+    /// After coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
@@ -1293,12 +1301,12 @@ pub enum Rvalue<'tcx> {
 
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
-    /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
-    /// that the only use of the returned value is a deref operation, immediately
-    /// followed by one or more projections. Drop elaboration treats this rvalue as if the
-    /// read never happened and just projects further. This allows simplifying various MIR
-    /// optimizations and codegen backends that previously had to handle deref operations anywhere
-    /// in a place.
+    /// is guaranteed (via nature of the mir_opt `Derefer` in
+    /// rustc_mir_transform/src/deref_separator) that the only use of the returned value is a
+    /// deref operation, immediately followed by one or more projections. Drop elaboration
+    /// treats this rvalue as if the read never happened and just projects further. This allows
+    /// simplifying various MIR optimizations and codegen backends that previously had to
+    /// handle deref operations anywhere in a place.
     CopyForDeref(Place<'tcx>),
 }
 

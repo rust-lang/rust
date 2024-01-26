@@ -154,10 +154,11 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     ) {
         let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column)?;
         if !witnesses.is_empty() {
-            // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
-            // is not exhaustive enough.
+            // Report that a match of a `non_exhaustive` enum marked with
+            // `non_exhaustive_omitted_patterns` is not exhaustive enough.
             //
-            // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
+            // NB: The partner lint for structs lives in
+            // `compiler/rustc_hir_analysis/src/check/pat.rs`.
             rcx.tcx.emit_spanned_lint(
                 NON_EXHAUSTIVE_OMITTED_PATTERNS,
                 rcx.match_lint_level,

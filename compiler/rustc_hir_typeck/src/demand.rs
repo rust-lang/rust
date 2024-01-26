@@ -983,7 +983,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         methods
     }
 
-    /// This function checks whether the method is not static and does not accept other parameters than `self`.
+    /// This function checks whether the method is not static and does not accept other parameters
+    /// than `self`.
     fn has_only_self_parameter(&self, method: &AssocItem) -> bool {
         match method.kind {
             ty::AssocKind::Fn => {
@@ -995,7 +996,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
+    /// If the given `HirId` corresponds to a block with a trailing expression, return that
+    /// expression
     pub(crate) fn maybe_get_block_expr(
         &self,
         expr: &hir::Expr<'tcx>,

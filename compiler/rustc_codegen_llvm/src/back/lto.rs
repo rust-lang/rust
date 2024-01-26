@@ -157,15 +157,15 @@ fn get_bitcode_slice_from_object_data<'a>(
     obj: &'a [u8],
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<&'a [u8], LtoBitcodeFromRlib> {
-    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR that
-    // won't work. Fortunately, if that's what we have we can just return the object directly, so we sniff
-    // the relevant magic strings here and return.
+    // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR
+    // that won't work. Fortunately, if that's what we have we can just return the object
+    // directly, so we sniff the relevant magic strings here and return.
     if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
         return Ok(obj);
     }
-    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment name"
-    // which in the public API for sections gets treated as part of the section name, but internally
-    // in MachOObjectFile.cpp gets treated separately.
+    // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
+    // name" which in the public API for sections gets treated as part of the section name, but
+    // internally in MachOObjectFile.cpp gets treated separately.
     let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
     let mut len = 0;
     let data = unsafe {
@@ -247,10 +247,10 @@ fn fat_lto(
 
     // Sort out all our lists of incoming modules into two lists.
     //
-    // * `serialized_modules` (also and argument to this function) contains all
-    //   modules that are serialized in-memory.
-    // * `in_memory` contains modules which are already parsed and in-memory,
-    //   such as from multi-CGU builds.
+    // * `serialized_modules` (also and argument to this function) contains all modules that are
+    //   serialized in-memory.
+    // * `in_memory` contains modules which are already parsed and in-memory, such as from multi-CGU
+    //   builds.
     //
     // All of `cached_modules` (cached from previous incremental builds) can
     // immediately go onto the `serialized_modules` modules list and then we can
@@ -409,15 +409,14 @@ impl Drop for Linker<'_> {
 ///
 /// At a high level Thin LTO looks like:
 ///
-///    1. Prepare a "summary" of each LLVM module in question which describes
-///       the values inside, cost of the values, etc.
+///    1. Prepare a "summary" of each LLVM module in question which describes the values inside,
+///       cost of the values, etc.
 ///    2. Merge the summaries of all modules in question into one "index"
 ///    3. Perform some global analysis on this index
-///    4. For each module, use the index and analysis calculated previously to
-///       perform local transformations on the module, for example inlining
-///       small functions from other modules.
-///    5. Run thin-specific optimization passes over each module, and then code
-///       generate everything at the end.
+///    4. For each module, use the index and analysis calculated previously to perform local
+///       transformations on the module, for example inlining small functions from other modules.
+///    5. Run thin-specific optimization passes over each module, and then code generate everything
+///       at the end.
 ///
 /// The summary for each module is intended to be quite cheap, and the global
 /// index is relatively quite cheap to create as well. As a result, the goal of

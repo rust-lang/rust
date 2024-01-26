@@ -84,10 +84,9 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                 } else {
                     // Example cases:
                     // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
-                    // - `#[foo = include_str!("nonexistent-file.rs")]`:
-                    //   results in `ast::ExprKind::Err`. In that case we delay
-                    //   the error because an earlier error will have already
-                    //   been reported.
+                    // - `#[foo = include_str!("nonexistent-file.rs")]`: results in
+                    //   `ast::ExprKind::Err`. In that case we delay the error because an earlier
+                    //   error will have already been reported.
                     let msg = format!("attribute value must be a literal");
                     let mut err = sess.dcx.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {

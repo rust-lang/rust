@@ -203,9 +203,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// and *under* approximated:
     ///
     /// * Over-approximated because we erase regions, so
-    /// * Under-approximated because we look for syntactic equality and so for complex types
-    ///   like `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out
-    ///   all the subtleties.
+    /// * Under-approximated because we look for syntactic equality and so for complex types like
+    ///   `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out all the
+    ///   subtleties.
     ///
     /// In some cases, such as when `erased_ty` represents a `ty::Param`, however,
     /// the result is precise.

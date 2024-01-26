@@ -639,9 +639,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if assoc_items.is_empty() {
                     // Check if item_name belongs to `impl SomeTrait for SomeItem`
                     // FIXME(#74563): This gives precedence to `impl SomeItem`:
-                    // Although having both would be ambiguous, use impl version for compatibility's sake.
-                    // To handle that properly resolve() would have to support
-                    // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+                    // Although having both would be ambiguous, use impl version for compatibility's
+                    // sake. To handle that properly resolve() would have to
+                    // support something like [`ambi_fn`](<SomeStruct as
+                    // SomeTrait>::ambi_fn)
                     assoc_items = resolve_associated_trait_item(
                         tcx.type_of(did).instantiate_identity(),
                         module_id,
@@ -664,9 +665,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     return Vec::new();
                 }
                 debug!("looking for fields named {item_name} for {did:?}");
-                // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
-                // NOTE: it's different from variant_field because it only resolves struct fields,
-                // not variant fields (2 path segments, not 3).
+                // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is
+                // better?) NOTE: it's different from variant_field because it only
+                // resolves struct fields, not variant fields (2 path segments, not
+                // 3).
                 //
                 // We need to handle struct (and union) fields in this code because
                 // syntactically their paths are identical to associated item paths:
@@ -776,8 +778,8 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
 /// Given a type, return all trait impls in scope in `module` for that type.
 /// Returns a set of pairs of `(impl_id, trait_id)`.
 ///
-/// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
-/// So it is not stable to serialize cross-crate.
+/// NOTE: this cannot be a query because more traits could be available when more crates are
+/// compiled! So it is not stable to serialize cross-crate.
 #[instrument(level = "debug", skip(cx))]
 fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
@@ -880,7 +882,8 @@ pub(crate) struct PreprocessedMarkdownLink(
 /// - `Some(Err)` if the link should emit an error
 /// - `Some(Ok)` if the link is valid
 ///
-/// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
+/// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents
+/// ignored.
 fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
@@ -990,8 +993,9 @@ impl LinkCollector<'_, '_> {
                 continue;
             }
             debug!("combined_docs={doc}");
-            // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
-            // This is a degenerate case and it's not supported by rustdoc.
+            // NOTE: if there are links that start in one crate and end in another, this will not
+            // resolve them. This is a degenerate case and it's not supported by
+            // rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
             let module_id = match self.cx.tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
@@ -1251,8 +1255,9 @@ impl LinkCollector<'_, '_> {
 
         let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), recoverable);
 
-        // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
-        // However I'm not sure how to check that across crates.
+        // FIXME: it would be nice to check that the feature gate was enabled in the original crate,
+        // not just ignore it altogether. However I'm not sure how to check that across
+        // crates.
         if let Some(candidate) = candidates.get(0)
             && candidate.0 == Res::Primitive(PrimitiveType::RawPointer)
             && key.path_str.contains("::")
@@ -1316,8 +1321,8 @@ impl LinkCollector<'_, '_> {
                     Ok(candidates) => candidates,
                     Err(err) => {
                         // We only looked in one namespace. Try to give a better error if possible.
-                        // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`.
-                        // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach.
+                        // FIXME: really it should be `resolution_failure` that does this, not
+                        // `resolve_with_disambiguator`. See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach.
                         let mut err = ResolutionFailure::NotResolved(err);
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
                             if other_ns != expected_ns {
@@ -1405,8 +1410,8 @@ impl LinkCollector<'_, '_> {
     /// Resolve display text if the provided link has separated parts of links.
     ///
     /// For example:
-    /// Inline link `[display_text](dest_link)` and reference link `[display_text][reference_link]` has
-    /// separated parts of links.
+    /// Inline link `[display_text](dest_link)` and reference link `[display_text][reference_link]`
+    /// has separated parts of links.
     fn resolve_display_text(
         &mut self,
         explicit_link: &Box<str>,
@@ -1414,11 +1419,11 @@ impl LinkCollector<'_, '_> {
         ori_link: &MarkdownLink,
         diag_info: &DiagnosticInfo<'_>,
     ) {
-        // Check if explicit resolution's path is same as resolution of original link's display text path, see
-        // tests/rustdoc-ui/lint/redundant_explicit_links.rs for more cases.
+        // Check if explicit resolution's path is same as resolution of original link's display text
+        // path, see tests/rustdoc-ui/lint/redundant_explicit_links.rs for more cases.
         //
-        // To avoid disambiguator from panicking, we check if display text path is possible to be disambiguated
-        // into explicit path.
+        // To avoid disambiguator from panicking, we check if display text path is possible to be
+        // disambiguated into explicit path.
         if !matches!(
             ori_link.kind,
             LinkType::Inline | LinkType::Reference | LinkType::ReferenceUnknown
@@ -1814,7 +1819,8 @@ fn resolution_failure(
                     }
 
                     // Check if _any_ parent of the path gets resolved.
-                    // If so, report it and say the first which failed; if not, say the first path segment didn't resolve.
+                    // If so, report it and say the first which failed; if not, say the first path
+                    // segment didn't resolve.
                     let mut name = path_str;
                     'outer: loop {
                         let Some((start, end)) = split(name) else {

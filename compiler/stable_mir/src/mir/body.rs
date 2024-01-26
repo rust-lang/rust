@@ -501,12 +501,12 @@ pub enum Rvalue {
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
     ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
+    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`.
+    /// After coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Vec<Operand>),
 
-    /// * `Offset` has the same semantics as `<*const T>::offset`, except that the second
-    ///   parameter may be a `usize` as well.
+    /// * `Offset` has the same semantics as `<*const T>::offset`, except that the second parameter
+    ///   may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
     ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
     ///   matching, up to the usual caveat of the lifetimes in function pointers.
@@ -574,8 +574,8 @@ pub enum Rvalue {
 
     /// Creates a pointer/reference to the given thread local.
     ///
-    /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern a
-    /// `*const T`, and if neither of those apply a `&T`.
+    /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern
+    /// a `*const T`, and if neither of those apply a `&T`.
     ///
     /// **Note:** This is a runtime operation that actually executes code and is in this sense more
     /// like a function call. Also, eliminating dead stores of this rvalue causes `fn main() {}` to
@@ -828,8 +828,8 @@ pub enum ProjectionElem {
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
     ///
-    /// This projection doesn't impact the runtime behavior of the program except for potentially changing
-    /// some type metadata of the interpreter or codegen backend.
+    /// This projection doesn't impact the runtime behavior of the program except for potentially
+    /// changing some type metadata of the interpreter or codegen backend.
     Subtype(Ty),
 }
 
@@ -930,7 +930,8 @@ impl BorrowKind {
         match self {
             BorrowKind::Mut { .. } => Mutability::Mut,
             BorrowKind::Shared => Mutability::Not,
-            // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an approximation.
+            // FIXME: There's no type corresponding to a shallow borrow, so use `&` as an
+            // approximation.
             BorrowKind::Fake => Mutability::Not,
         }
     }

@@ -324,7 +324,8 @@ impl InlineAsmReg {
 
     pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
         // FIXME: use direct symbol comparison for register names
-        // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access `Symbol`.
+        // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access
+        // `Symbol`.
         let name = name.as_str();
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => Self::X86(X86InlineAsmReg::parse(name)?),

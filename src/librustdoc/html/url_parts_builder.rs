@@ -123,9 +123,8 @@ impl UrlPartsBuilder {
 /// The value `8` was chosen for two main reasons:
 ///
 /// * It seems like a good guess for the average part length.
-/// * jemalloc's size classes are all multiples of eight,
-///   which means that the amount of memory it allocates will often match
-///   the amount requested, avoiding wasted bytes.
+/// * jemalloc's size classes are all multiples of eight, which means that the amount of memory it
+///   allocates will often match the amount requested, avoiding wasted bytes.
 ///
 /// [estimating item path lengths]: estimate_item_path_byte_length
 const AVG_PART_LENGTH: usize = 8;

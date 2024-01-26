@@ -687,11 +687,11 @@
 //! Even though we can't have the compiler do the assignment for us, it's possible to write
 //! such specialized functions for types that might need it.
 //!
-//! Note that it _is_ possible to assign generically through a [`Pin<Ptr>`] by way of [`Pin::set()`].
-//! This does not violate any guarantees, since it will run [`drop`] on the pointee value before
-//! assigning the new value. Thus, the [`drop`] implementation still has a chance to perform the
-//! necessary notifications to dependent values before the memory location of the original pinned
-//! value is overwritten.
+//! Note that it _is_ possible to assign generically through a [`Pin<Ptr>`] by way of
+//! [`Pin::set()`]. This does not violate any guarantees, since it will run [`drop`] on the pointee
+//! value before assigning the new value. Thus, the [`drop`] implementation still has a chance to
+//! perform the necessary notifications to dependent values before the memory location of the
+//! original pinned value is overwritten.
 //!
 //! ## Projections and Structural Pinning
 //! [structural-pinning]: self#projections-and-structural-pinning
@@ -790,25 +790,23 @@
 //!
 //! Structural pinning comes with a few extra requirements:
 //!
-//! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] only if all of its
-//!     structurally-pinned fields are, too. This is [`Unpin`]'s behavior by default.
-//!     However, as a libray author, it is your responsibility not to write something like
-//!     <code>impl\<T> [Unpin] for Struct\<T> {}</code> and then offer a method that provides
-//!     structural pinning to an inner field of `T`, which may not be [`Unpin`]! (Adding *any*
-//!     projection operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does
-//!     not break the principle that you only have to worry about any of this if you use
-//!     [`unsafe`])
+//! 1. *Structural [`Unpin`].* A struct can be [`Unpin`] only if all of its structurally-pinned
+//!    fields are, too. This is [`Unpin`]'s behavior by default. However, as a libray author, it is
+//!    your responsibility not to write something like <code>impl\<T> [Unpin] for Struct\<T>
+//!    {}</code> and then offer a method that provides structural pinning to an inner field of `T`,
+//!    which may not be [`Unpin`]! (Adding *any* projection operation requires unsafe code, so the
+//!    fact that [`Unpin`] is a safe trait does not break the principle that you only have to worry
+//!    about any of this if you use [`unsafe`])
 //!
-//! 2.  *Pinned Destruction.* As discussed [above][drop-impl], [`drop`] takes
-//!     [`&mut self`], but the struct (and hence its fields) might have been pinned
-//!     before. The destructor must be written as if its argument was
-//!     <code>self: [Pin]\<[`&mut Self`]></code>, instead.
+//! 2. *Pinned Destruction.* As discussed [above][drop-impl], [`drop`] takes [`&mut self`], but the
+//!    struct (and hence its fields) might have been pinned before. The destructor must be written
+//!    as if its argument was <code>self: [Pin]\<[`&mut Self`]></code>, instead.
 //!
 //!     As a consequence, the struct *must not* be [`#[repr(packed)]`][packed].
 //!
-//! 3.  *Structural Notice of Destruction.* You must uphold the the
-//!     [`Drop` guarantee][drop-guarantee]: once your struct is pinned, the struct's storage cannot
-//!     be re-used without calling the structurally-pinned fields' destructors, as well.
+//! 3. *Structural Notice of Destruction.* You must uphold the the [`Drop`
+//!    guarantee][drop-guarantee]: once your struct is pinned, the struct's storage cannot be
+//!    re-used without calling the structurally-pinned fields' destructors, as well.
 //!
 //!     This can be tricky, as witnessed by [`VecDeque<T>`]: the destructor of [`VecDeque<T>`]
 //!     can fail to call [`drop`] on all elements if one of the destructors panics. This violates
@@ -819,12 +817,12 @@
 //!     to provide such structural pinning, its destructor would need to abort the process if any
 //!     of the destructors panicked.
 //!
-//! 4.  You must not offer any other operations that could lead to data being *moved* out of
-//!     the structural fields when your type is pinned. For example, if the struct contains an
-//!     [`Option<T>`] and there is a [`take`][Option::take]-like operation with type
-//!     <code>fn([Pin]<[&mut Struct\<T>][&mut]>) -> [`Option<T>`]</code>,
-//!     then that operation can be used to move a `T` out of a pinned `Struct<T>` – which
-//!     means pinning cannot be structural for the field holding this data.
+//! 4. You must not offer any other operations that could lead to data being *moved* out of the
+//!    structural fields when your type is pinned. For example, if the struct contains an
+//!    [`Option<T>`] and there is a [`take`][Option::take]-like operation with type
+//!    <code>fn([Pin]<[&mut Struct\<T>][&mut]>) -> [`Option<T>`]</code>, then that operation can be
+//!    used to move a `T` out of a pinned `Struct<T>` – which means pinning cannot be structural for
+//!    the field holding this data.
 //!
 //!     For a more complex example of moving data out of a pinned type,
 //!     imagine if [`RefCell<T>`] had a method
@@ -1090,8 +1088,8 @@ use crate::{
 pub struct Pin<Ptr> {
     // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
     //   - deter downstream users from accessing it (which would be unsound!),
-    //   - let the `pin!` macro access it (such a macro requires using struct
-    //     literal syntax in order to benefit from lifetime extension).
+    //   - let the `pin!` macro access it (such a macro requires using struct literal syntax in
+    //     order to benefit from lifetime extension).
     // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
@@ -1633,7 +1631,8 @@ impl<'a, Ptr: DerefMut> Pin<&'a mut Pin<Ptr>> {
         //
         // We need to ensure that two things hold for that to be the case:
         //
-        // 1) Once we give out a `Pin<&mut Ptr::Target>`, an `&mut Ptr::Target` will not be given out.
+        // 1) Once we give out a `Pin<&mut Ptr::Target>`, an `&mut Ptr::Target` will not be given
+        //    out.
         // 2) By giving out a `Pin<&mut Ptr::Target>`, we do not risk of violating
         // `Pin<&mut Pin<Ptr>>`
         //
@@ -1856,7 +1855,8 @@ impl<Ptr, U> DispatchFromDyn<Pin<U>> for Pin<Ptr> where Ptr: DispatchFromDyn<U> 
 /// 8  | let x: Pin<&mut Foo> = {
 ///    |     - borrow later stored here
 /// 9  |     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
-///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is
+//     |                                                  freed while still in use
 /// 10 |     x
 /// 11 | }; // <- Foo is dropped
 ///    | - temporary value is freed at the end of this statement

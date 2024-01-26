@@ -1608,8 +1608,8 @@ impl<'test> TestCx<'test> {
         //
         // Notable use-cases are: do not add our optimisation flag if
         // `compile-flags: -Copt-level=x` and similar for debug-info level as well.
-        const OPT_FLAGS: &[&str] = &["-O", "-Copt-level=", /*-C<space>*/ "opt-level="];
-        const DEBUG_FLAGS: &[&str] = &["-g", "-Cdebuginfo=", /*-C<space>*/ "debuginfo="];
+        const OPT_FLAGS: &[&str] = &["-O", "-Copt-level=", /* -C<space> */ "opt-level="];
+        const DEBUG_FLAGS: &[&str] = &["-g", "-Cdebuginfo=", /* -C<space> */ "debuginfo="];
 
         // FIXME: ideally we would "just" check the `cmd` itself, but it does not allow inspecting
         // its arguments. They need to be collected separately. For now I cannot be bothered to
@@ -2396,9 +2396,10 @@ impl<'test> TestCx<'test> {
         if self.config.optimize_tests && !is_rustdoc {
             match self.config.mode {
                 Ui => {
-                    // If optimize-tests is true we still only want to optimize tests that actually get
-                    // executed and that don't specify their own optimization levels.
-                    // Note: aux libs don't have a pass-mode, so they won't get optimized
+                    // If optimize-tests is true we still only want to optimize tests that actually
+                    // get executed and that don't specify their own
+                    // optimization levels. Note: aux libs don't have a
+                    // pass-mode, so they won't get optimized
                     // unless compile-flags are set in the aux file.
                     if self.config.optimize_tests
                         && self.props.pass_mode(&self.config) == Some(PassMode::Run)
@@ -3641,8 +3642,8 @@ impl<'test> TestCx<'test> {
 
         if self.config.bless {
             cmd.env("RUSTC_BLESS_TEST", "--bless");
-            // Assume this option is active if the environment variable is "defined", with _any_ value.
-            // As an example, a `Makefile` can use this option by:
+            // Assume this option is active if the environment variable is "defined", with _any_
+            // value. As an example, a `Makefile` can use this option by:
             //
             //   ifdef RUSTC_BLESS_TEST
             //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext

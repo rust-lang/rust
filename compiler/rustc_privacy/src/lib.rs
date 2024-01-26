@@ -1724,8 +1724,9 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
                         self.effective_visibilities,
                     );
 
-                    // check that private components do not appear in the generics or predicates of inherent impls
-                    // this check is intentionally NOT performed for impls of traits, per #90586
+                    // check that private components do not appear in the generics or predicates of
+                    // inherent impls this check is intentionally NOT performed
+                    // for impls of traits, per #90586
                     if impl_.of_trait.is_none() {
                         self.check(item.owner_id.def_id, impl_vis, Some(impl_ev))
                             .generics()

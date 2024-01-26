@@ -11,11 +11,10 @@
 //! looking for assignments that will turn the `SwitchInt` into a simple `Goto`.
 //!
 //! The algorithm maintains a set of replacement conditions:
-//! - `conditions[place]` contains `Condition { value, polarity: Eq, target }`
-//!   if assigning `value` to `place` turns the `SwitchInt` into `Goto { target }`.
-//! - `conditions[place]` contains `Condition { value, polarity: Ne, target }`
-//!   if assigning anything different from `value` to `place` turns the `SwitchInt`
-//!   into `Goto { target }`.
+//! - `conditions[place]` contains `Condition { value, polarity: Eq, target }` if assigning `value`
+//!   to `place` turns the `SwitchInt` into `Goto { target }`.
+//! - `conditions[place]` contains `Condition { value, polarity: Ne, target }` if assigning anything
+//!   different from `value` to `place` turns the `SwitchInt` into `Goto { target }`.
 //!
 //! In this file, we denote as `place ?= value` the existence of a replacement condition
 //! on `place` with given `value`, irrespective of the polarity and target of that
@@ -431,7 +430,8 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                             let rhs = self.map.find_discr(rhs.as_ref())?;
                             state.insert_place_idx(rhs, lhs, self.map);
                         }
-                        // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
+                        // If we expect `lhs ?= A`, we have an opportunity if we assume `constant ==
+                        // A`.
                         Rvalue::Aggregate(box ref kind, ref operands) => {
                             let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
                             let lhs = match kind {

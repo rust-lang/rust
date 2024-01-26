@@ -197,7 +197,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                     (Some(context_mut_ref), ret_ty)
                 }
                 hir::CoroutineKind::Coroutine(_) => {
-                    // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
+                    // The signature should be `Coroutine::resume(_, Resume) ->
+                    // CoroutineState<Yield, Return>`
                     let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                     let state_adt_ref = tcx.adt_def(state_did);
                     let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
@@ -378,8 +379,8 @@ fn adjust_for_rust_scalar<'tcx>(
                 PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
                 PointerKind::Box { unpin } => unpin && noalias_for_box,
             };
-            // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
-            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
+            // We can never add `noalias` in return position; that LLVM attribute has some very
+            // surprising semantics (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
             if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
@@ -463,9 +464,10 @@ fn fn_abi_sanity_check<'tcx>(
                 let tail = cx.tcx.struct_tail_with_normalize(arg.layout.ty, |ty| ty, || {});
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
-                    // Conceptually, unsized arguments must be copied around, which requires dynamically
-                    // determining their size. Therefore, we cannot allow `extern` types here. Consult
-                    // t-opsem before removing this check.
+                    // Conceptually, unsized arguments must be copied around, which requires
+                    // dynamically determining their size. Therefore, we cannot
+                    // allow `extern` types here. Consult t-opsem before
+                    // removing this check.
                     panic!("unsized arguments must not be `extern` types");
                 }
             }
@@ -619,8 +621,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
         fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
-            // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
-            // but who knows what breaks if we change this now.
+            // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be
+            // intended, but who knows what breaks if we change this now.
             if matches!(arg.layout.abi, Abi::Aggregate { .. }) {
                 assert!(
                     arg.layout.abi.is_sized(),

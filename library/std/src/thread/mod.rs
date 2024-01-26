@@ -88,8 +88,8 @@
 //! Threads are represented via the [`Thread`] type, which you can get in one of
 //! two ways:
 //!
-//! * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
-//!   function, and calling [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
+//! * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`] function, and calling
+//!   [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 //! * By requesting the current thread, using the [`thread::current`] function.
 //!
 //! The [`thread::current`] function is available even for threads not spawned
@@ -487,8 +487,8 @@ impl Builder {
         let output_capture = crate::io::set_output_capture(None);
         crate::io::set_output_capture(output_capture.clone());
 
-        // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
-        // See <https://github.com/rust-lang/rust/issues/101983> for more details.
+        // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the
+        // lifetime of `F`*. See <https://github.com/rust-lang/rust/issues/101983> for more details.
         // To prevent leaks we use a wrapper that drops its contents.
         #[repr(transparent)]
         struct MaybeDangling<T>(mem::MaybeUninit<T>);
@@ -593,22 +593,20 @@ impl Builder {
 /// As you can see in the signature of `spawn` there are two constraints on
 /// both the closure given to `spawn` and its return value, let's explain them:
 ///
-/// - The `'static` constraint means that the closure and its return value
-///   must have a lifetime of the whole program execution. The reason for this
-///   is that threads can outlive the lifetime they have been created in.
+/// - The `'static` constraint means that the closure and its return value must have a lifetime of
+///   the whole program execution. The reason for this is that threads can outlive the lifetime they
+///   have been created in.
 ///
 ///   Indeed if the thread, and by extension its return value, can outlive their
 ///   caller, we need to make sure that they will be valid afterwards, and since
 ///   we *can't* know when it will return we need to have them valid as long as
 ///   possible, that is until the end of the program, hence the `'static`
 ///   lifetime.
-/// - The [`Send`] constraint is because the closure will need to be passed
-///   *by value* from the thread where it is spawned to the new thread. Its
-///   return value will need to be passed from the new thread to the thread
-///   where it is `join`ed.
-///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
-///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
-///   reference be passed from thread to thread.
+/// - The [`Send`] constraint is because the closure will need to be passed *by value* from the
+///   thread where it is spawned to the new thread. Its return value will need to be passed from the
+///   new thread to the thread where it is `join`ed. As a reminder, the [`Send`] marker trait
+///   expresses that it is safe to be passed from thread to thread. [`Sync`] expresses that it is
+///   safe to have a reference be passed from thread to thread.
 ///
 /// # Panics
 ///
@@ -978,15 +976,14 @@ impl Drop for PanicGuard {
 /// Conceptually, each [`Thread`] handle has an associated token, which is
 /// initially not present:
 ///
-/// * The [`thread::park`][`park`] function blocks the current thread unless or
-///   until the token is available for its thread handle, at which point it
-///   atomically consumes the token. It may also return *spuriously*, without
-///   consuming the token. [`thread::park_timeout`] does the same, but allows
-///   specifying a maximum time to block the thread for.
+/// * The [`thread::park`][`park`] function blocks the current thread unless or until the token is
+///   available for its thread handle, at which point it atomically consumes the token. It may also
+///   return *spuriously*, without consuming the token. [`thread::park_timeout`] does the same, but
+///   allows specifying a maximum time to block the thread for.
 ///
-/// * The [`unpark`] method on a [`Thread`] atomically makes the token available
-///   if it wasn't already. Because the token is initially absent, [`unpark`]
-///   followed by [`park`] will result in the second call returning immediately.
+/// * The [`unpark`] method on a [`Thread`] atomically makes the token available if it wasn't
+///   already. Because the token is initially absent, [`unpark`] followed by [`park`] will result in
+///   the second call returning immediately.
 ///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
@@ -995,9 +992,8 @@ impl Drop for PanicGuard {
 ///
 /// The motivation for this design is twofold:
 ///
-/// * It avoids the need to allocate mutexes and condvars when building new
-///   synchronization primitives; the threads already provide basic
-///   blocking/signaling.
+/// * It avoids the need to allocate mutexes and condvars when building new synchronization
+///   primitives; the threads already provide basic blocking/signaling.
 ///
 /// * It can be implemented very efficiently on many platforms.
 ///
@@ -1252,9 +1248,8 @@ impl Inner {
 /// Threads are represented via the `Thread` type, which you can get in one of
 /// two ways:
 ///
-/// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
-///   function, and calling [`thread`][`JoinHandle::thread`] on the
-///   [`JoinHandle`].
+/// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`] function, and calling
+///   [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 /// * By requesting the current thread, using the [`thread::current`] function.
 ///
 /// The [`thread::current`] function is available even for threads not spawned
@@ -1727,25 +1722,22 @@ fn _assert_sync_and_send() {
 /// apply to `available_parallelism`:
 ///
 /// On Windows:
-/// - It may undercount the amount of parallelism available on systems with more
-///   than 64 logical CPUs. However, programs typically need specific support to
-///   take advantage of more than 64 logical CPUs, and in the absence of such
-///   support, the number returned by this function accurately reflects the
-///   number of logical CPUs the program can use by default.
-/// - It may overcount the amount of parallelism available on systems limited by
-///   process-wide affinity masks, or job object limitations.
+/// - It may undercount the amount of parallelism available on systems with more than 64 logical
+///   CPUs. However, programs typically need specific support to take advantage of more than 64
+///   logical CPUs, and in the absence of such support, the number returned by this function
+///   accurately reflects the number of logical CPUs the program can use by default.
+/// - It may overcount the amount of parallelism available on systems limited by process-wide
+///   affinity masks, or job object limitations.
 ///
 /// On Linux:
-/// - It may overcount the amount of parallelism available when limited by a
-///   process-wide affinity mask or cgroup quotas and `sched_getaffinity()` or cgroup fs can't be
-///   queried, e.g. due to sandboxing.
-/// - It may undercount the amount of parallelism if the current thread's affinity mask
-///   does not reflect the process' cpuset, e.g. due to pinned threads.
-/// - If the process is in a cgroup v1 cpu controller, this may need to
-///   scan mountpoints to find the corresponding cgroup v1 controller,
-///   which may take time on systems with large numbers of mountpoints.
-///   (This does not apply to cgroup v2, or to processes not in a
-///   cgroup.)
+/// - It may overcount the amount of parallelism available when limited by a process-wide affinity
+///   mask or cgroup quotas and `sched_getaffinity()` or cgroup fs can't be queried, e.g. due to
+///   sandboxing.
+/// - It may undercount the amount of parallelism if the current thread's affinity mask does not
+///   reflect the process' cpuset, e.g. due to pinned threads.
+/// - If the process is in a cgroup v1 cpu controller, this may need to scan mountpoints to find the
+///   corresponding cgroup v1 controller, which may take time on systems with large numbers of
+///   mountpoints. (This does not apply to cgroup v2, or to processes not in a cgroup.)
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM
@@ -1757,8 +1749,7 @@ fn _assert_sync_and_send() {
 /// cases:
 ///
 /// - If the amount of parallelism is not known for the target platform.
-/// - If the program lacks permission to query the amount of parallelism made
-///   available to it.
+/// - If the program lacks permission to query the amount of parallelism made available to it.
 ///
 /// # Examples
 ///

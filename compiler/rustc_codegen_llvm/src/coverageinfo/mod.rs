@@ -113,8 +113,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             ),
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
-                // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,
-                // as that needs an exclusive borrow.
+                // We need to explicitly drop the `RefMut` before calling into
+                // `instrprof_increment`, as that needs an exclusive borrow.
                 drop(coverage_map);
 
                 // The number of counters passed to `llvm.instrprof.increment` might

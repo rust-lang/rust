@@ -7,8 +7,7 @@
 // * `#` is treated as a special character for macros.
 // * `{` or `<` at the beginning of a name is treated as an operator.
 // * `>>` is always treated as a right-shift.
-// * `[` in a name is treated like a regex bracket expression (match any char
-//   within the brackets).
+// * `[` in a name is treated like a regex bracket expression (match any char within the brackets).
 // * `"` is treated as the start of a string.
 
 use rustc_data_structures::fx::FxHashSet;
@@ -78,7 +77,8 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, args) => {
-            // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback encoding.
+            // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback
+            // encoding.
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
                 match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
                     Ok(layout) => {
@@ -441,7 +441,10 @@ fn push_debuginfo_type_name<'tcx>(
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
         ty_and_layout: TyAndLayout<'tcx>,
-        push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
+        push_inner: &dyn Fn(
+            /* output */ &mut String,
+            /* visited */ &mut FxHashSet<Ty<'tcx>>,
+        ),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {

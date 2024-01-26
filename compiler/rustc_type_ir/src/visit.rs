@@ -11,25 +11,23 @@
 //! There are three traits involved in each traversal.
 //! - `TypeVisitable`. This is implemented once for many types, including:
 //!   - Types of interest, for which the methods delegate to the visitor.
-//!   - All other types, including generic containers like `Vec` and `Option`.
-//!     It defines a "skeleton" of how they should be visited.
-//! - `TypeSuperVisitable`. This is implemented only for recursive types of
-//!   interest, and defines the visiting "skeleton" for these types. (This
-//!   excludes `Region` because it is non-recursive, i.e. it never contains
-//!   other types of interest.)
-//! - `TypeVisitor`. This is implemented for each visitor. This defines how
-//!   types of interest are visited.
+//!   - All other types, including generic containers like `Vec` and `Option`. It defines a
+//!     "skeleton" of how they should be visited.
+//! - `TypeSuperVisitable`. This is implemented only for recursive types of interest, and defines
+//!   the visiting "skeleton" for these types. (This excludes `Region` because it is non-recursive,
+//!   i.e. it never contains other types of interest.)
+//! - `TypeVisitor`. This is implemented for each visitor. This defines how types of interest are
+//!   visited.
 //!
 //! This means each visit is a mixture of (a) generic visiting operations, and (b)
 //! custom visit operations that are specific to the visitor.
-//! - The `TypeVisitable` impls handle most of the traversal, and call into
-//!   `TypeVisitor` when they encounter a type of interest.
-//! - A `TypeVisitor` may call into another `TypeVisitable` impl, because some of
-//!   the types of interest are recursive and can contain other types of interest.
-//! - A `TypeVisitor` may also call into a `TypeSuperVisitable` impl, because each
-//!   visitor might provide custom handling only for some types of interest, or
-//!   only for some variants of each type of interest, and then use default
-//!   traversal for the remaining cases.
+//! - The `TypeVisitable` impls handle most of the traversal, and call into `TypeVisitor` when they
+//!   encounter a type of interest.
+//! - A `TypeVisitor` may call into another `TypeVisitable` impl, because some of the types of
+//!   interest are recursive and can contain other types of interest.
+//! - A `TypeVisitor` may also call into a `TypeSuperVisitable` impl, because each visitor might
+//!   provide custom handling only for some types of interest, or only for some variants of each
+//!   type of interest, and then use default traversal for the remaining cases.
 //!
 //! For example, if you have `struct S(Ty, U)` where `S: TypeVisitable` and `U:
 //! TypeVisitable`, and an instance `s = S(ty, u)`, it would be visited like so:

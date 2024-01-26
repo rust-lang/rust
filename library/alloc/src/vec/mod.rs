@@ -324,19 +324,17 @@ mod spec_extend;
 /// ```
 ///
 /// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
-/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory
-///   layout (including the order of fields).
+/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory layout (including
+///   the order of fields).
 ///
 /// `Vec` will never perform a "small optimization" where elements are actually
 /// stored on the stack for two reasons:
 ///
-/// * It would make it more difficult for unsafe code to correctly manipulate
-///   a `Vec`. The contents of a `Vec` wouldn't have a stable address if it were
-///   only moved, and it would be more difficult to determine if a `Vec` had
-///   actually allocated memory.
+/// * It would make it more difficult for unsafe code to correctly manipulate a `Vec`. The contents
+///   of a `Vec` wouldn't have a stable address if it were only moved, and it would be more
+///   difficult to determine if a `Vec` had actually allocated memory.
 ///
-/// * It would penalize the general case, incurring an additional branch
-///   on every access.
+/// * It would penalize the general case, incurring an additional branch on every access.
 ///
 /// `Vec` will never automatically shrink itself, even if completely empty. This
 /// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
@@ -488,20 +486,20 @@ impl<T> Vec<T> {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * `ptr` must have been allocated using the global allocator, such as via
-    ///   the [`alloc::alloc`] function.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
-    ///   to be the same size as the pointer was allocated with. (Because similar to
-    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
+    /// * `ptr` must have been allocated using the global allocator, such as via the
+    ///   [`alloc::alloc`] function.
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with. (`T` having a less
+    ///   strict alignment is not sufficient, the alignment really needs to be equal to satisfy the
+    ///   [`dealloc`] requirement that memory must be allocated and deallocated with the same
+    ///   layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs to be the
+    ///   same size as the pointer was allocated with. (Because similar to alignment, [`dealloc`]
+    ///   must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * The first `length` values must be properly initialized values of type `T`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
+    /// * The allocated size in bytes must be no larger than `isize::MAX`. See the safety
+    ///   documentation of [`pointer::offset`].
     ///
     /// These requirements are always upheld by any `ptr` that has been allocated
     /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
@@ -536,7 +534,6 @@ impl<T> Vec<T> {
     /// use std::mem;
     ///
     /// let v = vec![1, 2, 3];
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
@@ -560,7 +557,6 @@ impl<T> Vec<T> {
     /// ```
     ///
     /// Using memory that was allocated elsewhere:
-    ///
     /// ```rust
     /// use std::alloc::{alloc, Layout};
     ///
@@ -681,18 +677,18 @@ impl<T, A: Allocator> Vec<T, A> {
     /// checked:
     ///
     /// * `ptr` must be [*currently allocated*] via the given allocator `alloc`.
-    /// * `T` needs to have the same alignment as what `ptr` was allocated with.
-    ///   (`T` having a less strict alignment is not sufficient, the alignment really
-    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
-    ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
-    ///   to be the same size as the pointer was allocated with. (Because similar to
-    ///   alignment, [`dealloc`] must be called with the same layout `size`.)
+    /// * `T` needs to have the same alignment as what `ptr` was allocated with. (`T` having a less
+    ///   strict alignment is not sufficient, the alignment really needs to be equal to satisfy the
+    ///   [`dealloc`] requirement that memory must be allocated and deallocated with the same
+    ///   layout.)
+    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs to be the
+    ///   same size as the pointer was allocated with. (Because similar to alignment, [`dealloc`]
+    ///   must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * The first `length` values must be properly initialized values of type `T`.
     /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
-    /// * The allocated size in bytes must be no larger than `isize::MAX`.
-    ///   See the safety documentation of [`pointer::offset`].
+    /// * The allocated size in bytes must be no larger than `isize::MAX`. See the safety
+    ///   documentation of [`pointer::offset`].
     ///
     /// These requirements are always upheld by any `ptr` that has been allocated
     /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
@@ -731,7 +727,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// v.push(1);
     /// v.push(2);
     /// v.push(3);
-    ///
     // FIXME Update this when vec_into_raw_parts is stabilized
     /// // Prevent running `v`'s destructor so we are in complete control
     /// // of the allocation.
@@ -756,7 +751,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     ///
     /// Using memory that was allocated elsewhere:
-    ///
     /// ```rust
     /// #![feature(allocator_api)]
     ///
@@ -1155,11 +1149,11 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn truncate(&mut self, len: usize) {
         // This is safe because:
         //
-        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
-        //   case avoids creating an invalid slice, and
-        // * the `len` of the vector is shrunk before calling `drop_in_place`,
-        //   such that no value will be dropped twice in case `drop_in_place`
-        //   were to panic once (if it panics twice, the program aborts).
+        // * the slice passed to `drop_in_place` is valid; the `len > self.len` case avoids creating
+        //   an invalid slice, and
+        // * the `len` of the vector is shrunk before calling `drop_in_place`, such that no value
+        //   will be dropped twice in case `drop_in_place` were to panic once (if it panics twice,
+        //   the program aborts).
         unsafe {
             // Note: It's intentional that this is `>` and not `>=`.
             //       Changing it to `>=` has negative performance
@@ -1224,8 +1218,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// does not materialize a reference to the underlying slice, and thus the returned pointer
     /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
     /// Note that calling other methods that materialize mutable references to the slice,
-    /// or mutable references to specific elements you are planning on accessing through this pointer,
-    /// as well as writing to those elements, may still invalidate this pointer.
+    /// or mutable references to specific elements you are planning on accessing through this
+    /// pointer, as well as writing to those elements, may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
     ///
     ///
@@ -1704,8 +1698,9 @@ impl<T, A: Allocator> Vec<T, A> {
                     }
                 }
                 if DELETED {
-                    // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current element.
-                    // We use copy for move, and never touch this element again.
+                    // SAFETY: `deleted_cnt` > 0, so the hole slot must not overlap with current
+                    // element. We use copy for move, and never touch this
+                    // element again.
                     unsafe {
                         let hole_slot = g.v.as_mut_ptr().add(g.processed_len - g.deleted_cnt);
                         ptr::copy_nonoverlapping(cur, hole_slot, 1);
@@ -1929,7 +1924,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// with the element.
     ///
     /// Unlike [`push`] this method will not reallocate when there's insufficient capacity.
-    /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough capacity.
+    /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough
+    /// capacity.
     ///
     /// [`push`]: Vec::push
     /// [`reserve`]: Vec::reserve
@@ -2117,10 +2113,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // SAFETY:
         // - `elems` comes directly from `as_mut_slice` and is therefore valid.
-        // - Setting `self.len` before calling `drop_in_place` means that,
-        //   if an element's `Drop` impl panics, the vector's `Drop` impl will
-        //   do nothing (leaking the rest of the elements) instead of dropping
-        //   some twice.
+        // - Setting `self.len` before calling `drop_in_place` means that, if an element's `Drop`
+        //   impl panics, the vector's `Drop` impl will do nothing (leaking the rest of the
+        //   elements) instead of dropping some twice.
         unsafe {
             self.len = 0;
             ptr::drop_in_place(elems);
@@ -2408,7 +2403,8 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `self.len` elements
-        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with `initialized`
+        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with
+        //   `initialized`
         unsafe {
             let initialized = slice::from_raw_parts_mut(ptr, self.len);
             let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
@@ -2675,14 +2671,13 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
             let source = unsafe { init.get_unchecked(src) };
 
             // SAFETY:
-            // - Both pointers are created from unique slice references (`&mut [_]`)
-            //   so they are valid and do not overlap.
-            // - Elements are :Copy so it's OK to copy them, without doing
-            //   anything with the original values
-            // - `count` is equal to the len of `source`, so source is valid for
-            //   `count` reads
-            // - `.reserve(count)` guarantees that `spare.len() >= count` so spare
-            //   is valid for `count` writes
+            // - Both pointers are created from unique slice references (`&mut [_]`) so they are
+            //   valid and do not overlap.
+            // - Elements are :Copy so it's OK to copy them, without doing anything with the
+            //   original values
+            // - `count` is equal to the len of `source`, so source is valid for `count` reads
+            // - `.reserve(count)` guarantees that `spare.len() >= count` so spare is valid for
+            //   `count` writes
             unsafe { ptr::copy_nonoverlapping(source.as_ptr(), spare.as_mut_ptr() as _, count) };
         }
 

@@ -128,10 +128,10 @@ fn write_header(
 /// basically (since it's `Option<Class>`). The following rules apply:
 ///
 /// * If two `Class` have the same variant, then they can be merged.
-/// * If the other `Class` is unclassified and only contains white characters (backline,
-///   whitespace, etc), it can be merged.
+/// * If the other `Class` is unclassified and only contains white characters (backline, whitespace,
+///   etc), it can be merged.
 /// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
-///    CSS class).
+///   CSS class).
 fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     match (class1, class2) {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
@@ -512,7 +512,8 @@ impl<'a> Iterator for PeekIter<'a> {
     }
 }
 
-/// Custom spans inserted into the source. Eg --scrape-examples uses this to highlight function calls
+/// Custom spans inserted into the source. Eg --scrape-examples uses this to highlight function
+/// calls
 struct Decorations {
     starts: Vec<(u32, &'static str)>,
     ends: Vec<u32>,

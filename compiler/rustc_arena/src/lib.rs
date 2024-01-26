@@ -583,15 +583,14 @@ impl DroplessArena {
 /// types of the typed arenas are specified by the arguments).
 ///
 /// There are three cases of interest.
-/// - Types that are `Copy`: these need not be specified in the arguments. They
-///   will use the `DroplessArena`.
-/// - Types that are `!Copy` and `!Drop`: these must be specified in the
-///   arguments. An empty `TypedArena` will be created for each one, but the
-///   `DroplessArena` will always be used and the `TypedArena` will stay empty.
-///   This is odd but harmless, because an empty arena allocates no memory.
-/// - Types that are `!Copy` and `Drop`: these must be specified in the
-///   arguments. The `TypedArena` will be used for them.
-///
+/// - Types that are `Copy`: these need not be specified in the arguments. They will use the
+///   `DroplessArena`.
+/// - Types that are `!Copy` and `!Drop`: these must be specified in the arguments. An empty
+///   `TypedArena` will be created for each one, but the `DroplessArena` will always be used and the
+///   `TypedArena` will stay empty. This is odd but harmless, because an empty arena allocates no
+///   memory.
+/// - Types that are `!Copy` and `Drop`: these must be specified in the arguments. The `TypedArena`
+///   will be used for them.
 #[rustc_macro_transparency = "semitransparent"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]

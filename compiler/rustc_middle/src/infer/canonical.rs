@@ -5,10 +5,9 @@
 //! and so forth. Canonicalizing a value T1 using `canonicalize_query`
 //! produces two things:
 //!
-//! - a value T2 where each unbound inference variable has been
-//!   replaced with a **canonical variable**;
-//! - a map M (of type `CanonicalVarValues`) from those canonical
-//!   variables back to the original.
+//! - a value T2 where each unbound inference variable has been replaced with a **canonical
+//!   variable**;
+//! - a map M (of type `CanonicalVarValues`) from those canonical variables back to the original.
 //!
 //! We can then do queries using T2. These will give back constraints
 //! on the canonical variables which can be translated, using the map

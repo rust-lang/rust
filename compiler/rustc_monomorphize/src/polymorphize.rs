@@ -271,8 +271,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if let Some(p) = promoted {
                     if self.def_id == def && !self.tcx.generics_of(def).has_self {
-                        // If there is a promoted, don't look at the args - since it will always contain
-                        // the generic parameters, instead, traverse the promoted MIR.
+                        // If there is a promoted, don't look at the args - since it will always
+                        // contain the generic parameters, instead, traverse
+                        // the promoted MIR.
                         let promoted = self.tcx.promoted_mir(def);
                         self.visit_body(&promoted[p]);
                     }

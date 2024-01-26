@@ -769,8 +769,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             match binding_parent {
-                // Check that there is explicit type (ie this is not a closure param with inferred type)
-                // so we don't suggest moving something to the type that does not exist
+                // Check that there is explicit type (ie this is not a closure param with inferred
+                // type) so we don't suggest moving something to the type that does
+                // not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
                     err.multipart_suggestion_verbose(
                         format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
@@ -1804,10 +1805,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    /// Report that a pattern for a `#[non_exhaustive]` struct marked with `non_exhaustive_omitted_patterns`
-    /// is not exhaustive enough.
+    /// Report that a pattern for a `#[non_exhaustive]` struct marked with
+    /// `non_exhaustive_omitted_patterns` is not exhaustive enough.
     ///
-    /// Nb: the partner lint for enums lives in `compiler/rustc_mir_build/src/thir/pattern/usefulness.rs`.
+    /// Nb: the partner lint for enums lives in
+    /// `compiler/rustc_mir_build/src/thir/pattern/usefulness.rs`.
     fn lint_non_exhaustive_omitted_patterns(
         &self,
         pat: &Pat<'_>,
@@ -2049,9 +2051,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(Ty::new_array(tcx, inner_ty, len.try_into().unwrap()))
     }
 
-    /// Used to determines whether we can infer the expected type in the slice pattern to be of type array.
-    /// This is only possible if we're in an irrefutable pattern. If we were to allow this in refutable
-    /// patterns we wouldn't e.g. report ambiguity in the following situation:
+    /// Used to determines whether we can infer the expected type in the slice pattern to be of type
+    /// array. This is only possible if we're in an irrefutable pattern. If we were to allow
+    /// this in refutable patterns we wouldn't e.g. report ambiguity in the following situation:
     ///
     /// ```ignore(rust)
     /// struct Zeroes;

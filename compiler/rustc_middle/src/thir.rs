@@ -272,7 +272,8 @@ pub enum ExprKind<'tcx> {
         then: ExprId,
         else_opt: Option<ExprId>,
     },
-    /// A function call. Method calls and overloaded operators are converted to plain function calls.
+    /// A function call. Method calls and overloaded operators are converted to plain function
+    /// calls.
     Call {
         /// The type of the function. This is often a [`FnDef`] or a [`FnPtr`].
         ///
@@ -284,7 +285,8 @@ pub enum ExprKind<'tcx> {
         /// The arguments passed to the function.
         ///
         /// Note: in some cases (like calling a closure), the function call `f(...args)` gets
-        /// rewritten as a call to a function trait method (e.g. `FnOnce::call_once(f, (...args))`).
+        /// rewritten as a call to a function trait method (e.g. `FnOnce::call_once(f,
+        /// (...args))`).
         args: Box<[ExprId]>,
         /// Whether this is from an overloaded operator rather than a
         /// function call from HIR. `true` for overloaded function call.
@@ -823,7 +825,8 @@ pub struct PatRange<'tcx> {
 }
 
 impl<'tcx> PatRange<'tcx> {
-    /// Whether this range covers the full extent of possible values (best-effort, we ignore floats).
+    /// Whether this range covers the full extent of possible values (best-effort, we ignore
+    /// floats).
     #[inline]
     pub fn is_full_range(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
         let (min, max, size, bias) = match *self.ty.kind() {

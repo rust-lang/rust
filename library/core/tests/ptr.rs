@@ -901,12 +901,11 @@ fn thin_box() {
 
     // A slightly more interesting library that could be built on top of metadata APIs.
     //
-    // * It could be generalized to any `T: ?Sized` (not just trait object)
-    //   if `{size,align}_of_for_meta<T: ?Sized>(T::Metadata)` are added.
-    // * Constructing a `ThinBox` without consuming and deallocating a `Box`
-    //   requires either the unstable `Unsize` marker trait,
-    //   or the unstable `unsized_locals` language feature,
-    //   or taking `&dyn T` and restricting to `T: Copy`.
+    // * It could be generalized to any `T: ?Sized` (not just trait object) if
+    //   `{size,align}_of_for_meta<T: ?Sized>(T::Metadata)` are added.
+    // * Constructing a `ThinBox` without consuming and deallocating a `Box` requires either the
+    //   unstable `Unsize` marker trait, or the unstable `unsized_locals` language feature, or
+    //   taking `&dyn T` and restricting to `T: Copy`.
 
     use std::alloc::*;
     use std::marker::PhantomData;
@@ -1049,7 +1048,8 @@ fn nonnull_tagged_pointer_with_provenance() {
         /// Consume this tagged pointer and produce a raw mutable pointer to the
         /// memory location.
         pub fn pointer(self) -> NonNull<T> {
-            // SAFETY: The `addr` guaranteed to have bits set in the Self::ADDRESS_MASK, so the result will be non-null.
+            // SAFETY: The `addr` guaranteed to have bits set in the Self::ADDRESS_MASK, so the
+            // result will be non-null.
             self.0.map_addr(|addr| unsafe {
                 NonZeroUsize::new_unchecked(addr.get() & Self::ADDRESS_MASK)
             })

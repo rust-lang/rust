@@ -242,7 +242,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 adjusted_ty,
                 opt_input_type.as_ref().map(slice::from_ref),
             ) {
-                // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
+                // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*`
+                // trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
                     self.dcx().span_delayed_bug(
                         call_expr.span,
@@ -480,11 +481,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for idx in 0..=1 {
                 let arg_ty = fn_sig.inputs()[idx + 1];
                 let span = arg_exprs.get(idx + 1).map_or(call_expr.span, |arg| arg.span);
-                // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
-                // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
-                // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
+                // Check that second and third argument of `const_eval_select` must be `FnDef`, and
+                // additionally that the second argument must be `const fn`. The
+                // first argument must be a tuple, but this is already expressed
+                // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another
+                // check here.
                 //
-                // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
+                // This check is here because there is currently no way to express a trait bound for
+                // `FnDef` types only.
                 if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
                     let fn_once_def_id =
                         self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));

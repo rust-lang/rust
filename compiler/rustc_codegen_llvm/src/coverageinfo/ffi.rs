@@ -13,10 +13,9 @@ pub enum CounterKind {
 /// report. Note that `id` has different interpretations, depending on the `kind`:
 ///   * For `CounterKind::Zero`, `id` is assumed to be `0`
 ///   * For `CounterKind::CounterValueReference`,  `id` matches the `counter_id` of the injected
-///     instrumentation counter (the `index` argument to the LLVM intrinsic
-///     `instrprof.increment()`)
-///   * For `CounterKind::Expression`, `id` is the index into the coverage map's array of
-///     counter expressions.
+///     instrumentation counter (the `index` argument to the LLVM intrinsic `instrprof.increment()`)
+///   * For `CounterKind::Expression`, `id` is the index into the coverage map's array of counter
+///     expressions.
 ///
 /// Corresponds to struct `llvm::coverage::Counter`.
 ///
@@ -102,8 +101,7 @@ pub enum RegionKind {
 }
 
 /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-/// coverage map, in accordance with the
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// coverage map, in accordance with the [LLVM Code Coverage Mapping Format].
 /// The struct composes fields representing the `Counter` type and value(s) (injected counter
 /// ID, or expression type and operands), the source file (an indirect index into a "filenames
 /// array", encoded separately), and source location (start and end positions of the represented
@@ -112,6 +110,8 @@ pub enum RegionKind {
 /// Corresponds to struct `llvm::coverage::CounterMappingRegion`.
 ///
 /// Must match the layout of `LLVMRustCounterMappingRegion`.
+///
+/// [LLVM Code Coverage Mapping Format]: https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CounterMappingRegion {

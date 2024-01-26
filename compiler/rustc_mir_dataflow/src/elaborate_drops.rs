@@ -762,8 +762,9 @@ where
             }
             // Previously, we'd make a projection for every element in the array and create a drop
             // ladder if any `array_subpath` was `Some`, i.e. moving out with an array pattern.
-            // This caused huge memory usage when generating the drops for large arrays, so we instead
-            // record the *subslices* which are dropped and the *indexes* which are kept
+            // This caused huge memory usage when generating the drops for large arrays, so we
+            // instead record the *subslices* which are dropped and the *indexes* which
+            // are kept
             let mut drop_ranges = vec![];
             let mut dropping = true;
             let mut start = 0;

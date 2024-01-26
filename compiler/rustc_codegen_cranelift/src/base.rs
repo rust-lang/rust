@@ -502,7 +502,8 @@ fn codegen_stmt<'tcx>(
     fx.set_debug_loc(stmt.source_info);
 
     match &stmt.kind {
-        StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
+        StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} /* Those are not */
+        // very useful
         _ => {
             if fx.clif_comments.enabled() {
                 let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();

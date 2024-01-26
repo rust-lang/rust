@@ -54,7 +54,8 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
-        // Many tests here use quickcheck and some of them can fail randomly, so only run deterministic tests.
+        // Many tests here use quickcheck and some of them can fail randomly, so only run
+        // deterministic tests.
         filters: &[
             "test_flatten::",
             "test_fmt::",

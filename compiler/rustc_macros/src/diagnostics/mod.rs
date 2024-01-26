@@ -81,7 +81,8 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```
 ///
 /// ```fluent
-/// lint_atomic_ordering_invalid_fail_success = `{$method}`'s success ordering must be at least as strong as its failure ordering
+/// lint_atomic_ordering_invalid_fail_success = `{$method}`'s success ordering must be at least
+///                                              as strong as its failure ordering
 ///     .fail_label = `{$fail_ordering}` failure ordering
 ///     .success_label = `{$success_ordering}` success ordering
 ///     .suggestion = consider using `{$success_suggestion}` success ordering instead

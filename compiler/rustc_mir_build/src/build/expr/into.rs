@@ -184,10 +184,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 // At this point, the control flow splits into a short-circuiting path
                 // and a continuation path.
-                // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
-                //   failing it leads to the short-circuting path which assigns `false` to the place.
-                // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
-                //   passing it leads to the short-circuting path which assigns `true` to the place.
+                // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on
+                //   `rhs`; failing it leads to the short-circuting path which assigns `false` to
+                //   the place.
+                // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on
+                //   `rhs`; passing it leads to the short-circuting path which assigns `true` to the
+                //   place.
                 this.cfg.push_assign_constant(
                     short_circuit,
                     source_info,

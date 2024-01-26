@@ -612,12 +612,13 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let r = relation;
 
-            // FIXME(generic_const_exprs): is it possible to relate two consts which are not identical
-            // exprs? Should we care about that?
-            // FIXME(generic_const_exprs): relating the `ty()`s is a little weird since it is supposed to
-            // ICE If they mismatch. Unfortunately `ConstKind::Expr` is a little special and can be thought
-            // of as being generic over the argument types, however this is implicit so these types don't get
-            // related when we relate the args of the item this const arg is for.
+            // FIXME(generic_const_exprs): is it possible to relate two consts which are not
+            // identical exprs? Should we care about that?
+            // FIXME(generic_const_exprs): relating the `ty()`s is a little weird since it is
+            // supposed to ICE If they mismatch. Unfortunately `ConstKind::Expr` is a
+            // little special and can be thought of as being generic over the argument
+            // types, however this is implicit so these types don't get related when we
+            // relate the args of the item this const arg is for.
             let expr = match (ae, be) {
                 (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br)) if a_op == b_op => {
                     r.relate(al.ty(), bl.ty())?;

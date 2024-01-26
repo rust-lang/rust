@@ -84,7 +84,8 @@ pub struct Env {
     iter: EnvIterator,
 }
 
-// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
+// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this
+// when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
 pub struct EnvStrDebug<'a> {
     iter: &'a EnvIterator,
 }

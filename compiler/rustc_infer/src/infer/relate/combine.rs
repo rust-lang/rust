@@ -160,20 +160,23 @@ impl<'tcx> InferCtxt<'tcx> {
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
 
-        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
-        // correct type for the generic param they are an argument for. However there have been a number of cases
-        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
-        // to check even if it is a bit nasty impl wise :(
+        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that
+        // consts have the correct type for the generic param they are an argument for.
+        // However there have been a number of cases historically where asserting that the
+        // types are equal has found bugs in the compiler so this is valuable to check even
+        // if it is a bit nasty impl wise :(
         //
-        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
-        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
+        // This probe is probably not strictly necessary but it seems better to be safe and not
+        // accidentally find ourselves with a check to find bugs being required for code to
+        // compile because it made inference progress.
         let compatible_types = self.probe(|_| {
             if a.ty() == b.ty() {
                 return Ok(());
             }
 
-            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
-            // two const param's types are able to be equal has to go through a canonical query with the actual logic
+            // We don't have access to trait solving machinery in `rustc_infer` so the logic for
+            // determining if the two const param's types are able to be equal has to go
+            // through a canonical query with the actual logic
             // in `rustc_trait_selection`.
             let canonical = self.canonicalize_query(
                 relation.param_env().and((a.ty(), b.ty())),
@@ -443,8 +446,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // Generalize type of `a_ty` appropriately depending on the
         // direction. As an example, assume:
         //
-        // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an
-        //   inference variable,
+        // - `a_ty == &'x ?1`, where `'x` is some free region and `?1` is an inference variable,
         // - and `dir` == `SubtypeOf`.
         //
         // Then the generalized form `b_ty` would be `&'?2 ?3`, where
@@ -568,7 +570,8 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
 
     /// Register an obligation that both types must be related to each other according to
-    /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]
+    /// the [`ty::AliasRelationDirection`] given by
+    /// [`ObligationEmittingRelation::alias_relate_direction`]
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
             a.into(),

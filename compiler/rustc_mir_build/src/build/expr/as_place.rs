@@ -345,8 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// * Invalidate any slice bounds checks performed.
     /// * Change the address that this `Place` refers to.
     /// * Modify the memory that this place refers to.
-    /// * Invalidate the memory that this place refers to, this will be caught
-    ///   by borrow checking.
+    /// * Invalidate the memory that this place refers to, this will be caught by borrow checking.
     ///
     /// Extra care is needed if any user code is allowed to run between calling
     /// this method and using it, as is the case for `match` and index
@@ -580,9 +579,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// This has two complications;
     ///
     /// * We need to do a bounds check.
-    /// * We need to ensure that the bounds check can't be invalidated using an
-    ///   expression like `x[1][{x = y; 2}]`. We use fake borrows here to ensure
-    ///   that this is the case.
+    /// * We need to ensure that the bounds check can't be invalidated using an expression like
+    ///   `x[1][{x = y; 2}]`. We use fake borrows here to ensure that this is the case.
     fn lower_index_expression(
         &mut self,
         mut block: BasicBlock,

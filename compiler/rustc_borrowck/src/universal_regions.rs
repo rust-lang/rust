@@ -433,10 +433,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let first_local_index = if self.mir_def.to_def_id() == typeck_root_def_id {
             first_extern_index
         } else {
-            // If this is a closure, coroutine, or inline-const, then the late-bound regions from the enclosing
-            // function/closures are actually external regions to us. For example, here, 'a is not local
-            // to the closure c (although it is local to the fn foo):
-            // fn foo<'a>() {
+            // If this is a closure, coroutine, or inline-const, then the late-bound regions from
+            // the enclosing function/closures are actually external regions to us. For
+            // example, here, 'a is not local to the closure c (although it is local to
+            // the fn foo): fn foo<'a>() {
             //     let c = || { let x: &'a u32 = ...; }
             // }
             for_each_late_bound_region_in_recursive_scope(
@@ -471,8 +471,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             bound_inputs_and_output,
             &mut indices,
         );
-        // Converse of above, if this is a function/closure then the late-bound regions declared on its
-        // signature are local.
+        // Converse of above, if this is a function/closure then the late-bound regions declared on
+        // its signature are local.
         for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def, |r| {
             debug!(?r);
             if !indices.indices.contains_key(&r) {

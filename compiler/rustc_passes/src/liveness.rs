@@ -59,22 +59,18 @@
 //! At each live node `N`, we track three pieces of information for each
 //! variable `V` (these are encapsulated in the `RWU` struct):
 //!
-//! - `reader`: the `LiveNode` ID of some node which will read the value
-//!    that `V` holds on entry to `N`. Formally: a node `M` such
-//!    that there exists a path `P` from `N` to `M` where `P` does not
-//!    write `V`. If the `reader` is `None`, then the current
-//!    value will never be read (the variable is dead, essentially).
+//! - `reader`: the `LiveNode` ID of some node which will read the value that `V` holds on entry to
+//!   `N`. Formally: a node `M` such that there exists a path `P` from `N` to `M` where `P` does not
+//!   write `V`. If the `reader` is `None`, then the current value will never be read (the variable
+//!   is dead, essentially).
 //!
-//! - `writer`: the `LiveNode` ID of some node which will write the
-//!    variable `V` and which is reachable from `N`. Formally: a node `M`
-//!    such that there exists a path `P` from `N` to `M` and `M` writes
-//!    `V`. If the `writer` is `None`, then there is no writer
-//!    of `V` that follows `N`.
+//! - `writer`: the `LiveNode` ID of some node which will write the variable `V` and which is
+//!   reachable from `N`. Formally: a node `M` such that there exists a path `P` from `N` to `M` and
+//!   `M` writes `V`. If the `writer` is `None`, then there is no writer of `V` that follows `N`.
 //!
-//! - `used`: a boolean value indicating whether `V` is *used*. We
-//!   distinguish a *read* from a *use* in that a *use* is some read that
-//!   is not just used to generate a new value. For example, `x += 1` is
-//!   a read but not a use. This is used to generate better warnings.
+//! - `used`: a boolean value indicating whether `V` is *used*. We distinguish a *read* from a *use*
+//!   in that a *use* is some read that is not just used to generate a new value. For example, `x +=
+//!   1` is a read but not a use. This is used to generate better warnings.
 //!
 //! ## Special nodes and variables
 //!
@@ -1515,7 +1511,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
         let can_remove = match pat.kind {
             hir::PatKind::Struct(_, fields, true) => {
-                // if all fields are shorthand, remove the struct field, otherwise, mark with _ as prefix
+                // if all fields are shorthand, remove the struct field, otherwise, mark with _ as
+                // prefix
                 fields.iter().all(|f| f.is_shorthand)
             }
             _ => false,
@@ -1616,7 +1613,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     );
                 } else {
                     // #117284, when `pat_span` and `ident_span` have different contexts
-                    // we can't provide a good suggestion, instead we pointed out the spans from macro
+                    // we can't provide a good suggestion, instead we pointed out the spans from
+                    // macro
                     let from_macro = non_shorthands
                         .iter()
                         .find(|(_, pat_span, ident_span)| {

@@ -167,7 +167,8 @@ impl FunctionDebugContext {
         });
 
         let func_entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
+        // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is
+        // skipped.
         func_entry.set(
             gimli::DW_AT_low_pc,
             AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),

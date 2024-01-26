@@ -126,9 +126,10 @@ impl<'tcx> Ty<'tcx> {
                     }
                 }
             }
-            // FIXME(inherent_associated_types): Most likely we can just map to `GenericType` like above.
-            // However it's unclear if the args passed to `InhabitedPredicate::instantiate` are of the correct
-            // format, i.e. don't contain parent args. If you hit this case, please verify this beforehand.
+            // FIXME(inherent_associated_types): Most likely we can just map to `GenericType` like
+            // above. However it's unclear if the args passed to
+            // `InhabitedPredicate::instantiate` are of the correct format, i.e. don't
+            // contain parent args. If you hit this case, please verify this beforehand.
             Alias(ty::Inherent, _) => {
                 bug!("unimplemented: inhabitedness checking for inherent projections")
             }

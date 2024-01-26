@@ -138,7 +138,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
 }
 
 language_item_table! {
-//  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
+//  | Variant name          | Name,                   | Getter method name,       | Target                | Generic requirements;                            |
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").

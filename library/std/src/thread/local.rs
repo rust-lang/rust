@@ -81,18 +81,15 @@ use crate::fmt;
 /// that destructors will be run for all types in thread local storage. For
 /// example, there are a number of known caveats where destructors are not run:
 ///
-/// 1. On Unix systems when pthread-based TLS is being used, destructors will
-///    not be run for TLS values on the main thread when it exits. Note that the
-///    application will exit immediately after the main thread exits as well.
-/// 2. On all platforms it's possible for TLS to re-initialize other TLS slots
-///    during destruction. Some platforms ensure that this cannot happen
-///    infinitely by preventing re-initialization of any slot that has been
-///    destroyed, but not all platforms have this guard. Those platforms that do
-///    not guard typically have a synthetic limit after which point no more
-///    destructors are run.
-/// 3. When the process exits on Windows systems, TLS destructors may only be
-///    run on the thread that causes the process to exit. This is because the
-///    other threads may be forcibly terminated.
+/// 1. On Unix systems when pthread-based TLS is being used, destructors will not be run for TLS
+///    values on the main thread when it exits. Note that the application will exit immediately
+///    after the main thread exits as well.
+/// 2. On all platforms it's possible for TLS to re-initialize other TLS slots during destruction.
+///    Some platforms ensure that this cannot happen infinitely by preventing re-initialization of
+///    any slot that has been destroyed, but not all platforms have this guard. Those platforms that
+///    do not guard typically have a synthetic limit after which point no more destructors are run.
+/// 3. When the process exits on Windows systems, TLS destructors may only be run on the thread that
+///    causes the process to exit. This is because the other threads may be forcibly terminated.
 ///
 /// ## Synchronization in thread-local destructors
 ///

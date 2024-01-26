@@ -1036,9 +1036,10 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
     // Fast path for long shared prefixes
     //
     // - compare raw bytes to find first mismatch
-    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
-    // - if found update state to only do a component-wise comparison on the remainder,
-    //   otherwise do it on the full path
+    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..'
+    //   characters
+    // - if found update state to only do a component-wise comparison on the remainder, otherwise do
+    //   it on the full path
     //
     // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
     // the middle of one
@@ -1238,12 +1239,11 @@ impl PathBuf {
     ///
     /// On Windows:
     ///
-    /// * if `path` has a root but no prefix (e.g., `\windows`), it
-    ///   replaces everything except for the prefix (if any) of `self`.
+    /// * if `path` has a root but no prefix (e.g., `\windows`), it replaces everything except for
+    ///   the prefix (if any) of `self`.
     /// * if `path` has a prefix but no root, it replaces `self`.
-    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`)
-    ///   and `path` is not empty, the new path is normalized: all references
-    ///   to `.` and `..` are removed.
+    /// * if `self` has a verbatim prefix (e.g. `\\?\C:\windows`) and `path` is not empty, the new
+    ///   path is normalized: all references to `.` and `..` are removed.
     ///
     /// Consider using [`Path::join`] if you need a new `PathBuf` instead of
     /// using this function on a cloned `PathBuf`.
@@ -2465,7 +2465,6 @@ impl Path {
     /// before the *first* `.`
     ///
     /// [`Path::file_prefix`]: Path::file_prefix
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -2499,7 +2498,6 @@ impl Path {
     /// before the *last* `.`
     ///
     /// [`Path::file_stem`]: Path::file_stem
-    ///
     #[unstable(feature = "path_file_prefix", issue = "86319")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
@@ -2635,13 +2633,11 @@ impl Path {
     ///
     /// When parsing the path, there is a small amount of normalization:
     ///
-    /// * Repeated separators are ignored, so `a/b` and `a//b` both have
-    ///   `a` and `b` as components.
+    /// * Repeated separators are ignored, so `a/b` and `a//b` both have `a` and `b` as components.
     ///
-    /// * Occurrences of `.` are normalized away, except if they are at the
-    ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
-    ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
-    ///   an additional [`CurDir`] component.
+    /// * Occurrences of `.` are normalized away, except if they are at the beginning of the path.
+    ///   For example, `a/./b`, `a/b/`, `a/b/.` and `a/b` all have `a` and `b` as components, but
+    ///   `./a/b` starts with an additional [`CurDir`] component.
     ///
     /// * A trailing slash is normalized away, `/a/b` and `/a/b/` are equivalent.
     ///
@@ -2881,8 +2877,11 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
-    /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
+    /// assert!(!Path::new("does_not_exist.txt")
+    ///     .try_exists()
+    ///     .expect("Can't check existence of file does_not_exist.txt"));
+    /// assert!(Path::new("/root/secret_file.txt")
+    ///     .try_exists().is_err());
     /// ```
     ///
     /// [`exists()`]: Self::exists

@@ -15,7 +15,6 @@
 //! This file defines the general framework for the custom parsing. The parsing for all the
 //! "top-level" constructs can be found in the `parse` submodule, while the parsing for statements,
 //! terminators, and everything below can be found in the `parse::instruction` submodule.
-//!
 
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;

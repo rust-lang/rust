@@ -745,12 +745,10 @@ impl<'a> Iterator for DirBuffIter<'a> {
 
         // Get the name and next entry from the buffer.
         // SAFETY:
-        // - The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the last
-        //   field (the file name) is unsized. So an offset has to be used to
-        //   get the file name slice.
-        // - The OS has guaranteed initialization of the fields of
-        //   `FILE_ID_BOTH_DIR_INFO` and the trailing filename (for at least
-        //   `FileNameLength` bytes)
+        // - The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the last field (the file name)
+        //   is unsized. So an offset has to be used to get the file name slice.
+        // - The OS has guaranteed initialization of the fields of `FILE_ID_BOTH_DIR_INFO` and the
+        //   trailing filename (for at least `FileNameLength` bytes)
         let (name, is_directory, next_entry) = unsafe {
             let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
             // While this is guaranteed to be aligned in documentation for
@@ -1121,7 +1119,8 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
         Err(e) => {
             if let Some(code) = e.raw_os_error() {
                 match code as u32 {
-                    // If POSIX delete is not supported for this filesystem then fallback to win32 delete.
+                    // If POSIX delete is not supported for this filesystem then fallback to win32
+                    // delete.
                     c::ERROR_NOT_SUPPORTED
                     | c::ERROR_INVALID_FUNCTION
                     | c::ERROR_INVALID_PARAMETER => {
@@ -1314,10 +1313,10 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
             if [Some(c::ERROR_SHARING_VIOLATION as _), Some(c::ERROR_ACCESS_DENIED as _)]
                 .contains(&e.raw_os_error()) =>
         {
-            // `ERROR_ACCESS_DENIED` is returned when the user doesn't have permission for the resource.
-            // One such example is `System Volume Information` as default but can be created as well
-            // `ERROR_SHARING_VIOLATION` will almost never be returned.
-            // Usually if a file is locked you can still read some metadata.
+            // `ERROR_ACCESS_DENIED` is returned when the user doesn't have permission for the
+            // resource. One such example is `System Volume Information` as default but
+            // can be created as well `ERROR_SHARING_VIOLATION` will almost never be
+            // returned. Usually if a file is locked you can still read some metadata.
             // However, there are special system files, such as
             // `C:\hiberfil.sys`, that are locked in a way that denies even that.
             unsafe {

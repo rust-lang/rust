@@ -24,14 +24,14 @@ use crate::errors::{
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 
 pub trait TypeErrCtxtExt<'tcx> {
-    /*private*/
+    /* private */
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Option<(DefId, GenericArgsRef<'tcx>)>;
 
-    /*private*/
+    /* private */
     fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str>;
 
     fn on_unimplemented_note(

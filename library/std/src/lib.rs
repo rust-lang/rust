@@ -52,13 +52,11 @@
 //! Second, implicit methods on [primitive types] are documented here. This can
 //! be a source of confusion for two reasons:
 //!
-//! 1. While primitives are implemented by the compiler, the standard library
-//!    implements methods directly on the primitive types (and it is the only
-//!    library that does so), which are [documented in the section on
-//!    primitives](#primitives).
-//! 2. The standard library exports many modules *with the same name as
-//!    primitive types*. These define additional items related to the primitive
-//!    type, but not the all-important methods.
+//! 1. While primitives are implemented by the compiler, the standard library implements methods
+//!    directly on the primitive types (and it is the only library that does so), which are
+//!    [documented in the section on primitives](#primitives).
+//! 2. The standard library exports many modules *with the same name as primitive types*. These
+//!    define additional items related to the primitive type, but not the all-important methods.
 //!
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive::i32) that lists all the methods that can be called on
@@ -112,8 +110,8 @@
 //!
 //! * [`Vec<T>`] - A heap-allocated *vector* that is resizable at runtime.
 //! * [`[T; N]`][prim@array] - An inline *array* with a fixed size at compile time.
-//! * [`[T]`][prim@slice] - A dynamically sized *slice* into any other kind of contiguous
-//!   storage, whether heap-allocated or not.
+//! * [`[T]`][prim@slice] - A dynamically sized *slice* into any other kind of contiguous storage,
+//!   whether heap-allocated or not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as such come
 //! in many flavors such as:
@@ -399,7 +397,6 @@
 #![feature(const_waker)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
-//
 #![default_lib_allocator]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute

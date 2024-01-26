@@ -454,7 +454,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    /// Find the first stack frame that is within the current crate, if any, otherwise return the crate's HirId
+    /// Find the first stack frame that is within the current crate, if any, otherwise return the
+    /// crate's HirId
     pub fn best_lint_scope(&self) -> hir::HirId {
         self.stack()
             .iter()
@@ -471,8 +472,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn format_error(&self, e: InterpErrorInfo<'tcx>) -> String {
         let (e, backtrace) = e.into_parts();
         backtrace.print_backtrace();
-        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
-        // label and arguments from the InterpError.
+        // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract
+        // the label and arguments from the InterpError.
         let dcx = self.tcx.dcx();
         #[allow(rustc::untranslatable_diagnostic)]
         let mut diag = dcx.struct_allow("");
@@ -719,7 +720,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
                 let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
 
-                // Just for our sanitiy's sake, assert that this is equal to what codegen would compute.
+                // Just for our sanitiy's sake, assert that this is equal to what codegen would
+                // compute.
                 assert_eq!(
                     full_size,
                     (unsized_offset_unadjusted + unsized_size).align_to(full_align)
@@ -788,7 +790,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = M::init_frame_extra(self, pre_frame)?;
         self.stack_mut().push(frame);
 
-        // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
+        // Make sure all the constants required by this frame evaluate successfully
+        // (post-monomorphization check).
         if M::POST_MONO_CHECKS {
             for &const_ in &body.required_consts {
                 let c =
@@ -896,7 +899,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
+            let err = self.copy_op(&op, &dest, /* allow_transmute */ true);
             trace!("return value: {:?}", self.dump_place(&dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
@@ -950,7 +953,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
                 }
             };
-            // This must be the very last thing that happens, since it can in fact push a new stack frame.
+            // This must be the very last thing that happens, since it can in fact push a new stack
+            // frame.
             self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
@@ -1049,10 +1053,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             assert!(!meta.has_meta()); // we're dropping the metadata
             // Just make this an efficient immediate.
             // Note that not calling `layout_of` here does have one real consequence:
-            // if the type is too big, we'll only notice this when the local is actually initialized,
-            // which is a bit too late -- we should ideally notice this already here, when the memory
-            // is conceptually allocated. But given how rare that error is and that this is a hot function,
-            // we accept this downside for now.
+            // if the type is too big, we'll only notice this when the local is actually
+            // initialized, which is a bit too late -- we should ideally notice this
+            // already here, when the memory is conceptually allocated. But given how
+            // rare that error is and that this is a hot function, we accept this
+            // downside for now.
             Operand::Immediate(Immediate::Uninit)
         });
 
@@ -1074,7 +1079,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        // It is entirely okay for this local to be already dead (at least that's how we currently generate MIR)
+        // It is entirely okay for this local to be already dead (at least that's how we currently
+        // generate MIR)
         let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
         self.deallocate_local(old)?;
         Ok(())

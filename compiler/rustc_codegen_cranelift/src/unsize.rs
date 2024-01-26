@@ -35,7 +35,8 @@ pub(crate) fn unsized_info<'tcx>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
-                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
+                // A NOP cast that doesn't actually change anything, should be allowed even with
+                // invalid vtables.
                 return old_info;
             }
 
@@ -291,10 +292,11 @@ pub(crate) fn size_and_align_of<'tcx>(
             // let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
             // let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
             // However, `unsized_size` is a multiple of `unsized_align`.
-            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
-            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(unsized_align).align_to(full_align);
-            // Furthermore, `align >= unsized_align`, and therefore we only need to do:
-            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
+            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding
+            // `unsized_size`: let full_size = (unsized_offset_unadjusted +
+            // unsized_size).align_to(unsized_align).align_to(full_align); Furthermore,
+            // `align >= unsized_align`, and therefore we only need to do: let full_size
+            // = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
 
             let full_size = fx.bcx.ins().iadd(unsized_offset_unadjusted, unsized_size);
 

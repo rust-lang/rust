@@ -304,8 +304,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 (String::new(), "this scope".to_string(), None, suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
                 if self.r.tcx.sess.edition() > Edition::Edition2015 {
-                    // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
-                    // which overrides all other expectations of item type
+                    // In edition 2018 onwards, the `::foo` syntax may only pull from the extern
+                    // prelude which overrides all other expectations of item
+                    // type
                     expected = "crate";
                     (String::new(), "the list of imported crates".to_string(), None, None)
                 } else {
@@ -2153,7 +2154,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let name = path[path.len() - 1].ident.as_str();
         // Common Java types
         Some(match name {
-            "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
+            "byte" => sym::u8, /* In Java, bytes are signed, but in practice one almost always */
+            // wants unsigned bytes.
             "short" => sym::i16,
             "Bool" => sym::bool,
             "Boolean" => sym::bool,
@@ -2587,7 +2589,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     debug!(?param.ident, ?param.ident.span);
                     let deletion_span = deletion_span();
 
-                    // if the lifetime originates from expanded code, we won't be able to remove it #104432
+                    // if the lifetime originates from expanded code, we won't be able to remove it
+                    // #104432
                     if deletion_span.is_some_and(|sp| !sp.in_derive_expansion()) {
                         self.r.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::UNUSED_LIFETIMES,
@@ -2653,8 +2656,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             let mut should_continue = true;
             match rib.kind {
                 LifetimeRibKind::Generics { binder: _, span, kind } => {
-                    // Avoid suggesting placing lifetime parameters on constant items unless the relevant
-                    // feature is enabled. Suggest the parent item as a possible location if applicable.
+                    // Avoid suggesting placing lifetime parameters on constant items unless the
+                    // relevant feature is enabled. Suggest the parent item as a
+                    // possible location if applicable.
                     if let LifetimeBinderKind::ConstItem = kind
                         && !self.r.tcx().features().generic_const_items
                     {
@@ -2741,8 +2745,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     }
 
     /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
-    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body
+    /// identified by `body_id` is an anonymous constant and `lifetime_ref` is non-static.
     pub(crate) fn emit_forbidden_non_static_lifetime_error(
         &self,
         cause: NoConstantGenericsReason,

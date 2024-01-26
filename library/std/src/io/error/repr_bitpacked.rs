@@ -30,8 +30,8 @@
 //! Tagged values are 64 bits, with the 2 least significant bits used for the
 //! tag. This means there are there are 4 "variants":
 //!
-//! - **Tag 0b00**: The first variant is equivalent to
-//!   `ErrorData::SimpleMessage`, and holds a `&'static SimpleMessage` directly.
+//! - **Tag 0b00**: The first variant is equivalent to `ErrorData::SimpleMessage`, and holds a
+//!   `&'static SimpleMessage` directly.
 //!
 //!   `SimpleMessage` has an alignment >= 4 (which is requested with
 //!   `#[repr(align)]` and checked statically at the bottom of this file), which
@@ -42,25 +42,22 @@
 //!   be constructed from a `const fn`, which probably cannot tag pointers (or
 //!   at least it would be difficult).
 //!
-//! - **Tag 0b01**: The other pointer variant holds the data for
-//!   `ErrorData::Custom` and the remaining 62 bits are used to store a
-//!   `Box<Custom>`. `Custom` also has alignment >= 4, so the bottom two bits
-//!   are free to use for the tag.
+//! - **Tag 0b01**: The other pointer variant holds the data for `ErrorData::Custom` and the
+//!   remaining 62 bits are used to store a `Box<Custom>`. `Custom` also has alignment >= 4, so the
+//!   bottom two bits are free to use for the tag.
 //!
 //!   The only important thing to note is that `ptr::wrapping_add` and
 //!   `ptr::wrapping_sub` are used to tag the pointer, rather than bitwise
 //!   operations. This should preserve the pointer's provenance, which would
 //!   otherwise be lost.
 //!
-//! - **Tag 0b10**: Holds the data for `ErrorData::Os(i32)`. We store the `i32`
-//!   in the pointer's most significant 32 bits, and don't use the bits `2..32`
-//!   for anything. Using the top 32 bits is just to let us easily recover the
-//!   `i32` code with the correct sign.
+//! - **Tag 0b10**: Holds the data for `ErrorData::Os(i32)`. We store the `i32` in the pointer's
+//!   most significant 32 bits, and don't use the bits `2..32` for anything. Using the top 32 bits
+//!   is just to let us easily recover the `i32` code with the correct sign.
 //!
-//! - **Tag 0b11**: Holds the data for `ErrorData::Simple(ErrorKind)`. This
-//!   stores the `ErrorKind` in the top 32 bits as well, although it doesn't
-//!   occupy nearly that many. Most of the bits are unused here, but it's not
-//!   like we need them for anything else yet.
+//! - **Tag 0b11**: Holds the data for `ErrorData::Simple(ErrorKind)`. This stores the `ErrorKind`
+//!   in the top 32 bits as well, although it doesn't occupy nearly that many. Most of the bits are
+//!   unused here, but it's not like we need them for anything else yet.
 //!
 //! # Use of `NonNull<()>`
 //!
@@ -83,15 +80,13 @@
 //!
 //! But there are a few problems with this:
 //!
-//! 1. Union access is equivalent to a transmute, so this representation would
-//!    require we transmute between integers and pointers in at least one
-//!    direction, which may be UB (and even if not, it is likely harder for a
-//!    compiler to reason about than explicit ptr->int operations).
+//! 1. Union access is equivalent to a transmute, so this representation would require we transmute
+//!    between integers and pointers in at least one direction, which may be UB (and even if not, it
+//!    is likely harder for a compiler to reason about than explicit ptr->int operations).
 //!
-//! 2. Even if all fields of a union have a niche, the union itself doesn't,
-//!    although this may change in the future. This would make things like
-//!    `io::Result<()>` and `io::Result<usize>` larger, which defeats part of
-//!    the motivation of this bitpacking.
+//! 2. Even if all fields of a union have a niche, the union itself doesn't, although this may
+//!    change in the future. This would make things like `io::Result<()>` and `io::Result<usize>`
+//!    larger, which defeats part of the motivation of this bitpacking.
 //!
 //! Storing everything in a `NonZeroUsize` (or some other integer) would be a
 //! bit more traditional for pointer tagging, but it would lose provenance

@@ -360,7 +360,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
                 }
             }
-            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC
+            // 2396).
             ty::FnDef(def_id, args) => {
                 let tcx = self.tcx();
                 if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
@@ -428,10 +429,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
     }
 
-    /// The various `impl<T: FnPtr> Trait for T` in libcore are more like builtin impls for all function items
-    /// and function pointers and less like blanket impls. Rejecting them when they can't possibly apply (because
-    /// the obligation's self-type does not implement `FnPtr`) avoids reporting that the self type does not implement
-    /// `FnPtr`, when we wanted to report that it doesn't implement `Trait`.
+    /// The various `impl<T: FnPtr> Trait for T` in libcore are more like builtin impls for all
+    /// function items and function pointers and less like blanket impls. Rejecting them when
+    /// they can't possibly apply (because the obligation's self-type does not implement
+    /// `FnPtr`) avoids reporting that the self type does not implement `FnPtr`, when we wanted
+    /// to report that it doesn't implement `Trait`.
     #[instrument(level = "trace", skip(self), ret)]
     fn reject_fn_ptr_impls(
         &mut self,
@@ -592,8 +594,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //
-                        // For example during candidate assembly for `impl Send: Send`, we don't have
-                        // to look at the constituent types for this opaque types to figure out that this
+                        // For example during candidate assembly for `impl Send: Send`, we don't
+                        // have to look at the constituent types for this
+                        // opaque types to figure out that this
                         // trivially holds.
                         //
                         // Note that this is only sound as projection candidates of opaque types
@@ -625,11 +628,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::CoroutineWitness(..) => {
-                    // Only consider auto impls if there are no manual impls for the root of `self_ty`.
+                    // Only consider auto impls if there are no manual impls for the root of
+                    // `self_ty`.
                     //
-                    // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
-                    // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
-                    // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
+                    // For example, we only consider auto candidates for `&i32: Auto` if no explicit
+                    // impl for `&SomeType: Auto` exists. Due to E0321 the only
+                    // crate where impls for `&SomeType: Auto` can be defined is
+                    // the crate where `Auto` has been defined.
                     //
                     // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
                     // which may define impls for that type is either the crate defining the type

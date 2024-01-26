@@ -4,22 +4,22 @@
 //!
 //! # Motivations and benefits
 //!
-//! * **Identity**: sharing AST nodes is problematic for the various analysis
-//!   passes (e.g., one may be able to bypass the borrow checker with a shared
-//!   `ExprKind::AddrOf` node taking a mutable borrow).
+//! * **Identity**: sharing AST nodes is problematic for the various analysis passes (e.g., one may
+//!   be able to bypass the borrow checker with a shared `ExprKind::AddrOf` node taking a mutable
+//!   borrow).
 //!
-//! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
-//!   (unless it contains an `Unsafe` interior, but that may be denied later).
-//!   This mainly prevents mistakes, but also enforces a kind of "purity".
+//! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>` (unless it contains
+//!   an `Unsafe` interior, but that may be denied later). This mainly prevents mistakes, but also
+//!   enforces a kind of "purity".
 //!
-//! * **Efficiency**: folding can reuse allocation space for `P<T>` and `Vec<T>`,
-//!   the latter even when the input and output types differ (as it would be the
-//!   case with arenas or a GADT AST using type parameters to toggle features).
+//! * **Efficiency**: folding can reuse allocation space for `P<T>` and `Vec<T>`, the latter even
+//!   when the input and output types differ (as it would be the case with arenas or a GADT AST
+//!   using type parameters to toggle features).
 //!
-//! * **Maintainability**: `P<T>` provides a fixed interface - `Deref`,
-//!   `and_then` and `map` - which can remain fully functional even if the
-//!   implementation changes (using a special thread-local heap, for example).
-//!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
+//! * **Maintainability**: `P<T>` provides a fixed interface - `Deref`, `and_then` and `map` - which
+//!   can remain fully functional even if the implementation changes (using a special thread-local
+//!   heap, for example). Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly
+//!   automated.
 
 use std::fmt::{self, Debug, Display};
 use std::ops::{Deref, DerefMut};

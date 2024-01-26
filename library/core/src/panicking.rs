@@ -144,8 +144,8 @@ pub const fn panic(expr: &'static str) -> ! {
     panic_fmt(fmt::Arguments::new_const(&[expr]));
 }
 
-/// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
-/// If you want `#[track_caller]` for nicer errors, call `panic_nounwind_fmt` directly.
+/// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the
+/// caller. If you want `#[track_caller]` for nicer errors, call `panic_nounwind_fmt` directly.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics

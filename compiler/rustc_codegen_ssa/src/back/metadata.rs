@@ -307,7 +307,8 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             let mut e_flags: u32 = 0x0;
 
             // Check if compressed is enabled
-            // `unstable_target_features` is used here because "c" is gated behind riscv_target_feature.
+            // `unstable_target_features` is used here because "c" is gated behind
+            // riscv_target_feature.
             if sess.unstable_target_features.contains(&sym::c) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
@@ -414,24 +415,21 @@ pub enum MetadataPosition {
 /// With the above in mind, each "flavor" of object format gets special
 /// handling here depending on the target:
 ///
-/// * MachO - macos-like targets will insert the metadata into a section that
-///   is sort of fake dwarf debug info. Inspecting the source of the macos
-///   linker this causes these sections to be skipped automatically because
-///   it's not in an allowlist of otherwise well known dwarf section names to
+/// * MachO - macos-like targets will insert the metadata into a section that is sort of fake dwarf
+///   debug info. Inspecting the source of the macos linker this causes these sections to be skipped
+///   automatically because it's not in an allowlist of otherwise well known dwarf section names to
 ///   go into the final artifact.
 ///
-/// * WebAssembly - we actually don't have any container format for this
-///   target. WebAssembly doesn't support the `dylib` crate type anyway so
-///   there's no need for us to support this at this time. Consequently the
-///   metadata bytes are simply stored as-is into an rlib.
+/// * WebAssembly - we actually don't have any container format for this target. WebAssembly doesn't
+///   support the `dylib` crate type anyway so there's no need for us to support this at this time.
+///   Consequently the metadata bytes are simply stored as-is into an rlib.
 ///
-/// * COFF - Windows-like targets create an object with a section that has
-///   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
-///   ever sees the section it doesn't process it and it's removed.
+/// * COFF - Windows-like targets create an object with a section that has the
+///   `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker ever sees the section it
+///   doesn't process it and it's removed.
 ///
-/// * ELF - All other targets are similar to Windows in that there's a
-///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
-///   automatically removed from the final output.
+/// * ELF - All other targets are similar to Windows in that there's a `SHF_EXCLUDE` flag we can set
+///   on sections in an object file to get automatically removed from the final output.
 pub fn create_wrapper_file(
     sess: &Session,
     section_name: Vec<u8>,
@@ -441,13 +439,11 @@ pub fn create_wrapper_file(
         // This is used to handle all "other" targets. This includes targets
         // in two categories:
         //
-        // * Some targets don't have support in the `object` crate just yet
-        //   to write an object file. These targets are likely to get filled
-        //   out over time.
+        // * Some targets don't have support in the `object` crate just yet to write an object file.
+        //   These targets are likely to get filled out over time.
         //
-        // * Targets like WebAssembly don't support dylibs, so the purpose
-        //   of putting metadata in object files, to support linking rlibs
-        //   into dylibs, is moot.
+        // * Targets like WebAssembly don't support dylibs, so the purpose of putting metadata in
+        //   object files, to support linking rlibs into dylibs, is moot.
         //
         // In both of these cases it means that linking into dylibs will
         // not be supported by rustc. This doesn't matter for targets like
@@ -475,7 +471,8 @@ pub fn create_wrapper_file(
                 SectionFlags::Elf { sh_flags: elf::SHF_EXCLUDE as u64 };
         }
         BinaryFormat::Xcoff => {
-            // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
+            // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text,
+            // no .data and no .bss.
             file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
             file.section_mut(section).flags =
                 SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
@@ -567,15 +564,13 @@ pub fn create_compressed_metadata_file(
     file.write().unwrap()
 }
 
-/// * Xcoff - On AIX, custom sections are merged into predefined sections,
-///   so custom .rustc section is not preserved during linking.
-///   For this reason, we store metadata in predefined .info section, and
-///   define a symbol to reference the metadata. To preserve metadata during
-///   linking on AIX, we have to
+/// * Xcoff - On AIX, custom sections are merged into predefined sections, so custom .rustc section
+///   is not preserved during linking. For this reason, we store metadata in predefined .info
+///   section, and define a symbol to reference the metadata. To preserve metadata during linking on
+///   AIX, we have to
 ///   1. Create an empty .text section, a empty .data section.
 ///   2. Define an empty symbol named `symbol_name` inside .data section.
-///   3. Define an symbol named `AIX_METADATA_SYMBOL_NAME` referencing
-///      data inside .info section.
+///   3. Define an symbol named `AIX_METADATA_SYMBOL_NAME` referencing data inside .info section.
 ///   From XCOFF's view, (2) creates a csect entry in the symbol table, the
 ///   symbol created by (3) is a info symbol for the preceding csect. Thus
 ///   two symbols are preserved during linking and we can use the second symbol
@@ -586,7 +581,8 @@ pub fn create_compressed_metadata_file_for_xcoff(
     symbol_name: &str,
 ) -> Vec<u8> {
     assert!(file.format() == BinaryFormat::Xcoff);
-    // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no .data and no .bss.
+    // AIX system linker may aborts if it meets a valid XCOFF file in archive with no .text, no
+    // .data and no .bss.
     file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
     let data_section = file.add_section(Vec::new(), b".data".to_vec(), SectionKind::Data);
     let section = file.add_section(Vec::new(), b".info".to_vec(), SectionKind::Debug);

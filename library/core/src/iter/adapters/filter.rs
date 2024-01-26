@@ -75,7 +75,8 @@ where
             #[inline]
             fn drop(&mut self) {
                 if const { crate::mem::needs_drop::<T>() } {
-                    // SAFETY: self.initialized is always <= N, which also is the length of the array.
+                    // SAFETY: self.initialized is always <= N, which also is the length of the
+                    // array.
                     unsafe {
                         core::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
                             self.array.get_unchecked_mut(..self.initialized),
@@ -101,7 +102,8 @@ where
 
         match result {
             ControlFlow::Break(()) => {
-                // SAFETY: The loop above is only explicitly broken when the array has been fully initialized
+                // SAFETY: The loop above is only explicitly broken when the array has been fully
+                // initialized
                 Ok(unsafe { MaybeUninit::array_assume_init(array) })
             }
             ControlFlow::Continue(()) => {

@@ -190,7 +190,6 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///         value >= start || value <= end
 ///     }
 /// }
-///
 /// ```
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,

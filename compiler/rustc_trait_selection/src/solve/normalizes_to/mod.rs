@@ -273,8 +273,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         })
     }
 
-    /// Fail to normalize if the predicate contains an error, alternatively, we could normalize to `ty::Error`
-    /// and succeed. Can experiment with this to figure out what results in better error messages.
+    /// Fail to normalize if the predicate contains an error, alternatively, we could normalize to
+    /// `ty::Error` and succeed. Can experiment with this to figure out what results in better
+    /// error messages.
     fn consider_error_guaranteed_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         _guar: ErrorGuaranteed,
@@ -408,14 +409,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 }
 
                 ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
+                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with
+                    // no constraints.
                     let sized_predicate = ty::TraitRef::from_lang_item(
                         tcx,
                         LangItem::Sized,
                         DUMMY_SP,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     );
-                    // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                    // FIXME(-Znext-solver=coinductive): Should this be
+                    // `GoalSource::ImplWhereBound`?
                     ecx.add_goal(GoalSource::Misc, goal.with(tcx, sized_predicate));
                     tcx.types.unit
                 }
@@ -424,7 +427,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     None => tcx.types.unit,
                     Some(field_def) => {
                         let self_ty = field_def.ty(tcx, args);
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                        // FIXME(-Znext-solver=coinductive): Should this be
+                        // `GoalSource::ImplWhereBound`?
                         ecx.add_goal(
                             GoalSource::Misc,
                             goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
@@ -438,7 +442,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ty::Tuple(elements) => match elements.last() {
                     None => tcx.types.unit,
                     Some(&self_ty) => {
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                        // FIXME(-Znext-solver=coinductive): Should this be
+                        // `GoalSource::ImplWhereBound`?
                         ecx.add_goal(
                             GoalSource::Misc,
                             goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),

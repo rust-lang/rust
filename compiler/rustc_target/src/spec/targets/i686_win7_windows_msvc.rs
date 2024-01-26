@@ -9,8 +9,8 @@ pub fn target() -> Target {
     base.add_pre_link_args(
         LinkerFlavor::Msvc(Lld::No),
         &[
-            // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
-            // space available to x86 Windows binaries on x86_64.
+            // Mark all dynamic libraries and executables as compatible with the larger 4GiB
+            // address space available to x86 Windows binaries on x86_64.
             "/LARGEADDRESSAWARE",
             // Ensure the linker will only produce an image if it can also produce a table of
             // the image's safe exception handlers.

@@ -7,7 +7,9 @@
 //! - Protocols serve to enable communication between separately built modules, including drivers.
 //! - Every protocol has a GUID associated with it. The GUID serves as the name for the protocol.
 //! - Protocols are produced and consumed.
-//! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
+//! - More information about protocols can be found [here].
+//!
+//! [here]: https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles
 
 use r_efi::efi::{self, Guid};
 
@@ -66,7 +68,8 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
     match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
         Ok(()) => {
             // This is safe because the call will succeed only if buf_len >= required length.
-            // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes) written
+            // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes)
+            // written
             unsafe { buf.set_len(num_of_handles) };
             Ok(buf.into_iter().filter_map(|x| NonNull::new(x)).collect())
         }

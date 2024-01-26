@@ -197,7 +197,8 @@ impl<'tcx> ConstToPat<'tcx> {
                         self.tcx().dcx().emit_err(err)
                     };
                     // All branches above emitted an error. Don't print any more lints.
-                    // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                    // We errored. Signal that in the pattern, so that follow up errors can be
+                    // silenced.
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
                 } else if let ty::Adt(..) = cv.ty().kind()
@@ -445,13 +446,15 @@ impl<'tcx> ConstToPat<'tcx> {
                         return Err(FallbackToOpaqueConst);
                     } else {
                         if let Some(e) = self.saw_const_match_error.get() {
-                            // We already errored. Signal that in the pattern, so that follow up errors can be silenced.
+                            // We already errored. Signal that in the pattern, so that follow up
+                            // errors can be silenced.
                             PatKind::Error(e)
                         } else {
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
                             let e = tcx.dcx().emit_err(err);
                             self.saw_const_match_error.set(Some(e));
-                            // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                            // We errored. Signal that in the pattern, so that follow up errors can
+                            // be silenced.
                             PatKind::Error(e)
                         }
                     }
@@ -463,15 +466,18 @@ impl<'tcx> ConstToPat<'tcx> {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         let e = tcx.dcx().emit_err(err);
-                        // We errored. Signal that in the pattern, so that follow up errors can be silenced.
+                        // We errored. Signal that in the pattern, so that follow up errors can be
+                        // silenced.
                         PatKind::Error(e)
                     } else {
                         let old = self.behind_reference.replace(true);
-                        // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
-                        // matching against references, you can only use byte string literals.
-                        // The typechecker has a special case for byte string literals, by treating them
-                        // as slices. This means we turn `&[T; N]` constants into slice patterns, which
-                        // has no negative effects on pattern matching, even if we're actually matching on
+                        // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type
+                        // when matching against references, you can only
+                        // use byte string literals. The typechecker has a
+                        // special case for byte string literals, by treating them
+                        // as slices. This means we turn `&[T; N]` constants into slice patterns,
+                        // which has no negative effects on pattern
+                        // matching, even if we're actually matching on
                         // arrays.
                         let pointee_ty = match *pointee_ty.kind() {
                             ty::Array(elem_ty, _) if self.treat_byte_string_as_slice => {

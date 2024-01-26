@@ -115,7 +115,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // in them but are not subject to member constraints, for instance closure args.
             let universal_args = infcx.tcx.fold_regions(args, |region, _| {
                 if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the args.
+                    // Higher kinded regions don't need remapping, they don't refer to anything
+                    // outside of this the args.
                     return region;
                 }
                 let vid = self.to_region_vid(region);
@@ -146,9 +147,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universal_concrete_type,
             );
             // Sometimes two opaque types are the same only after we remap the generic parameters
-            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
-            // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
-            // once we convert the generic parameters to those of the opaque type.
+            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to
+            // `(X, Y)` and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the
+            // same, but we only know that once we convert the generic parameters to
+            // those of the opaque type.
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
@@ -326,8 +328,8 @@ fn check_opaque_type_well_formed<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
 
-    // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
-    // the bounds that the function supplies.
+    // Require that the hidden type actually fulfills all the bounds of the opaque type, even
+    // without the bounds that the function supplies.
     let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_args);
     ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
         .map_err(|err| {

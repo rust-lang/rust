@@ -934,8 +934,9 @@ pub fn make_test_description<R: Read>(
         Mode::CoverageRun => {
             &[
                 "needs-profiler-support",
-                // FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
-                // properly. Since we only have GCC on the CI ignore the test for now.
+                // FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with
+                // Clang it works properly. Since we only have GCC on the CI ignore
+                // the test for now.
                 "ignore-windows-gnu",
                 // FIXME(pietroalbini): this test currently does not work on cross-compiled
                 // targets because remote-test is not capable of sending back the *.profraw

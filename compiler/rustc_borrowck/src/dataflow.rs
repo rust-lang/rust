@@ -262,8 +262,8 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         let sccs = self.regioncx.constraint_sccs();
         let universal_regions = self.regioncx.universal_regions();
 
-        // We first handle the cases where the loan doesn't go out of scope, depending on the issuing
-        // region's successors.
+        // We first handle the cases where the loan doesn't go out of scope, depending on the
+        // issuing region's successors.
         for successor in self.regioncx.region_graph().depth_first_search(issuing_region) {
             // 1. Via applied member constraints
             //

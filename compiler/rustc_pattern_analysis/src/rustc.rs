@@ -88,8 +88,9 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub scrut_span: Span,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
     pub refutable: bool,
-    /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
-    /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
+    /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee
+    /// comes from a union field, a pointer deref, or a reference deref (pending opsem
+    /// decisions).
     pub known_valid_scrutinee: bool,
 }
 
@@ -524,7 +525,8 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         };
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        // For each field in the variant, we store the relevant index into `self.fields` if any.
+                        // For each field in the variant, we store the relevant index into
+                        // `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
                         let tys = cx.list_variant_nonhidden_fields(ty, variant).enumerate().map(
@@ -593,8 +595,9 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         fields = &[];
                     }
                     ty::Ref(_, t, _) if t.is_str() => {
-                        // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
-                        // with other `Deref` patterns. This could have been done in `const_to_pat`,
+                        // We want a `&str` constant to behave like a `Deref` pattern, to be
+                        // compatible with other `Deref` patterns. This
+                        // could have been done in `const_to_pat`,
                         // but that causes issues with the rest of the matching code.
                         // So here, the constructor for a `"foo"` pattern is `&` (represented by
                         // `Ref`), and has one field. That field has constructor `Str(value)` and no
@@ -814,9 +817,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         let mut subpatterns = subpatterns.peekable();
                         let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix).collect();
                         if slice.array_len.is_some() {
-                            // Improves diagnostics a bit: if the type is a known-size array, instead
-                            // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
-                            // This is incorrect if the size is not known, since `[_, ..]` captures
+                            // Improves diagnostics a bit: if the type is a known-size array,
+                            // instead of reporting `[x, _, .., _, y]`,
+                            // we prefer to report `[x, .., y]`. This is
+                            // incorrect if the size is not known, since `[_, ..]` captures
                             // arrays of lengths `>= 1` whereas `[..]` captures any length.
                             while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
                                 prefix.pop();

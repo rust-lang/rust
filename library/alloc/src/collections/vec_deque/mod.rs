@@ -98,9 +98,10 @@ pub struct VecDeque<
     // `self[0]`, if it exists, is `buf[head]`.
     // `head < buf.capacity()`, unless `buf.capacity() == 0` when `head == 0`.
     head: usize,
-    // the number of initialized elements, starting from the one at `head` and potentially wrapping around.
-    // if `len == 0`, the exact value of `head` is unimportant.
-    // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as usize`.
+    // the number of initialized elements, starting from the one at `head` and potentially wrapping
+    // around. if `len == 0`, the exact value of `head` is unimportant.
+    // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as
+    // usize`.
     len: usize,
     buf: RawVec<T, A>,
 }
@@ -951,8 +952,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         //
         // At all other times, element positions are unaffected.
 
-        // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing can
-        // overflow.
+        // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing
+        // can overflow.
         let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
 
         if self.len == 0 {
@@ -1047,11 +1048,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         // Safe because:
         //
-        // * Any slice passed to `drop_in_place` is valid; the second case has
-        //   `len <= front.len()` and returning on `len > self.len()` ensures
-        //   `begin <= back.len()` in the first case
-        // * The head of the VecDeque is moved before calling `drop_in_place`,
-        //   so no value is dropped twice if `drop_in_place` panics
+        // * Any slice passed to `drop_in_place` is valid; the second case has `len <= front.len()`
+        //   and returning on `len > self.len()` ensures `begin <= back.len()` in the first case
+        // * The head of the VecDeque is moved before calling `drop_in_place`, so no value is
+        //   dropped twice if `drop_in_place` panics
         unsafe {
             if len >= self.len {
                 return;
@@ -1258,12 +1258,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let wrapped_start = self.to_physical_idx(start);
 
             // this subtraction can never overflow because `wrapped_start` is
-            // at most `self.capacity()` (and if `self.capacity != 0`, then `wrapped_start` is strictly less
-            // than `self.capacity`).
+            // at most `self.capacity()` (and if `self.capacity != 0`, then `wrapped_start` is
+            // strictly less than `self.capacity`).
             let head_len = self.capacity() - wrapped_start;
 
             if head_len >= len {
-                // we know that `len + wrapped_start <= self.capacity <= usize::MAX`, so this addition can't overflow
+                // we know that `len + wrapped_start <= self.capacity <= usize::MAX`, so this
+                // addition can't overflow
                 (wrapped_start..wrapped_start + len, 0..0)
             } else {
                 // can't overflow because of the if condition
@@ -2243,8 +2244,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     // so all of the elements in the range are initialized
                     let slice = &mut *self.buffer_range(free..self.capacity());
 
-                    // because the deque wasn't contiguous, we know that `tail_len < self.len == slice.len()`,
-                    // so this will never panic.
+                    // because the deque wasn't contiguous, we know that `tail_len < self.len ==
+                    // slice.len()`, so this will never panic.
                     slice.rotate_left(tail_len);
 
                     // the used part of the buffer now is `free..self.capacity()`, so set
@@ -2255,7 +2256,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 // head is shorter so:
                 //  1. copy head backwards
                 //  2. rotate used part of the buffer
-                //  3. update head to point to the new beginning (which is the beginning of the buffer)
+                //  3. update head to point to the new beginning (which is the beginning of the
+                //     buffer)
 
                 unsafe {
                     // if there is no free space in the buffer, then the slices are already
@@ -2269,8 +2271,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     // next to each other, all the elements in the range are initialized.
                     let slice = &mut *self.buffer_range(0..self.len);
 
-                    // because the deque wasn't contiguous, we know that `head_len < self.len == slice.len()`
-                    // so this will never panic.
+                    // because the deque wasn't contiguous, we know that `head_len < self.len ==
+                    // slice.len()` so this will never panic.
                     slice.rotate_right(head_len);
 
                     // the used part of the buffer now is `0..self.len`, so set
@@ -2558,8 +2560,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// (the index of the first element of the second partition).
     ///
     /// The deque is assumed to be partitioned according to the given predicate.
-    /// This means that all elements for which the predicate returns true are at the start of the deque
-    /// and all elements for which the predicate returns false are at the end.
+    /// This means that all elements for which the predicate returns true are at the start of the
+    /// deque and all elements for which the predicate returns false are at the end.
     /// For example, `[7, 15, 3, 5, 4, 12, 6]` is partitioned under the predicate `x % 2 != 0`
     /// (all odd numbers are at the start, all even at the end).
     ///

@@ -6,10 +6,10 @@ use crate::{cmp, ptr};
 
 /// A borrowed byte buffer which is incrementally filled and initialized.
 ///
-/// This type is a sort of "double cursor". It tracks three regions in the buffer: a region at the beginning of the
-/// buffer that has been logically filled with data, a region that has been initialized at some point but not yet
-/// logically filled, and a region at the end that is fully uninitialized. The filled region is guaranteed to be a
-/// subset of the initialized region.
+/// This type is a sort of "double cursor". It tracks three regions in the buffer: a region at the
+/// beginning of the buffer that has been logically filled with data, a region that has been
+/// initialized at some point but not yet logically filled, and a region at the end that is fully
+/// uninitialized. The filled region is guaranteed to be a subset of the initialized region.
 ///
 /// In summary, the contents of the buffer can be visualized as:
 /// ```not_rust
@@ -18,11 +18,11 @@ use crate::{cmp, ptr};
 /// [    initialized    | uninitialized ]
 /// ```
 ///
-/// A `BorrowedBuf` is created around some existing data (or capacity for data) via a unique reference
-/// (`&mut`). The `BorrowedBuf` can be configured (e.g., using `clear` or `set_init`), but cannot be
-/// directly written. To write into the buffer, use `unfilled` to create a `BorrowedCursor`. The cursor
-/// has write-only access to the unfilled portion of the buffer (you can think of it as a
-/// write-only iterator).
+/// A `BorrowedBuf` is created around some existing data (or capacity for data) via a unique
+/// reference (`&mut`). The `BorrowedBuf` can be configured (e.g., using `clear` or `set_init`), but
+/// cannot be directly written. To write into the buffer, use `unfilled` to create a
+/// `BorrowedCursor`. The cursor has write-only access to the unfilled portion of the buffer (you
+/// can think of it as a write-only iterator).
 ///
 /// The lifetime `'data` is a bound on the lifetime of the underlying data.
 pub struct BorrowedBuf<'data> {
@@ -117,7 +117,8 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Clears the buffer, resetting the filled region to empty.
     ///
-    /// The number of initialized bytes is not changed, and the contents of the buffer are not modified.
+    /// The number of initialized bytes is not changed, and the contents of the buffer are not
+    /// modified.
     #[inline]
     pub fn clear(&mut self) -> &mut Self {
         self.filled = 0;
@@ -126,12 +127,13 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Asserts that the first `n` bytes of the buffer are initialized.
     ///
-    /// `BorrowedBuf` assumes that bytes are never de-initialized, so this method does nothing when called with fewer
-    /// bytes than are already known to be initialized.
+    /// `BorrowedBuf` assumes that bytes are never de-initialized, so this method does nothing when
+    /// called with fewer bytes than are already known to be initialized.
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the first `n` unfilled bytes of the buffer have already been initialized.
+    /// The caller must ensure that the first `n` unfilled bytes of the buffer have already been
+    /// initialized.
     #[inline]
     pub unsafe fn set_init(&mut self, n: usize) -> &mut Self {
         self.init = cmp::max(self.init, n);
@@ -156,9 +158,9 @@ impl<'data> BorrowedBuf<'data> {
 #[derive(Debug)]
 pub struct BorrowedCursor<'a> {
     /// The underlying buffer.
-    // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf` when
-    // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into
-    // it, so don't do that!
+    // Safety invariant: we treat the type of buf as covariant in the lifetime of `BorrowedBuf`
+    // when we create a `BorrowedCursor`. This is only safe if we never replace `buf` by
+    // assigning into it, so don't do that!
     buf: &'a mut BorrowedBuf<'a>,
     /// The length of the filled portion of the underlying buffer at the time of the cursor's
     /// creation.
@@ -190,7 +192,8 @@ impl<'a> BorrowedCursor<'a> {
         self.buf.capacity() - self.buf.filled
     }
 
-    /// Returns the number of bytes written to this cursor since it was created from a `BorrowedBuf`.
+    /// Returns the number of bytes written to this cursor since it was created from a
+    /// `BorrowedBuf`.
     ///
     /// Note that if this cursor is a reborrowed clone of another, then the count returned is the
     /// count written via either cursor, not the count since the cursor was reborrowed.

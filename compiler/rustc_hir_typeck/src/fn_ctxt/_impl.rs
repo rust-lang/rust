@@ -704,11 +704,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to find those obligations anymore, and it can't necessarily find them from the opaque
         // type itself. We could be more powerful with inference if we *combined* the obligations
         // so that we got both the obligations from the opaque type and the ones from the inference
-        // variable. That will accept more code than we do right now, so we need to carefully consider
-        // the implications.
-        // Note: this check is pessimistic, as the inference type could be matched with something other
-        // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
-        // can't re-use `sup` below.
+        // variable. That will accept more code than we do right now, so we need to carefully
+        // consider the implications.
+        // Note: this check is pessimistic, as the inference type could be matched with something
+        // other than the opaque type, but then we need a new `TypeRelation` just for this
+        // specific case and can't re-use `sup` below.
         // See tests/ui/impl-trait/hidden-type-is-opaque.rs and
         // tests/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
         if formal_ret.has_infer_types() {
@@ -1355,13 +1355,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if has_default {
                             // N.B. this is a bit of a hack. `infer_args` is passed depending on
                             // whether the user has provided generic args. E.g. for `Vec::new`
-                            // we would have to infer the generic types. However, for `Vec::<T>::new`
-                            // where the allocator param `A` has a default we will *not* infer. But
-                            // for effect params this is a different story: if the user has not written
-                            // anything explicit for the effect param, we always need to try to infer
+                            // we would have to infer the generic types. However, for
+                            // `Vec::<T>::new` where the allocator param
+                            // `A` has a default we will *not* infer. But
+                            // for effect params this is a different story: if the user has not
+                            // written anything explicit for the effect
+                            // param, we always need to try to infer
                             // it before falling back to default, such that a `const fn` such as
-                            // `needs_drop::<()>` can still be called in const contexts. (if we defaulted
-                            // instead of inferred, typeck would error)
+                            // `needs_drop::<()>` can still be called in const contexts. (if we
+                            // defaulted instead of inferred, typeck
+                            // would error)
                             if is_host_effect {
                                 return self.fcx.var_for_effect(param);
                             } else if !infer_args {

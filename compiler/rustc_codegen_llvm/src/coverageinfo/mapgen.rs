@@ -19,8 +19,7 @@ use rustc_span::Symbol;
 /// Generates and exports the Coverage Map.
 ///
 /// Rust Coverage Map generation supports LLVM Coverage Mapping Format version
-/// 6 (zero-based encoded as 5), as defined at
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// 6 (zero-based encoded as 5), as defined at [LLVM Code Coverage Mapping Format].
 /// These versions are supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
 /// bundled with Rust's fork of LLVM.
 ///
@@ -29,6 +28,8 @@ use rustc_span::Symbol;
 /// implementing this Rust version, and though the format documentation is very explicit and
 /// detailed, some undocumented details in Clang's implementation (that may or may not be important)
 /// were also replicated for Rust's Coverage Map.
+///
+/// [LLVM Code Coverage Mapping Format]: https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format
 pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
@@ -287,11 +288,11 @@ fn generate_coverage_map<'ll>(
     let version_val = cx.const_u32(version);
     let cov_data_header_val = cx.const_struct(
         &[zero_was_n_records_val, filenames_size_val, zero_was_coverage_size_val, version_val],
-        /*packed=*/ false,
+        /* packed= */ false,
     );
 
     // Create the complete LLVM coverage data value to add to the LLVM IR
-    cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false)
+    cx.const_struct(&[cov_data_header_val, filenames_val], /* packed= */ false)
 }
 
 /// Construct a function record and combine it with the function's coverage mapping data.
@@ -323,7 +324,7 @@ fn save_function_record(
             filenames_ref_val,
             coverage_mapping_val,
         ],
-        /*packed=*/ true,
+        /* packed= */ true,
     );
 
     coverageinfo::save_func_record_to_mod(
@@ -344,7 +345,8 @@ fn save_function_record(
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR
-/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`codegenned_and_inlined_items`).
+/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s
+/// (`codegenned_and_inlined_items`).
 ///
 /// These unused functions don't need to be codegenned, but we do need to add them to the function
 /// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.

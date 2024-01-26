@@ -444,12 +444,10 @@ pub(super) fn explicit_predicates_of<'tcx>(
             // For a predicate from a where clause to become a bound on an
             // associated type:
             // * It must use the identity args of the item.
-            //   * We're in the scope of the trait, so we can't name any
-            //     parameters of the GAT. That means that all we need to
-            //     check are that the args of the projection are the
+            //   * We're in the scope of the trait, so we can't name any parameters of the GAT. That
+            //     means that all we need to check are that the args of the projection are the
             //     identity args of the trait.
-            // * It must be an associated type for this trait (*not* a
-            //   supertrait).
+            // * It must be an associated type for this trait (*not* a supertrait).
             if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 projection.args == trait_identity_args
                     // FIXME(return_type_notation): This check should be more robust
@@ -488,9 +486,10 @@ pub(super) fn explicit_predicates_of<'tcx>(
             if let Some(defaulted_param_def_id) =
                 tcx.hir().opt_const_param_default_param_def_id(hir_id)
             {
-                // In `generics_of` we set the generics' parent to be our parent's parent which means that
-                // we lose out on the predicates of our actual parent if we dont return those predicates here.
-                // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
+                // In `generics_of` we set the generics' parent to be our parent's parent which
+                // means that we lose out on the predicates of our actual parent if
+                // we dont return those predicates here. (See comment in
+                // `generics_of` for more information on why the parent shenanigans is necessary)
                 //
                 // struct Foo<T, const N: usize = { <T as Trait>::ASSOC }>(T) where T: Trait;
                 //        ^^^                     ^^^^^^^^^^^^^^^^^^^^^^^ the def id we are calling
@@ -498,12 +497,14 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 //        parent item we dont have set as the
                 //        parent of generics returned by `generics_of`
                 //
-                // In the above code we want the anon const to have predicates in its param env for `T: Trait`
-                // and we would be calling `explicit_predicates_of(Foo)` here
+                // In the above code we want the anon const to have predicates in its param env for
+                // `T: Trait` and we would be calling `explicit_predicates_of(Foo)`
+                // here
                 let parent_preds = tcx.explicit_predicates_of(parent_def_id);
 
-                // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
-                // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
+                // If we dont filter out `ConstArgHasType` predicates then every single defaulted
+                // const parameter will ICE because of #106994.
+                // FIXME(generic_const_exprs): remove this when a more general solution
                 // to #106994 is implemented.
                 let filtered_predicates = parent_preds
                     .predicates
@@ -536,18 +537,22 @@ pub(super) fn explicit_predicates_of<'tcx>(
             let parent_def_kind = tcx.def_kind(parent_def_id);
             if matches!(parent_def_kind, DefKind::OpaqueTy) {
                 // In `instantiate_identity` we inherit the predicates of our parent.
-                // However, opaque types do not have a parent (see `gather_explicit_predicates_of`), which means
-                // that we lose out on the predicates of our actual parent if we dont return those predicates here.
+                // However, opaque types do not have a parent (see `gather_explicit_predicates_of`),
+                // which means that we lose out on the predicates of our actual
+                // parent if we dont return those predicates here.
                 //
                 //
-                // fn foo<T: Trait>() -> impl Iterator<Output = Another<{ <T as Trait>::ASSOC }> > { todo!() }
-                //                                                        ^^^^^^^^^^^^^^^^^^^ the def id we are calling
-                //                                                                            explicit_predicates_of on
+                // fn foo<T: Trait>() -> impl Iterator<Output = Another<{ <T as Trait>::ASSOC }> > {
+                // todo!() }
+                // ^^^^^^^^^^^^^^^^^^^ the def id we are calling
+                // explicit_predicates_of on
                 //
-                // In the above code we want the anon const to have predicates in its param env for `T: Trait`.
-                // However, the anon const cannot inherit predicates from its parent since it's opaque.
+                // In the above code we want the anon const to have predicates in its param env for
+                // `T: Trait`. However, the anon const cannot inherit predicates
+                // from its parent since it's opaque.
                 //
-                // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's parent.
+                // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's
+                // parent.
 
                 // In the above example this is `foo::{opaque#0}` or `impl Iterator`
                 let parent_hir_id = tcx.local_def_id_to_hir_id(parent_def_id.def_id);

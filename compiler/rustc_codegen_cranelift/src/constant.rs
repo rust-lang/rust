@@ -330,7 +330,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         unreachable!()
                     }
                 };
-                // FIXME: should we have a cache so we don't do this multiple times for the same `ConstAllocation`?
+                // FIXME: should we have a cache so we don't do this multiple times for the same
+                // `ConstAllocation`?
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
                     module.declare_anonymous_data(alloc.inner().mutability.is_mut(), false).unwrap()
                 });

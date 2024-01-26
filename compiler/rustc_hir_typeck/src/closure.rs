@@ -409,12 +409,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   - If we have no expectation `E`, then the signature of the closure is `S`.
     ///   - Otherwise, the signature of the closure is E. Moreover:
     ///     - Skolemize the late-bound regions in `E`, yielding `E'`.
-    ///     - Instantiate all the late-bound regions bound in the closure within `S`
-    ///       with fresh (existential) variables, yielding `S'`
+    ///     - Instantiate all the late-bound regions bound in the closure within `S` with fresh
+    ///       (existential) variables, yielding `S'`
     ///     - Require that `E' = S'`
-    ///       - We could use some kind of subtyping relationship here,
-    ///         I imagine, but equality is easier and works fine for
-    ///         our purposes.
+    ///       - We could use some kind of subtyping relationship here, I imagine, but equality is
+    ///         easier and works fine for our purposes.
     ///
     /// The key intuition here is that the user's types must be valid
     /// from "the inside" of the closure, but the expectation
@@ -442,9 +441,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - `expr_def_id`: the `LocalDefId` of the closure expression
     /// - `decl`: the HIR declaration of the closure
     /// - `body`: the body of the closure
-    /// - `expected_sig`: the expected signature (if any). Note that
-    ///   this is missing a binder: that is, there may be late-bound
-    ///   regions with depth 1, which are bound then by the closure.
+    /// - `expected_sig`: the expected signature (if any). Note that this is missing a binder: that
+    ///   is, there may be late-bound regions with depth 1, which are bound then by the closure.
     #[instrument(skip(self, expr_def_id, decl), level = "debug")]
     fn sig_of_closure_with_expectation(
         &self,
@@ -768,8 +766,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output_ty = self.normalize(closure_span, output_ty);
 
-        // async fn that have opaque types in their return type need to redo the conversion to inference variables
-        // as they fetch the still opaque version from the signature.
+        // async fn that have opaque types in their return type need to redo the conversion to
+        // inference variables as they fetch the still opaque version from the signature.
         let InferOk { value: output_ty, obligations } = self
             .replace_opaque_types_with_inference_vars(
                 output_ty,

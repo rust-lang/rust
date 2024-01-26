@@ -5,8 +5,7 @@
 //! a number of vectors (in order of precedence)
 //!
 //! 1. Configuration via `target.$target.cc` in `config.toml`.
-//! 2. Configuration via `target.$target.android-ndk` in `config.toml`, if
-//!    applicable
+//! 2. Configuration via `target.$target.android-ndk` in `config.toml`, if applicable
 //! 3. Special logic to probe on OpenBSD
 //! 4. The `CC_$target` environment variable.
 //! 5. The `CC` environment variable.

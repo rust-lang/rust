@@ -3,13 +3,11 @@
 //! This shim will take care of some various tasks that our build process
 //! requires that Cargo can't quite do through normal configuration:
 //!
-//! 1. When compiling build scripts and build dependencies, we need a guaranteed
-//!    full standard library available. The only compiler which actually has
-//!    this is the snapshot, so we detect this situation and always compile with
-//!    the snapshot compiler.
-//! 2. We pass a bunch of `--cfg` and other flags based on what we're compiling
-//!    (and this slightly differs based on a whether we're using a snapshot or
-//!    not), so we do that all here.
+//! 1. When compiling build scripts and build dependencies, we need a guaranteed full standard
+//!    library available. The only compiler which actually has this is the snapshot, so we detect
+//!    this situation and always compile with the snapshot compiler.
+//! 2. We pass a bunch of `--cfg` and other flags based on what we're compiling (and this slightly
+//!    differs based on a whether we're using a snapshot or not), so we do that all here.
 //!
 //! This may one day be replaced by RUSTFLAGS, but the dynamic nature of
 //! switching compilers for the bootstrap and for build scripts will probably
@@ -62,9 +60,9 @@ fn main() {
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
-    // if we're running clippy, trust cargo-clippy to set clippy-driver appropriately (and don't override it with rustc).
-    // otherwise, substitute whatever cargo thinks rustc should be with RUSTC_REAL.
-    // NOTE: this means we ignore RUSTC in the environment.
+    // if we're running clippy, trust cargo-clippy to set clippy-driver appropriately (and don't
+    // override it with rustc). otherwise, substitute whatever cargo thinks rustc should be with
+    // RUSTC_REAL. NOTE: this means we ignore RUSTC in the environment.
     // FIXME: We might want to consider removing RUSTC_REAL and setting RUSTC directly?
     // NOTE: we intentionally pass the name of the host, not the target.
     let host = env::var("CFG_COMPILER_BUILD_TRIPLE").unwrap();
@@ -184,13 +182,11 @@ fn main() {
     // dynamically detect if certain nightly features are available.
     // There are different ways this causes problems:
     //
-    // * rustix runs `rustc` on a small test program to see if the feature is
-    //   available (and sets a `cfg` if it is). It does not honor
-    //   CARGO_ENCODED_RUSTFLAGS.
-    // * proc-macro2 detects if `rustc -vV` says "nighty" or "dev" and enables
-    //   nightly features. It will scan CARGO_ENCODED_RUSTFLAGS for
-    //   -Zallow-features. Unfortunately CARGO_ENCODED_RUSTFLAGS is not set
-    //   for build-dependencies when --target is used.
+    // * rustix runs `rustc` on a small test program to see if the feature is available (and sets a
+    //   `cfg` if it is). It does not honor CARGO_ENCODED_RUSTFLAGS.
+    // * proc-macro2 detects if `rustc -vV` says "nighty" or "dev" and enables nightly features. It
+    //   will scan CARGO_ENCODED_RUSTFLAGS for -Zallow-features. Unfortunately
+    //   CARGO_ENCODED_RUSTFLAGS is not set for build-dependencies when --target is used.
     //
     // The issues above means we can't just use RUSTFLAGS, and we can't use
     // `cargo -Zallow-features=…`. Passing it through here ensures that it
@@ -345,8 +341,8 @@ fn format_rusage_data(child: Child) -> Option<String> {
     unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok()?;
     unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok()?;
 
-    // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
-    // with the given handle and none of that process's children.
+    // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the
+    // process with the given handle and none of that process's children.
     unsafe {
         K32GetProcessMemoryInfo(
             handle,

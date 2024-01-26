@@ -425,7 +425,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// `WellFormed(None)`
     WellFormed(Option<WellFormedLoc>),
 
-    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
+    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching
+    /// against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
@@ -493,9 +494,9 @@ pub enum WellFormedLoc {
 pub struct ImplDerivedObligationCause<'tcx> {
     pub derived: DerivedObligationCause<'tcx>,
     /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
-    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
-    /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
-    /// that exceptional case where appropriate.
+    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic
+    /// impl, then this will be the `DefId` of that trait alias. Care should therefore be taken
+    /// to handle that exceptional case where appropriate.
     pub impl_or_alias_def_id: DefId,
     /// The index of the derived predicate in the parent impl's predicates.
     pub impl_def_predicate_index: Option<usize>,
@@ -628,8 +629,8 @@ pub struct SignatureMismatchData<'tcx> {
 /// can be one of three outcomes:
 ///
 /// - `Ok(Some(r))`: success occurred with result `r`
-/// - `Ok(None)`: could not definitely determine anything, usually due
-///   to inconclusive type inference.
+/// - `Ok(None)`: could not definitely determine anything, usually due to inconclusive type
+///   inference.
 /// - `Err(e)`: error `e` occurred
 pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 

@@ -1231,8 +1231,8 @@ impl<'a> Formatter<'a> {
     /// # Arguments
     ///
     /// * is_nonnegative - whether the original integer was either positive or zero.
-    /// * prefix - if the '#' character (Alternate) is provided, this
-    ///   is the prefix to put in front of the number.
+    /// * prefix - if the '#' character (Alternate) is provided, this is the prefix to put in front
+    ///   of the number.
     /// * buf - the byte array that the number has been formatted into
     ///
     /// This function will correctly account for the flags provided as well as
@@ -1339,10 +1339,9 @@ impl<'a> Formatter<'a> {
     /// recognized for generic strings are:
     ///
     /// * width - the minimum width of what to emit
-    /// * fill/align - what to emit and where to emit it if the string
-    ///                provided needs to be padded
-    /// * precision - the maximum length to emit, the string is truncated if it
-    ///               is longer than this length
+    /// * fill/align - what to emit and where to emit it if the string provided needs to be padded
+    /// * precision - the maximum length to emit, the string is truncated if it is longer than this
+    ///   length
     ///
     /// Notably this function ignores the `flag` parameters.
     ///

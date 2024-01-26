@@ -144,7 +144,8 @@ impl<T: ?Sized> Exclusive<T> {
     #[must_use]
     #[inline]
     pub const fn from_mut(r: &'_ mut T) -> &'_ mut Exclusive<T> {
-        // SAFETY: repr is ≥ C, so refs have the same layout; and `Exclusive` properties are `&mut`-agnostic
+        // SAFETY: repr is ≥ C, so refs have the same layout; and `Exclusive` properties are
+        // `&mut`-agnostic
         unsafe { &mut *(r as *mut T as *mut Exclusive<T>) }
     }
 

@@ -175,8 +175,8 @@ pub struct Parser<'a> {
     pub recovery: Recovery,
 }
 
-// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
-// it doesn't unintentionally get bigger.
+// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
+// nonterminals. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Parser<'_>, 264);
 
@@ -435,11 +435,13 @@ impl<'a> Parser<'a> {
 
     /// Whether the parser is allowed to recover from broken code.
     ///
-    /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
-    /// is not allowed. All recovery done by the parser must be gated behind this check.
+    /// If this returns false, recovering broken code into valid code (especially if this recovery
+    /// does lookahead) is not allowed. All recovery done by the parser must be gated behind
+    /// this check.
     ///
     /// Technically, this only needs to restrict eager recovery by doing lookahead at more tokens.
-    /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
+    /// But making the distinction is very subtle, and simply forbidding all recovery is a lot
+    /// simpler to uphold.
     fn may_recover(&self) -> bool {
         matches!(self.recovery, Recovery::Allowed)
     }

@@ -6,29 +6,27 @@
 //! 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
 //!    - Example: find all items with a `#[foo]` attribute on them.
 //!    - How: Use the `hir_crate_items` or `hir_module_items` query to traverse over item-like ids
-//!       (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir().item*(id)` to filter and
-//!       access actual item-like thing, respectively.
+//!      (ItemId, TraitItemId, etc.) and use tcx.def_kind and `tcx.hir().item*(id)` to filter and
+//!      access actual item-like thing, respectively.
 //!    - Pro: Efficient; just walks the lists of item ids and gives users control whether to access
-//!       the hir_owners themselves or not.
+//!      the hir_owners themselves or not.
 //!    - Con: Don't get information about nesting
-//!    - Con: Don't have methods for specific bits of HIR, like "on
-//!      every expr, do this".
-//! 2. **Deep visit**: Want to scan for specific kinds of HIR nodes within
-//!    an item, but don't care about how item-like things are nested
-//!    within one another.
+//!    - Con: Don't have methods for specific bits of HIR, like "on every expr, do this".
+//! 2. **Deep visit**: Want to scan for specific kinds of HIR nodes within an item, but don't care
+//!    about how item-like things are nested within one another.
 //!    - Example: Examine each expression to look for its type and do some check or other.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
-//!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your
-//!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
+//!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your `intravisit::Visitor`
+//!      impl, implement methods like `visit_expr()` (don't forget to invoke
 //!      `intravisit::walk_expr()` to keep walking the subparts).
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 //!    - Pro: Integrates well into dependency tracking.
 //!    - Con: Don't get information about nesting between items
 //! 3. **Nested visit**: Want to visit the whole HIR and you care about the nesting between
 //!    item-like things.
-//!    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
-//!      impl into scope while visiting the impl-items, and then back out again.
+//!    - Example: Lifetime resolution, which wants to bring lifetimes declared on the impl into
+//!      scope while visiting the impl-items, and then back out again.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::All` (and implement `nested_visit_map`). Walk your crate with
 //!      `tcx.hir().walk_toplevel_module(visitor)` invoked on `tcx.hir().krate()`.

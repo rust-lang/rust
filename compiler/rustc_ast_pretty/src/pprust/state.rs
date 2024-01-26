@@ -153,7 +153,6 @@ pub fn print_crate<'a>(
 /// break old code. For example:
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
 /// - #73345: `#[allow(unused)]` must be printed rather than `# [allow(unused)]`
-///
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use token::*;
     use Delimiter::*;
@@ -542,15 +541,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             if let Some(next) = iter.peek() {
                 // Should we print a space after `tt`? There are two guiding
                 // factors.
-                // - `spacing` is the more important and accurate one. Most
-                //   tokens have good spacing information, and
-                //   `Joint`/`JointHidden` get used a lot.
-                // - `space_between` is the backup. Code produced by proc
-                //   macros has worse spacing information, with no
-                //   `JointHidden` usage and too much `Alone` usage, which
-                //   would result in over-spaced output such as
-                //   `( x () , y . z )`. `space_between` avoids some of the
-                //   excess whitespace.
+                // - `spacing` is the more important and accurate one. Most tokens have good spacing
+                //   information, and `Joint`/`JointHidden` get used a lot.
+                // - `space_between` is the backup. Code produced by proc macros has worse spacing
+                //   information, with no `JointHidden` usage and too much `Alone` usage, which
+                //   would result in over-spaced output such as `( x () , y . z )`. `space_between`
+                //   avoids some of the excess whitespace.
                 if spacing == Spacing::Alone && space_between(tt, next) {
                     self.space();
                 }

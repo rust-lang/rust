@@ -79,8 +79,8 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         _state: &ConsoleTestState,
     ) -> io::Result<()> {
         // Because the testsuite node holds some of the information as attributes, we can't write it
-        // until all of the tests have finished. Instead of writing every result as they come in, we add
-        // them to a Vec and write them all at once when run is complete.
+        // until all of the tests have finished. Instead of writing every result as they come in, we
+        // add them to a Vec and write them all at once when run is complete.
         let duration = exec_time.map(|t| t.0).unwrap_or_default();
         self.results.push((desc.clone(), result.clone(), duration, stdout.to_vec()));
         Ok(())

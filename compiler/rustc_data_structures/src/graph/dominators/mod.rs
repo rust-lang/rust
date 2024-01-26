@@ -131,8 +131,8 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
     // a unique immediate dominator.)
     //
     // A semidominator for a given vertex w (semi[w]) is the vertex v with minimum
-    // preorder number such that there exists a path from v to w in which all elements (other than w) have
-    // preorder numbers greater than w (i.e., this path is not the tree path to
+    // preorder number such that there exists a path from v to w in which all elements (other than
+    // w) have preorder numbers greater than w (i.e., this path is not the tree path to
     // w).
     for w in (PreorderIndex::new(1)..PreorderIndex::new(reachable_vertices)).rev() {
         // Optimization: process buckets just once, at the start of the
@@ -222,8 +222,7 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
             // following:
             //
             //  * direct predecessors of w with preorder number less than w
-            //  * semidominators of u such that u > w and there exists (v, w)
-            //    such that u *> v
+            //  * semidominators of u such that u > w and there exists (v, w) such that u *> v
             //
             // This loop therefore identifies such a minima. Note that any
             // semidominator path to w must have all but the first vertex go

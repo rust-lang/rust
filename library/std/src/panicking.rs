@@ -100,9 +100,9 @@ static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 /// runtimes.
 ///
 /// The default hook, which is registered at startup, prints a message to standard error and
-/// generates a backtrace if requested. This behavior can be customized using the `set_hook` function.
-/// The current hook can be retrieved while reinstating the default hook with the [`take_hook`]
-/// function.
+/// generates a backtrace if requested. This behavior can be customized using the `set_hook`
+/// function. The current hook can be retrieved while reinstating the default hook with the
+/// [`take_hook`] function.
 ///
 /// [`take_hook`]: ./fn.take_hook.html
 ///
@@ -486,19 +486,17 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // We go through a transition where:
     //
     // * First, we set the data field `f` to be the argumentless closure that we're going to call.
-    // * When we make the function call, the `do_call` function below, we take
-    //   ownership of the function pointer. At this point the `data` union is
-    //   entirely uninitialized.
-    // * If the closure successfully returns, we write the return value into the
-    //   data's return slot (field `r`).
+    // * When we make the function call, the `do_call` function below, we take ownership of the
+    //   function pointer. At this point the `data` union is entirely uninitialized.
+    // * If the closure successfully returns, we write the return value into the data's return slot
+    //   (field `r`).
     // * If the closure panics (`do_catch` below), we write the panic payload into field `p`.
-    // * Finally, when we come back out of the `try` intrinsic we're
-    //   in one of two states:
+    // * Finally, when we come back out of the `try` intrinsic we're in one of two states:
     //
-    //      1. The closure didn't panic, in which case the return value was
-    //         filled in. We move it out of `data.r` and return it.
-    //      2. The closure panicked, in which case the panic payload was
-    //         filled in. We move it out of `data.p` and return it.
+    //      1. The closure didn't panic, in which case the return value was filled in. We move it
+    //         out of `data.r` and return it.
+    //      2. The closure panicked, in which case the panic payload was filled in. We move it out
+    //         of `data.p` and return it.
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.

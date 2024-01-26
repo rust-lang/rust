@@ -588,7 +588,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     goal, a_data, a_region, b_data, b_region,
                 ),
 
-                // `T` -> `dyn Trait` unsizing is handled separately in `consider_unsize_to_dyn_candidate`
+                // `T` -> `dyn Trait` unsizing is handled separately in
+                // `consider_unsize_to_dyn_candidate`
                 (_, &ty::Dynamic(..)) => vec![],
 
                 // `[T; N]` -> `[T]` unsizing

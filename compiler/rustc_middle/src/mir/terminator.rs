@@ -243,7 +243,8 @@ impl<O> AssertKind<O> {
         }
     }
 
-    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
+    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during
+    /// const-eval).
     ///
     /// Needs to be kept in sync with the run-time behavior (which is defined by
     /// `AssertKind::description` and the lang items mentioned in its docs).

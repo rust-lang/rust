@@ -178,8 +178,9 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let (method, place): (fn(Place<'tcx>) -> Operand<'tcx>, Place<'tcx>) =
                     match tupled_args.node {
                         Operand::Constant(_) => {
-                            // there is no good way of extracting a tuple arg from a constant (const generic stuff)
-                            // so we just create a temporary and deconstruct that.
+                            // there is no good way of extracting a tuple arg from a constant (const
+                            // generic stuff) so we just create a
+                            // temporary and deconstruct that.
                             let local = body.local_decls.push(LocalDecl::new(ty, fn_span));
                             bb.statements.push(Statement {
                                 source_info: SourceInfo::outermost(fn_span),
@@ -519,8 +520,10 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
-        &reveal_all::RevealAll, // has to be done before drop elaboration, since we need to drop opaque types, too.
-        &add_subtyping_projections::Subtyper, // calling this after reveal_all ensures that we don't deal with opaque types
+        &reveal_all::RevealAll, /* has to be done before drop elaboration, since we need to drop
+                                 * opaque types, too. */
+        &add_subtyping_projections::Subtyper, /* calling this after reveal_all ensures that we
+                                               * don't deal with opaque types */
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as well as forcing any call in a non-unwinding
@@ -574,7 +577,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &lower_slice_len::LowerSliceLenCalls,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
-            // Code from other crates may have storage markers, so this needs to happen after inlining.
+            // Code from other crates may have storage markers, so this needs to happen after
+            // inlining.
             &remove_storage_markers::RemoveStorageMarkers,
             // Inlining and substitution may introduce ZST and useless drops.
             &remove_zsts::RemoveZsts,

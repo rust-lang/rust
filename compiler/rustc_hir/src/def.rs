@@ -320,13 +320,13 @@ impl DefKind {
 /// The associated `Res`s will be:
 ///
 /// - `str` will resolve to [`Res::PrimTy`];
-/// - `String` will resolve to [`Res::Def`], and the `Res` will include the [`DefId`]
-///   for `String` as defined in the standard library;
-/// - `String::from` will also resolve to [`Res::Def`], with the [`DefId`]
-///   pointing to `String::from`;
+/// - `String` will resolve to [`Res::Def`], and the `Res` will include the [`DefId`] for `String`
+///   as defined in the standard library;
+/// - `String::from` will also resolve to [`Res::Def`], with the [`DefId`] pointing to
+///   `String::from`;
 /// - `s` will resolve to [`Res::Local`];
-/// - the call to `str_to_string` will resolve to [`Res::Def`], with the [`DefId`]
-///   pointing to the definition of `str_to_string` in the current crate.
+/// - the call to `str_to_string` will resolve to [`Res::Def`], with the [`DefId`] pointing to the
+///   definition of `str_to_string` in the current crate.
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
@@ -378,7 +378,6 @@ pub enum Res<Id = hir::HirId> {
     /// }
     /// ```
     /// *See also [`Res::SelfCtor`].*
-    ///
     SelfTyAlias {
         /// The item introducing the `Self` type alias. Can be used in the `type_of` query
         /// to get the underlying type.
@@ -514,7 +513,8 @@ pub enum Namespace {
     /// Note that the type namespace includes other items; this is not an
     /// exhaustive list.
     TypeNS,
-    /// The value namespace includes `fn`s, `const`s, `static`s, and local variables (including function arguments).
+    /// The value namespace includes `fn`s, `const`s, `static`s, and local variables (including
+    /// function arguments).
     ValueNS,
     /// The macro namespace includes `macro_rules!` macros, declarative `macro`s,
     /// procedural macros, attribute macros, `derive` macros, and non-macro attributes

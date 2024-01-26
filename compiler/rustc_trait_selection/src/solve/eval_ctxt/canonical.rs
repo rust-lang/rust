@@ -76,10 +76,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     /// To return the constraints of a canonical query to the caller, we canonicalize:
     ///
-    /// - `var_values`: a map from bound variables in the canonical goal to
-    ///   the values inferred while solving the instantiated goal.
-    /// - `external_constraints`: additional constraints which aren't expressible
-    ///   using simple unification of inference variables.
+    /// - `var_values`: a map from bound variables in the canonical goal to the values inferred
+    ///   while solving the instantiated goal.
+    /// - `external_constraints`: additional constraints which aren't expressible using simple
+    ///   unification of inference variables.
     #[instrument(level = "debug", skip(self))]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
@@ -264,19 +264,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             |(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
-                    // exist at all (see the FIXME at the start of this method), we have to deal with
-                    // them for now.
+                    // exist at all (see the FIXME at the start of this method), we have to deal
+                    // with them for now.
                     infcx.instantiate_canonical_var(DUMMY_SP, info, |idx| {
                         ty::UniverseIndex::from(prev_universe.index() + idx.index())
                     })
                 } else if info.is_existential() {
                     // As an optimization we sometimes avoid creating a new inference variable here.
                     //
-                    // All new inference variables we create start out in the current universe of the caller.
-                    // This is conceptually wrong as these inference variables would be able to name
-                    // more placeholders then they should be able to. However the inference variables have
-                    // to "come from somewhere", so by equating them with the original values of the caller
-                    // later on, we pull them down into their correct universe again.
+                    // All new inference variables we create start out in the current universe of
+                    // the caller. This is conceptually wrong as these inference
+                    // variables would be able to name more placeholders then
+                    // they should be able to. However the inference variables have
+                    // to "come from somewhere", so by equating them with the original values of the
+                    // caller later on, we pull them down into their correct
+                    // universe again.
                     if let Some(v) = opt_values[BoundVar::from_usize(index)] {
                         v
                     } else {

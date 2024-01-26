@@ -709,7 +709,8 @@ where
     ops::Range { start, end }
 }
 
-/// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
+/// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in
+/// debug) overflow checking
 pub(crate) fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),

@@ -18,10 +18,10 @@ use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 
 // The format_args!() macro is expanded in three steps:
-//  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
-//     but doesn't parse the template (the literal) itself.
-//  2. Second, `make_format_args` will parse the template, the format options, resolve argument references,
-//     produce diagnostics, and turn the whole thing into a `FormatArgs` AST node.
+//  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax, but
+//     doesn't parse the template (the literal) itself.
+//  2. Second, `make_format_args` will parse the template, the format options, resolve argument
+//     references, produce diagnostics, and turn the whole thing into a `FormatArgs` AST node.
 //  3. Much later, in AST lowering (rustc_ast_lowering), that `FormatArgs` structure will be turned
 //     into the expression of type `core::fmt::Arguments`.
 
@@ -45,8 +45,9 @@ struct MacroInput {
     /// Whether the first argument was a string literal or a result from eager macro expansion.
     /// If it's not a string literal, we disallow implicit argument capturing.
     ///
-    /// This does not correspond to whether we can treat spans to the literal normally, as the whole
-    /// invocation might be the result of another macro expansion, in which case this flag may still be true.
+    /// This does not correspond to whether we can treat spans to the literal normally, as the
+    /// whole invocation might be the result of another macro expansion, in which case this
+    /// flag may still be true.
     ///
     /// See [RFC 2795] for more information.
     ///
@@ -349,8 +350,8 @@ fn make_format_args(
                     let expr = if is_direct_literal {
                         ecx.expr_ident(span, ident)
                     } else {
-                        // For the moment capturing variables from format strings expanded from macros is
-                        // disabled (see RFC #2795)
+                        // For the moment capturing variables from format strings expanded from
+                        // macros is disabled (see RFC #2795)
                         ecx.dcx().emit_err(errors::FormatNoArgNamed { span, name });
                         DummyResult::raw_expr(span, true)
                     };

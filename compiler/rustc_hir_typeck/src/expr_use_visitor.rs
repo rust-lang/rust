@@ -433,9 +433,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         }
                     }
                     PatKind::TupleStruct(..) | PatKind::Struct(..) | PatKind::Tuple(..) => {
-                        // For `Foo(..)`, `Foo { ... }` and `(...)` patterns, check if we are matching
-                        // against a multivariant enum or struct. In that case, we have to read
-                        // the discriminant. Otherwise this kind of pattern doesn't actually
+                        // For `Foo(..)`, `Foo { ... }` and `(...)` patterns, check if we are
+                        // matching against a multivariant enum or struct.
+                        // In that case, we have to read the discriminant.
+                        // Otherwise this kind of pattern doesn't actually
                         // read anything (we'll get invoked for the `...`, which may indeed
                         // perform some reads).
 
@@ -461,8 +462,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     PatKind::Or(_) | PatKind::Box(_) | PatKind::Ref(..) | PatKind::Wild => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
                         // as these patterns contains subpatterns
-                        // If the PatKind is Wild, the decision is made based on the other patterns being
-                        // examined
+                        // If the PatKind is Wild, the decision is made based on the other patterns
+                        // being examined
                     }
                 }
             })?
@@ -784,7 +785,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let body_owner_is_closure =
             matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
 
-        // If we have a nested closure, we want to include the fake reads present in the nested closure.
+        // If we have a nested closure, we want to include the fake reads present in the nested
+        // closure.
         if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
             for (fake_read, cause, hir_id) in fake_reads.iter() {
                 match fake_read.base {
@@ -794,9 +796,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             upvar_id.var_path.hir_id,
                             body_owner_is_closure,
                         ) {
-                            // The nested closure might be fake reading the current (enclosing) closure's local variables.
-                            // The only places we want to fake read before creating the parent closure are the ones that
-                            // are not local to it/ defined by it.
+                            // The nested closure might be fake reading the current (enclosing)
+                            // closure's local variables.
+                            // The only places we want to fake read before creating the parent
+                            // closure are the ones that are not local
+                            // to it/ defined by it.
                             //
                             // ```rust,ignore(cannot-test-this-because-pseudo-code)
                             // let v1 = (0, 1);
@@ -808,8 +812,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             //    }
                             // }
                             // ```
-                            // This check is performed when visiting the body of the outermost closure (`c`) and ensures
-                            // that we don't add a fake read of v2 in c.
+                            // This check is performed when visiting the body of the outermost
+                            // closure (`c`) and ensures that we don't
+                            // add a fake read of v2 in c.
                             continue;
                         }
                     }
@@ -832,9 +837,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         {
             for (var_hir_id, min_list) in min_captures.iter() {
                 if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
-                    // The nested closure might be capturing the current (enclosing) closure's local variables.
-                    // We check if the root variable is ever mentioned within the enclosing closure, if not
-                    // then for the current body (if it's a closure) these aren't captures, we will ignore them.
+                    // The nested closure might be capturing the current (enclosing) closure's local
+                    // variables. We check if the root variable is ever
+                    // mentioned within the enclosing closure, if not
+                    // then for the current body (if it's a closure) these aren't captures, we will
+                    // ignore them.
                     continue;
                 }
                 for captured_place in min_list {

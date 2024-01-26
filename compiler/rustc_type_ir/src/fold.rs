@@ -14,26 +14,23 @@
 //! There are three traits involved in each traversal.
 //! - `TypeFoldable`. This is implemented once for many types, including:
 //!   - Types of interest, for which the methods delegate to the folder.
-//!   - All other types, including generic containers like `Vec` and `Option`.
-//!     It defines a "skeleton" of how they should be folded.
-//! - `TypeSuperFoldable`. This is implemented only for recursive types of
-//!   interest, and defines the folding "skeleton" for these types. (This
-//!   excludes `Region` because it is non-recursive, i.e. it never contains
-//!   other types of interest.)
-//! - `TypeFolder`/`FallibleTypeFolder`. One of these is implemented for each
-//!   folder. This defines how types of interest are folded.
+//!   - All other types, including generic containers like `Vec` and `Option`. It defines a
+//!     "skeleton" of how they should be folded.
+//! - `TypeSuperFoldable`. This is implemented only for recursive types of interest, and defines the
+//!   folding "skeleton" for these types. (This excludes `Region` because it is non-recursive, i.e.
+//!   it never contains other types of interest.)
+//! - `TypeFolder`/`FallibleTypeFolder`. One of these is implemented for each folder. This defines
+//!   how types of interest are folded.
 //!
 //! This means each fold is a mixture of (a) generic folding operations, and (b)
 //! custom fold operations that are specific to the folder.
 //! - The `TypeFoldable` impls handle most of the traversal, and call into
 //!   `TypeFolder`/`FallibleTypeFolder` when they encounter a type of interest.
-//! - A `TypeFolder`/`FallibleTypeFolder` may call into another `TypeFoldable`
-//!   impl, because some of the types of interest are recursive and can contain
-//!   other types of interest.
-//! - A `TypeFolder`/`FallibleTypeFolder` may also call into a `TypeSuperFoldable`
-//!   impl, because each folder might provide custom handling only for some types
-//!   of interest, or only for some variants of each type of interest, and then
-//!   use default traversal for the remaining cases.
+//! - A `TypeFolder`/`FallibleTypeFolder` may call into another `TypeFoldable` impl, because some of
+//!   the types of interest are recursive and can contain other types of interest.
+//! - A `TypeFolder`/`FallibleTypeFolder` may also call into a `TypeSuperFoldable` impl, because
+//!   each folder might provide custom handling only for some types of interest, or only for some
+//!   variants of each type of interest, and then use default traversal for the remaining cases.
 //!
 //! For example, if you have `struct S(Ty, U)` where `S: TypeFoldable` and `U:
 //! TypeFoldable`, and an instance `s = S(ty, u)`, it would be folded like so:

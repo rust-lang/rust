@@ -23,7 +23,8 @@ pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArc
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
 
-    /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
+    /// Creates a DLL Import Library
+    /// <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>
     /// and returns the path on disk to that import library.
     /// This functions doesn't take `self` so that it can be called from
     /// `linker_with_args`, which is specialized on `ArchiveBuilder` but

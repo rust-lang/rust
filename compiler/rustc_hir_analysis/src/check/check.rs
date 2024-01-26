@@ -103,7 +103,8 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         ) -> bool {
             // We don't just accept all !needs_drop fields, due to semver concerns.
             match ty.kind() {
-                ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+                ty::Ref(..) => true, /* references never drop (even mutable refs, which are */
+                // non-Copy and hence fail the later check)
                 ty::Tuple(tys) => {
                     // allow tuples of allowed types
                     tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env))
@@ -146,7 +147,8 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 });
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {
-                // This should never happen. But we can get here e.g. in case of name resolution errors.
+                // This should never happen. But we can get here e.g. in case of name resolution
+                // errors.
                 tcx.dcx()
                     .span_delayed_bug(span, "we should never accept maybe-dropping union fields");
             }
@@ -207,8 +209,8 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
-    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
-    // See https://github.com/rust-lang/rust/issues/75100
+    // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at
+    // it! See https://github.com/rust-lang/rust/issues/75100
     if tcx.sess.opts.actually_rustdoc {
         return;
     }
@@ -333,9 +335,9 @@ fn check_opaque_meets_bounds<'tcx>(
         }
     }
 
-    // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
-    // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-    // hidden type is well formed even without those bounds.
+    // Additionally require the hidden type to be well-formed with only the generics of the opaque
+    // type. Defining use functions may have more bounds than the opaque type, which is ok, as
+    // long as the hidden type is well formed even without those bounds.
     let predicate =
         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(hidden_ty.into())));
     ocx.register_obligation(Obligation::new(tcx, misc_cause.clone(), param_env, predicate));
@@ -373,7 +375,8 @@ fn check_opaque_meets_bounds<'tcx>(
             ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
         }
     }
-    // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
+    // Check that any hidden types found during wf checking match the hidden types that `type_of`
+    // sees.
     for (mut key, mut ty) in infcx.take_opaque_types() {
         ty.hidden_type.ty = infcx.resolve_vars_if_possible(ty.hidden_type.ty);
         key = infcx.resolve_vars_if_possible(key);
@@ -873,9 +876,14 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         // Yes: Integers, floats, "thin" pointers
         // No: char, "fat" pointers, compound types
         match e.kind() {
-            ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
-            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
-            ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), // pass struct<T>([T; N]) through, let monomorphization catch errors
+            ty::Param(_) => (), /* pass struct<T>(T, T, T, T) through, let monomorphization */
+            // catch errors
+            ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), /* struct(u8, u8, u8, */
+            // u8) is ok
+            ty::Array(t, _) if matches!(t.kind(), ty::Param(_)) => (), /* pass struct<T>([T; N]) */
+            // through, let
+            // monomorphization catch
+            // errors
             ty::Array(t, _clen)
                 if matches!(t.kind(), ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)) =>
             { /* struct([f32; 4]) is ok */ }
@@ -1166,7 +1174,8 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_transparent(tcx, def);
 }
 
-/// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal
+/// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are
+/// equal
 fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
     // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
@@ -1174,7 +1183,8 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
         let var = adt.variant(idx); // HIR for the duplicate discriminant
         let (span, display_discr) = match var.discr {
             ty::VariantDiscr::Explicit(discr_def_id) => {
-                // In the case the discriminant is both a duplicate and overflowed, let the user know
+                // In the case the discriminant is both a duplicate and overflowed, let the user
+                // know
                 if let hir::Node::AnonConst(expr) =
                     tcx.hir_node_by_def_id(discr_def_id.expect_local())
                     && let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
@@ -1470,7 +1480,8 @@ pub(super) fn check_coroutine_obligations(
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
         // Bind opaque types to type checking root, as they should have been checked by borrowck,
-        // but may show up in some cases, like when (root) obligations are stalled in the new solver.
+        // but may show up in some cases, like when (root) obligations are stalled in the new
+        // solver.
         .with_opaque_type_inference(DefiningAnchor::Bind(typeck.hir_owner.def_id))
         .build();
 

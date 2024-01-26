@@ -58,8 +58,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Desugar `ExprForLoop`
                 // from: `[opt_ident]: for await? <pat> in <iter> <body>`
                 //
-                // This also needs special handling because the HirId of the returned `hir::Expr` will not
-                // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
+                // This also needs special handling because the HirId of the returned `hir::Expr`
+                // will not correspond to the `e.id`, so `lower_expr_for` handles
+                // attribute lowering itself.
                 ExprKind::ForLoop { pat, iter, body, label, kind } => {
                     return self.lower_expr_for(e, pat, iter, body, *label, *kind);
                 }
@@ -416,8 +417,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    // Lowers a condition (i.e. `cond` in `if cond` or `while cond`), wrapping it in a terminating scope
-    // so that temporaries created in the condition don't live beyond it.
+    // Lowers a condition (i.e. `cond` in `if cond` or `while cond`), wrapping it in a terminating
+    // scope so that temporaries created in the condition don't live beyond it.
     fn lower_cond(&mut self, cond: &Expr) -> &'hir hir::Expr<'hir> {
         fn has_let_expr(expr: &Expr) -> bool {
             match &expr.kind {
@@ -629,7 +630,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 let inputs = arena_vec![self; input_ty];
 
-                // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
+                // Lower the argument pattern/ident. The ident is used again in the `.await`
+                // lowering.
                 let (pat, task_context_hid) = self.pat_ident_binding_mode(
                     span,
                     Ident::with_dummy_span(sym::_task_context),

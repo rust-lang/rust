@@ -1519,7 +1519,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
+    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid
+    /// argument.
     fn check_rustc_legacy_const_generics(
         &self,
         hir_id: HirId,
@@ -1732,9 +1733,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_mangle");
             }
-            // FIXME: #[no_mangle] was previously allowed on non-functions/statics, this should be an error
-            // The error should specify that the item that is wrong is specifically a *foreign* fn/static
-            // otherwise the error seems odd
+            // FIXME: #[no_mangle] was previously allowed on non-functions/statics, this should be
+            // an error The error should specify that the item that is wrong is
+            // specifically a *foreign* fn/static otherwise the error seems odd
             Target::ForeignFn | Target::ForeignStatic => {
                 let foreign_item_kind = match target {
                     Target::ForeignFn => "function",

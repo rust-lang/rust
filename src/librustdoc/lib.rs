@@ -169,8 +169,10 @@ pub fn main() {
     // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid
     // this, compile our own version of `tracing` that logs all levels.
     // NOTE: this compiles both versions of tracing unconditionally, because
-    // - The compile time hit is not that bad, especially compared to rustdoc's incremental times, and
-    // - Otherwise, there's no warning that logging is being ignored when `download-rustc` is enabled
+    // - The compile time hit is not that bad, especially compared to rustdoc's incremental times,
+    //   and
+    // - Otherwise, there's no warning that logging is being ignored when `download-rustc` is
+    //   enabled
     // NOTE: The reason this doesn't show double logging when `download-rustc = false` and
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
@@ -820,8 +822,8 @@ fn main_args(
                 cache.crate_version = crate_version;
 
                 if show_coverage {
-                    // if we ran coverage, bail early, we don't need to also generate docs at this point
-                    // (also we didn't load in any of the useful passes)
+                    // if we ran coverage, bail early, we don't need to also generate docs at this
+                    // point (also we didn't load in any of the useful passes)
                     return Ok(());
                 } else if run_check {
                     // Since we're in "check" mode, no need to generate anything beyond this point.

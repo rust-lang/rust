@@ -2,7 +2,8 @@ use std::process::Command;
 
 /// Invokes `build_helper::util::detail_exit` with `cfg!(test)`
 ///
-/// This is a macro instead of a function so that it uses `cfg(test)` in the *calling* crate, not in build helper.
+/// This is a macro instead of a function so that it uses `cfg(test)` in the *calling* crate, not in
+/// build helper.
 #[macro_export]
 macro_rules! exit {
     ($code:expr) => {

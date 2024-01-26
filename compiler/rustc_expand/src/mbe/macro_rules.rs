@@ -152,8 +152,8 @@ pub(super) trait Tracker<'matcher> {
     /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
-    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
-    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
+    /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
@@ -164,7 +164,8 @@ pub(super) trait Tracker<'matcher> {
     }
 }
 
-/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to
+/// monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
@@ -265,9 +266,9 @@ pub(super) enum CanRetry {
     No(ErrorGuaranteed),
 }
 
-/// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
-/// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
-/// correctly.
+/// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was
+/// successful, and nothing if it failed. On failure, it's the callers job to use `track`
+/// accordingly to record all errors correctly.
 #[instrument(level = "debug", skip(sess, arg, lhses, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     sess: &ParseSess,
@@ -331,7 +332,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
             }
             ErrorReported(guarantee) => {
                 debug!("Fatal error occurred and was reported during matching");
-                // An error has been reported already, we cannot retry as that would cause duplicate errors.
+                // An error has been reported already, we cannot retry as that would cause duplicate
+                // errors.
                 return Err(CanRetry::No(guarantee));
             }
         }

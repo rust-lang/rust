@@ -23,9 +23,8 @@
 //! Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
 //! as follows:
 //!
-//! - `cat`: what kind of expression was this? This is a subset of the
-//!   full expression forms which only includes those that we care about
-//!   for the purpose of the analysis.
+//! - `cat`: what kind of expression was this? This is a subset of the full expression forms which
+//!   only includes those that we care about for the purpose of the analysis.
 //! - `mutbl`: mutability of the address `A`.
 //! - `ty`: the type of data found at the address `A`.
 //!
@@ -168,13 +167,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Returns the type of value that this pattern matches against.
     /// Some non-obvious cases:
     ///
-    /// - a `ref x` binding matches against a value of type `T` and gives
-    ///   `x` the type `&T`; we return `T`.
-    /// - a pattern with implicit derefs (thanks to default binding
-    ///   modes #42640) may look like `Some(x)` but in fact have
-    ///   implicit deref patterns attached (e.g., it is really
-    ///   `&Some(x)`). In that case, we return the "outermost" type
-    ///   (e.g., `&Option<T>`).
+    /// - a `ref x` binding matches against a value of type `T` and gives `x` the type `&T`; we
+    ///   return `T`.
+    /// - a pattern with implicit derefs (thanks to default binding modes #42640) may look like
+    ///   `Some(x)` but in fact have implicit deref patterns attached (e.g., it is really
+    ///   `&Some(x)`). In that case, we return the "outermost" type (e.g., `&Option<T>`).
     pub(crate) fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
@@ -610,8 +607,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     where
         F: FnMut(&PlaceWithHirId<'tcx>, &hir::Pat<'_>),
     {
-        // If (pattern) adjustments are active for this pattern, adjust the `PlaceWithHirId` correspondingly.
-        // `PlaceWithHirId`s are constructed differently from patterns. For example, in
+        // If (pattern) adjustments are active for this pattern, adjust the `PlaceWithHirId`
+        // correspondingly. `PlaceWithHirId`s are constructed differently from patterns. For
+        // example, in
         //
         // ```
         // match foo {
@@ -621,8 +619,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // ```
         //
         // the pattern `&&Some(x,)` is represented as `Ref { Ref { TupleStruct }}`. To build the
-        // corresponding `PlaceWithHirId` we start with the `PlaceWithHirId` for `foo`, and then, by traversing the
-        // pattern, try to answer the question: given the address of `foo`, how is `x` reached?
+        // corresponding `PlaceWithHirId` we start with the `PlaceWithHirId` for `foo`, and then, by
+        // traversing the pattern, try to answer the question: given the address of `foo`,
+        // how is `x` reached?
         //
         // `&&Some(x,)` `place_foo`
         //  `&Some(x,)` `deref { place_foo}`
@@ -652,12 +651,13 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // Invoke the callback, but only now, after the `place_with_id` has adjusted.
         //
         // To see that this makes sense, consider `match &Some(3) { Some(x) => { ... }}`. In that
-        // case, the initial `place_with_id` will be that for `&Some(3)` and the pattern is `Some(x)`. We
-        // don't want to call `op` with these incompatible values. As written, what happens instead
-        // is that `op` is called with the adjusted place (that for `*&Some(3)`) and the pattern
-        // `Some(x)` (which matches). Recursing once more, `*&Some(3)` and the pattern `Some(x)`
-        // result in the place `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
-        // that (where the `ref` on `x` is implied).
+        // case, the initial `place_with_id` will be that for `&Some(3)` and the pattern is
+        // `Some(x)`. We don't want to call `op` with these incompatible values. As written,
+        // what happens instead is that `op` is called with the adjusted place (that for
+        // `*&Some(3)`) and the pattern `Some(x)` (which matches). Recursing once more,
+        // `*&Some(3)` and the pattern `Some(x)` result in the place
+        // `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with that (where
+        // the `ref` on `x` is implied).
         op(&place_with_id, pat);
 
         match pat.kind {

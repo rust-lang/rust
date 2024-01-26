@@ -224,12 +224,12 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // Basically we dump the data onto the stack then memcpy it.
                 //
                 // Other approaches I tried:
-                // - Casting rust ret pointer to the foreign type and using Store
-                //   is (a) unsafe if size of foreign type > size of rust type and
-                //   (b) runs afoul of strict aliasing rules, yielding invalid
-                //   assembly under -O (specifically, the store gets removed).
-                // - Truncating foreign type to correct integral type and then
-                //   bitcasting to the struct type yields invalid cast errors.
+                // - Casting rust ret pointer to the foreign type and using Store is (a) unsafe if
+                //   size of foreign type > size of rust type and (b) runs afoul of strict aliasing
+                //   rules, yielding invalid assembly under -O (specifically, the store gets
+                //   removed).
+                // - Truncating foreign type to correct integral type and then bitcasting to the
+                //   struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(bx);

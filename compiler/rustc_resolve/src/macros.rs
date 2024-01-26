@@ -352,9 +352,9 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     ) -> Result<(), Indeterminate> {
         // Block expansion of the container until we resolve all derives in it.
         // This is required for two reasons:
-        // - Derive helper attributes are in scope for the item to which the `#[derive]`
-        //   is applied, so they have to be produced by the container's expansion rather
-        //   than by individual derives.
+        // - Derive helper attributes are in scope for the item to which the `#[derive]` is applied,
+        //   so they have to be produced by the container's expansion rather than by individual
+        //   derives.
         // - Derives in the container need to know whether one of them is a built-in `Copy`.
         // Temporarily take the data to avoid borrow checker conflicts.
         let mut derive_data = mem::take(&mut self.derive_data);
@@ -935,7 +935,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Some(builtin_macro) = self.builtin_macros.get_mut(&builtin_name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
-                // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
+                // If we already loaded this builtin macro, give a better error message than 'no
+                // such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
                     BuiltinMacroState::NotYetSeen(builtin_ext) => {
                         ext.kind = builtin_ext;

@@ -146,7 +146,7 @@ impl<T: ?Sized> Drop for ThinBox<T> {
 impl<T: ?Sized> ThinBox<T> {
     fn meta(&self) -> <T as Pointee>::Metadata {
         //  Safety:
-        //  -   NonNull and valid.
+        //  - NonNull and valid.
         unsafe { *self.with_header().header() }
     }
 
@@ -161,10 +161,8 @@ impl<T: ?Sized> ThinBox<T> {
 }
 
 /// A pointer to type-erased data, guaranteed to either be:
-/// 1. `NonNull::dangling()`, in the case where both the pointee (`T`) and
-///    metadata (`H`) are ZSTs.
-/// 2. A pointer to a valid `T` that has a header `H` directly before the
-///    pointed-to location.
+/// 1. `NonNull::dangling()`, in the case where both the pointee (`T`) and metadata (`H`) are ZSTs.
+/// 2. A pointer to a valid `T` that has a header `H` directly before the pointed-to location.
 #[repr(transparent)]
 struct WithHeader<H>(NonNull<u8>, PhantomData<H>);
 
@@ -226,8 +224,8 @@ impl<H> WithHeader<H> {
     }
 
     // Safety:
-    // - Assumes that either `value` can be dereferenced, or is the
-    //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
+    // - Assumes that either `value` can be dereferenced, or is the `NonNull::dangling()` we use
+    //   when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
         struct DropGuard<H> {
             ptr: NonNull<u8>,
@@ -272,8 +270,8 @@ impl<H> WithHeader<H> {
     fn header(&self) -> *mut H {
         //  Safety:
         //  - At least `size_of::<H>()` bytes are allocated ahead of the pointer.
-        //  - We know that H will be aligned because the middle pointer is aligned to the greater
-        //    of the alignment of the header and the data and the header size includes the padding
+        //  - We know that H will be aligned because the middle pointer is aligned to the greater of
+        //    the alignment of the header and the data and the header size includes the padding
         //    needed to align the header. Subtracting the header size from the aligned data pointer
         //    will always result in an aligned header pointer, it just may not point to the
         //    beginning of the allocation.

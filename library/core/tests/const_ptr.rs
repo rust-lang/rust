@@ -2,7 +2,8 @@
 const DATA: [u16; 2] = [u16::from_ne_bytes([0x01, 0x23]), u16::from_ne_bytes([0x45, 0x67])];
 
 const fn unaligned_ptr() -> *const u16 {
-    // Since DATA.as_ptr() is aligned to two bytes, adding 1 byte to that produces an unaligned *const u16
+    // Since DATA.as_ptr() is aligned to two bytes, adding 1 byte to that produces an unaligned
+    // *const u16
     unsafe { DATA.as_ptr().byte_add(1) }
 }
 

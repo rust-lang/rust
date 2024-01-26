@@ -1090,26 +1090,22 @@ impl OpenOptions {
     /// with their [`io::ErrorKind`]. The mapping to [`io::ErrorKind`]s is not
     /// part of the compatibility contract of the function.
     ///
-    /// * [`NotFound`]: The specified file does not exist and neither `create`
-    ///   or `create_new` is set.
-    /// * [`NotFound`]: One of the directory components of the file path does
-    ///   not exist.
-    /// * [`PermissionDenied`]: The user lacks permission to get the specified
-    ///   access rights for the file.
-    /// * [`PermissionDenied`]: The user lacks permission to open one of the
-    ///   directory components of the specified path.
-    /// * [`AlreadyExists`]: `create_new` was specified and the file already
-    ///   exists.
-    /// * [`InvalidInput`]: Invalid combinations of open options (truncate
-    ///   without write access, no access mode set, etc.).
+    /// * [`NotFound`]: The specified file does not exist and neither `create` or `create_new` is
+    ///   set.
+    /// * [`NotFound`]: One of the directory components of the file path does not exist.
+    /// * [`PermissionDenied`]: The user lacks permission to get the specified access rights for the
+    ///   file.
+    /// * [`PermissionDenied`]: The user lacks permission to open one of the directory components of
+    ///   the specified path.
+    /// * [`AlreadyExists`]: `create_new` was specified and the file already exists.
+    /// * [`InvalidInput`]: Invalid combinations of open options (truncate without write access, no
+    ///   access mode set, etc.).
     ///
     /// The following errors don't match any existing [`io::ErrorKind`] at the moment:
-    /// * One of the directory components of the specified file path
-    ///   was not, in fact, a directory.
-    /// * Filesystem-level errors: full disk, write permission
-    ///   requested on a read-only file system, exceeded disk quota, too many
-    ///   open files, too long filename, too many symbolic links in the
-    ///   specified path (Unix-like systems only), etc.
+    /// * One of the directory components of the specified file path was not, in fact, a directory.
+    /// * Filesystem-level errors: full disk, write permission requested on a read-only file system,
+    ///   exceeded disk quota, too many open files, too long filename, too many symbolic links in
+    ///   the specified path (Unix-like systems only), etc.
     ///
     /// # Examples
     ///
@@ -1223,7 +1219,6 @@ impl Metadata {
     /// Returns `true` if this metadata is for a symbolic link.
     ///
     /// # Examples
-    ///
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
     /// use std::fs;
@@ -1457,13 +1452,15 @@ impl Permissions {
     ///
     /// # Windows
     ///
-    /// On Windows this returns [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// On Windows this returns [`FILE_ATTRIBUTE_READONLY`].
     /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
     /// but the user may still have permission to change this flag. If
     /// `FILE_ATTRIBUTE_READONLY` is *not* set then writes may still fail due
     /// to lack of write permission.
     /// The behavior of this attribute for directories depends on the Windows
     /// version.
+    ///
+    /// [`FILE_ATTRIBUTE_READONLY`]: https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
     ///
     /// # Unix (including macOS)
     ///
@@ -1518,11 +1515,13 @@ impl Permissions {
     ///
     /// # Windows
     ///
-    /// On Windows this sets or clears [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// On Windows this sets or clears [`FILE_ATTRIBUTE_READONLY`].
     /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
     /// but the user may still have permission to change this flag. If
     /// `FILE_ATTRIBUTE_READONLY` is *not* set then the write may still fail if
     /// the user does not have permission to write to the file.
+    ///
+    /// [`FILE_ATTRIBUTE_READONLY`]: https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
     ///
     /// In Windows 7 and earlier this attribute prevents deleting empty
     /// directories. It does not prevent modifying the directory contents.
@@ -2037,8 +2036,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// * `from` is neither a regular file nor a symlink to a regular file.
 /// * `from` does not exist.
-/// * The current process does not have the permission rights to read
-///   `from` or write `to`.
+/// * The current process does not have the permission rights to read `from` or write `to`.
 ///
 /// # Examples
 ///
@@ -2228,9 +2226,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// limited to just these cases:
 ///
 /// * User lacks permissions to create directory at `path`.
-/// * A parent of the given path doesn't exist. (To create a directory and all
-///   its missing parents at the same time, use the [`create_dir_all`]
-///   function.)
+/// * A parent of the given path doesn't exist. (To create a directory and all its missing parents
+///   at the same time, use the [`create_dir_all`] function.)
 /// * `path` already exists.
 ///
 /// # Examples
@@ -2354,8 +2351,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
-/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root path.
-/// As a result, the directory you are deleting must exist, meaning that this function is not idempotent.
+/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths,
+/// including the root path. As a result, the directory you are deleting must exist, meaning that
+/// this function is not idempotent.
 ///
 /// Consider ignoring the error if validating the removal is not required for your use case.
 ///
@@ -2606,7 +2604,8 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// #![feature(fs_try_exists)]
 /// use std::fs;
 ///
-/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(!fs::try_exists("does_not_exist.txt")
+///     .expect("Can't check existence of file does_not_exist.txt"));
 /// assert!(fs::try_exists("/root/secret_file.txt").is_err());
 /// ```
 ///

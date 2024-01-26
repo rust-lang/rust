@@ -90,7 +90,8 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             // `u` is a leading surrogate and `iter` may be non-empty.
             //
             // `u` can either pair with a trailing surrogate, in which case no additional elements
-            // are produced, or it can become an error, in which case it's an additional character (error).
+            // are produced, or it can become an error, in which case it's an additional character
+            // (error).
             Some(_u) => (0, 1),
         };
 

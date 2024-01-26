@@ -201,12 +201,10 @@ pub unsafe trait Searcher<'a> {
 
     /// Performs the next search step starting from the front.
     ///
-    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]` matches
-    ///   the pattern.
-    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]` can
-    ///   not match the pattern, even partially.
-    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack has
-    ///   been visited.
+    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]` matches the pattern.
+    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]` can not match the
+    ///   pattern, even partially.
+    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack has been visited.
     ///
     /// The stream of [`Match`][SearchStep::Match] and
     /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
@@ -273,12 +271,10 @@ pub unsafe trait Searcher<'a> {
 pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// Performs the next search step starting from the back.
     ///
-    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]`
-    ///   matches the pattern.
-    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]`
-    ///   can not match the pattern, even partially.
-    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack
-    ///   has been visited
+    /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]` matches the pattern.
+    /// - Returns [`Reject(a, b)`][SearchStep::Reject] if `haystack[a..b]` can not match the
+    ///   pattern, even partially.
+    /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack has been visited
     ///
     /// The stream of [`Match`][SearchStep::Match] and
     /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
@@ -327,10 +323,8 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 /// For this, the impl of [`Searcher`] and [`ReverseSearcher`] need
 /// to follow these conditions:
 ///
-/// - All results of `next()` need to be identical
-///   to the results of `next_back()` in reverse order.
-/// - `next()` and `next_back()` need to behave as
-///   the two ends of a range of values, that is they
+/// - All results of `next()` need to be identical to the results of `next_back()` in reverse order.
+/// - `next()` and `next_back()` need to behave as the two ends of a range of values, that is they
 ///   can not "walk past each other".
 ///
 /// # Examples
@@ -384,13 +378,13 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     fn next(&mut self) -> SearchStep {
         let old_finger = self.finger;
         // SAFETY: 1-4 guarantee safety of `get_unchecked`
-        // 1. `self.finger` and `self.finger_back` are kept on unicode boundaries
-        //    (this is invariant)
+        // 1. `self.finger` and `self.finger_back` are kept on unicode boundaries (this is
+        //    invariant)
         // 2. `self.finger >= 0` since it starts at 0 and only increases
-        // 3. `self.finger < self.finger_back` because otherwise the char `iter`
-        //    would return `SearchStep::Done`
-        // 4. `self.finger` comes before the end of the haystack because `self.finger_back`
-        //    starts at the end and only decreases
+        // 3. `self.finger < self.finger_back` because otherwise the char `iter` would return
+        //    `SearchStep::Done`
+        // 4. `self.finger` comes before the end of the haystack because `self.finger_back` starts
+        //    at the end and only decreases
         let slice = unsafe { self.haystack.get_unchecked(old_finger..self.finger_back) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
@@ -1788,8 +1782,9 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         while mask != 0 {
             let trailing = mask.trailing_zeros();
             let offset = idx + trailing as usize + 1;
-            // SAFETY: mask is between 0 and 15 trailing zeroes, we skip one additional byte that was already compared
-            // and then take trimmed_needle.len() bytes. This is within the bounds defined by the outer loop
+            // SAFETY: mask is between 0 and 15 trailing zeroes, we skip one additional byte that
+            // was already compared and then take trimmed_needle.len() bytes. This is
+            // within the bounds defined by the outer loop
             unsafe {
                 let sub = haystack.get_unchecked(offset..).get_unchecked(..trimmed_needle.len());
                 if small_slice_eq(sub, trimmed_needle) {

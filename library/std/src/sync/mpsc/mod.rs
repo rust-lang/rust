@@ -13,17 +13,15 @@
 //!
 //! These channels come in two flavors:
 //!
-//! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
-//!    will return a `(Sender, Receiver)` tuple where all sends will be
-//!    **asynchronous** (they never block). The channel conceptually has an
-//!    infinite buffer.
+//! 1. An asynchronous, infinitely buffered channel. The [`channel`] function will return a
+//!    `(Sender, Receiver)` tuple where all sends will be **asynchronous** (they never block). The
+//!    channel conceptually has an infinite buffer.
 //!
-//! 2. A synchronous, bounded channel. The [`sync_channel`] function will
-//!    return a `(SyncSender, Receiver)` tuple where the storage for pending
-//!    messages is a pre-allocated buffer of a fixed size. All sends will be
-//!    **synchronous** by blocking until there is buffer space available. Note
-//!    that a bound of 0 is allowed, causing the channel to become a "rendezvous"
-//!    channel where each sender atomically hands off a message to a receiver.
+//! 2. A synchronous, bounded channel. The [`sync_channel`] function will return a `(SyncSender,
+//!    Receiver)` tuple where the storage for pending messages is a pre-allocated buffer of a fixed
+//!    size. All sends will be **synchronous** by blocking until there is buffer space available.
+//!    Note that a bound of 0 is allowed, causing the channel to become a "rendezvous" channel where
+//!    each sender atomically hands off a message to a receiver.
 //!
 //! [`send`]: Sender::send
 //!
@@ -1150,7 +1148,8 @@ impl<T> error::Error for TrySendError<T> {
 impl<T> From<SendError<T>> for TrySendError<T> {
     /// Converts a `SendError<T>` into a `TrySendError<T>`.
     ///
-    /// This conversion always returns a `TrySendError::Disconnected` containing the data in the `SendError<T>`.
+    /// This conversion always returns a `TrySendError::Disconnected` containing the data in the
+    /// `SendError<T>`.
     ///
     /// No data is allocated on the heap.
     fn from(err: SendError<T>) -> TrySendError<T> {

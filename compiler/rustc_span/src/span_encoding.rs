@@ -29,8 +29,8 @@ use rustc_data_structures::fx::FxIndexSet;
 ///
 /// Inline-parent format (requires non-huge length, root context, and non-huge parent):
 /// - `span.lo_or_index == span_data.lo`
-/// - `span.len_with_tag_or_marker & !PARENT_TAG == len == span_data.hi - span_data.lo`
-///   (must be `<= MAX_LEN`)
+/// - `span.len_with_tag_or_marker & !PARENT_TAG == len == span_data.hi - span_data.lo` (must be `<=
+///   MAX_LEN`)
 /// - `span.len_with_tag_or_marker` has top bit (`PARENT_TAG`) set
 /// - `span.ctxt_or_parent_or_marker == span_data.parent` (must be `<= MAX_CTXT`)
 ///
@@ -50,31 +50,26 @@ use rustc_data_structures::fx::FxIndexSet;
 /// inline lookups are quicker.
 ///
 /// Notes about the choice of field sizes:
-/// - `lo` is 32 bits in both `Span` and `SpanData`, which means that `lo`
-///   values never cause interning. The number of bits needed for `lo`
-///   depends on the crate size. 32 bits allows up to 4 GiB of code in a crate.
-///   Having no compression on this field means there is no performance cliff
-///   if a crate exceeds a particular size.
-/// - `len` is ~15 bits in `Span` (a u16, minus 1 bit for PARENT_TAG) and 32
-///   bits in `SpanData`, which means that large `len` values will cause
-///   interning. The number of bits needed for `len` does not depend on the
-///   crate size. The most common numbers of bits for `len` are from 0 to 7,
-///   with a peak usually at 3 or 4, and then it drops off quickly from 8
-///   onwards. 15 bits is enough for 99.99%+ of cases, but larger values
-///   (sometimes 20+ bits) might occur dozens of times in a typical crate.
-/// - `ctxt_or_parent_or_marker` is 16 bits in `Span` and two 32 bit fields in
-///   `SpanData`, which means intering will happen if `ctxt` is large, if
-///   `parent` is large, or if both values are non-zero. The number of bits
-///   needed for `ctxt` values depend partly on the crate size and partly on
-///   the form of the code. No crates in `rustc-perf` need more than 15 bits
-///   for `ctxt_or_parent_or_marker`, but larger crates might need more than 16
-///   bits. The number of bits needed for `parent` hasn't been measured,
-///   because `parent` isn't currently used by default.
+/// - `lo` is 32 bits in both `Span` and `SpanData`, which means that `lo` values never cause
+///   interning. The number of bits needed for `lo` depends on the crate size. 32 bits allows up to
+///   4 GiB of code in a crate. Having no compression on this field means there is no performance
+///   cliff if a crate exceeds a particular size.
+/// - `len` is ~15 bits in `Span` (a u16, minus 1 bit for PARENT_TAG) and 32 bits in `SpanData`,
+///   which means that large `len` values will cause interning. The number of bits needed for `len`
+///   does not depend on the crate size. The most common numbers of bits for `len` are from 0 to 7,
+///   with a peak usually at 3 or 4, and then it drops off quickly from 8 onwards. 15 bits is enough
+///   for 99.99%+ of cases, but larger values (sometimes 20+ bits) might occur dozens of times in a
+///   typical crate.
+/// - `ctxt_or_parent_or_marker` is 16 bits in `Span` and two 32 bit fields in `SpanData`, which
+///   means intering will happen if `ctxt` is large, if `parent` is large, or if both values are
+///   non-zero. The number of bits needed for `ctxt` values depend partly on the crate size and
+///   partly on the form of the code. No crates in `rustc-perf` need more than 15 bits for
+///   `ctxt_or_parent_or_marker`, but larger crates might need more than 16 bits. The number of bits
+///   needed for `parent` hasn't been measured, because `parent` isn't currently used by default.
 ///
 /// In order to reliably use parented spans in incremental compilation,
 /// the dependency to the parent definition's span. This is performed
 /// using the callback `SPAN_TRACK` to access the query engine.
-///
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
 pub struct Span {

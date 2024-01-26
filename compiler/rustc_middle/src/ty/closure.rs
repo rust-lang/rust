@@ -158,7 +158,8 @@ impl<'tcx> CapturedPlace<'tcx> {
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 
-            // Safe to unwrap since we know this place is captured by the closure, therefore the closure must have upvars.
+            // Safe to unwrap since we know this place is captured by the closure, therefore the
+            // closure must have upvars.
             tcx.upvars_mentioned(self.get_closure_local_def_id()).unwrap()
                 [&self.get_root_variable()]
                 .span
@@ -174,7 +175,8 @@ impl<'tcx> CapturedPlace<'tcx> {
         } else {
             // Fallback on upvars mentioned if neither path or capture expr id is captured
 
-            // Safe to unwrap since we know this place is captured by the closure, therefore the closure must have upvars.
+            // Safe to unwrap since we know this place is captured by the closure, therefore the
+            // closure must have upvars.
             tcx.upvars_mentioned(self.get_closure_local_def_id()).unwrap()
                 [&self.get_root_variable()]
                 .span
@@ -271,8 +273,8 @@ pub struct CaptureInfo {
     /// use on L1.
     ///
     /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
-    /// possible that we don't see the use of a particular place resulting in capture_kind_expr_id being
-    /// None. In such case we fallback on uvpars_mentioned for span.
+    /// possible that we don't see the use of a particular place resulting in capture_kind_expr_id
+    /// being None. In such case we fallback on uvpars_mentioned for span.
     ///
     /// Eg:
     /// ```rust,no_run
@@ -289,7 +291,6 @@ pub struct CaptureInfo {
     /// Expr Id pointing to use that resulted the corresponding place being captured
     ///
     /// See `capture_kind_expr_id` for example.
-    ///
     pub path_expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected

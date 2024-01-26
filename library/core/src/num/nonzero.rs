@@ -20,7 +20,8 @@ mod private {
 
 /// A marker trait for primitive types which can be zero.
 ///
-/// This is an implementation detail for [`NonZero<T>`](NonZero) which may disappear or be replaced at any time.
+/// This is an implementation detail for [`NonZero<T>`](NonZero) which may disappear or be replaced
+/// at any time.
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
@@ -292,7 +293,8 @@ macro_rules! nonzero_leading_trailing_zeros {
             impl $Ty {
                 /// Returns the number of leading zeros in the binary representation of `self`.
                 ///
-                /// On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+                /// On many architectures, this function can perform better than `leading_zeros()` on
+                /// the underlying integer type, as special handling of zero can be avoided.
                 ///
                 /// # Examples
                 ///
@@ -316,7 +318,8 @@ macro_rules! nonzero_leading_trailing_zeros {
                 /// Returns the number of trailing zeros in the binary representation
                 /// of `self`.
                 ///
-                /// On many architectures, this function can perform better than `trailing_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+                /// On many architectures, this function can perform better than `trailing_zeros()` on
+                /// the underlying integer type, as special handling of zero can be avoided.
                 ///
                 /// # Examples
                 ///

@@ -16,8 +16,8 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// ## Field-(in)sensitivity
 ///
 /// As the name suggests, this analysis is field insensitive. If a projection of a variable `x` is
-/// assigned to (e.g. `x.0 = 42`), it does not "define" `x` as far as liveness is concerned. In fact,
-/// such an assignment is currently marked as a "use" of `x` in an attempt to be maximally
+/// assigned to (e.g. `x.0 = 42`), it does not "define" `x` as far as liveness is concerned. In
+/// fact, such an assignment is currently marked as a "use" of `x` in an attempt to be maximally
 /// conservative.
 ///
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
@@ -108,9 +108,10 @@ where
                     MutatingUseContext::Call | MutatingUseContext::AsmOutput,
                 ) = context
                 {
-                    // For the associated terminators, this is only a `Def` when the terminator returns
-                    // "successfully." As such, we handle this case separately in `call_return_effect`
-                    // above. However, if the place looks like `*_5`, this is still unconditionally a use of
+                    // For the associated terminators, this is only a `Def` when the terminator
+                    // returns "successfully." As such, we handle this case
+                    // separately in `call_return_effect` above. However, if the
+                    // place looks like `*_5`, this is still unconditionally a use of
                     // `_5`.
                 } else {
                     self.0.kill(place.local);

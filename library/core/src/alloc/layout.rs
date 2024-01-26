@@ -58,9 +58,8 @@ impl Layout {
     ///
     /// * `align` must be a power of two,
     ///
-    /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow isize (i.e., the rounded value must be
-    ///    less than or equal to `isize::MAX`).
+    /// * `size`, when rounded up to the nearest multiple of `align`, must not overflow isize (i.e.,
+    ///   the rounded value must be less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
@@ -178,17 +177,15 @@ impl Layout {
     ///
     /// - If `T` is `Sized`, this function is always safe to call.
     /// - If the unsized tail of `T` is:
-    ///     - a [slice], then the length of the slice tail must be an initialized
-    ///       integer, and the size of the *entire value*
+    ///     - a [slice], then the length of the slice tail must be an initialized integer, and the
+    ///       size of the *entire value* (dynamic tail length + statically sized prefix) must fit in
+    ///       `isize`.
+    ///     - a [trait object], then the vtable part of the pointer must point to a valid vtable for
+    ///       the type `T` acquired by an unsizing coercion, and the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-    ///     - a [trait object], then the vtable part of the pointer must point
-    ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
-    ///       and the size of the *entire value*
-    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-    ///     - an (unstable) [extern type], then this function is always safe to
-    ///       call, but may panic or otherwise return the wrong value, as the
-    ///       extern type's layout is not known. This is the same behavior as
-    ///       [`Layout::for_value`] on a reference to an extern type tail.
+    ///     - an (unstable) [extern type], then this function is always safe to call, but may panic
+    ///       or otherwise return the wrong value, as the extern type's layout is not known. This is
+    ///       the same behavior as [`Layout::for_value`] on a reference to an extern type tail.
     ///     - otherwise, it is conservatively not allowed to call this function.
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -268,14 +265,12 @@ impl Layout {
         //
         // We use modular arithmetic throughout:
         //
-        // 1. align is guaranteed to be > 0, so align - 1 is always
-        //    valid.
+        // 1. align is guaranteed to be > 0, so align - 1 is always valid.
         //
-        // 2. `len + align - 1` can overflow by at most `align - 1`,
-        //    so the &-mask with `!(align - 1)` will ensure that in the
-        //    case of overflow, `len_rounded_up` will itself be 0.
-        //    Thus the returned padding, when added to `len`, yields 0,
-        //    which trivially satisfies the alignment `align`.
+        // 2. `len + align - 1` can overflow by at most `align - 1`, so the &-mask with `!(align -
+        //    1)` will ensure that in the case of overflow, `len_rounded_up` will itself be 0. Thus
+        //    the returned padding, when added to `len`, yields 0, which trivially satisfies the
+        //    alignment `align`.
         //
         // (Of course, attempts to allocate blocks of memory whose
         // size and padding overflow in the above manner should cause

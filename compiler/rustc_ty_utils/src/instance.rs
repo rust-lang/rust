@@ -55,7 +55,8 @@ fn resolve_instance<'tcx>(
             }
         } else {
             debug!(" => free item");
-            // FIXME(effects): we may want to erase the effect param if that is present on this item.
+            // FIXME(effects): we may want to erase the effect param if that is present on this
+            // item.
             ty::InstanceDef::Item(def_id)
         };
 
@@ -254,7 +255,8 @@ fn resolve_associated_item<'tcx>(
                     Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args: args })
                 } else {
                     // All other methods are default methods of the `Future` trait.
-                    // (this assumes that `ImplSource::Builtin` is only used for methods on `Future`)
+                    // (this assumes that `ImplSource::Builtin` is only used for methods on
+                    // `Future`)
                     debug_assert!(tcx.defaultness(trait_item_id).has_value());
                     Some(Instance::new(trait_item_id, rcvr_args))
                 }
@@ -267,7 +269,8 @@ fn resolve_associated_item<'tcx>(
                     Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
                 } else {
                     // All other methods are default methods of the `Iterator` trait.
-                    // (this assumes that `ImplSource::Builtin` is only used for methods on `Iterator`)
+                    // (this assumes that `ImplSource::Builtin` is only used for methods on
+                    // `Iterator`)
                     debug_assert!(tcx.defaultness(trait_item_id).has_value());
                     Some(Instance::new(trait_item_id, rcvr_args))
                 }

@@ -529,7 +529,8 @@ fn layout_of_uncached<'tcx>(
                 return Err(error(cx, LayoutError::SizeOverflow(ty)));
             };
 
-            // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
+            // If the struct tail is sized and can be unsized, check that unsizing doesn't move the
+            // fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
                 && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.param_env)

@@ -39,8 +39,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
-    /// or not we have attributes
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
+    /// whether or not we have attributes
     // Public for `cfg_eval` macro expansion.
     pub fn parse_stmt_without_recovery(
         &mut self,
@@ -468,7 +468,7 @@ impl<'a> Parser<'a> {
             // just lookahead one token, so we can see if there's a brace after _that_,
             // since we want to protect against:
             //     `if 1 1 + 1 {` being suggested as  `if { 1 } 1 + 1 {`
-            //                                            +   +
+            //                                            + +
             Ok(Some(_))
                 if (!self.token.is_keyword(kw::Else)
                     && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)))

@@ -717,10 +717,12 @@ impl<'a> Parser<'a> {
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
-                        // When the close delim is `)` in a case like the following, `token.kind` is expected to be `token::CloseDelim(Delimiter::Parenthesis)`,
-                        // but the actual `token.kind` is `token::CloseDelim(Delimiter::Brace)`.
+                        // When the close delim is `)` in a case like the following, `token.kind` is expected
+                        // to be `token::CloseDelim(Delimiter::Parenthesis)`, but the actual `token.kind` is
+                        // `token::CloseDelim(Delimiter::Brace)`.
                         // This is because the `token.kind` of the close delim is treated as the same as
-                        // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
+                        // that of the open delim in `TokenTreesReader::parse_token_tree`,
+                        // even if the delimiters of them are different.
                         // Therefore, `token.kind` should not be compared here.
                         //
                         // issue-60075.rs
@@ -1268,7 +1270,8 @@ impl<'a> Parser<'a> {
         Ok(impl_info)
     }
 
-    /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in `mutability`.
+    /// Parse a static item with the prefix `"static" "mut"?` already parsed and stored in
+    /// `mutability`.
     ///
     /// ```ebnf
     /// Static = "static" "mut"? $ident ":" $ty (= $expr)? ";" ;
@@ -1286,7 +1289,8 @@ impl<'a> Parser<'a> {
         let ty = match (self.eat(&token::Colon), self.check(&token::Eq) | self.check(&token::Semi))
         {
             (true, false) => self.parse_ty()?,
-            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing type.
+            // If there wasn't a `:` or the colon was followed by a `=` or `;`, recover a missing
+            // type.
             (colon, _) => self.recover_missing_global_item_type(colon, Some(mutability)),
         };
 
@@ -1320,7 +1324,8 @@ impl<'a> Parser<'a> {
             self.check(&token::Eq) | self.check(&token::Semi) | self.check_keyword(kw::Where),
         ) {
             (true, false) => self.parse_ty()?,
-            // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a missing type.
+            // If there wasn't a `:` or the colon was followed by a `=`, `;` or `where`, recover a
+            // missing type.
             (colon, _) => self.recover_missing_global_item_type(colon, None),
         };
 
@@ -1352,8 +1357,8 @@ impl<'a> Parser<'a> {
                         }
                     })
                 } else {
-                    // FIXME(generic_const_items): Provide a structured suggestion to merge the first
-                    // where-clause into the second one.
+                    // FIXME(generic_const_items): Provide a structured suggestion to merge the
+                    // first where-clause into the second one.
                     None
                 },
             });
@@ -2214,11 +2219,10 @@ pub(crate) struct FnParseMode {
     ///
     /// Calling this function pointer should only return false if:
     ///
-    ///   * The item is being parsed inside of a trait definition.
-    ///     Within an impl block or a module, it should always evaluate
-    ///     to true.
-    ///   * The span is from Edition 2015. In particular, you can get a
-    ///     2015 span inside a 2021 crate using macros.
+    ///   * The item is being parsed inside of a trait definition. Within an impl block or a
+    ///     module, it should always evaluate to true.
+    ///   * The span is from Edition 2015. In particular, you can get a 2015 span inside a 2021
+    ///     crate using macros.
     pub req_name: ReqName,
     /// If this flag is set to `true`, then plain, semicolon-terminated function
     /// prototypes are not allowed here.
@@ -2458,8 +2462,9 @@ impl<'a> Parser<'a> {
                     let mut recover_constness = constness;
                     let mut recover_coroutine_kind = coroutine_kind;
                     let mut recover_unsafety = unsafety;
-                    // This will allow the machine fix to directly place the keyword in the correct place or to indicate
-                    // that the keyword is already present and the second instance should be removed.
+                    // This will allow the machine fix to directly place the keyword in the correct
+                    // place or to indicate that the keyword is already present
+                    // and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
                         match constness {
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
@@ -2482,7 +2487,8 @@ impl<'a> Parser<'a> {
                                     closure_id: DUMMY_NODE_ID,
                                     return_impl_trait_id: DUMMY_NODE_ID,
                                 });
-                                // FIXME(gen_blocks): This span is wrong, didn't want to think about it.
+                                // FIXME(gen_blocks): This span is wrong, didn't want to think about
+                                // it.
                                 Some(WrongKw::Misplaced(unsafe_start_sp))
                             }
                             None => {
@@ -2520,7 +2526,8 @@ impl<'a> Parser<'a> {
                         )
                         .span_note(original_sp, format!("`{original_kw}` first seen here"));
                     }
-                    // The keyword has not been seen yet, suggest correct placement in the function front matter
+                    // The keyword has not been seen yet, suggest correct placement in the function
+                    // front matter
                     else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
                         let correct_pos_sp = correct_pos_sp.to(self.prev_token.span);
                         if let Ok(current_qual) = self.span_to_snippet(correct_pos_sp) {

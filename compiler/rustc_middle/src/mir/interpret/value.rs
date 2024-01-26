@@ -17,8 +17,8 @@ use super::{
 };
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
-/// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
-/// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
+/// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes
+/// in size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 ///
 /// These variants would be private if there was a convenient way to achieve that in Rust.
@@ -212,7 +212,8 @@ impl<Prov> Scalar<Prov> {
     }
 
     /// This is almost certainly not the method you want!  You should dispatch on the type
-    /// and use `to_{u8,u16,...}`/`scalar_to_ptr` to perform ptr-to-int / int-to-ptr casts as needed.
+    /// and use `to_{u8,u16,...}`/`scalar_to_ptr` to perform ptr-to-int / int-to-ptr casts as
+    /// needed.
     ///
     /// This method only exists for the benefit of low-level operations that truly need to treat the
     /// scalar in whatever form it is.

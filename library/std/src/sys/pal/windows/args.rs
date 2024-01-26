@@ -125,7 +125,8 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
                 // Skip whitespace.
                 code_units.advance_while(|w| w == SPACE || w == TAB);
             }
-            // Backslashes can escape quotes or backslashes but only if consecutive backslashes are followed by a quote.
+            // Backslashes can escape quotes or backslashes but only if consecutive backslashes are
+            // followed by a quote.
             BACKSLASH => {
                 let backslash_count = code_units.advance_while(|w| w == BACKSLASH) + 1;
                 if code_units.peek() == Some(QUOTE) {
@@ -154,7 +155,8 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
                 // Push `cur` even if empty, which we do by breaking while `in_quotes` is still set.
                 None => break,
             },
-            // If not `in_quotes` and not BACKSLASH escaped (see above) then a quote sets `in_quote`.
+            // If not `in_quotes` and not BACKSLASH escaped (see above) then a quote sets
+            // `in_quote`.
             QUOTE => in_quotes = true,
             // Everything else is always taken literally.
             _ => cur.push(w.get()),

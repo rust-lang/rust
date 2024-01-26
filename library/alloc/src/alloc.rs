@@ -21,8 +21,8 @@ extern "Rust" {
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in std (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
-    // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
-    // like `malloc`, `realloc`, and `free`, respectively.
+    // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to
+    // optimize them like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
     #[rustc_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
@@ -207,7 +207,8 @@ impl Global {
             old_size if old_layout.align() == new_layout.align() => unsafe {
                 let new_size = new_layout.size();
 
-                // `realloc` probably checks for `new_size >= old_layout.size()` or something similar.
+                // `realloc` probably checks for `new_size >= old_layout.size()` or something
+                // similar.
                 intrinsics::assume(new_size >= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
@@ -298,7 +299,8 @@ unsafe impl Allocator for Global {
 
             // SAFETY: `new_size` is non-zero. Other conditions must be upheld by the caller
             new_size if old_layout.align() == new_layout.align() => unsafe {
-                // `realloc` probably checks for `new_size <= old_layout.size()` or something similar.
+                // `realloc` probably checks for `new_size <= old_layout.size()` or something
+                // similar.
                 intrinsics::assume(new_size <= old_layout.size());
 
                 let raw_ptr = realloc(ptr.as_ptr(), old_layout, new_size);
@@ -361,8 +363,8 @@ extern "Rust" {
 ///   Future versions of Rust may panic by default instead.
 ///
 /// * If the binary does not link against `std` (all of its crates are marked
-///   [`#![no_std]`][no_std]), then call [`panic!`] with a message.
-///   [The panic handler] applies as to any panic.
+///   [`#![no_std]`][no_std]), then call [`panic!`] with a message. [The panic handler] applies as
+///   to any panic.
 ///
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html

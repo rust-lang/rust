@@ -261,8 +261,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// to produce a single value from it.
     ///
     /// Note: `rfold()` combines elements in a *right-associative* fashion. For associative
-    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
-    /// operators like `-` the order will affect the final result.
+    /// operators like `+`, the order the elements are combined in is not important, but for
+    /// non-associative operators like `-` the order will affect the final result.
     /// For a *left-associative* version of `rfold()`, see [`Iterator::fold()`].
     ///
     /// # Examples

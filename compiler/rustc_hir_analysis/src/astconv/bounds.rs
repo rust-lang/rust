@@ -290,9 +290,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
 
-        // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
-        // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
-        // `assoc_ident` again and again.
+        // We have already adjusted the item name above, so compare with
+        // `.normalize_to_macros_2_0()` instead of calling `filter_by_name_and_kind` which
+        // would needlessly normalize the `assoc_ident` again and again.
         let assoc_item = tcx
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)

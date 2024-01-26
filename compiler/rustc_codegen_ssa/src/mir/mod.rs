@@ -96,8 +96,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// - the operand must never be referenced indirectly
     ///     - we should not take its address using the `&` operator
     ///     - nor should it appear in a place path like `tmp.a`
-    /// - the operand must be defined by an rvalue that can generate immediate
-    ///   values
+    /// - the operand must be defined by an rvalue that can generate immediate values
     ///
     /// Avoiding allocs can also be important for certain intrinsics,
     /// notably `expect`.

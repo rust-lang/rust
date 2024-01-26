@@ -55,7 +55,8 @@ impl ProvenanceMap {
     /// Give access to the ptr-sized provenances (which can also be thought of as relocations, and
     /// indeed that is how codegen treats them).
     ///
-    /// Only exposed with `CtfeProvenance` provenance, since it panics if there is bytewise provenance.
+    /// Only exposed with `CtfeProvenance` provenance, since it panics if there is bytewise
+    /// provenance.
     #[inline]
     pub fn ptrs(&self) -> &SortedMap<Size, CtfeProvenance> {
         debug_assert!(self.bytes.is_none()); // `CtfeProvenance::OFFSET_IS_ADDR` is false so this cannot fail
@@ -111,9 +112,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 
     /// Returns whether this allocation has provenance overlapping with the given range.
     ///
-    /// Note: this function exists to allow `range_get_provenance` to be private, in order to somewhat
-    /// limit access to provenance outside of the `Allocation` abstraction.
-    ///
+    /// Note: this function exists to allow `range_get_provenance` to be private, in order to
+    /// somewhat limit access to provenance outside of the `Allocation` abstraction.
     pub fn range_empty(&self, range: AllocRange, cx: &impl HasDataLayout) -> bool {
         self.range_get_ptrs(range, cx).is_empty() && self.range_get_bytes(range).is_empty()
     }
@@ -227,10 +227,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         if src.size >= ptr_size {
             let adjusted_end = Size::from_bytes(src.end().bytes() - (ptr_size.bytes() - 1));
             let ptrs = self.ptrs.range(src.start..adjusted_end);
-            // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
-            // is mostly filled with redundant information since it's just N copies of the same `Prov`s
-            // at slightly adjusted offsets. The reason we do this is so that in `mark_provenance_range`
-            // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
+            // If `count` is large, this is rather wasteful -- we are allocating a big array here,
+            // which is mostly filled with redundant information since it's just N
+            // copies of the same `Prov`s at slightly adjusted offsets. The reason we do
+            // this is so that in `mark_provenance_range` we can use `insert_presorted`.
+            // That wouldn't work with an `Iterator` that just produces
             // the right sequence of provenance for all N copies.
             // Basically, this large array would have to be created anyway in the target allocation.
             let mut dest_ptrs = Vec::with_capacity(ptrs.len() * (count as usize));
@@ -284,9 +285,10 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
                         // The last entry, if it exists, has a lower offset than us.
                         bytes.push((offset, entry.1));
                     } else {
-                        // There already is an entry for this offset in there! This can happen when the
-                        // start and end range checks actually end up hitting the same pointer, so we
-                        // already added this in the "pointer at the start" part above.
+                        // There already is an entry for this offset in there! This can happen when
+                        // the start and end range checks actually end up
+                        // hitting the same pointer, so we already added
+                        // this in the "pointer at the start" part above.
                         assert!(entry.0 <= src.start);
                     }
                 }

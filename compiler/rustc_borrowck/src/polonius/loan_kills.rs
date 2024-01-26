@@ -90,11 +90,9 @@ impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
     /// local, or on a call's return destination.
     fn record_killed_borrows_for_place(&mut self, place: Place<'tcx>, location: Location) {
         // Depending on the `Place` we're killing:
-        // - if it's a local, or a single deref of a local,
-        //   we kill all the borrows on the local.
-        // - if it's a deeper projection, we have to filter which
-        //   of the borrows are killed: the ones whose `borrowed_place`
-        //   conflicts with the `place`.
+        // - if it's a local, or a single deref of a local, we kill all the borrows on the local.
+        // - if it's a deeper projection, we have to filter which of the borrows are killed: the
+        //   ones whose `borrowed_place` conflicts with the `place`.
         match place.as_ref() {
             PlaceRef { local, projection: &[] }
             | PlaceRef { local, projection: &[ProjectionElem::Deref] } => {

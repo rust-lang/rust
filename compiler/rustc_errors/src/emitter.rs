@@ -129,8 +129,8 @@ impl Margin {
     fn was_cut_right(&self, line_len: usize) -> bool {
         let right =
             if self.computed_right == self.span_right || self.computed_right == self.label_right {
-                // Account for the "..." padding given above. Otherwise we end up with code lines that
-                // do fit but end in "..." as if they were trimmed.
+                // Account for the "..." padding given above. Otherwise we end up with code lines
+                // that do fit but end in "..." as if they were trimmed.
                 self.computed_right - 6
             } else {
                 self.computed_right
@@ -228,12 +228,12 @@ pub trait Emitter: Translate {
     ///
     /// There are a lot of conditions to this method, but in short:
     ///
-    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
-    ///   we format the `help` suggestion depending on the content of the
-    ///   substitutions. In that case, we return the modified span only.
+    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`, we format the `help`
+    ///   suggestion depending on the content of the substitutions. In that case, we return the
+    ///   modified span only.
     ///
-    /// * If the current `Diagnostic` has multiple suggestions,
-    ///   we return the original `primary_span` and the original suggestions.
+    /// * If the current `Diagnostic` has multiple suggestions, we return the original
+    ///   `primary_span` and the original suggestions.
     fn primary_span_formatted<'a>(
         &mut self,
         diag: &'a Diagnostic,
@@ -710,8 +710,9 @@ impl HumanEmitter {
             .skip(left)
             .take_while(|ch| {
                 // Make sure that the trimming on the right will fall within the terminal width.
-                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
-                // For now, just accept that sometimes the code line will be longer than desired.
+                // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char`
+                // is. For now, just accept that sometimes the code line will be
+                // longer than desired.
                 let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
                 if taken + next > right - left {
                     return false;
@@ -2211,8 +2212,8 @@ impl HumanEmitter {
                 buffer.puts(*row_num - 1, max_line_num_len + 3, &line, Style::NoStyle);
                 *row_num += 1;
             }
-            // If the last line is exactly equal to the line we need to add, we can skip both of them.
-            // This allows us to avoid output like the following:
+            // If the last line is exactly equal to the line we need to add, we can skip both of
+            // them. This allows us to avoid output like the following:
             // 2 - &
             // 2 + if true { true } else { false }
             // 3 - if true { true } else { false }
@@ -2494,8 +2495,9 @@ fn num_decimal_digits(num: usize) -> usize {
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    ('\t', "    "),   // We do our own tab replacement
-    ('\u{200D}', ""), // Replace ZWJ with nothing for consistent terminal output of grapheme clusters.
+    ('\t', "    "), // We do our own tab replacement
+    ('\u{200D}', ""), /* Replace ZWJ with nothing for consistent terminal output of grapheme
+                     * clusters. */
     ('\u{202A}', ""), // The following unicode text flow control characters are inconsistently
     ('\u{202B}', ""), // supported across CLIs and can cause confusion due to the bytes on disk
     ('\u{202D}', ""), // not corresponding to the visible source code, so we replace them always.

@@ -112,8 +112,7 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         // the presumption that most writes succeed in totality, and that most
         // writes are smaller than the buffer.
         // - Is this a partial line (ie, no newlines left in the unwritten tail)
-        // - If not, does the data out to the last unwritten newline fit in
-        //   the buffer?
+        // - If not, does the data out to the last unwritten newline fit in the buffer?
         // - If not, scan for the last newline that *does* fit in the buffer
         let tail = if flushed >= newline_idx {
             &buf[flushed..]
@@ -153,12 +152,11 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
     /// Because sorting through an array of `IoSlice` can be a bit convoluted,
     /// This method differs from write in the following ways:
     ///
-    /// - It attempts to write the full content of all the buffers up to and
-    ///   including the one containing the last newline. This means that it
-    ///   may attempt to write a partial line, that buffer has data past the
-    ///   newline.
-    /// - If the write only reports partial success, it does not attempt to
-    ///   find the precise location of the written bytes and buffer the rest.
+    /// - It attempts to write the full content of all the buffers up to and including the one
+    ///   containing the last newline. This means that it may attempt to write a partial line, that
+    ///   buffer has data past the newline.
+    /// - If the write only reports partial success, it does not attempt to find the precise
+    ///   location of the written bytes and buffer the rest.
     ///
     /// If the underlying vector doesn't support vectored writing, we instead
     /// simply write the first non-empty buffer with `write`. This way, we

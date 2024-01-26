@@ -90,8 +90,10 @@ impl char {
     /// behavior of some `char` and `str` methods and the value of this constant
     /// changes over time. This is *not* considered to be a breaking change.
     ///
-    /// The version numbering scheme is explained in
-    /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+    /// The version numbering scheme is explained
+    /// in [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard].
+    ///
+    /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard]: https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
@@ -511,10 +513,8 @@ impl char {
     /// * Single quote is escaped as `\'`.
     /// * Double quote is escaped as `\"`.
     /// * Backslash is escaped as `\\`.
-    /// * Any character in the 'printable ASCII' range `0x20` .. `0x7e`
-    ///   inclusive is not escaped.
-    /// * All other characters are given hexadecimal Unicode escapes; see
-    ///   [`escape_unicode`].
+    /// * Any character in the 'printable ASCII' range `0x20` .. `0x7e` inclusive is not escaped.
+    /// * All other characters are given hexadecimal Unicode escapes; see [`escape_unicode`].
     ///
     /// [`escape_unicode`]: #method.escape_unicode
     ///
@@ -936,10 +936,10 @@ impl char {
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
     /// Database][ucd] [`UnicodeData.txt`].
     ///
-    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
-    /// If you want everything including characters with overlapping purposes then you might want to use
-    /// a unicode or language-processing library that exposes the appropriate character properties instead
-    /// of looking at the unicode categories.
+    /// This method doesn't cover everything that could be considered a number, e.g. ideographic
+    /// numbers like '三'. If you want everything including characters with overlapping purposes
+    /// then you might want to use a unicode or language-processing library that exposes the
+    /// appropriate character properties instead of looking at the unicode categories.
     ///
     /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
     /// `is_ascii_digit` or `is_digit` instead.

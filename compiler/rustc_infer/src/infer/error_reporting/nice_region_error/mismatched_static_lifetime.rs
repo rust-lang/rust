@@ -1,5 +1,5 @@
-//! Error Reporting for when the lifetime for a type doesn't match the `impl` selected for a predicate
-//! to hold.
+//! Error Reporting for when the lifetime for a type doesn't match the `impl` selected for a
+//! predicate to hold.
 
 use crate::errors::{note_and_explain, IntroducesStaticBecauseUnmetLifetimeReq};
 use crate::errors::{

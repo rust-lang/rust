@@ -92,7 +92,8 @@ enum TargetLint {
 
     /// A lint name that should give no warnings and have no effect.
     ///
-    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
     Ignored,
 }
 
@@ -282,7 +283,8 @@ impl LintStore {
 
     /// This lint should give no warning and have no effect.
     ///
-    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them
+    /// as tool lints.
     #[track_caller]
     pub fn register_ignored(&mut self, name: &str) {
         if self.by_name.insert(name.to_string(), Ignored).is_some() {
@@ -625,8 +627,8 @@ pub trait LintContext {
     fn fulfill_expectation(&self, expectation: LintExpectationId) {
         // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
         // and stored between compilation sessions. To not manually do these steps, we simply create
-        // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a normal
-        // expected lint diagnostic.
+        // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a
+        // normal expected lint diagnostic.
         self.sess()
             .dcx()
             .struct_expect(

@@ -16,7 +16,6 @@
 //! # How to use the core library
 //!
 //! Please note that all of these details are currently not considered stable.
-//!
 // FIXME: Fill me in with more detail when the interface settles
 //! This library is built on the assumption of a few existing symbols:
 //!
@@ -26,7 +25,7 @@
 //!   assumptions about their semantics: For `memcpy`, `memmove`, `memset`, `memcmp`, and `bcmp`, if
 //!   the `n` parameter is 0, the function is assumed to not be UB, even if the pointers are NULL or
 //!   dangling. (Note that making extra assumptions about these functions is common among compilers:
-//!   [clang](https://reviews.llvm.org/D86993) and [GCC](https://gcc.gnu.org/onlinedocs/gcc/Standards.html#C-Language) do the same.)
+//!   [clang] and [GCC] do the same.)
 //!   These functions are often provided by the system libc, but can also be provided by the
 //!   [compiler-builtins crate](https://crates.io/crates/compiler_builtins).
 //!   Note that the library does not guarantee that it will always make these assumptions, so Rust
@@ -34,17 +33,18 @@
 //!   Rust user code is to call the functions provided by this library instead (such as
 //!   `ptr::copy`).
 //!
-//! * `rust_begin_panic` - This function takes four arguments, a
-//!   `fmt::Arguments`, a `&'static str`, and two `u32`'s. These four arguments
-//!   dictate the panic message, the file at which panic was invoked, and the
-//!   line and column inside the file. It is up to consumers of this core
-//!   library to define this panic function; it is only required to never
-//!   return. This requires a `lang` attribute named `panic_impl`.
+//! [clang]: https://reviews.llvm.org/D86993
+//! [GCC]: https://gcc.gnu.org/onlinedocs/gcc/Standards.html#C-Language
 //!
-//! * `rust_eh_personality` - is used by the failure mechanisms of the
-//!    compiler. This is often mapped to GCC's personality function, but crates
-//!    which do not trigger a panic can be assured that this function is never
-//!    called. The `lang` attribute is called `eh_personality`.
+//! * `rust_begin_panic` - This function takes four arguments, a `fmt::Arguments`, a `&'static str`,
+//!   and two `u32`'s. These four arguments dictate the panic message, the file at which panic was
+//!   invoked, and the line and column inside the file. It is up to consumers of this core library
+//!   to define this panic function; it is only required to never return. This requires a `lang`
+//!   attribute named `panic_impl`.
+//!
+//! * `rust_eh_personality` - is used by the failure mechanisms of the compiler. This is often
+//!   mapped to GCC's personality function, but crates which do not trigger a panic can be assured
+//!   that this function is never called. The `lang` attribute is called `eh_personality`.
 
 // Since core defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest (library/core/tests), to avoid bizarre issues.
@@ -425,8 +425,8 @@ pub mod primitive;
     deprecated_in_future
 )]
 #[allow(rustdoc::bare_urls)]
-// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
-// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
+// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations
+// is merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;

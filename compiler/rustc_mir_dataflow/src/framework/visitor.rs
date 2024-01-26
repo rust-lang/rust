@@ -55,8 +55,8 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     ) {
     }
 
-    /// Called with the `before_terminator_effect` of the given terminator applied to `state` but not
-    /// its `terminator_effect`.
+    /// Called with the `before_terminator_effect` of the given terminator applied to `state` but
+    /// not its `terminator_effect`.
     fn visit_terminator_before_primary_effect(
         &mut self,
         _results: &mut R,

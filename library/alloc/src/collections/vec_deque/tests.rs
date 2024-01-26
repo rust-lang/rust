@@ -775,7 +775,8 @@ fn test_shrink_to() {
 
             for target_cap in len..cap {
                 let mut deque = VecDeque::with_capacity(cap);
-                // currently, `with_capacity` always allocates the exact capacity if it's greater than 8.
+                // currently, `with_capacity` always allocates the exact capacity if it's greater
+                // than 8.
                 assert_eq!(deque.capacity(), cap);
 
                 // we can let the head point anywhere in the buffer since the deque is empty.
