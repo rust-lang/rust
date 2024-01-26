@@ -113,8 +113,8 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
-    "9a02c819cc1e4ec6959ae25eafbb5cf6acb68234",
-    "4934f0afb1d1c2ca",
+    "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
+    "981f8bf489338978",
     "rand",
 );
 
