@@ -596,11 +596,11 @@ dependencies = [
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
- "aho-corasick 0.7.20",
+ "aho-corasick 1.0.2",
  "clap",
  "indoc",
  "itertools",
- "opener 0.5.2",
+ "opener",
  "shell-escape",
  "walkdir",
 ]
@@ -610,7 +610,7 @@ name = "clippy_lints"
 version = "0.1.77"
 dependencies = [
  "arrayvec",
- "cargo_metadata 0.15.4",
+ "cargo_metadata 0.18.0",
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
@@ -2351,7 +2351,7 @@ dependencies = [
  "log",
  "memchr",
  "once_cell",
- "opener 0.6.1",
+ "opener",
  "pathdiff",
  "pulldown-cmark",
  "regex",
@@ -2625,16 +2625,6 @@ name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
-
-[[package]]
-name = "opener"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "293c15678e37254c15bd2f092314abb4e51d7fdde05c2021279c12631b54f005"
-dependencies = [
- "bstr",
- "winapi",
-]
 
 [[package]]
 name = "opener"
