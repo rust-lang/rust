@@ -22,7 +22,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, PatKind};
-use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
@@ -34,9 +33,9 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
-use std::{fmt, mem};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
@@ -933,7 +932,6 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
 struct NamePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    current_item: LocalDefId,
 }
 
 impl<'tcx> NamePrivacyVisitor<'tcx> {
@@ -949,6 +947,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
         &mut self,
+        hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         span: Span,            // span of the field pattern, e.g., `x: 0`
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
@@ -961,7 +960,6 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
         // definition of the field
         let ident = Ident::new(kw::Empty, use_ctxt);
-        let hir_id = self.tcx.local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
             self.tcx.dcx().emit_err(FieldIsPrivate {
@@ -980,31 +978,11 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
-        // Don't visit nested modules, since we run a separate visitor walk
-        // for each module in `effective_visibilities`
-    }
-
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
-        self.visit_body(body);
+            self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        self.visit_body(self.tcx.hir().body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item = mem::replace(&mut self.current_item, item.owner_id.def_id);
-        intravisit::walk_item(self, item);
-        self.current_item = orig_current_item;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
@@ -1020,17 +998,17 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     let field = fields
                         .iter()
                         .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
-                    let (use_ctxt, span) = match field {
-                        Some(field) => (field.ident.span, field.span),
-                        None => (base.span, base.span),
+                    let (hir_id, use_ctxt, span) = match field {
+                        Some(field) => (field.hir_id, field.ident.span, field.span),
+                        None => (base.hir_id, base.span, base.span),
                     };
-                    self.check_field(use_ctxt, span, adt, variant_field, true);
+                    self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
                 }
             } else {
                 for field in fields {
-                    let use_ctxt = field.ident.span;
+                    let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                     let index = self.typeck_results().field_index(field.hir_id);
-                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+                    self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
                 }
             }
         }
@@ -1044,9 +1022,9 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let adt = self.typeck_results().pat_ty(pat).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
             for field in fields {
-                let use_ctxt = field.ident.span;
+                let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                 let index = self.typeck_results().field_index(field.hir_id);
-                self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+                self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
             }
         }
 
@@ -1741,17 +1719,12 @@ pub fn provide(providers: &mut Providers) {
 
 fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // Check privacy of names not checked in previous compilation stages.
-    let mut visitor = NamePrivacyVisitor {
-        tcx,
-        maybe_typeck_results: None,
-        current_item: module_def_id.to_local_def_id(),
-    };
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
-
-    intravisit::walk_mod(&mut visitor, module, hir_id);
+    let mut visitor = NamePrivacyVisitor { tcx, maybe_typeck_results: None };
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut visitor);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
+    let span = tcx.def_span(module_def_id);
     let mut visitor = TypePrivacyVisitor { tcx, module_def_id, maybe_typeck_results: None, span };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut visitor);
 }
