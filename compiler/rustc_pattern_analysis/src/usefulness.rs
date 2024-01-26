@@ -548,11 +548,12 @@
 //! [`ValidityConstraint::specialize`].
 //!
 //! Having said all that, in practice we don't fully follow what's been presented in this section.
-//! Under `exhaustive_patterns`, we allow omitting empty arms even in `!known_valid` places, for
-//! backwards-compatibility until we have a better alternative. Without `exhaustive_patterns`, we
-//! mostly treat empty types as inhabited, except specifically a non-nested `!` or empty enum. In
-//! this specific case we also allow the empty match regardless of place validity, for
-//! backwards-compatibility. Hopefully we can eventually deprecate this.
+//! Let's call "toplevel exception" the case where the match scrutinee itself has type `!` or
+//! `EmptyEnum`. First, on stable rust, we require `_` patterns for empty types in all cases apart
+//! from the toplevel exception. The `exhaustive_patterns` and `min_exaustive_patterns` allow
+//! omitting patterns in the cases described above. There's a final detail: in the toplevel
+//! exception or with the `exhaustive_patterns` feature, we ignore place validity when checking
+//! whether a pattern is required for exhaustiveness. I (Nadrieril) hope to deprecate this behavior.
 //!
 //!
 //!
@@ -1442,10 +1443,17 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     // We treat match scrutinees of type `!` or `EmptyEnum` differently.
     let is_toplevel_exception =
         is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
-    // Whether empty patterns can be omitted for exhaustiveness.
-    let can_omit_empty_arms = is_toplevel_exception || mcx.tycx.is_exhaustive_patterns_feature_on();
-    // Whether empty patterns are counted as useful or not.
-    let empty_arms_are_unreachable = place_validity.is_known_valid() && can_omit_empty_arms;
+    // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
+    // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
+    let empty_arms_are_unreachable = place_validity.is_known_valid()
+        && (is_toplevel_exception
+            || mcx.tycx.is_exhaustive_patterns_feature_on()
+            || mcx.tycx.is_min_exhaustive_patterns_feature_on());
+    // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
+    // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
+    let can_omit_empty_arms = empty_arms_are_unreachable
+        || is_toplevel_exception
+        || mcx.tycx.is_exhaustive_patterns_feature_on();
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
