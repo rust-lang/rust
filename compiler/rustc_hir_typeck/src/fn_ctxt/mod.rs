@@ -369,6 +369,14 @@ pub struct LoweredTy<'tcx> {
 
 impl<'tcx> LoweredTy<'tcx> {
     pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
-        LoweredTy { raw, normalized: fcx.normalize(span, raw) }
+        // FIXME(-Znext-solver): We're still figuring out how to best handle
+        // normalization and this doesn't feel too great. We should look at this
+        // code again before stabilizing it.
+        let normalized = if fcx.next_trait_solver() {
+            fcx.try_structurally_resolve_type(span, raw)
+        } else {
+            fcx.normalize(span, raw)
+        };
+        LoweredTy { raw, normalized }
     }
 }
