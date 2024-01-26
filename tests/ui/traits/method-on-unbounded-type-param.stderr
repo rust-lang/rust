@@ -1,18 +1,18 @@
-error[E0599]: `T` is not an iterator
+error[E0599]: no method named `cmp` found for type parameter `T` in the current scope
   --> $DIR/method-on-unbounded-type-param.rs:2:7
    |
 LL | fn f<T>(a: T, b: T) -> std::cmp::Ordering {
    |      - method `cmp` not found for this type parameter
 LL |     a.cmp(&b)
-   |       ^^^ `T` is not an iterator
+   |       ^^^ method cannot be called on `T` due to unsatisfied trait bounds
    |
-   = note: the following trait bounds were not satisfied:
-           `T: Iterator`
-           which is required by `&mut T: Iterator`
-help: consider restricting the type parameter to satisfy the trait bound
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
-LL | fn f<T>(a: T, b: T) -> std::cmp::Ordering where T: Iterator {
-   |                                           +++++++++++++++++
+LL | fn f<T: Ord>(a: T, b: T) -> std::cmp::Ordering {
+   |       +++++
+LL | fn f<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
+   |       ++++++++++
 
 error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
   --> $DIR/method-on-unbounded-type-param.rs:5:10
