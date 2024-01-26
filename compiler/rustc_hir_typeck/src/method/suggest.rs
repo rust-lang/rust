@@ -459,22 +459,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        let ty_span = match rcvr_ty.kind() {
+        let mut ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
                 Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
             }
             ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
             _ => None,
         };
-        if let Some(span) = ty_span {
-            err.span_label(
-                span,
-                format!(
-                    "{item_kind} `{item_name}` not found for this {}",
-                    rcvr_ty.prefix_string(self.tcx)
-                ),
-            );
-        }
 
         if let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
@@ -1190,12 +1181,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            let pre = if Some(span) == ty_span {
+                ty_span.take();
+                format!(
+                    "{item_kind} `{item_name}` not found for this {} because it ",
+                    rcvr_ty.prefix_string(self.tcx)
+                )
+            } else {
+                String::new()
+            };
             let msg = match &bounds[..] {
-                [bound] => format!("doesn't satisfy {bound}"),
-                [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
+                [bound] => format!("{pre}doesn't satisfy {bound}"),
+                [bounds @ .., last] => {
+                    format!("{pre}doesn't satisfy {} or {last}", bounds.join(", "))
+                }
                 [] => unreachable!(),
             };
             err.span_label(span, msg);
+        }
+        if let Some(span) = ty_span {
+            err.span_label(
+                span,
+                format!(
+                    "{item_kind} `{item_name}` not found for this {}",
+                    rcvr_ty.prefix_string(self.tcx)
+                ),
+            );
         }
 
         if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params {
