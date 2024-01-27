@@ -4,7 +4,6 @@ mod unresolved_env {
     use env; //~ ERROR unresolved import `env`
 
     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
-    //~^ ERROR cannot determine resolution for the macro `env`
 }
 
 mod nonexistent_env {
