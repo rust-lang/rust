@@ -1345,7 +1345,7 @@ impl<'tcx> FnSig<'tcx> {
     pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
-    /// The return type of this siganture.
+    /// The return type of this signature.
     pub fn output(&self) -> Ty<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
@@ -2037,7 +2037,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Creates a new [`Ty`] representing a reference to type `tm.ty` with mutability `tm.mutbl` in region `r`.
+    /// Creates a reference with type and mutability for a certain [`Region`].
     #[inline]
     pub fn new_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Ref(r, tm.ty, tm.mutbl))
@@ -2105,13 +2105,13 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Slice(ty))
     }
 
-    /// Creates a new [`Ty`] representing a tuple contining `ts` types.
+    /// Create a new tuple type.
     #[inline]
     pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(ts))) }
     }
 
-    /// Creates a new [`Ty`] representing a tuple contining types from the iterator `iter`.
+    /// Create a new [`Ty`] representing a tuple containing types from an iterator.
     pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -2120,7 +2120,7 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
-    /// Creates a new [`Ty`] representing a function definition type, with `def_id` and `args` generic args.
+    /// Create a new [`Ty`] representing a function definition type.
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
@@ -2350,7 +2350,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks if this type is a silice type.
+    /// `true` if this type is a slice type.
     #[inline]
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
@@ -2380,8 +2380,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// If the type is a slice, array, or a string slice, it will returns its element type.
-    /// If this type is not one of those, this function will panic.
+    /// Return the element type of a slice, array, or a string slice, or panic.
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
@@ -2447,7 +2446,7 @@ impl<'tcx> Ty<'tcx> {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
-    /// Checks if this type is an [`Box`].
+    /// `true` if this type is [`Box`].
     #[inline]
     pub fn is_box(self) -> bool {
         match self.kind() {
@@ -2489,13 +2488,13 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Float(_) | Infer(FloatVar(_)))
     }
 
-    /// Checks if this type is an unsized trait object(`dyn Trait`).
+    /// `true` if this type is an unsized trait object (`dyn Trait`).
     #[inline]
     pub fn is_trait(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::Dyn))
     }
 
-    /// Checks if this type is an sized trait object(`dyn* Trait`).
+    /// `true` if this type is an sized trait object (`dyn* Trait`).
     #[inline]
     pub fn is_dyn_star(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::DynStar))
@@ -2524,7 +2523,7 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Coroutine(..))
     }
 
-    /// Checks if this type is an intgeral type(signed, unsigned on infered).
+    /// `true` if this type is an integer type.
     #[inline]
     pub fn is_integral(self) -> bool {
         matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
@@ -2546,19 +2545,19 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Char)
     }
 
-    /// Checks if this type is numeric(integral or floating point).
+    /// `true` if this type is an integer or floating point.
     #[inline]
     pub fn is_numeric(self) -> bool {
         self.is_integral() || self.is_floating_point()
     }
 
-    /// Checks if this type is a signed intiger.
+    /// `true` if this type is a signed integer.
     #[inline]
     pub fn is_signed(self) -> bool {
         matches!(self.kind(), Int(_))
     }
 
-    /// Checks if this type is `usize` or `isize`.
+    /// `true` if this type is `usize` or `isize`.
     #[inline]
     pub fn is_ptr_sized_integral(self) -> bool {
         matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
@@ -2632,7 +2631,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// If this type is a function definition or a function pointer, this will retunrn its signature. Otherwise, this function will panic.
+    /// If this type is a function definition or a function pointer, return its signature. Otherwise, panic.
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
@@ -2648,13 +2647,13 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks if this type is a function definition or a function pointer.
+    /// `true` if this type is a function definition or a function pointer.
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(_))
     }
 
-    /// Checks if this type is a function pointer.
+    /// `true` if this type is a function pointer.
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), FnPtr(_))
@@ -2664,7 +2663,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_impl_trait(self) -> bool {
         matches!(self.kind(), Alias(ty::Opaque, ..))
     }
-    /// Returns the `AdtDef` defining this type, if it is an ADT(struct,union or enum). If this type is not an ADT, returns `None`.
+    /// Returns the `AdtDef` for this type's definition if it is an ADT, `None` otherwise.
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {

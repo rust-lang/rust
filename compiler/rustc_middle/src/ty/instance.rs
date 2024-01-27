@@ -639,7 +639,7 @@ impl<'tcx> Instance<'tcx> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 
-    /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
+    /// Instantiates a generic value `v` (like `Vec<T>`), substituting its generic arguments and turning it into a concrete one (like `i32` or `Vec<f32>`).
     /// If a value is not generic, this will do nothing.
     /// This function does not erase lifetimes, so a value like `&'a i32` will remain unchanged.
     /// For monomorphizing generics while also erasing lifetimes, try using [`Self::instantiate_mir_and_normalize_erasing_regions`].
@@ -655,7 +655,7 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    /// Instantiates a generic value `v`(like `Vec<T>`), substituting its generic arguments and turning it into a concrete one(like `i32`, or `Vec<f32>`).
+    /// Instantiates a generic value `v` (like `Vec<T>`), substituting its generic arguments and turning it into a concrete one (like `i32` or `Vec<f32>`).
     /// This function erases lifetimes, so a value like `&'a i32` will become `&ReErased i32`.
     /// If a value is not generic and has no lifetime info, this will do nothing.
     /// For monomorphizing generics while preserving lifetimes, use [`Self::instantiate_mir`].

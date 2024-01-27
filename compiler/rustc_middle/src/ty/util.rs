@@ -1006,8 +1006,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
-    /// Returns the `Size` for primitive types (bool, uint, int, char, float).
-    /// If the type is not primitive, will panic with message "non primitive type".
+    /// Returns the `Size` for primitive types (bool, uint, int, char, float), or panic.
     pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
         match *self.kind() {
             ty::Bool => Size::from_bytes(1),
