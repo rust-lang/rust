@@ -66,6 +66,7 @@ where
         }
     }
 
+    #[cfg_attr(not(bootstrap), allow(non_local_definitions))]
     impl From<&FileName> for rustc_span::FileName {
         fn from(filename: &FileName) -> rustc_span::FileName {
             match filename {
