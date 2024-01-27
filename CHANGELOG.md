@@ -5623,6 +5623,7 @@ Released 2018-09-13
 [`to_digit_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some
 [`to_string_in_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_display
 [`to_string_in_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_format_args
+[`to_string_trait_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_trait_impl
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
 [`too_many_lines`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
