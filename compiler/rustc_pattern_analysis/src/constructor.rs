@@ -151,6 +151,7 @@
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::once;
+use std::mem;
 
 use smallvec::SmallVec;
 
@@ -648,8 +649,6 @@ impl OpaqueId {
 /// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""), PartialEq(bound = ""))]
 pub enum Constructor<Cx: TypeCx> {
     /// Tuples and structs.
     Struct,
@@ -690,6 +689,101 @@ pub enum Constructor<Cx: TypeCx> {
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
     /// top of the file.
     Missing,
+}
+
+impl<Cx: TypeCx> Clone for Constructor<Cx> {
+    fn clone(&self) -> Self {
+        match self {
+            Constructor::Struct => Constructor::Struct,
+            Constructor::Variant(idx) => Constructor::Variant(idx.clone()),
+            Constructor::Ref => Constructor::Ref,
+            Constructor::Slice(slice) => Constructor::Slice(slice.clone()),
+            Constructor::UnionField => Constructor::UnionField,
+            Constructor::Bool(b) => Constructor::Bool(b.clone()),
+            Constructor::IntRange(range) => Constructor::IntRange(range.clone()),
+            Constructor::F32Range(lo, hi, end) => {
+                Constructor::F32Range(lo.clone(), hi.clone(), end.clone())
+            }
+            Constructor::F64Range(lo, hi, end) => {
+                Constructor::F64Range(lo.clone(), hi.clone(), end.clone())
+            }
+            Constructor::Str(value) => Constructor::Str(value.clone()),
+            Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
+            Constructor::Or => Constructor::Or,
+            Constructor::Wildcard => Constructor::Wildcard,
+            Constructor::NonExhaustive => Constructor::NonExhaustive,
+            Constructor::Hidden => Constructor::Hidden,
+            Constructor::Missing => Constructor::Missing,
+        }
+    }
+}
+
+impl<Cx: TypeCx> fmt::Debug for Constructor<Cx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Constructor::Struct => f.debug_tuple("Struct").finish(),
+            Constructor::Variant(idx) => f.debug_tuple("Variant").field(idx).finish(),
+            Constructor::Ref => f.debug_tuple("Ref").finish(),
+            Constructor::Slice(slice) => f.debug_tuple("Slice").field(slice).finish(),
+            Constructor::UnionField => f.debug_tuple("UnionField").finish(),
+            Constructor::Bool(b) => f.debug_tuple("Bool").field(b).finish(),
+            Constructor::IntRange(range) => f.debug_tuple("IntRange").field(range).finish(),
+            Constructor::F32Range(lo, hi, end) => {
+                f.debug_tuple("F32Range").field(lo).field(hi).field(end).finish()
+            }
+            Constructor::F64Range(lo, hi, end) => {
+                f.debug_tuple("F64Range").field(lo).field(hi).field(end).finish()
+            }
+            Constructor::Str(value) => f.debug_tuple("Str").field(value).finish(),
+            Constructor::Opaque(inner) => f.debug_tuple("Opaque").field(inner).finish(),
+            Constructor::Or => f.debug_tuple("Or").finish(),
+            Constructor::Wildcard => f.debug_tuple("Wildcard").finish(),
+            Constructor::NonExhaustive => f.debug_tuple("NonExhaustive").finish(),
+            Constructor::Hidden => f.debug_tuple("Hidden").finish(),
+            Constructor::Missing => f.debug_tuple("Missing").finish(),
+        }
+    }
+}
+
+impl<Cx: TypeCx> PartialEq for Constructor<Cx> {
+    fn eq(&self, other: &Self) -> bool {
+        (mem::discriminant(self) == mem::discriminant(other))
+            && match (self, other) {
+                (Constructor::Struct, Constructor::Struct) => true,
+                (Constructor::Variant(self_variant), Constructor::Variant(other_variant)) => {
+                    self_variant == other_variant
+                }
+                (Constructor::Ref, Constructor::Ref) => true,
+                (Constructor::Slice(self_slice), Constructor::Slice(other_slice)) => {
+                    self_slice == other_slice
+                }
+                (Constructor::UnionField, Constructor::UnionField) => true,
+                (Constructor::Bool(self_b), Constructor::Bool(other_b)) => self_b == other_b,
+                (Constructor::IntRange(self_range), Constructor::IntRange(other_range)) => {
+                    self_range == other_range
+                }
+                (
+                    Constructor::F32Range(self_lo, self_hi, self_end),
+                    Constructor::F32Range(other_lo, other_hi, other_end),
+                ) => self_lo == other_lo && self_hi == other_hi && self_end == other_end,
+                (
+                    Constructor::F64Range(self_lo, self_hi, self_end),
+                    Constructor::F64Range(other_lo, other_hi, other_end),
+                ) => self_lo == other_lo && self_hi == other_hi && self_end == other_end,
+                (Constructor::Str(self_value), Constructor::Str(other_value)) => {
+                    self_value == other_value
+                }
+                (Constructor::Opaque(self_inner), Constructor::Opaque(other_inner)) => {
+                    self_inner == other_inner
+                }
+                (Constructor::Or, Constructor::Or) => true,
+                (Constructor::Wildcard, Constructor::Wildcard) => true,
+                (Constructor::NonExhaustive, Constructor::NonExhaustive) => true,
+                (Constructor::Hidden, Constructor::Hidden) => true,
+                (Constructor::Missing, Constructor::Missing) => true,
+                _ => unreachable!(),
+            }
+    }
 }
 
 impl<Cx: TypeCx> Constructor<Cx> {
