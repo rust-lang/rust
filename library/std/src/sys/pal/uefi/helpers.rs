@@ -10,14 +10,16 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
+use r_efi::protocols::{device_path, device_path_to_text};
 
+use crate::ffi::OsString;
+use crate::io::{self, const_io_error};
 use crate::mem::{size_of, MaybeUninit};
-use crate::os::uefi;
+use crate::os::uefi::{self, env::boot_services, ffi::OsStringExt};
 use crate::ptr::NonNull;
-use crate::{
-    io::{self, const_io_error},
-    os::uefi::env::boot_services,
-};
+use crate::slice;
+use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sys_common::wstr::WStrUnits;
 
 const BOOT_SERVICES_UNAVAILABLE: io::Error =
     const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
@@ -142,7 +144,72 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
-pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>> {
-    let system_handle = uefi::env::try_image_handle()?;
-    open_protocol(system_handle, protocol_guid).ok()
+pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
+    let system_handle = uefi::env::try_image_handle().ok_or(io::const_io_error!(
+        io::ErrorKind::NotFound,
+        "Protocol not found in Image handle"
+    ))?;
+    open_protocol(system_handle, protocol_guid)
+}
+
+pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::Result<OsString> {
+    fn path_to_text(
+        protocol: NonNull<device_path_to_text::Protocol>,
+        path: NonNull<device_path::Protocol>,
+    ) -> io::Result<OsString> {
+        let path_ptr: *mut r_efi::efi::Char16 = unsafe {
+            ((*protocol.as_ptr()).convert_device_path_to_text)(
+                path.as_ptr(),
+                // DisplayOnly
+                r_efi::efi::Boolean::FALSE,
+                // AllowShortcuts
+                r_efi::efi::Boolean::FALSE,
+            )
+        };
+
+        // SAFETY: `convert_device_path_to_text` returns a pointer to a null-terminated UTF-16
+        // string, and that string cannot be deallocated prior to dropping the `WStrUnits`, so
+        // it's safe for `WStrUnits` to use.
+        let path_len = unsafe {
+            WStrUnits::new(path_ptr)
+                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?
+                .count()
+        };
+
+        let path = OsString::from_wide(unsafe { slice::from_raw_parts(path_ptr.cast(), path_len) });
+
+        if let Some(boot_services) = crate::os::uefi::env::boot_services() {
+            let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+            unsafe {
+                ((*boot_services.as_ptr()).free_pool)(path_ptr.cast());
+            }
+        }
+
+        Ok(path)
+    }
+
+    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        AtomicPtr::new(crate::ptr::null_mut());
+
+    if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
+        if let Ok(protocol) = open_protocol::<device_path_to_text::Protocol>(
+            handle,
+            device_path_to_text::PROTOCOL_GUID,
+        ) {
+            return path_to_text(protocol, path);
+        }
+    }
+
+    let device_path_to_text_handles = locate_handles(device_path_to_text::PROTOCOL_GUID)?;
+    for handle in device_path_to_text_handles {
+        if let Ok(protocol) = open_protocol::<device_path_to_text::Protocol>(
+            handle,
+            device_path_to_text::PROTOCOL_GUID,
+        ) {
+            LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
+            return path_to_text(protocol, path);
+        }
+    }
+
+    Err(io::const_io_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
 }
