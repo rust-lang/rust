@@ -2333,7 +2333,7 @@ declare_lint! {
     "constant used in pattern contains value of non-structural-match type in a field or a variant",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 
@@ -2389,7 +2389,7 @@ declare_lint! {
     "pointers are not structural-match",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 

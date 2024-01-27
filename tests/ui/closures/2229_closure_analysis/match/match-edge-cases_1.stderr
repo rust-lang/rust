@@ -5,7 +5,7 @@ LL |             NUMBER_POINTER => (),
    |             ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
    = note: `#[warn(pointer_structural_match)]` on by default
 
 warning: 1 warning emitted
@@ -18,6 +18,6 @@ LL |             NUMBER_POINTER => (),
    |             ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
    = note: `#[warn(pointer_structural_match)]` on by default
 
