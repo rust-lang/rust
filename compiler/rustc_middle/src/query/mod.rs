@@ -109,7 +109,7 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
     /// This exists purely for testing the interactions between span_delayed_bug and incremental.
-    query trigger_span_delayed_bug(key: DefId) -> () {
+    query trigger_span_delayed_bug(key: DefId) {
         desc { "triggering a span delayed bug for testing incremental" }
     }
 
@@ -119,7 +119,7 @@ rustc_queries! {
         desc { "compute registered tools for crate" }
     }
 
-    query early_lint_checks(_: ()) -> () {
+    query early_lint_checks(_: ()) {
         desc { "perform lints prior to macro expansion" }
     }
 
@@ -299,7 +299,7 @@ rustc_queries! {
     /// name. This is useful for cases were not all linting code from rustc
     /// was called. With the default `None` all registered lints will also
     /// be checked for expectation fulfillment.
-    query check_expectations(key: Option<Symbol>) -> () {
+    query check_expectations(key: Option<Symbol>) {
         eval_always
         desc { "checking lint expectations (RFC 2383)" }
     }
@@ -906,39 +906,39 @@ rustc_queries! {
     }
 
     /// Performs lint checking for the module.
-    query lint_mod(key: LocalModDefId) -> () {
+    query lint_mod(key: LocalModDefId) {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
-    query check_unused_traits(_: ()) -> () {
+    query check_unused_traits(_: ()) {
         desc { "checking unused trait imports in crate" }
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalModDefId) -> () {
+    query check_mod_attrs(key: LocalModDefId) {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks for uses of unstable APIs in the module.
-    query check_mod_unstable_api_usage(key: LocalModDefId) -> () {
+    query check_mod_unstable_api_usage(key: LocalModDefId) {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-    query check_mod_const_bodies(key: LocalModDefId) -> () {
+    query check_mod_const_bodies(key: LocalModDefId) {
         desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the loops in the module.
-    query check_mod_loops(key: LocalModDefId) -> () {
+    query check_mod_loops(key: LocalModDefId) {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_naked_functions(key: LocalModDefId) -> () {
+    query check_mod_naked_functions(key: LocalModDefId) {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalModDefId) -> () {
+    query check_mod_privacy(key: LocalModDefId) {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
@@ -958,7 +958,7 @@ rustc_queries! {
         desc { "finding live symbols in crate" }
     }
 
-    query check_mod_deathness(key: LocalModDefId) -> () {
+    query check_mod_deathness(key: LocalModDefId) {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
@@ -972,7 +972,7 @@ rustc_queries! {
         ensure_forwards_result_if_red
     }
 
-    query collect_mod_item_types(key: LocalModDefId) -> () {
+    query collect_mod_item_types(key: LocalModDefId) {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
 
@@ -1121,7 +1121,7 @@ rustc_queries! {
         eval_always
         desc { "checking effective visibilities" }
     }
-    query check_private_in_public(_: ()) -> () {
+    query check_private_in_public(_: ()) {
         eval_always
         desc { "checking for private elements in public interfaces" }
     }
