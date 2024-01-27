@@ -514,6 +514,7 @@ pub enum StashKey {
     MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
+    UndeterminedMacroResolution,
 }
 
 fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
