@@ -663,7 +663,6 @@ libs = [
     "@joshtriplett",
     "@Mark-Simulacrum",
     "@m-ou-se",
-    "@thomcc",
 ]
 bootstrap = [
     "@Mark-Simulacrum",
@@ -803,7 +802,7 @@ project-stable-mir = [
 "/library/panic_unwind" =                                ["libs"]
 "/library/proc_macro" =                                  ["@petrochenkov"]
 "/library/std" =                                         ["libs"]
-"/library/std/src/sys/pal/windows" =                     ["@ChrisDenton", "@thomcc"]
+"/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
 "/library/test" =                                        ["libs"]
 "/src/bootstrap" =                                       ["bootstrap"]
