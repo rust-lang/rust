@@ -37,16 +37,16 @@
                   let _8: std::option::Option<S>;
                   let _9: &[f32];
                   scope 4 {
-                      debug a => _7;
-                      debug b => _8;
-                      debug c => _9;
+                      debug a1 => _7;
+                      debug b1 => _8;
+                      debug c1 => _9;
                       let _11: f32;
                       let _12: std::option::Option<S>;
                       let _13: &[f32];
                       scope 5 {
-                          debug a => _11;
-                          debug b => _12;
-                          debug c => _13;
+                          debug a2 => _11;
+                          debug b2 => _12;
+                          debug c2 => _13;
                           let _15: SmallStruct;
                           scope 6 {
                               debug ss => _15;
@@ -54,16 +54,16 @@
                               let _20: std::option::Option<S>;
                               let _21: &[f32];
                               scope 7 {
-                                  debug a => _19;
-                                  debug b => _20;
-                                  debug c => _21;
+                                  debug a3 => _19;
+                                  debug b3 => _20;
+                                  debug c3 => _21;
                                   let _23: f32;
                                   let _24: std::option::Option<S>;
                                   let _25: &[f32];
                                   scope 8 {
-                                      debug a => _23;
-                                      debug b => _24;
-                                      debug c => _25;
+                                      debug a4 => _23;
+                                      debug b4 => _24;
+                                      debug c4 => _25;
                                       let _27: BigStruct;
                                       scope 9 {
                                           debug bs => _27;
