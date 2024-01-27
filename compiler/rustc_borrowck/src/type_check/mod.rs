@@ -2697,10 +2697,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
-            DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => {
-                args.as_coroutine().parent_args()
+            // We don't want to dispatch on 3 different kind of closures here, so take
+            // advantage of the fact that the `parent_args` is the same length as the
+            // `typeck_root_args`.
+            DefKind::Closure => {
+                // FIXME(async_closures): It may be useful to add a debug assert here
+                // to actually call `type_of` and check the `parent_args` are the same
+                // length as the `typeck_root_args`.
+                &args[..typeck_root_args.len()]
             }
-            DefKind::Closure => args.as_closure().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };

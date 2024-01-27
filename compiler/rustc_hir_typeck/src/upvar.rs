@@ -200,6 +200,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             capture_information: Default::default(),
             fake_reads: Default::default(),
         };
+
+        // As noted in `lower_coroutine_body_with_moved_arguments`, we default the capture mode
+        // to `ByRef` for the `async {}` block internal to async fns/closure. This means
+        // that we would *not* be moving all of the parameters into the async block by default.
+        //
+        // We force all of these arguments to be captured by move before we do expr use analysis.
+        //
+        // FIXME(async_closures): This could be cleaned up. It's a bit janky that we're just
+        // moving all of the `LocalSource::AsyncFn` locals here.
+        if let Some(hir::CoroutineKind::Desugared(
+            _,
+            hir::CoroutineSource::Fn | hir::CoroutineSource::Closure,
+        )) = self.tcx.coroutine_kind(closure_def_id)
+        {
+            let hir::ExprKind::Block(block, _) = body.value.kind else {
+                bug!();
+            };
+            for stmt in block.stmts {
+                let hir::StmtKind::Local(hir::Local {
+                    init: Some(init),
+                    source: hir::LocalSource::AsyncFn,
+                    pat,
+                    ..
+                }) = stmt.kind
+                else {
+                    bug!();
+                };
+                let hir::PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), _, _, _) =
+                    pat.kind
+                else {
+                    // Complex pattern, skip the non-upvar local.
+                    continue;
+                };
+                let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = init.kind else {
+                    bug!();
+                };
+                let hir::def::Res::Local(local_id) = path.res else {
+                    bug!();
+                };
+                let place = self.place_for_root_variable(closure_def_id, local_id);
+                delegate.capture_information.push((
+                    place,
+                    ty::CaptureInfo {
+                        capture_kind_expr_id: Some(init.hir_id),
+                        path_expr_id: Some(init.hir_id),
+                        capture_kind: UpvarCapture::ByValue,
+                    },
+                ));
+            }
+        }
+
         euv::ExprUseVisitor::new(
             &mut delegate,
             &self.infcx,
