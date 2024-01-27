@@ -112,6 +112,13 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        if self.handle.0 == c::INVALID_HANDLE_VALUE {
+            // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
+            // Simply return `None` because this is only the case when `FindFirstFileW` in
+            // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
+            // no matchhing files can be found.
+            return None;
+        }
         if let Some(first) = self.first.take() {
             if let Some(e) = DirEntry::new(&self.root, &first) {
                 return Some(Ok(e));
@@ -1100,7 +1107,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             //
             // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
             // when the path to search in does not exist in the first place.
-            Err(Error::from_raw_os_error(last_error.code as i32));
+            Err(Error::from_raw_os_error(last_error.code as i32))
         }
     }
 }
