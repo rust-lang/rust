@@ -1069,26 +1069,6 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
         let mut wfd = mem::zeroed();
         let find_handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
 
-        // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
-        // if no matching files can be found, but not necessarily that the path to find the
-        // files in does not exist.
-        //
-        // Hence, a check for whether the path to search in exists is added when the last
-        // os error returned by Windows is `ERROR_FILE_NOT_FOUND` to handle this scenario.
-        // If that is the case, an empty `ReadDir` iterator is returned as it returns `None`
-        // in the initial `.next()` invocation because `ERROR_NO_MORE_FILES` would have been
-        // returned by the `FindNextFileW` function.
-        //
-        // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
-        let last_error = Error::last_os_error();
-        if last_error.raw_os_error().unwrap() == c::ERROR_FILE_NOT_FOUND as i32 && p.exists() {
-            return Ok(ReadDir {
-                handle: FindNextFileHandle(find_handle),
-                root: Arc::new(root),
-                first: None,
-            });
-        }
-
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
                 handle: FindNextFileHandle(find_handle),
@@ -1096,7 +1076,31 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
                 first: Some(wfd),
             })
         } else {
-            Err(last_error)
+            // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileW` function
+            // if no matching files can be found, but not necessarily that the path to find the
+            // files in does not exist.
+            //
+            // Hence, a check for whether the path to search in exists is added when the last
+            // os error returned by Windows is `ERROR_FILE_NOT_FOUND` to handle this scenario.
+            // If that is the case, an empty `ReadDir` iterator is returned as it returns `None`
+            // in the initial `.next()` invocation because `ERROR_NO_MORE_FILES` would have been
+            // returned by the `FindNextFileW` function.
+            //
+            // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
+            let last_error = api::get_last_error();
+            if last_error.code == c::ERROR_FILE_NOT_FOUND {
+                return Ok(ReadDir {
+                    handle: FindNextFileHandle(find_handle),
+                    root: Arc::new(root),
+                    first: None,
+                });
+            }
+
+            // Just return the error constructed from the raw OS error if the above is not the case.
+            //
+            // Note: `ERROR_PATH_NOT_FOUND` would have been returned by the `FindFirstFileW` function
+            // when the path to search in does not exist in the first place.
+            Err(Error::from_raw_os_error(last_error.code as i32));
         }
     }
 }
