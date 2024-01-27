@@ -1,93 +1,78 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:9:19
+  --> $DIR/avoid-ice-on-warning-3.rs:4:19
    |
-LL | trait A { fn g(b: B) -> B; }
+LL | trait B { fn f(a: A) -> A; }
    |                   ^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `B` it is not object safe, so it can't be `dyn`
    = note: `#[warn(bare_trait_objects)]` on by default
-help: use a new generic type parameter, constrained by `B`
+help: use `dyn`
    |
-LL | trait A { fn g<T: B>(b: T) -> B; }
-   |               ++++++    ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | trait A { fn g(b: impl B) -> B; }
-   |                   ++++
+LL | trait B { fn f(a: dyn A) -> A; }
+   |                   +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:9:25
+  --> $DIR/avoid-ice-on-warning-3.rs:4:25
+   |
+LL | trait B { fn f(a: A) -> A; }
+   |                         ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL | trait B { fn f(a: A) -> dyn A; }
+   |                         +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/avoid-ice-on-warning-3.rs:12:19
+   |
+LL | trait A { fn g(b: B) -> B; }
+   |                   ^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL | trait A { fn g(b: dyn B) -> B; }
+   |                   +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/avoid-ice-on-warning-3.rs:12:25
    |
 LL | trait A { fn g(b: B) -> B; }
    |                         ^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: `B` is not object safe, use `impl B` to return an opaque type, as long as you return a single underlying type
+help: use `dyn`
    |
-LL | trait A { fn g(b: B) -> impl B; }
-   |                         ++++
+LL | trait A { fn g(b: B) -> dyn B; }
+   |                         +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:1:19
+  --> $DIR/avoid-ice-on-warning-3.rs:4:19
    |
 LL | trait B { fn f(a: A) -> A; }
    |                   ^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `A` it is not object safe, so it can't be `dyn`
-help: use a new generic type parameter, constrained by `A`
-   |
-LL | trait B { fn f<T: A>(a: T) -> A; }
-   |               ++++++    ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | trait B { fn f(a: impl A) -> A; }
-   |                   ++++
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:1:25
-   |
-LL | trait B { fn f(a: A) -> A; }
-   |                         ^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: `A` is not object safe, use `impl A` to return an opaque type, as long as you return a single underlying type
-   |
-LL | trait B { fn f(a: A) -> impl A; }
-   |                         ++++
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:1:19
-   |
-LL | trait B { fn f(a: A) -> A; }
-   |                   ^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `A` it is not object safe, so it can't be `dyn`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use a new generic type parameter, constrained by `A`
+help: use `dyn`
    |
-LL | trait B { fn f<T: A>(a: T) -> A; }
-   |               ++++++    ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | trait B { fn f(a: impl A) -> A; }
-   |                   ++++
+LL | trait B { fn f(a: dyn A) -> A; }
+   |                   +++
 
 error[E0038]: the trait `A` cannot be made into an object
-  --> $DIR/avoid-ice-on-warning-3.rs:1:19
+  --> $DIR/avoid-ice-on-warning-3.rs:4:19
    |
 LL | trait B { fn f(a: A) -> A; }
    |                   ^ `A` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/avoid-ice-on-warning-3.rs:9:14
+  --> $DIR/avoid-ice-on-warning-3.rs:12:14
    |
 LL | trait A { fn g(b: B) -> B; }
    |       -      ^ ...because associated function `g` has no `self` parameter
@@ -103,32 +88,27 @@ LL | trait A { fn g(b: B) -> B where Self: Sized; }
    |                           +++++++++++++++++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/avoid-ice-on-warning-3.rs:9:19
+  --> $DIR/avoid-ice-on-warning-3.rs:12:19
    |
 LL | trait A { fn g(b: B) -> B; }
    |                   ^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `B` it is not object safe, so it can't be `dyn`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use a new generic type parameter, constrained by `B`
+help: use `dyn`
    |
-LL | trait A { fn g<T: B>(b: T) -> B; }
-   |               ++++++    ~
-help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
-   |
-LL | trait A { fn g(b: impl B) -> B; }
-   |                   ++++
+LL | trait A { fn g(b: dyn B) -> B; }
+   |                   +++
 
 error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/avoid-ice-on-warning-3.rs:9:19
+  --> $DIR/avoid-ice-on-warning-3.rs:12:19
    |
 LL | trait A { fn g(b: B) -> B; }
    |                   ^ `B` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/avoid-ice-on-warning-3.rs:1:14
+  --> $DIR/avoid-ice-on-warning-3.rs:4:14
    |
 LL | trait B { fn f(a: A) -> A; }
    |       -      ^ ...because associated function `f` has no `self` parameter
