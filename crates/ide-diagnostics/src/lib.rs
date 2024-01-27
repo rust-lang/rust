@@ -44,30 +44,30 @@ mod handlers {
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod replace_filter_map_next_with_find_map;
-    pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_incorrect_safety;
     pub(crate) mod trait_impl_missing_assoc_item;
+    pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_redundant_assoc_item;
-    pub(crate) mod typed_hole;
     pub(crate) mod type_mismatch;
+    pub(crate) mod typed_hole;
+    pub(crate) mod undeclared_label;
     pub(crate) mod unimplemented_builtin_macro;
+    pub(crate) mod unreachable_label;
     pub(crate) mod unresolved_assoc_item;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_field;
-    pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_import;
     pub(crate) mod unresolved_macro_call;
+    pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_module;
     pub(crate) mod unresolved_proc_macro;
-    pub(crate) mod undeclared_label;
-    pub(crate) mod unreachable_label;
     pub(crate) mod unused_variables;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
-    pub(crate) mod useless_braces;
-    pub(crate) mod unlinked_file;
     pub(crate) mod json_is_not_rust;
+    pub(crate) mod unlinked_file;
+    pub(crate) mod useless_braces;
 }
 
 #[cfg(test)]

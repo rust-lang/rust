@@ -9,9 +9,9 @@
 //! write unit-tests (in fact, we used to do that), but that makes tests brittle
 //! and harder to understand.
 
-mod mbe;
-mod builtin_fn_macro;
 mod builtin_derive_macro;
+mod builtin_fn_macro;
+mod mbe;
 mod proc_macros;
 
 use std::{iter, ops::Range, sync};
