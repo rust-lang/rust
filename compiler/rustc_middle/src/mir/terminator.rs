@@ -74,6 +74,17 @@ impl SwitchTargets {
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
+
+    /// Adds a new target to the switch. But You cannot add an already present value.
+    #[inline]
+    pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
+        let value = Pu128(value);
+        if self.values.contains(&value) {
+            bug!("target value {:?} already present", value);
+        }
+        self.values.push(value);
+        self.targets.insert(self.targets.len() - 1, bb);
+    }
 }
 
 pub struct SwitchTargetsIter<'a> {
