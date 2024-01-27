@@ -478,7 +478,7 @@ impl isize {
     }
 }
 
-/// If the 5th bit is set ascii is lower case.
+/// If the bit selected by this mask is set, ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
