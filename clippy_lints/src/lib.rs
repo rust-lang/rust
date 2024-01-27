@@ -577,6 +577,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         check_private_items,
         pub_underscore_fields_behavior,
         ref allowed_duplicate_crates,
+        allow_comparison_to_zero,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -970,7 +971,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
     store.register_late_pass(move |_| Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv())));
     store.register_late_pass(move |_| Box::new(manual_retain::ManualRetain::new(msrv())));
-    store.register_late_pass(move |_| Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
+    store.register_late_pass(move |_| {
+        Box::new(operators::Operators::new(
+            verbose_bit_mask_threshold,
+            allow_comparison_to_zero,
+        ))
+    });
     store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
     store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(msrv())));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));

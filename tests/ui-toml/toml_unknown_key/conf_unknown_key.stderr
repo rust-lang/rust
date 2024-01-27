@@ -3,6 +3,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -80,6 +81,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -157,6 +159,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
