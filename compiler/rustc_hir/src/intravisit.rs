@@ -341,9 +341,6 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
     }
-    fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
-        walk_let_expr(self, lex)
-    }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
         walk_expr_field(self, field)
     }
@@ -729,7 +726,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::DropTemps(ref subexpression) => {
             visitor.visit_expr(subexpression);
         }
-        ExprKind::Let(ref let_expr) => visitor.visit_let_expr(let_expr),
+        ExprKind::Let(Let { span: _, pat, ty, init, is_recovered: _ }) => {
+            // match the visit order in walk_local
+            visitor.visit_expr(init);
+            visitor.visit_pat(pat);
+            walk_list!(visitor, visit_ty, ty);
+        }
         ExprKind::If(ref cond, ref then, ref else_opt) => {
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -804,14 +806,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Lit(_) | ExprKind::Err(_) => {}
     }
-}
-
-pub fn walk_let_expr<'v, V: Visitor<'v>>(visitor: &mut V, let_expr: &'v Let<'v>) {
-    // match the visit order in walk_local
-    visitor.visit_expr(let_expr.init);
-    visitor.visit_id(let_expr.hir_id);
-    visitor.visit_pat(let_expr.pat);
-    walk_list!(visitor, visit_ty, let_expr.ty);
 }
 
 pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField<'v>) {

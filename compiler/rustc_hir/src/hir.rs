@@ -1273,7 +1273,6 @@ pub struct Arm<'hir> {
 /// desugaring to if-let. Only let-else supports the type annotation at present.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Let<'hir> {
-    pub hir_id: HirId,
     pub span: Span,
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
