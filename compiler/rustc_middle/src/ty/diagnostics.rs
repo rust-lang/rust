@@ -98,6 +98,7 @@ impl<'tcx, T> IsSuggestable<'tcx> for T
 where
     T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
+    #[tracing::instrument(level = "debug", skip(tcx))]
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
     }
@@ -532,6 +533,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.kind() {
             ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
+
+            // effect variables are always suggestable, because they are not visible
+            ConstKind::Infer(InferConst::EffectVar(_)) => {}
 
             ConstKind::Infer(..)
             | ConstKind::Bound(..)
