@@ -2,13 +2,16 @@
 
 ## Testing the dependency graph
 
-There are various ways to write tests against the dependency graph.
-The simplest mechanisms are the `#[rustc_if_this_changed]` and
-`#[rustc_then_this_would_need]` annotations. These are used in ui tests
-to test whether the expected set of paths exist in the dependency graph.
-As an example, see `tests/ui/dep-graph/dep-graph-caller-callee.rs`.
+There are various ways to write tests against the dependency graph.  The
+simplest mechanisms are the `#[rustc_if_this_changed]` and
+`#[rustc_then_this_would_need]` annotations. These are used in [ui] tests to test
+whether the expected set of paths exist in the dependency graph.
 
-The idea is that you can annotate a test like:
+[`tests/ui/dep-graph/dep-graph-caller-callee.rs`]: https://github.com/rust-lang/rust/blob/master/tests/ui/dep-graph/dep-graph-caller-callee.rs
+[ui]: tests/ui.html
+
+As an example, see [`tests/ui/dep-graph/dep-graph-caller-callee.rs`], or the
+tests below.
 
 ```rust,ignore
 #[rustc_if_this_changed]
@@ -16,16 +19,24 @@ fn foo() { }
 
 #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
 fn bar() { foo(); }
+```
 
+This should be read as
+> If this (`foo`) is changed, then this (i.e. `bar`)'s TypeckTables would need
+  to be changed. Also, this
+
+You could also add the lines
+
+```rust,ignore
 #[rustc_then_this_would_need(TypeckTables)] //~ ERROR no path
 fn baz() { }
 ```
 
-This will check whether there is a path in the dependency graph from `Hir(foo)`
-to `TypeckTables(bar)`. An error is reported for each
-`#[rustc_then_this_would_need]` annotation that indicates whether a path
-exists. `//~ ERROR` annotations can then be used to test if a path is found (as
-demonstrated above).
+Whose meaning is
+> If `foo` is changed, then `baz`'s TypeckTables does not need to be changed, as there is no path.
+
+Recall that the `//~ ERROR OK` is a comment from the point of view of the Rust
+code we test, but is meaningful from the point of view of the test itself.
 
 ## Debugging the dependency graph
 
