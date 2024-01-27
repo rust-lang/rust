@@ -454,6 +454,7 @@ pub trait Hasher {
     /// ```
     /// #![feature(hasher_prefixfree_extras)]
     /// # // Stubs to make the `impl` below pass the compiler
+    /// # #![cfg_attr(not(bootstrap), allow(non_local_definitions))]
     /// # struct MyCollection<T>(Option<T>);
     /// # impl<T> MyCollection<T> {
     /// #     fn len(&self) -> usize { todo!() }
