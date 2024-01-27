@@ -753,7 +753,7 @@ pub struct FnAbi<'a, Ty> {
     pub fixed_count: u32,
 
     pub conv: Conv,
-    /// This variable desribes if unwind can cross this function, or if it is invalid to unwind troguh it.
+    /// When `true`, unwind can cross this function.
     pub can_unwind: bool,
 }
 
