@@ -1588,7 +1588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let SelfSource::MethodCall(_) = source {
             let first_arg = static_candidates.get(0).and_then(|candidate_source| {
-                let (assoc_did, impl_ty) = match candidate_source {
+                let (assoc_did, self_ty) = match candidate_source {
                     CandidateSource::Impl(impl_did) => {
                         (*impl_did, self.tcx.type_of(*impl_did).instantiate_identity())
                     }
@@ -1606,7 +1606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.inputs().skip_binder().get(0).and_then(|first| {
                     // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
                     let first_ty = first.peel_refs();
-                    if first_ty == impl_ty || first_ty == self.tcx.types.self_param {
+                    if first_ty == self_ty || first_ty == self.tcx.types.self_param {
                         Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
                     } else {
                         None
