@@ -791,13 +791,28 @@ impl<'a> Parser<'a> {
                 && let [segment] = &attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
                 && let Some(args_span) = attr_kind.item.args.span()
-                && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                && let next_attr = match snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                {
+                    Ok(next_attr) => next_attr,
+                    Err(inner_err) => {
+                        err.cancel();
+                        inner_err.cancel();
+                        return;
+                    }
+                }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
                 && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
                 && let [next_segment] = &next_attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
-                && let Ok(next_expr) = snapshot.parse_expr()
             {
+                let next_expr = match snapshot.parse_expr() {
+                    Ok(next_expr) => next_expr,
+                    Err(inner_err) => {
+                        err.cancel();
+                        inner_err.cancel();
+                        return;
+                    }
+                };
                 // We have for sure
                 // #[cfg(..)]
                 // expr
