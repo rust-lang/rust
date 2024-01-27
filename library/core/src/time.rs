@@ -76,7 +76,7 @@ impl Default for Nanoseconds {
 /// variety of ways to format spans of time for human readability. `Duration`
 /// provides a `Debug` impl that shows the full precision of the value.
 ///
-/// The `Debug` output uses the non-ASCII "µs" suffix for microseconds. If your
+/// The `Debug` output uses the non-ASCII "μs" suffix for microseconds. If your
 /// program output may appear in contexts that cannot rely on full Unicode
 /// compatibility, you may wish to format `Duration` objects yourself or use a
 /// crate to do so.
@@ -1176,7 +1176,7 @@ impl fmt::Debug for Duration {
                     // the output in order to calculate the required padding.
                     // It consists of 4 parts:
                     // 1. The prefix: is either "+" or "", so we can just use len().
-                    // 2. The postfix: can be "µs" so we have to count UTF8 characters.
+                    // 2. The postfix: can be "μs" so we have to count UTF8 characters.
                     let mut actual_w = prefix.len() + postfix.chars().count();
                     // 3. The integer part:
                     if let Some(integer_part) = integer_part {
@@ -1232,7 +1232,7 @@ impl fmt::Debug for Duration {
                 self.nanos.0 % NANOS_PER_MICRO,
                 NANOS_PER_MICRO / 10,
                 prefix,
-                "µs",
+                "μs", // This is U+03BC, which is preferred over U+00B5
             )
         } else {
             fmt_decimal(f, self.nanos.0 as u64, 0, 1, prefix, "ns")

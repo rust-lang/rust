@@ -305,20 +305,20 @@ fn debug_formatting_millis() {
 
 #[test]
 fn debug_formatting_micros() {
-    assert_eq!(format!("{:?}", Duration::new(0, 7_000)), "7µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 7_100)), "7.1µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 7_001)), "7.001µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 7_123)), "7.123µs");
+    assert_eq!(format!("{:?}", Duration::new(0, 7_000)), "7μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 7_100)), "7.1μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 7_001)), "7.001μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 7_123)), "7.123μs");
 
-    assert_eq!(format!("{:?}", Duration::new(0, 88_000)), "88µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 88_100)), "88.1µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 88_001)), "88.001µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 88_123)), "88.123µs");
+    assert_eq!(format!("{:?}", Duration::new(0, 88_000)), "88μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 88_100)), "88.1μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 88_001)), "88.001μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 88_123)), "88.123μs");
 
-    assert_eq!(format!("{:?}", Duration::new(0, 999_000)), "999µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 999_100)), "999.1µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 999_001)), "999.001µs");
-    assert_eq!(format!("{:?}", Duration::new(0, 999_123)), "999.123µs");
+    assert_eq!(format!("{:?}", Duration::new(0, 999_000)), "999μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 999_100)), "999.1μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 999_001)), "999.001μs");
+    assert_eq!(format!("{:?}", Duration::new(0, 999_123)), "999.123μs");
 }
 
 #[test]
@@ -334,10 +334,10 @@ fn debug_formatting_precision_zero() {
     assert_eq!(format!("{:.0?}", Duration::new(0, 0)), "0ns");
     assert_eq!(format!("{:.0?}", Duration::new(0, 123)), "123ns");
 
-    assert_eq!(format!("{:.0?}", Duration::new(0, 1_001)), "1µs");
-    assert_eq!(format!("{:.0?}", Duration::new(0, 1_499)), "1µs");
-    assert_eq!(format!("{:.0?}", Duration::new(0, 1_500)), "2µs");
-    assert_eq!(format!("{:.0?}", Duration::new(0, 1_999)), "2µs");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 1_001)), "1μs");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 1_499)), "1μs");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 1_500)), "2μs");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 1_999)), "2μs");
 
     assert_eq!(format!("{:.0?}", Duration::new(0, 1_000_001)), "1ms");
     assert_eq!(format!("{:.0?}", Duration::new(0, 1_499_999)), "1ms");
@@ -355,12 +355,12 @@ fn debug_formatting_precision_two() {
     assert_eq!(format!("{:.2?}", Duration::new(0, 0)), "0.00ns");
     assert_eq!(format!("{:.2?}", Duration::new(0, 123)), "123.00ns");
 
-    assert_eq!(format!("{:.2?}", Duration::new(0, 1_000)), "1.00µs");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 7_001)), "7.00µs");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 7_100)), "7.10µs");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 7_109)), "7.11µs");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 7_199)), "7.20µs");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 1_999)), "2.00µs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 1_000)), "1.00μs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 7_001)), "7.00μs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 7_100)), "7.10μs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 7_109)), "7.11μs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 7_199)), "7.20μs");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 1_999)), "2.00μs");
 
     assert_eq!(format!("{:.2?}", Duration::new(0, 1_000_000)), "1.00ms");
     assert_eq!(format!("{:.2?}", Duration::new(0, 3_001_000)), "3.00ms");
@@ -386,9 +386,9 @@ fn debug_formatting_padding() {
     assert_eq!("123.0ns  ", format!("{:<9.1?}", Duration::new(0, 123)));
     assert_eq!("  123.0ns", format!("{:>9.1?}", Duration::new(0, 123)));
     assert_eq!(" 123.0ns ", format!("{:^9.1?}", Duration::new(0, 123)));
-    assert_eq!("7.1µs    ", format!("{:<9?}", Duration::new(0, 7_100)));
-    assert_eq!("    7.1µs", format!("{:>9?}", Duration::new(0, 7_100)));
-    assert_eq!("  7.1µs  ", format!("{:^9?}", Duration::new(0, 7_100)));
+    assert_eq!("7.1μs    ", format!("{:<9?}", Duration::new(0, 7_100)));
+    assert_eq!("    7.1μs", format!("{:>9?}", Duration::new(0, 7_100)));
+    assert_eq!("  7.1μs  ", format!("{:^9?}", Duration::new(0, 7_100)));
     assert_eq!("999.123456ms", format!("{:<9?}", Duration::new(0, 999_123_456)));
     assert_eq!("999.123456ms", format!("{:>9?}", Duration::new(0, 999_123_456)));
     assert_eq!("999.123456ms", format!("{:^9?}", Duration::new(0, 999_123_456)));
@@ -405,7 +405,7 @@ fn debug_formatting_padding() {
 
 #[test]
 fn debug_formatting_precision_high() {
-    assert_eq!(format!("{:.5?}", Duration::new(0, 23_678)), "23.67800µs");
+    assert_eq!(format!("{:.5?}", Duration::new(0, 23_678)), "23.67800μs");
 
     assert_eq!(format!("{:.9?}", Duration::new(1, 000_000_000)), "1.000000000s");
     assert_eq!(format!("{:.10?}", Duration::new(4, 001_000_000)), "4.0010000000s");
