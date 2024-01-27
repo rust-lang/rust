@@ -16,6 +16,10 @@ help: consider annotating `S<T>` with `#[derive(PartialEq)]`
 LL + #[derive(PartialEq)]
 LL | struct S<T>(T);
    |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | pub fn foo<T>(s: S<T>, t: S<T>) where S<T>: PartialEq {
+   |                                 +++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
