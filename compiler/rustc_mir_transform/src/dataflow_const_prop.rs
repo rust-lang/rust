@@ -3,7 +3,7 @@
 //! Currently, this pass only propagates scalar values.
 
 use rustc_const_eval::interpret::{
-    ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Pointer, PointerArithmetic, Projectable,
+    ImmTy, Immediate, InterpCx, OpTy, PlaceTy, PointerArithmetic, Projectable,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
@@ -946,10 +946,12 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         use rustc_middle::mir::BinOp::*;
         Ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
-                assert_eq!(left.layout.abi, right.layout.abi); // types an differ, e.g. fn ptrs with different `for`
+                // Types can differ, e.g. fn ptrs with different `for`.
+                assert_eq!(left.layout.abi, right.layout.abi);
                 let size = ecx.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
+                // If the pointer has provenance, `to_bits` will return `Err` and we bail out.
                 let left = match **left {
                     Immediate::Scalar(l) => (l.to_bits(size)?, 0),
                     Immediate::ScalarPair(l1, l2) => (l1.to_bits(size)?, l2.to_bits(size)?),
@@ -975,23 +977,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
             // Some more operations are possible with atomics.
             // The return value always has the provenance of the *left* operand.
             Add | Sub | BitOr | BitAnd | BitXor => {
-                assert!(left.layout.ty.is_unsafe_ptr());
-                assert!(right.layout.ty.is_unsafe_ptr());
-                let ptr = left.to_scalar().to_pointer(ecx)?;
-                // We do the actual operation with usize-typed scalars.
-                let usize_layout = ecx.layout_of(ecx.tcx.types.usize).unwrap();
-                let left = ImmTy::from_uint(ptr.addr().bytes(), usize_layout);
-                let right = ImmTy::from_uint(right.to_scalar().to_target_usize(ecx)?, usize_layout);
-                let (result, overflowing) = ecx.overflowing_binary_op(bin_op, &left, &right)?;
-                // Construct a new pointer with the provenance of `ptr` (the LHS).
-                let result_ptr = Pointer::new(
-                    ptr.provenance,
-                    Size::from_bytes(result.to_scalar().to_target_usize(ecx)?),
-                );
-                (
-                    ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, ecx), left.layout),
-                    overflowing,
-                )
+                throw_machine_stop_str!("pointer arithmetic is not handled")
             }
 
             _ => span_bug!(ecx.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
