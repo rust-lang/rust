@@ -109,6 +109,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
+mod hashed;
 mod legacy;
 mod v0;
 
@@ -263,6 +264,9 @@ fn compute_symbol_name<'tcx>(
     let symbol = match mangling_version {
         SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
         SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
+        SymbolManglingVersion::Hashed => hashed::mangle(tcx, instance, instantiating_crate, || {
+            v0::mangle(tcx, instance, instantiating_crate)
+        }),
     };
 
     debug_assert!(

@@ -347,6 +347,7 @@ impl SwitchWithOptPath {
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
+    Hashed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -2692,11 +2693,19 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     match cg.symbol_mangling_version {
         // Stable values:
         None | Some(SymbolManglingVersion::V0) => {}
+
         // Unstable values:
         Some(SymbolManglingVersion::Legacy) => {
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+                );
+            }
+        }
+        Some(SymbolManglingVersion::Hashed) => {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
                 );
             }
         }
@@ -2741,6 +2750,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
                 );
             }
             Some(SymbolManglingVersion::V0) => {}
+            Some(SymbolManglingVersion::Hashed) => {
+                early_dcx.early_warn(
+                    "-C instrument-coverage requires symbol mangling version `v0`, \
+                    but `-C symbol-mangling-version=hashed` was specified",
+                );
+            }
         }
     }
 
