@@ -22,8 +22,10 @@ fn bar() { foo(); }
 ```
 
 This should be read as
-> If this (`foo`) is changed, then this (i.e. `bar`)'s TypeckTables would need
-  to be changed. Also, this
+> If this (`foo`) is changed, then this (i.e. `bar`)'s TypeckTables would need to be changed.
+
+Technically, what occurs is that the test is expected to emit the string "OK" on
+stderr, associated to this line.
 
 You could also add the lines
 
@@ -33,7 +35,8 @@ fn baz() { }
 ```
 
 Whose meaning is
-> If `foo` is changed, then `baz`'s TypeckTables does not need to be changed, as there is no path.
+> If `foo` is changed, then `baz`'s TypeckTables does not need to be changed.
+> The macro must emit an error, and the error message must contains "no path".
 
 Recall that the `//~ ERROR OK` is a comment from the point of view of the Rust
 code we test, but is meaningful from the point of view of the test itself.
