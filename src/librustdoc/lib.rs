@@ -3,7 +3,6 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
-#![feature(array_methods)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
