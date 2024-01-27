@@ -44,12 +44,16 @@ ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
 
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnu
+ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_INSTALL_DIR /checkout/obj/install
 RUN mkdir -p $RUST_INSTALL_DIR/etc
+
+# Fuchsia only supports LLVM.
+ENV CODEGEN_BACKENDS llvm
 
 ENV RUST_CONFIGURE_ARGS \
   --prefix=$RUST_INSTALL_DIR \
