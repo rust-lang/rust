@@ -520,6 +520,24 @@ impl MacroCallLoc {
             }
         }
     }
+
+    pub fn include_file_id(
+        &self,
+        db: &dyn ExpandDatabase,
+        macro_call_id: MacroCallId,
+    ) -> Option<FileId> {
+        if self.def.is_include() {
+            if let Some(eager) = &self.eager {
+                if let Ok(it) =
+                    builtin_fn_macro::include_input_to_file_id(db, macro_call_id, &eager.arg)
+                {
+                    return Some(it);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 impl MacroCallKind {
