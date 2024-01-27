@@ -75,11 +75,6 @@ pub(crate) fn complete_postfix(
 
     let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     if let Some(try_enum) = &try_enum {
-        let in_loop = dot_receiver
-            .syntax()
-            .ancestors()
-            .any(|n| matches!(n.kind(), WHILE_EXPR | LOOP_EXPR | FOR_EXPR));
-
         match try_enum {
             TryEnum::Result => {
                 postfix_snippet(
@@ -92,11 +87,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "lete",
                     "let Ok else {}",
-                    &if in_loop {
-                        format!("let Ok($1) = {receiver_text} else {{\n    ${{2|continue,break,return|}};\n}};\n$0")
-                    } else {
-                        format!("let Ok($1) = {receiver_text} else {{\n    ${{2:return}};\n}};\n$0")
-                    },
+                    &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
                 )
                 .add_to(acc, ctx.db);
 
@@ -118,11 +109,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "lete",
                     "let Some else {}",
-                    &if in_loop {
-                        format!("let Some($1) = {receiver_text} else {{\n    ${{2|continue,break,return|}};\n}};\n$0")
-                    } else {
-                        format!("let Some($1) = {receiver_text} else {{\n    ${{2:return}};\n}};\n$0")
-                    },
+                    &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
                 )
                 .add_to(acc, ctx.db);
 
@@ -511,36 +498,9 @@ fn main() {
 fn main() {
     let bar = Some(true);
     let Some($1) = bar else {
-    ${2:return};
+    $2
 };
 $0
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn option_letelse_loop() {
-        check_edit(
-            "lete",
-            r#"
-//- minicore: option
-fn main() {
-    let bar = Some(true);
-    loop {
-        bar.$0
-    }
-}
-"#,
-            r#"
-fn main() {
-    let bar = Some(true);
-    loop {
-        let Some($1) = bar else {
-    ${2|continue,break,return|};
-};
-$0
-    }
 }
 "#,
         );
