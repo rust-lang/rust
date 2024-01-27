@@ -13,13 +13,13 @@ use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 /// +-+-----------+
 ///   |
 ///   v
-/// +-+-------------------------------+  +---------------------+
-/// |SpecFromIter                  +---->+SpecFromIterNested   |
-/// |where I:                      |  |  |where I:             |
-/// |  Iterator (default)----------+  |  |  Iterator (default) |
-/// |  vec::IntoIter               |  |  |  TrustedLen         |
-/// |  SourceIterMarker---fallback-+  |  +---------------------+
-/// +---------------------------------+
+/// +-+---------------------------------+  +---------------------+
+/// |SpecFromIter                    +---->+SpecFromIterNested   |
+/// |where I:                        |  |  |where I:             |
+/// |  Iterator (default)------------+  |  |  Iterator (default) |
+/// |  vec::IntoIter                 |  |  |  TrustedLen         |
+/// |  InPlaceCollect--(fallback to)-+  |  +---------------------+
+/// +-----------------------------------+
 /// ```
 pub(super) trait SpecFromIter<T, I> {
     fn from_iter(iter: I) -> Self;
