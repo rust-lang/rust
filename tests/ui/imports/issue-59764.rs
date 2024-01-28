@@ -128,7 +128,6 @@ use issue_59764::foo::makro;
 //~^ ERROR unresolved import `issue_59764::foo::makro` [E0432]
 
 makro!(bar);
-//~^ ERROR cannot determine resolution for the macro `makro`
 
 fn main() {
     bar();
