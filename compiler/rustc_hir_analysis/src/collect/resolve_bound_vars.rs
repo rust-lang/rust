@@ -1873,7 +1873,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         lifetime_ref: &'tcx hir::Lifetime,
         bad_def: ResolvedArg,
     ) {
-        let old_value = self.map.defs.remove(&lifetime_ref.hir_id);
+        // FIXME(#120456) - is `swap_remove` correct?
+        let old_value = self.map.defs.swap_remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
     }
 }

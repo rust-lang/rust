@@ -106,7 +106,8 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
             }
             if sub_pat.is_some() {
                 removed_pat.insert(value_hir_id);
-                slices.remove(&value_hir_id);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                slices.swap_remove(&value_hir_id);
                 return;
             }
 
@@ -259,7 +260,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
             }
 
             // The slice was used for something other than indexing
-            self.slice_lint_info.remove(&local_id);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.slice_lint_info.swap_remove(&local_id);
         }
         intravisit::walk_expr(self, expr);
     }

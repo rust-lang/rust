@@ -122,7 +122,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     where
         K: Borrow<Q>,
     {
-        FxIndexMap::remove(self, k)
+        // FIXME(#120456) - is `swap_remove` correct?
+        FxIndexMap::swap_remove(self, k)
     }
 
     #[inline(always)]

@@ -398,7 +398,8 @@ impl<'alloc> Candidates<'alloc> {
         let candidates = entry.get_mut();
         Self::vec_filter_candidates(p, candidates, f, at);
         if candidates.len() == 0 {
-            entry.remove();
+            // FIXME(#120456) - is `swap_remove` correct?
+            entry.swap_remove();
         }
     }
 

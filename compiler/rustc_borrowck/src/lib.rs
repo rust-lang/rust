@@ -2479,7 +2479,8 @@ mod diags {
             &mut self,
             span: Span,
         ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
-            self.diags.buffered_mut_errors.remove(&span)
+            // FIXME(#120456) - is `swap_remove` correct?
+            self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
         pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
