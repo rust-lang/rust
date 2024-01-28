@@ -1466,8 +1466,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         ],
                         &entry_place,
                     )?;
-                    // freebsd 12 and onwards had added the d_off field
                 } else if this.projectable_has_field(&entry_place, "d_off") {
+                    // freebsd 12 and onwards had added the d_off field
                     this.write_int_fields_named(
                         &[
                             ("d_fileno", ino.into()),

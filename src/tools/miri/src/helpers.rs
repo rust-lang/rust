@@ -225,7 +225,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         bug!("No field named {} in type {}", name, base.layout().ty);
     }
 
-    /// Search if Project (which must be a struct or union type) contains the `name` field.
+    /// Search if `base` (which must be a struct or union type) contains the `name` field.
     fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
         &self,
         base: &P,
