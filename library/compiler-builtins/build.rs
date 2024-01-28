@@ -288,17 +288,23 @@ mod c {
             sources.extend(&[
                 ("__divdc3", "divdc3.c"),
                 ("__divsc3", "divsc3.c"),
-                ("__divxc3", "divxc3.c"),
                 ("__extendhfsf2", "extendhfsf2.c"),
                 ("__muldc3", "muldc3.c"),
                 ("__mulsc3", "mulsc3.c"),
-                ("__mulxc3", "mulxc3.c"),
                 ("__negdf2", "negdf2.c"),
                 ("__negsf2", "negsf2.c"),
-                ("__powixf2", "powixf2.c"),
                 ("__truncdfhf2", "truncdfhf2.c"),
                 ("__truncsfhf2", "truncsfhf2.c"),
             ]);
+
+            if target_arch == "x86" || target_arch == "x86_64" {
+                // Only add 80-bit long double sources on x86.
+                sources.extend(&[
+                    ("__divxc3", "divxc3.c"),
+                    ("__mulxc3", "mulxc3.c"),
+                    ("__powixf2", "powixf2.c"),
+                ]);
+            }
         }
 
         // When compiling in rustbuild (the rust-lang/rust repo) this library
@@ -594,7 +600,12 @@ mod c {
             build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
 
             // Some run-time CPU feature detection is necessary, as well.
-            sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
+            let cpu_model_src = if src_dir.join("cpu_model.c").exists() {
+                "cpu_model.c"
+            } else {
+                "cpu_model/aarch64.c"
+            };
+            sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
         let mut added_sources = HashSet::new();
