@@ -36,6 +36,7 @@ run-make/crate-hash-rustc-version/Makefile
 run-make/crate-name-priority/Makefile
 run-make/cross-lang-lto-clang/Makefile
 run-make/cross-lang-lto-pgo-smoketest/Makefile
+run-make/cross-lang-lto-riscv-abi/Makefile
 run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/cross-lang-lto/Makefile
 run-make/debug-assertions/Makefile
