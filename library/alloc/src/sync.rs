@@ -1381,8 +1381,8 @@ impl<T: ?Sized> Arc<T> {
     /// let x_ptr: *const [u32] = Arc::into_raw(x);
     ///
     /// unsafe {
-    ///     let x: Arc<[u32; 3]> = Arc::from_raw(x_ptr.cast::<[u32; 3]>())
-    ///     assert_eq!(x.as_ref(), &[1, 2, 3]);
+    ///     let x: Arc<[u32; 3]> = Arc::from_raw(x_ptr.cast::<[u32; 3]>());
+    ///     assert_eq!(&*x, &[1, 2, 3]);
     /// }
     /// ```
     #[inline]

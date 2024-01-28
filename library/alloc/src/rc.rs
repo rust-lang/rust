@@ -1235,8 +1235,8 @@ impl<T: ?Sized> Rc<T> {
     /// let x_ptr: *const [u32] = Rc::into_raw(x);
     ///
     /// unsafe {
-    ///     let x: Rc<[u32; 3]> = Rc::from_raw(x_ptr.cast::<[u32; 3]>())
-    ///     assert_eq!(x.as_ref(), &[1, 2, 3]);
+    ///     let x: Rc<[u32; 3]> = Rc::from_raw(x_ptr.cast::<[u32; 3]>());
+    ///     assert_eq!(&*x, &[1, 2, 3]);
     /// }
     /// ```
     #[inline]
