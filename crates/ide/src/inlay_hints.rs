@@ -25,13 +25,13 @@ mod bind_pat;
 mod binding_mode;
 mod chaining;
 mod closing_brace;
-mod closure_ret;
 mod closure_captures;
+mod closure_ret;
 mod discriminant;
 mod fn_lifetime_fn;
+mod implicit_drop;
 mod implicit_static;
 mod param_name;
-mod implicit_drop;
 mod range_exclusive;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

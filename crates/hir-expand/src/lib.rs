@@ -11,16 +11,18 @@ pub mod attrs;
 pub mod builtin_attr_macro;
 pub mod builtin_derive_macro;
 pub mod builtin_fn_macro;
+pub mod change;
 pub mod db;
+pub mod declarative;
 pub mod eager;
 pub mod files;
-pub mod change;
 pub mod hygiene;
 pub mod mod_path;
 pub mod name;
 pub mod proc_macro;
 pub mod quote;
 pub mod span_map;
+
 mod fixup;
 
 use attrs::collect_attrs;
@@ -167,7 +169,8 @@ pub struct MacroCallLoc {
     pub krate: CrateId,
     /// Some if this is a macro call for an eager macro. Note that this is `None`
     /// for the eager input macro file.
-    // FIXME: This seems bad to save in an interned structure
+    // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
+    // leakage problems here
     eager: Option<Arc<EagerCallInfo>>,
     pub kind: MacroCallKind,
     pub call_site: Span,
@@ -220,7 +223,7 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        // FIXME: This is being interned, subtrees can very quickly differ just slightly causing
+        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
         // leakage problems here
         attr_args: Option<Arc<tt::Subtree>>,
         /// Syntactical index of the invoking `#[attribute]`.

@@ -1,14 +1,14 @@
-mod never_type;
 mod coercion;
-mod regression;
-mod simple;
-mod patterns;
-mod traits;
-mod method_resolution;
-mod macros;
+mod diagnostics;
 mod display_source_code;
 mod incremental;
-mod diagnostics;
+mod macros;
+mod method_resolution;
+mod never_type;
+mod patterns;
+mod regression;
+mod simple;
+mod traits;
 
 use std::{collections::HashMap, env};
 

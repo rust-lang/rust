@@ -25,13 +25,13 @@ extern crate ra_ap_rustc_abi as rustc_abi;
 pub mod db;
 
 pub mod attr;
-pub mod path;
 pub mod builtin_type;
-pub mod per_ns;
 pub mod item_scope;
+pub mod path;
+pub mod per_ns;
 
-pub mod lower;
 pub mod expander;
+pub mod lower;
 
 pub mod dyn_map;
 
@@ -46,24 +46,24 @@ pub use self::hir::type_ref;
 pub mod body;
 pub mod resolver;
 
-mod trace;
 pub mod nameres;
+mod trace;
 
-pub mod src;
 pub mod child_by_source;
+pub mod src;
 
-pub mod visibility;
 pub mod find_path;
 pub mod import_map;
+pub mod visibility;
 
 pub use rustc_abi as layout;
 use triomphe::Arc;
 
 #[cfg(test)]
-mod test_db;
-#[cfg(test)]
 mod macro_expansion_tests;
 mod pretty;
+#[cfg(test)]
+mod test_db;
 
 use std::{
     hash::{Hash, Hasher},
@@ -73,7 +73,6 @@ use std::{
 use base_db::{impl_intern_key, salsa, CrateId, Edition};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
-    attrs::{Attr, AttrId, AttrInput},
     builtin_attr_macro::BuiltinAttrExpander,
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
@@ -939,6 +938,15 @@ impl From<AssocItemId> for AttrDefId {
         }
     }
 }
+impl From<VariantId> for AttrDefId {
+    fn from(vid: VariantId) -> Self {
+        match vid {
+            VariantId::EnumVariantId(id) => id.into(),
+            VariantId::StructId(id) => id.into(),
+            VariantId::UnionId(id) => id.into(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VariantId {
@@ -1263,60 +1271,6 @@ fn macro_call_as_call_id_with_eager(
         _ => return Err(UnresolvedMacro { path: call.path.clone() }),
     };
     Ok(res)
-}
-
-fn derive_macro_as_call_id(
-    db: &dyn DefDatabase,
-    item_attr: &AstIdWithPath<ast::Adt>,
-    derive_attr_index: AttrId,
-    derive_pos: u32,
-    call_site: Span,
-    krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
-) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
-    let (macro_id, def_id) = resolver(item_attr.path.clone())
-        .filter(|(_, def_id)| def_id.is_derive())
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let call_id = def_id.as_lazy_macro(
-        db.upcast(),
-        krate,
-        MacroCallKind::Derive {
-            ast_id: item_attr.ast_id,
-            derive_index: derive_pos,
-            derive_attr_index,
-        },
-        call_site,
-    );
-    Ok((macro_id, def_id, call_id))
-}
-
-fn attr_macro_as_call_id(
-    db: &dyn DefDatabase,
-    item_attr: &AstIdWithPath<ast::Item>,
-    macro_attr: &Attr,
-    krate: CrateId,
-    def: MacroDefId,
-) -> MacroCallId {
-    let arg = match macro_attr.input.as_deref() {
-        Some(AttrInput::TokenTree(tt)) => {
-            let mut tt = tt.as_ref().clone();
-            tt.delimiter = tt::Delimiter::invisible_spanned(macro_attr.span);
-            Some(tt)
-        }
-
-        _ => None,
-    };
-
-    def.as_lazy_macro(
-        db.upcast(),
-        krate,
-        MacroCallKind::Attr {
-            ast_id: item_attr.ast_id,
-            attr_args: arg.map(Arc::new),
-            invoc_attr_index: macro_attr.id,
-        },
-        macro_attr.span,
-    )
 }
 
 #[derive(Debug)]

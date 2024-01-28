@@ -8,9 +8,9 @@ mod context;
 mod item;
 mod render;
 
+mod snippet;
 #[cfg(test)]
 mod tests;
-mod snippet;
 
 use ide_db::{
     base_db::FilePosition,

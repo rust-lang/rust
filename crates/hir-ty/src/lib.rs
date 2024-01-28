@@ -15,6 +15,9 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
+// No need to use the in-tree one.
+extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
+
 mod builder;
 mod chalk_db;
 mod chalk_ext;
@@ -39,9 +42,9 @@ pub mod primitive;
 pub mod traits;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod test_db;
+#[cfg(test)]
+mod tests;
 
 use std::{
     collections::hash_map::Entry,

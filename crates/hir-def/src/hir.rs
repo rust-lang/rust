@@ -12,8 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
-pub mod type_ref;
 pub mod format_args;
+pub mod type_ref;
 
 use std::fmt;
 

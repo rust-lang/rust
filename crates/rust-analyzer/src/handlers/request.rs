@@ -1319,6 +1319,9 @@ pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
+    if code_lens.data.is_none() {
+        return Ok(code_lens);
+    }
     let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else {
         return Ok(code_lens);
     };
@@ -1327,13 +1330,14 @@ pub(crate) fn handle_code_lens_resolve(
     let mut acc = Vec::new();
     to_proto::code_lens(&mut acc, &snap, annotation)?;
 
-    let res = match acc.pop() {
+    let mut res = match acc.pop() {
         Some(it) if acc.is_empty() => it,
         _ => {
             never!();
             code_lens
         }
     };
+    res.data = None;
 
     Ok(res)
 }
