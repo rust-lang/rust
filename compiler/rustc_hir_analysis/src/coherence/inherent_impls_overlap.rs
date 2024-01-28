@@ -24,6 +24,11 @@ struct InherentOverlapChecker<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    pub struct RegionId {}
+}
+
 impl<'tcx> InherentOverlapChecker<'tcx> {
     /// Checks whether any associated items in impls 1 and 2 share the same identifier and
     /// namespace.
@@ -204,11 +209,6 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // run the O(n^2) algorithm on each connected region.
             // This is advantageous to running the algorithm over the
             // entire graph when there are many connected regions.
-
-            rustc_index::newtype_index! {
-                #[orderable]
-                pub struct RegionId {}
-            }
 
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
