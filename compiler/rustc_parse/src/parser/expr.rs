@@ -1737,16 +1737,16 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    /// Emit an error when a char is parsed as a lifetime because of a missing quote.
+    /// Emit an error when a char is parsed as a lifetime or label because of a missing quote.
     pub(super) fn recover_unclosed_char<L>(
         &self,
-        lifetime: Ident,
+        ident: Ident,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
-        if let Some(diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar) {
+        if let Some(diag) = self.dcx().steal_diagnostic(ident.span, StashKey::LifetimeIsChar) {
             diag.with_span_suggestion_verbose(
-                lifetime.span.shrink_to_hi(),
+                ident.span.shrink_to_hi(),
                 "add `'` to close the char literal",
                 "'",
                 Applicability::MaybeIncorrect,
@@ -1755,15 +1755,15 @@ impl<'a> Parser<'a> {
         } else {
             err(self)
                 .with_span_suggestion_verbose(
-                    lifetime.span.shrink_to_hi(),
+                    ident.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
         }
-        let name = lifetime.without_first_quote().name;
-        mk_lit_char(name, lifetime.span)
+        let name = ident.without_first_quote().name;
+        mk_lit_char(name, ident.span)
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
