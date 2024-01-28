@@ -84,7 +84,12 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
+    echo "Image input"
+    cat $hash_key
     echo "Image input checksum ${cksum}"
+
+    # Print docker version
+    docker --version
 
     # On non-CI or PR jobs, we don't have permissions to write to the registry cache, so we should
     # not use `docker login` nor caching.
