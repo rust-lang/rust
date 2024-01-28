@@ -1514,13 +1514,20 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 
     /// Constructs an `Arc<T, A>` from a raw pointer.
     ///
-    /// The raw pointer must have been previously returned by a call to
-    /// [`Arc<U, A>::into_raw`][into_raw] where `U` must have the same size and
-    /// alignment as `T`. This is trivially true if `U` is `T`.
-    /// Note that if `U` is not `T` but has the same size and alignment, this is
-    /// basically like transmuting references of different types. See
-    /// [`mem::transmute`] for more information on what
-    /// restrictions apply in this case.
+    /// The raw pointer must have been previously returned by a call to [`Arc<U,
+    /// A>::into_raw`][into_raw] with the following requirements:
+    ///
+    /// * If `U` is sized, it must have the same size and alignment as `T`. This
+    ///   is trivially true if `U` is `T`.
+    /// * If `U` is unsized, its data pointer must have the same size and
+    ///   alignment as `T`. This is trivially true if `Arc<U>` was constructed
+    ///   through `Arc<T>` and then converted to `Arc<U>` through an [unsized
+    ///   coercion].
+    ///
+    /// Note that if `U` or `U`'s data pointer is not `T` but has the same size
+    /// and alignment, this is basically like transmuting references of
+    /// different types. See [`mem::transmute`][transmute] for more information
+    /// on what restrictions apply in this case.
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`
     ///
@@ -1531,6 +1538,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
+    /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
     /// # Examples
     ///
@@ -1552,6 +1560,23 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
+    /// ```
+    ///
+    /// Convert a slice back into its original array:
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    /// use std::alloc::System;
+    ///
+    /// let x: Arc<[u32]> = Arc::new_in([1, 2, 3], System);
+    /// let x_ptr: *const [u32] = Arc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     let x: Arc<[u32; 3]> = Arc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
+    ///     assert_eq!(&*x, &[1, 2, 3]);
+    /// }
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
