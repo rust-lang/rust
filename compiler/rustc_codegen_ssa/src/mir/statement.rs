@@ -73,6 +73,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.assume(op_val.immediate());
                 }
             }
+            // The Expect intrinsic is processed with the BB terminator
+            // in codegen_switchint_terminator()
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(..)) => {}
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },

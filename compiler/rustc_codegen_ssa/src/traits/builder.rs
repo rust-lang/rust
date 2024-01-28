@@ -15,6 +15,7 @@ use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::ExpectKind;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -27,26 +28,6 @@ pub enum OverflowOp {
     Add,
     Sub,
     Mul,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ExpectKind {
-    None,
-    True,
-    False,
-    Unpredictable,
-}
-
-impl ExpectKind {
-    #[inline]
-    pub fn not(&self) -> Self {
-        match self {
-            ExpectKind::None => ExpectKind::None,
-            ExpectKind::True => ExpectKind::False,
-            ExpectKind::False => ExpectKind::True,
-            ExpectKind::Unpredictable => ExpectKind::Unpredictable,
-        }
-    }
 }
 
 pub trait BuilderMethods<'a, 'tcx>:
@@ -95,7 +76,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         cond: Self::Value,
         then_llbb: Self::BasicBlock,
         else_llbb: Self::BasicBlock,
-        _expect: ExpectKind,
+        _expect: Option<ExpectKind>,
     ) {
         self.cond_br(cond, then_llbb, else_llbb)
     }

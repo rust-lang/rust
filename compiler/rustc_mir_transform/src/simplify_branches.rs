@@ -32,6 +32,25 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
                         continue 'blocks;
                     }
                 }
+                if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind {
+                    match intrinsic {
+                        NonDivergingIntrinsic::Assume(discr)
+                        | NonDivergingIntrinsic::Expect(discr, ..) => {
+                            if let Operand::Constant(ref c) = discr
+                                && let Some(constant) = c.const_.try_eval_bool(tcx, param_env)
+                            {
+                                if constant {
+                                    stmt.make_nop();
+                                } else {
+                                    block.statements.clear();
+                                    block.terminator_mut().kind = TerminatorKind::Unreachable;
+                                    continue 'blocks;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
 
             let terminator = block.terminator_mut();

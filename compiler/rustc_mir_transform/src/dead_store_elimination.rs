@@ -83,7 +83,15 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             match &statement.kind {
                 StatementKind::Assign(box (place, _))
                 | StatementKind::SetDiscriminant { place: box place, .. }
-                | StatementKind::Deinit(box place) => {
+                | StatementKind::Deinit(box place)
+                // The Expect intrinsic is different from the other statements in this match arm,
+                // because it does not write to the 'place'. But if the 'place' is dead,
+                // the Expect intrinsic can be removed as well.
+                | StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(
+                    Operand::Copy(place),
+                    ..,
+                ))
+                => {
                     if !place.is_indirect() && !always_live.contains(place.local) {
                         live.seek_before_primary_effect(loc);
                         if !live.get().contains(place.local) {

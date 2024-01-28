@@ -27,7 +27,6 @@ use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     BuilderMethods,
     ConstMethods,
-    ExpectKind,
     LayoutTypeMethods,
     HasCodegen,
     OverflowOp,
@@ -36,6 +35,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::ExpectKind;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -460,15 +460,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         cond: RValue<'gcc>,
         then_block: Block<'gcc>,
         else_block: Block<'gcc>,
-        _expect: ExpectKind,
+        _expect: Option<ExpectKind>,
     ) {
         /*
         // FIXME: emit expectation
         match expect {
-            ExpectKind::None => {}
-            ExpectKind::True => self.expect(cond.immediate(), true),
-            ExpectKind::False => self.expect(cond.immediate(), false),
-            ExpectKind::Unpredictable => {} // FIXME
+            Some(ExpectKind::True) => self.expect(cond.immediate(), true),
+            Some(ExpectKind::False) => self.expect(cond.immediate(), false),
+            Some(ExpectKind::Unpredictable) => {} // FIXME
+            None => {}
         }
         */
 

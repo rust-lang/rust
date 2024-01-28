@@ -255,6 +255,13 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        if let StatementKind::Intrinsic(box mir::NonDivergingIntrinsic::Expect(..)) = statement.kind
+        {
+            // don't visit the Expect intrinsic's operand,
+            // i.e, the expect intrinsic alone will not keep its operand alive
+            return;
+        }
+
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
             StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then_some(assign.0),

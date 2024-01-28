@@ -438,8 +438,10 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::Intrinsic(box ref $($mutability)? intrinsic) => {
                         match intrinsic {
-                            NonDivergingIntrinsic::Assume(op) => self.visit_operand(op, location),
-                            NonDivergingIntrinsic::Expect(op, ..) => self.visit_operand(op, location),
+                            NonDivergingIntrinsic::Assume(op)
+                            | NonDivergingIntrinsic::Expect(op, ..)
+                            => self.visit_operand(op, location),
+
                             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
                                 self.visit_operand(src, location);
                                 self.visit_operand(dst, location);

@@ -412,6 +412,7 @@ impl StatementKind<'_> {
 
 #[derive(
     Clone,
+    Copy,
     TyEncodable,
     TyDecodable,
     Debug,
@@ -430,6 +431,17 @@ pub enum ExpectKind {
 
     /// condition is unpredictable by hardware
     Unpredictable,
+}
+
+impl ExpectKind {
+    #[inline]
+    pub fn not(&self) -> Self {
+        match self {
+            ExpectKind::True => ExpectKind::False,
+            ExpectKind::False => ExpectKind::True,
+            ExpectKind::Unpredictable => ExpectKind::Unpredictable,
+        }
+    }
 }
 
 #[derive(
