@@ -11,8 +11,14 @@ Matsakis.
 
 > As of <!-- date-check --> November 2022, although Salsa is inspired by
 > (among other things) rustc's query system, it is not used directly in rustc.
-> It _is_ used in chalk and extensively in `rust-analyzer`, but there are no
-> medium or long-term concrete plans to integrate it into the compiler.
+> It _is_ used in [chalk], an implementation of  Rust's trait system, and extensively in
+> [`rust-analyzer`], the official implementation of the language server protocol for Rust, but
+> there are no  medium or long-term concrete plans to integrate it into the
+> compiler.
+
+
+[`rust-analyzer`]: https://rust-analyzer.github.io/
+[chalk]: https://rust-lang.github.io/chalk/book/what_is_chalk.html
 
 ## What is Salsa?
 
