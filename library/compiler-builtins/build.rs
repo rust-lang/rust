@@ -602,7 +602,12 @@ mod c {
             build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
 
             // Some run-time CPU feature detection is necessary, as well.
-            sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
+            let cpu_model_src = if src_dir.join("cpu_model.c").exists() {
+                "cpu_model.c"
+            } else {
+                "cpu_model/aarch64.c"
+            };
+            sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
         let mut added_sources = HashSet::new();
