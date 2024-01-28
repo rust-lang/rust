@@ -270,6 +270,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         bug!("No field named {} in type {}", name, base.layout().ty);
     }
 
+    /// Search if `base` (which must be a struct or union type) contains the `name` field.
+    fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        name: &str,
+    ) -> bool {
+        let adt = base.layout().ty.ty_adt_def().unwrap();
+        for field in adt.non_enum_variant().fields.iter() {
+            if field.name.as_str() == name {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
     /// we try to do the right thing anyway. `i128` can fit all integer types except for `u128` so
     /// this method is fine for almost all integer types.
