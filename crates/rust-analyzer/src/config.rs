@@ -494,6 +494,9 @@ config_data! {
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = "false",
 
+        /// Exclude tests from find-all-references.
+        references_excludeTests: bool = "false",
+
         /// Allow renaming of items not belonging to the loaded workspaces.
         rename_allowExternalItems: bool = "false",
 
@@ -1543,6 +1546,10 @@ impl Config {
 
     pub fn find_all_refs_exclude_imports(&self) -> bool {
         self.data.references_excludeImports
+    }
+
+    pub fn find_all_refs_exclude_tests(&self) -> bool {
+        self.data.references_excludeTests
     }
 
     pub fn snippet_cap(&self) -> bool {

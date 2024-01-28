@@ -454,6 +454,7 @@ fn main() {
             "#]],
         );
     }
+
     #[test]
     fn test_variant_tuple_before_paren() {
         check(
@@ -1435,7 +1436,7 @@ fn test$0() {
             expect![[r#"
                 test Function FileId(0) 0..33 11..15
 
-                FileId(0) 24..28
+                FileId(0) 24..28 Test
             "#]],
         );
     }

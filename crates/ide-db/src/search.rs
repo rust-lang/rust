@@ -15,7 +15,10 @@ use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
+use syntax::{
+    ast::{self, HasAttrs as _},
+    match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize,
+};
 use triomphe::Arc;
 
 use crate::{
@@ -134,6 +137,7 @@ pub enum ReferenceCategory {
     // FIXME: Some day should be able to search in doc comments. Would probably
     // need to switch from enum to bitflags then?
     // DocComment
+    Test,
 }
 
 /// Generally, `search_scope` returns files that might contain references for the element.
@@ -872,6 +876,10 @@ fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir
 
 impl ReferenceCategory {
     fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
+        if is_name_ref_in_test(r) {
+            return Some(ReferenceCategory::Test);
+        }
+
         // Only Locals and Fields have accesses for now.
         if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
             return is_name_ref_in_import(r).then_some(ReferenceCategory::Import);
@@ -909,4 +917,31 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
         .and_then(ast::PathSegment::cast)
         .and_then(|it| it.parent_path().top_path().syntax().parent())
         .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
+}
+
+fn is_name_ref_in_test(name_ref: &ast::NameRef) -> bool {
+    let mode = name_ref.syntax().ancestors().find_map(|node| {
+        match_ast! {
+            match node {
+                ast::Fn(f) => {
+                    let attrs = f.attrs();
+                    let mut is_test = false;
+                    for attr in attrs {
+                        if attr.to_string() == "#[test]" {
+                            is_test = true;
+                            break;
+                        }
+                    }
+                    if is_test {
+                        Some(ReferenceCategory::Test)
+                    }
+                    else {
+                        None
+                    }
+                },
+                _ => None
+            }
+        }
+    });
+    mode.is_some()
 }
