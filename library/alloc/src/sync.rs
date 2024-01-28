@@ -1538,6 +1538,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
+    /// [transmute]: core::mem::transmute
     /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
     /// # Examples
@@ -1570,11 +1571,11 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// use std::sync::Arc;
     /// use std::alloc::System;
     ///
-    /// let x: Arc<[u32]> = Arc::new_in([1, 2, 3], System);
+    /// let x: Arc<[u32], _> = Arc::new_in([1, 2, 3], System);
     /// let x_ptr: *const [u32] = Arc::into_raw(x);
     ///
     /// unsafe {
-    ///     let x: Arc<[u32; 3]> = Arc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
+    ///     let x: Arc<[u32; 3], _> = Arc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
     ///     assert_eq!(&*x, &[1, 2, 3]);
     /// }
     /// ```

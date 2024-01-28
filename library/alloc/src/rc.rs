@@ -1387,6 +1387,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// even if the returned `Rc<T>` is never accessed.
     ///
     /// [into_raw]: Rc::into_raw
+    /// [transmute]: core::mem::transmute
     /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
     /// # Examples
@@ -1419,11 +1420,11 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// use std::rc::Rc;
     /// use std::alloc::System;
     ///
-    /// let x: Rc<[u32]> = Rc::new_in([1, 2, 3], System);
+    /// let x: Rc<[u32], _> = Rc::new_in([1, 2, 3], System);
     /// let x_ptr: *const [u32] = Rc::into_raw(x);
     ///
     /// unsafe {
-    ///     let x: Rc<[u32; 3]> = Rc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
+    ///     let x: Rc<[u32; 3], _> = Rc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
     ///     assert_eq!(&*x, &[1, 2, 3]);
     /// }
     /// ```
