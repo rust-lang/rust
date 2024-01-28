@@ -15,7 +15,7 @@ chapter on how to build and run the compiler](./building/how-to-build-and-run.md
 [internals]: https://internals.rust-lang.org
 [rust-discord]: http://discord.gg/rust-lang
 [rust-zulip]: https://rust-lang.zulipchat.com
-[coc]: https://www.rust-lang.org/conduct.html
+[coc]: https://www.rust-lang.org/policies/code-of-conduct
 [walkthrough]: ./walkthrough.md
 [Getting Started]: ./getting-started.md
 

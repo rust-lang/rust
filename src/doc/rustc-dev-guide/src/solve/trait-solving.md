@@ -43,5 +43,5 @@ For success and ambiguity it also returns constraints inference and region const
 [`Goal`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/struct.Goal.html
 [`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
 [`Candidate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/assembly/struct.Candidate.html
-[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/assembly/enum.CandidateSource.html
+[`CandidateSource`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/enum.CandidateSource.html
 [`CanonicalResponse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/solve/type.CanonicalResponse.html

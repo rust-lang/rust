@@ -96,7 +96,7 @@ See the [HIR chapter][hir-map] for more detailed information.
 [`Local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html
 [`LocalDecl`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.LocalDecl.html
 [`Body.local_decls`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.local_decls
-[`FieldIdx`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_abi/struct.FieldIdx.html
+[`FieldIdx`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.FieldIdx.html
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
 [`SourceScope`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.SourceScope.html
 [`SourceScopeData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.SourceScopeData.html

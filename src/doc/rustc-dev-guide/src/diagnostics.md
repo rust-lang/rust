@@ -689,7 +689,7 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
-See [Edition-specific lints](../guides/editions.md#edition-specific-lints) for more information.
+See [Edition-specific lints](./guides/editions.md#edition-specific-lints) for more information.
 
 ### Feature-gated lints
 

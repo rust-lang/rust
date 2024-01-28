@@ -1,7 +1,7 @@
 # Constants in the type system
 
 Constants used in the type system are represented as [`ty::Const`].
-The variants of their [`ty::ConstKind`] mostly mirror the variants of [`ty::TyKind`]
+The variants of their [`const_kind::ConstKind`] mostly mirror the variants of [`ty_kind::TyKind`]
 with the two *additional* variants being `ConstKind::Value` and `ConstKind::Unevaluated`.
 
 ## `WithOptConstParam` and dealing with the query system
@@ -77,6 +77,6 @@ the constant doesn't use them in any way. This can cause
 [some interesting errors][pcg-unused-substs] and breaks some already stable code.
 
 [`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Const.html
-[`ty::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.ConstKind.html
-[`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.TyKind.html
+[`const_kind::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/const_kind/enum.ConstKind.html
+[`ty_kind::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/ty_kind/enum.TyKind.html
 [pcg-unused-substs]: https://github.com/rust-lang/project-const-generics/issues/33

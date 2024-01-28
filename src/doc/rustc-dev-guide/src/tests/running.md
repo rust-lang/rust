@@ -352,4 +352,4 @@ $ LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x.py test compiler/rustc_code
 ```
 
 If you encounter bugs or problems, don't hesitate to open issues on
-[rustc_codegen_gcc repository](github.com/rust-lang/rustc_codegen_gcc/).
+[rustc_codegen_gcc repository](https://github.com/rust-lang/rustc_codegen_gcc/).

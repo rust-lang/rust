@@ -310,7 +310,7 @@ does not.
 ## Books
 - [Types and Programming Languages](https://www.cis.upenn.edu/~bcpierce/tapl/)
 - [Programming Language Pragmatics](https://www.cs.rochester.edu/~scott/pragmatics/)
-- [Practical Foundations for Programming Languages](https://www.cs.cmu.edu/~rwh/pfpl/2nded.pdf)
+- [Practical Foundations for Programming Languages](https://www.cs.cmu.edu/~rwh/pfpl/)
 - [Compilers: Principles, Techniques, and Tools, 2nd Edition](https://www.pearson.com/us/higher-education/program/Aho-Compilers-Principles-Techniques-and-Tools-2nd-Edition/PGM167067.html)
 - [Garbage Collection: Algorithms for Automatic Dynamic Memory Management](https://www.cs.kent.ac.uk/people/staff/rej/gcbook/)
 - [Linkers and Loaders](https://www.amazon.com/Linkers-Kaufmann-Software-Engineering-Programming/dp/1558604960) (There are also free versions of this, but the version we had linked seems to be offline at the moment.)

@@ -1,7 +1,7 @@
 # Canonicalization
 
 > **NOTE**: FIXME: The content of this chapter has some overlap with
-> [Next-gen trait solving Canonicalization chapter](../solve/canonicalization.html). 
+> [Next-gen trait solving Canonicalization chapter](../solve/canonicalization.html).
 > It is suggested to reorganize these contents in the future.
 
 Canonicalization is the process of **isolating** an inference value
@@ -46,8 +46,8 @@ This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
 replace any [free lifetime](../appendix/background.html#free-vs-bound) with a
-canonical variable (Note that `'static` is actually a _free_ lifetime 
-variable here. We are not considering it in the typing context of the whole 
+canonical variable (Note that `'static` is actually a _free_ lifetime
+variable here. We are not considering it in the typing context of the whole
 program but only in the context of this trait reference. Mathematically, we
 are not quantifying over the whole program, but only this obligation).
 Therefore, we get the following result:
@@ -106,7 +106,7 @@ Remember that substitution S though! We're going to need it later.
 
 OK, now that we have a fresh inference context and an instantiated
 query, we can go ahead and try to solve it. The trait solver itself is
-explained in more detail in [another section](./slg.html), but
+explained in more detail in [another section](../solve/the-solver.md), but
 suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
 `Ambiguous`) and have side-effects on the inference variables we've
 created. For example, if there were only one impl of `Foo`, like so:
