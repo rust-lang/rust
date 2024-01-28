@@ -2135,6 +2135,10 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
+    fn has_aux_dir(&self) -> bool {
+        !self.props.aux_builds.is_empty() || !self.props.aux_crates.is_empty()
+    }
+
     fn build_all_auxiliary(&self, rustc: &mut Command) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
@@ -2612,7 +2616,11 @@ impl<'test> TestCx<'test> {
         }
 
         if let LinkToAux::Yes = link_to_aux {
-            rustc.arg("-L").arg(self.aux_output_dir_name());
+            // if we pass an `-L` argument to a directory that doesn't exist,
+            // macOS ld emits warnings which disrupt the .stderr files
+            if self.has_aux_dir() {
+                rustc.arg("-L").arg(self.aux_output_dir_name());
+            }
         }
 
         rustc.args(&self.props.compile_flags);
