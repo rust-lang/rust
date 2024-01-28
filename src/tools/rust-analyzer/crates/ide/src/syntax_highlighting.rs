@@ -3,11 +3,11 @@ pub(crate) mod tags;
 mod highlights;
 mod injector;
 
-mod highlight;
-mod format;
-mod macro_;
-mod inject;
 mod escape;
+mod format;
+mod highlight;
+mod inject;
+mod macro_;
 
 mod html;
 #[cfg(test)]

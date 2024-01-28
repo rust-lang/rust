@@ -2,8 +2,8 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod input;
 mod change;
+mod input;
 
 use std::panic;
 

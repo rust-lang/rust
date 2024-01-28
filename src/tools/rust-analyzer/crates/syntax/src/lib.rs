@@ -32,22 +32,22 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod syntax_node;
-mod syntax_error;
 mod parsing;
-mod validation;
 mod ptr;
-mod token_text;
+mod syntax_error;
+mod syntax_node;
 #[cfg(test)]
 mod tests;
+mod token_text;
+mod validation;
 
 pub mod algo;
 pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
-pub mod utils;
-pub mod ted;
 pub mod hacks;
+pub mod ted;
+pub mod utils;
 
 use std::marker::PhantomData;
 

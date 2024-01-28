@@ -166,7 +166,7 @@ checksum = "5676cea088c32290fe65c82895be9d06dd21e0fa49bb97ca840529e9417ab71a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
  "synstructure",
 ]
 
@@ -313,6 +313,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "derive_arbitrary"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -320,7 +331,7 @@ checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -582,6 +593,7 @@ dependencies = [
  "project-model",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_index",
+ "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
@@ -1407,20 +1419,20 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.21.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7816f980fab89e878ff2e916e2077d484e3aa1c619a3cc982c8a417c3dfe45fa"
+checksum = "8ce9100fc66c6c60aeeb076868ead9c2eaa65d6a5a90404f08c242327a92ff4b"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "ra-ap-rustc_index",
  "tracing",
 ]
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.21.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8352918d61aa4afab9f2ed7314cf638976b20949b3d61d2f468c975b0d251f24"
+checksum = "5e5313d7f243b63ef9e58d94355b11aa8499f1328055f1f58adf0a5ea7d2faca"
 dependencies = [
  "arrayvec",
  "ra-ap-rustc_index_macros",
@@ -1429,21 +1441,21 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.21.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66a9424018828155a3e3596515598f90e68427d8f35eff6df7f0856c73fc58a8"
+checksum = "a83108ebf3e73dde205b9c25706209bcd7736480820f90ded28eabaf8b469f25"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
  "synstructure",
 ]
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.21.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc741c7a78103efab416b562e35bd73c8d4967478575010c86c6062f8d3cbf29"
+checksum = "d2d221356e5717595e8a0afa5fba1620dcb4032ab784dc4d98fdc7284e3feb66"
 dependencies = [
  "unicode-properties",
  "unicode-xid",
@@ -1451,12 +1463,26 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.21.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d557201d71792487bd2bab637ab5be9aa6fff59b88e25e12de180b0f9d2df60f"
+checksum = "ab62fc925612374103b4f178da347b535b35d9eb1ff5ba42105c990b2e25a164"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
+]
+
+[[package]]
+name = "ra-ap-rustc_pattern_analysis"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c4085e0c771fd4b883930b599ef42966b855762bbe4052c17673b3253421a6d"
+dependencies = [
+ "derivative",
+ "ra-ap-rustc_index",
+ "rustc-hash",
+ "rustc_apfloat",
+ "smallvec",
+ "tracing",
 ]
 
 [[package]]
@@ -1593,7 +1619,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -1607,6 +1633,16 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustc_apfloat"
+version = "0.2.0+llvm-462a31f5a5ab"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "465187772033a5ee566f69fe008df03628fce549a0899aae76f0a0c2e34696be"
+dependencies = [
+ "bitflags 1.3.2",
+ "smallvec",
+]
 
 [[package]]
 name = "ryu"
@@ -1670,7 +1706,7 @@ checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -1693,7 +1729,7 @@ checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -1707,9 +1743,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.10.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
+checksum = "2593d31f82ead8df961d8bd23a64c2ccf2eb5dd34b0a34bfb4dd54011c72009e"
 
 [[package]]
 name = "smol_str"
@@ -1772,6 +1808,17 @@ dependencies = [
 
 [[package]]
 name = "syn"
+version = "1.0.109"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
+name = "syn"
 version = "2.0.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23e78b90f2fcf45d3e842032ce32e3f2d1545ba6636271dcbf24fa306d87be7a"
@@ -1789,7 +1836,7 @@ checksum = "285ba80e733fac80aa4270fbcdf83772a79b80aa35c97075320abfee4a915b06"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
  "unicode-xid",
 ]
 
@@ -1876,7 +1923,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]
@@ -1977,7 +2024,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 2.0.39",
 ]
 
 [[package]]

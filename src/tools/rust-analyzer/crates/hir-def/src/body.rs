@@ -1,10 +1,10 @@
 //! Defines `Body`: a lowered representation of bodies of functions, statics and
 //! consts.
 mod lower;
+mod pretty;
+pub mod scope;
 #[cfg(test)]
 mod tests;
-pub mod scope;
-mod pretty;
 
 use std::ops::Index;
 
