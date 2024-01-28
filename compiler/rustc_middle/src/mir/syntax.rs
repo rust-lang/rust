@@ -410,18 +410,8 @@ impl StatementKind<'_> {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    TyEncodable,
-    TyDecodable,
-    Debug,
-    PartialEq,
-    Hash,
-    HashStable,
-    TypeFoldable,
-    TypeVisitable
-)]
+#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ExpectKind {
     /// condition is probably true
     True,
