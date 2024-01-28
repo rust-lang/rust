@@ -1330,7 +1330,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// The raw pointer must have been previously returned by a call to
     /// [`Arc<U>::into_raw`][into_raw] with the following requirements:
-    /// 
+    ///
     /// * If `U` is sized, it must have the same size and alignment as `T`. This
     ///   is trivially true if `U` is `T`.
     /// * If `U` is unsized, its data pointer must have the same size and
