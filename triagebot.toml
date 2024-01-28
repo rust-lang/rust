@@ -549,7 +549,6 @@ this change to [rust-lang/rust-analyzer] instead.
 [rust-lang/rust-analyzer]: https://github.com/rust-lang/rust-analyzer
 """
 cc = ["@rust-lang/rust-analyzer"]
-exclude_titles = ["subtree update", "Subtree update"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
