@@ -1371,6 +1371,20 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
+    ///
+    /// Convert a slice back into its original array:
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<[u32]> = Arc::new([1, 2, 3]);
+    /// let x_ptr: *const [u32] = Arc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     let x: Arc<[u32; 3]> = Arc::from_raw(x_ptr.cast::<[u32; 3]>())
+    ///     assert_eq!(x.as_ref(), &[1, 2, 3]);
+    /// }
+    /// ```
     #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {

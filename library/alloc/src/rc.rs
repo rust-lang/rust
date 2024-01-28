@@ -1225,6 +1225,20 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
+    ///
+    /// Convert a slice back into its original array:
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<[u32]> = Rc::new([1, 2, 3]);
+    /// let x_ptr: *const [u32] = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     let x: Rc<[u32; 3]> = Rc::from_raw(x_ptr.cast::<[u32; 3]>())
+    ///     assert_eq!(x.as_ref(), &[1, 2, 3]);
+    /// }
+    /// ```
     #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
