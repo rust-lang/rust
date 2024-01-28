@@ -2,10 +2,14 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lin
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{fn_def_id, is_from_proc_macro, is_inside_let_else, path_to_local_id, span_find_starting_semi};
+use clippy_utils::{
+    fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res, path_to_local_id,
+    span_find_starting_semi,
+};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{
     Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
     StmtKind,
@@ -176,37 +180,20 @@ fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
         })
 }
 
-///
-/// The expression of the desugared `try` operator is a match over an expression with type:
-/// `ControlFlow<A:Result<Infallible, E>, B:Result<_, E'>>`, with final type `B`.
-/// If E and E' are the same type, then there is no error conversion happening.
-/// Error conversion happens when E can be transformed into E' via a `From` or `Into` conversion.
-fn desugar_expr_performs_error_conversion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.typeck_results().expr_ty(expr);
-
-    if let ty::Adt(_, generics) = ty.kind()
-        && let Some(brk) = generics.first()
-        && let Some(cont) = generics.get(1)
-        && let Some(brk_type) = brk.as_type()
-        && let Some(cont_type) = cont.as_type()
-        && let ty::Adt(_, brk_generics) = brk_type.kind()
-        && let ty::Adt(_, cont_generics) = cont_type.kind()
-        && let Some(brk_err) = brk_generics.get(1)
-        && let Some(cont_err) = cont_generics.get(1)
-        && let Some(brk_err_type) = brk_err.as_type()
-        && let Some(cont_err_type) = cont_err.as_type()
-    {
-        return brk_err_type != cont_err_type;
-    }
-    false
-}
-
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.sess(), stmt.span)
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
-            && let ExprKind::Match(match_expr, _, MatchSource::TryDesugar(..)) = ret.kind
+            // return Err(...)? desugars to a match
+            // over a Err(...).branch()
+            // which breaks down to a branch call, with the callee being
+            // the constructor of the Err variant
+            && let ExprKind::Match(maybe_cons, _, MatchSource::TryDesugar(_)) = ret.kind
+            && let ExprKind::Call(_, [maybe_result_err]) = maybe_cons.kind
+            && let ExprKind::Call(maybe_constr, _) = maybe_result_err.kind
+            && is_res_lang_ctor(cx, path_res(cx, maybe_constr), ResultErr)
+
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn(_, _, body) = item.kind
@@ -217,7 +204,6 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && final_stmt.hir_id != stmt.hir_id
             && !is_from_proc_macro(cx, expr)
             && !stmt_needs_never_type(cx, stmt.hir_id)
-            && !desugar_expr_performs_error_conversion(cx, match_expr)
         {
             span_lint_and_sugg(
                 cx,

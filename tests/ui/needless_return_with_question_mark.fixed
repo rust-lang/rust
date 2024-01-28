@@ -78,9 +78,6 @@ fn issue11616() -> Result<(), ()> {
     Ok(())
 }
 
-/// This is a false positive that occurs because of the way `?` is handled.
-/// The `?` operator is also doing a conversion from `Result<T, E>` to `Result<T, E'>`.
-/// In this case the conversion is needed, and thus the `?` operator is also needed.
 fn issue11982() {
     mod bar {
         pub struct Error;
@@ -115,10 +112,18 @@ fn issue11982_no_conversion() {
 
     fn foo(ok: bool) -> Result<(), bar::Error> {
         if !ok {
-            bar::foo(ok).map(|_| Ok::<(), bar::Error>(()))?;
-            //~^ ERROR: unneeded `return` statement with `?` operator
+            return bar::foo(ok).map(|_| Ok::<(), bar::Error>(()))?;
         };
         Ok(())
     }
+}
 
+fn general_return() {
+    fn foo(ok: bool) -> Result<(), ()> {
+        let bar = Result::Ok(Result::<(), ()>::Ok(()));
+        if !ok {
+            return bar?;
+        };
+        Ok(())
+    }
 }
