@@ -308,6 +308,30 @@ mod tests {
     use crate::{fixture, SearchScope};
 
     #[test]
+    fn exclude_tests() {
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 75..84 Test
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_struct_literal_after_space() {
         check(
             r#"
