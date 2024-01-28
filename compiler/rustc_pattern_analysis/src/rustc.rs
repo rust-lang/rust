@@ -46,10 +46,14 @@ pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, '
 ///
 /// Use `.inner()` or deref to get to the `Ty<'tcx>`.
 #[repr(transparent)]
-#[derive(derivative::Derivative)]
 #[derive(Clone, Copy)]
-#[derivative(Debug = "transparent")]
 pub struct RevealedTy<'tcx>(Ty<'tcx>);
+
+impl<'tcx> fmt::Debug for RevealedTy<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(fmt)
+    }
+}
 
 impl<'tcx> std::ops::Deref for RevealedTy<'tcx> {
     type Target = Ty<'tcx>;
