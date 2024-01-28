@@ -2438,7 +2438,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
 }
 
 #[stable(feature = "box_error", since = "1.8.0")]
-impl<T: core::error::Error> core::error::Error for Box<T> {
+impl<T: core::error::Error + ?Sized> core::error::Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         core::error::Error::description(&**self)
