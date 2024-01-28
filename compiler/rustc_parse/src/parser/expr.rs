@@ -28,6 +28,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, PResult, StashKey,
 };
+use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
@@ -1652,6 +1653,7 @@ impl<'a> Parser<'a> {
             && self.may_recover()
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
                 || self.token.is_punct())
+            && could_be_unclosed_char_literal(label_.ident)
         {
             let (lit, _) =
                 self.recover_unclosed_char(label_.ident, Parser::mk_token_lit_char, |self_| {
@@ -1744,6 +1746,7 @@ impl<'a> Parser<'a> {
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
+        assert!(could_be_unclosed_char_literal(ident));
         if let Some(diag) = self.dcx().steal_diagnostic(ident.span, StashKey::LifetimeIsChar) {
             diag.with_span_suggestion_verbose(
                 ident.span.shrink_to_hi(),
@@ -2034,8 +2037,11 @@ impl<'a> Parser<'a> {
             let msg = format!("unexpected token: {}", super::token_descr(&token));
             self_.dcx().struct_span_err(token.span, msg)
         };
-        // On an error path, eagerly consider a lifetime to be an unclosed character lit
-        if self.token.is_lifetime() {
+        // On an error path, eagerly consider a lifetime to be an unclosed character lit, if that
+        // makes sense.
+        if let Some(ident) = self.token.lifetime()
+            && could_be_unclosed_char_literal(ident)
+        {
             let lt = self.expect_lifetime();
             Ok(self.recover_unclosed_char(lt.ident, mk_lit_char, err))
         } else {
@@ -3761,6 +3767,13 @@ impl<'a> Parser<'a> {
             Ok((res, trailing))
         })
     }
+}
+
+/// Could this lifetime/label be an unclosed char literal? For example, `'a`
+/// could be, but `'abc` could not.
+pub(crate) fn could_be_unclosed_char_literal(ident: Ident) -> bool {
+    ident.name.as_str().starts_with('\'')
+        && unescape_char(ident.without_first_quote().name.as_str()).is_ok()
 }
 
 /// Used to forbid `let` expressions in certain syntactic locations.
