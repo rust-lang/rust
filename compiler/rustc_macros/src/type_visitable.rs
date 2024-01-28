@@ -6,6 +6,8 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
         panic!("cannot derive on union")
     }
 
+    s.underscore_const(true);
+
     // ignore fields with #[type_visitable(ignore)]
     s.filter(|bi| {
         let mut ignored = false;

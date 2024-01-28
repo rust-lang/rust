@@ -15,6 +15,7 @@ pub fn type_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
 
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_type_ir::codec::TyDecoder #bound });
     s.add_bounds(synstructure::AddBounds::Fields);
+    s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
 }
@@ -26,6 +27,7 @@ pub fn meta_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.add_impl_generic(parse_quote! { '__a });
     let decoder_ty = quote! { DecodeContext<'__a, 'tcx> };
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
 }
@@ -34,6 +36,7 @@ pub fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_span::SpanDecoder});
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
 }
@@ -42,12 +45,13 @@ pub fn decodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macr
     let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_serialize::Decoder});
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
 }
 
 fn decodable_body(
-    s: synstructure::Structure<'_>,
+    mut s: synstructure::Structure<'_>,
     decoder_ty: TokenStream,
 ) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
@@ -93,6 +97,7 @@ fn decodable_body(
             }
         }
     };
+    s.underscore_const(true);
 
     s.bound_impl(
         quote!(::rustc_serialize::Decodable<#decoder_ty>),
@@ -130,6 +135,7 @@ pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! {#encoder_ty: ::rustc_type_ir::codec::TyEncoder #bound });
     s.add_bounds(synstructure::AddBounds::Fields);
+    s.underscore_const(true);
 
     encodable_body(s, encoder_ty, false)
 }
@@ -141,6 +147,7 @@ pub fn meta_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.add_impl_generic(parse_quote! { '__a });
     let encoder_ty = quote! { EncodeContext<'__a, 'tcx> };
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     encodable_body(s, encoder_ty, true)
 }
@@ -149,6 +156,7 @@ pub fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_span::SpanEncoder});
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     encodable_body(s, encoder_ty, false)
 }
@@ -157,6 +165,7 @@ pub fn encodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macr
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder});
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.underscore_const(true);
 
     encodable_body(s, encoder_ty, false)
 }
@@ -170,6 +179,7 @@ fn encodable_body(
         panic!("cannot derive on union")
     }
 
+    s.underscore_const(true);
     s.bind_with(|binding| {
         // Handle the lack of a blanket reference impl.
         if let syn::Type::Reference(_) = binding.ast().ty {
