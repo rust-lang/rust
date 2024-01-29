@@ -7,7 +7,7 @@ use rustc_middle::ty;
 use rustc_target::abi::FieldIdx;
 use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 
 use super::{InterpCx, MPlaceTy, Machine, Projectable};
 
@@ -43,7 +43,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     }
     /// Visits the given value as a union. No automatic recursion can happen here.
     #[inline(always)]
-    fn visit_union(&mut self, _v: &Self::V, _fields: NonZeroUsize) -> InterpResult<'tcx> {
+    fn visit_union(&mut self, _v: &Self::V, _fields: NonZero<usize>) -> InterpResult<'tcx> {
         Ok(())
     }
     /// Visits the given value as the pointer of a `Box`. There is nothing to recurse into.

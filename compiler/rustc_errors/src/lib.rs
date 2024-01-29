@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(error_reporter)]
 #![feature(extract_if)]
+#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
@@ -77,7 +78,7 @@ use std::error::Report;
 use std::fmt;
 use std::hash::Hash;
 use std::io::Write;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::panic;
 use std::path::{Path, PathBuf};
 
@@ -543,7 +544,7 @@ pub struct DiagCtxtFlags {
     pub can_emit_warnings: bool,
     /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
-    pub treat_err_as_bug: Option<NonZeroUsize>,
+    pub treat_err_as_bug: Option<NonZero<usize>>,
     /// Eagerly emit delayed bugs as errors, so that the compiler debugger may
     /// see all of the errors being emitted at once.
     pub eagerly_emit_delayed_bugs: bool,

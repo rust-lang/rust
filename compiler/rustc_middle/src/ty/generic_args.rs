@@ -18,7 +18,7 @@ use core::intrinsics;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::mem;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::{ControlFlow, Deref};
 use std::ptr::NonNull;
 
@@ -144,7 +144,7 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
         let ptr = unsafe {
-            self.ptr.map_addr(|addr| NonZeroUsize::new_unchecked(addr.get() & !TAG_MASK))
+            self.ptr.map_addr(|addr| NonZero::<usize>::new_unchecked(addr.get() & !TAG_MASK))
         };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
         // pointers were originally created from `Interned` types in `pack()`,

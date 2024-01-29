@@ -1,5 +1,5 @@
 use std::fmt::{self, Write};
-use std::num::NonZeroU64;
+use std::num::NonZero;
 
 use log::trace;
 
@@ -115,7 +115,7 @@ pub enum NonHaltingDiagnostic {
     /// (new_tag, new_perm, (alloc_id, base_offset, orig_tag))
     ///
     /// new_perm is `None` for base tags.
-    CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
+    CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
     CreatedCallId(CallId),

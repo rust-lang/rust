@@ -11,7 +11,7 @@ use crate::iter::{
 };
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
-use crate::num::{NonZero, NonZeroUsize};
+use crate::num::NonZero;
 use crate::ptr::{self, invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};

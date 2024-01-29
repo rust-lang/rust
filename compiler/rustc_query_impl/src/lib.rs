@@ -3,6 +3,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(generic_nonzero)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability, unused_parens)]

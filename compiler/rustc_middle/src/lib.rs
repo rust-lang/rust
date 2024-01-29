@@ -34,6 +34,7 @@
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(coroutines)]
+#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
 #![feature(inline_const)]
 #![feature(iter_from_coroutine)]

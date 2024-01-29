@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::mem::{self, MaybeUninit};
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::ptr;
 use core::ptr::*;
 use std::fmt::{Debug, Display};
@@ -1051,7 +1051,7 @@ fn nonnull_tagged_pointer_with_provenance() {
         pub fn pointer(self) -> NonNull<T> {
             // SAFETY: The `addr` guaranteed to have bits set in the Self::ADDRESS_MASK, so the result will be non-null.
             self.0.map_addr(|addr| unsafe {
-                NonZeroUsize::new_unchecked(addr.get() & Self::ADDRESS_MASK)
+                NonZero::<usize>::new_unchecked(addr.get() & Self::ADDRESS_MASK)
             })
         }
 
@@ -1073,7 +1073,7 @@ fn nonnull_tagged_pointer_with_provenance() {
             // ADDRESS_MASK) will always be non-zero. This a property of the type and its
             // construction.
             self.0 = self.0.map_addr(|addr| unsafe {
-                NonZeroUsize::new_unchecked((addr.get() & Self::ADDRESS_MASK) | data)
+                NonZero::<usize>::new_unchecked((addr.get() & Self::ADDRESS_MASK) | data)
             })
         }
     }
