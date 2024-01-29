@@ -2140,46 +2140,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let (adt, unwrap) = match expected.kind() {
+        let (adt, substs, unwrap) = match expected.kind() {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
-            ty::Adt(adt, args) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
-                // Unwrap option
-                let ty::Adt(adt, _) = args.type_at(0).kind() else {
+            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+                let nonzero_type = substs.type_at(0); // Unwrap option type.
+                let ty::Adt(adt, substs) = nonzero_type.kind() else {
                     return false;
                 };
-
-                (adt, "")
+                (adt, substs, "")
             }
-            // In case NonZero* is wanted, but * is provided also add `.unwrap()` to satisfy types
-            ty::Adt(adt, _) => (adt, ".unwrap()"),
+            // In case `NonZero<*>` is wanted but `*` is provided, also add `.unwrap()` to satisfy types.
+            ty::Adt(adt, substs) => (adt, substs, ".unwrap()"),
             _ => return false,
         };
 
-        let map = [
-            (sym::NonZeroU8, tcx.types.u8),
-            (sym::NonZeroU16, tcx.types.u16),
-            (sym::NonZeroU32, tcx.types.u32),
-            (sym::NonZeroU64, tcx.types.u64),
-            (sym::NonZeroU128, tcx.types.u128),
-            (sym::NonZeroI8, tcx.types.i8),
-            (sym::NonZeroI16, tcx.types.i16),
-            (sym::NonZeroI32, tcx.types.i32),
-            (sym::NonZeroI64, tcx.types.i64),
-            (sym::NonZeroI128, tcx.types.i128),
+        if !self.tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
+            return false;
+        }
+
+        // FIXME: This can be simplified once `NonZero<T>` is stable.
+        let coercable_types = [
+            ("NonZeroU8", tcx.types.u8),
+            ("NonZeroU16", tcx.types.u16),
+            ("NonZeroU32", tcx.types.u32),
+            ("NonZeroU64", tcx.types.u64),
+            ("NonZeroU128", tcx.types.u128),
+            ("NonZeroI8", tcx.types.i8),
+            ("NonZeroI16", tcx.types.i16),
+            ("NonZeroI32", tcx.types.i32),
+            ("NonZeroI64", tcx.types.i64),
+            ("NonZeroI128", tcx.types.i128),
         ];
 
-        let Some((s, _)) = map.iter().find(|&&(s, t)| {
-            self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t)
+        let int_type = substs.type_at(0);
+
+        let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
+            if *t == int_type && self.can_coerce(expr_ty, *t) { Some(nonzero_alias) } else { None }
         }) else {
             return false;
         };
 
-        let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
-
         err.multipart_suggestion(
-            format!("consider calling `{s}::new`"),
+            format!("consider calling `{nonzero_alias}::new`"),
             vec![
-                (expr.span.shrink_to_lo(), format!("{path}::new(")),
+                (expr.span.shrink_to_lo(), format!("{nonzero_alias}::new(")),
                 (expr.span.shrink_to_hi(), format!("){unwrap}")),
             ],
             Applicability::MaybeIncorrect,

@@ -41,40 +41,7 @@
     </Expand>
   </Type>
 
-  <Type Name="core::num::nonzero::NonZeroI8">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroI16">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroI32">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroI64">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroI128">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroIsize">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroU8">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroU16">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroU32">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroU64">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroU128">
-    <DisplayString>{__0}</DisplayString>
-  </Type>
-  <Type Name="core::num::nonzero::NonZeroUsize">
+  <Type Name="core::num::nonzero::NonZero&lt;*&gt;">
     <DisplayString>{__0}</DisplayString>
   </Type>
 
