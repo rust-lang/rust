@@ -246,12 +246,15 @@ for different purposes:
   optimizations on it.
 
 One other thing to note is that many values in the compiler are _interned_.
-This is a performance and memory optimization in which we allocate the values
-in a special allocator called an _arena_. Then, we pass around references to
-the values allocated in the arena. This allows us to make sure that identical
-values (e.g. types in your program) are only allocated once and can be compared
-cheaply by comparing pointers. Many of the intermediate representations are
-interned.
+This is a performance and memory optimization in which we allocate the values in
+a special allocator called an
+_[arena]_. Then, we pass
+around references to the values allocated in the arena. This allows us to make
+sure that identical values (e.g. types in your program) are only allocated once
+and can be compared cheaply by comparing pointers. Many of the intermediate
+representations are interned.
+
+[arena]: https://en.wikipedia.org/wiki/Region-based_memory_management
 
 ### Queries
 

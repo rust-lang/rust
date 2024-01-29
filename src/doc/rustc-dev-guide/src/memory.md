@@ -4,7 +4,10 @@ Rustc tries to be pretty careful how it manages memory. The compiler allocates
 _a lot_ of data structures throughout compilation, and if we are not careful,
 it will take a lot of time and space to do so.
 
-One of the main way the compiler manages this is using arenas and interning.
+One of the main way the compiler manages this is using [arena]s and [interning].
+
+[arena]: https://en.wikipedia.org/wiki/Region-based_memory_management
+[interning]: https://en.wikipedia.org/wiki/String_interning
 
 ## Arenas and  Interning
 
