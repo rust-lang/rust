@@ -30,7 +30,7 @@ use rustc_serialize::Decodable;
 use rustc_serialize::Encodable;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use thin_vec::ThinVec;
 
 #[derive(Copy, Clone)]
@@ -68,7 +68,7 @@ impl QueryContext for QueryCtxt<'_> {
     #[inline]
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
-            NonZeroU64::new(
+            NonZero::<u64>::new(
                 self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             )
             .unwrap(),

@@ -3,7 +3,7 @@ use crate::iter::adapters::{
 };
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIterator};
 use crate::ops::Try;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 /// An iterator that clones the elements of an underlying iterator.
 ///
@@ -185,6 +185,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Cloned<I> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

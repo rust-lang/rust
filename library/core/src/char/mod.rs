@@ -43,7 +43,7 @@ use crate::error::Error;
 use crate::escape;
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 
 pub(crate) use self::methods::EscapeDebugExtArgs;
 
@@ -185,7 +185,7 @@ impl Iterator for EscapeUnicode {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_by(n)
     }
 }
@@ -260,7 +260,7 @@ impl Iterator for EscapeDefault {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_by(n)
     }
 }

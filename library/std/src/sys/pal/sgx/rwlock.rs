@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 use super::waitqueue::{
@@ -10,7 +10,7 @@ use super::waitqueue::{
 use crate::alloc::Layout;
 
 struct AllocatedRwLock {
-    readers: SpinMutex<WaitVariable<Option<NonZeroUsize>>>,
+    readers: SpinMutex<WaitVariable<Option<NonZero<usize>>>>,
     writer: SpinMutex<WaitVariable<bool>>,
 }
 
@@ -54,7 +54,7 @@ impl RwLock {
         } else {
             // No waiting writers, acquire the read lock
             *rguard.lock_var_mut() =
-                NonZeroUsize::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
+                NonZero::<usize>::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
         }
     }
 
@@ -69,7 +69,7 @@ impl RwLock {
         } else {
             // No waiting writers, acquire the read lock
             *rguard.lock_var_mut() =
-                NonZeroUsize::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
+                NonZero::<usize>::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
             true
         }
     }
@@ -108,10 +108,10 @@ impl RwLock {
     #[inline]
     unsafe fn __read_unlock(
         &self,
-        mut rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        mut rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZero<usize>>>>,
         wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
-        *rguard.lock_var_mut() = NonZeroUsize::new(rguard.lock_var().unwrap().get() - 1);
+        *rguard.lock_var_mut() = NonZero::<usize>::new(rguard.lock_var().unwrap().get() - 1);
         if rguard.lock_var().is_some() {
             // There are other active readers
         } else {
@@ -137,7 +137,7 @@ impl RwLock {
     #[inline]
     unsafe fn __write_unlock(
         &self,
-        rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZero<usize>>>>,
         wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
         match WaitQueue::notify_one(wguard) {
