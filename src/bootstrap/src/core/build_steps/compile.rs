@@ -404,7 +404,7 @@ fn copy_self_contained_objects(
                 )
             })
             .join("lib")
-            .join(target.to_string().replace("-preview1", "").replace("p2", ""));
+            .join(target.to_string().replace("-preview1", "").replace("p2", "").replace("p1", ""));
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,

@@ -60,6 +60,7 @@
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
     - [*-unknown-openbsd](platform-support/openbsd.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
+    - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasi-preview1-threads](platform-support/wasm32-wasi-preview1-threads.md)
     - [wasm32-wasip2](platform-support/wasm32-wasip2.md)
     - [wasm64-unknown-unknown](platform-support/wasm64-unknown-unknown.md)
