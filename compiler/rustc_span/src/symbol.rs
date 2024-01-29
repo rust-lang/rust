@@ -1799,7 +1799,6 @@ symbols! {
         warn,
         wasm_abi,
         wasm_import_module,
-        wasm_preview2,
         wasm_target_feature,
         while_let,
         windows,
