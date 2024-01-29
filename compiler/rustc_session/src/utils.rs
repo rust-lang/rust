@@ -10,9 +10,9 @@ impl Session {
     /// Used by `-Z self-profile`.
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
         if self.prof.enabled() {
-            return self.prof.verbose_generic_activity(what).run(f)
+            return self.prof.verbose_generic_activity(what).run(f);
         } else {
-            return f()
+            return f();
         }
     }
 }
