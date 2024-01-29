@@ -2416,6 +2416,18 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_expr_in_pat)]
+pub(crate) struct UnexpectedExpressionInPattern {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    /// Was a `RangePatternBound` expected?
+    pub is_bound: bool,
+    /// Was the unexpected expression a `MethodCallExpression`?
+    pub is_method_call: bool,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_unexpected_paren_in_range_pat)]
 pub(crate) struct UnexpectedParenInRangePat {
     #[primary_span]

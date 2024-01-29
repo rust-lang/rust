@@ -2529,7 +2529,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Array(ty, length) => {
                 let length = match length {
-                    &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
+                    hir::ArrayLen::Infer(inf) => self.ct_infer(tcx.types.usize, None, inf.span),
                     hir::ArrayLen::Body(constant) => {
                         ty::Const::from_anon_const(tcx, constant.def_id)
                     }

@@ -1836,7 +1836,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Array(ty, ref length) => {
             let length = match length {
-                hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                hir::ArrayLen::Infer(..) => "_".to_string(),
                 hir::ArrayLen::Body(anon_const) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants

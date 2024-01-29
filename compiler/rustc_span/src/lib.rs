@@ -2105,7 +2105,7 @@ fn remove_bom(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
 
 /// Replaces `\r\n` with `\n` in-place in `src`.
 ///
-/// Returns error if there's a lone `\r` in the string.
+/// Leaves any occurrences of lone `\r` unchanged.
 fn normalize_newlines(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
     if !src.as_bytes().contains(&b'\r') {
         return;
