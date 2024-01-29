@@ -1009,7 +1009,8 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::CloneShim(..)
-        | ty::InstanceDef::FnPtrAddrShim(..) => {
+        | ty::InstanceDef::FnPtrAddrShim(..)
+        | ty::InstanceDef::CfiShim { .. } => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }

@@ -1,7 +1,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
-use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
+use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, Lift, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -135,6 +135,14 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
     FnPtrAddrShim(DefId, Ty<'tcx>),
+
+    /// Typecast shim which replaces the `Self` type with the provided type.
+    /// This is used in vtable calls, where the type of `Self` is abstract as of the time of
+    /// the call.
+    ///
+    /// `target_instance` will be an instantiable `InstanceDef`, either an `Item` for which
+    /// we have MIR available or a generatable shim.
+    CfiShim { target_instance: &'tcx InstanceDef<'tcx>, invoke_ty: Ty<'tcx> },
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -198,6 +206,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
+            InstanceDef::CfiShim { target_instance, .. } => target_instance.def_id(),
         }
     }
 
@@ -209,6 +218,7 @@ impl<'tcx> InstanceDef<'tcx> {
                 Some(def_id)
             }
             InstanceDef::VTableShim(..)
+            | InstanceDef::CfiShim { .. }
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::Virtual(..)
@@ -319,6 +329,17 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ReifyShim(..)
             | InstanceDef::Virtual(..)
             | InstanceDef::VTableShim(..) => true,
+            InstanceDef::CfiShim { target_instance, .. } => {
+                target_instance.has_polymorphic_mir_body()
+            }
+        }
+    }
+
+    pub fn is_vtable_shim(&self) -> bool {
+        match self {
+            InstanceDef::VTableShim(..) => true,
+            InstanceDef::CfiShim { target_instance, .. } => target_instance.is_vtable_shim(),
+            _ => false,
         }
     }
 }
@@ -339,6 +360,10 @@ fn fmt_instance_def(f: &mut fmt::Formatter<'_>, instance_def: &InstanceDef<'_>) 
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::CfiShim { invoke_ty, target_instance } => {
+            fmt_instance_def(f, target_instance)?;
+            write!(f, " - cfi-shim({invoke_ty})")
+        }
     }
 }
 
@@ -577,6 +602,34 @@ impl<'tcx> Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
+    pub fn cfi_shim(
+        mut self,
+        tcx: TyCtxt<'tcx>,
+        invoke_trait: Option<ty::PolyTraitRef<'tcx>>,
+    ) -> ty::Instance<'tcx> {
+        if tcx.sess.cfi_shims() {
+            let invoke_ty = if let Some(poly_trait_ref) = invoke_trait {
+                tcx.trait_object_ty(poly_trait_ref)
+            } else {
+                Ty::new_dynamic(tcx, ty::List::empty(), tcx.lifetimes.re_erased, ty::Dyn)
+            };
+            // If we're an Item and the `def_id` is not local, we may not have MIR available.
+            // If it's a closure, we can't ReifyShim it, just use it directly.
+            if let InstanceDef::Item(def_id) = self.def
+                && !def_id.is_local()
+                && !tcx.is_closure_like(def_id)
+            {
+                self.def = InstanceDef::ReifyShim(def_id);
+            }
+
+            self.def = InstanceDef::CfiShim {
+                target_instance: (&self.def).lift_to_tcx(tcx).expect("Could not lift for shimming"),
+                invoke_ty,
+            };
+        }
+        self
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

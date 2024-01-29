@@ -940,6 +940,21 @@ macro_rules! make_mir_visitor {
                         // FIXME(eddyb) use a better `TyContext` here.
                         self.visit_ty($(& $mutability *)? ty, TyContext::Location(location));
                     }
+                    ty::InstanceDef::CfiShim { target_instance, invoke_ty } => {
+                        self.visit_ty($(& $mutability *)? invoke_ty, TyContext::Location(location));
+                        let $($mutability)? local_target_instance = {
+                            $(
+                                let $mutability _unused = ();
+                                *
+                            )?
+                            *target_instance
+                        };
+                        self.visit_instance_def($(& $mutability)? local_target_instance);
+                        $(
+                            *target_instance = self.tcx().arena.alloc(local_target_instance);
+                            let $mutability _unused = ();
+                        )?
+                    }
                 }
             }
 

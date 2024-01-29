@@ -479,12 +479,36 @@ impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
     }
 }
 
+impl<'a, 'b, 'tcx> Lift<'tcx> for &'b ty::InstanceDef<'a> {
+    type Lifted = &'tcx ty::InstanceDef<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        let lifted: ty::InstanceDef<'tcx> = (*self).lift_to_tcx(tcx)?;
+        Some(tcx.arena.alloc(lifted))
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, _visitor: &mut V) -> V::Result {
         V::Result::output()
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for &ty::InstanceDef<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (*self).visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::InstanceDef<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let folded: ty::InstanceDef<'tcx> = (*self).try_fold_with(folder)?;
+        Ok(folder.interner().arena.alloc(folded))
     }
 }
 

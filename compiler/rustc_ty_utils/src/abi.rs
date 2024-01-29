@@ -61,7 +61,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 _ => unreachable!(),
             };
 
-            if let ty::InstanceDef::VTableShim(..) = instance.def {
+            if instance.def.is_vtable_shim() {
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();

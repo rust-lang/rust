@@ -40,24 +40,29 @@ pub(super) fn mangle<'tcx>(
         out: String::from(prefix),
     };
 
-    // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
+    // Append `::{shim:...#0}::<Args>` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
-        ty::InstanceDef::VTableShim(_) => Some("vtable"),
-        ty::InstanceDef::ReifyShim(_) => Some("reify"),
+        ty::InstanceDef::ThreadLocalShim(_) => Some(("tls", vec![])),
+        ty::InstanceDef::VTableShim(_) => Some(("vtable", vec![])),
+        ty::InstanceDef::ReifyShim(_) => Some(("reify", vec![])),
+        ty::InstanceDef::CfiShim { invoke_ty, .. } => Some(("cfi", vec![invoke_ty.into()])),
 
         ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }
         | ty::InstanceDef::CoroutineKindShim { target_kind, .. } => match target_kind {
             ty::ClosureKind::Fn => unreachable!(),
-            ty::ClosureKind::FnMut => Some("fn_mut"),
-            ty::ClosureKind::FnOnce => Some("fn_once"),
+            ty::ClosureKind::FnMut => Some(("fn_mut", vec![])),
+            ty::ClosureKind::FnOnce => Some(("fn_once", vec![])),
         },
 
         _ => None,
     };
 
-    if let Some(shim_kind) = shim_kind {
-        cx.path_append_ns(|cx| cx.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
+    if let Some((shim_kind, shim_args)) = shim_kind {
+        cx.path_generic_args(
+            |cx| cx.path_append_ns(|cx| cx.print_def_path(def_id, args), 'S', 0, shim_kind),
+            &shim_args,
+        )
+        .unwrap();
     } else {
         cx.print_def_path(def_id, args).unwrap()
     };

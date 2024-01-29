@@ -31,6 +31,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
+        ty::InstanceDef::CfiShim { .. } => bug!("cfi shim {instance:?} passed to make_shim"),
         ty::InstanceDef::VTableShim(def_id) => {
             let adjustment = Adjustment::Deref { source: DerefSource::MutPtr };
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))

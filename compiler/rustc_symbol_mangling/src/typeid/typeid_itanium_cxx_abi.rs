@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
-    TermKind, Ty, TyCtxt, UintTy,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, InstanceDef, IntTy, List, Region,
+    RegionKind, TermKind, Ty, TyCtxt, UintTy,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::DefId;
@@ -1079,11 +1079,59 @@ pub fn typeid_for_fnabi<'tcx>(
 /// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
 pub fn typeid_for_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: &Instance<'tcx>,
+    mut instance: Instance<'tcx>,
     options: TypeIdOptions,
 ) -> String {
+    if let InstanceDef::CfiShim { invoke_ty, .. } = instance.def {
+        if tcx.is_closure_like(instance.def_id()) {
+            // Closures don't have a fn_sig and can't be called directly.
+            // Adjust it into a call through
+            // `Fn`/`FnMut`/`FnOnce`/`AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`/`Coroutine`
+            // based on its receiver.
+            let ty::Dynamic(pep, _, _) = invoke_ty.kind() else {
+                bug!("Closure-like with non-dynamic invoke_ty {invoke_ty}")
+            };
+            let Some(fn_trait) = pep.principal_def_id() else {
+                bug!("Closure-like with no principal trait on invoke_ty {invoke_ty}")
+            };
+            let call = tcx
+                .associated_items(fn_trait)
+                .in_definition_order()
+                .find(|it| it.kind == ty::AssocKind::Fn)
+                .expect("No call-family function on closure-like principal trait?")
+                .def_id;
+
+            let self_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+            let tupled_inputs_ty =
+                instance.args.as_closure().sig().map_bound(|sig| sig.inputs()[0]);
+            let tupled_inputs_ty = tcx.instantiate_bound_regions_with_erased(tupled_inputs_ty);
+            instance.def = InstanceDef::Virtual(call, 0);
+            instance.args = tcx.mk_args_trait(self_ty, [tupled_inputs_ty.into()]);
+        } else if let Some(impl_id) = tcx.impl_of_method(instance.def_id()) {
+            // Trait methods will have a Self polymorphic parameter, where the concreteized
+            // implementatation will not. We need to walk back to the more general trait method
+            let Some(trait_ref) = tcx.impl_trait_ref(impl_id) else {
+                bug!("When trying to rewrite the type on {instance}, found inherent impl method")
+            };
+            let trait_ref = trait_ref.instantiate(tcx, instance.args);
+
+            let method_id = tcx
+                .impl_item_implementor_ids(impl_id)
+                .items()
+                .filter_map(|(trait_method, impl_method)| {
+                    (*impl_method == instance.def_id()).then_some(*trait_method)
+                })
+                .min()
+                .unwrap();
+            instance.def = InstanceDef::Virtual(method_id, 0);
+            instance.args = trait_ref.args;
+        }
+
+        instance.args = tcx.mk_args_trait(invoke_ty, instance.args.into_iter().skip(1));
+    }
+
     let fn_abi = tcx
-        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((*instance, ty::List::empty())))
+        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((instance, ty::List::empty())))
         .unwrap_or_else(|instance| {
             bug!("typeid_for_instance: couldn't get fn_abi of instance {:?}", instance)
         });

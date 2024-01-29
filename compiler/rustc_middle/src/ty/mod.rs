@@ -1730,6 +1730,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
+            ty::InstanceDef::CfiShim { target_instance, .. } => self.instance_mir(*target_instance),
         }
     }
 
