@@ -2,10 +2,14 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lin
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{fn_def_id, is_from_proc_macro, is_inside_let_else, path_to_local_id, span_find_starting_semi};
+use clippy_utils::{
+    fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res, path_to_local_id,
+    span_find_starting_semi,
+};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{
     Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
     StmtKind,
@@ -182,7 +186,15 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         if !in_external_macro(cx.sess(), stmt.span)
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
-            && let ExprKind::Match(.., MatchSource::TryDesugar(_)) = ret.kind
+            // return Err(...)? desugars to a match
+            // over a Err(...).branch()
+            // which breaks down to a branch call, with the callee being
+            // the constructor of the Err variant
+            && let ExprKind::Match(maybe_cons, _, MatchSource::TryDesugar(_)) = ret.kind
+            && let ExprKind::Call(_, [maybe_result_err]) = maybe_cons.kind
+            && let ExprKind::Call(maybe_constr, _) = maybe_result_err.kind
+            && is_res_lang_ctor(cx, path_res(cx, maybe_constr), ResultErr)
+
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn(_, _, body) = item.kind
