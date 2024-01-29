@@ -75,6 +75,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
+use std::iter::{once, repeat};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
@@ -84,6 +85,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
+use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
@@ -102,8 +104,8 @@ use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, FloatTy, IntTy, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeAndMut,
-    TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, ParamEnv,
+    ParamEnvAnd, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -3262,5 +3264,133 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
             } else {
                 RequiresSemi::No
             })
+    }
+}
+
+/// Produces a path from a local caller to the type of the called method. Suitable for user
+/// output/suggestions.
+///
+/// Returned path can be either absolute (for methods defined non-locally), or relative (for local
+/// methods).
+pub fn get_path_from_caller_to_method_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    from: LocalDefId,
+    method: DefId,
+    args: GenericArgsRef<'tcx>,
+) -> String {
+    let assoc_item = tcx.associated_item(method);
+    let def_id = assoc_item.container_id(tcx);
+    match assoc_item.container {
+        rustc_ty::TraitContainer => get_path_to_callee(tcx, from, def_id),
+        rustc_ty::ImplContainer => {
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            get_path_to_ty(tcx, from, ty, args)
+        },
+    }
+}
+
+fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args: GenericArgsRef<'tcx>) -> String {
+    match ty.kind() {
+        rustc_ty::Adt(adt, _) => get_path_to_callee(tcx, from, adt.did()),
+        // TODO these types need to be recursively resolved as well
+        rustc_ty::Array(..)
+        | rustc_ty::Dynamic(..)
+        | rustc_ty::Never
+        | rustc_ty::RawPtr(_)
+        | rustc_ty::Ref(..)
+        | rustc_ty::Slice(_)
+        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
+        _ => ty.to_string(),
+    }
+}
+
+/// Produce a path from some local caller to the callee. Suitable for user output/suggestions.
+fn get_path_to_callee(tcx: TyCtxt<'_>, from: LocalDefId, callee: DefId) -> String {
+    // only search for a relative path if the call is fully local
+    if callee.is_local() {
+        let callee_path = tcx.def_path(callee);
+        let caller_path = tcx.def_path(from.to_def_id());
+        maybe_get_relative_path(&caller_path, &callee_path, 2)
+    } else {
+        tcx.def_path_str(callee)
+    }
+}
+
+/// Tries to produce a relative path from `from` to `to`; if such a path would contain more than
+/// `max_super` `super` items, produces an absolute path instead. Both `from` and `to` should be in
+/// the local crate.
+///
+/// Suitable for user output/suggestions.
+///
+/// This ignores use items, and assumes that the target path is visible from the source
+/// path (which _should_ be a reasonable assumption since we in order to be able to use an object of
+/// certain type T, T is required to be visible).
+///
+/// TODO make use of `use` items. Maybe we should have something more sophisticated like
+/// rust-analyzer does? <https://docs.rs/ra_ap_hir_def/0.0.169/src/ra_ap_hir_def/find_path.rs.html#19-27>
+fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> String {
+    use itertools::EitherOrBoth::{Both, Left, Right};
+
+    // 1. skip the segments common for both paths (regardless of their type)
+    let unique_parts = to
+        .data
+        .iter()
+        .zip_longest(from.data.iter())
+        .skip_while(|el| matches!(el, Both(l, r) if l == r))
+        .map(|el| match el {
+            Both(l, r) => Both(l.data, r.data),
+            Left(l) => Left(l.data),
+            Right(r) => Right(r.data),
+        });
+
+    // 2. for the remaning segments, construct relative path using only mod names and `super`
+    let mut go_up_by = 0;
+    let mut path = Vec::new();
+    for el in unique_parts {
+        match el {
+            Both(l, r) => {
+                // consider:
+                // a::b::sym:: ::    refers to
+                // c::d::e  ::f::sym
+                // result should be super::super::c::d::e::f
+                //
+                // alternatively:
+                // a::b::c  ::d::sym refers to
+                // e::f::sym:: ::
+                // result should be super::super::super::super::e::f
+                if let DefPathData::TypeNs(s) = l {
+                    path.push(s.to_string());
+                }
+                if let DefPathData::TypeNs(_) = r {
+                    go_up_by += 1;
+                }
+            },
+            // consider:
+            // a::b::sym:: ::    refers to
+            // c::d::e  ::f::sym
+            // when looking at `f`
+            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
+            // consider:
+            // a::b::c  ::d::sym refers to
+            // e::f::sym:: ::
+            // when looking at `d`
+            Right(DefPathData::TypeNs(_)) => go_up_by += 1,
+            _ => {},
+        }
+    }
+
+    if go_up_by > max_super {
+        // `super` chain would be too long, just use the absolute path instead
+        once(String::from("crate"))
+            .chain(to.data.iter().filter_map(|el| {
+                if let DefPathData::TypeNs(sym) = el.data {
+                    Some(sym.to_string())
+                } else {
+                    None
+                }
+            }))
+            .join("::")
+    } else {
+        repeat(String::from("super")).take(go_up_by).chain(path).join("::")
     }
 }
