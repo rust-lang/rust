@@ -245,13 +245,27 @@ macro_rules! iterator {
             // because this simple implementation generates less LLVM IR and is
             // faster to compile.
             #[inline]
-            fn for_each<F>(mut self, mut f: F)
+            fn for_each<F>(self, mut f: F)
             where
                 Self: Sized,
                 F: FnMut(Self::Item),
             {
-                while let Some(x) = self.next() {
-                    f(x);
+                if is_empty!(self) {
+                    return;
+                }
+                let mut i = 0;
+                let len = len!(self);
+                loop {
+                    // SAFETY: the loop iterates `i in 0..len`, which always is in bounds of
+                    // the slice allocation
+                    f(unsafe { & $( $mut_ )? *self.ptr.add(i).as_ptr() });
+                    // SAFETY: `i` can't overflow since it'll only reach usize::MAX if the
+                    // slice had that length, in which case we'll break out of the loop
+                    // after the increment
+                    i = unsafe { i.unchecked_add(1) };
+                    if i == len {
+                        break;
+                    }
                 }
             }
 
