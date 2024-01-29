@@ -46,6 +46,13 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_) => Some("reify"),
 
+        ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }
+        | ty::InstanceDef::CoroutineKindShim { target_kind, .. } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!(),
+            ty::ClosureKind::FnMut => Some("fn_mut"),
+            ty::ClosureKind::FnOnce => Some("fn_once"),
+        },
+
         _ => None,
     };
 

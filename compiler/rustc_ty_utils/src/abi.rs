@@ -145,7 +145,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             )
         }
         ty::Coroutine(did, args) => {
-            // FIXME(async_closures): This isn't right for `CoroutineByMoveShim`.
+            // FIXME(async_closures): This isn't right for `CoroutineKindShim`.
 
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();

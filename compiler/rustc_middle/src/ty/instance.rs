@@ -102,10 +102,12 @@ pub enum InstanceDef<'tcx> {
     },
 
     /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
-    /// is called on a coroutine-closure whose closure kind is not `FnOnce`. This
-    /// will select the body that is produced by the `ByMoveBody` transform, and thus
+    /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
+    /// similarly for `AsyncFnMut`.
+    ///
+    /// This will select the body that is produced by the `ByMoveBody` transform, and thus
     /// take and use all of its upvars by-move rather than by-ref.
-    CoroutineByMoveShim { coroutine_def_id: DefId },
+    CoroutineKindShim { coroutine_def_id: DefId, target_kind: ty::ClosureKind },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
@@ -192,7 +194,7 @@ impl<'tcx> InstanceDef<'tcx> {
                 coroutine_closure_def_id: def_id,
                 target_kind: _,
             }
-            | ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id: def_id }
+            | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id, target_kind: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -213,7 +215,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceDef::CoroutineByMoveShim { .. }
+            | ty::InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
@@ -310,7 +312,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
-            | InstanceDef::CoroutineByMoveShim { .. }
+            | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -349,7 +351,7 @@ fn fmt_instance(
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
         InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
-        InstanceDef::CoroutineByMoveShim { .. } => write!(f, " - shim"),
+        InstanceDef::CoroutineKindShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -651,13 +653,11 @@ impl<'tcx> Instance<'tcx> {
             if args.as_coroutine().kind_ty() == id_args.as_coroutine().kind_ty() {
                 Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
             } else {
-                assert_eq!(
-                    args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
-                    ty::ClosureKind::FnOnce,
-                    "FIXME(async_closures): Generate a by-mut body here."
-                );
                 Some(Instance {
-                    def: ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id },
+                    def: ty::InstanceDef::CoroutineKindShim {
+                        coroutine_def_id,
+                        target_kind: args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
+                    },
                     args,
                 })
             }

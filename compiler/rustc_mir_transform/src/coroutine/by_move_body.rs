@@ -6,7 +6,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{self, MirPass};
+use rustc_middle::mir::{self, dump_mir, MirPass};
 use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
 use rustc_target::abi::FieldIdx;
 
@@ -24,7 +24,9 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         };
         let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
         let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!() };
-        if args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap() == ty::ClosureKind::FnOnce {
+
+        let coroutine_kind = args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap();
+        if coroutine_kind == ty::ClosureKind::FnOnce {
             return;
         }
 
@@ -58,14 +60,49 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
 
         let mut by_move_body = body.clone();
         MakeByMoveBody { tcx, by_ref_fields, by_move_coroutine_ty }.visit_body(&mut by_move_body);
+        dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
         by_move_body.source = mir::MirSource {
-            instance: InstanceDef::CoroutineByMoveShim {
+            instance: InstanceDef::CoroutineKindShim {
                 coroutine_def_id: coroutine_def_id.to_def_id(),
+                target_kind: ty::ClosureKind::FnOnce,
             },
             promoted: None,
         };
-
         body.coroutine.as_mut().unwrap().by_move_body = Some(by_move_body);
+
+        // If this is coming from an `AsyncFn` coroutine-closure, we must also create a by-mut body.
+        // This is actually just a copy of the by-ref body, but with a different self type.
+        // FIXME(async_closures): We could probably unify this with the by-ref body somehow.
+        if coroutine_kind == ty::ClosureKind::Fn {
+            let by_mut_coroutine_ty = Ty::new_coroutine(
+                tcx,
+                coroutine_def_id.to_def_id(),
+                ty::CoroutineArgs::new(
+                    tcx,
+                    ty::CoroutineArgsParts {
+                        parent_args: args.as_coroutine().parent_args(),
+                        kind_ty: Ty::from_closure_kind(tcx, ty::ClosureKind::FnMut),
+                        resume_ty: args.as_coroutine().resume_ty(),
+                        yield_ty: args.as_coroutine().yield_ty(),
+                        return_ty: args.as_coroutine().return_ty(),
+                        witness: args.as_coroutine().witness(),
+                        tupled_upvars_ty: args.as_coroutine().tupled_upvars_ty(),
+                    },
+                )
+                .args,
+            );
+            let mut by_mut_body = body.clone();
+            by_mut_body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = by_mut_coroutine_ty;
+            dump_mir(tcx, false, "coroutine_by_mut", &0, &by_mut_body, |_, _| Ok(()));
+            by_mut_body.source = mir::MirSource {
+                instance: InstanceDef::CoroutineKindShim {
+                    coroutine_def_id: coroutine_def_id.to_def_id(),
+                    target_kind: ty::ClosureKind::FnMut,
+                },
+                promoted: None,
+            };
+            body.coroutine.as_mut().unwrap().by_mut_body = Some(by_mut_body);
+        }
     }
 }
 

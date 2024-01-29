@@ -403,7 +403,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::ConstructCoroutineInClosureShim { .. }
-                            | InstanceDef::CoroutineByMoveShim { .. }
+                            | InstanceDef::CoroutineKindShim { .. }
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
                             | InstanceDef::ThreadLocalShim(..)

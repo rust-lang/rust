@@ -88,7 +88,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
                 | InstanceDef::ConstructCoroutineInClosureShim { .. }
-                | InstanceDef::CoroutineByMoveShim { .. }
+                | InstanceDef::CoroutineKindShim { .. }
                 | InstanceDef::ThreadLocalShim { .. }
                 | InstanceDef::CloneShim(..) => {}
 

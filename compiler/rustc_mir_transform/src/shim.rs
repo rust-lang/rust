@@ -72,32 +72,70 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         } => match target_kind {
             ty::ClosureKind::Fn => unreachable!("shouldn't be building shim for Fn"),
             ty::ClosureKind::FnMut => {
-                let body = build_construct_coroutine_by_mut_shim(tcx, coroutine_closure_def_id);
-                // No need to optimize the body, it has already been optimized.
-                return body;
+                // No need to optimize the body, it has already been optimized
+                // since we steal it from the `AsyncFn::call` body and just fix
+                // the return type.
+                return build_construct_coroutine_by_mut_shim(tcx, coroutine_closure_def_id);
             }
             ty::ClosureKind::FnOnce => {
                 build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id)
             }
         },
 
-        ty::InstanceDef::CoroutineByMoveShim { coroutine_def_id } => {
-            return tcx
-                .optimized_mir(coroutine_def_id)
-                .coroutine
-                .as_ref()
-                .unwrap()
-                .by_move_body
-                .as_ref()
-                .unwrap()
-                .clone();
-        }
+        ty::InstanceDef::CoroutineKindShim { coroutine_def_id, target_kind } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!(),
+            ty::ClosureKind::FnMut => {
+                return tcx
+                    .optimized_mir(coroutine_def_id)
+                    .coroutine_by_mut_body()
+                    .unwrap()
+                    .clone();
+            }
+            ty::ClosureKind::FnOnce => {
+                return tcx
+                    .optimized_mir(coroutine_def_id)
+                    .coroutine_by_move_body()
+                    .unwrap()
+                    .clone();
+            }
+        },
 
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
             if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
-                let body = tcx.optimized_mir(*coroutine_def_id).coroutine_drop().unwrap();
+                let coroutine_body = tcx.optimized_mir(*coroutine_def_id);
+
+                let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+                else {
+                    bug!()
+                };
+
+                // If this is a regular coroutine, grab its drop shim. If this is a coroutine
+                // that comes from a coroutine-closure, and the kind ty differs from the "maximum"
+                // kind that it supports, then grab the appropriate drop shim. This ensures that
+                // the future returned by `<[coroutine-closure] as AsyncFnOnce>::call_once` will
+                // drop the coroutine-closure's upvars.
+                let body = if id_args.as_coroutine().kind_ty() == args.as_coroutine().kind_ty() {
+                    coroutine_body.coroutine_drop().unwrap()
+                } else {
+                    match args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap() {
+                        ty::ClosureKind::Fn => {
+                            unreachable!()
+                        }
+                        ty::ClosureKind::FnMut => coroutine_body
+                            .coroutine_by_mut_body()
+                            .unwrap()
+                            .coroutine_drop()
+                            .unwrap(),
+                        ty::ClosureKind::FnOnce => coroutine_body
+                            .coroutine_by_move_body()
+                            .unwrap()
+                            .coroutine_drop()
+                            .unwrap(),
+                    }
+                };
+
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
@@ -1076,7 +1114,11 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         target_kind: ty::ClosureKind::FnOnce,
     });
 
-    new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+    let body =
+        new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);
+    dump_mir(tcx, false, "coroutine_closure_by_move", &0, &body, |_, _| Ok(()));
+
+    body
 }
 
 fn build_construct_coroutine_by_mut_shim<'tcx>(
@@ -1109,6 +1151,9 @@ fn build_construct_coroutine_by_mut_shim<'tcx>(
         coroutine_closure_def_id,
         target_kind: ty::ClosureKind::FnMut,
     });
+
+    body.pass_count = 0;
+    dump_mir(tcx, false, "coroutine_closure_by_mut", &0, &body, |_, _| Ok(()));
 
     body
 }

@@ -64,16 +64,29 @@ pub(super) fn mangle<'tcx>(
         )
         .unwrap();
 
-    if let ty::InstanceDef::ThreadLocalShim(..) = instance.def {
-        let _ = printer.write_str("{{tls-shim}}");
-    }
-
-    if let ty::InstanceDef::VTableShim(..) = instance.def {
-        let _ = printer.write_str("{{vtable-shim}}");
-    }
-
-    if let ty::InstanceDef::ReifyShim(..) = instance.def {
-        let _ = printer.write_str("{{reify-shim}}");
+    match instance.def {
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            printer.write_str("{{tls-shim}}").unwrap();
+        }
+        ty::InstanceDef::VTableShim(..) => {
+            printer.write_str("{{vtable-shim}}").unwrap();
+        }
+        ty::InstanceDef::ReifyShim(..) => {
+            printer.write_str("{{reify-shim}}").unwrap();
+        }
+        // FIXME(async_closures): This shouldn't be needed when we fix
+        // `Instance::ty`/`Instance::def_id`.
+        ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }
+        | ty::InstanceDef::CoroutineKindShim { target_kind, .. } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!(),
+            ty::ClosureKind::FnMut => {
+                printer.write_str("{{fn-mut-shim}}").unwrap();
+            }
+            ty::ClosureKind::FnOnce => {
+                printer.write_str("{{fn-once-shim}}").unwrap();
+            }
+        },
+        _ => {}
     }
 
     printer.path.finish(hash)
