@@ -292,13 +292,8 @@ macro_rules! foo { () => { println!(); } }
 fn main() { foo!(); }
 ```
 
-In this code, the AST nodes that are finally generated would have hierarchy:
-
-```
-root
-    expn_id_foo
-        expn_id_println
-```
+In this code, the AST nodes that are finally generated would have hierarchy
+`root -> id(foo) -> id(println)`.
 
 ### The Macro Definition Hierarchy
 
@@ -397,8 +392,9 @@ macro foo($i: ident) { $i }
 foo!(bar!(baz));
 ```
 
-For the `baz` AST node in the final output, the first hierarchy is `ROOT ->
-id(foo) -> id(bar) -> baz`, while the third hierarchy is `ROOT -> baz`.
+For the `baz` AST node in the final output, the expansion-order hierarchy is
+`ROOT -> id(foo) -> id(bar) -> baz`, while the call-site hierarchy is `ROOT ->
+baz`.
 
 ### Macro Backtraces
 
