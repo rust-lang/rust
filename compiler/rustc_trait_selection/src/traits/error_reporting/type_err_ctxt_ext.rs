@@ -19,8 +19,8 @@ use crate::traits::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, StashKey, Style,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan, StashKey, Style,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -2529,7 +2529,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                  corresponding `impl` type",
                             ),
                         );
-                        err.code(rustc_errors::error_code!(E0790));
+                        err.code(E0790);
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let Some(hir::Node::Item(hir::Item {
@@ -3162,7 +3162,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::ItemObligation(def_id)
                 if self.tcx.is_fn_trait(*def_id) =>
             {
-                err.code(rustc_errors::error_code!(E0059));
+                err.code(E0059);
                 err.primary_message(format!(
                     "type parameter to bare `{}` trait must be a tuple",
                     self.tcx.def_path_str(*def_id)

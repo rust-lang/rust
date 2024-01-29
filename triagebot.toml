@@ -476,7 +476,7 @@ of `ObligationCtxt`.
 """
 cc = ["@lcnr", "@compiler-errors"]
 
-[mentions."compiler/rustc_error_codes/src/error_codes.rs"]
+[mentions."compiler/rustc_error_codes/src/lib.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 

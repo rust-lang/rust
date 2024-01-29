@@ -13,7 +13,7 @@ use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    error_code, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
     MultiSpan, Style, SuggestionStyle,
 };
 use rustc_hir as hir;
@@ -2014,7 +2014,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return false;
         };
 
-        err.code(error_code!(E0746));
+        err.code(E0746);
         err.primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
 

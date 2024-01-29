@@ -1,7 +1,7 @@
 use crate::diagnostic::IntoDiagnosticArg;
 use crate::{DiagCtxt, Level, MultiSpan, StashKey};
 use crate::{
-    Diagnostic, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed, ExplicitBug,
+    Diagnostic, DiagnosticMessage, DiagnosticStyledString, ErrCode, ErrorGuaranteed, ExplicitBug,
     SubdiagnosticMessage,
 };
 use rustc_lint_defs::Applicability;
@@ -399,7 +399,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         name: String, has_future_breakage: bool,
     ));
     forward!((code, with_code)(
-        s: String,
+        code: ErrCode,
     ));
     forward!((arg, with_arg)(
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
@@ -439,12 +439,7 @@ impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
 
 #[macro_export]
 macro_rules! struct_span_code_err {
-    ($dcx:expr, $span:expr, $code:ident, $($message:tt)*) => ({
-        $dcx.struct_span_err($span, format!($($message)*)).with_code($crate::error_code!($code))
+    ($dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
+        $dcx.struct_span_err($span, format!($($message)*)).with_code($code)
     })
-}
-
-#[macro_export]
-macro_rules! error_code {
-    ($code:ident) => {{ stringify!($code).to_owned() }};
 }

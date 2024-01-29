@@ -3,17 +3,16 @@
 
 // ignore-tidy-filelength
 
-use crate::errors;
-use crate::errors::{CandidateTraitNote, NoAssociatedItem};
+use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::StashKey;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

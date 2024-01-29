@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, IntoDiagnostic, Level,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, IntoDiagnostic, Level,
     SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -25,7 +25,7 @@ pub(crate) struct AmbiguousPlus {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_maybe_recover_from_bad_type_plus, code = "E0178")]
+#[diag(parse_maybe_recover_from_bad_type_plus, code = E0178)]
 pub(crate) struct BadTypePlus {
     pub ty: String,
     #[primary_span]
@@ -807,7 +807,7 @@ pub(crate) struct InclusiveRangeMatchArrow {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_inclusive_range_no_end, code = "E0586")]
+#[diag(parse_inclusive_range_no_end, code = E0586)]
 #[note]
 pub(crate) struct InclusiveRangeNoEnd {
     #[primary_span]
@@ -901,7 +901,7 @@ pub(crate) struct MismatchedClosingDelimiter {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_incorrect_visibility_restriction, code = "E0704")]
+#[diag(parse_incorrect_visibility_restriction, code = E0704)]
 #[help]
 pub(crate) struct IncorrectVisibilityRestriction {
     #[primary_span]
@@ -925,7 +925,7 @@ pub(crate) struct ExpectedStatementAfterOuterAttr {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_doc_comment_does_not_document_anything, code = "E0585")]
+#[diag(parse_doc_comment_does_not_document_anything, code = E0585)]
 #[help]
 pub(crate) struct DocCommentDoesNotDocumentAnything {
     #[primary_span]
@@ -1357,7 +1357,7 @@ pub(crate) struct AttributeOnParamType {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_pattern_method_param_without_body, code = "E0642")]
+#[diag(parse_pattern_method_param_without_body, code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]
     #[suggestion(code = "_", applicability = "machine-applicable")]
@@ -1565,7 +1565,7 @@ pub(crate) struct WhereClauseBeforeTupleStructBodySugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_async_fn_in_2015, code = "E0670")]
+#[diag(parse_async_fn_in_2015, code = E0670)]
 pub(crate) struct AsyncFnIn2015 {
     #[primary_span]
     #[label]
@@ -1929,7 +1929,7 @@ pub struct CrDocComment {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_no_digits_literal, code = "E0768")]
+#[diag(parse_no_digits_literal, code = E0768)]
 pub struct NoDigitsLiteral {
     #[primary_span]
     pub span: Span,
@@ -2499,7 +2499,7 @@ pub(crate) struct FnPointerCannotBeAsync {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_nested_c_variadic_type, code = "E0743")]
+#[diag(parse_nested_c_variadic_type, code = E0743)]
 pub(crate) struct NestedCVariadicType {
     #[primary_span]
     pub span: Span,

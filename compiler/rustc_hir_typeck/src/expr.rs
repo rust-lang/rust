@@ -25,8 +25,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, StashKey,
+    codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic,
+    DiagnosticBuilder, ErrCode, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -527,7 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, E0533, "value");
                 Ty::new_error(tcx, e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
@@ -939,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_lhs_assignable(
         &self,
         lhs: &'tcx hir::Expr<'tcx>,
-        err_code: &'static str,
+        code: ErrCode,
         op_span: Span,
         adjust_err: impl FnOnce(&mut Diagnostic),
     ) {
@@ -948,7 +948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
-        err.code(err_code.into());
+        err.code(code);
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diag.emit();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", span, |err| {
+        self.check_lhs_assignable(lhs, E0070, span, |err| {
             if let Some(rhs_ty) = self.typeck_results.borrow().expr_ty_opt(rhs) {
                 suggest_deref_binop(err, rhs_ty);
             }

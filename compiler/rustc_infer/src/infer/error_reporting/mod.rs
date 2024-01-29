@@ -60,7 +60,7 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
     DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
@@ -2362,9 +2362,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .dcx()
             .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
         err.code(match sub.kind() {
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-            ty::ReStatic => error_code!(E0310),
-            _ => error_code!(E0311),
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => E0309,
+            ty::ReStatic => E0310,
+            _ => E0311,
         });
 
         '_explain: {

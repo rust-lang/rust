@@ -15,7 +15,7 @@ use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{translation::Translate, DiagCtxt, FatalError, Level};
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Style};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, ErrCode, Style};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -1000,7 +1000,7 @@ type DiagnosticArgName<'source> = Cow<'source, str>;
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
     args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
-    code: Option<String>,
+    code: Option<ErrCode>,
     lvl: Level,
 }
 

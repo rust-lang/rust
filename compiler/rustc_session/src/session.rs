@@ -22,7 +22,7 @@ use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage,
+    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrCode,
     ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
@@ -316,7 +316,7 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            err.code(error_code!(E0658));
+            err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
         err
@@ -893,7 +893,7 @@ impl Session {
         CodegenUnits::Default(16)
     }
 
-    pub fn teach(&self, code: &str) -> bool {
+    pub fn teach(&self, code: ErrCode) -> bool {
         self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }
 

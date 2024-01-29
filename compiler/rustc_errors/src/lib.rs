@@ -2,23 +2,26 @@
 //!
 //! This module contains the code for creating and emitting diagnostics.
 
+// tidy-alphabetical-start
+#![allow(incomplete_features)]
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
+#![feature(error_reporter)]
 #![feature(extract_if)]
 #![feature(let_chains)]
+#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(yeet_expr)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![feature(error_reporter)]
-#![allow(incomplete_features)]
-#![allow(internal_features)]
+#![feature(yeet_expr)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;
@@ -28,6 +31,7 @@ extern crate tracing;
 
 extern crate self as rustc_errors;
 
+pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
@@ -76,6 +80,7 @@ use std::path::{Path, PathBuf};
 use Level::*;
 
 pub mod annotate_snippet_emitter_writer;
+pub mod codes;
 mod diagnostic;
 mod diagnostic_builder;
 mod diagnostic_impls;
@@ -444,10 +449,10 @@ struct DiagCtxtInner {
     /// This set contains the code of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
     /// would be unnecessary repetition.
-    taught_diagnostics: FxHashSet<String>,
+    taught_diagnostics: FxHashSet<ErrCode>,
 
     /// Used to suggest rustc --explain `<error code>`
-    emitted_diagnostic_codes: FxIndexSet<String>,
+    emitted_diagnostic_codes: FxIndexSet<ErrCode>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
     /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
@@ -1002,9 +1007,9 @@ impl DiagCtxt {
             let mut error_codes = inner
                 .emitted_diagnostic_codes
                 .iter()
-                .filter_map(|code| {
+                .filter_map(|&code| {
                     if registry.try_find_description(code).is_ok().clone() {
-                        Some(code.clone())
+                        Some(code.to_string())
                     } else {
                         None
                     }
@@ -1050,8 +1055,8 @@ impl DiagCtxt {
     ///
     /// Used to suppress emitting the same error multiple times with extended explanation when
     /// calling `-Zteach`.
-    pub fn must_teach(&self, code: &str) -> bool {
-        self.inner.borrow_mut().taught_diagnostics.insert(code.to_string())
+    pub fn must_teach(&self, code: ErrCode) -> bool {
+        self.inner.borrow_mut().taught_diagnostics.insert(code)
     }
 
     pub fn force_print_diagnostic(&self, db: Diagnostic) {
@@ -1311,8 +1316,8 @@ impl DiagCtxtInner {
 
         let mut guaranteed = None;
         (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
-            if let Some(ref code) = diagnostic.code {
-                self.emitted_diagnostic_codes.insert(code.clone());
+            if let Some(code) = diagnostic.code {
+                self.emitted_diagnostic_codes.insert(code);
             }
 
             let already_emitted = {
