@@ -329,6 +329,27 @@ fn test() {
                 FileId(0) 75..84 Test
             "#]],
         );
+
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[::core::prelude::v1::test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 96..105 Test
+            "#]],
+        );
     }
 
     #[test]
