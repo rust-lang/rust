@@ -627,7 +627,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceDef::Virtual(..)
                 | ty::InstanceDef::CloneShim(..)
                 | ty::InstanceDef::ThreadLocalShim(..)
-                | ty::InstanceDef::FnPtrAddrShim(..) => return None,
+                | ty::InstanceDef::FnPtrAddrShim(..)
+                | ty::InstanceDef::CfiShim { .. } => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -789,7 +790,8 @@ fn mono_item_visibility<'tcx>(
         | InstanceDef::CoroutineKindShim { .. }
         | InstanceDef::DropGlue(..)
         | InstanceDef::CloneShim(..)
-        | InstanceDef::FnPtrAddrShim(..) => return Visibility::Hidden,
+        | InstanceDef::FnPtrAddrShim(..)
+        | InstanceDef::CfiShim { .. } => return Visibility::Hidden,
     };
 
     // The `start_fn` lang item is actually a monomorphized instance of a
@@ -1141,7 +1143,12 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {
-            MonoItem::Fn(ref instance) => Some(instance.def_id()),
+            // Don't count CfiShim's def_id, that resolves to a child instance
+            MonoItem::Fn(ref instance)
+                if !matches!(instance.def, ty::InstanceDef::CfiShim { .. }) =>
+            {
+                Some(instance.def_id())
+            }
             MonoItem::Static(def_id) => Some(def_id),
             _ => None,
         })

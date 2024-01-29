@@ -391,6 +391,15 @@ impl Session {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
     }
 
+    /// Should CFI shims be generated for vtable calls
+    pub fn cfi_shims(&self) -> bool {
+        // Keeping this predicate in one place will allow us to:
+        // 1. Migrate LLVM-CFI off this in the future via multiple type tags
+        //    (KCFI will require it forever)
+        // 2. Test shim generation without type enforcement
+        self.is_sanitizer_cfi_enabled() || self.is_sanitizer_kcfi_enabled()
+    }
+
     pub fn is_split_lto_unit_enabled(&self) -> bool {
         self.opts.unstable_opts.split_lto_unit == Some(true)
     }

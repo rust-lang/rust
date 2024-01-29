@@ -17,7 +17,7 @@ use std::iter;
 
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
-    pass_manager as pm, remove_noop_landing_pads, simplify,
+    pass_manager as pm, remove_noop_landing_pads, rewrite_receiver, simplify,
 };
 use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
@@ -49,6 +49,21 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             };
 
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect(ty))
+        }
+        ty::InstanceDef::CfiShim { target_instance, invoke_ty } => {
+            let mut body = make_shim(tcx, *target_instance);
+            body.source.instance = instance;
+            let receiver = target_instance
+                .fn_sig(tcx)
+                .map_bound(|sig| tcx.instantiate_bound_regions_with_erased(sig).inputs()[0])
+                .instantiate(tcx, tcx.mk_args(&[invoke_ty.into()]));
+            pm::run_passes(
+                tcx,
+                &mut body,
+                &[&rewrite_receiver::RewriteReceiver::new(receiver)],
+                None,
+            );
+            return body;
         }
         // We are generating a call back to our def-id, which the
         // codegen backend knows to turn to an actual call, be it

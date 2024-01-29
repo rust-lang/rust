@@ -1723,7 +1723,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
+            | ty::InstanceDef::FnPtrAddrShim(..)
+            | ty::InstanceDef::CfiShim { .. } => self.mir_shims(instance),
         }
     }
 

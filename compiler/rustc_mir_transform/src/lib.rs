@@ -101,6 +101,7 @@ mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
 mod reveal_all;
+mod rewrite_receiver;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup

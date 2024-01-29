@@ -74,6 +74,11 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceDef::ReifyShim(..) => {
             printer.write_str("{{reify-shim}}").unwrap();
         }
+        ty::InstanceDef::CfiShim { invoke_ty, .. } => {
+            printer.write_str("{{cfi-shim::<").unwrap();
+            printer.print_type(invoke_ty).unwrap();
+            printer.write_str(">}}").unwrap();
+        }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
         ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }

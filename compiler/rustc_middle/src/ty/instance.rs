@@ -1,7 +1,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
-use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
+use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, Lift, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -135,14 +135,26 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
     FnPtrAddrShim(DefId, Ty<'tcx>),
+
+    /// Typecast shim which replaces the `Self` type with the provided type.
+    /// This is used in vtable calls, where the type of `Self` is abstract as of the time of
+    /// the call.
+    ///
+    /// `target_instance` should be a generatable shim. This shim will have a transmute prefixed to
+    /// it to cast the receiver from abstract to concrete.
+    CfiShim { target_instance: &'tcx InstanceDef<'tcx>, invoke_ty: Ty<'tcx> },
 }
 
 impl<'tcx> Instance<'tcx> {
     /// Returns the `Ty` corresponding to this `Instance`, with generic instantiations applied and
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
-        let ty = tcx.type_of(self.def.def_id());
-        tcx.instantiate_and_normalize_erasing_regions(self.args, param_env, ty)
+        let args = if let InstanceDef::CfiShim { invoke_ty, .. } = self.def {
+            tcx.mk_args_trait(invoke_ty, (*self.args).into_iter().skip(1))
+        } else {
+            self.args
+        };
+        tcx.instantiate_and_normalize_erasing_regions(args, param_env, tcx.type_of(self.def_id()))
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -198,6 +210,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
+            InstanceDef::CfiShim { target_instance, .. } => target_instance.def_id(),
         }
     }
 
@@ -209,6 +222,7 @@ impl<'tcx> InstanceDef<'tcx> {
                 Some(def_id)
             }
             InstanceDef::VTableShim(..)
+            | InstanceDef::CfiShim { .. }
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::Virtual(..)
@@ -319,6 +333,9 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ReifyShim(..)
             | InstanceDef::Virtual(..)
             | InstanceDef::VTableShim(..) => true,
+            InstanceDef::CfiShim { target_instance, .. } => {
+                target_instance.has_polymorphic_mir_body()
+            }
         }
     }
 
@@ -360,6 +377,10 @@ fn fmt_instance_def(f: &mut fmt::Formatter<'_>, instance_def: &InstanceDef<'_>) 
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::CfiShim { invoke_ty, target_instance } => {
+            fmt_instance_def(f, target_instance)?;
+            write!(f, " - cfi-shim({invoke_ty})")
+        }
     }
 }
 
@@ -598,6 +619,75 @@ impl<'tcx> Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
+    pub fn cfi_shim(
+        mut self,
+        tcx: TyCtxt<'tcx>,
+        invoke_trait: Option<ty::PolyTraitRef<'tcx>>,
+    ) -> ty::Instance<'tcx> {
+        if tcx.sess.cfi_shims() {
+            let invoke_ty = if let Some(poly_trait_ref) = invoke_trait {
+                tcx.trait_object_ty(poly_trait_ref)
+            } else {
+                Ty::new_dynamic(tcx, ty::List::empty(), tcx.lifetimes.re_erased, ty::Dyn)
+            };
+            if tcx.is_closure_like(self.def.def_id()) {
+                // Closures don't have a fn_sig and can't be called directly.
+                // Adjust it into a call through
+                // `Fn`/`FnMut`/`FnOnce`/`AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`/`Coroutine`
+                // based on its receiver.
+                let ty::TyKind::Dynamic(pep, _, _) = invoke_ty.kind() else {
+                    bug!("Closure-like with non-dynamic invoke_ty {invoke_ty}")
+                };
+                let Some(fn_trait) = pep.principal_def_id() else {
+                    bug!("Closure-like with no principal trait on invoke_ty {invoke_ty}")
+                };
+                let call = tcx
+                    .associated_items(fn_trait)
+                    .in_definition_order()
+                    .find(|it| it.kind == ty::AssocKind::Fn)
+                    .expect("No call-family function on closure-like principal trait?")
+                    .def_id;
+
+                let self_ty = self.ty(tcx, ty::ParamEnv::reveal_all());
+                let tupled_inputs_ty =
+                    self.args.as_closure().sig().map_bound(|sig| sig.inputs()[0]);
+                let tupled_inputs_ty = tcx.instantiate_bound_regions_with_erased(tupled_inputs_ty);
+                self.args = tcx.mk_args_trait(self_ty, [tupled_inputs_ty.into()]);
+                self.def = InstanceDef::ReifyShim(call);
+            } else if let Some(impl_id) = tcx.impl_of_method(self.def.def_id()) {
+                // Trait methods will have a Self polymorphic parameter, where the concreteized
+                // implementatation will not. We need to walk back to the more general trait method
+                // so that we can swap out Self when generating a type signature.
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_id) else {
+                    bug!("When trying to rewrite the type on {self}, found inherent impl method")
+                };
+                let trait_ref = trait_ref.instantiate(tcx, self.args);
+
+                let method_id = tcx
+                    .impl_item_implementor_ids(impl_id)
+                    .items()
+                    .filter_map(|(trait_method, impl_method)| {
+                        (*impl_method == self.def.def_id()).then_some(*trait_method)
+                    })
+                    .min()
+                    .unwrap();
+                self.def = InstanceDef::ReifyShim(method_id);
+                self.args = trait_ref.args;
+            }
+            // At this point, we should have gauranteed that the first item in the args list is
+            // the dispatch type. We can't check for Self, because `drop_in_place` takes `T`.
+            self.def = InstanceDef::CfiShim {
+                target_instance: (&self.def).lift_to_tcx(tcx).expect("Could not lift for shimming"),
+                invoke_ty,
+            };
+        }
+        self
+    }
+
+    pub fn force_thin_self(&self) -> bool {
+        matches!(self.def, InstanceDef::Virtual(..) | InstanceDef::CfiShim { .. })
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

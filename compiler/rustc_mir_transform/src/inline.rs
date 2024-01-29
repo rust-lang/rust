@@ -331,7 +331,8 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::ThreadLocalShim(..)
-            | InstanceDef::FnPtrAddrShim(..) => return Ok(()),
+            | InstanceDef::FnPtrAddrShim(..)
+            | InstanceDef::CfiShim { .. } => return Ok(()),
         }
 
         if self.tcx.is_constructor(callee_def_id) {

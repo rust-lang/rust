@@ -358,7 +358,7 @@ fn fn_abi_of_instance<'tcx>(
         extra_args,
         caller_location,
         Some(instance.def_id()),
-        matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        instance.force_thin_self(),
     )
 }
 
