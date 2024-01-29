@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
         } else {
-            self.if_fallback_coercion(sp, then_expr, &mut coerce);
+            self.if_fallback_coercion(sp, cond_expr, then_expr, &mut coerce);
 
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
