@@ -9,6 +9,6 @@ fn foo(n: i32) {}
 fn main() {
     let a = 1;
     // Checks that we propagate into terminators.
-    // CHECK: {{_.*}} = foo(const 2_i32) -> [return: {{bb.*}}, unwind continue];
+    // CHECK: {{_.*}} = foo(const 2_i32) -> [return: {{bb.*}}, unwind
     foo(a + 1);
 }
