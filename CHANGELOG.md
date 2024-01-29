@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Updating `dirs 4.0.0 -> 5.0.1` and `cargo_metadata 0.15.4 -> 0.18.0` [#6033] (https://github.com/rust-lang/rustfmt/issues/6033)
 
 ## [1.7.0] 2023-10-22
 

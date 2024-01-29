@@ -36,11 +36,11 @@ generic-simd = ["bytecount/generic-simd"]
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
 bytecount = "0.6.4"
-cargo_metadata = "0.15.4"
+cargo_metadata = "0.18"
 clap = { version = "4.4.2", features = ["derive"] }
 clap-cargo = "0.12.0"
 diff = "0.1"
-dirs = "4.0"
+dirs = "5.0"
 getopts = "0.2"
 ignore = "0.4"
 itertools = "0.11"
