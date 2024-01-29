@@ -22,7 +22,6 @@ use super::{
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
-use crate::traits::project::try_normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -1070,7 +1069,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 && fresh_trait_pred.is_global()
             {
                 let mut nested_obligations = Vec::new();
-                let predicate = try_normalize_with_depth_to(
+                let predicate = normalize_with_depth_to(
                     this,
                     param_env,
                     obligation.cause.clone(),

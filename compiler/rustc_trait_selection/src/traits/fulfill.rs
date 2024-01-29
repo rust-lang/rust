@@ -312,7 +312,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         if obligation.predicate.has_projections() {
             let mut obligations = Vec::new();
-            let predicate = crate::traits::project::try_normalize_with_depth_to(
+            let predicate = crate::traits::project::normalize_with_depth_to(
                 &mut self.selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
