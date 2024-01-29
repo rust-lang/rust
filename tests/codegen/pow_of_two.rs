@@ -4,7 +4,7 @@
 #[no_mangle]
 pub fn a(exp: u32) -> u64 {
     // CHECK: %{{[^ ]+}} = icmp ugt i32 %exp, 64
-    // CHECK: %{{[^ ]+}} = zext i32 %exp to i64
+    // CHECK: %{{[^ ]+}} = zext{{( nneg)?}} i32 %exp to i64
     // CHECK: %{{[^ ]+}} = shl nuw i64 {{[^ ]+}}, %{{[^ ]+}}
     // CHECK: ret i64 %{{[^ ]+}}
     2u64.pow(exp)
@@ -14,7 +14,7 @@ pub fn a(exp: u32) -> u64 {
 #[no_mangle]
 pub fn b(exp: u32) -> i64 {
     // CHECK: %{{[^ ]+}} = icmp ugt i32 %exp, 64
-    // CHECK: %{{[^ ]+}} = zext i32 %exp to i64
+    // CHECK: %{{[^ ]+}} = zext{{( nneg)?}} i32 %exp to i64
     // CHECK: %{{[^ ]+}} = shl nuw i64 {{[^ ]+}}, %{{[^ ]+}}
     // CHECK: ret i64 %{{[^ ]+}}
     2i64.pow(exp)
