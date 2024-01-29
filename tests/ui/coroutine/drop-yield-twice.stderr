@@ -9,7 +9,7 @@ LL | |         yield;
 LL | |     })
    | |______^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/drop-yield-twice.rs:7:17: 7:19}`, the trait `Send` is not implemented for `Foo`
+   = help: within `{coroutine@$DIR/drop-yield-twice.rs:7:17: 7:19}`, the trait `Send` is not implemented for `Foo`, which is required by `{coroutine@$DIR/drop-yield-twice.rs:7:17: 7:19}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-yield-twice.rs:9:9
    |
