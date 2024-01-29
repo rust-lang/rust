@@ -153,7 +153,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Let(pat, scrutinee, span, is_recovered) => {
                     hir::ExprKind::Let(self.arena.alloc(hir::Let {
-                        hir_id: self.next_id(),
                         span: self.lower_span(*span),
                         pat: self.lower_pat(pat),
                         ty: None,
