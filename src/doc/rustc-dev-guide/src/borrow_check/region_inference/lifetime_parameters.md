@@ -39,12 +39,12 @@ known to hold (which could be tested with the [`outlives`] function.
 
 One important aspect of how NLL region inference works is that **all
 lifetimes** are represented as numbered variables. This means that the
-only variant of [`ty::RegionKind`] that we use is the [`ReVar`]
+only variant of [`region_kind::RegionKind`] that we use is the [`ReVar`]
 variant. These region variables are broken into two major categories,
 based on their index:
 
-[`ty::RegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.RegionKind.html
-[`ReVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.RegionKind.html#variant.ReVar
+[`region_kind::RegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/region_kind/enum.RegionKind.html
+[`ReVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/region_kind/enum.RegionKind.html#variant.ReVar
 
 - 0..N: universal regions -- the ones we are discussing here. In this
   case, the code must be correct with respect to any value of those
