@@ -204,6 +204,16 @@ impl Read for Repeat {
         Ok(())
     }
 
+    /// This function is not supported by `io::Repeat`, because there's no end of its data
+    fn read_to_end(&mut self, _: &mut Vec<u8>) -> io::Result<usize> {
+        Err(io::Error::from(io::ErrorKind::OutOfMemory))
+    }
+
+    /// This function is not supported by `io::Repeat`, because there's no end of its data
+    fn read_to_string(&mut self, _: &mut String) -> io::Result<usize> {
+        Err(io::Error::from(io::ErrorKind::OutOfMemory))
+    }
+
     #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
