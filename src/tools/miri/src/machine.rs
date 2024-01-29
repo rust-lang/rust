@@ -10,8 +10,8 @@ use std::process;
 
 use either::Either;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use rand::Rng;
+use rand::SeedableRng;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -83,7 +83,8 @@ pub struct FrameExtra<'tcx> {
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } =
+            self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
@@ -93,7 +94,8 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } = self;
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } =
+            self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -710,7 +712,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         Ok(())
     }
 
-    fn add_extern_static(
+    pub(crate) fn add_extern_static(
         this: &mut MiriInterpCx<'mir, 'tcx>,
         name: &str,
         ptr: Pointer<Option<Provenance>>,
@@ -718,75 +720,6 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
-    }
-
-    fn alloc_extern_static(
-        this: &mut MiriInterpCx<'mir, 'tcx>,
-        name: &str,
-        val: ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
-        let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
-        this.write_immediate(*val, &place)?;
-        Self::add_extern_static(this, name, place.ptr());
-        Ok(())
-    }
-
-    /// Sets up the "extern statics" for this machine.
-    fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        // "__rust_no_alloc_shim_is_unstable"
-        let val = ImmTy::from_int(0, this.machine.layouts.u8);
-        Self::alloc_extern_static(this, "__rust_no_alloc_shim_is_unstable", val)?;
-
-        match this.tcx.sess.target.os.as_ref() {
-            "linux" => {
-                // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
-                // A couple zero-initialized pointer-sized extern statics.
-                // Most of them are for weak symbols, which we all set to null (indicating that the
-                // symbol is not supported, and triggering fallback code which ends up calling a
-                // syscall that we do support).
-                for name in &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"]
-                {
-                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
-                    Self::alloc_extern_static(this, name, val)?;
-                }
-            }
-            "freebsd" => {
-                // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
-            }
-            "android" => {
-                // "signal" -- just needs a non-zero pointer value (function does not even get called),
-                // but we arrange for this to be callable anyway (it will then do nothing).
-                let layout = this.machine.layouts.const_raw_ptr;
-                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
-                let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
-                Self::alloc_extern_static(this, "signal", val)?;
-                // A couple zero-initialized pointer-sized extern statics.
-                // Most of them are for weak symbols, which we all set to null (indicating that the
-                // symbol is not supported, and triggering fallback code.)
-                for name in &["bsd_signal"] {
-                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
-                    Self::alloc_extern_static(this, name, val)?;
-                }
-            }
-            "windows" => {
-                // "_tls_used"
-                // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
-                let val = ImmTy::from_int(0, this.machine.layouts.u8);
-                Self::alloc_extern_static(this, "_tls_used", val)?;
-            }
-            _ => {} // No "extern statics" supported on this target
-        }
-        Ok(())
     }
 
     pub(crate) fn communicate(&self) -> bool {
@@ -1009,7 +942,21 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        ecx.find_mir_or_eval_fn(instance, abi, args, dest, ret, unwind)
+        // For foreign items, try to see if we can emulate them.
+        if ecx.tcx.is_foreign_item(instance.def_id()) {
+            // An external function call that does not have a MIR body. We either find MIR elsewhere
+            // or emulate its effect.
+            // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
+            // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
+            // foreign function
+            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
+            let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+            let link_name = ecx.item_link_name(instance.def_id());
+            return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
+        }
+
+        // Otherwise, load the MIR.
+        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
     #[inline(always)]

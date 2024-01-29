@@ -3,6 +3,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
+use shims::unix::fs::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
@@ -61,6 +62,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // https://man.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2&n=1
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+            }
+
+            // File related shims
+            // For those, we both intercept `func` and `call@FBSD_1.0` symbols cases
+            // since freebsd 12 the former form can be expected.
+            "stat" | "stat@FBSD_1.0" => {
+                let [path, buf] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.macos_fbsd_stat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "lstat" | "lstat@FBSD_1.0" => {
+                let [path, buf] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.macos_fbsd_lstat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fstat" | "fstat@FBSD_1.0" => {
+                let [fd, buf] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.macos_fbsd_fstat(fd, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "readdir_r" | "readdir_r@FBSD_1.0" => {
+                let [dirp, entry, result] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
+                this.write_scalar(result, dest)?;
             }
 
             // errno
