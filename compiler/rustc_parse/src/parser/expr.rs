@@ -444,6 +444,19 @@ impl<'a> Parser<'a> {
             ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
                 return None;
             }
+            // When recovering patterns as expressions, stop parsing when encountering an assignment `=`, an alternative `|`, or a range `..`.
+            (
+                Some(
+                    AssocOp::Assign
+                    | AssocOp::AssignOp(_)
+                    | AssocOp::BitOr
+                    | AssocOp::DotDot
+                    | AssocOp::DotDotEq,
+                ),
+                _,
+            ) if self.restrictions.contains(Restrictions::IS_PAT) => {
+                return None;
+            }
             (Some(op), _) => (op, self.token.span),
             (None, Some((Ident { name: sym::and, span }, false))) if self.may_recover() => {
                 self.dcx().emit_err(errors::InvalidLogicalOperator {
