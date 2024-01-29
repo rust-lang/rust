@@ -12,7 +12,9 @@ use rustc_trait_selection::traits::StructurallyNormalizeExt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum AutoderefKind {
+    /// A true pointer type, such as `&T` and `*mut T`.
     Builtin,
+    /// A type which must dispatch to a `Deref` implementation.
     Overloaded,
 }
 
@@ -83,6 +85,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 (AutoderefKind::Builtin, ty)
             }
         } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
+            // The overloaded deref check already normalizes the pointee type.
             (AutoderefKind::Overloaded, ty)
         } else {
             return None;

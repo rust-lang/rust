@@ -14,8 +14,6 @@
 
 pub mod alloc;
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
@@ -28,8 +26,6 @@ pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;
 pub mod os;
-#[path = "../windows/os_str.rs"]
-pub mod os_str;
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

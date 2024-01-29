@@ -224,7 +224,7 @@ top_level_options!(
         working_dir: RealFileName [TRACKED],
         color: ColorConfig [UNTRACKED],
 
-        verbose: bool [UNTRACKED],
+        verbose: bool [TRACKED_NO_CRATE_HASH],
     }
 );
 
@@ -388,6 +388,7 @@ mod desc {
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
     pub const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
+    pub const parse_collapse_macro_debuginfo: &str = "one of `no`, `external`, or `yes`";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
@@ -406,7 +407,8 @@ mod desc {
     pub const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
-    pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
+    pub const parse_symbol_mangling_version: &str =
+        "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
     pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
     pub const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
@@ -1179,6 +1181,7 @@ mod parse {
         *slot = match v {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
             Some("v0") => Some(SymbolManglingVersion::V0),
+            Some("hashed") => Some(SymbolManglingVersion::Hashed),
             _ => return false,
         };
         true
@@ -1299,6 +1302,19 @@ mod parse {
             }
             _ => return false,
         }
+        true
+    }
+
+    pub(crate) fn parse_collapse_macro_debuginfo(
+        slot: &mut CollapseMacroDebuginfo,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("no") => CollapseMacroDebuginfo::No,
+            Some("external") => CollapseMacroDebuginfo::External,
+            Some("yes") => CollapseMacroDebuginfo::Yes,
+            _ => return false,
+        };
         true
     }
 
@@ -1490,7 +1506,7 @@ options! {
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
+        "which mangling version to use for symbol names ('legacy' (default), 'v0', or 'hashed')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -1534,6 +1550,9 @@ options! {
         "instrument control-flow architecture protection"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
+        parse_collapse_macro_debuginfo, [TRACKED],
+        "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
@@ -1969,7 +1988,7 @@ written to standard error output)"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
     #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
-    verbose_internals: bool = (false, parse_bool, [UNTRACKED],
+    verbose_internals: bool = (false, parse_bool, [TRACKED_NO_CRATE_HASH],
         "in general, enable more debug printouts (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field")]
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],

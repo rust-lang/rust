@@ -86,7 +86,7 @@ impl TyFingerprint {
             TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
             TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
             TyKind::Tuple(_, subst) => {
-                let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(Interner));
+                let first_ty = subst.interned().first().map(|arg| arg.assert_ty_ref(Interner));
                 match first_ty {
                     Some(ty) => return TyFingerprint::for_trait_impl(ty),
                     None => TyFingerprint::Unit,
@@ -96,8 +96,8 @@ impl TyFingerprint {
             | TyKind::OpaqueType(_, _)
             | TyKind::FnDef(_, _)
             | TyKind::Closure(_, _)
-            | TyKind::Generator(..)
-            | TyKind::GeneratorWitness(..) => TyFingerprint::Unnameable,
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineWitness(..) => TyFingerprint::Unnameable,
             TyKind::Function(fn_ptr) => {
                 TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }
@@ -541,7 +541,7 @@ impl ReceiverAdjustments {
                 if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
                     if let TyKind::Array(inner, _) = inner.kind(Interner) {
                         break 'it TyKind::Ref(
-                            m.clone(),
+                            *m,
                             l.clone(),
                             TyKind::Slice(inner.clone()).intern(Interner),
                         )
@@ -953,7 +953,7 @@ pub fn iterate_method_candidates_dyn(
             let ty = table.instantiate_canonical(ty.clone());
             let deref_chain = autoderef_method_receiver(&mut table, ty);
 
-            let result = deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
+            deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
                 iterate_method_candidates_with_autoref(
                     &receiver_ty,
                     adj,
@@ -964,8 +964,7 @@ pub fn iterate_method_candidates_dyn(
                     name,
                     callback,
                 )
-            });
-            result
+            })
         }
         LookupMode::Path => {
             // No autoderef for path lookups

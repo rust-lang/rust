@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -108,14 +108,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
     #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
-    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'hir>>>(
+    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         only_self_bounds: OnlySelfBounds,
-    ) {
+    ) where
+        'tcx: 'hir,
+    {
         for ast_bound in ast_bounds {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
@@ -179,7 +181,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     pub(crate) fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[hir::GenericBound<'tcx>],
         filter: PredicateFilter,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
@@ -327,7 +329,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
 
         let projection_ty = if let ty::AssocKind::Fn = assoc_kind {
-            let mut emitted_bad_param_err = false;
+            let mut emitted_bad_param_err = None;
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
@@ -344,46 +346,30 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         )
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
-                            Ty::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundTy {
-                                    var: ty::BoundVar::from_usize(num_bound_vars),
-                                    kind: ty::BoundTyKind::Param(param.def_id, param.name),
-                                },
-                            )
-                            .into()
+                                )
+                            });
+                            Ty::new_error(tcx, guar).into()
                         }
                         ty::GenericParamDefKind::Const { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
+                                )
+                            });
                             let ty = tcx
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(num_bound_vars),
-                                ty,
-                            )
-                            .into()
+                            ty::Const::new_error(tcx, guar, ty).into()
                         }
                     };
                     num_bound_vars += 1;

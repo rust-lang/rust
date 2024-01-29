@@ -148,7 +148,7 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
     format_to!(example, "use {use_path};\n\n");
     if let Some(self_name) = &self_name {
         if let Some(mut_) = is_ref_mut_self(ast_func) {
-            let mut_ = if mut_ == true { "mut " } else { "" };
+            let mut_ = if mut_ { "mut " } else { "" };
             format_to!(example, "let {mut_}{self_name} = ;\n");
         }
     }

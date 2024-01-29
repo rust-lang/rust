@@ -16,6 +16,9 @@ expand_attributes_wrong_form =
 expand_cannot_be_name_of_macro =
     `{$trait_ident}` cannot be a name of {$macro_type} macro
 
+expand_collapse_debuginfo_illegal =
+    illegal value for attribute #[collapse_debuginfo(no|external|yes)]
+
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 

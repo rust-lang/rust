@@ -548,11 +548,12 @@
 //! [`ValidityConstraint::specialize`].
 //!
 //! Having said all that, in practice we don't fully follow what's been presented in this section.
-//! Under `exhaustive_patterns`, we allow omitting empty arms even in `!known_valid` places, for
-//! backwards-compatibility until we have a better alternative. Without `exhaustive_patterns`, we
-//! mostly treat empty types as inhabited, except specifically a non-nested `!` or empty enum. In
-//! this specific case we also allow the empty match regardless of place validity, for
-//! backwards-compatibility. Hopefully we can eventually deprecate this.
+//! Let's call "toplevel exception" the case where the match scrutinee itself has type `!` or
+//! `EmptyEnum`. First, on stable rust, we require `_` patterns for empty types in all cases apart
+//! from the toplevel exception. The `exhaustive_patterns` and `min_exaustive_patterns` allow
+//! omitting patterns in the cases described above. There's a final detail: in the toplevel
+//! exception or with the `exhaustive_patterns` feature, we ignore place validity when checking
+//! whether a pattern is required for exhaustiveness. I (Nadrieril) hope to deprecate this behavior.
 //!
 //!
 //!
@@ -736,22 +737,24 @@ pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
     #[derivative(Debug = "ignore")]
     pub(crate) mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
-    pub(crate) ty: Cx::Ty,
-    /// Whether the place is the original scrutinee place, as opposed to a subplace of it.
-    pub(crate) is_scrutinee: bool,
+    #[derivative(Clone(clone_with = "Clone::clone"))] // See rust-derivative#90
+    pub(crate) ty: &'a Cx::Ty,
 }
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: Cx::Ty) -> Self {
-        PlaceCtxt { mcx, ty, is_scrutinee: false }
+    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: &'a Cx::Ty) -> Self {
+        PlaceCtxt { mcx, ty }
     }
 
     pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
         self.mcx.tycx.ctor_arity(ctor, self.ty)
     }
-    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<Cx>) -> &[Cx::Ty] {
+    pub(crate) fn ctor_sub_tys(
+        &'a self,
+        ctor: &'a Constructor<Cx>,
+    ) -> impl Iterator<Item = Cx::Ty> + ExactSizeIterator + Captures<'a> {
         self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
     }
     pub(crate) fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
@@ -768,9 +771,6 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
 pub enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
-    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
-    /// `useful && !reachable` arms anyway.
-    MaybeInvalidButAllowOmittingArms,
 }
 
 impl ValidityConstraint {
@@ -778,19 +778,8 @@ impl ValidityConstraint {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
 
-    fn allow_omitting_side_effecting_arms(self) -> Self {
-        match self {
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => MaybeInvalidButAllowOmittingArms,
-            // There are no side-effecting empty arms here, nothing to do.
-            ValidOnly => ValidOnly,
-        }
-    }
-
     fn is_known_valid(self) -> bool {
         matches!(self, ValidOnly)
-    }
-    fn allows_omitting_empty_arms(self) -> bool {
-        matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
     }
 
     /// If the place has validity given by `self` and we read that the value at the place has
@@ -814,7 +803,7 @@ impl fmt::Display for ValidityConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             ValidOnly => "✓",
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => "?",
+            MaybeInvalid => "?",
         };
         write!(f, "{s}")
     }
@@ -1039,8 +1028,8 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self) -> Option<Cx::Ty> {
-        self.place_ty.first().copied()
+    fn head_ty(&self) -> Option<&Cx::Ty> {
+        self.place_ty.first()
     }
     fn column_count(&self) -> usize {
         self.place_ty.len()
@@ -1073,8 +1062,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     ) -> Matrix<'p, Cx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         let arity = ctor_sub_tys.len();
-        let specialized_place_ty =
-            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
+        let specialized_place_ty = ctor_sub_tys.chain(self.place_ty[1..].iter().cloned()).collect();
         let ctor_sub_validity = self.place_validity[0].specialize(ctor);
         let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
             .take(arity)
@@ -1230,7 +1218,7 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
         let len = self.0.len();
         let arity = ctor.arity(pcx);
         let fields = self.0.drain((len - arity)..).rev().collect();
-        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty);
+        let pat = WitnessPat::new(ctor.clone(), fields, pcx.ty.clone());
         self.0.push(pat);
     }
 }
@@ -1426,7 +1414,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         return Ok(WitnessMatrix::empty());
     }
 
-    let Some(ty) = matrix.head_ty() else {
+    let Some(ty) = matrix.head_ty().cloned() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         let mut useful = true; // Whether the next row is useful.
@@ -1447,41 +1435,51 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { mcx, ty, is_scrutinee: is_top_level };
+    let pcx = &PlaceCtxt { mcx, ty: &ty };
+    let ctors_for_ty = pcx.ctors_for_ty()?;
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
-    // For backwards compability we allow omitting some empty arms that we ideally shouldn't.
-    let place_validity = place_validity.allow_omitting_side_effecting_arms();
+    // We treat match scrutinees of type `!` or `EmptyEnum` differently.
+    let is_toplevel_exception =
+        is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
+    // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
+    // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
+    let empty_arms_are_unreachable = place_validity.is_known_valid()
+        && (is_toplevel_exception
+            || mcx.tycx.is_exhaustive_patterns_feature_on()
+            || mcx.tycx.is_min_exhaustive_patterns_feature_on());
+    // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
+    // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
+    let can_omit_empty_arms = empty_arms_are_unreachable
+        || is_toplevel_exception
+        || mcx.tycx.is_exhaustive_patterns_feature_on();
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let ctors_for_ty = pcx.ctors_for_ty()?;
-    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
-    let split_set = ctors_for_ty.split(pcx, ctors);
+    let mut split_set = ctors_for_ty.split(ctors);
     let all_missing = split_set.present.is_empty();
-
     // Build the set of constructors we will specialize with. It must cover the whole type.
+    // We need to iterate over a full set of constructors, so we add `Missing` to represent the
+    // missing ones. This is explained under "Constructor Splitting" at the top of this file.
     let mut split_ctors = split_set.present;
-    if !split_set.missing.is_empty() {
-        // We need to iterate over a full set of constructors, so we add `Missing` to represent the
-        // missing ones. This is explained under "Constructor Splitting" at the top of this file.
-        split_ctors.push(Constructor::Missing);
-    } else if !split_set.missing_empty.is_empty() && !place_validity.is_known_valid() {
-        // The missing empty constructors are reachable if the place can contain invalid data.
+    if !(split_set.missing.is_empty()
+        && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
+    {
         split_ctors.push(Constructor::Missing);
     }
 
     // Decide what constructors to report.
+    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. });
     let always_report_all = is_top_level && !is_integers;
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
-    // split_ctors.contains(Missing)`. The converse usually holds except in the
-    // `MaybeInvalidButAllowOmittingArms` backwards-compatibility case.
+    // split_ctors.contains(Missing)`. The converse usually holds except when
+    // `!place_validity.is_known_valid()`.
     let mut missing_ctors = split_set.missing;
-    if !place_validity.allows_omitting_empty_arms() {
-        missing_ctors.extend(split_set.missing_empty);
+    if !can_omit_empty_arms {
+        missing_ctors.append(&mut split_set.missing_empty);
     }
 
     let mut ret = WitnessMatrix::empty();

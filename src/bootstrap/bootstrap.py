@@ -925,13 +925,28 @@ class RustBuild(object):
         #
         # But that setting has the collateral effect of rust-analyzer also
         # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various
-        # overrideCommand). For compiling bootstrap, that is unwanted and can
-        # cause spurious rebuilding of bootstrap when rust-analyzer x.py
-        # invocations are interleaved with handwritten ones on the command line.
-        env.pop("RUSTC_BOOTSTRAP", None)
+        # overrideCommand).
+        #
+        # Set a consistent RUSTC_BOOTSTRAP=1 here to prevent spurious rebuilds
+        # of bootstrap when rust-analyzer x.py invocations are interleaved with
+        # handwritten ones on the command line.
+        env["RUSTC_BOOTSTRAP"] = "1"
 
-        # preserve existing RUSTFLAGS
-        env.setdefault("RUSTFLAGS", "")
+        # If any of RUSTFLAGS or RUSTFLAGS_BOOTSTRAP are present and nonempty,
+        # we allow arbitrary compiler flags in there, including unstable ones
+        # such as `-Zthreads=8`.
+        #
+        # But if there aren't custom flags being passed to bootstrap, then we
+        # cancel the RUSTC_BOOTSTRAP=1 from above by passing `-Zallow-features=`
+        # to ensure unstable language or library features do not accidentally
+        # get introduced into bootstrap over time. Distros rely on being able to
+        # compile bootstrap with a variety of their toolchains, not necessarily
+        # the same as Rust's CI uses.
+        if env.get("RUSTFLAGS", "") or env.get("RUSTFLAGS_BOOTSTRAP", ""):
+            # Preserve existing RUSTFLAGS.
+            env.setdefault("RUSTFLAGS", "")
+        else:
+            env["RUSTFLAGS"] = "-Zallow-features="
 
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":

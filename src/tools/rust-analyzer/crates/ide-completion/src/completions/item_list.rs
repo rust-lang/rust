@@ -80,7 +80,7 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
     let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl(_)));
     let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
     let no_qualifiers = ctx.qualifier_ctx.vis_node.is_none();
-    let in_block = matches!(kind, None);
+    let in_block = kind.is_none();
 
     if !in_trait_impl {
         if ctx.qualifier_ctx.unsafe_tok.is_some() {

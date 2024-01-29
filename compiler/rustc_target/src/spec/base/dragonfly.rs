@@ -8,6 +8,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
+        has_thread_local: true,
         default_dwarf_version: 2,
         ..Default::default()
     }

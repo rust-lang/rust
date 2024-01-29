@@ -40,8 +40,8 @@ use hir_def::{
     path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, ItemContainerId, Lookup,
-    TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, Lookup, TraitId,
+    TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
 use indexmap::IndexSet;
@@ -87,28 +87,30 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
         DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
-                hir_def::layout::IntegerType::Pointer(signed) => match signed {
-                    true => BuiltinType::Int(BuiltinInt::Isize),
-                    false => BuiltinType::Uint(BuiltinUint::Usize),
+            ctx.return_ty = TyBuilder::builtin(
+                match db.enum_data(v.lookup(db.upcast()).parent).variant_body_type() {
+                    hir_def::layout::IntegerType::Pointer(signed) => match signed {
+                        true => BuiltinType::Int(BuiltinInt::Isize),
+                        false => BuiltinType::Uint(BuiltinUint::Usize),
+                    },
+                    hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
+                        true => BuiltinType::Int(match size {
+                            Integer::I8 => BuiltinInt::I8,
+                            Integer::I16 => BuiltinInt::I16,
+                            Integer::I32 => BuiltinInt::I32,
+                            Integer::I64 => BuiltinInt::I64,
+                            Integer::I128 => BuiltinInt::I128,
+                        }),
+                        false => BuiltinType::Uint(match size {
+                            Integer::I8 => BuiltinUint::U8,
+                            Integer::I16 => BuiltinUint::U16,
+                            Integer::I32 => BuiltinUint::U32,
+                            Integer::I64 => BuiltinUint::U64,
+                            Integer::I128 => BuiltinUint::U128,
+                        }),
+                    },
                 },
-                hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
-                    true => BuiltinType::Int(match size {
-                        Integer::I8 => BuiltinInt::I8,
-                        Integer::I16 => BuiltinInt::I16,
-                        Integer::I32 => BuiltinInt::I32,
-                        Integer::I64 => BuiltinInt::I64,
-                        Integer::I128 => BuiltinInt::I128,
-                    }),
-                    false => BuiltinType::Uint(match size {
-                        Integer::I8 => BuiltinUint::U8,
-                        Integer::I16 => BuiltinUint::U16,
-                        Integer::I32 => BuiltinUint::U32,
-                        Integer::I64 => BuiltinUint::U64,
-                        Integer::I128 => BuiltinUint::U128,
-                    }),
-                },
-            });
+            );
         }
         DefWithBodyId::InTypeConstId(c) => {
             // FIXME(const-generic-body): We should not get the return type in this way.
@@ -154,8 +156,9 @@ pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, 
 
 /// Binding modes inferred for patterns.
 /// <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub enum BindingMode {
+    #[default]
     Move,
     Ref(Mutability),
 }
@@ -167,12 +170,6 @@ impl BindingMode {
             BindingAnnotation::Ref => BindingMode::Ref(Mutability::Not),
             BindingAnnotation::RefMut => BindingMode::Ref(Mutability::Mut),
         }
-    }
-}
-
-impl Default for BindingMode {
-    fn default() -> Self {
-        BindingMode::Move
     }
 }
 
@@ -534,7 +531,7 @@ pub(crate) struct InferenceContext<'a> {
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
     return_coercion: Option<CoerceMany>,
-    /// The resume type and the yield type, respectively, of the generator being inferred.
+    /// The resume type and the yield type, respectively, of the coroutine being inferred.
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,
@@ -570,10 +567,10 @@ enum BreakableKind {
     Border,
 }
 
-fn find_breakable<'c>(
-    ctxs: &'c mut [BreakableContext],
+fn find_breakable(
+    ctxs: &mut [BreakableContext],
     label: Option<LabelId>,
-) -> Option<&'c mut BreakableContext> {
+) -> Option<&mut BreakableContext> {
     let mut ctxs = ctxs
         .iter_mut()
         .rev()
@@ -584,10 +581,10 @@ fn find_breakable<'c>(
     }
 }
 
-fn find_continuable<'c>(
-    ctxs: &'c mut [BreakableContext],
+fn find_continuable(
+    ctxs: &mut [BreakableContext],
     label: Option<LabelId>,
-) -> Option<&'c mut BreakableContext> {
+) -> Option<&mut BreakableContext> {
     match label {
         Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
         None => find_breakable(ctxs, label),
@@ -823,8 +820,8 @@ impl<'a> InferenceContext<'a> {
                     ImplTraitId::ReturnTypeImplTrait(_, idx) => idx,
                     _ => unreachable!(),
                 };
-                let bounds = (*rpits)
-                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter()));
+                let bounds =
+                    (*rpits).map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
                 let var = self.table.new_type_var();
                 let var_subst = Substitution::from1(Interner, var.clone());
                 for bound in bounds {
@@ -1062,7 +1059,7 @@ impl<'a> InferenceContext<'a> {
                 Some(ResolveValueResult::ValueNs(value, _)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
-                        let ty = self.db.ty(var.parent.into());
+                        let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
@@ -1105,7 +1102,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = ctx.substs_from_path(path, var.into(), true);
-                let ty = self.db.ty(var.parent.into());
+                let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
@@ -1131,8 +1128,7 @@ impl<'a> InferenceContext<'a> {
                     if let Some((AdtId::EnumId(id), _)) = ty.as_adt() {
                         let enum_data = self.db.enum_data(id);
                         let name = current_segment.first().unwrap().name;
-                        if let Some(local_id) = enum_data.variant(name) {
-                            let variant = EnumVariantId { parent: id, local_id };
+                        if let Some(variant) = enum_data.variant(name) {
                             return if remaining_segments.len() == 1 {
                                 (ty, Some(variant.into()))
                             } else {
@@ -1247,8 +1243,7 @@ impl<'a> InferenceContext<'a> {
                 // this could be an enum variant or associated type
                 if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
                     let enum_data = self.db.enum_data(enum_id);
-                    if let Some(local_id) = enum_data.variant(segment) {
-                        let variant = EnumVariantId { parent: enum_id, local_id };
+                    if let Some(variant) = enum_data.variant(segment) {
                         return (ty, Some(variant.into()));
                     }
                 }
@@ -1458,10 +1453,10 @@ impl Expectation {
         match self {
             Expectation::HasType(ety) => {
                 let ety = table.resolve_ty_shallow(ety);
-                if !ety.is_ty_var() {
-                    Expectation::HasType(ety)
-                } else {
+                if ety.is_ty_var() {
                     Expectation::None
+                } else {
+                    Expectation::HasType(ety)
                 }
             }
             Expectation::RValueLikeUnsized(ety) => Expectation::RValueLikeUnsized(ety.clone()),

@@ -1,7 +1,7 @@
 // check-pass
 // aux-build:offset-of-staged-api.rs
 
-#![feature(offset_of, unstable_test_feature)]
+#![feature(offset_of_nested, unstable_test_feature)]
 
 use std::mem::offset_of;
 

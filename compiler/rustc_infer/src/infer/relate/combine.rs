@@ -165,9 +165,9 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
         // ourselves with a check to find bugs being required for code to compile because it made inference progress.
-        let compatible_types = self.probe(|_| {
+        self.probe(|_| {
             if a.ty() == b.ty() {
-                return Ok(());
+                return;
             }
 
             // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
@@ -177,31 +177,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 relation.param_env().and((a.ty(), b.ty())),
                 &mut OriginalQueryValues::default(),
             );
-            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
+            self.tcx.check_tys_might_be_eq(canonical).unwrap_or_else(|_| {
+                // The error will only be reported later. If we emit an ErrorGuaranteed
+                // here, then we will never get to the code that actually emits the error.
                 self.tcx.dcx().delayed_bug(format!(
                     "cannot relate consts of different types (a={a:?}, b={b:?})",
-                ))
-            })
+                ));
+                // We treat these constants as if they were of the same type, so that any
+                // such constants being used in impls make these impls match barring other mismatches.
+                // This helps with diagnostics down the road.
+            });
         });
-
-        // If the consts have differing types, just bail with a const error with
-        // the expected const's type. Specifically, we don't want const infer vars
-        // to do any type shapeshifting before and after resolution.
-        if let Err(guar) = compatible_types {
-            // HACK: equating both sides with `[const error]` eagerly prevents us
-            // from leaving unconstrained inference vars during things like impl
-            // matching in the solver.
-            let a_error = ty::Const::new_error(self.tcx, guar, a.ty());
-            if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
-                return self.unify_const_variable(vid, a_error, relation.param_env());
-            }
-            let b_error = ty::Const::new_error(self.tcx, guar, b.ty());
-            if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
-                return self.unify_const_variable(vid, b_error, relation.param_env());
-            }
-
-            return Ok(if relation.a_is_expected() { a_error } else { b_error });
-        }
 
         match (a.kind(), b.kind()) {
             (

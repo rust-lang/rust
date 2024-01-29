@@ -1,6 +1,7 @@
 use crate::mir;
 use crate::query::CyclePlaceholder;
 use crate::traits;
+use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty};
 use std::intrinsics::transmute_unchecked;
 use std::mem::{size_of, MaybeUninit};
@@ -82,6 +83,10 @@ impl<T> EraseType for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
 }
 
+impl<T> EraseType for Result<&'_ [T], rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<Result<&'static [()], rustc_errors::ErrorGuaranteed>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
     type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
@@ -99,6 +104,10 @@ impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::
 impl EraseType for Result<Option<ty::Instance<'_>>, rustc_errors::ErrorGuaranteed> {
     type Result =
         [u8; size_of::<Result<Option<ty::Instance<'static>>, rustc_errors::ErrorGuaranteed>>()];
+}
+
+impl EraseType for Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<Result<CoerceUnsizedInfo, rustc_errors::ErrorGuaranteed>>()];
 }
 
 impl EraseType for Result<Option<ty::EarlyBinder<ty::Const<'_>>>, rustc_errors::ErrorGuaranteed> {

@@ -13,8 +13,6 @@ mod waitqueue;
 
 pub mod alloc;
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 pub mod env;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
@@ -24,8 +22,6 @@ pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

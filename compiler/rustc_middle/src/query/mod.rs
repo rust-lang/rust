@@ -343,6 +343,15 @@ rustc_queries! {
         }
     }
 
+    query impl_trait_in_assoc_types_defined_by(
+        key: LocalDefId
+    ) -> &'tcx ty::List<LocalDefId> {
+        desc {
+            |tcx| "computing the opaque types defined by `{}`",
+            tcx.def_path_str(key.to_def_id())
+        }
+    }
+
     /// Returns the list of bounds that can be used for
     /// `SelectionCandidate::ProjectionCandidate(_)` and
     /// `ProjectionTyCandidate::TraitDef`.
@@ -851,13 +860,13 @@ rustc_queries! {
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    query inherent_impls(key: DefId) -> &'tcx [DefId] {
+    query inherent_impls(key: DefId) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+    query incoherent_impls(key: SimplifiedType) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
@@ -953,8 +962,9 @@ rustc_queries! {
         desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_impl_wf(key: LocalModDefId) -> () {
+    query check_mod_impl_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
+        ensure_forwards_result_if_red
     }
 
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
@@ -967,10 +977,11 @@ rustc_queries! {
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
-    query coerce_unsized_info(key: DefId) -> ty::adjustment::CoerceUnsizedInfo {
+    query coerce_unsized_info(key: DefId) -> Result<ty::adjustment::CoerceUnsizedInfo, ErrorGuaranteed> {
         desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        ensure_forwards_result_if_red
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
@@ -990,8 +1001,9 @@ rustc_queries! {
         desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
     }
 
-    query coherent_trait(def_id: DefId) -> () {
+    query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
+        ensure_forwards_result_if_red
     }
 
     /// Borrow-checks the function body. If this is a closure, returns
@@ -1003,15 +1015,16 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls(k: ()) -> &'tcx CrateInherentImpls {
-        arena_cache
+    query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
         desc { "finding all inherent impls defined in crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ()) -> () {
+    query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1021,6 +1034,7 @@ rustc_queries! {
             "checking whether impl `{}` follows the orphan rules",
             tcx.def_path_str(key),
         }
+        ensure_forwards_result_if_red
     }
 
     /// Check whether the function has any recursion that could cause the inliner to trigger
@@ -1289,6 +1303,7 @@ rustc_queries! {
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
+        ensure_forwards_result_if_red
     }
     query object_safety_violations(trait_id: DefId) -> &'tcx [ObjectSafetyViolation] {
         desc { |tcx| "determining object safety of trait `{}`", tcx.def_path_str(trait_id) }
@@ -1345,9 +1360,9 @@ rustc_queries! {
     ///
     /// This is only correct for ADTs. Call `is_structural_eq_shallow` to handle all types
     /// correctly.
-    query has_structural_eq_impls(ty: Ty<'tcx>) -> bool {
+    query has_structural_eq_impl(ty: Ty<'tcx>) -> bool {
         desc {
-            "computing whether `{}` implements `PartialStructuralEq` and `StructuralEq`",
+            "computing whether `{}` implements `StructuralPartialEq`",
             ty
         }
     }
@@ -1637,7 +1652,7 @@ rustc_queries! {
     ///
     /// Do not call this directly, but instead use the `incoherent_impls` query.
     /// This query is only used to get the data necessary for that query.
-    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }

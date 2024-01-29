@@ -2,7 +2,9 @@ use crate::msrvs::Msrv;
 use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename};
 use crate::ClippyConfiguration;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_session::Session;
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
 use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -26,7 +28,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "NaN", "NaNs",
     "OAuth", "GraphQL",
     "OCaml",
-    "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
+    "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry",
     "WebGL", "WebGL2", "WebGPU",
     "TensorFlow",
     "TrueType",
@@ -59,18 +61,25 @@ impl TryConf {
 #[derive(Debug)]
 struct ConfError {
     message: String,
+    suggestion: Option<Suggestion>,
     span: Span,
 }
 
 impl ConfError {
     fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
         let span = error.span().unwrap_or(0..file.source_len.0 as usize);
-        Self::spanned(file, error.message(), span)
+        Self::spanned(file, error.message(), None, span)
     }
 
-    fn spanned(file: &SourceFile, message: impl Into<String>, span: Range<usize>) -> Self {
+    fn spanned(
+        file: &SourceFile,
+        message: impl Into<String>,
+        suggestion: Option<Suggestion>,
+        span: Range<usize>,
+    ) -> Self {
         Self {
             message: message.into(),
+            suggestion,
             span: Span::new(
                 file.start_pos + BytePos::from_usize(span.start),
                 file.start_pos + BytePos::from_usize(span.end),
@@ -147,16 +156,18 @@ macro_rules! define_Conf {
                     match Field::deserialize(name.get_ref().as_str().into_deserializer()) {
                         Err(e) => {
                             let e: FieldError = e;
-                            errors.push(ConfError::spanned(self.0, e.0, name.span()));
+                            errors.push(ConfError::spanned(self.0, e.error, e.suggestion, name.span()));
                         }
                         $(Ok(Field::$name) => {
-                            $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), name.span()));)?
+                            $(warnings.push(ConfError::spanned(self.0, format!("deprecated field `{}`. {}", name.get_ref(), $dep), None, name.span()));)?
                             let raw_value = map.next_value::<toml::Spanned<toml::Value>>()?;
                             let value_span = raw_value.span();
                             match <$ty>::deserialize(raw_value.into_inner()) {
-                                Err(e) => errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), value_span)),
+                                Err(e) => errors.push(ConfError::spanned(self.0, e.to_string().replace('\n', " ").trim(), None, value_span)),
                                 Ok(value) => match $name {
-                                    Some(_) => errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), name.span())),
+                                    Some(_) => {
+                                        errors.push(ConfError::spanned(self.0, format!("duplicate field `{}`", name.get_ref()), None, name.span()));
+                                    }
                                     None => {
                                         $name = Some(value);
                                         // $new_conf is the same as one of the defined `$name`s, so
@@ -165,7 +176,7 @@ macro_rules! define_Conf {
                                             Some(_) => errors.push(ConfError::spanned(self.0, concat!(
                                                 "duplicate field `", stringify!($new_conf),
                                                 "` (provided as `", stringify!($name), "`)"
-                                            ), name.span())),
+                                            ), None, name.span())),
                                             None => $new_conf = $name.clone(),
                                         })?
                                     },
@@ -523,7 +534,11 @@ define_Conf! {
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
     (allowed_dotfiles: FxHashSet<String> = FxHashSet::default()),
-    /// Lint: EXPLICIT_ITER_LOOP
+    /// Lint: MULTIPLE_CRATE_VERSIONS.
+    ///
+    /// A list of crate names to allow duplicates of
+    (allowed_duplicate_crates: FxHashSet<String> = FxHashSet::default()),
+    /// Lint: EXPLICIT_ITER_LOOP.
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.
     ///
@@ -543,15 +558,15 @@ define_Conf! {
     /// for _ in &mut *rmvec {}
     /// ```
     (enforce_iter_loop_reborrow: bool = false),
-    /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC
+    /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC.
     ///
     /// Whether to also run the listed lints on private items.
     (check_private_items: bool = false),
-    /// Lint: PUB_UNDERSCORE_FIELDS
+    /// Lint: PUB_UNDERSCORE_FIELDS.
     ///
     /// Lint "public" fields in a struct that are prefixed with an underscore based on their
     /// exported visibility, or whether they are marked as "pub".
-    (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PublicallyExported),
+    (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported),
 }
 
 /// Search for the configuration file.
@@ -669,10 +684,16 @@ impl Conf {
 
         // all conf errors are non-fatal, we just use the default conf in case of error
         for error in errors {
-            sess.dcx().span_err(
+            let mut diag = sess.dcx().struct_span_err(
                 error.span,
                 format!("error reading Clippy's configuration file: {}", error.message),
             );
+
+            if let Some(sugg) = error.suggestion {
+                diag.span_suggestion(error.span, sugg.message, sugg.suggestion, Applicability::MaybeIncorrect);
+            }
+
+            diag.emit();
         }
 
         for warning in warnings {
@@ -689,19 +710,31 @@ impl Conf {
 const SEPARATOR_WIDTH: usize = 4;
 
 #[derive(Debug)]
-struct FieldError(String);
+struct FieldError {
+    error: String,
+    suggestion: Option<Suggestion>,
+}
+
+#[derive(Debug)]
+struct Suggestion {
+    message: &'static str,
+    suggestion: &'static str,
+}
 
 impl std::error::Error for FieldError {}
 
 impl Display for FieldError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.pad(&self.0)
+        f.pad(&self.error)
     }
 }
 
 impl serde::de::Error for FieldError {
     fn custom<T: Display>(msg: T) -> Self {
-        Self(msg.to_string())
+        Self {
+            error: msg.to_string(),
+            suggestion: None,
+        }
     }
 
     fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
@@ -723,7 +756,20 @@ impl serde::de::Error for FieldError {
                 write!(msg, "{:SEPARATOR_WIDTH$}{field:column_width$}", " ").unwrap();
             }
         }
-        Self(msg)
+
+        let suggestion = expected
+            .iter()
+            .filter_map(|expected| {
+                let dist = edit_distance(field, expected, 4)?;
+                Some((dist, expected))
+            })
+            .min_by_key(|&(dist, _)| dist)
+            .map(|(_, suggestion)| Suggestion {
+                message: "perhaps you meant",
+                suggestion,
+            });
+
+        Self { error: msg, suggestion }
     }
 }
 

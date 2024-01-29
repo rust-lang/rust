@@ -23,7 +23,7 @@ use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
+use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
@@ -448,12 +448,11 @@ impl<'a> Parser<'a> {
             })
         }
 
-        let mut expected = edible
+        self.expected_tokens.extend(edible.iter().chain(inedible).cloned().map(TokenType::Token));
+        let mut expected = self
+            .expected_tokens
             .iter()
-            .chain(inedible)
             .cloned()
-            .map(TokenType::Token)
-            .chain(self.expected_tokens.iter().cloned())
             .filter(|token| {
                 // Filter out suggestions that suggest the same token which was found and deemed incorrect.
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
@@ -792,13 +791,28 @@ impl<'a> Parser<'a> {
                 && let [segment] = &attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
                 && let Some(args_span) = attr_kind.item.args.span()
-                && let Ok(next_attr) = snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                && let next_attr = match snapshot.parse_attribute(InnerAttrPolicy::Forbidden(None))
+                {
+                    Ok(next_attr) => next_attr,
+                    Err(inner_err) => {
+                        err.cancel();
+                        inner_err.cancel();
+                        return;
+                    }
+                }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
                 && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
                 && let [next_segment] = &next_attr_kind.item.path.segments[..]
                 && segment.ident.name == sym::cfg
-                && let Ok(next_expr) = snapshot.parse_expr()
             {
+                let next_expr = match snapshot.parse_expr() {
+                    Ok(next_expr) => next_expr,
+                    Err(inner_err) => {
+                        err.cancel();
+                        inner_err.cancel();
+                        return;
+                    }
+                };
                 // We have for sure
                 // #[cfg(..)]
                 // expr
@@ -2925,6 +2939,22 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Check for exclusive ranges written as `..<`
+    pub(crate) fn maybe_err_dotdotlt_syntax(&self, maybe_lt: Token, mut err: PErr<'a>) -> PErr<'a> {
+        if maybe_lt == token::Lt
+            && (self.expected_tokens.contains(&TokenType::Token(token::Gt))
+                || matches!(self.token.kind, token::Literal(..)))
+        {
+            err.span_suggestion(
+                maybe_lt.span,
+                "remove the `<` to write an exclusive range",
+                "",
+                Applicability::MachineApplicable,
+            );
+        }
+        err
     }
 
     pub fn is_diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> bool {

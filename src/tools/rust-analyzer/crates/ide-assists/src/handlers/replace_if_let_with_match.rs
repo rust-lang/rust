@@ -279,7 +279,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             let then_block = make_block_expr(then_expr.reset_indent());
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make::expr_if(
-                condition.into(),
+                condition,
                 then_block,
                 else_expr.map(make_block_expr).map(ast::ElseBranch::Block),
             )

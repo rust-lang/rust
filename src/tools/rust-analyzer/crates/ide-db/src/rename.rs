@@ -71,14 +71,17 @@ impl Definition {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
+        rename_external: bool,
     ) -> Result<SourceChange> {
         // self.krate() returns None if
         // self is a built-in attr, built-in type or tool module.
         // it is not allowed for these defs to be renamed.
         // cases where self.krate() is None is handled below.
         if let Some(krate) = self.krate(sema.db) {
-            if !krate.origin(sema.db).is_local() {
-                bail!("Cannot rename a non-local definition.")
+            // Can we not rename non-local items?
+            // Then bail if non-local
+            if !rename_external && !krate.origin(sema.db).is_local() {
+                bail!("Cannot rename a non-local definition as the config for it is disabled")
             }
         }
 
@@ -104,7 +107,7 @@ impl Definition {
     /// renamed and extern crate names will report its range, though a rename will introduce
     /// an alias instead.
     pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
-        let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then(|| range);
+        let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then_some(range);
         let res = match self {
             Definition::Macro(mac) => {
                 let src = mac.source(sema.db)?;

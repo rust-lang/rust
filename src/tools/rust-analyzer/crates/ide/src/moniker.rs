@@ -95,11 +95,7 @@ pub struct MonikerIdentifier {
 
 impl ToString for MonikerIdentifier {
     fn to_string(&self) -> String {
-        match self {
-            MonikerIdentifier { description, crate_name } => {
-                format!("{}::{}", crate_name, description.iter().map(|x| &x.name).join("::"))
-            }
-        }
+        format!("{}::{}", self.crate_name, self.description.iter().map(|x| &x.name).join("::"))
     }
 }
 

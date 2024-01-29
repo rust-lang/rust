@@ -1,10 +1,10 @@
 use crate::gather_locals::DeclOrigin;
-use crate::{errors, FnCtxt, RawTy};
+use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -178,8 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = match pat.kind {
             PatKind::Wild | PatKind::Err(_) => expected,
-            // FIXME(never_patterns): check the type is uninhabited. If that is not possible within
-            // typeck, do that in a later phase.
+            // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
             PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
@@ -577,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if (lhs, rhs).references_error() {
             err.downgrade_to_delayed_bug();
         }
-        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+        if self.tcx.sess.teach(err.get_code().unwrap()) {
             err.note(
                 "In a match expression, only numbers and characters can be matched \
                     against a range. This is because the compiler checks that the range \
@@ -848,7 +847,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 type_str
             );
             err.span_label(span, format!("type `{type_str}` cannot be dereferenced"));
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
+            if self.tcx.sess.teach(err.get_code().unwrap()) {
                 err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
             }
             return Err(err.emit());
@@ -859,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
-        qpath: &hir::QPath<'_>,
+        qpath: &hir::QPath<'tcx>,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
         expected: Ty<'tcx>,
@@ -892,7 +891,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'tcx>,
         qpath: &hir::QPath<'_>,
-        path_resolution: (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
+        path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -908,7 +907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(..)
@@ -1062,7 +1061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0164", expected);
+            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0164, expected);
             on_error(e);
             e
         };
@@ -1670,7 +1669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if tcx.sess.teach(&err.get_code().unwrap()) {
+        if tcx.sess.teach(err.get_code().unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
                  extract a nonexistent field from a struct. Struct fields \
@@ -1841,7 +1840,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
+        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
         lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
         lint.help(
             "ensure that all fields are mentioned explicitly by adding the suggested fields",

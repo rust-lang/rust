@@ -818,7 +818,7 @@ impl<D: Deps> DepGraphData<D> {
             None => {}
         }
 
-        if let None = qcx.dep_context().sess().dcx().has_errors_or_span_delayed_bugs() {
+        if let None = qcx.dep_context().sess().dcx().has_errors_or_lint_errors_or_delayed_bugs() {
             panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
         }
 
@@ -891,7 +891,7 @@ impl<D: Deps> DepGraphData<D> {
                       insertion for {dep_node:?}"
         );
 
-        if !side_effects.is_empty() {
+        if side_effects.maybe_any() {
             qcx.dep_context().dep_graph().with_query_deserialization(|| {
                 self.emit_side_effects(qcx, dep_node_index, side_effects)
             });

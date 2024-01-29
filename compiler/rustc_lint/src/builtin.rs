@@ -121,7 +121,7 @@ impl EarlyLintPass for WhileTrue {
                 "{}loop",
                 label.map_or_else(String::new, |label| format!("{}: ", label.ident,))
             );
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 WHILE_TRUE,
                 condition_span,
                 BuiltinWhileTrue { suggestion: condition_span, replace },
@@ -162,7 +162,7 @@ impl BoxPointers {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
                 && leaf_ty.is_box()
             {
-                cx.emit_spanned_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
+                cx.emit_span_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
             }
         }
     }
@@ -265,7 +265,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                     if cx.tcx.find_field_index(ident, variant)
                         == Some(cx.typeck_results().field_index(fieldpat.hir_id))
                     {
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
                             fieldpat.span,
                             BuiltinNonShorthandFieldPatterns {
@@ -334,7 +334,7 @@ impl UnsafeCode {
             return;
         }
 
-        cx.emit_spanned_lint(UNSAFE_CODE, span, decorate);
+        cx.emit_span_lint(UNSAFE_CODE, span, decorate);
     }
 }
 
@@ -509,7 +509,7 @@ impl MissingDoc {
         let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 MISSING_DOCS,
                 cx.tcx.def_span(def_id),
                 BuiltinMissingDoc { article, desc },
@@ -710,7 +710,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         )
         .is_ok()
         {
-            cx.emit_spanned_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
+            cx.emit_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
         }
     }
 }
@@ -795,7 +795,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             .next()
             .is_some();
         if !has_impl {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
                 BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
@@ -874,7 +874,7 @@ impl EarlyLintPass for AnonymousParameters {
                         } else {
                             ("<type>", Applicability::HasPlaceholders)
                         };
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             ANONYMOUS_PARAMETERS,
                             arg.pat.span,
                             BuiltinAnonymousParams { suggestion: (arg.pat.span, appl), ty_snip },
@@ -921,7 +921,7 @@ impl EarlyLintPass for DeprecatedAttr {
                             BuiltinDeprecatedAttrLinkSuggestion::Default { suggestion: attr.span }
                         }
                     };
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         DEPRECATED,
                         attr.span,
                         BuiltinDeprecatedAttrLink { name, reason, link, suggestion },
@@ -931,7 +931,7 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 DEPRECATED,
                 attr.span,
                 BuiltinDeprecatedAttrUsed {
@@ -973,7 +973,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                     BuiltinUnusedDocCommentSub::BlockHelp
                 }
             };
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 UNUSED_DOC_COMMENTS,
                 span,
                 BuiltinUnusedDocComment { kind: node_kind, label: node_span, sub },
@@ -1107,7 +1107,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 match param.kind {
                     GenericParamKind::Lifetime { .. } => {}
                     GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             NO_MANGLE_GENERIC_ITEMS,
                             span,
                             BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span },
@@ -1138,7 +1138,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
 
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         NO_MANGLE_CONST_ITEMS,
                         it.span,
                         BuiltinConstNoMangle { suggestion },
@@ -1201,7 +1201,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if from_mutbl < to_mutbl {
-                cx.emit_spanned_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
+                cx.emit_span_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
             }
         }
 
@@ -1233,10 +1233,30 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
 }
 
 declare_lint! {
-    /// The `unstable_features` is deprecated and should no longer be used.
+    /// The `unstable_features` lint detects uses of `#![feature]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unstable_features)]
+    /// #![feature(test)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In larger nightly-based projects which
+    ///
+    /// * consist of a multitude of crates where a subset of crates has to compile on
+    ///   stable either unconditionally or depending on a `cfg` flag to for example
+    ///   allow stable users to depend on them,
+    /// * don't use nightly for experimental features but for, e.g., unstable options only,
+    ///
+    /// this lint may come in handy to enforce policies of these kinds.
     UNSTABLE_FEATURES,
     Allow,
-    "enabling unstable features (deprecated. do not use)"
+    "enabling unstable features"
 }
 
 declare_lint_pass!(
@@ -1246,11 +1266,11 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        if attr.has_name(sym::feature) {
-            if let Some(items) = attr.meta_item_list() {
-                for item in items {
-                    cx.emit_spanned_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
-                }
+        if attr.has_name(sym::feature)
+            && let Some(items) = attr.meta_item_list()
+        {
+            for item in items {
+                cx.emit_span_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
             }
         }
     }
@@ -1303,7 +1323,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = cx.tcx.get_attr(def_id, sym::track_caller)
         {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
                 attr.span,
                 BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
@@ -1369,7 +1389,7 @@ impl UnreachablePub {
                 applicability = Applicability::MaybeIncorrect;
             }
             let def_span = cx.tcx.def_span(def_id);
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 UNREACHABLE_PUB,
                 def_span,
                 BuiltinUnreachablePub {
@@ -1498,7 +1518,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 suggested_changing_assoc_types = true;
                 SuggestChangingAssocTypes { ty: hir_ty }
             });
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 where_spans,
                 BuiltinTypeAliasWhereClause {
@@ -1514,7 +1534,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 suggested_changing_assoc_types = true;
                 SuggestChangingAssocTypes { ty: hir_ty }
             });
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 TYPE_ALIAS_BOUNDS,
                 inline_spans,
                 BuiltinTypeAliasGenericBounds { suggestion, sub },
@@ -1613,7 +1633,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     | ClauseKind::ConstEvaluatable(..)  => continue,
                 };
                 if predicate.is_global() {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         TRIVIAL_BOUNDS,
                         span,
                         BuiltinTrivialBounds { predicate_kind_name, predicate },
@@ -1731,7 +1751,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                         replace,
                     });
                 } else {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
                         pat.span,
                         BuiltinEllipsisInclusiveRangePatternsLint::Parenthesise {
@@ -1749,7 +1769,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                         replace: replace.to_string(),
                     });
                 } else {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
                         join,
                         BuiltinEllipsisInclusiveRangePatternsLint::NonParenthesise {
@@ -1875,7 +1895,7 @@ impl KeywordIdents {
             return;
         }
 
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             KEYWORD_IDENTS,
             ident.span,
             BuiltinKeywordIdents { kw: ident, next: next_edition, suggestion: ident.span },
@@ -2183,7 +2203,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 lint_spans.sort_unstable();
                 lint_spans.dedup();
 
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
                     BuiltinExplicitOutlives {
@@ -2270,13 +2290,13 @@ impl EarlyLintPass for IncompleteInternalFeatures {
                     let help =
                         HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
 
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         INCOMPLETE_FEATURES,
                         span,
                         BuiltinIncompleteFeatures { name, note, help },
                     );
                 } else {
-                    cx.emit_spanned_lint(INTERNAL_FEATURES, span, BuiltinInternalFeatures { name });
+                    cx.emit_span_lint(INTERNAL_FEATURES, span, BuiltinInternalFeatures { name });
                 }
             });
     }
@@ -2592,7 +2612,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_uninit,
                 };
                 let sub = BuiltinUnpermittedTypeInitSub { err };
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     INVALID_VALUE,
                     expr.span,
                     BuiltinUnpermittedTypeInit {
@@ -2680,7 +2700,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
         if let rustc_hir::ExprKind::Unary(rustc_hir::UnOp::Deref, expr_deref) = expr.kind {
             if is_null_ptr(cx, expr_deref) {
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     DEREF_NULLPTR,
                     expr.span,
                     BuiltinDerefNullptr { label: expr.span },
@@ -2829,7 +2849,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                     let target_spans: MultiSpan =
                         if spans.len() > 0 { spans.into() } else { (*template_span).into() };
 
-                    cx.lookup_with_diagnostics(
+                    cx.span_lint_with_diagnostics(
                             NAMED_ASM_LABELS,
                             Some(target_spans),
                             fluent::lint_builtin_asm_labels,
@@ -2905,12 +2925,12 @@ impl EarlyLintPass for SpecialModuleName {
                 }
 
                 match item.ident.name.as_str() {
-                    "lib" => cx.emit_spanned_lint(
+                    "lib" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,
                         BuiltinSpecialModuleNameUsed::Lib,
                     ),
-                    "main" => cx.emit_spanned_lint(
+                    "main" => cx.emit_span_lint(
                         SPECIAL_MODULE_NAME,
                         item.span,
                         BuiltinSpecialModuleNameUsed::Main,

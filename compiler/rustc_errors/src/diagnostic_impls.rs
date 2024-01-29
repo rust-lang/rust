@@ -1,7 +1,7 @@
 use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, ErrCode, IntoDiagnostic,
     IntoDiagnosticArg, Level,
 };
 use rustc_ast as ast;
@@ -58,16 +58,29 @@ macro_rules! into_diagnostic_arg_using_display {
     }
 }
 
+macro_rules! into_diagnostic_arg_for_number {
+    ($( $ty:ty ),+ $(,)?) => {
+        $(
+            impl IntoDiagnosticArg for $ty {
+                fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+                    // HACK: `FluentNumber` the underline backing struct represent
+                    // numbers using a f64 which can't represent all the i128 numbers
+                    // So in order to be able to use fluent selectors and still
+                    // have all the numbers representable we only convert numbers
+                    // below a certain threshold.
+                    if let Ok(n) = TryInto::<i128>::try_into(self) && n >= -100 && n <= 100 {
+                        DiagnosticArgValue::Number(n)
+                    } else {
+                        self.to_string().into_diagnostic_arg()
+                    }
+                }
+            }
+        )+
+    }
+}
+
 into_diagnostic_arg_using_display!(
     ast::ParamKindOrd,
-    i8,
-    u8,
-    i16,
-    u16,
-    u32,
-    i64,
-    i128,
-    u128,
     std::io::Error,
     Box<dyn std::error::Error>,
     std::num::NonZeroU32,
@@ -80,19 +93,10 @@ into_diagnostic_arg_using_display!(
     &TargetTriple,
     SplitDebuginfo,
     ExitStatus,
+    ErrCode,
 );
 
-impl IntoDiagnosticArg for i32 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Number(self.into())
-    }
-}
-
-impl IntoDiagnosticArg for u64 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Number(self.into())
-    }
-}
+into_diagnostic_arg_for_number!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
 
 impl IntoDiagnosticArg for bool {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
@@ -107,6 +111,14 @@ impl IntoDiagnosticArg for bool {
 impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(format!("{self:?}")))
+    }
+}
+
+impl IntoDiagnosticArg for Vec<char> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::StrListSepByAnd(
+            self.into_iter().map(|c| Cow::Owned(format!("{c:?}"))).collect(),
+        )
     }
 }
 
@@ -143,12 +155,6 @@ impl<'a> IntoDiagnosticArg for &'a Path {
 impl IntoDiagnosticArg for PathBuf {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for usize {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Number(self as i128)
     }
 }
 

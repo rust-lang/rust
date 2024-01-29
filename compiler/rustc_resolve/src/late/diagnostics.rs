@@ -16,8 +16,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, SuggestionStyle,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -922,8 +922,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         path: &[Segment],
         span: Span,
     ) {
-        if let Some(err_code) = &err.code {
-            if err_code == &rustc_errors::error_code!(E0425) {
+        if let Some(err_code) = err.code {
+            if err_code == E0425 {
                 for label_rib in &self.label_ribs {
                     for (label_ident, node_id) in &label_rib.bindings {
                         let ident = path.last().unwrap().ident;
@@ -946,7 +946,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         }
                     }
                 }
-            } else if err_code == &rustc_errors::error_code!(E0412) {
+            } else if err_code == E0412 {
                 if let Some(correct) = Self::likely_rust_type(path) {
                     err.span_suggestion(
                         span,
@@ -970,7 +970,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if !is_self_type(path, source.namespace()) {
             return false;
         }
-        err.code(rustc_errors::error_code!(E0411));
+        err.code(E0411);
         err.span_label(span, "`Self` is only available in impls, traits, and type definitions");
         if let Some(item_kind) = self.diagnostic_metadata.current_item {
             if !item_kind.ident.span.is_dummy() {
@@ -999,7 +999,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
-        err.code(rustc_errors::error_code!(E0424));
+        err.code(E0424);
         err.span_label(
             span,
             match source {
@@ -1745,12 +1745,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // Doing analysis on local `DefId`s would cause infinite recursion.
             return;
         }
+        let Ok(impls) = self.r.tcx.inherent_impls(def_id) else { return };
         // Look at all the associated functions without receivers in the type's
         // inherent impls to look for builders that return `Self`
-        let mut items = self
-            .r
-            .tcx
-            .inherent_impls(def_id)
+        let mut items = impls
             .iter()
             .flat_map(|i| self.r.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers.
@@ -2569,8 +2567,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     debug!(?param.ident, ?param.ident.span, ?use_span);
 
                     let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
+                    let deletion_span =
+                        if param.bounds.is_empty() { deletion_span() } else { None };
 
-                    let deletion_span = deletion_span();
                     self.r.lint_buffer.buffer_lint_with_diagnostic(
                         lint::builtin::SINGLE_USE_LIFETIMES,
                         param.id,

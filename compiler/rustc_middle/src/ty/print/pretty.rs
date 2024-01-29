@@ -804,17 +804,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 } else {
                     p!(print_def_path(did, args));
-                    p!(" upvar_tys=(");
-                    if !args.as_coroutine().is_valid() {
-                        p!("unavailable");
-                    } else {
-                        self.comma_sep(args.as_coroutine().upvar_tys().iter())?;
-                    }
-                    p!(")");
-
-                    if args.as_coroutine().is_valid() {
-                        p!(" ", print(args.as_coroutine().witness()));
-                    }
+                    p!(
+                        " upvar_tys=",
+                        print(args.as_coroutine().tupled_upvars_ty()),
+                        " witness=",
+                        print(args.as_coroutine().witness())
+                    );
                 }
 
                 p!("}}")
@@ -868,19 +863,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 } else {
                     p!(print_def_path(did, args));
-                    if !args.as_closure().is_valid() {
-                        p!(" closure_args=(unavailable)");
-                        p!(write(" args={}", args.print_as_list()));
-                    } else {
-                        p!(" closure_kind_ty=", print(args.as_closure().kind_ty()));
-                        p!(
-                            " closure_sig_as_fn_ptr_ty=",
-                            print(args.as_closure().sig_as_fn_ptr_ty())
-                        );
-                        p!(" upvar_tys=(");
-                        self.comma_sep(args.as_closure().upvar_tys().iter())?;
-                        p!(")");
-                    }
+                    p!(
+                        " closure_kind_ty=",
+                        print(args.as_closure().kind_ty()),
+                        " closure_sig_as_fn_ptr_ty=",
+                        print(args.as_closure().sig_as_fn_ptr_ty()),
+                        " upvar_tys=",
+                        print(args.as_closure().tupled_upvars_ty())
+                    );
                 }
                 p!("}}");
             }
@@ -3072,8 +3062,6 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 /// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths!`].
 // this is pub to be able to intra-doc-link it
 pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
-    assert!(tcx.sess.opts.trimmed_def_paths);
-
     // Trimming paths is expensive and not optimized, since we expect it to only be used for error
     // reporting.
     //

@@ -134,7 +134,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 // compute the `body`
                 let arg_list = method_source
                     .param_list()
-                    .map(|list| convert_param_list_to_arg_list(list))
+                    .map(convert_param_list_to_arg_list)
                     .unwrap_or_else(|| make::arg_list([]));
 
                 let tail_expr = make::expr_method_call(field, make::name_ref(&name), arg_list);

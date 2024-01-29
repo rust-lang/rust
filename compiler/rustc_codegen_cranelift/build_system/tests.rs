@@ -113,8 +113,8 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
-    "9a02c819cc1e4ec6959ae25eafbb5cf6acb68234",
-    "4934f0afb1d1c2ca",
+    "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
+    "981f8bf489338978",
     "rand",
 );
 
@@ -133,8 +133,8 @@ pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
-    "4825b2a64d765317066948867e8714674419359b",
-    "9e67d07c00f5fb0b",
+    "97007cc2e70df8c97326ce896a79e2f0ce4dd98b",
+    "e54a16035cedf205",
     "portable-simd",
 );
 

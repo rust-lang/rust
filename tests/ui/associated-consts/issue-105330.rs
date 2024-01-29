@@ -14,6 +14,5 @@ fn foo<A: TraitWAssocConst<A=32>>() { //~ ERROR E0658
 
 fn main<A: TraitWAssocConst<A=32>>() {
     //~^ ERROR E0658
-    //~| ERROR E0131
     foo::<Demo>();
 }

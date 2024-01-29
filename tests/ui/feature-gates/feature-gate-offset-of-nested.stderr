@@ -1,0 +1,60 @@
+error[E0658]: only a single ident or integer is stable as the field in offset_of
+  --> $DIR/feature-gate-offset-of-nested.rs:21:27
+   |
+LL |     offset_of!(Alpha, Two.0);
+   |                           ^
+   |
+   = note: see issue #120140 <https://github.com/rust-lang/rust/issues/120140> for more information
+   = help: add `#![feature(offset_of_nested)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: only a single ident or integer is stable as the field in offset_of
+  --> $DIR/feature-gate-offset-of-nested.rs:24:33
+   |
+LL |       offset_of!((u32, (S, T)), 1.1);
+   |  _____----------------------------^-
+   | |     |
+   | |     in this macro invocation
+LL | |     offset_of!(S, b.0);
+LL | |     offset_of!((S, ()), 0.c);
+LL | |     offset_of!(S, c.t);
+...  |
+   |
+   = note: see issue #120140 <https://github.com/rust-lang/rust/issues/120140> for more information
+   = help: add `#![feature(offset_of_nested)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: only a single ident or integer is stable as the field in offset_of
+  --> $DIR/feature-gate-offset-of-nested.rs:25:21
+   |
+LL |     offset_of!(S, b.0);
+   |                     ^
+   |
+   = note: see issue #120140 <https://github.com/rust-lang/rust/issues/120140> for more information
+   = help: add `#![feature(offset_of_nested)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: only a single ident or integer is stable as the field in offset_of
+  --> $DIR/feature-gate-offset-of-nested.rs:26:27
+   |
+LL |     offset_of!((S, ()), 0.c);
+   |                           ^
+   |
+   = note: see issue #120140 <https://github.com/rust-lang/rust/issues/120140> for more information
+   = help: add `#![feature(offset_of_nested)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: only a single ident or integer is stable as the field in offset_of
+  --> $DIR/feature-gate-offset-of-nested.rs:27:21
+   |
+LL |     offset_of!(S, c.t);
+   |                     ^
+   |
+   = note: see issue #120140 <https://github.com/rust-lang/rust/issues/120140> for more information
+   = help: add `#![feature(offset_of_nested)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

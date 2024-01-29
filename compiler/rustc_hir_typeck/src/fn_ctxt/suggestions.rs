@@ -11,6 +11,7 @@ use crate::ty::TypeAndMut;
 use core::cmp::min;
 use core::iter;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -784,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut Diagnostic,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
@@ -995,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         id: hir::HirId,
@@ -1409,8 +1410,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 let (_, suffix) = snippet.split_at(snippet.len() - 3);
                 let value = match suffix {
-                    "f32" => (lit - 0xf32) / (16 * 16 * 16),
-                    "f64" => (lit - 0xf64) / (16 * 16 * 16),
+                    "f32" => (lit.get() - 0xf32) / (16 * 16 * 16),
+                    "f64" => (lit.get() - 0xf64) / (16 * 16 * 16),
                     _ => return false,
                 };
                 err.span_suggestions(
@@ -1440,7 +1441,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Provided expression needs to be a literal `0`.
-        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(0, _), span }) = expr.kind else {
+        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(Pu128(0), _), span }) = expr.kind
+        else {
             return false;
         };
 
@@ -1468,7 +1470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_associated_const(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
         let Some((DefKind::AssocFn, old_def_id)) =
@@ -2038,7 +2040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
                         sole_field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
-                        // Skip suggestions for unstable public fields (for example `Pin::pointer`)
+                        // Skip suggestions for unstable public fields (for example `Pin::__pointer`)
                         && matches!(self.tcx.eval_stability(sole_field.did, None, expr.span, None), EvalResult::Allow | EvalResult::Unmarked);
 
                     if !field_is_local && !field_is_accessible {

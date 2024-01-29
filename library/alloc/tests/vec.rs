@@ -958,23 +958,35 @@ fn test_append() {
 #[test]
 fn test_split_off() {
     let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(4);
+
+    let split_off = vec.split_off(4);
     assert_eq!(vec, [1, 2, 3, 4]);
-    assert_eq!(vec2, [5, 6]);
+    assert_eq!(split_off, [5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
+    assert_eq!(vec.as_ptr(), orig_ptr);
 }
 
 #[test]
 fn test_split_off_take_all() {
-    let mut vec = vec![1, 2, 3, 4, 5, 6];
+    // Allocate enough capacity that we can tell whether the split-off vector's
+    // capacity is based on its size, or (incorrectly) on the original capacity.
+    let mut vec = Vec::with_capacity(1000);
+    vec.extend([1, 2, 3, 4, 5, 6]);
     let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(0);
+
+    let split_off = vec.split_off(0);
     assert_eq!(vec, []);
-    assert_eq!(vec2, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(split_off, [1, 2, 3, 4, 5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
-    assert_eq!(vec2.as_ptr(), orig_ptr);
+    assert_eq!(vec.as_ptr(), orig_ptr);
+
+    // The split-off vector should be newly-allocated, and should not have
+    // stolen the original vector's allocation.
+    assert!(split_off.capacity() < orig_capacity);
+    assert_ne!(split_off.as_ptr(), orig_ptr);
 }
 
 #[test]
@@ -1166,10 +1178,14 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 #[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
-    let src: Vec<usize> = vec![0usize; 256];
+    let owned: Vec<usize> = vec![0usize; 256];
+    let refd: Vec<&usize> = owned.iter().collect();
+    let src: Vec<&&usize> = refd.iter().collect();
     let srcptr = src.as_ptr();
     let iter = src
         .into_iter()
+        .copied()
+        .cloned()
         .enumerate()
         .map(|i| i.0 + i.1)
         .zip(std::iter::repeat(1usize))
@@ -1180,7 +1196,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr as *const usize);
+    assert_eq!(srcptr as *const usize, sinkptr as *const usize);
 }
 
 #[test]

@@ -222,13 +222,7 @@ pub(crate) fn field_visibilities_query(
     db: &dyn DefDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let var_data = match variant_id {
-        VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-        VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-        VariantId::EnumVariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
-        }
-    };
+    let var_data = variant_id.variant_data(db);
     let resolver = variant_id.module(db).resolver(db);
     let mut res = ArenaMap::default();
     for (field_id, field_data) in var_data.fields().iter() {

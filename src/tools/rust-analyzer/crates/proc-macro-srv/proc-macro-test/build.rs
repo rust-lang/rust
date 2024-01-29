@@ -92,12 +92,24 @@ fn main() {
         panic!("proc-macro-test-impl failed to build");
     }
 
+    // Old Package ID Spec
+    let repr = format!("{name} {version}");
+    // New Package Id Spec since rust-lang/cargo#13311
+    let pkgid = String::from_utf8(
+        Command::new(toolchain::cargo())
+            .current_dir(&staging_dir)
+            .args(["pkgid", name])
+            .output()
+            .unwrap().stdout,
+    )
+    .unwrap();
+    let pkgid = pkgid.trim();
+
     let mut artifact_path = None;
     for message in Message::parse_stream(output.stdout.as_slice()) {
         if let Message::CompilerArtifact(artifact) = message.unwrap() {
             if artifact.target.kind.contains(&"proc-macro".to_string()) {
-                let repr = format!("{name} {version}");
-                if artifact.package_id.repr.starts_with(&repr) {
+                if artifact.package_id.repr.starts_with(&repr) || artifact.package_id.repr == pkgid {
                     artifact_path = Some(PathBuf::from(&artifact.filenames[0]));
                 }
             }

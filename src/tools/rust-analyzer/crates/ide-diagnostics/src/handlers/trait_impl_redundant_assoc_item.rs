@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, Const, Function, HasSource, HirDisplay, TypeAlias};
+use hir::{db::ExpandDatabase, HasSource, HirDisplay};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
@@ -25,7 +25,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
 
     let (redundant_item_name, diagnostic_range, redundant_item_def) = match assoc_item {
         hir::AssocItem::Function(id) => {
-            let function = Function::from(id);
+            let function = id;
             (
                 format!("`fn {}`", redundant_assoc_item_name),
                 function
@@ -36,7 +36,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             )
         }
         hir::AssocItem::Const(id) => {
-            let constant = Const::from(id);
+            let constant = id;
             (
                 format!("`const {}`", redundant_assoc_item_name),
                 constant
@@ -47,7 +47,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             )
         }
         hir::AssocItem::TypeAlias(id) => {
-            let type_alias = TypeAlias::from(id);
+            let type_alias = id;
             (
                 format!("`type {}`", redundant_assoc_item_name),
                 type_alias
@@ -94,7 +94,8 @@ fn quickfix_for_redundant_assoc_item(
         let where_to_insert =
             hir::InFile::new(d.file_id, l_curly).original_node_file_range_rooted(db).range;
 
-        Some(builder.insert(where_to_insert.end(), redundant_item_def))
+        builder.insert(where_to_insert.end(), redundant_item_def);
+        Some(())
     };
     let file_id = d.file_id.file_id()?;
     let mut source_change_builder = SourceChangeBuilder::new(file_id);

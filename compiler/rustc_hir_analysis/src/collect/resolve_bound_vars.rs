@@ -8,7 +8,7 @@
 
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -912,7 +912,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             continue;
                         }
                         self.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                        self.tcx.struct_span_lint_hir(
+                        self.tcx.node_span_lint(
                             lint::builtin::UNUSED_LIFETIMES,
                             lifetime.hir_id,
                             lifetime.ident.span,

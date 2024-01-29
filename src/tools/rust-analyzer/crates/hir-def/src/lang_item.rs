@@ -125,12 +125,8 @@ impl LangItems {
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                        db.enum_data(e).variants.iter().for_each(|(local_id, _)| {
-                            lang_items.collect_lang_item(
-                                db,
-                                EnumVariantId { parent: e, local_id },
-                                LangItemTarget::EnumVariant,
-                            );
+                        crate_def_map.enum_definitions[&e].iter().for_each(|&id| {
+                            lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                         });
                     }
                     ModuleDefId::AdtId(AdtId::StructId(s)) => {
@@ -188,15 +184,51 @@ impl LangItems {
         T: Into<AttrDefId> + Copy,
     {
         let _p = profile::span("collect_lang_item");
-        if let Some(lang_item) = db.lang_attr(item.into()) {
+        if let Some(lang_item) = lang_attr(db, item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
     }
 }
 
-pub(crate) fn lang_attr_query(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
+pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
     let attrs = db.attrs(item);
-    attrs.by_key("lang").string_value().and_then(|it| LangItem::from_str(&it))
+    attrs.by_key("lang").string_value().and_then(|it| LangItem::from_str(it))
+}
+
+pub(crate) fn notable_traits_in_deps(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+) -> Arc<[Arc<[TraitId]>]> {
+    let _p = profile::span("notable_traits_in_deps").detail(|| format!("{krate:?}"));
+    let crate_graph = db.crate_graph();
+
+    Arc::from_iter(
+        crate_graph.transitive_deps(krate).filter_map(|krate| db.crate_notable_traits(krate)),
+    )
+}
+
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
+    let _p = profile::span("crate_notable_traits").detail(|| format!("{krate:?}"));
+
+    let mut traits = Vec::new();
+
+    let crate_def_map = db.crate_def_map(krate);
+
+    for (_, module_data) in crate_def_map.modules() {
+        for def in module_data.scope.declarations() {
+            if let ModuleDefId::TraitId(trait_) = def {
+                if db.attrs(trait_.into()).has_doc_notable_trait() {
+                    traits.push(trait_);
+                }
+            }
+        }
+    }
+
+    if traits.is_empty() {
+        None
+    } else {
+        Some(traits.into_iter().collect())
+    }
 }
 
 pub enum GenericRequirement {
@@ -228,6 +260,7 @@ macro_rules! language_item_table {
             }
 
             /// Opposite of [`LangItem::name`]
+            #[allow(clippy::should_implement_trait)]
             pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     $( stringify!($name) => Some(LangItem::$variant), )*
@@ -334,8 +367,8 @@ language_item_table! {
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    GeneratorState,          sym::generator_state,     gen_state,                  Target::Enum,           GenericRequirement::None;
-    Generator,               sym::generator,           gen_trait,                  Target::Trait,          GenericRequirement::Minimum(1);
+    CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
+    Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 

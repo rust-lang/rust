@@ -12,7 +12,7 @@ const CONSTANT: &&MyType = &&MyType;
 
 fn main() {
     if let CONSTANT = &&MyType {
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         println!("did match!");
     }
 }

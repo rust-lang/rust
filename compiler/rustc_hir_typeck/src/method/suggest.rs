@@ -3,17 +3,16 @@
 
 // ignore-tidy-filelength
 
-use crate::errors;
-use crate::errors::{CandidateTraitNote, NoAssociatedItem};
+use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::StashKey;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -359,7 +358,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let ty::Adt(adt_def, _) = ty.kind() {
                         self.tcx
                             .inherent_impls(adt_def.did())
-                            .iter()
+                            .into_iter()
+                            .flatten()
                             .any(|def_id| self.associated_value(*def_id, item_name).is_some())
                     } else {
                         false
@@ -1048,7 +1048,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut inherent_impls_candidate = self
                         .tcx
                         .inherent_impls(adt.did())
-                        .iter()
+                        .into_iter()
+                        .flatten()
                         .copied()
                         .filter(|def_id| {
                             if let Some(assoc) = self.associated_value(*def_id, item_name) {
@@ -1103,7 +1104,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "the {item_kind} was found for\n{type_candidates}{additional_types}"
                         ));
                     } else {
-                        'outer: for inherent_impl_did in self.tcx.inherent_impls(adt.did()) {
+                        'outer: for inherent_impl_did in
+                            self.tcx.inherent_impls(adt.did()).into_iter().flatten()
+                        {
                             for inherent_method in
                                 self.tcx.associated_items(inherent_impl_did).in_definition_order()
                             {
@@ -1457,9 +1460,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
-        let mut items = self
-            .tcx
-            .inherent_impls(adt_def.did())
+        // FIXME(oli-obk): try out bubbling this error up one level and cancelling the other error in that case.
+        let Ok(impls) = self.tcx.inherent_impls(adt_def.did()) else { return };
+        let mut items = impls
             .iter()
             .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers.
@@ -1597,23 +1600,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.ty_to_value_string(rcvr_ty.peel_refs())
         };
         if let SelfSource::MethodCall(_) = source {
-            let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0)
-                && let Some(assoc) = self.associated_value(*impl_did, item_name)
-                && assoc.kind == ty::AssocKind::Fn
-            {
+            let first_arg = static_candidates.get(0).and_then(|candidate_source| {
+                let (assoc_did, self_ty) = match candidate_source {
+                    CandidateSource::Impl(impl_did) => {
+                        (*impl_did, self.tcx.type_of(*impl_did).instantiate_identity())
+                    }
+                    CandidateSource::Trait(trait_did) => (*trait_did, rcvr_ty),
+                };
+
+                let assoc = self.associated_value(assoc_did, item_name)?;
+                if assoc.kind != ty::AssocKind::Fn {
+                    return None;
+                }
+
+                // for CandidateSource::Impl, `Self` will be instantiated to a concrete type
+                // but for CandidateSource::Trait, `Self` is still `Self`
                 let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| {
-                    let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
                     // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
-                    if first.peel_refs() == impl_ty {
+                    let first_ty = first.peel_refs();
+                    if first_ty == self_ty || first_ty == self.tcx.types.self_param {
                         Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
                     } else {
                         None
                     }
                 })
-            } else {
-                None
-            };
+            });
+
             let mut applicability = Applicability::MachineApplicable;
             let args = if let SelfSource::MethodCall(receiver) = source
                 && let Some(args) = args
@@ -1823,7 +1836,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             simplify_type(tcx, ty, TreatParams::AsCandidateKey)
                 .and_then(|simp| {
                     tcx.incoherent_impls(simp)
-                        .iter()
+                        .into_iter()
+                        .flatten()
                         .find_map(|&id| self.associated_value(id, item_name))
                 })
                 .is_some()

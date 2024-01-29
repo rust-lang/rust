@@ -5,8 +5,8 @@ use std::num::NonZeroU32;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder, DiagnosticMessage,
-    DiagnosticStyledString, SubdiagnosticMessage, SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder,
+    DiagnosticMessage, DiagnosticStyledString, SubdiagnosticMessage, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -532,7 +532,6 @@ pub enum BuiltinSpecialModuleNameUsed {
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
-#[help]
 pub struct SupertraitAsDerefTarget<'a> {
     pub self_ty: Ty<'a>,
     pub supertrait_principal: PolyExistentialTraitRef<'a>,
@@ -930,8 +929,7 @@ pub enum NonBindingLet {
 
 pub struct NonBindingLetSub {
     pub suggestion: Span,
-    pub multi_suggestion_start: Span,
-    pub multi_suggestion_end: Span,
+    pub drop_fn_start_end: Option<(Span, Span)>,
     pub is_assign_desugar: bool,
 }
 
@@ -940,21 +938,31 @@ impl AddToDiagnostic for NonBindingLetSub {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        let prefix = if self.is_assign_desugar { "let " } else { "" };
-        diag.span_suggestion_verbose(
-            self.suggestion,
-            fluent::lint_non_binding_let_suggestion,
-            format!("{prefix}_unused"),
-            Applicability::MachineApplicable,
-        );
-        diag.multipart_suggestion(
-            fluent::lint_non_binding_let_multi_suggestion,
-            vec![
-                (self.multi_suggestion_start, "drop(".to_string()),
-                (self.multi_suggestion_end, ")".to_string()),
-            ],
-            Applicability::MachineApplicable,
-        );
+        let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
+
+        if can_suggest_binding {
+            let prefix = if self.is_assign_desugar { "let " } else { "" };
+            diag.span_suggestion_verbose(
+                self.suggestion,
+                fluent::lint_non_binding_let_suggestion,
+                format!("{prefix}_unused"),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.span_help(self.suggestion, fluent::lint_non_binding_let_suggestion);
+        }
+        if let Some(drop_fn_start_end) = self.drop_fn_start_end {
+            diag.multipart_suggestion(
+                fluent::lint_non_binding_let_multi_suggestion,
+                vec![
+                    (drop_fn_start_end.0, "drop(".to_string()),
+                    (drop_fn_start_end.1, ")".to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.help(fluent::lint_non_binding_let_multi_drop_fn);
+        }
     }
 }
 
@@ -1057,7 +1065,7 @@ pub enum UnknownLintSuggestion {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unknown_lint, code = "E0602")]
+#[diag(lint_unknown_lint, code = E0602)]
 pub struct UnknownLintFromCommandLine<'a> {
     pub name: String,
     #[subdiagnostic]
@@ -1099,7 +1107,10 @@ pub struct IdentifierNonAsciiChar;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_uncommon_codepoints)]
-pub struct IdentifierUncommonCodepoints;
+pub struct IdentifierUncommonCodepoints {
+    pub codepoints: Vec<char>,
+    pub codepoints_len: usize,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_confusable_identifier_pair)]

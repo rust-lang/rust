@@ -2,24 +2,26 @@
 //!
 //! This module contains the code for creating and emitting diagnostics.
 
+// tidy-alphabetical-start
+#![allow(incomplete_features)]
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![feature(extract_if)]
-#![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(yeet_expr)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![feature(box_patterns)]
-#![feature(error_reporter)]
-#![allow(incomplete_features)]
-#![allow(internal_features)]
+#![feature(yeet_expr)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;
@@ -29,6 +31,7 @@ extern crate tracing;
 
 extern crate self as rustc_errors;
 
+pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
@@ -77,6 +80,7 @@ use std::path::{Path, PathBuf};
 use Level::*;
 
 pub mod annotate_snippet_emitter_writer;
+pub mod codes;
 mod diagnostic;
 mod diagnostic_builder;
 mod diagnostic_impls;
@@ -421,16 +425,16 @@ pub struct DiagCtxt {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
-    /// The number of lint errors that have been emitted.
+    /// The number of lint errors that have been emitted, including duplicates.
     lint_err_count: usize,
-    /// The number of errors that have been emitted, including duplicates.
-    ///
-    /// This is not necessarily the count that's reported to the user once
-    /// compilation ends.
+    /// The number of non-lint errors that have been emitted, including duplicates.
     err_count: usize,
+
+    /// The error count shown to the user at the end.
     deduplicated_err_count: usize,
-    /// The warning count, used for a recap upon finishing
+    /// The warning count shown to the user at the end.
     deduplicated_warn_count: usize,
+
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
     has_printed: bool,
@@ -445,10 +449,10 @@ struct DiagCtxtInner {
     /// This set contains the code of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
     /// would be unnecessary repetition.
-    taught_diagnostics: FxHashSet<String>,
+    taught_diagnostics: FxHashSet<ErrCode>,
 
     /// Used to suggest rustc --explain `<error code>`
-    emitted_diagnostic_codes: FxIndexSet<String>,
+    emitted_diagnostic_codes: FxIndexSet<ErrCode>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
     /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
@@ -927,11 +931,13 @@ impl DiagCtxt {
         self.struct_bug(msg).emit()
     }
 
+    /// This excludes lint errors and delayed bugs.
     #[inline]
     pub fn err_count(&self) -> usize {
         self.inner.borrow().err_count
     }
 
+    /// This excludes lint errors and delayed bugs.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors().then(|| {
             #[allow(deprecated)]
@@ -939,30 +945,24 @@ impl DiagCtxt {
         })
     }
 
+    /// This excludes delayed bugs. Unless absolutely necessary, prefer
+    /// `has_errors` to this method.
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         let inner = self.inner.borrow();
-        let has_errors_or_lint_errors = inner.has_errors() || inner.lint_err_count > 0;
-        has_errors_or_lint_errors.then(|| {
+        let result = inner.has_errors() || inner.lint_err_count > 0;
+        result.then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
     }
 
-    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+    /// Unless absolutely necessary, prefer `has_errors` or
+    /// `has_errors_or_lint_errors` to this method.
+    pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         let inner = self.inner.borrow();
-        let has_errors_or_span_delayed_bugs =
-            inner.has_errors() || !inner.span_delayed_bugs.is_empty();
-        has_errors_or_span_delayed_bugs.then(|| {
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
-        })
-    }
-
-    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow();
-        let will_fail =
+        let result =
             inner.has_errors() || inner.lint_err_count > 0 || !inner.span_delayed_bugs.is_empty();
-        will_fail.then(|| {
+        result.then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -1007,9 +1007,9 @@ impl DiagCtxt {
             let mut error_codes = inner
                 .emitted_diagnostic_codes
                 .iter()
-                .filter_map(|code| {
+                .filter_map(|&code| {
                     if registry.try_find_description(code).is_ok().clone() {
-                        Some(code.clone())
+                        Some(code.to_string())
                     } else {
                         None
                     }
@@ -1055,8 +1055,8 @@ impl DiagCtxt {
     ///
     /// Used to suppress emitting the same error multiple times with extended explanation when
     /// calling `-Zteach`.
-    pub fn must_teach(&self, code: &str) -> bool {
-        self.inner.borrow_mut().taught_diagnostics.insert(code.to_string())
+    pub fn must_teach(&self, code: ErrCode) -> bool {
+        self.inner.borrow_mut().taught_diagnostics.insert(code)
     }
 
     pub fn force_print_diagnostic(&self, db: Diagnostic) {
@@ -1162,7 +1162,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
 
         if loud && lint_level.is_error() {
-            inner.err_count += 1;
+            inner.lint_err_count += 1;
             inner.panic_if_treat_err_as_bug();
         }
 
@@ -1316,8 +1316,8 @@ impl DiagCtxtInner {
 
         let mut guaranteed = None;
         (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
-            if let Some(ref code) = diagnostic.code {
-                self.emitted_diagnostic_codes.insert(code.clone());
+            if let Some(code) = diagnostic.code {
+                self.emitted_diagnostic_codes.insert(code);
             }
 
             let already_emitted = {

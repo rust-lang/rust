@@ -157,7 +157,8 @@ fn foo() {
             *local*
 
             ```rust
-            let local: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            let local: i32
             ```
         "#]],
     );
@@ -399,6 +400,20 @@ fn main() {
                                 description: "struct S",
                             },
                         },
+                        HoverGotoTypeData {
+                            mod_path: "core::ops::function::FnOnce",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 631..866,
+                                focus_range: 692..698,
+                                name: "FnOnce",
+                                kind: Trait,
+                                container_name: "function",
+                                description: "pub trait FnOnce<Args>\nwhere\n    Args: Tuple,",
+                            },
+                        },
                     ],
                 ),
             ]
@@ -433,7 +448,8 @@ fn main() {
             *iter*
 
             ```rust
-            let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>> // size = 8, align = 4
+             // size = 8, align = 4
+            let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>>
             ```
         "#]],
     );
@@ -449,16 +465,16 @@ pub fn foo() -> u32 { 1 }
 fn main() { let foo_test = fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo() -> u32
-                ```
-            "#]],
+            ```rust
+            pub fn foo() -> u32
+            ```
+        "#]],
     );
 
     // Use literal `crate` in path
@@ -493,16 +509,16 @@ mod m { pub fn foo() -> super::X { super::X } }
 fn main() { m::f$0oo(); }
         "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::m
-                ```
+            ```rust
+            test::m
+            ```
 
-                ```rust
-                pub fn foo() -> super::X
-                ```
-            "#]],
+            ```rust
+            pub fn foo() -> super::X
+            ```
+        "#]],
     );
 }
 
@@ -557,18 +573,18 @@ pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
 fn main() { let foo_test = fo$0o(); }
         "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo<'a, T>(b: &'a T) -> &'a str
-                where
-                    T: AsRef<str>,
-                ```
-            "#]],
+            ```rust
+            pub fn foo<'a, T>(b: &'a T) -> &'a str
+            where
+                T: AsRef<str>,
+            ```
+        "#]],
     );
 }
 
@@ -581,16 +597,16 @@ pub fn foo$0(a: u32, b: u32) -> u32 {}
 fn main() { }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(a: u32, b: u32) -> u32
-                ```
-            "#]],
+            ```rust
+            pub fn foo(a: u32, b: u32) -> u32
+            ```
+        "#]],
     );
 }
 
@@ -608,27 +624,27 @@ pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "#,
-        expect![[r##"
-                *foo*
+        expect![[r#"
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(_: &Path)
-                ```
+            ```rust
+            pub fn foo(_: &Path)
+            ```
 
-                ---
+            ---
 
-                # Example
+            # Example
 
-                ```
-                # use std::path::Path;
-                #
-                foo(Path::new("hello, world!"))
-                ```
-            "##]],
+            ```
+            # use std::path::Path;
+            #
+            foo(Path::new("hello, world!"))
+            ```
+        "#]],
     );
 }
 
@@ -641,21 +657,21 @@ pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "##,
-        expect![[r##"
-                *foo*
+        expect![[r#"
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(_: &Path)
-                ```
+            ```rust
+            pub fn foo(_: &Path)
+            ```
 
-                ---
+            ---
 
-                Raw string doc attr
-            "##]],
+            Raw string doc attr
+        "#]],
     );
 }
 
@@ -674,7 +690,8 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```
 
             ```rust
-            field_a: u8 // size = 1, align = 1, offset = 6
+             // size = 1, align = 1, offset = 6
+            field_a: u8
             ```
         "#]],
     );
@@ -699,7 +716,8 @@ fn main() {
             ```
 
             ```rust
-            field_a: u32 // size = 4, align = 4, offset = 0
+             // size = 4, align = 4, offset = 0
+            field_a: u32
             ```
         "#]],
     );
@@ -721,7 +739,8 @@ fn main() {
             ```
 
             ```rust
-            field_a: u32 // size = 4, align = 4, offset = 0
+             // size = 4, align = 4, offset = 0
+            field_a: u32
             ```
         "#]],
     );
@@ -848,7 +867,8 @@ fn main() {
             *zz*
 
             ```rust
-            let zz: Test<i32> // size = 8, align = 4
+             // size = 8, align = 4
+            let zz: Test<i32>
             ```
         "#]],
     );
@@ -899,7 +919,8 @@ fn main() { let b$0ar = Some(12); }
             *bar*
 
             ```rust
-            let bar: Option<i32> // size = 4, align = 4
+             // size = 4, align = 4
+            let bar: Option<i32>
             ```
         "#]],
     );
@@ -968,7 +989,8 @@ fn hover_for_local_variable() {
             *foo*
 
             ```rust
-            foo: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            foo: i32
             ```
         "#]],
     )
@@ -982,7 +1004,8 @@ fn hover_for_local_variable_pat() {
             *foo*
 
             ```rust
-            foo: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            foo: i32
             ```
         "#]],
     )
@@ -996,7 +1019,8 @@ fn hover_local_var_edge() {
             *foo*
 
             ```rust
-            foo: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            foo: i32
             ```
         "#]],
     )
@@ -1010,7 +1034,8 @@ fn hover_for_param_edge() {
             *foo*
 
             ```rust
-            foo: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            foo: i32
             ```
         "#]],
     )
@@ -1029,12 +1054,12 @@ fn hover_for_param_with_multiple_traits() {
             }
             fn f(_x$0: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
         expect![[r#"
-                *_x*
+            *_x*
 
-                ```rust
-                _x: impl Deref<Target = u8> + DerefMut<Target = u8>
-                ```
-            "#]],
+            ```rust
+            _x: impl Deref<Target = u8> + DerefMut<Target = u8>
+            ```
+        "#]],
     )
 }
 
@@ -1054,7 +1079,8 @@ fn main() { let foo_$0test = Thing::new(); }
             *foo_test*
 
             ```rust
-            let foo_test: Thing // size = 4, align = 4
+             // size = 4, align = 4
+            let foo_test: Thing
             ```
         "#]],
     )
@@ -1075,15 +1101,15 @@ mod wrapper {
 fn main() { let foo_test = wrapper::Thing::new$0(); }
 "#,
         expect![[r#"
-                *new*
+            *new*
 
-                ```rust
-                test::wrapper::Thing
-                ```
+            ```rust
+            test::wrapper::Thing
+            ```
 
-                ```rust
-                pub fn new() -> Thing
-                ```
+            ```rust
+            pub fn new() -> Thing
+            ```
         "#]],
     )
 }
@@ -1222,7 +1248,8 @@ fn y() {
             *x*
 
             ```rust
-            let x: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            let x: i32
             ```
         "#]],
     )
@@ -1286,12 +1313,12 @@ fn test_hover_tuple_field() {
     check(
         r#"struct TS(String, i32$0);"#,
         expect![[r#"
-                *i32*
+            *i32*
 
-                ```rust
-                i32
-                ```
-            "#]],
+            ```rust
+            i32
+            ```
+        "#]],
     )
 }
 
@@ -1306,16 +1333,16 @@ id! {
 }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
-            "#]],
+            ```rust
+            fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1328,16 +1355,16 @@ fn test_hover_through_attr() {
 fn foo$0() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
-            "#]],
+            ```rust
+            fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1352,7 +1379,8 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            bar: u32 // size = 4, align = 4
+             // size = 4, align = 4
+            bar: u32
             ```
         "#]],
     );
@@ -1370,7 +1398,8 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            bar: u32 // size = 4, align = 4
+             // size = 4, align = 4
+            bar: u32
             ```
         "#]],
     );
@@ -1412,16 +1441,16 @@ fn foo() {
 }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn bar() -> bool
-                ```
-            "#]],
+            ```rust
+            fn bar() -> bool
+            ```
+        "#]],
     );
 }
 
@@ -1459,20 +1488,6 @@ fn foo(Foo { b$0ar }: &Foo) {}
 }
 
 #[test]
-fn test_hover_through_literal_string_in_builtin_macro() {
-    check_hover_no_result(
-        r#"
-            #[rustc_builtin_macro]
-            macro_rules! format {}
-
-            fn foo() {
-                format!("hel$0lo {}", 0);
-            }
-"#,
-    );
-}
-
-#[test]
 fn test_hover_non_ascii_space_doc() {
     check(
         "
@@ -1482,20 +1497,20 @@ fn foo() { }
 fn bar() { fo$0o(); }
 ",
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
+            ```rust
+            fn foo()
+            ```
 
-                ---
+            ---
 
-                \<- `　` here
-            "#]],
+            \<- `　` here
+        "#]],
     );
 }
 
@@ -1504,45 +1519,45 @@ fn test_hover_function_show_qualifiers() {
     check(
         r#"async fn foo$0() {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                async fn foo()
-                ```
-            "#]],
+            ```rust
+            async fn foo()
+            ```
+        "#]],
     );
     check(
         r#"pub const unsafe fn foo$0() {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub const unsafe fn foo()
-                ```
-            "#]],
+            ```rust
+            pub const unsafe fn foo()
+            ```
+        "#]],
     );
     // Top level `pub(crate)` will be displayed as no visibility.
     check(
         r#"mod m { pub(crate) async unsafe extern "C" fn foo$0() {} }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::m
-                ```
+            ```rust
+            test::m
+            ```
 
-                ```rust
-                pub(crate) async unsafe extern "C" fn foo()
-                ```
-            "#]],
+            ```rust
+            pub(crate) async unsafe extern "C" fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1551,16 +1566,16 @@ fn test_hover_function_show_types() {
     check(
         r#"fn foo$0(a: i32, b:i32) -> i32 { 0 }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo(a: i32, b: i32) -> i32
-                ```
-            "#]],
+            ```rust
+            fn foo(a: i32, b: i32) -> i32
+            ```
+        "#]],
     );
 }
 
@@ -1619,7 +1634,8 @@ fn test_hover_function_pointer_show_identifiers() {
             ```
 
             ```rust
-            type foo = fn(a: i32, b: i32) -> i32 // size = 8, align = 8, niches = 1
+             // size = 8, align = 8, niches = 1
+            type foo = fn(a: i32, b: i32) -> i32
             ```
         "#]],
     );
@@ -1637,7 +1653,8 @@ fn test_hover_function_pointer_no_identifier() {
             ```
 
             ```rust
-            type foo = fn(i32, i32) -> i32 // size = 8, align = 8, niches = 1
+             // size = 8, align = 8, niches = 1
+            type foo = fn(i32, i32) -> i32
             ```
         "#]],
     );
@@ -1783,7 +1800,8 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+             // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1819,7 +1837,8 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+             // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1848,7 +1867,8 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+             // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1876,7 +1896,8 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+             // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -1903,7 +1924,8 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+             // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -1941,39 +1963,39 @@ fn test_hover_no_links() {
 pub fn fo$0o() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo()
-                ```
+            ```rust
+            pub fn foo()
+            ```
 
-                ---
+            ---
 
-                Test cases:
-                case 1.  bare URL: https://www.example.com/
-                case 2.  inline URL with title: [example](https://www.example.com/)
-                case 3.  code reference: `Result`
-                case 4.  code reference but miss footnote: `String`
-                case 5.  autolink: http://www.example.com/
-                case 6.  email address: test@example.com
-                case 7.  reference: example
-                case 8.  collapsed link: example
-                case 9.  shortcut link: example
-                case 10. inline without URL: example
-                case 11. reference: foo
-                case 12. reference: foo
-                case 13. collapsed link: foo
-                case 14. shortcut link: foo
-                case 15. inline without URL: foo
-                case 16. just escaped text: \[foo\]
-                case 17. inline link: Foo
+            Test cases:
+            case 1.  bare URL: https://www.example.com/
+            case 2.  inline URL with title: [example](https://www.example.com/)
+            case 3.  code reference: `Result`
+            case 4.  code reference but miss footnote: `String`
+            case 5.  autolink: http://www.example.com/
+            case 6.  email address: test@example.com
+            case 7.  reference: example
+            case 8.  collapsed link: example
+            case 9.  shortcut link: example
+            case 10. inline without URL: example
+            case 11. reference: foo
+            case 12. reference: foo
+            case 13. collapsed link: foo
+            case 14. shortcut link: foo
+            case 15. inline without URL: foo
+            case 16. just escaped text: \[foo\]
+            case 17. inline link: Foo
 
-                [^example]: https://www.example.com/
-            "#]],
+            [^example]: https://www.example.com/
+        "#]],
     );
 }
 
@@ -1992,7 +2014,8 @@ fn test_hover_layout_of_variant() {
             ```
 
             ```rust
-            Variant1(u8, u16) // size = 4, align = 2
+             // size = 4, align = 2
+            Variant1(u8, u16)
             ```
         "#]],
     );
@@ -2013,10 +2036,11 @@ fn test_hover_layout_of_enum() {
             ```
 
             ```rust
+             // size = 16 (0x10), align = 8, niches = 254
             enum Foo {
                 Variant1(u8, u16),
                 Variant2(i32, u8, i64),
-            } // size = 16 (0x10), align = 8, niches = 254
+            }
             ```
         "#]],
     );
@@ -2081,20 +2105,20 @@ bar!();
 fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::Bar
-                ```
+            ```rust
+            test::Bar
+            ```
 
-                ```rust
-                fn foo(&self)
-                ```
+            ```rust
+            fn foo(&self)
+            ```
 
-                ---
+            ---
 
-                Do the foo
-            "#]],
+            Do the foo
+        "#]],
     );
 }
 
@@ -2119,20 +2143,20 @@ bar!();
 fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::Bar
-                ```
+            ```rust
+            test::Bar
+            ```
 
-                ```rust
-                fn foo(&self)
-                ```
+            ```rust
+            fn foo(&self)
+            ```
 
-                ---
+            ---
 
-                Do the foo
-            "#]],
+            Do the foo
+        "#]],
     );
 }
 
@@ -2377,39 +2401,39 @@ struct S<T>{ f1: T }
 fn main() { let s$0t = S{ f1:Arg(0) }; }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 17..37,
-                                    focus_range: 24..25,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S<T> {\n    f1: T,\n}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Arg",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..16,
+                                focus_range: 7..10,
+                                name: "Arg",
+                                kind: Struct,
+                                description: "struct Arg(u32);",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Arg",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..16,
-                                    focus_range: 7..10,
-                                    name: "Arg",
-                                    kind: Struct,
-                                    description: "struct Arg(u32);",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 17..37,
+                                focus_range: 24..25,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S<T> {\n    f1: T,\n}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2436,39 +2460,39 @@ struct S<T>{ f1: T }
 fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 17..37,
-                                    focus_range: 24..25,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S<T> {\n    f1: T,\n}",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Arg",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..16,
+                                focus_range: 7..10,
+                                name: "Arg",
+                                kind: Struct,
+                                description: "struct Arg(u32);",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Arg",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..16,
-                                    focus_range: 7..10,
-                                    name: "Arg",
-                                    kind: Struct,
-                                    description: "struct Arg(u32);",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 17..37,
+                                focus_range: 24..25,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S<T> {\n    f1: T,\n}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2626,39 +2650,39 @@ fn foo() -> impl Foo + Bar {}
 fn main() { let s$0t = foo(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 13..25,
+                                focus_range: 19..22,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Bar",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 13..25,
-                                    focus_range: 19..22,
-                                    name: "Bar",
-                                    kind: Trait,
-                                    description: "trait Bar",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2676,65 +2700,65 @@ fn foo() -> impl Foo<S1> + Bar<S2> {}
 fn main() { let s$0t = foo(); }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..15,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo<T>",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 16..31,
+                                focus_range: 22..25,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Bar",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 16..31,
-                                    focus_range: 22..25,
-                                    name: "Bar",
-                                    kind: Trait,
-                                    description: "trait Bar<T>",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..15,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S1",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 32..44,
-                                    focus_range: 39..41,
-                                    name: "S1",
-                                    kind: Struct,
-                                    description: "struct S1 {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S1",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 32..44,
+                                focus_range: 39..41,
+                                name: "S1",
+                                kind: Struct,
+                                description: "struct S1 {}",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S2",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 45..57,
-                                    focus_range: 52..54,
-                                    name: "S2",
-                                    kind: Struct,
-                                    description: "struct S2 {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S2",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 45..57,
+                                focus_range: 52..54,
+                                name: "S2",
+                                kind: Struct,
+                                description: "struct S2 {}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2780,52 +2804,52 @@ struct S{}
 fn foo(ar$0g: &impl Foo + Bar<S>) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::Foo",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..12,
-                                    focus_range: 6..9,
-                                    name: "Foo",
-                                    kind: Trait,
-                                    description: "trait Foo",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 13..28,
+                                focus_range: 19..22,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::Bar",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 13..28,
-                                    focus_range: 19..22,
-                                    name: "Bar",
-                                    kind: Trait,
-                                    description: "trait Bar<T>",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Foo",
+                                kind: Trait,
+                                description: "trait Foo",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 29..39,
-                                    focus_range: 36..37,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 29..39,
+                                focus_range: 36..37,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S {}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3067,65 +3091,65 @@ struct S {}
 fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::ImplTrait",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..21,
-                                    focus_range: 6..15,
-                                    name: "ImplTrait",
-                                    kind: Trait,
-                                    description: "trait ImplTrait<T>",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 43..57,
+                                focus_range: 50..51,
+                                name: "B",
+                                kind: Struct,
+                                description: "struct B<T> {}",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::B",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 43..57,
-                                    focus_range: 50..51,
-                                    name: "B",
-                                    kind: Struct,
-                                    description: "struct B<T> {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::DynTrait",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 22..42,
+                                focus_range: 28..36,
+                                name: "DynTrait",
+                                kind: Trait,
+                                description: "trait DynTrait<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::DynTrait",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 22..42,
-                                    focus_range: 28..36,
-                                    name: "DynTrait",
-                                    kind: Trait,
-                                    description: "trait DynTrait<T>",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::ImplTrait",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..21,
+                                focus_range: 6..15,
+                                name: "ImplTrait",
+                                kind: Trait,
+                                description: "trait ImplTrait<T>",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 58..69,
-                                    focus_range: 65..66,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S {}",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 58..69,
+                                focus_range: 65..66,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S {}",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3295,7 +3319,7 @@ fn main() { let foo_test = name_with_dashes::wrapper::Thing::new$0(); }
             ```rust
             pub fn new() -> Thing
             ```
-            "#]],
+        "#]],
     )
 }
 
@@ -3316,7 +3340,8 @@ fn main() {
             *f*
 
             ```rust
-            f: &i32 // size = 8, align = 8, niches = 1
+             // size = 8, align = 8, niches = 1
+            let f: &i32
             ```
             ---
 
@@ -3325,7 +3350,8 @@ fn main() {
             ```
 
             ```rust
-            f: i32 // size = 4, align = 4, offset = 0
+             // size = 4, align = 4, offset = 0
+            f: i32
             ```
         "#]],
     );
@@ -3409,7 +3435,8 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<1> // size = 0, align = 1
+             // size = 0, align = 1
+            let value: Const<1>
             ```
         "#]],
     );
@@ -3429,7 +3456,8 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<0> // size = 0, align = 1
+             // size = 0, align = 1
+            let value: Const<0>
             ```
         "#]],
     );
@@ -3449,7 +3477,8 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<-1> // size = 0, align = 1
+             // size = 0, align = 1
+            let value: Const<-1>
             ```
         "#]],
     );
@@ -3469,7 +3498,8 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<true> // size = 0, align = 1
+             // size = 0, align = 1
+            let value: Const<true>
             ```
         "#]],
     );
@@ -3489,7 +3519,8 @@ fn main() {
             *value*
 
             ```rust
-            let value: Const<'🦀'> // size = 0, align = 1
+             // size = 0, align = 1
+            let value: Const<'🦀'>
             ```
         "#]],
     );
@@ -3508,7 +3539,8 @@ impl Foo {
             *self*
 
             ```rust
-            self: &Foo // size = 8, align = 8, niches = 1
+             // size = 8, align = 8, niches = 1
+            self: &Foo
             ```
         "#]],
     );
@@ -3528,7 +3560,8 @@ impl Foo {
             *self*
 
             ```rust
-            self: Arc<Foo> // size = 0, align = 1
+             // size = 0, align = 1
+            self: Arc<Foo>
             ```
         "#]],
     );
@@ -3609,24 +3642,24 @@ fn hover_doc_block_style_indent_end() {
 fn foo$0() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
+            ```rust
+            fn foo()
+            ```
 
-                ---
+            ---
 
-                foo
+            foo
 
-                ```rust
-                let x = 3;
-                ```
-            "#]],
+            ```rust
+            let x = 3;
+            ```
+        "#]],
     );
 }
 
@@ -3685,12 +3718,12 @@ trait TraitB {}
 impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: TraitA + TraitB
-                ```
-            "#]],
+            ```rust
+            T: TraitA + TraitB
+            ```
+        "#]],
     );
     check(
         r#"
@@ -3699,12 +3732,12 @@ struct Foo<T>(T);
 impl<T> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T
-                ```
-                "#]],
+            ```rust
+            T
+            ```
+        "#]],
     );
     // lifetimes bounds arent being tracked yet
     check(
@@ -3714,12 +3747,12 @@ struct Foo<T>(T);
 impl<T: 'static> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T
-                ```
-                "#]],
+            ```rust
+            T
+            ```
+        "#]],
     );
 }
 
@@ -3734,12 +3767,12 @@ struct Foo<T>(T);
 impl<T: Trait> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: Trait
-                ```
-            "#]],
+            ```rust
+            T: Trait
+            ```
+        "#]],
     );
     check(
         r#"
@@ -3749,12 +3782,12 @@ struct Foo<T>(T);
 impl<T: Trait + ?Sized> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: Trait + ?Sized
-                ```
-            "#]],
+            ```rust
+            T: Trait + ?Sized
+            ```
+        "#]],
     );
 }
 
@@ -3769,12 +3802,12 @@ mod type_param_sized_bounds {
 fn foo<T$0>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
     }
 
@@ -3786,12 +3819,12 @@ fn foo<T$0>() {}
 fn foo<T$0: Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
     }
 
@@ -3803,12 +3836,12 @@ fn foo<T$0: Sized>() {}
 fn foo<T$0: ?Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: ?Sized
-                    ```
-                "#]],
+                ```rust
+                T: ?Sized
+                ```
+            "#]],
         );
     }
 
@@ -3821,12 +3854,12 @@ trait Trait {}
 fn foo<T$0: Trait>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 
@@ -3839,12 +3872,12 @@ trait Trait {}
 fn foo<T$0: Trait + Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 
@@ -3857,12 +3890,12 @@ trait Trait {}
 fn foo<T$0: Trait + ?Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait + ?Sized
-                    ```
-                "#]],
+                ```rust
+                T: Trait + ?Sized
+                ```
+            "#]],
         );
     }
 
@@ -3874,12 +3907,12 @@ fn foo<T$0: Trait + ?Sized>() {}
 fn foo<T$0: ?Sized + Sized + Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
         check(
             r#"
@@ -3888,12 +3921,12 @@ trait Trait {}
 fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 }
@@ -3913,7 +3946,8 @@ type Fo$0o2 = Foo<2>;
             ```
 
             ```rust
-            type Foo2 = Foo<2> // size = 0, align = 1
+             // size = 0, align = 1
+            type Foo2 = Foo<2>
             ```
         "#]],
     );
@@ -3927,12 +3961,12 @@ struct Foo<const LEN: usize>;
 impl<const LEN: usize> Foo<LEN$0> {}
 "#,
         expect![[r#"
-                *LEN*
+            *LEN*
 
-                ```rust
-                const LEN: usize
-                ```
-            "#]],
+            ```rust
+            const LEN: usize
+            ```
+        "#]],
     );
 }
 
@@ -3955,7 +3989,8 @@ enum E {
             ```
 
             ```rust
-            A = 8 // size = 1, align = 1
+             // size = 1, align = 1
+            A = 8
             ```
 
             ---
@@ -3980,7 +4015,8 @@ enum E {
             ```
 
             ```rust
-            A = 12 (0xC) // size = 1, align = 1
+             // size = 1, align = 1
+            A = 12 (0xC)
             ```
 
             ---
@@ -4006,7 +4042,8 @@ enum E {
             ```
 
             ```rust
-            B = 2 // size = 1, align = 1
+             // size = 1, align = 1
+            B = 2
             ```
 
             ---
@@ -4032,7 +4069,8 @@ enum E {
             ```
 
             ```rust
-            B = 5 // size = 1, align = 1
+             // size = 1, align = 1
+            B = 5
             ```
 
             ---
@@ -4058,20 +4096,20 @@ fn main() {
 }
 "#,
         expect![[r#"
-        *B*
+            *B*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        const B: bool = true
-        ```
+            ```rust
+            const B: bool = true
+            ```
 
-        ---
+            ---
 
-        true
-    "#]],
+            true
+        "#]],
     );
 
     check(
@@ -4095,16 +4133,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-        *AA*
+            *AA*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        const AA: A = A { i: 5 }
-        ```
-    "#]],
+            ```rust
+            const AA: A = A { i: 5 }
+            ```
+        "#]],
     );
 
     check(
@@ -4838,7 +4876,8 @@ fn foo(e: E) {
             ```
 
             ```rust
-            A = 3 // size = 0, align = 1
+             // size = 0, align = 1
+            A = 3
             ```
 
             ---
@@ -4860,7 +4899,8 @@ fn main() {
             *tile4*
 
             ```rust
-            let tile4: [u32; 8] // size = 32 (0x20), align = 4
+             // size = 32 (0x20), align = 4
+            let tile4: [u32; 8]
             ```
         "#]],
     );
@@ -5019,17 +5059,17 @@ const _: &str$0 = ""; }
 mod prim_str {}
 "#,
         expect![[r#"
-                *str*
+            *str*
 
-                ```rust
-                str
-                ```
+            ```rust
+            str
+            ```
 
-                ---
+            ---
 
-                Docs for prim_str
-                [`foo`](https://doc.rust-lang.org/nightly/std/keyword.foo.html)
-            "#]],
+            Docs for prim_str
+            [`foo`](https://doc.rust-lang.org/nightly/std/keyword.foo.html)
+        "#]],
     );
 }
 
@@ -5055,20 +5095,20 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn bar<'t, T>(s: &mut S<'t, T>, t: u32) -> *mut u32
-                where
-                    T: Clone + 't,
-                    't: 't + 't,
-                    for<'a> T: Clone + 'a,
-                ```
-            "#]],
+            ```rust
+            fn bar<'t, T>(s: &mut S<'t, T>, t: u32) -> *mut u32
+            where
+                T: Clone + 't,
+                't: 't + 't,
+                for<'a> T: Clone + 'a,
+            ```
+        "#]],
     )
 }
 
@@ -5096,7 +5136,8 @@ pub fn gimme() -> theitem::TheItem {
             ```
 
             ```rust
-            pub struct TheItem // size = 0, align = 1
+             // size = 0, align = 1
+            pub struct TheItem
             ```
 
             ---
@@ -5137,16 +5178,16 @@ impl T1 for Foo {
 }
         "#,
         expect![[r#"
-*Bar*
+            *Bar*
 
-```rust
-test::t2
-```
+            ```rust
+            test::t2
+            ```
 
-```rust
-pub type Bar
-```
-"#]],
+            ```rust
+            pub type Bar
+            ```
+        "#]],
     );
 }
 #[test]
@@ -5159,16 +5200,16 @@ trait A {
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
     check(
         r#"
@@ -5180,16 +5221,16 @@ trait A {
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
     check(
         r#"
@@ -5199,16 +5240,16 @@ trait A where
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
 }
 
@@ -5244,7 +5285,8 @@ mod string {
             ```
 
             ```rust
-            struct String // size = 0, align = 1
+             // size = 0, align = 1
+            struct String
             ```
 
             ---
@@ -5921,7 +5963,8 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo // size = 0, align = 1
+             // size = 0, align = 1
+            pub struct Foo
             ```
 
             ---
@@ -5946,7 +5989,8 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            pub struct Foo(i32); // size = 4, align = 4
+             // size = 4, align = 4
+            pub struct Foo(i32);
             ```
 
             ---
@@ -6045,7 +6089,8 @@ enum Enum {
             ```
 
             ```rust
-            RecordV { field: u32 } // size = 4, align = 4
+             // size = 4, align = 4
+            RecordV { field: u32 }
             ```
         "#]],
     );
@@ -6067,7 +6112,8 @@ enum Enum {
             ```
 
             ```rust
-            field: u32 // size = 4, align = 4
+             // size = 4, align = 4
+            field: u32
             ```
         "#]],
     );
@@ -6569,7 +6615,8 @@ fn test() {
             ```
 
             ```rust
-            f: u32 // size = 4, align = 4, offset = 0
+             // size = 4, align = 4, offset = 0
+            f: u32
             ```
         "#]],
     );
@@ -6588,7 +6635,8 @@ fn test() {
             *s*
 
             ```rust
-            let s: S // size = 0, align = 1
+             // size = 0, align = 1
+            let s: S
             ```
         "#]],
     );
@@ -6608,7 +6656,8 @@ fn test() {
             *foo*
 
             ```rust
-            let foo: i32 // size = 4, align = 4
+             // size = 4, align = 4
+            let foo: i32
             ```
         "#]],
     );
@@ -6628,7 +6677,8 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+             // size = 16 (0x10), align = 8, niches = 1
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -6648,7 +6698,8 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+             // size = 16 (0x10), align = 8, niches = 1
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -6668,7 +6719,8 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+             // size = 16 (0x10), align = 8, niches = 1
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -6693,7 +6745,8 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str // size = 16 (0x10), align = 8, niches = 1
+             // size = 16 (0x10), align = 8, niches = 1
+            let aaaaa: &str
             ```
         "#]],
     );
@@ -6722,6 +6775,478 @@ fn main() {
             ```rust
             fn foo<T>(&self, t: T)
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn string_literal() {
+    check(
+        r#"
+fn main() {
+    $0"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀🦀\A
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *r"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀\u{1f980}\\\x41
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn cstring_literal() {
+    check(
+        r#"
+fn main() {
+    $0c"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *c"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀🦀\A
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn byte_string_literal() {
+    check(
+        r#"
+fn main() {
+    $0b"\xF0\x9F\xA6\x80\\";
+}
+"#,
+        expect![[r#"
+            *b"\xF0\x9F\xA6\x80\\"*
+            ```text
+            [240, 159, 166, 128, 92]
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0br"\xF0\x9F\xA6\x80\\";
+}
+"#,
+        expect![[r#"
+            *br"\xF0\x9F\xA6\x80\\"*
+            ```text
+            [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn byte_literal() {
+    check(
+        r#"
+fn main() {
+    $0b'\xF0';
+}
+"#,
+        expect![[r#"
+            *b'\xF0'*
+            ```text
+            0xF0
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0b'\\';
+}
+"#,
+        expect![[r#"
+            *b'\\'*
+            ```text
+            0x5C
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn char_literal() {
+    check(
+        r#"
+fn main() {
+    $0'\x41';
+}
+"#,
+        expect![[r#"
+            *'\x41'*
+
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0'\\';
+}
+"#,
+        expect![[r#"
+            *'\\'*
+
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0'\u{1f980}';
+}
+"#,
+        expect![[r#"
+            *'\u{1f980}'*
+
+        "#]],
+    );
+}
+
+#[test]
+fn float_literal() {
+    check(
+        r#"
+fn main() {
+    $01.0;
+}
+"#,
+        expect![[r#"
+            *1.0*
+            ```text
+            1 (bits: 0x3FF0000000000000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f32;
+}
+"#,
+        expect![[r#"
+            *1.0f32*
+            ```text
+            1 (bits: 0x3F800000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0134e12;
+}
+"#,
+        expect![[r#"
+            *134e12*
+            ```text
+            134000000000000 (bits: 0x42DE77D399980000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01523527134274733643531312.0;
+}
+"#,
+        expect![[r#"
+            *1523527134274733643531312.0*
+            ```text
+            1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00.1ea123;
+}
+"#,
+        expect![[r#"
+            *0.1ea123*
+            ```text
+            invalid float literal
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn int_literal() {
+    check(
+        r#"
+fn main() {
+    $034325236457856836345234;
+}
+"#,
+        expect![[r#"
+            *34325236457856836345234*
+            ```text
+            34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0134_123424_21;
+}
+"#,
+        expect![[r#"
+            *134_123424_21*
+            ```text
+            13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00x12423423;
+}
+"#,
+        expect![[r#"
+            *0x12423423*
+            ```text
+            306328611 (0x12423423|0b10010010000100011010000100011)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00b1111_1111;
+}
+"#,
+        expect![[r#"
+            *0b1111_1111*
+            ```text
+            255 (0xFF|0b11111111)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00o12345;
+}
+"#,
+        expect![[r#"
+            *0o12345*
+            ```text
+            5349 (0x14E5|0b1010011100101)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F;
+}
+"#,
+        expect![[r#"
+            *0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F*
+            ```text
+            number too large to fit in target type
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_local() {
+    check(
+        r#"
+#[doc(notable_trait)]
+trait Notable {
+    type Assoc;
+    type Assoc2;
+}
+
+impl Notable for u32 {
+    type Assoc = &str;
+    type Assoc2 = char;
+}
+fn main(notable$0: u32) {}
+"#,
+        expect![[r#"
+            *notable*
+
+            ```rust
+             // Implements notable traits: Notable<Assoc = &str, Assoc2 = char>
+             // size = 4, align = 4
+            notable: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_foreign() {
+    check(
+        r#"
+//- minicore: future, iterator
+struct S;
+#[doc(notable_trait)]
+trait Notable {}
+impl Notable for S$0 {}
+impl core::future::Future for S {
+    type Output = u32;
+}
+impl Iterator for S {
+    type Item = S;
+}
+"#,
+        expect![[r#"
+            *S*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+             // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
+             // size = 0, align = 1
+            struct S
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_ranged() {
+    check_hover_range(
+        r#"
+//- minicore: future, iterator
+struct S;
+#[doc(notable_trait)]
+trait Notable {}
+impl Notable for S {}
+impl core::future::Future for S {
+    type Output = u32;
+}
+impl Iterator for S {
+    type Item = S;
+}
+fn main() {
+    $0S$0;
+}
+"#,
+        expect![[r#"
+            ```rust
+             // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
+            S
+            ```"#]],
+    );
+}
+
+#[test]
+fn notable_actions() {
+    check_actions(
+        r#"
+//- minicore: future, iterator
+struct S;
+struct S2;
+#[doc(notable_trait)]
+trait Notable {}
+impl Notable for S$0 {}
+impl core::future::Future for S {
+    type Output = u32;
+}
+impl Iterator for S {
+    type Item = S2;
+}
+"#,
+        expect![[r#"
+            [
+                Implementation(
+                    FilePosition {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "core::future::Future",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 6012..6220,
+                                focus_range: 6077..6083,
+                                name: "Future",
+                                kind: Trait,
+                                container_name: "future",
+                                description: "pub trait Future",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "core::iter::traits::iterator::Iterator",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 6850..7316,
+                                focus_range: 6894..6902,
+                                name: "Iterator",
+                                kind: Trait,
+                                container_name: "iterator",
+                                description: "pub trait Iterator",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::Notable",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 21..59,
+                                focus_range: 49..56,
+                                name: "Notable",
+                                kind: Trait,
+                                description: "trait Notable",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S2",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 10..20,
+                                focus_range: 17..19,
+                                name: "S2",
+                                kind: Struct,
+                                description: "struct S2",
+                            },
+                        },
+                    ],
+                ),
+            ]
         "#]],
     );
 }

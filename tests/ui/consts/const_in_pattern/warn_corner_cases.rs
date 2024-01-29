@@ -24,18 +24,18 @@ impl Eq for NoDerive { }
 fn main() {
     const INDEX: Option<NoDerive> = [None, Some(NoDerive(10))][0];
     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
-    //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+    //~^ WARN must be annotated with `#[derive(PartialEq)]`
     //~| WARN this was previously accepted
 
     const fn build() -> Option<NoDerive> { None }
     const CALL: Option<NoDerive> = build();
     match None { Some(_) => panic!("whoops"), CALL => dbg!(CALL), };
-    //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+    //~^ WARN must be annotated with `#[derive(PartialEq)]`
     //~| WARN this was previously accepted
 
     impl NoDerive { const fn none() -> Option<NoDerive> { None } }
     const METHOD_CALL: Option<NoDerive> = NoDerive::none();
     match None { Some(_) => panic!("whoops"), METHOD_CALL => dbg!(METHOD_CALL), };
-    //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+    //~^ WARN must be annotated with `#[derive(PartialEq)]`
     //~| WARN this was previously accepted
 }

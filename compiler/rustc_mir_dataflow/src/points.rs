@@ -1,5 +1,5 @@
 use crate::framework::{visit_results, ResultsVisitable, ResultsVisitor};
-use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
@@ -102,7 +102,7 @@ pub fn save_as_intervals<'tcx, N, R>(
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
-    R: ResultsVisitable<'tcx, FlowState = ChunkedBitSet<N>>,
+    R: ResultsVisitable<'tcx, FlowState = BitSet<N>>,
 {
     let values = SparseIntervalMatrix::new(elements.num_points());
     let mut visitor = Visitor { elements, values };
@@ -124,7 +124,7 @@ impl<'mir, 'tcx, R, N> ResultsVisitor<'mir, 'tcx, R> for Visitor<'_, N>
 where
     N: Idx,
 {
-    type FlowState = ChunkedBitSet<N>;
+    type FlowState = BitSet<N>;
 
     fn visit_statement_after_primary_effect(
         &mut self,

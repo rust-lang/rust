@@ -200,8 +200,6 @@ pub enum InvalidProgramInfo<'tcx> {
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
-    /// We are runnning into a nonsense situation due to ConstProp violating our invariants.
-    ConstPropNonsense,
 }
 
 /// Details of why a pointer had to be in-bounds.
@@ -416,14 +414,14 @@ pub enum ValidationErrorKind<'tcx> {
     PartialPointer,
     PtrToUninhabited { ptr_kind: PointerKind, ty: Ty<'tcx> },
     PtrToStatic { ptr_kind: PointerKind },
-    PtrToMut { ptr_kind: PointerKind },
     MutableRefInConst,
+    MutableRefToImmutable,
+    UnsafeCellInImmutable,
     NullFnPtr,
     NeverVal,
     NullablePtrOutOfRange { range: WrappingRange, max_value: u128 },
     PtrOutOfRange { range: WrappingRange, max_value: u128 },
     OutOfRange { value: String, range: WrappingRange, max_value: u128 },
-    UnsafeCell,
     UninhabitedVal { ty: Ty<'tcx> },
     InvalidEnumTag { value: String },
     UninhabitedEnumVariant,

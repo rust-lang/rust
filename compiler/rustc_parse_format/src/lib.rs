@@ -11,8 +11,9 @@
 )]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-// WARNING: We want to be able to build this crate with a stable compiler,
-//          so no `#![feature]` attributes should be added!
+// We want to be able to build this crate with a stable compiler,
+// so no `#![feature]` attributes should be added.
+#![deny(unstable_features)]
 
 use rustc_lexer::unescape;
 pub use Alignment::*;
@@ -1055,7 +1056,7 @@ fn find_width_map_from_snippet(
 fn unescape_string(string: &str) -> Option<string::String> {
     let mut buf = string::String::new();
     let mut ok = true;
-    unescape::unescape_literal(string, unescape::Mode::Str, &mut |_, unescaped_char| {
+    unescape::unescape_unicode(string, unescape::Mode::Str, &mut |_, unescaped_char| {
         match unescaped_char {
             Ok(c) => buf.push(c),
             Err(_) => ok = false,

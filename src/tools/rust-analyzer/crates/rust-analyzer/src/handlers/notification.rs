@@ -36,7 +36,7 @@ pub(crate) fn handle_work_done_progress_cancel(
 ) -> anyhow::Result<()> {
     if let lsp_types::NumberOrString::String(s) = &params.token {
         if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
-            if let Ok(id) = u32::from_str_radix(id, 10) {
+            if let Ok(id) = id.parse::<u32>() {
                 if let Some(flycheck) = state.flycheck.get(id as usize) {
                     flycheck.cancel();
                 }

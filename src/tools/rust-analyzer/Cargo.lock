@@ -160,9 +160,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.95.0"
+version = "0.96.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "329427f28cd2bddaacd47c4dcd3d7082d315c61fb164394c690fe98c1b6ee9d3"
+checksum = "5676cea088c32290fe65c82895be9d06dd21e0fa49bb97ca840529e9417ab71a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -172,9 +172,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.95.0"
+version = "0.96.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e1e1659238bd598d0f7dbc5034cf1ff46010a3d6827704c9ed443c8359cb484"
+checksum = "ff550c2cdd63ff74394214dce03d06386928a641c0f08837535f04af573a966d"
 dependencies = [
  "bitflags 2.4.1",
  "chalk-derive",
@@ -183,9 +183,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.95.0"
+version = "0.96.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3e0bff0ba1bed11407384fcec0353aeb6888901e63cb47d04505ec47adad847"
+checksum = "4c4559e5c9b200240453b07d893f9c3c74413b53b0d33cbe272c68b0b77aa1c3"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -196,9 +196,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.95.0"
+version = "0.96.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb9c46d501cf83732a91056c0c846ae7a16d6b3c67a6a6bb5e9cc0a2e91563b6"
+checksum = "0882e68ce9eb5a0a2413806538494d19df6ee520ab17d1faf489e952f32e98b8"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -1001,9 +1001,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.6.4"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "memmap2"
@@ -1532,6 +1532,7 @@ dependencies = [
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
  "mbe",
+ "memchr",
  "mimalloc",
  "nohash-hasher",
  "num_cpus",
@@ -1712,9 +1713,9 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "smol_str"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74212e6bbe9a4352329b2f68ba3130c15a3f26fe88ff22dbdc6cdd58fa85e99c"
+checksum = "e6845563ada680337a52d43bb0b29f396f2d911616f6573012645b9e3d048a49"
 dependencies = [
  "serde",
 ]

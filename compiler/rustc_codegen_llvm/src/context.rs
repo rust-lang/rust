@@ -34,6 +34,7 @@ use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
 use libc::c_uint;
+use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
@@ -145,10 +146,17 @@ pub unsafe fn create_module<'ll>(
                 .replace("-Fi64", "");
         }
     }
+    if llvm_version < (18, 0, 0) {
+        if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
+            // LLVM 18 adjusts i128 to be 128-bit aligned on x86 variants.
+            // Earlier LLVMs leave this as default alignment, so remove it.
+            // See https://reviews.llvm.org/D86310
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
-    if sess.target.is_builtin {
-        // tm is disposed by its drop impl
+    {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
 
@@ -156,33 +164,13 @@ pub unsafe fn create_module<'ll>(
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
             .expect("got a non-UTF8 data-layout from LLVM");
 
-        // Unfortunately LLVM target specs change over time, and right now we
-        // don't have proper support to work with any more than one
-        // `data_layout` than the one that is in the rust-lang/rust repo. If
-        // this compiler is configured against a custom LLVM, we may have a
-        // differing data layout, even though we should update our own to use
-        // that one.
-        //
-        // As an interim hack, if CFG_LLVM_ROOT is not an empty string then we
-        // disable this check entirely as we may be configured with something
-        // that has a different target layout.
-        //
-        // Unsure if this will actually cause breakage when rustc is configured
-        // as such.
-        //
-        // FIXME(#34960)
-        let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
-        let custom_llvm_used = !cfg_llvm_root.trim().is_empty();
-
-        if !custom_llvm_used && target_data_layout != llvm_data_layout {
-            bug!(
-                "data-layout for target `{rustc_target}`, `{rustc_layout}`, \
-                  differs from LLVM target's `{llvm_target}` default layout, `{llvm_layout}`",
-                rustc_target = sess.opts.target_triple,
-                rustc_layout = target_data_layout,
-                llvm_target = sess.target.llvm_target,
-                llvm_layout = llvm_data_layout
-            );
+        if target_data_layout != llvm_data_layout {
+            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+                rustc_target: sess.opts.target_triple.to_string().as_str(),
+                rustc_layout: target_data_layout.as_str(),
+                llvm_target: sess.target.llvm_target.borrow(),
+                llvm_layout: llvm_data_layout,
+            });
         }
     }
 
@@ -907,6 +895,20 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
+
+        // FIXME: This is an infinitesimally small portion of the types you can
+        // pass to this intrinsic, if we can ever lazily register intrinsics we
+        // should register these when they're used, that way any type can be
+        // passed.
+        ifn!("llvm.is.constant.i1", fn(i1) -> i1);
+        ifn!("llvm.is.constant.i8", fn(t_i8) -> i1);
+        ifn!("llvm.is.constant.i16", fn(t_i16) -> i1);
+        ifn!("llvm.is.constant.i32", fn(t_i32) -> i1);
+        ifn!("llvm.is.constant.i64", fn(t_i64) -> i1);
+        ifn!("llvm.is.constant.i128", fn(t_i128) -> i1);
+        ifn!("llvm.is.constant.isize", fn(t_isize) -> i1);
+        ifn!("llvm.is.constant.f32", fn(t_f32) -> i1);
+        ifn!("llvm.is.constant.f64", fn(t_f64) -> i1);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(ptr) -> t_i32);

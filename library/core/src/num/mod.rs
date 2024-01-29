@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+use crate::hint;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -44,6 +45,7 @@ mod uint_macros; // import uint_impl!
 mod error;
 mod int_log10;
 mod nonzero;
+mod overflow_panic;
 mod saturating;
 mod wrapping;
 

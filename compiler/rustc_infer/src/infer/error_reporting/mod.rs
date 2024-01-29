@@ -60,7 +60,7 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
     DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
@@ -117,9 +117,9 @@ fn escape_literal(s: &str) -> String {
 /// field is only populated during an in-progress typeck.
 /// Get an instance by calling `InferCtxt::err_ctxt` or `FnCtxt::err_ctxt`.
 ///
-/// You must only create this if you intend to actually emit an error.
-/// This provides a lot of utility methods which should not be used
-/// during the happy path.
+/// You must only create this if you intend to actually emit an error (or
+/// perhaps a warning, though preferably not.) It provides a lot of utility
+/// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
@@ -133,9 +133,10 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
 impl Drop for TypeErrCtxt<'_, '_> {
     fn drop(&mut self) {
-        if let Some(_) = self.dcx().has_errors_or_span_delayed_bugs() {
-            // ok, emitted an error.
+        if self.dcx().has_errors().is_some() {
+            // Ok, emitted an error.
         } else {
+            // Didn't emit an error; maybe it was created but not yet emitted.
             self.infcx
                 .tcx
                 .sess
@@ -2361,9 +2362,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .dcx()
             .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
         err.code(match sub.kind() {
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-            ty::ReStatic => error_code!(E0310),
-            _ => error_code!(E0311),
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => E0309,
+            ty::ReStatic => E0310,
+            _ => E0311,
         });
 
         '_explain: {

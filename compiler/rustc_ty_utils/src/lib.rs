@@ -15,7 +15,6 @@
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

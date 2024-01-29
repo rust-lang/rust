@@ -153,7 +153,7 @@ fn lit_to_mir_constant<'tcx>(
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
+            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })?
         }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
             .ok_or_else(|| {

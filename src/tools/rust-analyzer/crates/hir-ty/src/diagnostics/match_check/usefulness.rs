@@ -409,7 +409,7 @@ impl<'p> Matrix<'p> {
 
     /// Number of columns of this matrix. `None` is the matrix is empty.
     pub(super) fn _column_count(&self) -> Option<usize> {
-        self.patterns.get(0).map(|r| r.len())
+        self.patterns.first().map(|r| r.len())
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively

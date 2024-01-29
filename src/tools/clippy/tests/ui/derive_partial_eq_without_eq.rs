@@ -121,4 +121,36 @@ pub fn _from_mod() -> _hidden::InPubFn {
 #[derive(PartialEq)]
 struct InternalTy;
 
+// This is a `non_exhaustive` type so should not warn.
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub struct MissingEqNonExhaustive {
+    foo: u32,
+    bar: String,
+}
+
+// This is a `non_exhaustive` type so should not warn.
+#[derive(Debug, PartialEq)]
+pub struct MissingEqNonExhaustive1 {
+    foo: u32,
+    #[non_exhaustive]
+    bar: String,
+}
+
+// This is a `non_exhaustive` type so should not warn.
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub enum MissingEqNonExhaustive2 {
+    Foo,
+    Bar,
+}
+
+// This is a `non_exhaustive` type so should not warn.
+#[derive(Debug, PartialEq)]
+pub enum MissingEqNonExhaustive3 {
+    Foo,
+    #[non_exhaustive]
+    Bar,
+}
+
 fn main() {}

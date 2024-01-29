@@ -157,7 +157,7 @@ pub(crate) struct ModifierSet(pub(crate) u32);
 impl ModifierSet {
     pub(crate) fn standard_fallback(&mut self) {
         // Remove all non standard modifiers
-        self.0 = self.0 & !(!0u32 << LAST_STANDARD_MOD)
+        self.0 &= !(!0u32 << LAST_STANDARD_MOD)
     }
 }
 

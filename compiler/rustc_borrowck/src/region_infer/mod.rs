@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 
@@ -1145,6 +1145,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let ty = ty.fold_with(&mut OpaqueFolder { tcx });
+        let mut failed = false;
 
         let ty = tcx.fold_regions(ty, |r, _depth| {
             let r_vid = self.to_region_vid(r);
@@ -1160,15 +1161,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
                 .find(|&u_r| self.eval_equal(u_r, r_vid))
                 .map(|u_r| ty::Region::new_var(tcx, u_r))
-                // In the case of a failure, use `ReErased`. We will eventually
-                // return `None` in this case.
-                .unwrap_or(tcx.lifetimes.re_erased)
+                // In case we could not find a named region to map to,
+                // we will return `None` below.
+                .unwrap_or_else(|| {
+                    failed = true;
+                    r
+                })
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
         // This will be true if we failed to promote some region.
-        if ty.has_erased_regions() {
+        if failed {
             return None;
         }
 

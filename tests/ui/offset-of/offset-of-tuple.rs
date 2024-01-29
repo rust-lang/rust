@@ -1,4 +1,4 @@
-#![feature(offset_of)]
+#![feature(offset_of_nested)]
 #![feature(builtin_syntax)]
 
 use std::mem::offset_of;

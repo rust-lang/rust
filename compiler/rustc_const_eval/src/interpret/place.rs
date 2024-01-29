@@ -62,8 +62,8 @@ pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
 
 impl<Prov: Provenance> MemPlace<Prov> {
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
-        MemPlace { ptr: self.ptr.map_provenance(f), ..self }
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
+        MemPlace { ptr: self.ptr.map_provenance(|p| p.map(f)), ..self }
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
@@ -128,7 +128,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     }
 
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         MPlaceTy { mplace: self.mplace.map_provenance(f), ..self }
     }
 
@@ -519,11 +519,7 @@ where
         } else {
             // Unsized `Local` isn't okay (we cannot store the metadata).
             match frame_ref.locals[local].access()? {
-                Operand::Immediate(_) => {
-                    // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
-                    // efficiently check whether they are sized. We have to catch that case here.
-                    throw_inval!(ConstPropNonsense);
-                }
+                Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
             }
         };
@@ -816,17 +812,8 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
             Right(src_val) => {
-                // FIXME(const_prop): Const-prop can possibly evaluate an
-                // unsized copy operation when it thinks that the type is
-                // actually sized, due to a trivially false where-clause
-                // predicate like `where Self: Sized` with `Self = dyn Trait`.
-                // See #102553 for an example of such a predicate.
-                if src.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
-                if dest.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
+                assert!(!src.layout().is_unsized());
+                assert!(!dest.layout().is_unsized());
                 assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {

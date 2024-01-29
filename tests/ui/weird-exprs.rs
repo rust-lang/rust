@@ -231,6 +231,31 @@ fn infcx() {
     let _cx: cx::cx::Cx = cx::cx::cx::cx::cx::Cx;
 }
 
+fn return_already() -> impl std::fmt::Debug {
+    loop {
+        return !!!!!!!
+        break !!!!!!1111
+    }
+}
+
+fn fake_macros() -> impl std::fmt::Debug {
+    loop {
+        if! {
+            match! (
+                break! {
+                    return! {
+                        1337
+                    }
+                }
+            )
+
+            {}
+        }
+
+        {}
+    }
+}
+
 pub fn main() {
     strange();
     funny();
@@ -257,4 +282,6 @@ pub fn main() {
     semisemisemisemisemi();
     useful_syntax();
     infcx();
+    return_already();
+    fake_macros();
 }

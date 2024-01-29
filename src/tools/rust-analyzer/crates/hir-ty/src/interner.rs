@@ -3,8 +3,8 @@
 
 use crate::{
     chalk_db, tls, AliasTy, CanonicalVarKind, CanonicalVarKinds, ClosureId, Const, ConstData,
-    ConstScalar, Constraint, Constraints, FnDefId, GenericArg, GenericArgData, Goal, GoalData,
-    Goals, InEnvironment, Lifetime, LifetimeData, OpaqueTy, OpaqueTyId, ProgramClause,
+    ConstScalar, Constraint, Constraints, FnAbi, FnDefId, GenericArg, GenericArgData, Goal,
+    GoalData, Goals, InEnvironment, Lifetime, LifetimeData, OpaqueTy, OpaqueTyId, ProgramClause,
     ProgramClauseData, ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
     Substitution, Ty, TyData, TyKind, VariableKind, VariableKinds,
 };
@@ -71,7 +71,7 @@ impl chalk_ir::interner::Interner for Interner {
     type DefId = InternId;
     type InternedAdtId = hir_def::AdtId;
     type Identifier = TypeAliasId;
-    type FnAbi = ();
+    type FnAbi = FnAbi;
 
     fn debug_adt_id(
         type_kind_id: chalk_db::AdtId,
@@ -387,7 +387,7 @@ impl chalk_ir::interner::HasInterner for Interner {
 macro_rules! has_interner {
     ($t:ty) => {
         impl HasInterner for $t {
-            type Interner = crate::Interner;
+            type Interner = $crate::Interner;
         }
     };
 }

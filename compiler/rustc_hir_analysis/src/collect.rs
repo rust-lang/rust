@@ -348,7 +348,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
-    pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         self.astconv().ast_ty_to_ty(ast_ty)
     }
 
@@ -412,7 +412,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment<'_>,
+        item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
@@ -1148,7 +1148,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
 
 fn infer_return_ty_for_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
-    sig: &hir::FnSig<'_>,
+    sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'_>,
     def_id: LocalDefId,
     icx: &ItemCtxt<'tcx>,
@@ -1352,14 +1352,14 @@ fn impl_trait_ref(
                 let last_arg = args.args.len() - 1;
                 assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if anon_const.is_desugared_from_effects));
                 args.args = &args.args[..args.args.len() - 1];
-                path_segments[last_segment].args = Some(&args);
+                path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
                 let path = hir::Path {
                     span: ast_trait_ref.path.span,
                     res: ast_trait_ref.path.res,
-                    segments: &path_segments,
+                    segments: tcx.hir_arena.alloc_slice(&path_segments),
                 };
-                let trait_ref = hir::TraitRef { path: &path, hir_ref_id: ast_trait_ref.hir_ref_id };
-                icx.astconv().instantiate_mono_trait_ref(&trait_ref, selfty)
+                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: ast_trait_ref.hir_ref_id });
+                icx.astconv().instantiate_mono_trait_ref(trait_ref, selfty)
             } else {
                 icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
             }

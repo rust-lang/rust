@@ -16,7 +16,7 @@ impl flags::Diagnostics {
         let mut cargo_config = CargoConfig::default();
         cargo_config.sysroot = Some(RustLibSource::Discover);
         let with_proc_macro_server = if let Some(p) = &self.proc_macro_srv {
-            let path = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&p));
+            let path = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(p));
             ProcMacroServerChoice::Explicit(path)
         } else {
             ProcMacroServerChoice::Sysroot

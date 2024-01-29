@@ -1,6 +1,6 @@
 use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -563,7 +563,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
                 let hir_id = tcx.local_def_id_to_hir_id(did);
-                tcx.struct_span_lint_hir(
+                tcx.node_span_lint(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
                     no_sanitize_span,
@@ -658,7 +658,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
         // about LINK.EXE failing.)
         if *ordinal <= u16::MAX as u128 {
-            Some(*ordinal as u16)
+            Some(ordinal.get() as u16)
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.dcx()

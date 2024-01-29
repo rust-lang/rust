@@ -138,7 +138,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         }
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
-        // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
+        // hypothetically be able to allow `dyn StructuralPartialEq` trait objects in the future,
         // but it is unclear if this is useful.
         ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType),
 

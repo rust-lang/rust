@@ -285,21 +285,21 @@ impl Variant {
         check_assist(
             generate_enum_is_method,
             r#"
-enum GeneratorState {
+enum CoroutineState {
     Yielded,
     Complete$0,
     Major,
 }"#,
-            r#"enum GeneratorState {
+            r#"enum CoroutineState {
     Yielded,
     Complete,
     Major,
 }
 
-impl GeneratorState {
-    /// Returns `true` if the generator state is [`Complete`].
+impl CoroutineState {
+    /// Returns `true` if the coroutine state is [`Complete`].
     ///
-    /// [`Complete`]: GeneratorState::Complete
+    /// [`Complete`]: CoroutineState::Complete
     #[must_use]
     fn is_complete(&self) -> bool {
         matches!(self, Self::Complete)

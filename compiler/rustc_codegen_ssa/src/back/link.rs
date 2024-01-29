@@ -52,6 +52,15 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
+#[derive(Default)]
+pub struct SearchPaths(OnceCell<Vec<PathBuf>>);
+
+impl SearchPaths {
+    pub(super) fn get(&self, sess: &Session) -> &[PathBuf] {
+        self.0.get_or_init(|| archive_search_paths(sess))
+    }
+}
+
 pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
@@ -1265,7 +1274,7 @@ fn link_sanitizer_runtime(
         let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-        linker.link_dylib(&filename, false, true);
+        linker.link_dylib_by_name(&filename, false, true);
     } else if sess.target.is_like_msvc && flavor == LinkerFlavor::Msvc(Lld::No) && name == "asan" {
         // MSVC provides the `/INFERASANLIBS` argument to automatically find the
         // compatible ASAN library.
@@ -1273,7 +1282,7 @@ fn link_sanitizer_runtime(
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
         let path = find_sanitizer_runtime(sess, &filename).join(&filename);
-        linker.link_whole_rlib(&path);
+        linker.link_staticlib_by_path(&path, true);
     }
 }
 
@@ -2445,7 +2454,7 @@ fn add_native_libs_from_crate(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-    search_paths: &OnceCell<Vec<PathBuf>>,
+    search_paths: &SearchPaths,
     bundled_libs: &FxHashSet<Symbol>,
     cnum: CrateNum,
     link_static: bool,
@@ -2505,28 +2514,16 @@ fn add_native_libs_from_crate(
                         if let Some(filename) = lib.filename {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
                             let path = tmpdir.join(filename.as_str());
-                            if whole_archive {
-                                cmd.link_whole_rlib(&path);
-                            } else {
-                                cmd.link_rlib(&path);
-                            }
+                            cmd.link_staticlib_by_path(&path, whole_archive);
                         }
                     } else {
-                        if whole_archive {
-                            cmd.link_whole_staticlib(
-                                name,
-                                verbatim,
-                                search_paths.get_or_init(|| archive_search_paths(sess)),
-                            );
-                        } else {
-                            cmd.link_staticlib(name, verbatim)
-                        }
+                        cmd.link_staticlib_by_name(name, verbatim, whole_archive, search_paths);
                     }
                 }
             }
             NativeLibKind::Dylib { as_needed } => {
                 if link_dynamic {
-                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                    cmd.link_dylib_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
             NativeLibKind::Unspecified => {
@@ -2534,17 +2531,17 @@ fn add_native_libs_from_crate(
                 // link kind is unspecified.
                 if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
                     if link_static {
-                        cmd.link_staticlib(name, verbatim)
+                        cmd.link_staticlib_by_name(name, verbatim, false, search_paths);
                     }
                 } else {
                     if link_dynamic {
-                        cmd.link_dylib(name, verbatim, true);
+                        cmd.link_dylib_by_name(name, verbatim, true);
                     }
                 }
             }
             NativeLibKind::Framework { as_needed } => {
                 if link_dynamic {
-                    cmd.link_framework(name, as_needed.unwrap_or(true))
+                    cmd.link_framework_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
             NativeLibKind::RawDylib => {
@@ -2581,7 +2578,7 @@ fn add_local_native_libraries(
         }
     }
 
-    let search_paths = OnceCell::new();
+    let search_paths = SearchPaths::default();
     // All static and dynamic native library dependencies are linked to the local crate.
     let link_static = true;
     let link_dynamic = true;
@@ -2623,7 +2620,7 @@ fn add_upstream_rust_crates<'a>(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
-    let search_paths = OnceCell::new();
+    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in
         // an existing dylib, meaning we'll pick up all the symbols from the dylib.
@@ -2698,7 +2695,7 @@ fn add_upstream_native_libraries(
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
-    let search_path = OnceCell::new();
+    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
         // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
@@ -2720,7 +2717,7 @@ fn add_upstream_native_libraries(
             archive_builder_builder,
             codegen_results,
             tmpdir,
-            &search_path,
+            &search_paths,
             &Default::default(),
             cnum,
             link_static,
@@ -2791,7 +2788,7 @@ fn add_static_crate<'a>(
         } else {
             fix_windows_verbatim_for_gcc(path)
         };
-        cmd.link_rlib(&rlib_path);
+        cmd.link_staticlib_by_path(&rlib_path, false);
     };
 
     if !are_upstream_rust_objects_already_included(sess)
@@ -2859,13 +2856,24 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
     // Just need to tell the linker about where the library lives and
     // what its name is
     let parent = cratepath.parent();
+    // When producing a dll, the MSVC linker may not actually emit a
+    // `foo.lib` file if the dll doesn't actually export any symbols, so we
+    // check to see if the file is there and just omit linking to it if it's
+    // not present.
+    if sess.target.is_like_msvc && !cratepath.with_extension("dll.lib").exists() {
+        return;
+    }
     if let Some(dir) = parent {
         cmd.include_path(&rehome_sysroot_lib_dir(sess, dir));
     }
-    let stem = cratepath.file_stem().unwrap().to_str().unwrap();
+    // "<dir>/name.dll -> name.dll" on windows-msvc
+    // "<dir>/name.dll -> name" on windows-gnu
+    // "<dir>/libname.<ext> -> name" elsewhere
+    let stem = if sess.target.is_like_msvc { cratepath.file_name() } else { cratepath.file_stem() };
+    let stem = stem.unwrap().to_str().unwrap();
     // Convert library file-stem into a cc -l argument.
     let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
-    cmd.link_rust_dylib(&stem[prefix..], parent.unwrap_or_else(|| Path::new("")));
+    cmd.link_dylib_by_name(&stem[prefix..], false, true);
 }
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {

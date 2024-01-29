@@ -46,7 +46,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     }
 
     fn head_ty(&self) -> Option<RevealedTy<'tcx>> {
-        self.patterns.first().map(|pat| pat.ty())
+        self.patterns.first().map(|pat| *pat.ty())
     }
 
     /// Do constructor splitting on the constructors of the column.
@@ -56,7 +56,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     ) -> Result<SplitConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         let ctors_for_ty = &pcx.ctors_for_ty()?;
-        Ok(ctors_for_ty.split(pcx, column_ctors))
+        Ok(ctors_for_ty.split(column_ctors))
     }
 
     /// Does specialization: given a constructor, this takes the patterns from the column that match
@@ -101,7 +101,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Ok(Vec::new());
     };
-    let pcx = &PlaceCtxt::new_dummy(cx, ty);
+    let pcx = &PlaceCtxt::new_dummy(cx, &ty);
 
     let set = column.analyze_ctors(pcx)?;
     if set.present.is_empty() {
@@ -158,7 +158,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
             // is not exhaustive enough.
             //
             // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-            rcx.tcx.emit_spanned_lint(
+            rcx.tcx.emit_node_span_lint(
                 NON_EXHAUSTIVE_OMITTED_PATTERNS,
                 rcx.match_lint_level,
                 rcx.scrut_span,

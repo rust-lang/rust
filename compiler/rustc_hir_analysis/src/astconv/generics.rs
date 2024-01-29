@@ -5,7 +5,9 @@ use crate::astconv::{
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    codes::*, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -168,7 +170,7 @@ fn generic_arg_mismatch_err(
 ///   instantiate a `GenericArg`.
 /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
 ///   creates a suitable inference variable.
-pub fn create_args_for_parent_generic_args<'tcx, 'a>(
+pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     parent_args: &[ty::GenericArg<'tcx>],
@@ -656,7 +658,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         } else {
             let mut multispan = MultiSpan::from_span(span);
             multispan.push_span_label(span_late, note);
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,

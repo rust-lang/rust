@@ -97,20 +97,6 @@ unsafe fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
         return true;
     }
 
-    // At this point, we *could* have a false negative. We can determine that this is a true
-    // negative if we can detect the presence of a console on any of the standard I/O streams. If
-    // another stream has a console, then we know we're in a Windows console and can therefore
-    // trust the negative.
-    for std_handle in [c::STD_INPUT_HANDLE, c::STD_OUTPUT_HANDLE, c::STD_ERROR_HANDLE] {
-        let std_handle = c::GetStdHandle(std_handle);
-        if !std_handle.is_null()
-            && std_handle != handle
-            && c::GetConsoleMode(std_handle, &mut out) != 0
-        {
-            return false;
-        }
-    }
-
     // Otherwise, we fall back to an msys hack to see if we can detect the presence of a pty.
     msys_tty_on(handle)
 }

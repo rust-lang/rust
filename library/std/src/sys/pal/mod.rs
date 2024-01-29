@@ -40,6 +40,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         mod wasi;
         pub use self::wasi::*;
+    } else if #[cfg(all(target_os = "wasi", target_env = "preview2"))] {
+        mod wasi_preview2;
+        pub use self::wasi_preview2::*;
     } else if #[cfg(target_family = "wasm")] {
         mod wasm;
         pub use self::wasm::*;
@@ -55,6 +58,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use self::teeos::*;
+    } else if #[cfg(target_os = "zkvm")] {
+        mod zkvm;
+        pub use self::zkvm::*;
     } else {
         mod unsupported;
         pub use self::unsupported::*;

@@ -1,5 +1,4 @@
 #![feature(stmt_expr_attributes)]
-#![feature(round_ties_even)]
 #![feature(float_gamma)]
 #![allow(arithmetic_overflow)]
 

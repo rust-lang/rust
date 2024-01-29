@@ -162,15 +162,21 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 }
 
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
+    fn format_err(e: &(dyn std::error::Error + 'static)) -> String {
+        e.sources().map(|e| format!(": {e}")).collect()
+    }
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
-        let err = format!("couldn't load codegen backend {path:?}: {err}");
+        let err = format!("couldn't load codegen backend {path:?}{}", format_err(&err));
         early_dcx.early_fatal(err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
-            let err = format!("couldn't load codegen backend: {e}");
-            early_dcx.early_fatal(err);
+            let e = format!(
+                "`__rustc_codegen_backend` symbol lookup in the codegen backend failed{}",
+                format_err(&e)
+            );
+            early_dcx.early_fatal(e);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it

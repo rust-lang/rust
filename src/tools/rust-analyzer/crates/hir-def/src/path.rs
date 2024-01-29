@@ -154,7 +154,7 @@ impl Path {
 
     pub fn mod_path(&self) -> Option<&ModPath> {
         match self {
-            Path::Normal { mod_path, .. } => Some(&mod_path),
+            Path::Normal { mod_path, .. } => Some(mod_path),
             Path::LangItem(..) => None,
         }
     }
@@ -219,13 +219,13 @@ impl<'a> PathSegments<'a> {
     }
     pub fn skip(&self, len: usize) -> PathSegments<'a> {
         PathSegments {
-            segments: &self.segments.get(len..).unwrap_or(&[]),
+            segments: self.segments.get(len..).unwrap_or(&[]),
             generic_args: self.generic_args.and_then(|it| it.get(len..)),
         }
     }
     pub fn take(&self, len: usize) -> PathSegments<'a> {
         PathSegments {
-            segments: &self.segments.get(..len).unwrap_or(&self.segments),
+            segments: self.segments.get(..len).unwrap_or(self.segments),
             generic_args: self.generic_args.map(|it| it.get(..len).unwrap_or(it)),
         }
     }

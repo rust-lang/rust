@@ -45,6 +45,7 @@ fn main() {
         if countdown > 7 {
             countdown -= 4;
         }
+        //
         else if countdown > 2 {
             if countdown < 1 || countdown > 5 || countdown != 9 {
                 countdown = 0;

@@ -422,9 +422,7 @@ fn find_record_pat_field_usage(name: &ast::NameLike) -> Option<ast::Pat> {
 
 fn find_assoc_const_usage(name: &ast::NameLike) -> Option<(ast::Type, ast::Expr)> {
     let const_ = name.syntax().parent().and_then(ast::Const::cast)?;
-    if const_.syntax().parent().and_then(ast::AssocItemList::cast).is_none() {
-        return None;
-    }
+    const_.syntax().parent().and_then(ast::AssocItemList::cast)?;
 
     Some((const_.ty()?, const_.body()?))
 }
@@ -986,7 +984,7 @@ fn foo() {
 }
 
 //- /main.rs
-use foo::{Foo, Bool};
+use foo::{Bool, Foo};
 
 mod foo;
 
@@ -1662,7 +1660,7 @@ impl Foo {
 }
 
 //- /foo.rs
-use crate::{Foo, Bool};
+use crate::{Bool, Foo};
 
 fn foo() -> bool {
     Foo::BOOL == Bool::True

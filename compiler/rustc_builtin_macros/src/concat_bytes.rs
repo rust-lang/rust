@@ -54,7 +54,7 @@ fn invalid_type_err(
             val,
             ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
         )) => {
-            assert!(val > u8::MAX.into()); // must be an error
+            assert!(val.get() > u8::MAX.into()); // must be an error
             dcx.emit_err(ConcatBytesOob { span });
         }
         Ok(ast::LitKind::Int(_, _)) => {
@@ -86,7 +86,7 @@ fn handle_array_element(
             Ok(ast::LitKind::Int(
                 val,
                 ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
-            )) if val <= u8::MAX.into() => Some(val as u8),
+            )) if val.get() <= u8::MAX.into() => Some(val.get() as u8),
 
             Ok(ast::LitKind::Byte(val)) => Some(val),
             Ok(ast::LitKind::ByteStr(..)) => {
@@ -148,7 +148,7 @@ pub fn expand_concat_bytes(
                     if let Some(elem) =
                         handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
                     {
-                        for _ in 0..count_val {
+                        for _ in 0..count_val.get() {
                             accumulator.push(elem);
                         }
                     }

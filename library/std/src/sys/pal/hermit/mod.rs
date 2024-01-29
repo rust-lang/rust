@@ -19,8 +19,6 @@ use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
-#[path = "../unix/cmath.rs"]
-pub mod cmath;
 pub mod env;
 pub mod fd;
 pub mod fs;
@@ -30,8 +28,6 @@ pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
-#[path = "../unix/os_str.rs"]
-pub mod os_str;
 #[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]

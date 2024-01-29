@@ -129,9 +129,7 @@ fn add_custom_completions(
     cap: SnippetCap,
     scope: SnippetScope,
 ) -> Option<()> {
-    if ImportScope::find_insert_use_container(&ctx.token.parent()?, &ctx.sema).is_none() {
-        return None;
-    }
+    ImportScope::find_insert_use_container(&ctx.token.parent()?, &ctx.sema)?;
     ctx.config.prefix_snippets().filter(|(_, snip)| snip.scope == scope).for_each(
         |(trigger, snip)| {
             let imports = match snip.imports(ctx) {

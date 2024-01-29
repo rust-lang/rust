@@ -293,7 +293,7 @@ impl<'a> NormalizedPat<'a> {
                     LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
                     LitKind::Char(val) => Self::LitInt(val.into()),
-                    LitKind::Int(val, _) => Self::LitInt(val),
+                    LitKind::Int(val, _) => Self::LitInt(val.get()),
                     LitKind::Bool(val) => Self::LitBool(val),
                     LitKind::Float(..) | LitKind::Err => Self::Wild,
                 },
@@ -305,7 +305,7 @@ impl<'a> NormalizedPat<'a> {
                     None => 0,
                     Some(e) => match &e.kind {
                         ExprKind::Lit(lit) => match lit.node {
-                            LitKind::Int(val, _) => val,
+                            LitKind::Int(val, _) => val.get(),
                             LitKind::Char(val) => val.into(),
                             LitKind::Byte(val) => val.into(),
                             _ => return Self::Wild,
@@ -317,7 +317,7 @@ impl<'a> NormalizedPat<'a> {
                     None => (u128::MAX, RangeEnd::Included),
                     Some(e) => match &e.kind {
                         ExprKind::Lit(lit) => match lit.node {
-                            LitKind::Int(val, _) => (val, bounds),
+                            LitKind::Int(val, _) => (val.get(), bounds),
                             LitKind::Char(val) => (val.into(), bounds),
                             LitKind::Byte(val) => (val.into(), bounds),
                             _ => return Self::Wild,

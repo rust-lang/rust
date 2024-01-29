@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_code_err, DiagnosticMessage};
+use rustc_errors::{codes::*, struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -452,6 +452,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             sym::black_box => (1, vec![param(0)], param(0)),
+
+            sym::is_val_statically_known => (1, vec![param(0)], tcx.types.bool),
 
             sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
 

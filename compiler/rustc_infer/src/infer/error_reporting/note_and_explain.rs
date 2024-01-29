@@ -195,7 +195,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }
                         diag.help("type parameters must be constrained to match other types");
-                        if tcx.sess.teach(&diag.get_code().unwrap()) {
+                        if tcx.sess.teach(diag.get_code().unwrap()) {
                             diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
@@ -294,8 +294,78 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
-                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias))
-                        if alias.def_id.is_local()
+                    (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
+                        if let Some(def_id) = t.principal_def_id()
+                            && tcx.explicit_item_bounds(alias.def_id).skip_binder().iter().any(
+                                |(pred, _span)| match pred.kind().skip_binder() {
+                                    ty::ClauseKind::Trait(trait_predicate)
+                                        if trait_predicate.polarity
+                                            == ty::ImplPolarity::Positive =>
+                                    {
+                                        trait_predicate.def_id() == def_id
+                                    }
+                                    _ => false,
+                                },
+                            ) =>
+                    {
+                        diag.help(format!(
+                            "you can box the `{}` to coerce it to `Box<{}>`, but you'll have to \
+                             change the expected type as well",
+                            values.found, values.expected,
+                        ));
+                    }
+                    (ty::Dynamic(t, _, ty::DynKind::Dyn), _)
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}` so you could box the found value \
+                                 and coerce it to the trait object `Box<dyn {trait_name}>`, you \
+                                 will have to change the expected type as well",
+                                values.found,
+                            ));
+                        }
+                    }
+                    (_, ty::Dynamic(t, _, ty::DynKind::Dyn))
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.expected, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}` so you could change the expected \
+                                 type to `Box<dyn {trait_name}>`",
+                                values.expected,
+                            ));
+                        }
+                    }
+                    (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
+                        if let Some(def_id) = t.principal_def_id() =>
+                    {
+                        let mut impl_def_ids = vec![];
+                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
+                            impl_def_ids.push(did)
+                        });
+                        if let [_] = &impl_def_ids[..] {
+                            let trait_name = tcx.item_name(def_id);
+                            diag.help(format!(
+                                "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
+                                 not enabled; that feature it is currently incomplete",
+                                values.found,
+                            ));
+                        }
+                    }
+                    (_, ty::Alias(ty::Opaque, opaque_ty))
+                    | (ty::Alias(ty::Opaque, opaque_ty), _) => {
+                        if opaque_ty.def_id.is_local()
                             && matches!(
                                 tcx.def_kind(body_owner_def_id),
                                 DefKind::Fn
@@ -303,21 +373,74 @@ impl<T> Trait<T> for X {
                                     | DefKind::Const
                                     | DefKind::AssocFn
                                     | DefKind::AssocConst
-                            ) =>
-                    {
-                        if tcx.is_type_alias_impl_trait(alias.def_id) {
-                            if !tcx
+                            )
+                            && tcx.is_type_alias_impl_trait(opaque_ty.def_id)
+                            && !tcx
                                 .opaque_types_defined_by(body_owner_def_id.expect_local())
-                                .contains(&alias.def_id.expect_local())
-                            {
-                                let sp = tcx
-                                    .def_ident_span(body_owner_def_id)
-                                    .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
-                                diag.span_note(
-                                    sp,
-                                    "\
-                                    this item must have the opaque type in its signature \
-                                    in order to be able to register hidden types",
+                                .contains(&opaque_ty.def_id.expect_local())
+                        {
+                            let sp = tcx
+                                .def_ident_span(body_owner_def_id)
+                                .unwrap_or_else(|| tcx.def_span(body_owner_def_id));
+                            diag.span_note(
+                                sp,
+                                "this item must have the opaque type in its signature in order to \
+                                 be able to register hidden types",
+                            );
+                        }
+                        // If two if arms can be coerced to a trait object, provide a structured
+                        // suggestion.
+                        let ObligationCauseCode::IfExpression(cause) = cause.code() else {
+                            return;
+                        };
+                        let hir::Node::Block(blk) = self.tcx.hir_node(cause.then_id) else {
+                            return;
+                        };
+                        let Some(then) = blk.expr else {
+                            return;
+                        };
+                        let hir::Node::Block(blk) = self.tcx.hir_node(cause.else_id) else {
+                            return;
+                        };
+                        let Some(else_) = blk.expr else {
+                            return;
+                        };
+                        let expected = match values.found.kind() {
+                            ty::Alias(..) => values.expected,
+                            _ => values.found,
+                        };
+                        let preds = tcx.explicit_item_bounds(opaque_ty.def_id);
+                        for (pred, _span) in preds.skip_binder() {
+                            let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
+                            else {
+                                continue;
+                            };
+                            if trait_predicate.polarity != ty::ImplPolarity::Positive {
+                                continue;
+                            }
+                            let def_id = trait_predicate.def_id();
+                            let mut impl_def_ids = vec![];
+                            tcx.for_each_relevant_impl(def_id, expected, |did| {
+                                impl_def_ids.push(did)
+                            });
+                            if let [_] = &impl_def_ids[..] {
+                                let trait_name = tcx.item_name(def_id);
+                                diag.multipart_suggestion(
+                                    format!(
+                                        "`{expected}` implements `{trait_name}` so you can box \
+                                         both arms and coerce to the trait object \
+                                         `Box<dyn {trait_name}>`",
+                                    ),
+                                    vec![
+                                        (then.span.shrink_to_lo(), "Box::new(".to_string()),
+                                        (
+                                            then.span.shrink_to_hi(),
+                                            format!(") as Box<dyn {}>", tcx.def_path_str(def_id)),
+                                        ),
+                                        (else_.span.shrink_to_lo(), "Box::new(".to_string()),
+                                        (else_.span.shrink_to_hi(), ")".to_string()),
+                                    ],
+                                    MachineApplicable,
                                 );
                             }
                         }
@@ -329,6 +452,38 @@ impl<T> Trait<T> for X {
                                 "unsafe functions cannot be coerced into safe function pointers",
                             );
                         }
+                    }
+                    (ty::Adt(_, _), ty::Adt(def, args))
+                        if let ObligationCauseCode::IfExpression(cause) = cause.code()
+                            && let hir::Node::Block(blk) = self.tcx.hir_node(cause.then_id)
+                            && let Some(then) = blk.expr
+                            && def.is_box()
+                            && let boxed_ty = args.type_at(0)
+                            && let ty::Dynamic(t, _, _) = boxed_ty.kind()
+                            && let Some(def_id) = t.principal_def_id()
+                            && let mut impl_def_ids = vec![]
+                            && let _ =
+                                tcx.for_each_relevant_impl(def_id, values.expected, |did| {
+                                    impl_def_ids.push(did)
+                                })
+                            && let [_] = &impl_def_ids[..] =>
+                    {
+                        // We have divergent if/else arms where the expected value is a type that
+                        // implements the trait of the found boxed trait object.
+                        diag.multipart_suggestion(
+                            format!(
+                                "`{}` implements `{}` so you can box it to coerce to the trait \
+                                 object `{}`",
+                                values.expected,
+                                tcx.item_name(def_id),
+                                values.found,
+                            ),
+                            vec![
+                                (then.span.shrink_to_lo(), "Box::new(".to_string()),
+                                (then.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            MachineApplicable,
+                        );
                     }
                     _ => {}
                 }
@@ -523,7 +678,7 @@ impl<T> Trait<T> for X {
                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
             );
         }
-        if tcx.sess.teach(&diag.get_code().unwrap()) {
+        if tcx.sess.teach(diag.get_code().unwrap()) {
             diag.help(
                 "given an associated type `T` and a method `foo`:
 ```

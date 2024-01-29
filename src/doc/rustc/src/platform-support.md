@@ -72,6 +72,12 @@ ensure that each tier 2 target can be used as build target after each change. Au
 not always run so it's not guaranteed to produce a working build, but tier 2
 targets often work to quite a good degree and patches are always welcome!
 
+Tier 2 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
+
 Tier 2 targets with host tools additionally support running tools like `rustc`
 and `cargo` natively on the target, and automated builds ensure that the host
 tools build as well. This allows the target to be used as a development
@@ -120,6 +126,12 @@ The `std` column in the table below has the following meanings:
 * \* indicates the target only supports [`no_std`] development.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
+
+Tier 2 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
 
 **NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
 so Rustup may install the documentation for a similar tier 1 target instead.
@@ -210,6 +222,12 @@ The `std` column in the table below has the following meanings:
 * ? indicates the standard library support is unknown or a work-in-progress.
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
+
+Tier 3 target-specific code is not closely scrutinized by Rust team(s) when
+modifications are made. Bugs are possible in all code, but the level of quality
+control for these targets is likely to be lower. See [library team
+policy](https://std-dev-guide.rust-lang.org/policy/target-code.html) for
+details on the review practices for standard library code.
 
 The `host` column indicates whether the codebase includes support for building
 host tools.
@@ -320,6 +338,7 @@ target | std | host | notes
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
+[`riscv32im-risc0-zkvm-elf`](platform-support/riscv32im-risc0-zkvm-elf.md) | ? |  | RISC Zero's zero-knowledge Virtual Machine (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
@@ -341,6 +360,7 @@ target | std | host | notes
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
+[`wasm32-wasi-preview2`](platform-support/wasm32-wasi-preview2.md) | ✓ |  | WebAssembly
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | x86 64-bit tvOS

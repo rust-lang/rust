@@ -53,6 +53,12 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 }
 
+impl ast::Abi {
+    pub fn abi_string(&self) -> Option<ast::String> {
+        support::token(&self.syntax, SyntaxKind::STRING).and_then(ast::String::cast)
+    }
+}
+
 impl ast::HasModuleItem for ast::StmtList {}
 
 impl ast::BlockExpr {
@@ -327,6 +333,14 @@ impl ast::UseTree {
     pub fn parent_use_tree_list(&self) -> Option<ast::UseTreeList> {
         self.syntax().parent().and_then(ast::UseTreeList::cast)
     }
+
+    pub fn top_use_tree(&self) -> ast::UseTree {
+        let mut this = self.clone();
+        while let Some(use_tree_list) = this.parent_use_tree_list() {
+            this = use_tree_list.parent_use_tree();
+        }
+        this
+    }
 }
 
 impl ast::UseTreeList {
@@ -356,8 +370,12 @@ impl ast::UseTreeList {
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
             let use_tree_count = u.use_trees().count();
             if use_tree_count == 1 {
-                u.l_curly_token().map(ted::remove);
-                u.r_curly_token().map(ted::remove);
+                if let Some(a) = u.l_curly_token() {
+                    ted::remove(a)
+                }
+                if let Some(a) = u.r_curly_token() {
+                    ted::remove(a)
+                }
                 u.comma().for_each(ted::remove);
             }
         };
@@ -435,6 +453,12 @@ impl StructKind {
 }
 
 impl ast::Struct {
+    pub fn kind(&self) -> StructKind {
+        StructKind::from_node(self)
+    }
+}
+
+impl ast::Union {
     pub fn kind(&self) -> StructKind {
         StructKind::from_node(self)
     }

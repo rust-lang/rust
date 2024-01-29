@@ -220,7 +220,7 @@ impl<T: ?Sized> *const T {
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
-    /// Provenance][../index.html#strict-provenance] rules. Supporting
+    /// Provenance][super#strict-provenance] rules. Supporting
     /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
     /// use [`addr`][pointer::addr] wherever possible.
@@ -232,7 +232,7 @@ impl<T: ?Sized> *const T {
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
-    /// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+    /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
     /// [`from_exposed_addr`]: from_exposed_addr
     #[must_use]

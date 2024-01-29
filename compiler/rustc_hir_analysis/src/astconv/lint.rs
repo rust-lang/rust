@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{Diagnostic, StashKey};
+use rustc_errors::{codes::*, Diagnostic, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
@@ -78,23 +78,33 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
-        let (hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Fn(sig, _),
-            generics,
-            ..
-        })) = tcx.hir_node_by_def_id(parent_id)
-        else {
-            return false;
+        let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
+                (sig, generics, None)
+            }
+            hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, _),
+                generics,
+                owner_id,
+                ..
+            }) => (sig, generics, Some(tcx.parent(owner_id.to_def_id()))),
+            _ => return false,
         };
         let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
+        let mut is_downgradable = true;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
                 objects.iter().all(|o| match o.trait_ref.path.res {
-                    Res::Def(DefKind::Trait, id) => tcx.check_is_object_safe(id),
+                    Res::Def(DefKind::Trait, id) => {
+                        if Some(id) == owner {
+                            // For recursive traits, don't downgrade the error. (#119652)
+                            is_downgradable = false;
+                        }
+                        tcx.check_is_object_safe(id)
+                    }
                     _ => false,
                 })
             }
@@ -122,7 +132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else {
+            } else if diag.is_error() && is_downgradable {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -148,8 +158,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                // We'll emit the object safety error already, with a structured suggestion.
-                diag.downgrade_to_delayed_bug();
+                if diag.is_error() && is_downgradable {
+                    // We'll emit the object safety error already, with a structured suggestion.
+                    diag.downgrade_to_delayed_bug();
+                }
             } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
@@ -228,24 +240,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
-                tcx.struct_span_lint_hir(
-                    BARE_TRAIT_OBJECTS,
-                    self_ty.hir_id,
-                    self_ty.span,
-                    msg,
-                    |lint| {
-                        if self_ty.span.can_be_used_for_suggestions()
-                            && !self.maybe_lint_impl_trait(self_ty, lint)
-                        {
-                            lint.multipart_suggestion_verbose(
-                                "use `dyn`",
-                                sugg,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        self.maybe_lint_blanket_trait_impl(self_ty, lint);
-                    },
-                );
+                tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
+                    if self_ty.span.can_be_used_for_suggestions()
+                        && !self.maybe_lint_impl_trait(self_ty, lint)
+                    {
+                        lint.multipart_suggestion_verbose(
+                            "use `dyn`",
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    self.maybe_lint_blanket_trait_impl(self_ty, lint);
+                });
             }
         }
     }

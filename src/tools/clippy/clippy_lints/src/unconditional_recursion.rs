@@ -77,7 +77,7 @@ fn get_ty_def_id(ty: Ty<'_>) -> Option<DefId> {
     }
 }
 
-fn get_hir_ty_def_id(tcx: TyCtxt<'_>, hir_ty: rustc_hir::Ty<'_>) -> Option<DefId> {
+fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Option<DefId> {
     let TyKind::Path(qpath) = hir_ty.kind else { return None };
     match qpath {
         QPath::Resolved(_, path) => path.res.opt_def_id(),
@@ -167,7 +167,15 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
                     false
                 }
             },
-            ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
+            ExprKind::MethodCall(segment, receiver, &[_arg], _) if segment.ident.name == name.name => {
+                if let Some(ty) = cx.typeck_results().expr_ty_opt(receiver)
+                    && let Some(ty_id) = get_ty_def_id(ty)
+                    && self_arg != ty_id
+                {
+                    // Since this called on a different type, the lint should not be
+                    // triggered here.
+                    return;
+                }
                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                     && trait_id == trait_def_id
@@ -229,7 +237,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
     }
 }
 
-fn is_default_method_on_current_ty(tcx: TyCtxt<'_>, qpath: QPath<'_>, implemented_ty_id: DefId) -> bool {
+fn is_default_method_on_current_ty<'tcx>(tcx: TyCtxt<'tcx>, qpath: QPath<'tcx>, implemented_ty_id: DefId) -> bool {
     match qpath {
         QPath::Resolved(_, path) => match path.segments {
             [first, .., last] => last.ident.name == kw::Default && first.res.opt_def_id() == Some(implemented_ty_id),

@@ -7,8 +7,20 @@ use crate::{lint::lint_body, validate, MirPass};
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
-        let name = std::any::type_name::<Self>();
-        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
+        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        const {
+            let name = std::any::type_name::<Self>();
+            let bytes = name.as_bytes();
+            let mut i = bytes.len();
+            while i > 0 && bytes[i - 1] != b':' {
+                i = i - 1;
+            }
+            let (_, bytes) = bytes.split_at(i);
+            match std::str::from_utf8(bytes) {
+                Ok(name) => name,
+                Err(_) => name,
+            }
+        }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {

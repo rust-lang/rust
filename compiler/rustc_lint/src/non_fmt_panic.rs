@@ -121,7 +121,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
+    cx.span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
         lint.arg("name", symbol);
         lint.note(fluent::lint_note);
         lint.note(fluent::lint_more_info_note);
@@ -251,7 +251,7 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             NON_FMT_PANICS,
             arg_spans,
             NonFmtPanicUnused {
@@ -268,7 +268,7 @@ fn check_panic_str<'tcx>(
                     .collect()
             });
         let count = brace_spans.as_ref().map(|v| v.len()).unwrap_or(/* any number >1 */ 2);
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             NON_FMT_PANICS,
             brace_spans.unwrap_or_else(|| vec![span]),
             NonFmtPanicBraces {

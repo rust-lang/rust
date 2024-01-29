@@ -24,9 +24,10 @@ const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
 
 const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
-    "tests/ui/check-cfg/my-awesome-platform.json", // testing custom targets with cfgs
-    "tests/ui/commandline-argfile-badutf8.args", // passing args via a file
-    "tests/ui/commandline-argfile.args", // passing args via a file
+    "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
+    "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
+    "tests/ui/commandline-argfile-badutf8.args",    // passing args via a file
+    "tests/ui/commandline-argfile.args",            // passing args via a file
     "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
     "tests/ui/include-macros/data.bin", // testing including data with the include macros
     "tests/ui/include-macros/file.txt", // testing including data with the include macros

@@ -7,7 +7,9 @@ use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;

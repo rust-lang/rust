@@ -4,11 +4,11 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-aho-corasick = "0.7"
+aho-corasick = "1.0"
 clap = "4.1.4"
 indoc = "1.0"
 itertools = "0.11"
-opener = "0.5"
+opener = "0.6"
 shell-escape = "0.1"
 walkdir = "2.3"
 

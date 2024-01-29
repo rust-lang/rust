@@ -347,6 +347,7 @@ impl SwitchWithOptPath {
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
+    Hashed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -2692,11 +2693,19 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     match cg.symbol_mangling_version {
         // Stable values:
         None | Some(SymbolManglingVersion::V0) => {}
+
         // Unstable values:
         Some(SymbolManglingVersion::Legacy) => {
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+                );
+            }
+        }
+        Some(SymbolManglingVersion::Hashed) => {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
                 );
             }
         }
@@ -2741,6 +2750,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
                 );
             }
             Some(SymbolManglingVersion::V0) => {}
+            Some(SymbolManglingVersion::Hashed) => {
+                early_dcx.early_warn(
+                    "-C instrument-coverage requires symbol mangling version `v0`, \
+                    but `-C symbol-mangling-version=hashed` was specified",
+                );
+            }
         }
     }
 
@@ -3190,12 +3205,12 @@ pub enum WasiExecModel {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel,
-        OutFileName, OutputType, OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CrateType, DebugInfo,
+        DebugInfoCompression, ErrorOutputType, FunctionReturn, InliningThreshold,
+        InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3274,6 +3289,7 @@ pub(crate) mod dep_tracking {
         LtoCli,
         DebugInfo,
         DebugInfoCompression,
+        CollapseMacroDebuginfo,
         UnstableFeatures,
         NativeLib,
         SanitizerSet,
@@ -3435,6 +3451,25 @@ pub enum ProcMacroExecutionStrategy {
 
     /// Run the proc-macro code on a different thread.
     CrossThread,
+}
+
+/// How to perform collapse macros debug info
+/// if-ext - if macro from different crate (related to callsite code)
+/// | cmd \ attr    | no  | (unspecified) | external | yes |
+/// | no            | no  | no            | no       | no  |
+/// | (unspecified) | no  | no            | if-ext   | yes |
+/// | external      | no  | if-ext        | if-ext   | yes |
+/// | yes           | yes | yes           | yes      | yes |
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CollapseMacroDebuginfo {
+    /// Don't collapse debuginfo for the macro
+    No = 0,
+    /// Unspecified value
+    Unspecified = 1,
+    /// Collapse debuginfo if the macro comes from a different crate
+    External = 2,
+    /// Collapse debuginfo for the macro
+    Yes = 3,
 }
 
 /// Which format to use for `-Z dump-mono-stats`

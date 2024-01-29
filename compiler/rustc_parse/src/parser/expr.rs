@@ -33,7 +33,6 @@ use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Spanned};
-use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
@@ -483,7 +482,11 @@ impl<'a> Parser<'a> {
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
-            Some(self.parse_expr_assoc_with(prec + 1, LhsExpr::NotYetParsed)?)
+            let maybe_lt = self.token.clone();
+            Some(
+                self.parse_expr_assoc_with(prec + 1, LhsExpr::NotYetParsed)
+                    .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
+            )
         } else {
             None
         };
@@ -532,11 +535,13 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let lo = this.token.span;
+            let maybe_lt = this.look_ahead(1, |t| t.clone());
             this.bump();
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
                 this.parse_expr_assoc_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
-                    .map(|x| (lo.to(x.span), Some(x)))?
+                    .map(|x| (lo.to(x.span), Some(x)))
+                    .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
                 (lo, None)
             };
@@ -642,26 +647,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `box expr` - this syntax has been removed, but we still parse this
-    /// for now to provide an automated way to fix usages of it
-    fn parse_expr_box(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let (span, expr) = self.parse_expr_prefix_common(lo)?;
-        let code = self.sess.source_map().span_to_snippet(span.with_lo(lo.hi())).unwrap();
-        self.dcx().emit_err(errors::BoxSyntaxRemoved { span, code: code.trim() });
-        // So typechecking works, parse `box <expr>` as `::std::boxed::Box::new(expr)`
-        let path = Path {
-            span,
-            segments: [
-                PathSegment::from_ident(Ident::with_dummy_span(PathRoot)),
-                PathSegment::from_ident(Ident::with_dummy_span(sym::std)),
-                PathSegment::from_ident(Ident::from_str("boxed")),
-                PathSegment::from_ident(Ident::from_str("Box")),
-                PathSegment::from_ident(Ident::with_dummy_span(sym::new)),
-            ]
-            .into(),
-            tokens: None,
-        };
-        let path = self.mk_expr(span, ExprKind::Path(None, path));
-        Ok((span, self.mk_call(path, ThinVec::from([expr]))))
+    /// for now to provide a more useful error
+    fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
+        let (span, _) = self.parse_expr_prefix_common(box_kw)?;
+        let inner_span = span.with_lo(box_kw.hi());
+        let code = self.sess.source_map().span_to_snippet(inner_span).unwrap();
+        self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
+        Ok((span, ExprKind::Err))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -1844,7 +1836,7 @@ impl<'a> Parser<'a> {
             let lexpr = self.parse_expr_labeled(label, true)?;
             self.dcx().emit_err(errors::LabeledLoopInBreak {
                 span: lexpr.span,
-                sub: errors::WrapExpressionInParentheses {
+                sub: errors::WrapInParentheses::Expression {
                     left: lexpr.span.shrink_to_lo(),
                     right: lexpr.span.shrink_to_hi(),
                 },
