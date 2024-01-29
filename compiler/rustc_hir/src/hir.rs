@@ -1273,7 +1273,6 @@ pub struct Arm<'hir> {
 /// desugaring to if-let. Only let-else supports the type annotation at present.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Let<'hir> {
-    pub hir_id: HirId,
     pub span: Span,
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
@@ -1532,14 +1531,16 @@ pub type Lit = Spanned<LitKind>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen {
-    Infer(HirId, Span),
+    Infer(InferArg),
     Body(AnonConst),
 }
 
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
+                *hir_id
+            }
         }
     }
 }
@@ -2424,7 +2425,7 @@ impl<'hir> Ty<'hir> {
             TyKind::Infer => true,
             TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
             TyKind::Array(ty, length) => {
-                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(_, _))
+                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(..))
             }
             TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
             TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),

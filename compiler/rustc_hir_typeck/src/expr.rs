@@ -320,7 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
             ExprKind::Become(call) => self.check_expr_become(call, expr),
-            ExprKind::Let(let_expr) => self.check_expr_let(let_expr),
+            ExprKind::Let(let_expr) => self.check_expr_let(let_expr, expr.hir_id),
             ExprKind::Loop(body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
@@ -1259,12 +1259,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>) -> Ty<'tcx> {
+    pub(super) fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>, hir_id: HirId) -> Ty<'tcx> {
         // for let statements, this is done in check_stmt
         let init = let_expr.init;
         self.warn_if_unreachable(init.hir_id, init.span, "block in `let` expression");
         // otherwise check exactly as a let statement
-        self.check_decl(let_expr.into());
+        self.check_decl((let_expr, hir_id).into());
         // but return a bool, for this is a boolean expression
         if let Some(error_guaranteed) = let_expr.is_recovered {
             self.set_tainted_by_errors(error_guaranteed);
