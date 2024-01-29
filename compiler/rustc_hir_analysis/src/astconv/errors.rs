@@ -6,6 +6,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -461,14 +462,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return err.emit();
         }
 
-        let mut bound_spans: FxHashMap<Span, Vec<String>> = Default::default();
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
             let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match &self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
                 ty::Adt(def, _) => {
-                    bound_spans.entry(tcx.def_span(def.did())).or_default().push(msg)
+                    bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
                 }
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _, _) => {
@@ -476,8 +477,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
                                 bound_spans
-                                    .entry(tcx.def_span(tr.def_id))
-                                    .or_default()
+                                    .get_mut_or_insert_default(tcx.def_span(tr.def_id))
                                     .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
@@ -488,8 +488,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
                     bound_spans
-                        .entry(tcx.def_span(*def_id))
-                        .or_default()
+                        .get_mut_or_insert_default(tcx.def_span(*def_id))
                         .push(format!("`{quiet}`"));
                 }
                 _ => {}
@@ -559,21 +558,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
-        let mut bound_spans: Vec<(Span, Vec<String>)> = bound_spans
-            .into_iter()
-            .map(|(span, mut bounds)| {
-                bounds.sort();
-                bounds.dedup();
-                (span, bounds)
-            })
-            .collect();
-        bound_spans.sort_by_key(|(span, _)| *span);
-        for (span, bounds) in bound_spans {
+        for (span, mut bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            bounds.sort();
+            bounds.dedup();
             let msg = match &bounds[..] {
                 [bound] => format!("doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
                 [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
                 [] => unreachable!(),
             };

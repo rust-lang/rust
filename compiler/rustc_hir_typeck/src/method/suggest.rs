@@ -9,7 +9,8 @@ use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::StashKey;
 use rustc_errors::{
@@ -538,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        let mut bound_spans: FxHashMap<Span, Vec<String>> = Default::default();
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
         let mut unsatisfied_bounds = false;
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
@@ -637,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match &self_ty.kind() {
                     // Point at the type that couldn't satisfy the bound.
                     ty::Adt(def, _) => {
-                        bound_spans.entry(tcx.def_span(def.did())).or_default().push(msg)
+                        bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
                     }
                     // Point at the trait object that couldn't satisfy the bound.
                     ty::Dynamic(preds, _, _) => {
@@ -645,8 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             match pred.skip_binder() {
                                 ty::ExistentialPredicate::Trait(tr) => {
                                     bound_spans
-                                        .entry(tcx.def_span(tr.def_id))
-                                        .or_default()
+                                        .get_mut_or_insert_default(tcx.def_span(tr.def_id))
                                         .push(msg.clone());
                                 }
                                 ty::ExistentialPredicate::Projection(_)
@@ -657,8 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Point at the closure that couldn't satisfy the bound.
                     ty::Closure(def_id, _) => {
                         bound_spans
-                            .entry(tcx.def_span(*def_id))
-                            .or_default()
+                            .get_mut_or_insert_default(tcx.def_span(*def_id))
                             .push(format!("`{quiet}`"));
                     }
                     _ => {}
@@ -1167,20 +1166,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
 
-        #[allow(rustc::potential_query_instability)] // We immediately sort the resulting Vec.
-        let mut bound_spans: Vec<(Span, Vec<String>)> = bound_spans
-            .into_iter()
-            .map(|(span, mut bounds)| {
-                bounds.sort();
-                bounds.dedup();
-                (span, bounds)
-            })
-            .collect();
-        bound_spans.sort_by_key(|(span, _)| *span);
-        for (span, bounds) in bound_spans {
+        for (span, mut bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            bounds.sort();
+            bounds.dedup();
             let pre = if Some(span) == ty_span {
                 ty_span.take();
                 format!(
@@ -1192,6 +1183,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let msg = match &bounds[..] {
                 [bound] => format!("{pre}doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
                 [bounds @ .., last] => {
                     format!("{pre}doesn't satisfy {} or {last}", bounds.join(", "))
                 }
