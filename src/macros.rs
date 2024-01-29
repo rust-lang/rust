@@ -25,6 +25,7 @@ use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
 };
 use crate::config::lists::*;
+use crate::config::Version;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
@@ -1245,8 +1246,16 @@ impl MacroBranch {
             return None;
         }
 
-        // 5 = " => {"
-        let mut result = format_macro_args(context, self.args.clone(), shape.sub_width(5)?)?;
+        let old_body = context.snippet(self.body).trim();
+        let has_block_body = old_body.starts_with('{');
+        let mut prefix_width = 5; // 5 = " => {"
+        if context.config.version() == Version::Two {
+            if has_block_body {
+                prefix_width = 6; // 6 = " => {{"
+            }
+        }
+        let mut result =
+            format_macro_args(context, self.args.clone(), shape.sub_width(prefix_width)?)?;
 
         if multi_branch_style {
             result += " =>";
@@ -1264,9 +1273,7 @@ impl MacroBranch {
         // `$$`). We'll try and format like an AST node, but we'll substitute
         // variables for new names with the same length first.
 
-        let old_body = context.snippet(self.body).trim();
         let (body_str, substs) = replace_names(old_body)?;
-        let has_block_body = old_body.starts_with('{');
 
         let mut config = context.config.clone();
         config.set().show_parse_errors(false);
