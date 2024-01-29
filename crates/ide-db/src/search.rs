@@ -15,10 +15,7 @@ use memchr::memmem::Finder;
 use nohash_hasher::IntMap;
 use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
-use syntax::{
-    ast::{self, HasAttrs as _},
-    match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize,
-};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxElement, TextRange, TextSize};
 use triomphe::Arc;
 
 use crate::{
@@ -747,7 +744,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: ReferenceCategory::new(&def, name_ref),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -763,7 +760,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: ReferenceCategory::new(&def, name_ref),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -773,7 +770,7 @@ impl<'a> FindUsages<'a> {
                     let reference = FileReference {
                         range,
                         name: FileReferenceNode::NameRef(name_ref.clone()),
-                        category: ReferenceCategory::new(&def, name_ref),
+                        category: ReferenceCategory::new(self.sema, &def, name_ref),
                     };
                     sink(file_id, reference)
                 } else {
@@ -787,10 +784,10 @@ impl<'a> FindUsages<'a> {
                 let local = Definition::Local(local);
                 let access = match self.def {
                     Definition::Field(_) if field == self.def => {
-                        ReferenceCategory::new(&field, name_ref)
+                        ReferenceCategory::new(self.sema, &field, name_ref)
                     }
                     Definition::Local(_) if local == self.def => {
-                        ReferenceCategory::new(&local, name_ref)
+                        ReferenceCategory::new(self.sema, &local, name_ref)
                     }
                     _ => return false,
                 };
@@ -875,8 +872,12 @@ fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir
 }
 
 impl ReferenceCategory {
-    fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
-        if is_name_ref_in_test(r) {
+    fn new(
+        sema: &Semantics<'_, RootDatabase>,
+        def: &Definition,
+        r: &ast::NameRef,
+    ) -> Option<ReferenceCategory> {
+        if is_name_ref_in_test(sema, r) {
             return Some(ReferenceCategory::Test);
         }
 
@@ -919,29 +920,9 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
         .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
 }
 
-fn is_name_ref_in_test(name_ref: &ast::NameRef) -> bool {
-    let mode = name_ref.syntax().ancestors().find_map(|node| {
-        match_ast! {
-            match node {
-                ast::Fn(f) => {
-                    let attrs = f.attrs();
-                    let mut is_test = false;
-                    for attr in attrs {
-                        if attr.to_string() == "#[test]" {
-                            is_test = true;
-                            break;
-                        }
-                    }
-                    if is_test {
-                        Some(ReferenceCategory::Test)
-                    }
-                    else {
-                        None
-                    }
-                },
-                _ => None
-            }
-        }
-    });
-    mode.is_some()
+fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameRef) -> bool {
+    name_ref.syntax().ancestors().any(|node| match ast::Fn::cast(node) {
+        Some(it) => sema.to_def(&it).map_or(false, |func| func.is_test(sema.db)),
+        None => false,
+    })
 }
