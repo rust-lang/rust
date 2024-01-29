@@ -136,6 +136,9 @@ hir_analysis_field_already_declared_current_nested =
     .nested_field_decl_note = field `{$field_name}` declared here
     .previous_decl_label = `{$field_name}` first declared here
 
+hir_analysis_field_already_declared_nested_help =
+    fields from the type of this unnamed field are considered fields of the outer type
+
 hir_analysis_field_already_declared_previous_nested =
     field `{$field_name}` is already declared
     .label = field already declared
@@ -445,10 +448,12 @@ hir_analysis_unnamed_fields_repr_field_missing_repr_c =
     named type of unnamed field must have `#[repr(C)]` representation
     .label = unnamed field defined here
     .field_ty_label = `{$field_ty}` defined here
+    .suggestion = add `#[repr(C)]` to this {$field_adt_kind}
 
 hir_analysis_unnamed_fields_repr_missing_repr_c =
     {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
     .label = {$adt_kind} `{$adt_name}` defined here
+    .suggestion = add `#[repr(C)]` to this {$adt_kind}
 
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`

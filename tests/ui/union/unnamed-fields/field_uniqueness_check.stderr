@@ -48,6 +48,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:40:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:41:5
@@ -63,6 +68,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:41:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:44:9
@@ -78,6 +88,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:44:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:45:9
@@ -93,6 +108,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:45:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error[E0124]: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:58:9
@@ -135,6 +155,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:70:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:71:9
@@ -150,6 +175,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:71:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:74:13
@@ -165,6 +195,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:74:13
+   |
+LL |             _: Foo,
+   |             ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:75:13
@@ -180,6 +215,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:75:13
+   |
+LL |             _: Bar,
+   |             ^^^^^^
 
 error[E0124]: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:80:5
@@ -222,6 +262,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:92:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:93:5
@@ -237,6 +282,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:93:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:96:9
@@ -252,6 +302,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:96:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:97:9
@@ -267,6 +322,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:97:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error[E0124]: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:111:13
@@ -309,6 +369,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:123:13
+   |
+LL |             _: Foo,
+   |             ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:124:13
@@ -324,6 +389,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:124:13
+   |
+LL |             _: Bar,
+   |             ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:127:17
@@ -339,6 +409,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:127:17
+   |
+LL |                 _: Foo,
+   |                 ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:128:17
@@ -354,6 +429,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:128:17
+   |
+LL |                 _: Bar,
+   |                 ^^^^^^
 
 error[E0124]: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:133:9
@@ -396,6 +476,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:145:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:146:9
@@ -411,6 +496,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:146:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:149:13
@@ -426,6 +516,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:149:13
+   |
+LL |             _: Foo,
+   |             ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:150:13
@@ -441,6 +536,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:150:13
+   |
+LL |             _: Bar,
+   |             ^^^^^^
 
 error[E0124]: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:154:5
@@ -483,6 +583,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:166:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:167:5
@@ -498,6 +603,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:167:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:170:9
@@ -513,6 +623,11 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:170:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:171:9
@@ -528,6 +643,11 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:171:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:183:5
@@ -543,6 +663,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:186:9
@@ -558,6 +683,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:191:13
@@ -573,6 +703,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:195:5
@@ -588,11 +723,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:195:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:196:5
@@ -608,11 +753,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:196:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:199:9
@@ -628,11 +783,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:199:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:200:9
@@ -648,11 +813,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:200:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:180:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:212:5
@@ -668,6 +843,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:215:9
@@ -683,6 +863,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:220:13
@@ -698,6 +883,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:224:5
@@ -713,11 +903,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:224:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:225:5
@@ -733,11 +933,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:225:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:228:9
@@ -753,11 +963,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:228:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:229:9
@@ -773,11 +993,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:229:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:209:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:242:9
@@ -793,6 +1023,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:245:13
@@ -808,6 +1043,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:250:17
@@ -823,6 +1063,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:254:9
@@ -838,11 +1083,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:254:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:255:9
@@ -858,11 +1113,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:255:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:258:13
@@ -878,11 +1143,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:258:13
+   |
+LL |             _: Foo,
+   |             ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:259:13
@@ -898,11 +1173,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:259:13
+   |
+LL |             _: Bar,
+   |             ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:264:5
@@ -918,6 +1203,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:267:9
@@ -933,6 +1223,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:272:13
@@ -948,6 +1243,11 @@ note: field `a` first declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:276:5
@@ -963,11 +1263,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:276:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:277:5
@@ -983,11 +1293,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:277:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:280:9
@@ -1003,11 +1323,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:280:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:281:9
@@ -1023,11 +1353,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:281:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:7:5
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:239:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:294:9
@@ -1043,6 +1383,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:297:13
@@ -1058,6 +1403,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:302:17
@@ -1073,6 +1423,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:306:9
@@ -1088,11 +1443,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:306:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:307:9
@@ -1108,11 +1473,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:307:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:310:13
@@ -1128,11 +1503,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:310:13
+   |
+LL |             _: Foo,
+   |             ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:311:13
@@ -1148,11 +1533,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:311:13
+   |
+LL |             _: Bar,
+   |             ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:316:5
@@ -1168,6 +1563,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:319:9
@@ -1183,6 +1583,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:324:13
@@ -1198,6 +1603,11 @@ note: field `a` first declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:328:5
@@ -1213,11 +1623,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:328:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:329:5
@@ -1233,11 +1653,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:329:5
+   |
+LL |     _: Bar,
+   |     ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:332:9
@@ -1253,11 +1683,21 @@ note: field `a` declared here
    |
 LL |     a: u8,
    |     ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:332:9
+   |
+LL |         _: Foo,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: field `a` is already declared
   --> $DIR/field_uniqueness_check.rs:333:9
@@ -1273,11 +1713,21 @@ note: field `a` declared here
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:333:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 note: field `a` first declared here
   --> $DIR/field_uniqueness_check.rs:14:9
    |
 LL |         a: u8,
    |         ^^^^^
+help: fields from the type of this unnamed field are considered fields of the outer type
+  --> $DIR/field_uniqueness_check.rs:291:9
+   |
+LL |         _: Bar,
+   |         ^^^^^^
 
 error: aborting due to 85 previous errors
 

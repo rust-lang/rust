@@ -791,10 +791,28 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
+fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
+    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
+        if field.is_unnamed() {
+            let field_ty = tcx.type_of(field.did).instantiate_identity();
+            let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
+            tcx.find_field((adt_def.did(), ident)).map(|_| idx)
+        } else {
+            (field.ident(tcx).normalize_to_macros_2_0() == ident).then_some(idx)
+        }
+    })
+}
+
 #[derive(Clone, Copy)]
 struct NestedSpan {
     span: Span,
     nested_field_span: Span,
+}
+
+impl NestedSpan {
+    fn to_field_already_declared_nested_help(&self) -> errors::FieldAlreadyDeclaredNestedHelp {
+        errors::FieldAlreadyDeclaredNestedHelp { span: self.span }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -815,87 +833,131 @@ impl From<NestedSpan> for FieldDeclSpan {
     }
 }
 
-/// Check the uniqueness of fields across adt where there are
-/// nested fields imported from an unnamed field.
-fn check_field_uniqueness_in_nested_adt(
-    tcx: TyCtxt<'_>,
-    adt_def: ty::AdtDef<'_>,
-    check: &mut impl FnMut(Ident, /* nested_field_span */ Span),
-) {
-    for field in adt_def.all_fields() {
-        if field.is_unnamed() {
-            // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
-            match tcx.type_of(field.did).instantiate_identity().kind() {
-                ty::Adt(adt_def, _) => {
-                    check_field_uniqueness_in_nested_adt(tcx, *adt_def, &mut *check);
-                }
-                ty_kind => bug!(
-                    "Unexpected ty kind in check_field_uniqueness_in_nested_adt(): {ty_kind:?}"
-                ),
-            }
-        } else {
-            check(field.ident(tcx), tcx.def_span(field.did));
-        }
-    }
+struct FieldUniquenessCheckContext<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    seen_fields: FxHashMap<Ident, FieldDeclSpan>,
 }
 
-/// Check the uniqueness of fields in a struct variant, and recursively
-/// check the nested fields if it is an unnamed field with type of an
-/// annoymous adt.
-fn check_field_uniqueness(
-    tcx: TyCtxt<'_>,
-    field: &hir::FieldDef<'_>,
-    check: &mut impl FnMut(Ident, FieldDeclSpan),
-) {
-    if field.ident.name == kw::Underscore {
-        let ty_span = field.ty.span;
+impl<'tcx> FieldUniquenessCheckContext<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, seen_fields: FxHashMap::default() }
+    }
+
+    /// Check if a given field `ident` declared at `field_decl` has been declared elsewhere before.
+    fn check_field_decl(&mut self, ident: Ident, field_decl: FieldDeclSpan) {
+        use FieldDeclSpan::*;
+        let field_name = ident.name;
+        let ident = ident.normalize_to_macros_2_0();
+        match (field_decl, self.seen_fields.get(&ident).copied()) {
+            (NotNested(span), Some(NotNested(prev_span))) => {
+                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
+                    field_name,
+                    span,
+                    prev_span,
+                });
+            }
+            (NotNested(span), Some(Nested(prev))) => {
+                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::PreviousNested {
+                    field_name,
+                    span,
+                    prev_span: prev.span,
+                    prev_nested_field_span: prev.nested_field_span,
+                    prev_help: prev.to_field_already_declared_nested_help(),
+                });
+            }
+            (
+                Nested(current @ NestedSpan { span, nested_field_span, .. }),
+                Some(NotNested(prev_span)),
+            ) => {
+                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::CurrentNested {
+                    field_name,
+                    span,
+                    nested_field_span,
+                    help: current.to_field_already_declared_nested_help(),
+                    prev_span,
+                });
+            }
+            (Nested(current @ NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
+                self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::BothNested {
+                    field_name,
+                    span,
+                    nested_field_span,
+                    help: current.to_field_already_declared_nested_help(),
+                    prev_span: prev.span,
+                    prev_nested_field_span: prev.nested_field_span,
+                    prev_help: prev.to_field_already_declared_nested_help(),
+                });
+            }
+            (field_decl, None) => {
+                self.seen_fields.insert(ident, field_decl);
+            }
+        }
+    }
+
+    /// Check the uniqueness of fields across adt where there are
+    /// nested fields imported from an unnamed field.
+    fn check_field_in_nested_adt(&mut self, adt_def: ty::AdtDef<'_>, unnamed_field_span: Span) {
+        for field in adt_def.all_fields() {
+            if field.is_unnamed() {
+                // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
+                match self.tcx.type_of(field.did).instantiate_identity().kind() {
+                    ty::Adt(adt_def, _) => {
+                        self.check_field_in_nested_adt(*adt_def, unnamed_field_span);
+                    }
+                    ty_kind => span_bug!(
+                        self.tcx.def_span(field.did),
+                        "Unexpected TyKind in FieldUniquenessCheckContext::check_field_in_nested_adt(): {ty_kind:?}"
+                    ),
+                }
+            } else {
+                self.check_field_decl(
+                    field.ident(self.tcx),
+                    NestedSpan {
+                        span: unnamed_field_span,
+                        nested_field_span: self.tcx.def_span(field.did),
+                    }
+                    .into(),
+                );
+            }
+        }
+    }
+
+    /// Check the uniqueness of fields in a struct variant, and recursively
+    /// check the nested fields if it is an unnamed field with type of an
+    /// annoymous adt.
+    fn check_field(&mut self, field: &hir::FieldDef<'_>) {
+        if field.ident.name != kw::Underscore {
+            self.check_field_decl(field.ident, field.span.into());
+            return;
+        }
         match &field.ty.kind {
             hir::TyKind::AnonAdt(item_id) => {
-                match &tcx.hir_node(item_id.hir_id()).expect_item().kind {
+                match &self.tcx.hir_node(item_id.hir_id()).expect_item().kind {
                     hir::ItemKind::Struct(variant_data, ..)
                     | hir::ItemKind::Union(variant_data, ..) => {
-                        variant_data
-                            .fields()
-                            .iter()
-                            .for_each(|f| check_field_uniqueness(tcx, f, &mut *check));
+                        variant_data.fields().iter().for_each(|f| self.check_field(f));
                     }
                     item_kind => span_bug!(
-                        ty_span,
-                        "Unexpected item kind in check_field_uniqueness(): {item_kind:?}"
+                        field.ty.span,
+                        "Unexpected ItemKind in FieldUniquenessCheckContext::check_field(): {item_kind:?}"
                     ),
                 }
             }
             hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { res, .. })) => {
-                check_field_uniqueness_in_nested_adt(
-                    tcx,
-                    tcx.adt_def(res.def_id()),
-                    &mut |ident, nested_field_span| {
-                        check(ident, NestedSpan { span: field.span, nested_field_span }.into())
-                    },
-                );
+                self.check_field_in_nested_adt(self.tcx.adt_def(res.def_id()), field.span);
             }
             // Abort due to errors (there must be an error if an unnamed field
             //  has any type kind other than an anonymous adt or a named adt)
-            _ => {
-                debug_assert!(tcx.dcx().has_errors().is_some());
-                tcx.dcx().abort_if_errors()
+            ty_kind => {
+                self.tcx.dcx().span_delayed_bug(
+                    field.ty.span,
+                    format!("Unexpected TyKind in FieldUniquenessCheckContext::check_field(): {ty_kind:?}"),
+                );
+                // FIXME: errors during AST validation should abort the compilation before reaching here.
+                self.tcx.dcx().abort_if_errors();
             }
         }
-        return;
     }
-    check(field.ident, field.span.into());
-}
-
-fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
-    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
-        if field.is_unnamed() {
-            let field_ty = tcx.type_of(field.did).instantiate_identity();
-            let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
-            tcx.find_field((adt_def.did(), ident)).map(|_| idx)
-        } else {
-            (field.ident(tcx).normalize_to_macros_2_0() == ident).then_some(idx)
-        }
-    })
 }
 
 fn convert_variant(
@@ -909,58 +971,16 @@ fn convert_variant(
     is_anonymous: bool,
 ) -> ty::VariantDef {
     let mut has_unnamed_fields = false;
-    let mut seen_fields: FxHashMap<Ident, FieldDeclSpan> = Default::default();
+    let mut field_uniqueness_check_ctx = FieldUniquenessCheckContext::new(tcx);
     let fields = def
         .fields()
         .iter()
         .inspect(|f| {
             has_unnamed_fields |= f.ident.name == kw::Underscore;
+            // We only check named ADT here because anonymous ADTs are checked inside
+            // the nammed ADT in which they are defined.
             if !is_anonymous {
-                check_field_uniqueness(tcx, f, &mut |ident, field_decl| {
-                    use FieldDeclSpan::*;
-                    let field_name = ident.name;
-                    let ident = ident.normalize_to_macros_2_0();
-                    match (field_decl, seen_fields.get(&ident).copied()) {
-                        (NotNested(span), Some(NotNested(prev_span))) => {
-                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
-                                field_name,
-                                span,
-                                prev_span,
-                            });
-                        }
-                        (NotNested(span), Some(Nested(prev))) => {
-                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::PreviousNested {
-                                field_name,
-                                span,
-                                prev_span: prev.span,
-                                prev_nested_field_span: prev.nested_field_span,
-                            });
-                        }
-                        (
-                            Nested(NestedSpan { span, nested_field_span }),
-                            Some(NotNested(prev_span)),
-                        ) => {
-                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::CurrentNested {
-                                field_name,
-                                span,
-                                nested_field_span,
-                                prev_span,
-                            });
-                        }
-                        (Nested(NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
-                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::BothNested {
-                                field_name,
-                                span,
-                                nested_field_span,
-                                prev_span: prev.span,
-                                prev_nested_field_span: prev.nested_field_span,
-                            });
-                        }
-                        (field_decl, None) => {
-                            seen_fields.insert(ident, field_decl);
-                        }
-                    }
-                });
+                field_uniqueness_check_ctx.check_field(f);
             }
         })
         .map(|f| ty::FieldDef {

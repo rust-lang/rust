@@ -20,6 +20,11 @@ LL | |             b: i32,
 LL | |         },
 LL | |     },
    | |_____^
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct A {
+   |
 
 error: union with unnamed fields must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:16:1
@@ -43,6 +48,11 @@ LL | |             b: i32,
 LL | |         },
 LL | |     },
    | |_____^
+help: add `#[repr(C)]` to this union
+   |
+LL + #[repr(C)]
+LL | union B {
+   |
 
 error: struct with unnamed fields must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:39:1
@@ -55,6 +65,11 @@ note: unnamed field defined here
    |
 LL |     _: Foo,
    |     ^^^^^^
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct C {
+   |
 
 error: union with unnamed fields must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:44:1
@@ -67,6 +82,11 @@ note: unnamed field defined here
    |
 LL |     _: Foo,
    |     ^^^^^^
+help: add `#[repr(C)]` to this union
+   |
+LL + #[repr(C)]
+LL | union D {
+   |
 
 error: named type of unnamed field must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:51:5
@@ -76,6 +96,12 @@ LL | struct Bar {}
 ...
 LL |     _: Bar,
    |     ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
 
 error: named type of unnamed field must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:54:9
@@ -85,6 +111,12 @@ LL | struct Bar {}
 ...
 LL |         _: Bar,
    |         ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
 
 error: named type of unnamed field must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:61:5
@@ -94,6 +126,12 @@ LL | struct Bar {}
 ...
 LL |     _: Bar,
    |     ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
 
 error: named type of unnamed field must have `#[repr(C)]` representation
   --> $DIR/repr_check.rs:64:9
@@ -103,6 +141,12 @@ LL | struct Bar {}
 ...
 LL |         _: Bar,
    |         ^^^^^^ unnamed field defined here
+   |
+help: add `#[repr(C)]` to this struct
+   |
+LL + #[repr(C)]
+LL | struct Bar {}
+   |
 
 error: aborting due to 8 previous errors
 

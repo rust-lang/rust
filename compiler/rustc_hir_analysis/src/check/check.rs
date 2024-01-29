@@ -122,6 +122,7 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
                 adt_kind,
                 adt_name,
                 unnamed_fields,
+                sugg_span: span.shrink_to_lo(),
             });
         }
     }
@@ -131,10 +132,13 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
             && !adt.is_anonymous()
             && !adt.repr().c()
         {
+            let field_ty_span = tcx.def_span(adt.did());
             tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
                 span: tcx.def_span(field.did),
-                field_ty_span: tcx.def_span(adt.did()),
+                field_ty_span,
                 field_ty,
+                field_adt_kind: adt.descr(),
+                sugg_span: field_ty_span.shrink_to_lo(),
             });
         }
     }

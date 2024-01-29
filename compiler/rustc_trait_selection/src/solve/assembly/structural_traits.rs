@@ -181,11 +181,6 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Ref(_, _, Mutability::Not)
         | ty::Array(..) => Err(NoSolution),
 
-        // Check for anonymous adts.
-        ty::Adt(adt, generics) if adt.is_anonymous() => {
-            Ok(adt.non_enum_variant().fields.iter().map(|f| f.ty(ecx.tcx(), generics)).collect())
-        }
-
         ty::Dynamic(..)
         | ty::Str
         | ty::Slice(_)

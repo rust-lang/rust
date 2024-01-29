@@ -628,7 +628,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn build_reduced_graph_for_fields(
+    fn build_reduced_graph_for_struct_variant(
         &mut self,
         fields: &[ast::FieldDef],
         ident: Ident,
@@ -657,14 +657,14 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     let def_id = local_def_id.to_def_id();
                     let def_kind = self.r.tcx.def_kind(local_def_id);
                     let res = Res::Def(def_kind, def_id);
-                    self.build_reduced_graph_for_fields(
+                    self.build_reduced_graph_for_struct_variant(
                         &nested_fields,
                         Ident::empty(),
                         local_def_id,
                         res,
                         // Anonymous adts inherit visibility from their parent adts.
                         adt_vis,
-                        field.span,
+                        field.ty.span,
                     );
                 }
                 _ => {}
@@ -759,7 +759,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref vdata, _) => {
-                self.build_reduced_graph_for_fields(
+                self.build_reduced_graph_for_struct_variant(
                     vdata.fields(),
                     ident,
                     local_def_id,
@@ -809,7 +809,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             ItemKind::Union(ref vdata, _) => {
-                self.build_reduced_graph_for_fields(
+                self.build_reduced_graph_for_struct_variant(
                     vdata.fields(),
                     ident,
                     local_def_id,

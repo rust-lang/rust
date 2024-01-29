@@ -1511,10 +1511,6 @@ pub(crate) enum Type {
 
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
-    // /// An anonymous struct type i.e. `struct { foo: Type }`
-    // AnonStruct(VariantStruct),
-    // /// An anonymous union type i.e. `union { bar: Type }`
-    // AnonUnion(VariantStruct),
 }
 
 impl Type {
