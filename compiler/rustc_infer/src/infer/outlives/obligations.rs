@@ -153,22 +153,28 @@ impl<'tcx> InferCtxt<'tcx> {
             .try_collect()
             .map_err(|e| (e, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP)))?;
 
-        let my_region_obligations = self.take_registered_region_obligations();
+        // Must loop since the process of normalizing may itself register region obligations.
+        loop {
+            let my_region_obligations = self.take_registered_region_obligations();
+            if my_region_obligations.is_empty() {
+                break;
+            }
 
-        for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
-            let sup_type =
-                deeply_normalize_ty(sup_type, origin.clone()).map_err(|e| (e, origin.clone()))?;
-            debug!(?sup_type, ?sub_region, ?origin);
+            for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+                let sup_type = deeply_normalize_ty(sup_type, origin.clone())
+                    .map_err(|e| (e, origin.clone()))?;
+                debug!(?sup_type, ?sub_region, ?origin);
 
-            let outlives = &mut TypeOutlives::new(
-                self,
-                self.tcx,
-                outlives_env.region_bound_pairs(),
-                None,
-                &normalized_caller_bounds,
-            );
-            let category = origin.to_constraint_category();
-            outlives.type_must_outlive(origin, sup_type, sub_region, category);
+                let outlives = &mut TypeOutlives::new(
+                    self,
+                    self.tcx,
+                    outlives_env.region_bound_pairs(),
+                    None,
+                    &normalized_caller_bounds,
+                );
+                let category = origin.to_constraint_category();
+                outlives.type_must_outlive(origin, sup_type, sub_region, category);
+            }
         }
 
         Ok(())
