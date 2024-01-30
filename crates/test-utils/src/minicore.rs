@@ -28,7 +28,7 @@
 //!     env: option
 //!     eq: sized
 //!     error: fmt
-//!     fmt: result, transmute, coerce_unsized
+//!     fmt: option, result, transmute, coerce_unsized
 //!     fn:
 //!     from: sized
 //!     future: pin
@@ -987,6 +987,10 @@ pub mod fmt {
             Arguments { pieces, fmt: None, args }
         }
 
+        pub const fn new_const(pieces: &'a [&'static str]) -> Arguments<'a> {
+            Arguments { pieces, fmt: None, args: &[] }
+        }
+
         pub fn new_v1_formatted(
             pieces: &'a [&'static str],
             args: &'a [rt::Argument<'a>],
@@ -1346,6 +1350,9 @@ pub mod iter {
 // region:panic
 mod panic {
     pub macro panic_2021 {
+        () => (
+            $crate::panicking::panic("explicit panic")
+        ),
         ($($t:tt)+) => (
             $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
         ),
@@ -1356,6 +1363,11 @@ mod panicking {
     #[lang = "panic_fmt"]
     pub const fn panic_fmt(_fmt: crate::fmt::Arguments<'_>) -> ! {
         loop {}
+    }
+
+    #[lang = "panic"]
+    pub const fn panic(expr: &'static str) -> ! {
+        panic_fmt(crate::fmt::Arguments::new_const(&[expr]))
     }
 }
 // endregion:panic

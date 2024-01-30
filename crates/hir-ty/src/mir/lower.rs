@@ -939,7 +939,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 Ok(Some(current))
             }
             Expr::BinaryOp { lhs, rhs, op } => {
-                let op = op.ok_or(MirLowerError::IncompleteExpr)?;
+                let op: BinaryOp = op.ok_or(MirLowerError::IncompleteExpr)?;
                 let is_builtin = 'b: {
                     // Without adjust here is a hack. We assume that we know every possible adjustment
                     // for binary operator, and use without adjust to simplify our conditions.

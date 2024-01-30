@@ -302,13 +302,13 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &c in consts {
             all += 1;
-            let Err(e) = c.render_eval(db) else {
+            let Err(error) = c.render_eval(db) else {
                 continue;
             };
             if verbosity.is_spammy() {
                 let full_name =
                     full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
-                println!("Const eval for {full_name} failed due {e:?}");
+                println!("Const eval for {full_name} failed due {error:?}");
             }
             fail += 1;
         }
