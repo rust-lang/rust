@@ -33,7 +33,10 @@ pub type DiagnosticArgName = Cow<'static, str>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticArgValue {
     Str(Cow<'static, str>),
-    Number(i128),
+    // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
+    // safely fits in an `f64`. Any integers bigger than that will be converted
+    // to strings in `into_diagnostic_arg` and stored using the `Str` variant.
+    Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 

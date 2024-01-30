@@ -63,12 +63,8 @@ macro_rules! into_diagnostic_arg_for_number {
         $(
             impl IntoDiagnosticArg for $ty {
                 fn into_diagnostic_arg(self) -> DiagnosticArgValue {
-                    // HACK: `FluentNumber` the underline backing struct represent
-                    // numbers using a f64 which can't represent all the i128 numbers
-                    // So in order to be able to use fluent selectors and still
-                    // have all the numbers representable we only convert numbers
-                    // below a certain threshold.
-                    if let Ok(n) = TryInto::<i128>::try_into(self) && n >= -100 && n <= 100 {
+                    // Convert to a string if it won't fit into `Number`.
+                    if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagnosticArgValue::Number(n)
                     } else {
                         self.to_string().into_diagnostic_arg()
