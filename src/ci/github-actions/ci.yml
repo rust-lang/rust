@@ -93,7 +93,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-macos-m1
-    os: macos-13-xlarge
+    os: macos-14
     <<: *base-job
 
   - &job-windows-8c
