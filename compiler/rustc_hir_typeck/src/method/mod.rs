@@ -10,7 +10,6 @@ mod suggest;
 pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
-use crate::errors::OpMethodGenericParams;
 use crate::FnCtxt;
 use rustc_errors::{Applicability, Diagnostic, SubdiagnosticMessage};
 use rustc_hir as hir;
@@ -385,26 +384,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         let Some(method_item) = self.associated_value(trait_def_id, m_name) else {
-            tcx.dcx().span_delayed_bug(
-                obligation.cause.span,
-                "operator trait does not have corresponding operator method",
-            );
-            return None;
+            bug!("expected associated item for operator trait")
         };
 
-        if method_item.kind != ty::AssocKind::Fn {
-            self.dcx().span_delayed_bug(tcx.def_span(method_item.def_id), "not a method");
-            return None;
-        }
-
         let def_id = method_item.def_id;
-        let generics = tcx.generics_of(def_id);
-
-        if generics.params.len() != 0 {
-            tcx.dcx().emit_fatal(OpMethodGenericParams {
-                span: tcx.def_span(method_item.def_id),
-                method_name: m_name.to_string(),
-            });
+        if method_item.kind != ty::AssocKind::Fn {
+            span_bug!(tcx.def_span(def_id), "expected `{m_name}` to be an associated function");
         }
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);

@@ -2,7 +2,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -42,7 +42,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -82,7 +82,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK

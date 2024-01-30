@@ -1,7 +1,7 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{has_expected_num_generic_args, FnCtxt};
+use super::FnCtxt;
 use crate::Expectation;
 use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
@@ -886,25 +886,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
             lhs_ty, op, opname, trait_did
         );
-
-        // Catches cases like #83893, where a lang item is declared with the
-        // wrong number of generic arguments. Should have yielded an error
-        // elsewhere by now, but we have to catch it here so that we do not
-        // index `other_tys` out of bounds (if the lang item has too many
-        // generic arguments, `other_tys` is too short).
-        if !has_expected_num_generic_args(
-            self.tcx,
-            trait_did,
-            match op {
-                // Binary ops have a generic right-hand side, unary ops don't
-                Op::Binary(..) => 1,
-                Op::Unary(..) => 0,
-            },
-        ) {
-            self.dcx()
-                .span_delayed_bug(span, "operator didn't have the right number of generic args");
-            return Err(vec![]);
-        }
 
         let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();

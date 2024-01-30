@@ -84,14 +84,6 @@ pub struct MethodCallOnUnknownRawPointee {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_missing_fn_lang_items)]
-#[help]
-pub struct MissingFnLangItems {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_typeck_functional_record_update_on_non_struct, code = E0436)]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
@@ -191,14 +183,6 @@ pub struct AddMissingParenthesesInRange {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_typeck_op_trait_generic_params)]
-pub struct OpMethodGenericParams {
-    #[primary_span]
-    pub span: Span,
-    pub method_name: String,
 }
 
 pub struct TypeMismatchFruTypo {

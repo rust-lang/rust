@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_args(expr, expected, &[])
+        self.check_expr_with_expectation_and_args(expr, expected, &[], None)
     }
 
     /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
@@ -187,6 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
+        call: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         if self.tcx().sess.verbose_internals() {
             // make this code only run with -Zverbose-internals because it is probably slow
@@ -233,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
-            ) => self.check_expr_path(qpath, expr, args),
+            ) => self.check_expr_path(qpath, expr, args, call),
             _ => self.check_expr_kind(expr, expected),
         });
         let ty = self.resolve_vars_if_possible(ty);
@@ -300,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Path(QPath::LangItem(lang_item, _)) => {
                 self.check_lang_item_path(lang_item, expr)
             }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[], None),
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
@@ -514,6 +515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx hir::QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
+        call: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
@@ -530,7 +532,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, E0533, "value");
                 Ty::new_error(tcx, e)
             }
-            _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
+            _ => {
+                self.instantiate_value_path(
+                    segs,
+                    opt_ty,
+                    res,
+                    call.map_or(expr.span, |e| e.span),
+                    expr.span,
+                    expr.hir_id,
+                )
+                .0
+            }
         };
 
         if let ty::FnDef(did, _) = *ty.kind() {
@@ -585,7 +597,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::BoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
-            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+            self.require_type_is_sized_deferred(
+                output,
+                call.map_or(expr.span, |e| e.span),
+                traits::SizedCallReturnType,
+            );
         }
 
         // We always require that the type provided as the value for
@@ -1950,6 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let len = remaining_fields.len();
 
+        #[allow(rustc::potential_query_instability)]
         let mut displayable_field_names: Vec<&str> =
             remaining_fields.keys().map(|ident| ident.as_str()).collect();
         // sorting &str primitives here, sort_unstable is ok

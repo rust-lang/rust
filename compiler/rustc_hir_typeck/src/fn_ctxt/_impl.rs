@@ -1073,6 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Option<LoweredTy<'tcx>>,
         res: Res,
         span: Span,
+        path_span: Span,
         hir_id: hir::HirId,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
@@ -1106,7 +1107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match container {
                     ty::TraitContainer => callee::check_legal_trait_for_method_call(
                         tcx,
-                        span,
+                        path_span,
                         None,
                         span,
                         container_id,

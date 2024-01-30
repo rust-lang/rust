@@ -326,11 +326,9 @@ impl LintStore {
 
     /// True if this symbol represents a lint group name.
     pub fn is_lint_group(&self, lint_name: Symbol) -> bool {
-        debug!(
-            "is_lint_group(lint_name={:?}, lint_groups={:?})",
-            lint_name,
-            self.lint_groups.keys().collect::<Vec<_>>()
-        );
+        #[allow(rustc::potential_query_instability)]
+        let lint_groups = self.lint_groups.keys().collect::<Vec<_>>();
+        debug!("is_lint_group(lint_name={:?}, lint_groups={:?})", lint_name, lint_groups);
         let lint_name_str = lint_name.as_str();
         self.lint_groups.contains_key(lint_name_str) || {
             let warnings_name_str = crate::WARNINGS.name_lower();
@@ -374,8 +372,12 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        #[allow(rustc::potential_query_instability)]
+                        let lints = self.by_name.keys().collect::<Vec<_>>();
+                        debug!("lints={:?}", lints);
                         let tool_prefix = format!("{tool_name}::");
+
+                        #[allow(rustc::potential_query_instability)]
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name, tool_name.as_str())
                         } else {

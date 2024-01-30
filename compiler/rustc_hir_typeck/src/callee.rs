@@ -77,6 +77,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     callee_expr,
                     Expectation::NoExpectation,
                     arg_exprs,
+                    Some(call_expr),
                 ),
             _ => self.check_expr(callee_expr),
         };
@@ -253,28 +254,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 adjusted_ty,
                 opt_input_type.as_ref().map(slice::from_ref),
             ) {
-                // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
-                if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.dcx().span_delayed_bug(
-                        call_expr.span,
-                        "input to overloaded call fn is not a self receiver",
-                    );
-                    return None;
-                }
-
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
                     let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
-                        // The `fn`/`fn_mut` lang item is ill-formed, which should have
-                        // caused an error elsewhere.
-                        self.dcx().span_delayed_bug(
-                            call_expr.span,
-                            "input to call/call_mut is not a ref",
-                        );
-                        return None;
+                        bug!("Expected `FnMut`/`Fn` to take receiver by-ref/by-mut")
                     };
 
                     // For initial two-phase borrow
@@ -948,9 +934,11 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 );
             }
             None => {
-                // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
-                // lang items are not defined (issue #86238).
-                fcx.dcx().emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
+                span_bug!(
+                    self.call_expr.span,
+                    "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{}`",
+                    self.adjusted_ty
+                )
             }
         }
     }

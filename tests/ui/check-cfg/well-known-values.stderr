@@ -125,7 +125,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_env = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_env` are: ``, `eabihf`, `gnu`, `gnueabihf`, `msvc`, `musl`, `newlib`, `nto70`, `nto71`, `ohos`, `preview2`, `psx`, `relibc`, `sgx`, `uclibc`
+   = note: expected values for `target_env` are: ``, `eabihf`, `gnu`, `gnueabihf`, `msvc`, `musl`, `newlib`, `nto70`, `nto71`, `ohos`, `psx`, `relibc`, `sgx`, `uclibc`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -134,7 +134,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_family = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_family` are: `unix`, `wasi`, `wasm`, `windows`
+   = note: expected values for `target_family` are: `unix`, `wasm`, `windows`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
