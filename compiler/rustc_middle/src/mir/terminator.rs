@@ -292,7 +292,7 @@ impl<O> AssertKind<O> {
         }
     }
 
-    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>))
+    pub fn add_args(self, adder: &mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue))
     where
         O: fmt::Debug,
     {

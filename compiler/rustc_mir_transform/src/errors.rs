@@ -125,7 +125,7 @@ impl RequiresUnsafeDetail {
                 diag.arg(
                     "missing_target_features",
                     DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                 );
                 diag.arg("missing_target_features_count", missing.len());
@@ -136,7 +136,7 @@ impl RequiresUnsafeDetail {
                         DiagnosticArgValue::StrListSepByAnd(
                             build_enabled
                                 .iter()
-                                .map(|feature| Cow::from(feature.as_str()))
+                                .map(|feature| Cow::from(feature.to_string()))
                                 .collect(),
                         ),
                     );

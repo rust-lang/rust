@@ -534,7 +534,7 @@ pub enum TyOrSig<'tcx> {
 }
 
 impl IntoDiagnosticArg for TyOrSig<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         match self {
             TyOrSig::Ty(ty) => ty.into_diagnostic_arg(),
             TyOrSig::ClosureSig(sig) => sig.into_diagnostic_arg(),

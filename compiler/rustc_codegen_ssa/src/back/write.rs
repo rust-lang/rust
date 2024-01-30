@@ -14,8 +14,11 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::{translation::Translate, DiagCtxt, FatalError, Level};
-use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, ErrCode, Style};
+use rustc_errors::translation::Translate;
+use rustc_errors::{
+    DiagCtxt, DiagnosticArgName, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, ErrCode,
+    FatalError, FluentBundle, Level, Style,
+};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -995,11 +998,9 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 /// process another codegen unit.
 pub struct CguMessage;
 
-type DiagnosticArgName<'source> = Cow<'source, str>;
-
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
+    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
     code: Option<ErrCode>,
     lvl: Level,
 }
@@ -1800,18 +1801,18 @@ impl SharedEmitter {
 }
 
 impl Translate for SharedEmitter {
-    fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         None
     }
 
-    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
         panic!("shared emitter attempted to translate a diagnostic");
     }
 }
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
+        let args: FxHashMap<Cow<'_, str>, DiagnosticArgValue> =
             diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msgs: diag.messages.clone(),

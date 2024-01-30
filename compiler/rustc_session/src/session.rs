@@ -111,7 +111,7 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Limit {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

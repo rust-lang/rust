@@ -95,17 +95,14 @@ pub(super) struct ConstNotUsedTraitAlias {
 
 pub struct CustomSubdiagnostic<'a> {
     pub msg: fn() -> DiagnosticMessage,
-    pub add_args:
-        Box<dyn FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>)) + 'a>,
+    pub add_args: Box<dyn FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue)) + 'a>,
 }
 
 impl<'a> CustomSubdiagnostic<'a> {
     pub fn label(x: fn() -> DiagnosticMessage) -> Self {
         Self::label_and_then(x, |_| {})
     }
-    pub fn label_and_then<
-        F: FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue<'static>)) + 'a,
-    >(
+    pub fn label_and_then<F: FnOnce(&mut dyn FnMut(Cow<'static, str>, DiagnosticArgValue)) + 'a>(
         msg: fn() -> DiagnosticMessage,
         f: F,
     ) -> Self {
