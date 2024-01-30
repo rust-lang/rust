@@ -1545,6 +1545,8 @@ pub enum Level {
     ///
     /// The [`LintExpectationId`] is used for expected lint diagnostics. In all other cases this
     /// should be `None`.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     ForceWarning(Option<LintExpectationId>),
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
@@ -1574,7 +1576,8 @@ pub enum Level {
     /// Its `EmissionGuarantee` is `()`.
     OnceHelp,
 
-    /// Similar to `Note`, but used in cases where compilation has failed. Rare.
+    /// Similar to `Note`, but used in cases where compilation has failed. When printed for human
+    /// consumption, it doesn't have any kind of `note:` label. Rare.
     ///
     /// Its `EmissionGuarantee` is `()`.
     FailureNote,
