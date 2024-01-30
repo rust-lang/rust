@@ -139,7 +139,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             _ => {
                 let expr = p.parse_expr()?;
                 if !args.named_args().is_empty() {
-                    ecx.dcx().emit_err(errors::PositionalAfterNamed {
+                    return Err(ecx.dcx().create_err(errors::PositionalAfterNamed {
                         span: expr.span,
                         args: args
                             .named_args()
@@ -147,7 +147,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                             .filter_map(|a| a.kind.ident().map(|ident| (a, ident)))
                             .map(|(arg, n)| n.span.to(arg.expr.span))
                             .collect(),
-                    });
+                    }));
                 }
                 args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
             }
@@ -313,6 +313,8 @@ fn make_format_args(
     }
     use ArgRef::*;
 
+    let mut unnamed_arg_after_named_arg = false;
+
     let mut lookup_arg = |arg: ArgRef<'_>,
                           span: Option<Span>,
                           used_as: PositionUsedAs,
@@ -352,6 +354,7 @@ fn make_format_args(
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
                         ecx.dcx().emit_err(errors::FormatNoArgNamed { span, name });
+                        unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, true)
                     };
                     Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
@@ -510,7 +513,8 @@ fn make_format_args(
         })
         .collect::<Vec<_>>();
 
-    if !unused.is_empty() {
+    let has_unused = !unused.is_empty();
+    if has_unused {
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
         let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
@@ -529,7 +533,7 @@ fn make_format_args(
 
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
-    if invalid_refs.is_empty() && ecx.dcx().has_errors().is_none() {
+    if invalid_refs.is_empty() && !has_unused && !unnamed_arg_after_named_arg {
         for &(index, span, used_as) in &numeric_refences_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),
