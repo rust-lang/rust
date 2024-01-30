@@ -20,11 +20,12 @@ use hir_def::{
 };
 use hir_expand::{
     attrs::collect_attrs, db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo,
-    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    HirFileIdExt, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::Span;
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -607,28 +608,110 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn descend_into_macros_impl(
+    // return:
+    // SourceAnalyzer(file_id that original call include!)
+    // macro file id
+    // token in include! macro mapped from token in params
+    // span for the mapped token
+    fn is_from_include_file(
         &self,
         token: SyntaxToken,
+    ) -> Option<(SourceAnalyzer, HirFileId, SyntaxToken, Span)> {
+        let parent = token.parent()?;
+        let file_id = self.find_file(&parent).file_id.file_id()?;
+
+        // iterate related crates and find all include! invocations that include_file_id matches
+        for (invoc, _) in self
+            .db
+            .relevant_crates(file_id)
+            .iter()
+            .flat_map(|krate| self.db.include_macro_invoc(*krate))
+            .filter(|(_, include_file_id)| *include_file_id == file_id)
+        {
+            // find file_id which original calls include!
+            let Some(callnode) = invoc.as_file().original_call_node(self.db.upcast()) else {
+                continue;
+            };
+
+            // call .parse to avoid panic in .find_file
+            let _ = self.parse(callnode.file_id);
+            let Some(sa) = self.analyze_no_infer(&callnode.value) else { continue };
+
+            let expinfo = invoc.as_macro_file().expansion_info(self.db.upcast());
+            {
+                let InMacroFile { file_id, value } = expinfo.expanded();
+                self.cache(value, file_id.into());
+            }
+
+            // map token to the corresponding span in include! macro file
+            let Some((_, span)) =
+                expinfo.exp_map.iter().find(|(_, x)| x.range == token.text_range())
+            else {
+                continue;
+            };
+
+            // get mapped token in the include! macro file
+            let Some(InMacroFile { file_id: _, value: mapped_tokens }) =
+                expinfo.map_range_down(span)
+            else {
+                continue;
+            };
+
+            // if we find one, then return
+            if let Some(t) = mapped_tokens.into_iter().next() {
+                return Some((sa, invoc.as_file(), t, span));
+            };
+        }
+
+        None
+    }
+
+    fn descend_into_macros_impl(
+        &self,
+        mut token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
         let _p = profile::span("descend_into_macros");
+
+        let mut include_macro_file_id_and_span = None;
+
         let sa = match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
             Some(it) => it,
-            None => return,
+            None => {
+                // if we cannot find a source analyzer for this token, then we try to find out whether this file is included from other file
+                let Some((it, macro_file_id, mapped_token, s)) = self.is_from_include_file(token)
+                else {
+                    return;
+                };
+
+                include_macro_file_id_and_span = Some((macro_file_id, s));
+                token = mapped_token;
+                it
+            }
         };
 
-        let span = match sa.file_id.file_id() {
-            Some(file_id) => self.db.real_span_map(file_id).span_for_range(token.text_range()),
-            None => {
-                stdx::never!();
-                return;
+        let span = if let Some((_, s)) = include_macro_file_id_and_span {
+            s
+        } else {
+            match sa.file_id.file_id() {
+                Some(file_id) => self.db.real_span_map(file_id).span_for_range(token.text_range()),
+                None => {
+                    stdx::never!();
+                    return;
+                }
             }
         };
 
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
         let def_map = sa.resolver.def_map();
+
+        let mut stack: Vec<(_, SmallVec<[_; 2]>)> =
+            if let Some((macro_file_id, _)) = include_macro_file_id_and_span {
+                vec![(macro_file_id, smallvec![token])]
+            } else {
+                vec![(sa.file_id, smallvec![token])]
+            };
 
         let mut process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
             let expansion_info = cache
@@ -650,8 +733,6 @@ impl<'db> SemanticsImpl<'db> {
             stack.push((HirFileId::from(file_id), mapped_tokens));
             res
         };
-
-        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(sa.file_id, smallvec![token])];
 
         while let Some((file_id, mut tokens)) = stack.pop() {
             while let Some(token) = tokens.pop() {
