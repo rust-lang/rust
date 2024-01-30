@@ -280,6 +280,12 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[inline]
+    fn internal_into_inner_with_allocator(self) -> (NonNull<ArcInner<T>>, A) {
+        let this = mem::ManuallyDrop::new(self);
+        (this.ptr, unsafe { ptr::read(&this.alloc) })
+    }
+
+    #[inline]
     unsafe fn from_inner_in(ptr: NonNull<ArcInner<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
@@ -1275,12 +1281,9 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<T, A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Arc::from_inner_in(md_self.ptr.cast(), md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Arc<T, A> {
+        let (ptr, alloc) = self.internal_into_inner_with_allocator();
+        unsafe { Arc::from_inner_in(ptr.cast(), alloc) }
     }
 }
 
@@ -1320,12 +1323,9 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub unsafe fn assume_init(self) -> Arc<[T], A>
-    where
-        A: Clone,
-    {
-        let md_self = mem::ManuallyDrop::new(self);
-        unsafe { Arc::from_ptr_in(md_self.ptr.as_ptr() as _, md_self.alloc.clone()) }
+    pub unsafe fn assume_init(self) -> Arc<[T], A> {
+        let (ptr, alloc) = self.internal_into_inner_with_allocator();
+        unsafe { Arc::from_ptr_in(ptr.as_ptr() as _, alloc) }
     }
 }
 
@@ -2413,7 +2413,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Arc<T, A> {
     }
 }
 
-impl<A: Allocator + Clone> Arc<dyn Any + Send + Sync, A> {
+impl<A: Allocator> Arc<dyn Any + Send + Sync, A> {
     /// Attempt to downcast the `Arc<dyn Any + Send + Sync>` to a concrete type.
     ///
     /// # Examples
@@ -2440,10 +2440,8 @@ impl<A: Allocator + Clone> Arc<dyn Any + Send + Sync, A> {
     {
         if (*self).is::<T>() {
             unsafe {
-                let ptr = self.ptr.cast::<ArcInner<T>>();
-                let alloc = self.alloc.clone();
-                mem::forget(self);
-                Ok(Arc::from_inner_in(ptr, alloc))
+                let (ptr, alloc) = self.internal_into_inner_with_allocator();
+                Ok(Arc::from_inner_in(ptr.cast(), alloc))
             }
         } else {
             Err(self)
@@ -2483,10 +2481,8 @@ impl<A: Allocator + Clone> Arc<dyn Any + Send + Sync, A> {
         T: Any + Send + Sync,
     {
         unsafe {
-            let ptr = self.ptr.cast::<ArcInner<T>>();
-            let alloc = self.alloc.clone();
-            mem::forget(self);
-            Arc::from_inner_in(ptr, alloc)
+            let (ptr, alloc) = self.internal_into_inner_with_allocator();
+            Arc::from_inner_in(ptr.cast(), alloc)
         }
     }
 }
@@ -3442,13 +3438,13 @@ impl From<Arc<str>> for Arc<[u8]> {
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, A: Allocator + Clone, const N: usize> TryFrom<Arc<[T], A>> for Arc<[T; N], A> {
+impl<T, A: Allocator, const N: usize> TryFrom<Arc<[T], A>> for Arc<[T; N], A> {
     type Error = Arc<[T], A>;
 
     fn try_from(boxed_slice: Arc<[T], A>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            let alloc = boxed_slice.alloc.clone();
-            Ok(unsafe { Arc::from_raw_in(Arc::into_raw(boxed_slice) as *mut [T; N], alloc) })
+            let (ptr, alloc) = boxed_slice.internal_into_inner_with_allocator();
+            Ok(unsafe { Arc::from_inner_in(ptr.cast(), alloc) })
         } else {
             Err(boxed_slice)
         }
