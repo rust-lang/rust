@@ -44,6 +44,7 @@ cfg.workspace = true
 tt.workspace = true
 limit.workspace = true
 span.workspace = true
+parser.workspace = true
 
 
 [dev-dependencies]

@@ -417,7 +417,11 @@ mod tests {
         expect.assert_eq(&actual);
 
         // the fixed-up tree should be syntactically valid
-        let (parse, _) = mbe::token_tree_to_syntax_node(&tt, ::mbe::TopEntryPoint::MacroItems);
+        let (parse, _) = mbe::token_tree_to_syntax_node(
+            &tt,
+            ::mbe::TopEntryPoint::MacroItems,
+            parser::Edition::Edition2021,
+        );
         assert!(
             parse.errors().is_empty(),
             "parse has syntax errors. parse tree:\n{:#?}",
