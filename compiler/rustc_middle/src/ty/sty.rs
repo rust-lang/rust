@@ -862,7 +862,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -908,7 +908,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for ExistentialTraitRef<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -1149,7 +1149,7 @@ impl<'tcx, T> IntoDiagnosticArg for Binder<'tcx, T>
 where
     T: IntoDiagnosticArg,
 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.value.into_diagnostic_arg()
     }
 }
@@ -1359,7 +1359,7 @@ impl<'tcx> FnSig<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for FnSig<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

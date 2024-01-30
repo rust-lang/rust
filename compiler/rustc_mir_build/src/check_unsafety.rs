@@ -698,12 +698,15 @@ impl UnsafeOpKind {
                     span,
                     function: &with_no_trimmed_paths!(tcx.def_path_str(*function)),
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
@@ -860,12 +863,15 @@ impl UnsafeOpKind {
                 dcx.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
@@ -876,12 +882,15 @@ impl UnsafeOpKind {
                 dcx.emit_err(CallToFunctionWithRequiresUnsafe {
                     span,
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,

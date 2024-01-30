@@ -3092,7 +3092,7 @@ impl fmt::Display for CrateType {
 }
 
 impl IntoDiagnosticArg for CrateType {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

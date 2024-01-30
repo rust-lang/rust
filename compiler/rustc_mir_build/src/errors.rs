@@ -127,11 +127,11 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
@@ -379,11 +379,11 @@ pub struct CallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
@@ -397,11 +397,11 @@ pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,

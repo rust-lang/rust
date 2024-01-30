@@ -147,7 +147,7 @@ impl<'a> CopyPath<'a> {
 struct DebugArgPath<'a>(pub &'a Path);
 
 impl IntoDiagnosticArg for DebugArgPath<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
@@ -974,7 +974,7 @@ pub enum ExpectedPointerMutability {
 }
 
 impl IntoDiagnosticArg for ExpectedPointerMutability {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         match self {
             ExpectedPointerMutability::Mut => DiagnosticArgValue::Str(Cow::Borrowed("*mut")),
             ExpectedPointerMutability::Not => DiagnosticArgValue::Str(Cow::Borrowed("*_")),

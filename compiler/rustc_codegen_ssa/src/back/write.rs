@@ -999,7 +999,7 @@ type DiagnosticArgName<'source> = Cow<'source, str>;
 
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
+    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue>,
     code: Option<ErrCode>,
     lvl: Level,
 }
@@ -1811,7 +1811,7 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
+        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue> =
             diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msgs: diag.messages.clone(),

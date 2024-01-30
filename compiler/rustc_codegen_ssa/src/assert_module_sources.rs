@@ -206,7 +206,7 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagnosticArg for CguReuse {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
