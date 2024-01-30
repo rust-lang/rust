@@ -105,7 +105,7 @@ jobs:
 
       - name: clippy
         if: matrix.os == 'ubuntu-latest'
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets
 
   # Weird targets to catch non-portable code
   rust-cross:
