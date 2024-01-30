@@ -53,20 +53,11 @@ LL | fn h<T>(a: &T, b: T) -> std::cmp::Ordering where T: Iterator, T: Ord {
 error[E0599]: the method `cmp` exists for struct `Box<dyn T>`, but its trait bounds were not satisfied
   --> $DIR/method-on-unbounded-type-param.rs:14:7
    |
-LL |   trait T {}
-   |   -------
-   |   |
-   |   doesn't satisfy `dyn T: Iterator`
-   |   doesn't satisfy `dyn T: Ord`
+LL | trait T {}
+   | ------- doesn't satisfy `dyn T: Iterator` or `dyn T: Ord`
 ...
-LL |       x.cmp(&x);
-   |         ^^^ method cannot be called on `Box<dyn T>` due to unsatisfied trait bounds
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-   = note: doesn't satisfy `Box<dyn T>: Iterator`
-   |
-   = note: doesn't satisfy `Box<dyn T>: Ord`
+LL |     x.cmp(&x);
+   |       ^^^ method cannot be called on `Box<dyn T>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `dyn T: Iterator`
