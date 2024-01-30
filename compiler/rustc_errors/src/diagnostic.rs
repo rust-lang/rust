@@ -23,7 +23,7 @@ pub struct SuggestionsDisabled;
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
 /// `DiagnosticArg` are converted to `FluentArgs` (consuming the collection) at the start of
 /// diagnostic emission.
-pub type DiagnosticArg<'iter, 'source> = (&'iter DiagnosticArgName, &'iter DiagnosticArgValue);
+pub type DiagnosticArg<'iter> = (&'iter DiagnosticArgName, &'iter DiagnosticArgValue);
 
 /// Name of a diagnostic argument.
 pub type DiagnosticArgName = Cow<'static, str>;
@@ -909,7 +909,7 @@ impl Diagnostic {
     // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
     // they're only used in interpolation.
     #[allow(rustc::potential_query_instability)]
-    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_, 'static>> {
+    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_>> {
         self.args.iter()
     }
 
