@@ -55,8 +55,8 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     }
 }
 
-fn literal_to_external(literal: ast::LiteralKind) -> Option<proc_macro::bridge::LitKind> {
-    Some(match lit.kind() {
+fn literal_to_external(literal_kind: ast::LiteralKind) -> Option<proc_macro::bridge::LitKind> {
+    Some(match literal_kind {
         ast::LiteralKind::String(data) => {
             if data.is_raw() {
                 bridge::LitKind::StrRaw(data.raw_delimiter_count()?)

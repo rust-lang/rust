@@ -4,7 +4,6 @@
 //! It is an unfortunate result of how the proc-macro API works that we need to look into the
 //! concrete representation of the spans, and as such, RustRover cannot make use of this unless they
 //! change their representation to be compatible with rust-analyzer's.
-use core::num;
 use std::{
     collections::{HashMap, HashSet},
     iter,
@@ -72,13 +71,14 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let literal = str_to_lit_node(s).ok_or(Err(()))?;
+        let literal = str_to_lit_node(s).ok_or(())?;
 
-        let kind = literal_to_external(literal.kind()).ok_or(Err(()))?;
+        let kind = literal_to_external(literal.kind()).ok_or(())?;
 
         // FIXME: handle more than just int and float suffixes
         let suffix = match literal.kind() {
-            ast::LiteralKind::FloatNumber(num) | ast::LiteralKind::IntNumber(num) => num.suffix(),
+            ast::LiteralKind::FloatNumber(num) => num.suffix(),
+            ast::LiteralKind::IntNumber(num) => num.suffix(),
             _ => None,
         }
         .map(|suffix| Symbol::intern(self.interner, suffix));

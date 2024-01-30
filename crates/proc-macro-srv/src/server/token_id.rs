@@ -63,13 +63,14 @@ impl server::FreeFunctions for TokenIdServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let literal = str_to_lit_node(s).ok_or(Err(()))?;
+        let literal = str_to_lit_node(s).ok_or(())?;
 
-        let kind = literal_to_external(literal.kind()).ok_or(Err(()))?;
+        let kind = literal_to_external(literal.kind()).ok_or(())?;
 
         // FIXME: handle more than just int and float suffixes
         let suffix = match literal.kind() {
-            ast::LiteralKind::FloatNumber(num) | ast::LiteralKind::IntNumber(num) => num.suffix(),
+            ast::LiteralKind::FloatNumber(num) => num.suffix(),
+            ast::LiteralKind::IntNumber(num) => num.suffix(),
             _ => None,
         }
         .map(|suffix| Symbol::intern(self.interner, suffix));
