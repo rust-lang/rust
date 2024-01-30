@@ -605,7 +605,7 @@ impl UnsafeOpKind {
                 span,
                 UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
                     span,
-                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
+                    function: with_no_trimmed_paths!(tcx.def_path_str(*did)),
                     unsafe_not_inherited_note,
                 },
             ),
@@ -696,7 +696,7 @@ impl UnsafeOpKind {
                 span,
                 UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
                     span,
-                    function: &with_no_trimmed_paths!(tcx.def_path_str(*function)),
+                    function: with_no_trimmed_paths!(tcx.def_path_str(*function)),
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
@@ -750,14 +750,14 @@ impl UnsafeOpKind {
                 dcx.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*did),
+                    function: tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(Some(did)) => {
                 dcx.emit_err(CallToUnsafeFunctionRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*did),
+                    function: tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
@@ -875,7 +875,7 @@ impl UnsafeOpKind {
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*function),
+                    function: tcx.def_path_str(*function),
                 });
             }
             CallToFunctionWith { function, missing, build_enabled } => {
@@ -894,7 +894,7 @@ impl UnsafeOpKind {
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*function),
+                    function: tcx.def_path_str(*function),
                 });
             }
         }
