@@ -1966,6 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let len = remaining_fields.len();
 
+        #[allow(rustc::potential_query_instability)]
         let mut displayable_field_names: Vec<&str> =
             remaining_fields.keys().map(|ident| ident.as_str()).collect();
         // sorting &str primitives here, sort_unstable is ok

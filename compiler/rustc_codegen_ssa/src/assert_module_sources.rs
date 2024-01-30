@@ -267,6 +267,7 @@ impl CguReuseTracker {
 
     fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
+            #[allow(rustc::potential_query_instability)]
             let mut keys = data.expected_reuse.keys().collect::<Vec<_>>();
             keys.sort_unstable();
             for cgu_name in keys {

@@ -682,6 +682,7 @@ fn link_dwarf_object<'a>(
         }
 
         // Input rlibs contain .o/.dwo files from dependencies.
+        #[allow(rustc::potential_query_instability)]
         let input_rlibs = cg_results
             .crate_info
             .used_crate_source
