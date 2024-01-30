@@ -2199,12 +2199,14 @@ fn main() {
                 sn while []
                 sn ref []
                 sn refm []
+                sn deref []
                 sn unsafe []
                 sn match []
                 sn box []
                 sn dbg []
                 sn dbgr []
                 sn call []
+                sn return []
             "#]],
         );
     }
@@ -2227,6 +2229,7 @@ fn main() {
                 me f() []
                 sn ref []
                 sn refm []
+                sn deref []
                 sn unsafe []
                 sn match []
                 sn box []
@@ -2235,6 +2238,7 @@ fn main() {
                 sn call []
                 sn let []
                 sn letm []
+                sn return []
             "#]],
         );
     }
