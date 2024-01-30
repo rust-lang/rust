@@ -165,10 +165,10 @@ impl DiagnosticStyledString {
         DiagnosticStyledString(vec![])
     }
     pub fn push_normal<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Normal(t.into()));
+        self.0.push(StringPart::normal(t.into()));
     }
     pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Highlighted(t.into()));
+        self.0.push(StringPart::highlighted(t.into()));
     }
     pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
         if highlight {
@@ -178,29 +178,31 @@ impl DiagnosticStyledString {
         }
     }
     pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Normal(t.into())])
+        DiagnosticStyledString(vec![StringPart::normal(t.into())])
     }
 
     pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
+        DiagnosticStyledString(vec![StringPart::highlighted(t.into())])
     }
 
     pub fn content(&self) -> String {
-        self.0.iter().map(|x| x.content()).collect::<String>()
+        self.0.iter().map(|x| x.content.as_str()).collect::<String>()
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum StringPart {
-    Normal(String),
-    Highlighted(String),
+pub struct StringPart {
+    content: String,
+    style: Style,
 }
 
 impl StringPart {
-    pub fn content(&self) -> &str {
-        match self {
-            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
-        }
+    fn normal(content: String) -> StringPart {
+        StringPart { content, style: Style::NoStyle }
+    }
+
+    fn highlighted(content: String) -> StringPart {
+        StringPart { content, style: Style::Highlight }
     }
 }
 
@@ -394,16 +396,10 @@ impl Diagnostic {
         };
         let mut msg: Vec<_> =
             vec![(format!("{}{} `", " ".repeat(expected_padding), expected_label), Style::NoStyle)];
-        msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-        }));
+        msg.extend(expected.0.into_iter().map(|p| (p.content, p.style)));
         msg.push((format!("`{expected_extra}\n"), Style::NoStyle));
         msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
-        msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-        }));
+        msg.extend(found.0.into_iter().map(|p| (p.content, p.style)));
         msg.push((format!("`{found_extra}"), Style::NoStyle));
 
         // For now, just attach these as notes.
