@@ -2,6 +2,7 @@
 
 use std::{fmt, fs, path::Path};
 
+use stdx::format_to_acc;
 use test_utils::project_root;
 
 #[test]
@@ -172,8 +173,7 @@ impl fmt::Display for Assist {
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
 
 fn reveal_hash_comments(text: &str) -> String {
@@ -187,6 +187,5 @@ fn reveal_hash_comments(text: &str) -> String {
                 it
             }
         })
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }

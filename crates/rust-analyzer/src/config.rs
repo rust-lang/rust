@@ -32,6 +32,7 @@ use project_model::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
+use stdx::format_to_acc;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
@@ -2563,14 +2564,13 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
 
 #[cfg(test)]
 fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
-    fields
-        .iter()
-        .map(|(field, _ty, doc, default)| {
-            let name = format!("rust-analyzer.{}", field.replace('_', "."));
-            let doc = doc_comment_to_string(doc);
-            if default.contains('\n') {
-                format!(
-                    r#"[[{name}]]{name}::
+    fields.iter().fold(String::new(), |mut acc, (field, _ty, doc, default)| {
+        let name = format!("rust-analyzer.{}", field.replace('_', "."));
+        let doc = doc_comment_to_string(doc);
+        if default.contains('\n') {
+            format_to_acc!(
+                acc,
+                r#"[[{name}]]{name}::
 +
 --
 Default:
@@ -2580,16 +2580,17 @@ Default:
 {doc}
 --
 "#
-                )
-            } else {
-                format!("[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
-            }
-        })
-        .collect::<String>()
+            )
+        } else {
+            format_to_acc!(acc, "[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
+        }
+    })
 }
 
 fn doc_comment_to_string(doc: &[&str]) -> String {
-    doc.iter().map(|it| it.strip_prefix(' ').unwrap_or(it)).map(|it| format!("{it}\n")).collect()
+    doc.iter()
+        .map(|it| it.strip_prefix(' ').unwrap_or(it))
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
 
 #[cfg(test)]
