@@ -78,6 +78,8 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        let a = self.fields.infcx.shallow_resolve(a);
+        let b = self.fields.infcx.shallow_resolve(b);
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 

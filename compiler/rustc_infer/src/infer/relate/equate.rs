@@ -72,9 +72,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         trace!(a = ?a.kind(), b = ?b.kind());
 
         let infcx = self.fields.infcx;
-
-        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -142,6 +141,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        let a = self.fields.infcx.shallow_resolve(a);
+        let b = self.fields.infcx.shallow_resolve(b);
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 

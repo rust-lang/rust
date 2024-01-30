@@ -3,13 +3,12 @@ use std::marker::PhantomData;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey, RegionVidKey};
+use rustc_middle::infer::unify_key::{ConstVidKey, RegionVidKey};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
 
-use crate::{
-    infer::{region_constraints, type_variable, InferCtxtInner},
-    traits,
-};
+use crate::infer::unification_table::UndoLogDelegate;
+use crate::infer::{region_constraints, type_variable, InferCtxtInner};
+use crate::traits;
 
 pub struct Snapshot<'tcx> {
     pub(crate) undo_len: usize,
@@ -22,9 +21,9 @@ pub(crate) enum UndoLog<'tcx> {
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
-    IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
-    FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
-    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
+    IntUnificationTable(UndoLogDelegate<'tcx, ty::IntVid>),
+    FloatUnificationTable(UndoLogDelegate<'tcx, ty::FloatVid>),
+    EffectUnificationTable(UndoLogDelegate<'tcx, ty::EffectVid>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -51,10 +50,9 @@ impl_from! {
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
     TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
 
-    IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
-
-    FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
-    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
+    IntUnificationTable(UndoLogDelegate<'tcx, ty::IntVid>),
+    FloatUnificationTable(UndoLogDelegate<'tcx, ty::FloatVid>),
+    EffectUnificationTable(UndoLogDelegate<'tcx, ty::EffectVid>),
 
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
 

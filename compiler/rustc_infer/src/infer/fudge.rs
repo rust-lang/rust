@@ -123,14 +123,12 @@ impl<'tcx> InferCtxt<'tcx> {
                     let mut inner = self.inner.borrow_mut();
                     let type_vars =
                         inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
-                    let int_vars = vars_since_snapshot(
-                        &mut inner.int_unification_table(),
-                        variable_lengths.int_var_len,
-                    );
-                    let float_vars = vars_since_snapshot(
-                        &mut inner.float_unification_table(),
-                        variable_lengths.float_var_len,
-                    );
+                    let int_vars = inner
+                        .int_unification_table()
+                        .vars_since_snapshot(variable_lengths.int_var_len);
+                    let float_vars = inner
+                        .float_unification_table()
+                        .vars_since_snapshot(variable_lengths.float_var_len);
                     let region_vars = inner
                         .unwrap_region_constraints()
                         .vars_since_snapshot(variable_lengths.region_constraints_len);

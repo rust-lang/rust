@@ -8,7 +8,7 @@ pub use self::ValuePairs::*;
 pub use relate::combine::ObligationEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
+use rustc_middle::infer::unify_key::ConstVidKey;
 
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
@@ -25,8 +25,8 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxt, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::{select, DefiningAnchor};
@@ -55,6 +55,7 @@ use self::region_constraints::{
 pub use self::relate::combine::CombineFields;
 pub use self::relate::nll as nll_relate;
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use self::unification_table::{NonRecursiveUnificationStorage, NonRecursiveUnificationTable};
 
 pub mod at;
 pub mod canonical;
@@ -71,6 +72,7 @@ mod relate;
 pub mod resolve;
 pub mod type_variable;
 mod undo_log;
+mod unification_table;
 
 #[must_use]
 #[derive(Debug)]
@@ -109,13 +111,13 @@ pub struct InferCtxtInner<'tcx> {
     const_unification_storage: ut::UnificationTableStorage<ConstVidKey<'tcx>>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_storage: ut::UnificationTableStorage<ty::IntVid>,
+    int_unification_storage: NonRecursiveUnificationStorage<'tcx, ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
+    float_unification_storage: NonRecursiveUnificationStorage<'tcx, ty::FloatVid>,
 
     /// Map from effect variable to the effect param it represents.
-    effect_unification_storage: ut::UnificationTableStorage<EffectVidKey<'tcx>>,
+    effect_unification_storage: NonRecursiveUnificationStorage<'tcx, ty::EffectVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     ///
@@ -171,9 +173,9 @@ impl<'tcx> InferCtxtInner<'tcx> {
             projection_cache: Default::default(),
             type_variable_storage: type_variable::TypeVariableStorage::new(),
             const_unification_storage: ut::UnificationTableStorage::new(),
-            int_unification_storage: ut::UnificationTableStorage::new(),
-            float_unification_storage: ut::UnificationTableStorage::new(),
-            effect_unification_storage: ut::UnificationTableStorage::new(),
+            int_unification_storage: NonRecursiveUnificationStorage::new(),
+            float_unification_storage: NonRecursiveUnificationStorage::new(),
+            effect_unification_storage: NonRecursiveUnificationStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
             opaque_type_storage: Default::default(),
@@ -211,12 +213,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn int_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::IntVid> {
+    fn int_unification_table(&mut self) -> NonRecursiveUnificationTable<'_, 'tcx, ty::IntVid> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
-    fn float_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::FloatVid> {
+    fn float_unification_table(&mut self) -> NonRecursiveUnificationTable<'_, 'tcx, ty::FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
@@ -225,7 +227,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
-    fn effect_unification_table(&mut self) -> UnificationTable<'_, 'tcx, EffectVidKey<'tcx>> {
+    #[inline]
+    fn effect_unification_table(&mut self) -> NonRecursiveUnificationTable<'_, 'tcx, EffectVid> {
         self.effect_unification_storage.with_log(&mut self.undo_log)
     }
 
@@ -1105,7 +1108,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     fn next_int_var_id(&self) -> IntVid {
-        self.inner.borrow_mut().int_unification_table().new_key(None)
+        self.inner.borrow_mut().int_unification_table().new_key()
     }
 
     pub fn next_int_var(&self) -> Ty<'tcx> {
@@ -1113,7 +1116,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     fn next_float_var_id(&self) -> FloatVid {
-        self.inner.borrow_mut().float_unification_table().new_key(None)
+        self.inner.borrow_mut().float_unification_table().new_key()
     }
 
     pub fn next_float_var(&self) -> Ty<'tcx> {
@@ -1235,7 +1238,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn var_for_effect(&self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
-        let effect_vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
+        let effect_vid = self.inner.borrow_mut().effect_unification_table().new_key();
         let ty = self
             .tcx
             .type_of(param.def_id)
@@ -1355,7 +1358,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn root_effect_var(&self, var: ty::EffectVid) -> ty::EffectVid {
-        self.inner.borrow_mut().effect_unification_table().find(var).vid
+        self.inner.borrow_mut().effect_unification_table().current_root(var)
     }
 
     /// Resolves an int var to a rigid int type, if it was constrained to one,
@@ -1365,7 +1368,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(value) = inner.int_unification_table().probe_value(vid) {
             value.to_type(self.tcx)
         } else {
-            Ty::new_int_var(self.tcx, inner.int_unification_table().find(vid))
+            Ty::new_int_var(self.tcx, inner.int_unification_table().current_root(vid))
         }
     }
 
@@ -1376,7 +1379,7 @@ impl<'tcx> InferCtxt<'tcx> {
         if let Some(value) = inner.float_unification_table().probe_value(vid) {
             value.to_type(self.tcx)
         } else {
-            Ty::new_float_var(self.tcx, inner.float_unification_table().find(vid))
+            Ty::new_float_var(self.tcx, inner.float_unification_table().current_root(vid))
         }
     }
 
@@ -1415,7 +1418,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn probe_effect_var(&self, vid: EffectVid) -> Option<EffectVarValue<'tcx>> {
+    pub fn probe_effect_var(&self, vid: EffectVid) -> Option<ty::Const<'tcx>> {
         self.inner.borrow_mut().effect_unification_table().probe_value(vid)
     }
 
@@ -1892,7 +1895,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
                 .borrow_mut()
                 .effect_unification_table()
                 .probe_value(vid)
-                .map_or(ct, |val| val.as_const(self.infcx.tcx)),
+                .unwrap_or(ct),
             _ => ct,
         }
     }

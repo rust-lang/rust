@@ -296,19 +296,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().inlined_probe_value(vid)
     }
 
-    /// If `t` is a type-inference variable, and it has been
-    /// instantiated, then return the with which it was
-    /// instantiated. Otherwise, returns `t`.
-    pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
-            ty::Infer(ty::TyVar(v)) => match self.probe(v) {
-                TypeVariableValue::Unknown { .. } => t,
-                TypeVariableValue::Known { value } => value,
-            },
-            _ => t,
-        }
-    }
-
     #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         self.storage.eq_relations.with_log(self.undo_log)

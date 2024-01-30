@@ -77,8 +77,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         }
 
         let infcx = self.fields.infcx;
-        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(_)), &ty::Infer(TyVar(_))) => {
@@ -177,6 +177,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        let a = self.fields.infcx.shallow_resolve(a);
+        let b = self.fields.infcx.shallow_resolve(b);
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 

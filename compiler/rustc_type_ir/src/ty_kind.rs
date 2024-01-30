@@ -613,9 +613,6 @@ pub enum IntVarValue {
     UintType(UintTy),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct FloatVarValue(pub FloatTy);
-
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
     #[encodable]
@@ -718,25 +715,6 @@ impl UnifyKey for IntVid {
 }
 
 #[cfg(feature = "nightly")]
-impl EqUnifyValue for FloatVarValue {}
-
-#[cfg(feature = "nightly")]
-impl UnifyKey for FloatVid {
-    type Value = Option<FloatVarValue>;
-    #[inline]
-    fn index(&self) -> u32 {
-        self.as_u32()
-    }
-    #[inline]
-    fn from_index(i: u32) -> FloatVid {
-        FloatVid::from_u32(i)
-    }
-    fn tag() -> &'static str {
-        "FloatVid"
-    }
-}
-
-#[cfg(feature = "nightly")]
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
@@ -756,12 +734,6 @@ impl fmt::Debug for IntVarValue {
             IntVarValue::IntType(ref v) => v.fmt(f),
             IntVarValue::UintType(ref v) => v.fmt(f),
         }
-    }
-}
-
-impl fmt::Debug for FloatVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 

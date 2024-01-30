@@ -95,14 +95,13 @@ impl ToType for ty::IntVarValue {
     }
 }
 
-impl ToType for ty::FloatVarValue {
+impl ToType for ty::FloatTy {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        Ty::new_float(tcx, self.0)
+        Ty::new_float(tcx, *self)
     }
 }
 
 // Generic consts.
-
 #[derive(Copy, Clone, Debug)]
 pub struct ConstVariableOrigin {
     pub kind: ConstVariableOriginKind,
@@ -188,67 +187,5 @@ impl<'tcx> UnifyValue for ConstVariableValue<'tcx> {
                 Ok(ConstVariableValue::Unknown { origin, universe })
             }
         }
-    }
-}
-
-/// values for the effect inference variable
-#[derive(Clone, Copy, Debug)]
-pub enum EffectVarValue<'tcx> {
-    /// The host effect is on, enabling access to syscalls, filesystem access, etc.
-    Host,
-    /// The host effect is off. Execution is restricted to const operations only.
-    NoHost,
-    Const(ty::Const<'tcx>),
-}
-
-impl<'tcx> EffectVarValue<'tcx> {
-    pub fn as_const(self, tcx: TyCtxt<'tcx>) -> ty::Const<'tcx> {
-        match self {
-            EffectVarValue::Host => tcx.consts.true_,
-            EffectVarValue::NoHost => tcx.consts.false_,
-            EffectVarValue::Const(c) => c,
-        }
-    }
-}
-
-impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
-    type Error = (EffectVarValue<'tcx>, EffectVarValue<'tcx>);
-    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        match (value1, value2) {
-            (EffectVarValue::Host, EffectVarValue::Host) => Ok(EffectVarValue::Host),
-            (EffectVarValue::NoHost, EffectVarValue::NoHost) => Ok(EffectVarValue::NoHost),
-            (EffectVarValue::NoHost | EffectVarValue::Host, _)
-            | (_, EffectVarValue::NoHost | EffectVarValue::Host) => Err((*value1, *value2)),
-            (EffectVarValue::Const(_), EffectVarValue::Const(_)) => {
-                bug!("equating two const variables, both of which have known values")
-            }
-        }
-    }
-}
-
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct EffectVidKey<'tcx> {
-    pub vid: ty::EffectVid,
-    pub phantom: PhantomData<EffectVarValue<'tcx>>,
-}
-
-impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
-    fn from(vid: ty::EffectVid) -> Self {
-        EffectVidKey { vid, phantom: PhantomData }
-    }
-}
-
-impl<'tcx> UnifyKey for EffectVidKey<'tcx> {
-    type Value = Option<EffectVarValue<'tcx>>;
-    #[inline]
-    fn index(&self) -> u32 {
-        self.vid.as_u32()
-    }
-    #[inline]
-    fn from_index(i: u32) -> Self {
-        EffectVidKey::from(ty::EffectVid::from_u32(i))
-    }
-    fn tag() -> &'static str {
-        "EffectVidKey"
     }
 }
