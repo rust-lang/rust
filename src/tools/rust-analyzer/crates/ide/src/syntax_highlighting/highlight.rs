@@ -106,7 +106,7 @@ fn punctuation(
         }
         (T![!], MACRO_CALL | MACRO_RULES) => HlPunct::MacroBang.into(),
         (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
-        (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
+        (T![!], PREFIX_EXPR) => HlTag::Operator(HlOperator::Logical) | HlMod::Not,
         (T![*], PTR_TYPE) => HlTag::Keyword.into(),
         (T![*], PREFIX_EXPR) => {
             let is_raw_ptr = (|| {

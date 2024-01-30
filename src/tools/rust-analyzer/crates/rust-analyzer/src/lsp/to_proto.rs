@@ -721,6 +721,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Library => semantic_tokens::LIBRARY,
             HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
             HlMod::Mutable => semantic_tokens::MUTABLE,
+            HlMod::Not => semantic_tokens::NOT,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,
             HlMod::Static => semantic_tokens::STATIC,

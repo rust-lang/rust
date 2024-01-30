@@ -77,6 +77,8 @@ pub enum HlMod {
     Macro,
     /// Mutable binding.
     Mutable,
+    /// Operator `!`
+    Not,
     /// Used for public items.
     Public,
     /// Immutable reference.
@@ -220,6 +222,7 @@ impl HlMod {
         HlMod::Library,
         HlMod::Macro,
         HlMod::Mutable,
+        HlMod::Not,
         HlMod::Public,
         HlMod::Reference,
         HlMod::Static,
@@ -244,6 +247,7 @@ impl HlMod {
             HlMod::Library => "library",
             HlMod::Macro => "macro",
             HlMod::Mutable => "mutable",
+            HlMod::Not => "not",
             HlMod::Public => "public",
             HlMod::Reference => "reference",
             HlMod::Static => "static",

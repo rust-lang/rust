@@ -144,6 +144,7 @@ define_semantic_token_modifiers![
         (LIBRARY, "library"),
         (MACRO_MODIFIER, "macro"),
         (MUTABLE, "mutable"),
+        (NOT, "not"),
         (PUBLIC, "public"),
         (REFERENCE, "reference"),
         (TRAIT_MODIFIER, "trait"),
