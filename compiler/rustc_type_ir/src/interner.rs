@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::{
-    BoundVar, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind, TyKind,
-    UniverseIndex,
+    BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind,
+    TyKind, UniverseIndex,
 };
 
 pub trait Interner: Sized {
@@ -19,7 +19,10 @@ pub trait Interner: Sized {
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type Term: Copy + Debug + Hash + Ord;
 
-    type Binder<T>;
+    type Binder<T>: BoundVars<Self>;
+    type BoundVars: IntoIterator<Item = Self::BoundVar>;
+    type BoundVar;
+
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
@@ -86,6 +89,9 @@ pub trait Interner: Sized {
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
+
+    /// Assert that an error has been delayed or emitted.
+    fn expect_error_or_delayed_bug();
 }
 
 /// Common capabilities of placeholder kinds

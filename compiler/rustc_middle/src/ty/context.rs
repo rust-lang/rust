@@ -88,6 +88,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Term = ty::Term<'tcx>;
 
     type Binder<T> = Binder<'tcx, T>;
+    type BoundVars = &'tcx List<ty::BoundVariableKind>;
+    type BoundVar = ty::BoundVariableKind;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
@@ -150,6 +152,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         ty: Self::Ty,
     ) -> Self::Const {
         Const::new_bound(self, debruijn, var, ty)
+    }
+
+    fn expect_error_or_delayed_bug() {
+        let has_errors = ty::tls::with(|tcx| tcx.dcx().has_errors_or_lint_errors_or_delayed_bugs());
+        assert!(has_errors.is_some());
     }
 }
 

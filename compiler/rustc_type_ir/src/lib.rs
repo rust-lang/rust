@@ -30,6 +30,7 @@ pub mod visit;
 
 #[macro_use]
 mod macros;
+mod binder;
 mod canonical;
 mod const_kind;
 mod debug;
@@ -39,6 +40,7 @@ mod interner;
 mod predicate_kind;
 mod region_kind;
 
+pub use binder::*;
 pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
