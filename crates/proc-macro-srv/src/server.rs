@@ -59,21 +59,21 @@ fn literal_to_external(literal: ast::LiteralKind) -> Option<proc_macro::bridge::
     Some(match lit.kind() {
         ast::LiteralKind::String(data) => {
             if data.is_raw() {
-                bridge::LitKind::StrRaw(raw_delimiter_count(data)?)
+                bridge::LitKind::StrRaw(data.raw_delimiter_count()?)
             } else {
                 bridge::LitKind::Str
             }
         }
         ast::LiteralKind::ByteString(data) => {
             if data.is_raw() {
-                bridge::LitKind::ByteStrRaw(raw_delimiter_count(data)?)
+                bridge::LitKind::ByteStrRaw(data.raw_delimiter_count()?)
             } else {
                 bridge::LitKind::ByteStr
             }
         }
         ast::LiteralKind::CString(data) => {
             if data.is_raw() {
-                bridge::LitKind::CStrRaw(raw_delimiter_count(data)?)
+                bridge::LitKind::CStrRaw(data.raw_delimiter_count()?)
             } else {
                 bridge::LitKind::CStr
             }
@@ -84,13 +84,6 @@ fn literal_to_external(literal: ast::LiteralKind) -> Option<proc_macro::bridge::
         ast::LiteralKind::Byte(_) => bridge::LitKind::Byte,
         ast::LiteralKind::Bool(_) => unreachable!(),
     })
-}
-
-fn raw_delimiter_count<S: IsString>(s: S) -> Option<u8> {
-    let text = s.text();
-    let quote_range = s.text_range_between_quotes()?;
-    let range_start = s.syntax().text_range().start();
-    text[TextRange::up_to((quote_range - range_start).start())].matches('#').count().try_into().ok()
 }
 
 fn str_to_lit_node(input: &str) -> Option<ast::Literal> {

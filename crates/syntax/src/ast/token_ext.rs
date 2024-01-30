@@ -204,6 +204,16 @@ pub trait IsString: AstToken {
         assert!(TextRange::up_to(contents_range.len()).contains_range(range));
         Some(range + contents_range.start())
     }
+    fn raw_delimiter_count(&self) -> Option<u8> {
+        let text = self.text();
+        let quote_range = self.text_range_between_quotes()?;
+        let range_start = self.syntax().text_range().start();
+        text[TextRange::up_to((quote_range - range_start).start())]
+            .matches('#')
+            .count()
+            .try_into()
+            .ok()
+    }
 }
 
 impl IsString for ast::String {
