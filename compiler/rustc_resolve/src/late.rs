@@ -90,7 +90,7 @@ impl PatternSource {
 }
 
 impl IntoDiagnosticArg for PatternSource {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }

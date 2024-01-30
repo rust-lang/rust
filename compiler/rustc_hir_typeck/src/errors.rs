@@ -43,7 +43,7 @@ pub enum ReturnLikeStatementKind {
 }
 
 impl IntoDiagnosticArg for ReturnLikeStatementKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",

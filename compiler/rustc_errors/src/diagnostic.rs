@@ -23,19 +23,18 @@ pub struct SuggestionsDisabled;
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
 /// `DiagnosticArg` are converted to `FluentArgs` (consuming the collection) at the start of
 /// diagnostic emission.
-pub type DiagnosticArg<'iter, 'source> =
-    (&'iter DiagnosticArgName<'source>, &'iter DiagnosticArgValue<'source>);
+pub type DiagnosticArg<'iter> = (&'iter DiagnosticArgName, &'iter DiagnosticArgValue);
 
 /// Name of a diagnostic argument.
-pub type DiagnosticArgName<'source> = Cow<'source, str>;
+pub type DiagnosticArgName = Cow<'static, str>;
 
 /// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
 /// to a `FluentValue` by the emitter to be used in diagnostic translation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagnosticArgValue<'source> {
-    Str(Cow<'source, str>),
+pub enum DiagnosticArgValue {
+    Str(Cow<'static, str>),
     Number(i128),
-    StrListSepByAnd(Vec<Cow<'source, str>>),
+    StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 
 /// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
@@ -43,23 +42,17 @@ pub enum DiagnosticArgValue<'source> {
 /// being converted rather than on `DiagnosticArgValue`, which enables types from other `rustc_*`
 /// crates to implement this.
 pub trait IntoDiagnosticArg {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue;
 }
 
-impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        match self {
-            DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
-            DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
-            DiagnosticArgValue::StrListSepByAnd(l) => DiagnosticArgValue::StrListSepByAnd(
-                l.into_iter().map(|s| Cow::Owned(s.into_owned())).collect(),
-            ),
-        }
+impl IntoDiagnosticArg for DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+        self
     }
 }
 
-impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
-    fn into(self) -> FluentValue<'source> {
+impl Into<FluentValue<'static>> for DiagnosticArgValue {
+    fn into(self) -> FluentValue<'static> {
         match self {
             DiagnosticArgValue::Str(s) => From::from(s),
             DiagnosticArgValue::Number(n) => From::from(n),
@@ -109,7 +102,7 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
+    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
@@ -916,7 +909,7 @@ impl Diagnostic {
     // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
     // they're only used in interpolation.
     #[allow(rustc::potential_query_instability)]
-    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_, 'static>> {
+    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_>> {
         self.args.iter()
     }
 
@@ -929,10 +922,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn replace_args(
-        &mut self,
-        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
-    ) {
+    pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
     }
 
@@ -990,7 +980,7 @@ impl Diagnostic {
     ) -> (
         &Level,
         &[(DiagnosticMessage, Style)],
-        Vec<(&Cow<'static, str>, &DiagnosticArgValue<'static>)>,
+        Vec<(&Cow<'static, str>, &DiagnosticArgValue)>,
         &Option<ErrCode>,
         &Option<IsLint>,
         &MultiSpan,

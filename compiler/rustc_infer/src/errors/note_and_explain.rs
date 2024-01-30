@@ -108,7 +108,7 @@ pub enum SuffixKind {
 }
 
 impl IntoDiagnosticArg for PrefixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
@@ -130,7 +130,7 @@ impl IntoDiagnosticArg for PrefixKind {
 }
 
 impl IntoDiagnosticArg for SuffixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::Continues => "continues",

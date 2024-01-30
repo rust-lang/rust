@@ -9,6 +9,7 @@ use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
@@ -458,22 +459,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        let ty_span = match rcvr_ty.kind() {
+        let mut ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
                 Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
             }
             ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
             _ => None,
         };
-        if let Some(span) = ty_span {
-            err.span_label(
-                span,
-                format!(
-                    "{item_kind} `{item_name}` not found for this {}",
-                    rcvr_ty.prefix_string(self.tcx)
-                ),
-            );
-        }
 
         if let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
@@ -546,7 +538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        let mut bound_spans = vec![];
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
         let mut unsatisfied_bounds = false;
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
@@ -641,19 +633,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false
                 };
             let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
-                let msg = format!(
-                    "doesn't satisfy `{}`",
-                    if obligation.len() > 50 { quiet } else { obligation }
-                );
+                let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
                 match &self_ty.kind() {
                     // Point at the type that couldn't satisfy the bound.
-                    ty::Adt(def, _) => bound_spans.push((self.tcx.def_span(def.did()), msg)),
+                    ty::Adt(def, _) => {
+                        bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
+                    }
                     // Point at the trait object that couldn't satisfy the bound.
                     ty::Dynamic(preds, _, _) => {
                         for pred in preds.iter() {
                             match pred.skip_binder() {
                                 ty::ExistentialPredicate::Trait(tr) => {
-                                    bound_spans.push((self.tcx.def_span(tr.def_id), msg.clone()))
+                                    bound_spans
+                                        .get_mut_or_insert_default(tcx.def_span(tr.def_id))
+                                        .push(msg.clone());
                                 }
                                 ty::ExistentialPredicate::Projection(_)
                                 | ty::ExistentialPredicate::AutoTrait(_) => {}
@@ -661,8 +654,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     // Point at the closure that couldn't satisfy the bound.
-                    ty::Closure(def_id, _) => bound_spans
-                        .push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`"))),
+                    ty::Closure(def_id, _) => {
+                        bound_spans
+                            .get_mut_or_insert_default(tcx.def_span(*def_id))
+                            .push(format!("`{quiet}`"));
+                    }
                     _ => {}
                 }
             };
@@ -1169,10 +1165,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
 
-        bound_spans.sort();
-        bound_spans.dedup();
-        for (span, msg) in bound_spans.into_iter() {
+        for (span, mut bounds) in bound_spans {
+            if !tcx.sess.source_map().is_span_accessible(span) {
+                continue;
+            }
+            bounds.sort();
+            bounds.dedup();
+            let pre = if Some(span) == ty_span {
+                ty_span.take();
+                format!(
+                    "{item_kind} `{item_name}` not found for this {} because it ",
+                    rcvr_ty.prefix_string(self.tcx)
+                )
+            } else {
+                String::new()
+            };
+            let msg = match &bounds[..] {
+                [bound] => format!("{pre}doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
+                [bounds @ .., last] => {
+                    format!("{pre}doesn't satisfy {} or {last}", bounds.join(", "))
+                }
+                [] => unreachable!(),
+            };
             err.span_label(span, msg);
+        }
+        if let Some(span) = ty_span {
+            err.span_label(
+                span,
+                format!(
+                    "{item_kind} `{item_name}` not found for this {}",
+                    rcvr_ty.prefix_string(self.tcx)
+                ),
+            );
         }
 
         if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params {

@@ -33,8 +33,8 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue,
-    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
+    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{
     BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,
@@ -628,7 +628,7 @@ impl DiagCtxt {
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+        args: impl Iterator<Item = DiagnosticArg<'a>>,
     ) -> SubdiagnosticMessage {
         SubdiagnosticMessage::Eager(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
@@ -637,7 +637,7 @@ impl DiagCtxt {
     pub fn eagerly_translate_to_string<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+        args: impl Iterator<Item = DiagnosticArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
         let args = crate::translation::to_fluent_args(args);

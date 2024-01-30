@@ -104,7 +104,7 @@ impl MachineStopType for TerminationInfo {
         self: Box<Self>,
         _: &mut dyn FnMut(
             std::borrow::Cow<'static, str>,
-            rustc_errors::DiagnosticArgValue<'static>,
+            rustc_errors::DiagnosticArgValue,
         ),
     ) {
     }

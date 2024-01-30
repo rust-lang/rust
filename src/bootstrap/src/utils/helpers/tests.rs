@@ -1,5 +1,14 @@
-use crate::utils::helpers::{check_cfg_arg, extract_beta_rev, hex_encode, make};
-use std::path::PathBuf;
+use crate::{
+    utils::helpers::{
+        check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
+    },
+    Config,
+};
+use std::{
+    fs::{self, remove_file, File},
+    io::Write,
+    path::PathBuf,
+};
 
 #[test]
 fn test_make() {
@@ -69,4 +78,39 @@ fn test_check_cfg_arg() {
         check_cfg_arg("target_os", Some(&["nixos", "nix2"])),
         "--check-cfg=cfg(target_os,values(\"nixos\",\"nix2\"))"
     );
+}
+
+#[test]
+fn test_program_out_of_date() {
+    let config = Config::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]);
+    let tempfile = config.tempdir().join(".tmp-stamp-file");
+    File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();
+    assert!(tempfile.exists());
+
+    // up-to-date
+    assert!(!program_out_of_date(&tempfile, "dummy value"));
+    // out-of-date
+    assert!(program_out_of_date(&tempfile, ""));
+
+    remove_file(tempfile).unwrap();
+}
+
+#[test]
+fn test_symlink_dir() {
+    let config = Config::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]);
+    let tempdir = config.tempdir().join(".tmp-dir");
+    let link_path = config.tempdir().join(".tmp-link");
+
+    fs::create_dir_all(&tempdir).unwrap();
+    symlink_dir(&config, &tempdir, &link_path).unwrap();
+
+    let link_source = fs::read_link(&link_path).unwrap();
+    assert_eq!(link_source, tempdir);
+
+    fs::remove_dir(tempdir).unwrap();
+
+    #[cfg(windows)]
+    fs::remove_dir(link_path).unwrap();
+    #[cfg(not(windows))]
+    fs::remove_file(link_path).unwrap();
 }

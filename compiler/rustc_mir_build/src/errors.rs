@@ -23,10 +23,10 @@ pub struct UnconditionalRecursion {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe)]
 #[note]
-pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
+pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
     #[label]
     pub span: Span,
-    pub function: &'a str,
+    pub function: String,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
@@ -123,15 +123,15 @@ pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe)]
 #[help]
-pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
+pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     #[label]
     pub span: Span,
-    pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub function: String,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
@@ -140,11 +140,11 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_unsafe_fn_requires_unsafe, code = E0133)]
 #[note]
-pub struct CallToUnsafeFunctionRequiresUnsafe<'a> {
+pub struct CallToUnsafeFunctionRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub function: &'a str,
+    pub function: String,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
@@ -163,11 +163,11 @@ pub struct CallToUnsafeFunctionRequiresUnsafeNameless {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
 #[note]
-pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
+pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub function: &'a str,
+    pub function: String,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
@@ -374,16 +374,16 @@ pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe, code = E0133)]
 #[help]
-pub struct CallToFunctionWithRequiresUnsafe<'a> {
+pub struct CallToFunctionWithRequiresUnsafe {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub function: String,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
@@ -392,16 +392,16 @@ pub struct CallToFunctionWithRequiresUnsafe<'a> {
 #[derive(Diagnostic)]
 #[diag(mir_build_call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
 #[help]
-pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
+pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub function: &'a str,
-    pub missing_target_features: DiagnosticArgValue<'a>,
+    pub function: String,
+    pub missing_target_features: DiagnosticArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue<'a>,
+    pub build_target_features: DiagnosticArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
