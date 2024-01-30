@@ -460,7 +460,8 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         _f: &mut fmt::Formatter<'_>,
         _pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
-        unimplemented!()
+        // FIXME: implement this, as using `unimplemented!()` causes panics in `tracing`.
+        Ok(())
     }
 
     fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
