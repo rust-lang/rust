@@ -1,15 +1,11 @@
 error[E0599]: the method `clone` exists for struct `Box<R>`, but its trait bounds were not satisfied
   --> $DIR/unique-pinned-nocopy.rs:12:16
    |
-LL |   struct R {
-   |   -------- doesn't satisfy `R: Clone`
+LL | struct R {
+   | -------- doesn't satisfy `R: Clone`
 ...
-LL |       let _j = i.clone();
-   |                  ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-   = note: doesn't satisfy `Box<R>: Clone`
+LL |     let _j = i.clone();
+   |                ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `R: Clone`

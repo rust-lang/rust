@@ -6,6 +6,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed,
@@ -463,22 +464,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return err.emit();
         }
 
-        let mut bound_spans = Vec::new();
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
-            let msg = format!(
-                "doesn't satisfy `{}`",
-                if obligation.len() > 50 { quiet } else { obligation }
-            );
+            let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match &self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
-                ty::Adt(def, _) => bound_spans.push((tcx.def_span(def.did()), msg)),
+                ty::Adt(def, _) => {
+                    bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
+                }
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
-                                bound_spans.push((tcx.def_span(tr.def_id), msg.clone()))
+                                bound_spans
+                                    .get_mut_or_insert_default(tcx.def_span(tr.def_id))
+                                    .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
                             | ty::ExistentialPredicate::AutoTrait(_) => {}
@@ -487,7 +489,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
-                    bound_spans.push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`")))
+                    bound_spans
+                        .get_mut_or_insert_default(tcx.def_span(*def_id))
+                        .push(format!("`{quiet}`"));
                 }
                 _ => {}
             }
@@ -556,12 +560,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
-        bound_spans.sort();
-        bound_spans.dedup();
-        for (span, msg) in bound_spans {
+        for (span, mut bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            bounds.sort();
+            bounds.dedup();
+            let msg = match &bounds[..] {
+                [bound] => format!("doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
+                [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
+                [] => unreachable!(),
+            };
             err.span_label(span, msg);
         }
         add_def_label(&mut err);
