@@ -578,7 +578,7 @@ pub fn check_function_signature<'tcx>(
         fn_id: LocalDefId,
     ) -> rustc_span::Span {
         let mut args = {
-            let node = tcx.hir().expect_owner(fn_id);
+            let node = tcx.expect_hir_owner_node(fn_id);
             let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
             decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
         };

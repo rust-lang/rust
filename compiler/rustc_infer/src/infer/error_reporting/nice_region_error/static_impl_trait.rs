@@ -443,7 +443,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 if let hir::OwnerNode::Item(Item {
                     kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
-                }) = tcx.hir().owner(impl_did)
+                }) = tcx.hir_owner_node(impl_did)
                 {
                     Some((impl_item.ident, self_ty))
                 } else {
