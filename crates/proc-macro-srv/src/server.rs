@@ -17,7 +17,7 @@ pub mod rust_analyzer_span;
 mod symbol;
 pub mod token_id;
 pub use symbol::*;
-use syntax::ast::{self, HasModuleItem, IsString};
+use syntax::ast::{self, IsString};
 use tt::Spacing;
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
@@ -56,50 +56,29 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
 }
 
 fn literal_to_external(literal_kind: ast::LiteralKind) -> Option<proc_macro::bridge::LitKind> {
-    Some(match literal_kind {
-        ast::LiteralKind::String(data) => {
-            if data.is_raw() {
-                bridge::LitKind::StrRaw(data.raw_delimiter_count()?)
-            } else {
-                bridge::LitKind::Str
-            }
-        }
-        ast::LiteralKind::ByteString(data) => {
-            if data.is_raw() {
-                bridge::LitKind::ByteStrRaw(data.raw_delimiter_count()?)
-            } else {
-                bridge::LitKind::ByteStr
-            }
-        }
-        ast::LiteralKind::CString(data) => {
-            if data.is_raw() {
-                bridge::LitKind::CStrRaw(data.raw_delimiter_count()?)
-            } else {
-                bridge::LitKind::CStr
-            }
-        }
-        ast::LiteralKind::IntNumber(_) => bridge::LitKind::Integer,
-        ast::LiteralKind::FloatNumber(_) => bridge::LitKind::Float,
-        ast::LiteralKind::Char(_) => bridge::LitKind::Char,
-        ast::LiteralKind::Byte(_) => bridge::LitKind::Byte,
-        ast::LiteralKind::Bool(_) => unreachable!(),
-    })
-}
+    match literal_kind {
+        ast::LiteralKind::String(data) => Some(if data.is_raw() {
+            bridge::LitKind::StrRaw(data.raw_delimiter_count()?)
+        } else {
+            bridge::LitKind::Str
+        }),
 
-fn str_to_lit_node(input: &str) -> Option<ast::Literal> {
-    let input = input.trim();
-    let source_code = format!("fn f() {{ let _ = {input}; }}");
-
-    let parse = ast::SourceFile::parse(&source_code);
-    let file = parse.tree();
-
-    let ast::Item::Fn(func) = file.items().next()? else { return None };
-    let ast::Stmt::LetStmt(stmt) = func.body()?.stmt_list()?.statements().next()? else {
-        return None;
-    };
-    let ast::Expr::Literal(lit) = stmt.initializer()? else { return None };
-
-    Some(lit)
+        ast::LiteralKind::ByteString(data) => Some(if data.is_raw() {
+            bridge::LitKind::ByteStrRaw(data.raw_delimiter_count()?)
+        } else {
+            bridge::LitKind::ByteStr
+        }),
+        ast::LiteralKind::CString(data) => Some(if data.is_raw() {
+            bridge::LitKind::CStrRaw(data.raw_delimiter_count()?)
+        } else {
+            bridge::LitKind::CStr
+        }),
+        ast::LiteralKind::IntNumber(_) => Some(bridge::LitKind::Integer),
+        ast::LiteralKind::FloatNumber(_) => Some(bridge::LitKind::Float),
+        ast::LiteralKind::Char(_) => Some(bridge::LitKind::Char),
+        ast::LiteralKind::Byte(_) => Some(bridge::LitKind::Byte),
+        ast::LiteralKind::Bool(_) => None,
+    }
 }
 
 struct LiteralFormatter<S>(bridge::Literal<S, Symbol>);

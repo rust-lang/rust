@@ -13,11 +13,11 @@ use std::{
 use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
-use syntax::ast;
+use syntax::ast::{self, IsString};
 
 use crate::server::{
-    delim_to_external, delim_to_internal, literal_to_external, str_to_lit_node,
-    token_stream::TokenStreamBuilder, LiteralFormatter, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, literal_to_external, token_stream::TokenStreamBuilder,
+    LiteralFormatter, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
     pub use ::tt::*;
@@ -71,7 +71,8 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let literal = str_to_lit_node(s).ok_or(())?;
+        let literal = ast::Literal::parse(s);
+        let literal = literal.tree();
 
         let kind = literal_to_external(literal.kind()).ok_or(())?;
 
@@ -80,12 +81,22 @@ impl server::FreeFunctions for RaSpanServer {
             ast::LiteralKind::FloatNumber(num) => num.suffix().map(ToString::to_string),
             ast::LiteralKind::IntNumber(num) => num.suffix().map(ToString::to_string),
             _ => None,
-        }
-        .map(|suffix| Symbol::intern(self.interner, &suffix));
+        };
+
+        let text = match literal.kind() {
+            ast::LiteralKind::String(data) => data.text_without_quotes().to_string(),
+            ast::LiteralKind::ByteString(data) => data.text_without_quotes().to_string(),
+            ast::LiteralKind::CString(data) => data.text_without_quotes().to_string(),
+            _ => s.to_string(),
+        };
+        let text = if let Some(ref suffix) = suffix { text.strip_suffix(suffix) } else { None }
+            .unwrap_or(&text);
+
+        let suffix = suffix.map(|suffix| Symbol::intern(self.interner, &suffix));
 
         Ok(bridge::Literal {
             kind,
-            symbol: Symbol::intern(self.interner, s),
+            symbol: Symbol::intern(self.interner, text),
             suffix,
             span: self.call_site,
         })
