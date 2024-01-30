@@ -163,7 +163,6 @@ use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
 use crate::index;
-use crate::usefulness::PlaceCtxt;
 use crate::TypeCx;
 
 /// Whether we have seen a constructor in the column or not.
@@ -818,8 +817,8 @@ impl<Cx: TypeCx> Constructor<Cx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, Cx>) -> usize {
-        pcx.ctor_arity(self)
+    pub(crate) fn arity(&self, cx: &Cx, ty: &Cx::Ty) -> usize {
+        cx.ctor_arity(self, ty)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
@@ -827,12 +826,11 @@ impl<Cx: TypeCx> Constructor<Cx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(crate) fn is_covered_by(&self, pcx: &PlaceCtxt<'_, Cx>, other: &Self) -> bool {
+    pub(crate) fn is_covered_by(&self, cx: &Cx, other: &Self) -> bool {
         match (self, other) {
-            (Wildcard, _) => pcx
-                .mcx
-                .tycx
-                .bug(format_args!("Constructor splitting should not have returned `Wildcard`")),
+            (Wildcard, _) => {
+                cx.bug(format_args!("Constructor splitting should not have returned `Wildcard`"))
+            }
             // Wildcards cover anything
             (_, Wildcard) => true,
             // Only a wildcard pattern can match these special constructors.
@@ -873,7 +871,7 @@ impl<Cx: TypeCx> Constructor<Cx> {
             (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
-            _ => pcx.mcx.tycx.bug(format_args!(
+            _ => cx.bug(format_args!(
                 "trying to compare incompatible constructors {self:?} and {other:?}"
             )),
         }
@@ -950,10 +948,10 @@ pub enum ConstructorSet<Cx: TypeCx> {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub(crate) struct SplitConstructorSet<Cx: TypeCx> {
-    pub(crate) present: SmallVec<[Constructor<Cx>; 1]>,
-    pub(crate) missing: Vec<Constructor<Cx>>,
-    pub(crate) missing_empty: Vec<Constructor<Cx>>,
+pub struct SplitConstructorSet<Cx: TypeCx> {
+    pub present: SmallVec<[Constructor<Cx>; 1]>,
+    pub missing: Vec<Constructor<Cx>>,
+    pub missing_empty: Vec<Constructor<Cx>>,
 }
 
 impl<Cx: TypeCx> ConstructorSet<Cx> {
@@ -962,7 +960,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
     #[instrument(level = "debug", skip(self, ctors), ret)]
-    pub(crate) fn split<'a>(
+    pub fn split<'a>(
         &self,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
     ) -> SplitConstructorSet<Cx>
