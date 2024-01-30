@@ -8,9 +8,12 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+// FIXME: GitHub's UI truncates file lists that exceed 1000 entries, so these
+// should all be 1000 or lower. Limits significantly smaller than 1000 are also
+// desirable, because large numbers of files are unwieldy in general. See issue
+// #73494.
 const ENTRY_LIMIT: usize = 900;
-// FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1849;
+const ISSUES_ENTRY_LIMIT: usize = 1807;
 const ROOT_ENTRY_LIMIT: usize = 870;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
