@@ -219,7 +219,8 @@ impl ast::TokenTree {
             }
         }
 
-        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input);
+        let parser_output = parser::TopEntryPoint::MacroEagerInput
+            .parse(&parser_input, parser::Edition::Edition2021);
 
         let mut tokens =
             self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);

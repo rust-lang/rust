@@ -143,7 +143,7 @@ impl<'a, S: Copy + fmt::Debug> TtIter<'a, S> {
     ) -> ExpandResult<Option<tt::TokenTree<S>>> {
         let buffer = tt::buffer::TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_input = to_parser_input(&buffer);
-        let tree_traversal = entry_point.parse(&parser_input);
+        let tree_traversal = entry_point.parse(&parser_input, parser::Edition::Edition2021);
         let mut cursor = buffer.begin();
         let mut error = false;
         for step in tree_traversal.iter() {

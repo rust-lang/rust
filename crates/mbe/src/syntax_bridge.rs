@@ -131,7 +131,7 @@ where
         _ => TokenBuffer::from_subtree(tt),
     };
     let parser_input = to_parser_input(&buffer);
-    let parser_output = entry_point.parse(&parser_input);
+    let parser_output = entry_point.parse(&parser_input, parser::Edition::Edition2021);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     for event in parser_output.iter() {
         match event {

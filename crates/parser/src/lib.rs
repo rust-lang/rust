@@ -87,7 +87,7 @@ pub enum TopEntryPoint {
 }
 
 impl TopEntryPoint {
-    pub fn parse(&self, input: &Input) -> Output {
+    pub fn parse(&self, input: &Input, edition: Edition) -> Output {
         let _p = tracing::span!(tracing::Level::INFO, "TopEntryPoint::parse", ?self).entered();
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             TopEntryPoint::SourceFile => grammar::entry::top::source_file,
@@ -99,7 +99,7 @@ impl TopEntryPoint {
             TopEntryPoint::MetaItem => grammar::entry::top::meta_item,
             TopEntryPoint::MacroEagerInput => grammar::entry::top::eager_macro_input,
         };
-        let mut p = parser::Parser::new(input, Edition::Edition2021);
+        let mut p = parser::Parser::new(input, edition);
         entry_point(&mut p);
         let events = p.finish();
         let res = event::process(events);
@@ -151,7 +151,7 @@ pub enum PrefixEntryPoint {
 }
 
 impl PrefixEntryPoint {
-    pub fn parse(&self, input: &Input) -> Output {
+    pub fn parse(&self, input: &Input, edition: Edition) -> Output {
         let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
@@ -164,7 +164,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Item => grammar::entry::prefix::item,
             PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
-        let mut p = parser::Parser::new(input, Edition::Edition2021);
+        let mut p = parser::Parser::new(input, edition);
         entry_point(&mut p);
         let events = p.finish();
         event::process(events)
@@ -188,9 +188,9 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, tokens: &Input) -> Output {
+    pub fn parse(self, tokens: &Input, edition: Edition) -> Output {
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(tokens, Edition::Edition2021);
+        let mut p = parser::Parser::new(tokens, edition);
         r(&mut p);
         let events = p.finish();
         event::process(events)
