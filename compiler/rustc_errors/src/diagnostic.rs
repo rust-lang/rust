@@ -109,8 +109,6 @@ pub struct Diagnostic {
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
     pub sort_span: Span,
 
-    /// If diagnostic is from Lint, custom hash function ignores children.
-    /// Otherwise hash is based on the all the fields.
     pub is_lint: Option<IsLint>,
 
     /// With `-Ztrack_diagnostics` enabled,
@@ -980,22 +978,24 @@ impl Diagnostic {
     ) -> (
         &Level,
         &[(DiagnosticMessage, Style)],
-        Vec<(&Cow<'static, str>, &DiagnosticArgValue)>,
         &Option<ErrCode>,
-        &Option<IsLint>,
         &MultiSpan,
+        &[SubDiagnostic],
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-        Option<&[SubDiagnostic]>,
+        Vec<(&DiagnosticArgName, &DiagnosticArgValue)>,
+        &Option<IsLint>,
     ) {
         (
             &self.level,
             &self.messages,
-            self.args().collect(),
             &self.code,
-            &self.is_lint,
             &self.span,
+            &self.children,
             &self.suggestions,
-            (if self.is_lint.is_some() { None } else { Some(&self.children) }),
+            self.args().collect(),
+            // omit self.sort_span
+            &self.is_lint,
+            // omit self.emitted_at
         )
     }
 }
