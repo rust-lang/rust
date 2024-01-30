@@ -1331,6 +1331,7 @@ dependencies = [
  "proc-macro-test",
  "span",
  "stdx",
+ "syntax",
  "tt",
 ]
 
