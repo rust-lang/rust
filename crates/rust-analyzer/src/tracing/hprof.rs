@@ -32,7 +32,8 @@
 //! ```
 
 use std::{
-    fmt, mem,
+    fmt::Write,
+    mem,
     time::{Duration, Instant},
 };
 
@@ -99,21 +100,37 @@ impl SpanTree {
 struct Data {
     start: Instant,
     children: Vec<Node>,
+    fields: String,
 }
 
 impl Data {
     fn new(attrs: &Attributes<'_>) -> Self {
-        let mut span = Self { start: Instant::now(), children: Vec::new() };
-        attrs.record(&mut span);
-        span
+        let mut data = Self { start: Instant::now(), children: Vec::new(), fields: String::new() };
+
+        let mut visitor = DataVisitor { string: &mut data.fields };
+        attrs.record(&mut visitor);
+        data
     }
+
     fn into_node(self, name: &'static str) -> Node {
-        Node { name, count: 1, duration: self.start.elapsed(), children: self.children }
+        Node {
+            name,
+            fields: self.fields,
+            count: 1,
+            duration: self.start.elapsed(),
+            children: self.children,
+        }
     }
 }
 
-impl Visit for Data {
-    fn record_debug(&mut self, _field: &Field, _value: &dyn fmt::Debug) {}
+pub struct DataVisitor<'a> {
+    string: &'a mut String,
+}
+
+impl<'a> Visit for DataVisitor<'a> {
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        write!(self.string, "{} = {:?} ", field.name(), value).unwrap();
+    }
 }
 
 impl<S> Layer<S> for SpanTree
@@ -151,6 +168,7 @@ where
 #[derive(Default)]
 struct Node {
     name: &'static str,
+    fields: String,
     count: u32,
     duration: Duration,
     children: Vec<Node>,
@@ -163,16 +181,22 @@ impl Node {
 
     fn go(&self, level: usize, filter: &WriteFilter) {
         if self.duration > filter.longer_than && level < filter.depth {
-            let duration = format!("{:3.2?}", self.duration);
-            let count = if self.count > 1 { self.count.to_string() } else { String::new() };
-            eprintln!(
-                "{:width$}  {:<9} {:<6} {}",
-                "",
-                duration,
-                count,
-                self.name,
-                width = level * 2
-            );
+            let duration = ms(self.duration);
+            let current_indent = level * 2;
+
+            let mut out = String::new();
+            let _ = write!(out, "{:current_indent$}   {duration} {:<6}", "", self.name);
+
+            if !self.fields.is_empty() {
+                let _ = write!(out, " @ {}", self.fields);
+            }
+
+            if self.count > 1 {
+                let _ = write!(out, " ({} calls)", self.count);
+            }
+
+            eprintln!("{}", out);
+
             for child in &self.children {
                 child.go(level + 1, filter)
             }
@@ -234,5 +258,15 @@ impl WriteFilter {
             Some(FxHashSet::from_iter(spec.split('|').map(String::from)))
         };
         (WriteFilter { depth, longer_than }, allowed)
+    }
+}
+
+#[allow(non_camel_case_types)]
+struct ms(Duration);
+
+impl std::fmt::Display for ms {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let n = self.0.as_millis();
+        write!(f, "{n:5}ms")
     }
 }
