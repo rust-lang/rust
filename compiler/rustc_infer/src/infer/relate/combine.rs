@@ -27,10 +27,10 @@ use super::generalize::{self, CombineDelegate, Generalization};
 use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
+use crate::infer::unification_table::VariableValue;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
@@ -191,7 +191,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),
                 ty::ConstKind::Infer(InferConst::Var(b_vid)),
             ) => {
-                self.inner.borrow_mut().const_unification_table().union(a_vid, b_vid);
+                self.inner.borrow_mut().const_unification_table().unify(a_vid, b_vid);
                 Ok(a)
             }
 
@@ -298,10 +298,10 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
-            ConstVariableValue::Known { value } => {
+            VariableValue::Known(value) => {
                 bug!("instantiating a known const var: {target_vid:?} {value} {ct}")
             }
-            ConstVariableValue::Unknown { origin, universe: _ } => origin.span,
+            VariableValue::Unknown((origin, _universe)) => origin.span,
         };
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
@@ -313,10 +313,7 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::Variance::Invariant,
         )?;
 
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .union_value(target_vid, ConstVariableValue::Known { value });
+        self.inner.borrow_mut().const_unification_table().instantiate(target_vid, value);
         Ok(value)
     }
 }

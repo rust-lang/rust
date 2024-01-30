@@ -8,22 +8,25 @@ use crate::infer::InferCtxtUndoLogs;
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
-use std::cmp;
-use std::marker::PhantomData;
 use std::ops::Range;
 
 use rustc_data_structures::undo_log::Rollback;
 
+use super::unification_table::UndoLogDelegate;
+use super::unification_table::UnificationStorage;
+use super::unification_table::UnificationTable;
+use super::unification_table::VariableValue;
+
 /// Represents a single undo-able action that affects a type inference variable.
 #[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
-    EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
+    EqRelation(UndoLogDelegate<'tcx, ty::TyVid>),
     SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
-impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
+impl<'tcx> From<UndoLogDelegate<'tcx, ty::TyVid>> for UndoLog<'tcx> {
+    fn from(l: UndoLogDelegate<'tcx, ty::TyVid>) -> Self {
         UndoLog::EqRelation(l)
     }
 }
@@ -51,7 +54,7 @@ pub struct TypeVariableStorage<'tcx> {
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
-    eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
+    eq_relations: UnificationStorage<'tcx, ty::TyVid>,
 
     /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -129,35 +132,11 @@ pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum TypeVariableValue<'tcx> {
-    Known { value: Ty<'tcx> },
-    Unknown { universe: ty::UniverseIndex },
-}
-
-impl<'tcx> TypeVariableValue<'tcx> {
-    /// If this value is known, returns the type it is known to be.
-    /// Otherwise, `None`.
-    pub fn known(&self) -> Option<Ty<'tcx>> {
-        match *self {
-            TypeVariableValue::Unknown { .. } => None,
-            TypeVariableValue::Known { value } => Some(value),
-        }
-    }
-
-    pub fn is_unknown(&self) -> bool {
-        match *self {
-            TypeVariableValue::Unknown { .. } => true,
-            TypeVariableValue::Known { .. } => false,
-        }
-    }
-}
-
 impl<'tcx> TypeVariableStorage<'tcx> {
     pub fn new() -> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
             values: Default::default(),
-            eq_relations: ut::UnificationTableStorage::new(),
+            eq_relations: UnificationStorage::new(),
             sub_relations: ut::UnificationTableStorage::new(),
         }
     }
@@ -171,7 +150,7 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     }
 
     #[inline]
-    pub(crate) fn eq_relations_ref(&self) -> &ut::UnificationTableStorage<TyVidEqKey<'tcx>> {
+    pub(crate) fn eq_relations_ref(&self) -> &UnificationStorage<'tcx, ty::TyVid> {
         &self.eq_relations
     }
 
@@ -196,7 +175,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
-        self.eq_relations().union(a, b);
+        self.eq_relations().unify(a, b);
         self.sub_relations().union(a, b);
     }
 
@@ -221,7 +200,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             "instantiating type variable `{vid:?}` twice: new-value = {ty:?}, old-value={:?}",
             self.eq_relations().probe_value(vid)
         );
-        self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
+        self.eq_relations().instantiate(vid, ty);
     }
 
     /// Creates a new type variable.
@@ -239,15 +218,15 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         universe: ty::UniverseIndex,
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
-        let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
+        let eq_key = self.eq_relations().new_key(universe);
 
         let sub_key = self.sub_relations().new_key(());
-        debug_assert_eq!(eq_key.vid, sub_key);
+        debug_assert_eq!(eq_key, sub_key);
 
         let index = self.storage.values.push(TypeVariableData { origin });
-        debug_assert_eq!(eq_key.vid, index);
+        debug_assert_eq!(eq_key, index);
 
-        debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key.vid, universe, origin);
+        debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key, universe, origin);
 
         index
     }
@@ -263,7 +242,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
     /// b` (transitively).
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
-        self.eq_relations().find(vid).vid
+        self.eq_relations().current_root(vid)
     }
 
     /// Returns the "root" variable of `vid` in the `sub_relations`
@@ -286,23 +265,23 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
 
     /// Retrieves the type to which `vid` has been instantiated, if
     /// any.
-    pub fn probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
-        self.inlined_probe(vid)
+    pub fn probe(&mut self, vid: ty::TyVid) -> VariableValue<'tcx, ty::TyVid> {
+        self.eq_relations().probe_value(vid)
     }
 
     /// An always-inlined variant of `probe`, for very hot call sites.
     #[inline(always)]
-    pub fn inlined_probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
+    pub fn inlined_probe(&mut self, vid: ty::TyVid) -> VariableValue<'tcx, ty::TyVid> {
         self.eq_relations().inlined_probe_value(vid)
     }
 
     #[inline]
-    fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
+    fn eq_relations(&mut self) -> UnificationTable<'_, 'tcx, ty::TyVid> {
         self.storage.eq_relations.with_log(self.undo_log)
     }
 
     #[inline]
-    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
+    fn sub_relations(&mut self) -> super::RawUnificationTable<'_, 'tcx, ty::TyVid> {
         self.storage.sub_relations.with_log(self.undo_log)
     }
 
@@ -325,78 +304,10 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             .filter_map(|i| {
                 let vid = ty::TyVid::from_usize(i);
                 match self.probe(vid) {
-                    TypeVariableValue::Unknown { .. } => Some(vid),
-                    TypeVariableValue::Known { .. } => None,
+                    VariableValue::Unknown { .. } => Some(vid),
+                    VariableValue::Known { .. } => None,
                 }
             })
             .collect()
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-
-/// These structs (a newtyped TyVid) are used as the unification key
-/// for the `eq_relations`; they carry a `TypeVariableValue` along
-/// with them.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct TyVidEqKey<'tcx> {
-    vid: ty::TyVid,
-
-    // in the table, we map each ty-vid to one of these:
-    phantom: PhantomData<TypeVariableValue<'tcx>>,
-}
-
-impl<'tcx> From<ty::TyVid> for TyVidEqKey<'tcx> {
-    #[inline] // make this function eligible for inlining - it is quite hot.
-    fn from(vid: ty::TyVid) -> Self {
-        TyVidEqKey { vid, phantom: PhantomData }
-    }
-}
-
-impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
-    type Value = TypeVariableValue<'tcx>;
-    #[inline(always)]
-    fn index(&self) -> u32 {
-        self.vid.as_u32()
-    }
-    #[inline]
-    fn from_index(i: u32) -> Self {
-        TyVidEqKey::from(ty::TyVid::from_u32(i))
-    }
-    fn tag() -> &'static str {
-        "TyVidEqKey"
-    }
-}
-
-impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
-    type Error = ut::NoError;
-
-    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, ut::NoError> {
-        match (value1, value2) {
-            // We never equate two type variables, both of which
-            // have known types. Instead, we recursively equate
-            // those types.
-            (&TypeVariableValue::Known { .. }, &TypeVariableValue::Known { .. }) => {
-                bug!("equating two type variables, both of which have known types")
-            }
-
-            // If one side is known, prefer that one.
-            (&TypeVariableValue::Known { .. }, &TypeVariableValue::Unknown { .. }) => Ok(*value1),
-            (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => Ok(*value2),
-
-            // If both sides are *unknown*, it hardly matters, does it?
-            (
-                &TypeVariableValue::Unknown { universe: universe1 },
-                &TypeVariableValue::Unknown { universe: universe2 },
-            ) => {
-                // If we unify two unbound variables, ?T and ?U, then whatever
-                // value they wind up taking (which must be the same value) must
-                // be nameable by both universes. Therefore, the resulting
-                // universe is the minimum of the two universes, because that is
-                // the one which contains the fewest names in scope.
-                let universe = cmp::min(universe1, universe2);
-                Ok(TypeVariableValue::Unknown { universe })
-            }
-        }
     }
 }

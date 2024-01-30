@@ -152,7 +152,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
                 let opt_ct =
-                    self.infcx.inner.borrow_mut().effect_unification_table().probe_value(v);
+                    self.infcx.inner.borrow_mut().effect_unification_table().probe_value(v).known();
                 self.freshen_const(
                     opt_ct,
                     ty::InferConst::EffectVar(v),
@@ -202,6 +202,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .borrow_mut()
                         .int_unification_table()
                         .probe_value(v)
+                        .known()
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::IntVar(v),
                     |n| Ty::new_fresh_int(self.infcx.tcx, n),
@@ -215,6 +216,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .borrow_mut()
                         .float_unification_table()
                         .probe_value(v)
+                        .known()
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::FloatVar(v),
                     |n| Ty::new_fresh_float(self.infcx.tcx, n),

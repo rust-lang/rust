@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
-use rustc_middle::infer::unify_key::{ConstVidKey, RegionVidKey};
+use rustc_middle::infer::unify_key::RegionVidKey;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
 
 use crate::infer::unification_table::UndoLogDelegate;
@@ -20,7 +20,7 @@ pub struct Snapshot<'tcx> {
 pub(crate) enum UndoLog<'tcx> {
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
     TypeVariables(type_variable::UndoLog<'tcx>),
-    ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
+    ConstUnificationTable(UndoLogDelegate<'tcx, ty::ConstVid>),
     IntUnificationTable(UndoLogDelegate<'tcx, ty::IntVid>),
     FloatUnificationTable(UndoLogDelegate<'tcx, ty::FloatVid>),
     EffectUnificationTable(UndoLogDelegate<'tcx, ty::EffectVid>),
@@ -47,14 +47,14 @@ impl_from! {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     TypeVariables(type_variable::UndoLog<'tcx>),
 
-    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
+    TypeVariables(UndoLogDelegate<'tcx, ty::TyVid>),
     TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
 
     IntUnificationTable(UndoLogDelegate<'tcx, ty::IntVid>),
     FloatUnificationTable(UndoLogDelegate<'tcx, ty::FloatVid>),
     EffectUnificationTable(UndoLogDelegate<'tcx, ty::EffectVid>),
 
-    ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
+    ConstUnificationTable(UndoLogDelegate<'tcx, ty::ConstVid>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),

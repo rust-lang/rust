@@ -688,7 +688,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[inline]
-    fn unification_table_mut(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
+    fn unification_table_mut(
+        &mut self,
+    ) -> super::RawUnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
         ut::UnificationTable::with_log(&mut self.storage.unification_table, self.undo_log)
     }
 }

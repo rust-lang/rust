@@ -1,43 +1,29 @@
-use rustc_middle::infer::unify_key::{ConstVariableOriginKind, ConstVariableValue, ConstVidKey};
+use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
+use super::unification_table::{UnificationTable, VariableValue};
 use super::InferCtxt;
-use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
-
-use rustc_data_structures::snapshot_vec as sv;
-use rustc_data_structures::unify as ut;
-use ut::UnifyKey;
+use super::{ConstVariableOrigin, RegionVariableOrigin};
 
 use std::ops::Range;
 
-fn vars_since_snapshot<'tcx, T>(
-    table: &mut UnificationTable<'_, 'tcx, T>,
-    snapshot_var_len: usize,
-) -> Range<T>
-where
-    T: UnifyKey,
-    super::UndoLog<'tcx>: From<sv::UndoLog<ut::Delegate<T>>>,
-{
-    T::from_index(snapshot_var_len as u32)..T::from_index(table.len() as u32)
-}
-
 fn const_vars_since_snapshot<'tcx>(
-    table: &mut UnificationTable<'_, 'tcx, ConstVidKey<'tcx>>,
+    table: &mut UnificationTable<'_, 'tcx, ConstVid>,
     snapshot_var_len: usize,
 ) -> (Range<ConstVid>, Vec<ConstVariableOrigin>) {
-    let range = vars_since_snapshot(table, snapshot_var_len);
+    let range = table.vars_since_snapshot(snapshot_var_len);
 
     (
-        range.start.vid..range.end.vid,
-        (range.start.index()..range.end.index())
-            .map(|index| match table.probe_value(ConstVid::from_u32(index)) {
-                ConstVariableValue::Known { value: _ } => ConstVariableOrigin {
+        range.start..range.end,
+        (range.start..range.end)
+            .map(|index| match table.probe_value(index) {
+                VariableValue::Known(_) => ConstVariableOrigin {
                     kind: ConstVariableOriginKind::MiscVariable,
                     span: rustc_span::DUMMY_SP,
                 },
-                ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                VariableValue::Unknown((origin, _universe)) => origin,
             })
             .collect(),
     )

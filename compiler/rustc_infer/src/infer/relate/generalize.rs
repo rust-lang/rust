@@ -3,7 +3,6 @@ use std::mem;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
@@ -11,7 +10,8 @@ use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVi
 use rustc_span::Span;
 
 use crate::infer::nll_relate::TypeRelatingDelegate;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::unification_table::VariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin};
 
 /// Attempts to generalize `term` for the type variable `for_vid`.
@@ -31,7 +31,7 @@ pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Rela
         ),
         ty::TermVid::Const(ct_vid) => (
             infcx.probe_const_var(ct_vid).unwrap_err(),
-            ty::TermVid::Const(infcx.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
+            ty::TermVid::Const(infcx.root_const_var(ct_vid)),
         ),
     };
 
@@ -258,11 +258,11 @@ where
                 } else {
                     let probe = inner.type_variables().probe(vid);
                     match probe {
-                        TypeVariableValue::Known { value: u } => {
+                        VariableValue::Known(u) => {
                             drop(inner);
                             self.relate(u, u)
                         }
-                        TypeVariableValue::Unknown { universe } => {
+                        VariableValue::Unknown(universe) => {
                             match self.ambient_variance {
                                 // Invariant: no need to make a fresh type variable
                                 // if we can name the universe.
@@ -423,7 +423,7 @@ where
                 // `vid` are related and we'd be inferring an infinitely
                 // deep const.
                 if ty::TermVid::Const(
-                    self.infcx.inner.borrow_mut().const_unification_table().find(vid).vid,
+                    self.infcx.inner.borrow_mut().const_unification_table().current_root(vid),
                 ) == self.root_vid
                 {
                     return Err(self.cyclic_term_error());
@@ -432,20 +432,15 @@ where
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 match variable_table.probe_value(vid) {
-                    ConstVariableValue::Known { value: u } => {
+                    VariableValue::Known(u) => {
                         drop(inner);
                         self.relate(u, u)
                     }
-                    ConstVariableValue::Unknown { origin, universe } => {
+                    VariableValue::Unknown((origin, universe)) => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table
-                                .new_key(ConstVariableValue::Unknown {
-                                    origin,
-                                    universe: self.for_universe,
-                                })
-                                .vid;
+                            let new_var_id = variable_table.new_key((origin, self.for_universe));
                             Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
                         }
                     }

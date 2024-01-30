@@ -4,6 +4,7 @@ use crate::errors::{
 };
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::unification_table::VariableValue;
 use crate::infer::InferCtxt;
 use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode, IntoDiagnosticArg};
 use rustc_hir as hir;
@@ -13,9 +14,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{
-    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
-};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, InferConst};
@@ -186,11 +185,11 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         .const_unification_table()
         .probe_value(ct_vid)
     {
-        ConstVariableValue::Known { value: _ } => {
+        VariableValue::Known(_) => {
             warn!("resolved const var in error message");
             None
         }
-        ConstVariableValue::Unknown { origin, universe: _ } => {
+        VariableValue::Unknown((origin, _universe)) => {
             if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
                 return Some(name);
             } else {
@@ -312,10 +311,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
                         match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
-                            ConstVariableValue::Known { value } => {
+                            VariableValue::Known(value) => {
                                 bug!("resolved infer var: {vid:?} {value}")
                             }
-                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                            VariableValue::Unknown((origin, _universe)) => origin,
                         };
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
@@ -862,7 +861,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         .inner
                         .borrow_mut()
                         .const_unification_table()
-                        .unioned(a_vid, b_vid),
+                        .unified(a_vid, b_vid),
                     _ => false,
                 }
             }
