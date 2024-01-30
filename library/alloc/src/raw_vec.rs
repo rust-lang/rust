@@ -20,6 +20,7 @@ mod tests;
 enum AllocInit {
     /// The contents of the new memory are uninitialized.
     Uninitialized,
+    #[cfg(not(no_global_oom_handling))]
     /// The new memory is guaranteed to be zeroed.
     Zeroed,
 }
@@ -146,6 +147,13 @@ impl<T, A: Allocator> RawVec<T, A> {
         handle_reserve(Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc))
     }
 
+    /// Like `try_with_capacity`, but parameterized over the choice of
+    /// allocator for the returned `RawVec`.
+    #[inline]
+    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc)
+    }
+
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
@@ -203,6 +211,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
             let result = match init {
                 AllocInit::Uninitialized => alloc.allocate(layout),
+                #[cfg(not(no_global_oom_handling))]
                 AllocInit::Zeroed => alloc.allocate_zeroed(layout),
             };
             let ptr = match result {
