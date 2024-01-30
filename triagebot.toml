@@ -724,6 +724,7 @@ arena = [
 mir = [
     "@davidtwco",
     "@oli-obk",
+    "@matthewjasper"
 ]
 mir-opt = [
     "@oli-obk",
@@ -740,6 +741,7 @@ types = [
 borrowck = [
     "@davidtwco",
     "@pnkfelix",
+    "@matthewjasper"
 ]
 ast_lowering = [
     "@compiler-errors",
@@ -783,6 +785,7 @@ project-stable-mir = [
 "/compiler/rustc_data_structures/src/stable_hasher.rs" = ["compiler", "incremental"]
 "/compiler/rustc_hir_analysis" =                         ["compiler", "types"]
 "/compiler/rustc_incremental" =                          ["compiler", "incremental"]
+"/compiler/rustc_borrowck" =                             ["compiler", "borrowck"]
 "/compiler/rustc_lexer" =                                ["compiler", "lexer"]
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
@@ -792,6 +795,7 @@ project-stable-mir = [
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =                  ["compiler", "mir"]
+"/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =                      ["compiler", "lexer"]
