@@ -788,6 +788,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
+    rustc_attr!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

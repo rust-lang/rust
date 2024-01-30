@@ -1549,9 +1549,10 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
 }
 
-/// Determines whether an item is an intrinsic by Abi.
+/// Determines whether an item is an intrinsic by Abi. or by whether it has a `rustc_intrinsic` attribute
 pub fn intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Symbol> {
     if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+        || tcx.has_attr(def_id, sym::rustc_intrinsic)
     {
         Some(tcx.item_name(def_id.into()))
     } else {

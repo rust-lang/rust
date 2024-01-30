@@ -643,7 +643,7 @@ impl Item {
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
-                        intrinsic_operation_unsafety(tcx, self.def_id().unwrap())
+                        intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
                         hir::Unsafety::Unsafe
                     },
