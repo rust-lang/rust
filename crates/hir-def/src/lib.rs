@@ -745,7 +745,7 @@ impl InTypeConstId {
     }
 }
 
-/// A constant, which might appears as a const item, an annonymous const block in expressions
+/// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {

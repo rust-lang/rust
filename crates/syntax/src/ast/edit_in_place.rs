@@ -960,10 +960,10 @@ impl ast::IdentPat {
 }
 
 pub trait HasVisibilityEdit: ast::HasVisibility {
-    fn set_visibility(&self, visbility: ast::Visibility) {
+    fn set_visibility(&self, visibility: ast::Visibility) {
         match self.visibility() {
             Some(current_visibility) => {
-                ted::replace(current_visibility.syntax(), visbility.syntax())
+                ted::replace(current_visibility.syntax(), visibility.syntax())
             }
             None => {
                 let vis_before = self
@@ -972,7 +972,7 @@ pub trait HasVisibilityEdit: ast::HasVisibility {
                     .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
                     .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
 
-                ted::insert(ted::Position::before(vis_before), visbility.syntax());
+                ted::insert(ted::Position::before(vis_before), visibility.syntax());
             }
         }
     }

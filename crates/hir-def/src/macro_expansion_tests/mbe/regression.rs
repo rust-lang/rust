@@ -72,7 +72,7 @@ fn main() {
 }
 "#]],
     );
-    // FIXME we should ahev testing infra for multi level expansion tests
+    // FIXME we should have testing infra for multi level expansion tests
     check(
         r#"
 macro_rules! __rust_force_expr {
