@@ -11,7 +11,7 @@ note: required by an implicit `Sized` bound in `Trait`
   --> $DIR/unsized-bound.rs:1:13
    |
 LL | trait Trait<A> {}
-   |             ^ required by the implicit `Sized` requirement on this bound in `Trait`
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Trait`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
@@ -50,7 +50,7 @@ note: required by an implicit `Sized` bound in `Trait`
   --> $DIR/unsized-bound.rs:1:13
    |
 LL | trait Trait<A> {}
-   |             ^ required by the implicit `Sized` requirement on this bound in `Trait`
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Trait`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
@@ -100,7 +100,7 @@ note: required by an implicit `Sized` bound in `Trait2`
   --> $DIR/unsized-bound.rs:9:14
    |
 LL | trait Trait2<A> {}
-   |              ^ required by the implicit `Sized` requirement on this bound in `Trait2`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait2`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
@@ -138,7 +138,7 @@ note: required by an implicit `Sized` bound in `Trait3`
   --> $DIR/unsized-bound.rs:13:14
    |
 LL | trait Trait3<A> {}
-   |              ^ required by the implicit `Sized` requirement on this bound in `Trait3`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait3`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A> Trait3<A> for A where A: ?Sized {}
@@ -161,7 +161,7 @@ note: required by an implicit `Sized` bound in `Trait4`
   --> $DIR/unsized-bound.rs:16:14
    |
 LL | trait Trait4<A> {}
-   |              ^ required by the implicit `Sized` requirement on this bound in `Trait4`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait4`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A: ?Sized> Trait4<A> for A {}
@@ -184,7 +184,7 @@ note: required by an implicit `Sized` bound in `Trait5`
   --> $DIR/unsized-bound.rs:19:14
    |
 LL | trait Trait5<A, B> {}
-   |              ^ required by the implicit `Sized` requirement on this bound in `Trait5`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait5`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
@@ -207,7 +207,7 @@ note: required by an implicit `Sized` bound in `Trait6`
   --> $DIR/unsized-bound.rs:22:14
    |
 LL | trait Trait6<A, B> {}
-   |              ^ required by the implicit `Sized` requirement on this bound in `Trait6`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait6`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X: ?Sized, Y> Trait6<X, Y> for X {}
@@ -230,7 +230,7 @@ note: required by an implicit `Sized` bound in `Trait7`
   --> $DIR/unsized-bound.rs:25:17
    |
 LL | trait Trait7<A, B> {}
-   |                 ^ required by the implicit `Sized` requirement on this bound in `Trait7`
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `Trait7`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
@@ -253,7 +253,7 @@ note: required by an implicit `Sized` bound in `Trait8`
   --> $DIR/unsized-bound.rs:28:17
    |
 LL | trait Trait8<A, B> {}
-   |                 ^ required by the implicit `Sized` requirement on this bound in `Trait8`
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `Trait8`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y: ?Sized> Trait8<X, Y> for X {}

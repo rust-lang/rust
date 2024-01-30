@@ -9,7 +9,7 @@ note: required by an implicit `Sized` bound in `bot`
   --> $DIR/str-mut-idx.rs:1:8
    |
 LL | fn bot<T>() -> T { loop {} }
-   |        ^ required by the implicit `Sized` requirement on this bound in `bot`
+   |        ^ required by the implicit `Sized` requirement on this type parameter in `bot`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }

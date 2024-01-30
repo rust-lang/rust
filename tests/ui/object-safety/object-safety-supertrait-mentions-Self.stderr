@@ -26,7 +26,7 @@ note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/object-safety-supertrait-mentions-Self.rs:4:11
    |
 LL | trait Bar<T> {
-   |           ^ required by the implicit `Sized` requirement on this bound in `Bar`
+   |           ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: consider further restricting `Self`
    |
 LL | trait Baz : Bar<Self> + Sized {

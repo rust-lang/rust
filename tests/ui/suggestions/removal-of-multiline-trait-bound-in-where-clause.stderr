@@ -10,7 +10,7 @@ note: required by an implicit `Sized` bound in `Wrapper`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
 LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this bound in `Wrapper`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
@@ -39,7 +39,7 @@ note: required by an implicit `Sized` bound in `Wrapper`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
 LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this bound in `Wrapper`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
@@ -64,7 +64,7 @@ note: required by an implicit `Sized` bound in `Wrapper`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
 LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this bound in `Wrapper`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |

@@ -27,7 +27,7 @@ note: required by an implicit `Sized` bound in `ref_arg`
   --> $DIR/issue-87199.rs:10:12
    |
 LL | fn ref_arg<T: ?Send>(_: &T) {}
-   |            ^ required by the implicit `Sized` requirement on this bound in `ref_arg`
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `ref_arg`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn ref_arg<T: ?Send + ?Sized>(_: &T) {}

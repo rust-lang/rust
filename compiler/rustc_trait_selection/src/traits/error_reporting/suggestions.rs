@@ -3012,7 +3012,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 }
                 let mut a = "a";
-                let mut this = "this";
+                let mut this = "this bound";
                 let mut note = None;
                 let mut help = None;
                 if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
@@ -3038,7 +3038,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .any(|param| tcx.def_span(param.def_id) == span)
                         {
                             a = "an implicit `Sized`";
-                            this = "the implicit `Sized` requirement on this";
+                            this = "the implicit `Sized` requirement on this type parameter";
                         }
                         if let Some(hir::Node::TraitItem(hir::TraitItem {
                             ident,
@@ -3108,7 +3108,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 };
                 let descr = format!("required by {a} bound in `{item_name}`");
                 if span.is_visible(sm) {
-                    let msg = format!("required by {this} bound in `{short_item_name}`");
+                    let msg = format!("required by {this} in `{short_item_name}`");
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, descr);
                 } else {

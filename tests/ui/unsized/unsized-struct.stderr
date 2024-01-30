@@ -10,7 +10,7 @@ note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/unsized-struct.rs:4:12
    |
 LL | struct Foo<T> { data: T }
-   |            ^ required by the implicit `Sized` requirement on this bound in `Foo`
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsized-struct.rs:4:12
    |
