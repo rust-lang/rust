@@ -164,7 +164,7 @@ pub enum RegionKind<I: Interner> {
     /// Should not exist outside of type inference.
     ///
     /// Used when instantiating a `forall` binder via
-    /// `infcx.instantiate_binder_with_placeholders`.
+    /// `infcx.enter_forall` and `infcx.instantiate_binder_with_placeholders`.
     RePlaceholder(I::PlaceholderRegion),
 
     /// Erased region, used by trait selection, in MIR and during codegen.

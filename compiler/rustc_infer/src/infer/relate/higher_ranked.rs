@@ -38,24 +38,24 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         // First, we instantiate each bound region in the supertype with a
         // fresh placeholder region. Note that this automatically creates
         // a new universe if needed.
-        let sup_prime = self.infcx.instantiate_binder_with_placeholders(sup);
+        self.infcx.enter_forall(sup, |sup_prime| {
+            // Next, we instantiate each bound region in the subtype
+            // with a fresh region variable. These region variables --
+            // but no other preexisting region variables -- can name
+            // the placeholders.
+            let sub_prime =
+                self.infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, sub);
+            debug!("a_prime={:?}", sub_prime);
+            debug!("b_prime={:?}", sup_prime);
 
-        // Next, we instantiate each bound region in the subtype
-        // with a fresh region variable. These region variables --
-        // but no other preexisting region variables -- can name
-        // the placeholders.
-        let sub_prime = self.infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, sub);
-
-        debug!("a_prime={:?}", sub_prime);
-        debug!("b_prime={:?}", sup_prime);
-
-        // Compare types now that bound regions have been replaced.
-        let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
-
-        debug!("OK result={result:?}");
-        // NOTE: returning the result here would be dangerous as it contains
-        // placeholders which **must not** be named afterwards.
-        Ok(())
+            // Compare types now that bound regions have been replaced.
+            // FIXME(tree_universes): leaked dead universes
+            let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime);
+            if result.is_ok() {
+                debug!("OK result={result:?}");
+            }
+            result.map(|_| ())
+        })
     }
 }
 
@@ -104,6 +104,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
         debug!(?next_universe);
         self.tcx.replace_bound_vars_uncached(binder, delegate)
+    }
+
+    pub fn enter_forall<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        let value = self.instantiate_binder_with_placeholders(forall);
+        f(value)
     }
 
     /// See [RegionConstraintCollector::leak_check][1]. We only check placeholder

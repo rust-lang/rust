@@ -309,6 +309,18 @@ where
         replaced
     }
 
+    fn enter_forall<T, U>(
+        &mut self,
+        binder: ty::Binder<'tcx, T>,
+        f: impl FnOnce(&mut Self, T) -> U,
+    ) -> U
+    where
+        T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        let value = self.instantiate_binder_with_placeholders(binder);
+        f(self, value)
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn instantiate_binder_with_existentials<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
     where
@@ -630,10 +642,10 @@ where
 
             // Note: the order here is important. Create the placeholders first, otherwise
             // we assign the wrong universe to the existential!
-            let b_replaced = self.instantiate_binder_with_placeholders(b);
-            let a_replaced = self.instantiate_binder_with_existentials(a);
-
-            self.relate(a_replaced, b_replaced)?;
+            self.enter_forall(b, |this, b| {
+                let a = this.instantiate_binder_with_existentials(a);
+                this.relate(a, b)
+            })?;
 
             self.ambient_variance = variance;
         }
@@ -650,10 +662,10 @@ where
             let variance =
                 std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
-            let a_replaced = self.instantiate_binder_with_placeholders(a);
-            let b_replaced = self.instantiate_binder_with_existentials(b);
-
-            self.relate(a_replaced, b_replaced)?;
+            self.enter_forall(a, |this, a| {
+                let b = this.instantiate_binder_with_existentials(b);
+                this.relate(a, b)
+            })?;
 
             self.ambient_variance = variance;
         }
