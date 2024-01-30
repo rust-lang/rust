@@ -279,7 +279,7 @@ pub(super) fn builtin(
 
                 is_feature_cfg |= best_match == sym::feature;
             } else {
-                if !names_possibilities.is_empty() {
+                if !names_possibilities.is_empty() && names_possibilities.len() <= 3 {
                     names_possibilities.sort();
                     for cfg_name in names_possibilities.iter() {
                         db.span_suggestion(
