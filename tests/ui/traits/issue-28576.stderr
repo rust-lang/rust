@@ -29,7 +29,7 @@ note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/issue-28576.rs:1:15
    |
 LL | pub trait Foo<RHS=Self> {
-   |               ^^^^^^^^ required by the implicit `Sized` requirement on this bound in `Foo`
+   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: consider further restricting `Self`
    |
 LL | pub trait Bar: Foo<Assoc=()> + Sized {
@@ -49,7 +49,7 @@ note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/issue-28576.rs:1:15
    |
 LL | pub trait Foo<RHS=Self> {
-   |               ^^^^^^^^ required by the implicit `Sized` requirement on this bound in `Foo`
+   |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: consider further restricting `Self`
    |
 LL |     ) where Self: Sized;

@@ -9,7 +9,7 @@ note: required by an implicit `Sized` bound in `Option`
   --> $DIR/issue-18919.rs:7:13
    |
 LL | enum Option<T> {
-   |             ^ required by the implicit `Sized` requirement on this bound in `Option`
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Option`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/issue-18919.rs:7:13
    |

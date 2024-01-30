@@ -62,7 +62,7 @@ note: required by an implicit `Sized` bound in `Serializable`
   --> $DIR/issue-10412.rs:1:27
    |
 LL | trait Serializable<'self, T> {
-   |                           ^ required by the implicit `Sized` requirement on this bound in `Serializable`
+   |                           ^ required by the implicit `Sized` requirement on this type parameter in `Serializable`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Serializable<'self, T: ?Sized> {

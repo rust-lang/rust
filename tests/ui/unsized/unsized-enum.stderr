@@ -10,7 +10,7 @@ note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/unsized-enum.rs:4:10
    |
 LL | enum Foo<U> { FooSome(U), FooNone }
-   |          ^ required by the implicit `Sized` requirement on this bound in `Foo`
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: you could relax the implicit `Sized` bound on `U` if it were used through indirection like `&U` or `Box<U>`
   --> $DIR/unsized-enum.rs:4:10
    |

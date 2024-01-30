@@ -33,7 +33,7 @@ note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/hir-wf-canonicalized.rs:9:16
    |
 LL | struct Bar<'a, T> {
-   |                ^ required by the implicit `Sized` requirement on this bound in `Bar`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Bar<'a, T: ?Sized> {

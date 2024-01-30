@@ -10,7 +10,7 @@ note: required by an implicit `Sized` bound in `f2`
   --> $DIR/unsized3.rs:10:7
    |
 LL | fn f2<X>(x: &X) {
-   |       ^ required by the implicit `Sized` requirement on this bound in `f2`
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f2`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f1<X: ?Sized>(x: &X) {
@@ -33,7 +33,7 @@ note: required by an implicit `Sized` bound in `f4`
   --> $DIR/unsized3.rs:21:7
    |
 LL | fn f4<X: T>(x: &X) {
-   |       ^ required by the implicit `Sized` requirement on this bound in `f4`
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f4`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f3<X: ?Sized + T>(x: &X) {
@@ -63,7 +63,7 @@ note: required by an implicit `Sized` bound in `f5`
   --> $DIR/unsized3.rs:24:7
    |
 LL | fn f5<Y>(x: &Y) {}
-   |       ^ required by the implicit `Sized` requirement on this bound in `f5`
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f5`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
@@ -135,7 +135,7 @@ note: required by an implicit `Sized` bound in `f5`
   --> $DIR/unsized3.rs:24:7
    |
 LL | fn f5<Y>(x: &Y) {}
-   |       ^ required by the implicit `Sized` requirement on this bound in `f5`
+   |       ^ required by the implicit `Sized` requirement on this type parameter in `f5`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {

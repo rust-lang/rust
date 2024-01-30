@@ -19,7 +19,7 @@ note: required by an implicit `Sized` bound in `Wf`
   --> $DIR/wf-bounds.rs:7:10
    |
 LL | trait Wf<T> {
-   |          ^ required by the implicit `Sized` requirement on this bound in `Wf`
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `Wf`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Wf<T: ?Sized> {

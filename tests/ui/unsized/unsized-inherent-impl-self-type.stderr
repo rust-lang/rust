@@ -10,7 +10,7 @@ note: required by an implicit `Sized` bound in `S5`
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11
    |
 LL | struct S5<Y>(Y);
-   |           ^ required by the implicit `Sized` requirement on this bound in `S5`
+   |           ^ required by the implicit `Sized` requirement on this type parameter in `S5`
 help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11
    |
