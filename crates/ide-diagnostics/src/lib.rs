@@ -43,6 +43,7 @@ mod handlers {
     pub(crate) mod no_such_field;
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
+    pub(crate) mod remove_trailing_return;
     pub(crate) mod remove_unnecessary_else;
     pub(crate) mod replace_filter_map_next_with_find_map;
     pub(crate) mod trait_impl_incorrect_safety;
@@ -383,6 +384,7 @@ pub fn diagnostics(
             AnyDiagnostic::UnusedVariable(d) => handlers::unused_variables::unused_variables(&ctx, &d),
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MismatchedTupleStructPatArgCount(d) => handlers::mismatched_arg_count::mismatched_tuple_struct_pat_arg_count(&ctx, &d),
+            AnyDiagnostic::RemoveTrailingReturn(d) => handlers::remove_trailing_return::remove_trailing_return(&ctx, &d),
             AnyDiagnostic::RemoveUnnecessaryElse(d) => handlers::remove_unnecessary_else::remove_unnecessary_else(&ctx, &d),
         };
         res.push(d)
