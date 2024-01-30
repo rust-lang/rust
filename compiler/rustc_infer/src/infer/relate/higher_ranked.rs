@@ -49,11 +49,13 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             debug!("b_prime={:?}", sup_prime);
 
             // Compare types now that bound regions have been replaced.
-            // FIXME(tree_universes): leaked dead universes
+            // FIXME(tree_universes): leaked universes
             let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime);
             if result.is_ok() {
                 debug!("OK result={result:?}");
             }
+            // NOTE: returning the result here would be dangerous as it contains
+            // placeholders which **must not** be named afterwards.
             result.map(|_| ())
         })
     }
@@ -68,9 +70,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// This is the first step of checking subtyping when higher-ranked things are involved.
     /// For more details visit the relevant sections of the [rustc dev guide].
     ///
+    /// `enter_forall` should be preferred over this method.
+    ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn instantiate_binder_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
+    pub fn enter_forall_and_leak_universe<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
@@ -106,11 +110,24 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tcx.replace_bound_vars_uncached(binder, delegate)
     }
 
+    /// Replaces all bound variables (lifetimes, types, and constants) bound by
+    /// `binder` with placeholder variables in a new universe. This means that the
+    /// new placeholders can only be named by inference variables created after
+    /// this method has been called.
+    ///
+    /// This is the first step of checking subtyping when higher-ranked things are involved.
+    /// For more details visit the relevant sections of the [rustc dev guide].
+    ///
+    /// This method should be preferred over `enter_forall_and_leak_universe`.
+    ///
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    #[instrument(level = "debug", skip(self, f))]
     pub fn enter_forall<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        let value = self.instantiate_binder_with_placeholders(forall);
+        let value = self.enter_forall_and_leak_universe(forall);
+        debug!("?value");
         f(value)
     }
 

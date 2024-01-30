@@ -1032,7 +1032,7 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        // FIXME(tree_universes): leaking universes
+        // FIXME(tree_universes): leaking placeholders
         self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
             Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
         })
@@ -1043,7 +1043,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) {
-        // FIXME(tree_universes): leaking universes
+        // FIXME(tree_universes): leaking placeholders
         self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)

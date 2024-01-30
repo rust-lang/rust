@@ -729,7 +729,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
+                self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
 
             let self_ty = placeholder_trait_predicate.self_ty();
             let principal_trait_ref = match self_ty.kind() {

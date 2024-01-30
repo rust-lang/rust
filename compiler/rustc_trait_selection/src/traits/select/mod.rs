@@ -1606,7 +1606,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> smallvec::SmallVec<[usize; 2]> {
         let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
+            self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
         debug!(?placeholder_trait_predicate);
 
         let tcx = self.infcx.tcx;
@@ -2386,7 +2386,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             .flat_map(|ty| {
                 let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
 
-                let placeholder_ty = self.infcx.instantiate_binder_with_placeholders(ty);
+                let placeholder_ty = self.infcx.enter_forall_and_leak_universe(ty);
                 let Normalized { value: normalized_ty, mut obligations } =
                     ensure_sufficient_stack(|| {
                         project::normalize_with_depth(
@@ -2472,7 +2472,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
-            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);

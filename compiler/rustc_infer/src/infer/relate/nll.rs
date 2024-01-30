@@ -262,7 +262,7 @@ where
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn instantiate_binder_with_placeholders<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    fn enter_forall_and_leak_universe<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
@@ -317,7 +317,7 @@ where
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        let value = self.instantiate_binder_with_placeholders(binder);
+        let value = self.enter_forall_and_leak_universe(binder);
         f(self, value)
     }
 
