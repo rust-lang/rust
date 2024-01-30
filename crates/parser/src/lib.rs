@@ -45,6 +45,7 @@ pub use crate::{
     input::Input,
     lexed_str::LexedStr,
     output::{Output, Step},
+    parser::Edition,
     shortcuts::StrStep,
     syntax_kind::SyntaxKind,
 };
@@ -98,7 +99,7 @@ impl TopEntryPoint {
             TopEntryPoint::MetaItem => grammar::entry::top::meta_item,
             TopEntryPoint::MacroEagerInput => grammar::entry::top::eager_macro_input,
         };
-        let mut p = parser::Parser::new(input);
+        let mut p = parser::Parser::new(input, Edition::Edition2021);
         entry_point(&mut p);
         let events = p.finish();
         let res = event::process(events);
@@ -163,7 +164,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Item => grammar::entry::prefix::item,
             PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
-        let mut p = parser::Parser::new(input);
+        let mut p = parser::Parser::new(input, Edition::Edition2021);
         entry_point(&mut p);
         let events = p.finish();
         event::process(events)
@@ -189,7 +190,7 @@ impl Reparser {
     /// sequence.
     pub fn parse(self, tokens: &Input) -> Output {
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(tokens);
+        let mut p = parser::Parser::new(tokens, Edition::Edition2021);
         r(&mut p);
         let events = p.finish();
         event::process(events)
