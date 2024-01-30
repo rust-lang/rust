@@ -78,8 +78,8 @@ fn literal_to_external(literal_kind: ast::LiteralKind) -> Option<proc_macro::bri
                 bridge::LitKind::CStr
             }
         }
-        ast::LiteralKind::IntNumber(num) => bridge::LitKind::Integer,
-        ast::LiteralKind::FloatNumber(num) => bridge::LitKind::Float,
+        ast::LiteralKind::IntNumber(_) => bridge::LitKind::Integer,
+        ast::LiteralKind::FloatNumber(_) => bridge::LitKind::Float,
         ast::LiteralKind::Char(_) => bridge::LitKind::Char,
         ast::LiteralKind::Byte(_) => bridge::LitKind::Byte,
         ast::LiteralKind::Bool(_) => unreachable!(),

@@ -77,11 +77,11 @@ impl server::FreeFunctions for RaSpanServer {
 
         // FIXME: handle more than just int and float suffixes
         let suffix = match literal.kind() {
-            ast::LiteralKind::FloatNumber(num) => num.suffix(),
-            ast::LiteralKind::IntNumber(num) => num.suffix(),
+            ast::LiteralKind::FloatNumber(num) => num.suffix().map(ToString::to_string),
+            ast::LiteralKind::IntNumber(num) => num.suffix().map(ToString::to_string),
             _ => None,
         }
-        .map(|suffix| Symbol::intern(self.interner, suffix));
+        .map(|suffix| Symbol::intern(self.interner, &suffix));
 
         Ok(bridge::Literal {
             kind,
