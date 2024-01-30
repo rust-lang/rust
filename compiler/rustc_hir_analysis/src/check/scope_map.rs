@@ -2,7 +2,7 @@ use hir::intravisit::Visitor;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::{
-    middle::region::{BodyScopeMap, FirstStatementIndex, Scope, ScopeData},
+    middle::region::{BodyScopeMap, FirstStatementIndex, Scope, ScopeData, ScopeMapFacade},
     ty::TyCtxt,
 };
 use rustc_span::source_map;
@@ -493,17 +493,28 @@ impl<'tcx> Visitor<'tcx> for ScopeCollector<'tcx> {
     }
 }
 
-pub fn body_scope_map(tcx: TyCtxt<'_>, def_id: hir::def_id::DefId) -> &BodyScopeMap {
+pub fn body_scope_map<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: hir::def_id::DefId,
+) -> &'tcx ScopeMapFacade<'tcx> {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-    if typeck_root_def_id != def_id {
-        return tcx.body_scope_map(typeck_root_def_id);
-    }
-    let map = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
-        let mut collector = ScopeCollector::new(tcx);
-        collector.visit_body(tcx.hir().body(body_id));
-        BodyScopeMap { expr_scope: collector.expr_scope, new_var_scope: collector.new_var_scope }
+    if tcx.sess.at_least_rust_2024() && tcx.features().new_temp_lifetime {
+        if typeck_root_def_id != def_id {
+            return tcx.body_scope_map(typeck_root_def_id);
+        }
+        let map = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
+            let mut collector = ScopeCollector::new(tcx);
+            collector.visit_body(tcx.hir().body(body_id));
+            BodyScopeMap {
+                expr_scope: collector.expr_scope,
+                new_var_scope: collector.new_var_scope,
+            }
+        } else {
+            BodyScopeMap { expr_scope: <_>::default(), new_var_scope: <_>::default() }
+        };
+        let map = tcx.arena.alloc(map);
+        tcx.arena.alloc(ScopeMapFacade::Edition2024(map))
     } else {
-        BodyScopeMap { expr_scope: <_>::default(), new_var_scope: <_>::default() }
-    };
-    tcx.arena.alloc(map)
+        tcx.arena.alloc(ScopeMapFacade::Classical(tcx.region_scope_tree(typeck_root_def_id)))
+    }
 }

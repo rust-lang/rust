@@ -57,8 +57,7 @@ struct Cx<'tcx> {
 
     param_env: ty::ParamEnv<'tcx>,
 
-    region_scope_tree: &'tcx region::ScopeTree,
-    scope_map: Option<&'tcx region::BodyScopeMap>,
+    scope_map: &'tcx region::ScopeMapFacade<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     rvalue_scopes: &'tcx RvalueScopes,
 
@@ -98,9 +97,7 @@ impl<'tcx> Cx<'tcx> {
             tcx,
             thir: Thir::new(body_type),
             param_env: tcx.param_env(def),
-            region_scope_tree: tcx.region_scope_tree(def),
-            scope_map: (tcx.sess.at_least_rust_2024() && tcx.features().new_temp_lifetime)
-                .then(|| tcx.body_scope_map(def)),
+            scope_map: tcx.body_scope_map(def),
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.to_def_id(),

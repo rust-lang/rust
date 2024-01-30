@@ -4,7 +4,7 @@
 #![feature(new_temp_lifetime)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
-use std::sync::Mutex;
+use std::sync::{Mutex, atomic::AtomicU8};
 
 fn f<T>(_: &T) {}
 
@@ -30,7 +30,18 @@ impl A {
 }
 
 fn main() {
-    let x = Mutex::new(A);
+    // The following binding is valid but extraneous.
+    super let x = Mutex::new(A);
+    static MY_ATOMIC: AtomicU8 = {
+        super let value = 0;
+        AtomicU8::new(value)
+    };
+    const MY_CONST: A = {
+        super let value = A;
+        value
+    };
+
+    let x = Mutex::new(MY_CONST);
     match x.lock().unwrap().call() {
         Some(_) => {
             *x.lock().unwrap() = A;

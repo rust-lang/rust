@@ -6,7 +6,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use crate::ty::TyCtxt;
+use crate::ty::{RvalueScopes, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
@@ -410,11 +410,39 @@ pub struct BodyScopeMap {
 }
 
 impl BodyScopeMap {
-    pub fn var_scope_new(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
+    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
         self.new_var_scope.get(&var_id).copied().flatten()
     }
 
-    pub fn temporary_scope_new(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
+    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
         self.expr_scope.get(&expr_id).copied().flatten()
+    }
+}
+
+/// Facade to switch between classical, pre-2024, temporary lifetime rules
+/// and Edition 2024 rules.
+#[derive(Clone, Debug, HashStable)]
+pub enum ScopeMapFacade<'tcx> {
+    Classical(&'tcx ScopeTree),
+    Edition2024(&'tcx BodyScopeMap),
+}
+
+impl<'tcx> ScopeMapFacade<'tcx> {
+    pub fn var_scope(&self, var_id: hir::ItemLocalId) -> Option<Scope> {
+        match self {
+            ScopeMapFacade::Classical(map) => map.var_scope(var_id),
+            ScopeMapFacade::Edition2024(map) => map.var_scope(var_id),
+        }
+    }
+
+    pub fn temporary_scope(
+        &self,
+        rvalue_scopes: &RvalueScopes,
+        expr_id: hir::ItemLocalId,
+    ) -> Option<Scope> {
+        match self {
+            ScopeMapFacade::Classical(map) => rvalue_scopes.temporary_scope(map, expr_id),
+            ScopeMapFacade::Edition2024(map) => map.temporary_scope(expr_id),
+        }
     }
 }
