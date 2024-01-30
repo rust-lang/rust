@@ -5863,6 +5863,9 @@ name = "unstable-book-gen"
 version = "0.1.0"
 dependencies = [
  "num-traits",
+ "rustdoc-json-types",
+ "serde_json",
+ "syn 1.0.109",
  "tidy",
 ]
 

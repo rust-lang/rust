@@ -1073,6 +1073,14 @@ impl Step for UnstableBookGen {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
+        let host = builder.build.build;
+
+        builder.ensure(Std::new(
+            builder.top_stage,
+            self.target,
+            builder,
+            DocumentationFormat::JSON,
+        ));
 
         builder.info(&format!("Generating unstable book md files ({target})"));
         let out = builder.md_doc_out(target).join("unstable-book");
@@ -1082,6 +1090,7 @@ impl Step for UnstableBookGen {
         cmd.arg(builder.src.join("library"));
         cmd.arg(builder.src.join("compiler"));
         cmd.arg(builder.src.join("src"));
+        cmd.arg(builder.json_doc_out(host));
         cmd.arg(out);
 
         builder.run(&mut cmd);
