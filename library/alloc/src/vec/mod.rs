@@ -481,6 +481,22 @@ impl<T> Vec<T> {
         Self::with_capacity_in(capacity, Global)
     }
 
+    /// Constructs a new, empty `Vec<T>` with at least the specified capacity.
+    ///
+    /// The vector will be able to hold at least `capacity` elements without
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
+    /// or if the allocator reports allocation failure.
+    #[inline]
+    #[unstable(feature = "try_with_capacity", issue = "91913")]
+    pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
+        Self::try_with_capacity_in(capacity, Global)
+    }
+
     /// Creates a `Vec<T>` directly from a pointer, a length, and a capacity.
     ///
     /// # Safety
@@ -670,6 +686,24 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
+    }
+
+    /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
+    /// with the provided allocator.
+    ///
+    /// The vector will be able to hold at least `capacity` elements without
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the vector will not allocate.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the capacity exceeds `isize::MAX` _bytes_,
+    /// or if the allocator reports allocation failure.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "try_with_capacity", issue = "91913")]
+    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        Ok(Vec { buf: RawVec::try_with_capacity_in(capacity, alloc)?, len: 0 })
     }
 
     /// Creates a `Vec<T, A>` directly from a pointer, a length, a capacity,
