@@ -311,7 +311,7 @@ fn modpath_from_str(link: &str) -> Option<ModPath> {
             "self" => PathKind::Super(0),
             "super" => {
                 let mut deg = 1;
-                while let Some(segment) = parts.next() {
+                for segment in parts.by_ref() {
                     if segment == "super" {
                         deg += 1;
                     } else {

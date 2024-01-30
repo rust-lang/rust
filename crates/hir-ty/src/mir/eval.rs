@@ -1715,7 +1715,7 @@ impl Evaluator<'_> {
         let v: Cow<'_, [u8]> = if size != v.len() {
             // Handle self enum
             if size == 16 && v.len() < 16 {
-                Cow::Owned(pad16(&v, false).to_vec())
+                Cow::Owned(pad16(v, false).to_vec())
             } else if size < 16 && v.len() == 16 {
                 Cow::Borrowed(&v[0..size])
             } else {

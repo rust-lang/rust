@@ -235,7 +235,7 @@ impl Attr {
         let (path, input) = tt.split_at(path_end);
         let path = Interned::new(ModPath::from_tt(db, path)?);
 
-        let input = match input.get(0) {
+        let input = match input.first() {
             Some(tt::TokenTree::Subtree(tree)) => {
                 Some(Interned::new(AttrInput::TokenTree(Box::new(tree.clone()))))
             }
