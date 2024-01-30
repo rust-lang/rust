@@ -444,7 +444,7 @@ fn mutability_of_locals(
                 }
                 if destination.projection.lookup(&body.projection_store).is_empty() {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
-                        push_mut_span(destination.local, MirSpan::Unknown, &mut result);
+                        push_mut_span(destination.local, terminator.span, &mut result);
                     } else {
                         ever_init_map.insert(destination.local, true);
                     }
