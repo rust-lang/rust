@@ -48,7 +48,8 @@ pub enum BodyValidationDiagnostic {
 
 impl BodyValidationDiagnostic {
     pub fn collect(db: &dyn HirDatabase, owner: DefWithBodyId) -> Vec<BodyValidationDiagnostic> {
-        let _p = profile::span("BodyValidationDiagnostic::collect");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
         let mut validator = ExprValidator::new(owner, infer);
         validator.validate_body(db);

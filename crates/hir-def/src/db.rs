@@ -254,7 +254,7 @@ fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-    let _p = profile::span("crate_def_map:wait");
+    let _p = tracing::span!(tracing::Level::INFO, "crate_def_map:wait").entered();
     db.crate_def_map_query(krate)
 }
 

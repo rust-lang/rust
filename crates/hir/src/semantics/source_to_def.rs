@@ -117,7 +117,7 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 
 impl SourceToDefCtx<'_, '_> {
     pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
-        let _p = profile::span("SourceBinder::to_module_def");
+        let _p = tracing::span!(tracing::Level::INFO, "SourceBinder::to_module_def");
         let mut mods = SmallVec::new();
         for &crate_id in self.db.relevant_crates(file).iter() {
             // FIXME: inner items
@@ -132,7 +132,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn module_to_def(&self, src: InFile<ast::Module>) -> Option<ModuleId> {
-        let _p = profile::span("module_to_def");
+        let _p = tracing::span!(tracing::Level::INFO, "module_to_def");
         let parent_declaration = src
             .syntax()
             .ancestors_with_macros_skip_attr_item(self.db.upcast())
@@ -153,7 +153,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn source_file_to_def(&self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
-        let _p = profile::span("source_file_to_def");
+        let _p = tracing::span!(tracing::Level::INFO, "source_file_to_def");
         let file_id = src.file_id.original_file(self.db.upcast());
         self.file_to_def(file_id).first().copied()
     }

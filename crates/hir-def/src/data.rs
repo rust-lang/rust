@@ -340,7 +340,7 @@ impl ImplData {
         db: &dyn DefDatabase,
         id: ImplId,
     ) -> (Arc<ImplData>, DefDiagnostics) {
-        let _p = profile::span("impl_data_with_diagnostics_query");
+        let _p = tracing::span!(tracing::Level::INFO, "impl_data_with_diagnostics_query").entered();
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
         let item_tree = tree_id.item_tree(db);

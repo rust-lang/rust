@@ -38,9 +38,6 @@ use crate::{
     testdir::TestDir,
 };
 
-const PROFILE: &str = "";
-// const PROFILE: &'static str = "*@3>100";
-
 #[test]
 fn completes_items_from_standard_library() {
     if skip_slow_tests() {

@@ -215,7 +215,7 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
-        let _p = profile::span("GlobalState::process_changes");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::process_changes").entered();
 
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
         let (change, modified_rust_files, workspace_structure_change) = {

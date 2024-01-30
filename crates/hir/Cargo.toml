@@ -17,6 +17,7 @@ either.workspace = true
 arrayvec.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
+tracing.workspace = true
 triomphe.workspace = true
 once_cell = "1.17.1"
 

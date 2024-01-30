@@ -293,7 +293,7 @@ pub fn diagnostics(
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let _p = profile::span("diagnostics");
+    let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
     let sema = Semantics::new(db);
     let parse = db.parse(file_id);
     let mut res = Vec::new();

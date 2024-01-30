@@ -6,7 +6,7 @@ use ide_db::SymbolKind;
 use crate::{item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
-    let _p = profile::span("render_const");
+    let _p = tracing::span!(tracing::Level::INFO, "render_const").entered();
     render(ctx, const_)
 }
 

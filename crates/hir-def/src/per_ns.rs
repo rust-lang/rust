@@ -92,7 +92,7 @@ impl PerNs {
     }
 
     pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
-        let _p = profile::span("PerNs::filter_visibility");
+        let _p = tracing::span!(tracing::Level::INFO, "PerNs::filter_visibility").entered();
         PerNs {
             types: self.types.filter(|&(_, v, _)| f(v)),
             values: self.values.filter(|&(_, v, _)| f(v)),
@@ -125,7 +125,7 @@ impl PerNs {
     }
 
     pub fn iter_items(self) -> impl Iterator<Item = (ItemInNs, Option<ImportOrExternCrate>)> {
-        let _p = profile::span("PerNs::iter_items");
+        let _p = tracing::span!(tracing::Level::INFO, "PerNs::iter_items").entered();
         self.types
             .map(|it| (ItemInNs::Types(it.0), it.2))
             .into_iter()
