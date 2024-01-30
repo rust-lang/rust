@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_type_ir::visit::{Flags, TypeVisitableExt};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstTy,
     InferCtxtLike, Interner, IntoKind, PlaceholderLike,
@@ -44,7 +45,13 @@ pub struct Canonicalizer<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I> {
+impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infcx, I>
+where
+    I::Ty: Flags,
+    I::Region: Flags,
+    I::Const: Flags,
+    I::Predicate: Flags,
+{
     pub fn canonicalize<T: TypeFoldable<I>>(
         infcx: &'a Infcx,
         canonicalize_mode: CanonicalizeMode,
@@ -62,8 +69,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
 
         let value = value.fold_with(&mut canonicalizer);
         // FIXME: Restore these assertions. Should we uplift type flags?
-        // assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        // assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
 
         let (max_universe, variables) = canonicalizer.finalize();
 
