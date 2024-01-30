@@ -256,23 +256,14 @@ pub fn try_normalize_use_tree(
     Some(use_tree)
 }
 
-macro_rules! call_and_track_result {
-    ($call:expr, $tracker: ident) => {
-        let result = $call;
-        if !$tracker && result.is_some() {
-            $tracker = true;
-        }
-    };
-}
-
 pub fn try_normalize_use_tree_mut(
     use_tree: &ast::UseTree,
     style: NormalizationStyle,
 ) -> Option<()> {
     if style == NormalizationStyle::One {
         let mut modified = false;
-        call_and_track_result!(use_tree.wrap_in_tree_list(), modified);
-        call_and_track_result!(recursive_normalize(use_tree, style), modified);
+        modified |= use_tree.wrap_in_tree_list().is_some();
+        modified |= recursive_normalize(use_tree, style).is_some();
         if !modified {
             // Either the use tree was already normalized or its semantically empty.
             return None;
@@ -374,10 +365,9 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
                         if let Some(sub_one_tree_list) = one_style_tree_list(&sub_sub_tree) {
                             curr_skipped.extend(sub_one_tree_list.use_trees());
                         } else {
-                            call_and_track_result!(
-                                recursive_normalize(&sub_sub_tree, NormalizationStyle::Default),
-                                modified
-                            );
+                            modified |=
+                                recursive_normalize(&sub_sub_tree, NormalizationStyle::Default)
+                                    .is_some();
                             add_element_to_list(
                                 sub_sub_tree.syntax().clone().into(),
                                 &mut elements,
@@ -401,10 +391,7 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
                 }
                 modified = true;
             } else {
-                call_and_track_result!(
-                    recursive_normalize(&subtree, NormalizationStyle::Default),
-                    modified
-                );
+                modified |= recursive_normalize(&subtree, NormalizationStyle::Default).is_some();
             }
         }
 
@@ -451,7 +438,7 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
         // Merge the remaining subtree into its parent, if its only one and
         // the normalization style is not "one".
         if subtrees.len() == 1 && style != NormalizationStyle::One {
-            call_and_track_result!(merge_subtree_into_parent_tree(&subtrees[0]), modified);
+            modified |= merge_subtree_into_parent_tree(&subtrees[0]).is_some();
         }
         // Order the remaining subtrees (if necessary).
         if subtrees.len() > 1 {
