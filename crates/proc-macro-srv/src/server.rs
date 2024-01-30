@@ -17,6 +17,7 @@ pub mod rust_analyzer_span;
 mod symbol;
 pub mod token_id;
 pub use symbol::*;
+use syntax::ast::{self, HasModuleItem, IsString};
 use tt::Spacing;
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
@@ -52,6 +53,60 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
         Spacing::Alone => proc_macro::Spacing::Alone,
         Spacing::Joint => proc_macro::Spacing::Joint,
     }
+}
+
+fn literal_to_external(literal: ast::LiteralKind) -> Option<proc_macro::bridge::LitKind> {
+    Some(match lit.kind() {
+        ast::LiteralKind::String(data) => {
+            if data.is_raw() {
+                bridge::LitKind::StrRaw(raw_delimiter_count(data)?)
+            } else {
+                bridge::LitKind::Str
+            }
+        }
+        ast::LiteralKind::ByteString(data) => {
+            if data.is_raw() {
+                bridge::LitKind::ByteStrRaw(raw_delimiter_count(data)?)
+            } else {
+                bridge::LitKind::ByteStr
+            }
+        }
+        ast::LiteralKind::CString(data) => {
+            if data.is_raw() {
+                bridge::LitKind::CStrRaw(raw_delimiter_count(data)?)
+            } else {
+                bridge::LitKind::CStr
+            }
+        }
+        ast::LiteralKind::IntNumber(num) => bridge::LitKind::Integer,
+        ast::LiteralKind::FloatNumber(num) => bridge::LitKind::Float,
+        ast::LiteralKind::Char(_) => bridge::LitKind::Char,
+        ast::LiteralKind::Byte(_) => bridge::LitKind::Byte,
+        ast::LiteralKind::Bool(_) => unreachable!(),
+    })
+}
+
+fn raw_delimiter_count<S: IsString>(s: S) -> Option<u8> {
+    let text = s.text();
+    let quote_range = s.text_range_between_quotes()?;
+    let range_start = s.syntax().text_range().start();
+    text[TextRange::up_to((quote_range - range_start).start())].matches('#').count().try_into().ok()
+}
+
+fn str_to_lit_node(input: &str) -> Option<ast::Literal> {
+    let input = input.trim();
+    let source_code = format!("fn f() {{ let _ = {input}; }}");
+
+    let parse = ast::SourceFile::parse(&source_code);
+    let file = parse.tree();
+
+    let ast::Item::Fn(func) = file.items().next()? else { return None };
+    let ast::Stmt::LetStmt(stmt) = func.body()?.stmt_list()?.statements().next()? else {
+        return None;
+    };
+    let ast::Expr::Literal(lit) = stmt.initializer()? else { return None };
+
+    Some(lit)
 }
 
 struct LiteralFormatter<S>(bridge::Literal<S, Symbol>);

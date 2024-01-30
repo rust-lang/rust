@@ -4,6 +4,7 @@
 //! It is an unfortunate result of how the proc-macro API works that we need to look into the
 //! concrete representation of the spans, and as such, RustRover cannot make use of this unless they
 //! change their representation to be compatible with rust-analyzer's.
+use core::num;
 use std::{
     collections::{HashMap, HashSet},
     iter,
@@ -13,11 +14,11 @@ use std::{
 use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
-use syntax::ast::{self, HasModuleItem, IsString};
+use syntax::ast;
 
 use crate::server::{
-    delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
-    Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, literal_to_external, str_to_lit_node,
+    token_stream::TokenStreamBuilder, LiteralFormatter, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
     pub use ::tt::*;
@@ -71,66 +72,15 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let input = s.trim();
-        let source_code = format!("fn f() {{ let _ = {input}; }}");
+        let literal = str_to_lit_node(s).ok_or(Err(()))?;
 
-        let parse = ast::SourceFile::parse(&source_code);
-        let file = parse.tree();
+        let kind = literal_to_external(literal.kind()).ok_or(Err(()))?;
 
-        let Some(ast::Item::Fn(func)) = file.items().next() else { return Err(()) };
-        let Some(ast::Stmt::LetStmt(stmt)) =
-            func.body().ok_or(Err(()))?.stmt_list().ok_or(Err(()))?.statements().next()
-        else {
-            return Err(());
-        };
-        let Some(ast::Expr::Literal(lit)) = stmt.initializer() else { return Err(()) };
-
-        fn raw_delimiter_count<S: IsString>(s: S) -> Option<u8> {
-            let text = s.text();
-            let quote_range = s.text_range_between_quotes()?;
-            let range_start = s.syntax().text_range().start();
-            text[TextRange::up_to((quote_range - range_start).start())]
-                .matches('#')
-                .count()
-                .try_into()
-                .ok()
+        let suffix = match literal.kind() {
+            ast::LiteralKind::FloatNumber(num) | ast::LiteralKind::IntNumber(num) => num.suffix(),
+            _ => None,
         }
-
-        let mut suffix = None;
-        let kind = match lit.kind() {
-            ast::LiteralKind::String(data) => {
-                if data.is_raw() {
-                    bridge::LitKind::StrRaw(raw_delimiter_count(data).ok_or(Err(()))?)
-                } else {
-                    bridge::LitKind::Str
-                }
-            }
-            ast::LiteralKind::ByteString(data) => {
-                if data.is_raw() {
-                    bridge::LitKind::ByteStrRaw(raw_delimiter_count(data).ok_or(Err(()))?)
-                } else {
-                    bridge::LitKind::ByteStr
-                }
-            }
-            ast::LiteralKind::CString(data) => {
-                if data.is_raw() {
-                    bridge::LitKind::CStrRaw(raw_delimiter_count(data).ok_or(Err(()))?)
-                } else {
-                    bridge::LitKind::CStr
-                }
-            }
-            ast::LiteralKind::IntNumber(num) => {
-                suffix = num.suffix();
-                bridge::LitKind::Integer
-            }
-            ast::LiteralKind::FloatNumber(num) => {
-                suffix = num.suffix();
-                bridge::LitKind::Float
-            }
-            ast::LiteralKind::Char(_) => bridge::LitKind::Char,
-            ast::LiteralKind::Byte(_) => bridge::LitKind::Byte,
-            ast::LiteralKind::Bool(_) => unreachable!(),
-        };
+        .map(|suffix| Symbol::intern(self.interner, suffix));
 
         Ok(bridge::Literal {
             kind,
