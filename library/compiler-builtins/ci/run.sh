@@ -66,6 +66,7 @@ for rlib in $(echo $path); do
       grep -v __x86.get_pc_thunk | \
       grep -v __builtin_cl | \
       grep -v __builtin_ctz | \
+      grep -v __builtin_sadd_overflow | \
       grep 'T __'
 
     if test $? = 0; then

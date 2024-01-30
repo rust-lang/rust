@@ -56,10 +56,8 @@ fn main() {
     if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
         // Don't use a C compiler for these targets:
         //
-        // * wasm - clang for wasm is somewhat hard to come by and it's
-        //   unlikely that the C is really that much better than our own Rust.
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        if !target.contains("wasm") && !target.contains("nvptx") {
+        if !target.contains("nvptx") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
