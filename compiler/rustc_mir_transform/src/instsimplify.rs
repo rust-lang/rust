@@ -329,9 +329,8 @@ fn resolve_rust_intrinsic<'tcx>(
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
     if let ty::FnDef(def_id, args) = *func_ty.kind() {
-        if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), args));
-        }
+        let name = tcx.intrinsic(def_id)?;
+        return Some((name, args));
     }
     None
 }

@@ -335,7 +335,7 @@ fn check_terminator<'tcx>(
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
                 // transmutes in const fn before we add more hacks to this.
-                if tcx.is_intrinsic(fn_def_id) && tcx.item_name(fn_def_id) == sym::transmute {
+                if matches!(tcx.intrinsic(fn_def_id), Some(sym::transmute)) {
                     return Err((
                         span,
                         "can only call `transmute` from const items, not `const fn`".into(),

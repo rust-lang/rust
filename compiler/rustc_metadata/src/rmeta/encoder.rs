@@ -1411,7 +1411,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
                 record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
-                self.tables.is_intrinsic.set(def_id.index, tcx.is_intrinsic(def_id));
+                self.tables.intrinsic.set(def_id.index, tcx.intrinsic(def_id).is_some());
             }
             if let DefKind::TyParam = def_kind {
                 let default = self.tcx.object_lifetime_default(def_id);
