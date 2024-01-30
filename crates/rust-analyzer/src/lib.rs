@@ -37,9 +37,14 @@ mod handlers {
     pub(crate) mod request;
 }
 
+pub mod tracing {
+    pub mod config;
+    pub use config::Config;
+    pub mod hprof;
+}
+
 pub mod config;
 pub mod lsp;
-pub mod tracing;
 use self::lsp::ext as lsp_ext;
 
 #[cfg(test)]
