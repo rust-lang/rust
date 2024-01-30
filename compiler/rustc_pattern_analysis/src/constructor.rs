@@ -681,15 +681,19 @@ pub enum Constructor<Cx: TypeCx> {
     Or,
     /// Wildcard pattern.
     Wildcard,
+    /// Never pattern. Only used in `WitnessPat`. An actual never pattern should be lowered as
+    /// `Wildcard`.
+    Never,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
-    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
+    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`. Only
+    /// used in `WitnessPat`.
     NonExhaustive,
-    /// Fake extra constructor for variants that should not be mentioned in diagnostics.
-    /// We use this for variants behind an unstable gate as well as
-    /// `#[doc(hidden)]` ones.
+    /// Fake extra constructor for variants that should not be mentioned in diagnostics. We use this
+    /// for variants behind an unstable gate as well as `#[doc(hidden)]` ones. Only used in
+    /// `WitnessPat`.
     Hidden,
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
-    /// top of the file.
+    /// top of the file. Only used for specialization.
     Missing,
     /// Fake extra constructor that indicates and empty field that is private. When we encounter one
     /// we skip the column entirely so we don't observe its emptiness. Only used for specialization.
@@ -711,6 +715,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::Str(value) => Constructor::Str(value.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
             Constructor::Or => Constructor::Or,
+            Constructor::Never => Constructor::Never,
             Constructor::Wildcard => Constructor::Wildcard,
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,

@@ -189,6 +189,7 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
                 }
                 Ok(())
             }
+            Never => write!(f, "!"),
             Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
                 write!(f, "_ : {:?}", pat.ty())
             }
