@@ -7,17 +7,17 @@
 
 use crate::ffi::CStr;
 use crate::mem;
+use crate::num::NonZero;
 pub use crate::os::raw::c_int;
 use crate::os::raw::{c_char, c_long, c_longlong, c_uint, c_ulong, c_ushort, c_void};
 use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
-use core::ffi::NonZero_c_ulong;
 
 mod windows_sys;
 pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
-pub type NonZeroDWORD = NonZero_c_ulong;
+pub type NonZeroDWORD = NonZero<c_ulong>;
 pub type LARGE_INTEGER = c_longlong;
 #[cfg_attr(target_vendor = "uwp", allow(unused))]
 pub type LONG = c_long;
