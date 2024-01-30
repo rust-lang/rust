@@ -390,13 +390,6 @@ pub struct FfiConstInvalidTarget {
     pub attr_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_ffi_returns_twice_invalid_target, code = E0724)]
-pub struct FfiReturnsTwiceInvalidTarget {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_must_use_async)]
 pub struct MustUseAsync {

@@ -323,9 +323,6 @@ passes_ffi_const_invalid_target =
 passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
 
-passes_ffi_returns_twice_invalid_target =
-    `#[ffi_returns_twice]` may only be used on foreign functions
-
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
     .label = only adts, extern types and traits are supported
