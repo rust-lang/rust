@@ -224,7 +224,7 @@ fn test_from_char_iterator() {
     // String which has too many characters to even consider inlining: Chars::size_hint uses
     // (`len` + 3) / 4. With `len` = 89, this results in 23, so `from_iter` will immediately
     // heap allocate
-    let raw: String = std::iter::repeat('a').take(23 * 4 + 1).collect();
+    let raw = "a".repeat(23 * 4 + 1);
     let s: SmolStr = raw.chars().collect();
     assert_eq!(s.as_str(), raw);
     assert!(s.is_heap_allocated());
@@ -268,5 +268,48 @@ fn test_to_smolstr() {
 
         assert_eq!(a, a.to_smolstr());
         assert_eq!(a, smol_str::format_smolstr!("{}", a));
+    }
+}
+
+#[cfg(test)]
+mod test_str_ext {
+    use smol_str::StrExt;
+
+    #[test]
+    fn large() {
+        let lowercase = "aaaaaaAAAAAaaaaaaaaaaaaaaaaaaaaaAAAAaaaaaaaaaaaaaa".to_lowercase_smolstr();
+        assert_eq!(
+            lowercase,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert!(lowercase.is_heap_allocated());
+    }
+
+    #[test]
+    fn to_lowercase() {
+        let lowercase = "aßΔC".to_lowercase_smolstr();
+        assert_eq!(lowercase, "aßδc");
+        assert!(!lowercase.is_heap_allocated());
+    }
+
+    #[test]
+    fn to_uppercase() {
+        let uppercase = "aßΔC".to_uppercase_smolstr();
+        assert_eq!(uppercase, "ASSΔC");
+        assert!(!uppercase.is_heap_allocated());
+    }
+
+    #[test]
+    fn to_ascii_lowercase() {
+        let uppercase = "aßΔC".to_ascii_lowercase_smolstr();
+        assert_eq!(uppercase, "aßΔc");
+        assert!(!uppercase.is_heap_allocated());
+    }
+
+    #[test]
+    fn to_ascii_uppercase() {
+        let uppercase = "aßΔC".to_ascii_uppercase_smolstr();
+        assert_eq!(uppercase, "AßΔC");
+        assert!(!uppercase.is_heap_allocated());
     }
 }

@@ -545,6 +545,61 @@ pub trait ToSmolStr {
     fn to_smolstr(&self) -> SmolStr;
 }
 
+/// [`str`] methods producing [`SmolStr`]s.
+pub trait StrExt: private::Sealed {
+    /// Returns the lowercase equivalent of this string slice as a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::to_lowercase`].
+    fn to_lowercase_smolstr(&self) -> SmolStr;
+
+    /// Returns the uppercase equivalent of this string slice as a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::to_uppercase`].
+    fn to_uppercase_smolstr(&self) -> SmolStr;
+
+    /// Returns the ASCII lowercase equivalent of this string slice as a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::to_ascii_lowercase`].
+    fn to_ascii_lowercase_smolstr(&self) -> SmolStr;
+
+    /// Returns the ASCII uppercase equivalent of this string slice as a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::to_ascii_uppercase`].
+    fn to_ascii_uppercase_smolstr(&self) -> SmolStr;
+}
+
+impl StrExt for str {
+    #[inline]
+    fn to_lowercase_smolstr(&self) -> SmolStr {
+        SmolStr::from_char_iter(self.chars().flat_map(|c| c.to_lowercase()))
+    }
+
+    #[inline]
+    fn to_uppercase_smolstr(&self) -> SmolStr {
+        SmolStr::from_char_iter(self.chars().flat_map(|c| c.to_uppercase()))
+    }
+
+    #[inline]
+    fn to_ascii_lowercase_smolstr(&self) -> SmolStr {
+        SmolStr::from_char_iter(self.chars().map(|c| c.to_ascii_lowercase()))
+    }
+
+    #[inline]
+    fn to_ascii_uppercase_smolstr(&self) -> SmolStr {
+        SmolStr::from_char_iter(self.chars().map(|c| c.to_ascii_uppercase()))
+    }
+}
+
+mod private {
+    /// No downstream impls allowed.
+    pub trait Sealed {}
+    impl Sealed for str {}
+}
+
 /// Formats arguments to a [`SmolStr`], potentially without allocating.
 ///
 /// See [`alloc::format!`] or [`format_args!`] for syntax documentation.
