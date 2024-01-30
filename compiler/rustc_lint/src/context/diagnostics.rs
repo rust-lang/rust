@@ -185,6 +185,7 @@ pub(super) fn builtin(
             db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
         }
         BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
+            #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> =
                 sess.parse_sess.check_config.expecteds.keys().copied().collect();
             let is_from_cargo = std::env::var_os("CARGO").is_some();
