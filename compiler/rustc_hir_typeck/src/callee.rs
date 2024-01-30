@@ -77,6 +77,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     callee_expr,
                     Expectation::NoExpectation,
                     arg_exprs,
+                    Some(call_expr),
                 ),
             _ => self.check_expr(callee_expr),
         };

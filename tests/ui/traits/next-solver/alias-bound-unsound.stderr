@@ -29,15 +29,6 @@ LL |     drop(<() as Foo>::copy_me(&x));
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item: Sized`
-  --> $DIR/alias-bound-unsound.rs:24:10
-   |
-LL |     drop(<() as Foo>::copy_me(&x));
-   |          ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
-   = note: the return type of a function must have a statically known size
-
 error[E0275]: overflow evaluating the requirement `&<() as Foo>::Item well-formed`
   --> $DIR/alias-bound-unsound.rs:24:31
    |
@@ -63,6 +54,6 @@ LL |     drop(<() as Foo>::copy_me(&x));
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

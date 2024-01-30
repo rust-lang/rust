@@ -12,7 +12,7 @@ error[E0284]: type annotations needed: cannot satisfy `<u32 as Default>::Id == (
   --> $DIR/specialization-unconstrained.rs:20:5
    |
 LL |     test::<u32, ()>();
-   |     ^^^^^^^^^^^^^^^ cannot satisfy `<u32 as Default>::Id == ()`
+   |     ^^^^^^^^^^^^^^^^^ cannot satisfy `<u32 as Default>::Id == ()`
    |
 note: required by a bound in `test`
   --> $DIR/specialization-unconstrained.rs:17:20

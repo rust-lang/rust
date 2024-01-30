@@ -2493,7 +2493,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     expr_finder.visit_expr(self.tcx.hir().body(body_id).value);
 
                     if let Some(hir::Expr {
-                        kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
+                        kind:
+                            hir::ExprKind::Call(
+                                hir::Expr {
+                                    kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
+                                    ..
+                                },
+                                _,
+                            )
+                            | hir::ExprKind::Path(hir::QPath::Resolved(None, path)),
                         ..
                     }) = expr_finder.result
                         && let [
