@@ -24,12 +24,13 @@ impl<'tcx> InferCtxtRegionExt<'tcx> for InferCtxt<'tcx> {
             let ty = self.resolve_vars_if_possible(ty);
 
             if self.next_trait_solver() {
-                crate::solve::deeply_normalize(
+                crate::solve::deeply_normalize_with_skipped_universes(
                     self.at(
                         &ObligationCause::dummy_with_span(origin.span()),
                         outlives_env.param_env,
                     ),
                     ty,
+                    vec![None; ty.outer_exclusive_binder().as_usize()],
                 )
                 .map_err(|_| ty)
             } else {
