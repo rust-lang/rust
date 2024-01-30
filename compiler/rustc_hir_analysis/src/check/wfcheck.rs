@@ -10,10 +10,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
-use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
-use rustc_infer::infer::outlives::obligations::TypeOutlives;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -26,6 +24,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,
@@ -731,10 +730,12 @@ fn ty_known_to_outlive<'tcx>(
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
-    resolve_regions_with_wf_tys(tcx, id, param_env, wf_tys, |infcx, region_bound_pairs| {
-        let origin = infer::RelateParamBound(DUMMY_SP, ty, None);
-        let outlives = &mut TypeOutlives::new(infcx, tcx, region_bound_pairs, None, param_env);
-        outlives.type_must_outlive(origin, ty, region, ConstraintCategory::BoringNoLocation);
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.register_region_obligation(infer::RegionObligation {
+            sub_region: region,
+            sup_type: ty,
+            origin: infer::RelateParamBound(DUMMY_SP, ty, None),
+        });
     })
 }
 
@@ -748,40 +749,32 @@ fn region_known_to_outlive<'tcx>(
     region_a: ty::Region<'tcx>,
     region_b: ty::Region<'tcx>,
 ) -> bool {
-    resolve_regions_with_wf_tys(tcx, id, param_env, wf_tys, |mut infcx, _| {
-        use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
-        let origin = infer::RelateRegionParamBound(DUMMY_SP);
-        // `region_a: region_b` -> `region_b <= region_a`
-        infcx.push_sub_region_constraint(
-            origin,
-            region_b,
-            region_a,
-            ConstraintCategory::BoringNoLocation,
-        );
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP), region_b, region_a);
     })
 }
 
 /// Given a known `param_env` and a set of well formed types, set up an
 /// `InferCtxt`, call the passed function (to e.g. set up region constraints
 /// to be tested), then resolve region and return errors
-fn resolve_regions_with_wf_tys<'tcx>(
+fn test_region_obligations<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
-    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
+    add_constraints: impl FnOnce(&InferCtxt<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
     let infcx = tcx.infer_ctxt().build();
+
+    add_constraints(&infcx);
+
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
         infcx.implied_bounds_tys(param_env, id, wf_tys),
     );
-    let region_bound_pairs = outlives_environment.region_bound_pairs();
-
-    add_constraints(&infcx, region_bound_pairs);
 
     let errors = infcx.resolve_regions(&outlives_environment);
     debug!(?errors, "errors");

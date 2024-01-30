@@ -1,4 +1,5 @@
 // compile-flags: -Znext-solver
+//~^ ERROR cannot normalize `<T as Default>::Id`
 
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
