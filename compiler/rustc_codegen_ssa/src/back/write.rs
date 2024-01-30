@@ -1000,7 +1000,7 @@ pub struct CguMessage;
 
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue>,
+    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
     code: Option<ErrCode>,
     lvl: Level,
 }

@@ -23,11 +23,10 @@ pub struct SuggestionsDisabled;
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
 /// `DiagnosticArg` are converted to `FluentArgs` (consuming the collection) at the start of
 /// diagnostic emission.
-pub type DiagnosticArg<'iter, 'source> =
-    (&'iter DiagnosticArgName<'source>, &'iter DiagnosticArgValue);
+pub type DiagnosticArg<'iter, 'source> = (&'iter DiagnosticArgName, &'iter DiagnosticArgValue);
 
 /// Name of a diagnostic argument.
-pub type DiagnosticArgName<'source> = Cow<'source, str>;
+pub type DiagnosticArgName = Cow<'static, str>;
 
 /// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
 /// to a `FluentValue` by the emitter to be used in diagnostic translation.
@@ -103,7 +102,7 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue>,
+    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
@@ -923,10 +922,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn replace_args(
-        &mut self,
-        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue>,
-    ) {
+    pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
     }
 
