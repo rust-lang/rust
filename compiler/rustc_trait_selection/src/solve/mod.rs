@@ -288,11 +288,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     /// Normalize a type when it is structually matched on.
     ///
-    /// For self types this is generally already handled through
-    /// `assemble_candidates_after_normalizing_self_ty`, so anything happening
-    /// in [`EvalCtxt::assemble_candidates_via_self_ty`] does not have to normalize
-    /// the self type. It is required when structurally matching on any other
-    /// arguments of a trait goal, e.g. when assembling builtin unsize candidates.
+    /// In nearly all cases this function must be used before matching on a type.
+    /// Not doing so is likely to be incomplete and therefore unsound during
+    /// coherence.
     #[instrument(level = "debug", skip(self), ret)]
     fn try_normalize_ty(
         &mut self,

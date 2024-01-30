@@ -16,7 +16,7 @@ trait Foo {
 
 impl Foo for () {
     type Item = String where String: Copy;
-    //~^ ERROR overflow evaluating the requirement `<() as Foo>::Item: Copy`
+    //~^ ERROR overflow evaluating the requirement `String: Copy`
 }
 
 fn main() {
