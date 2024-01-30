@@ -777,7 +777,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         indices: &[&'ll Value],
     ) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildInBoundsGEP2(
+            llvm::LLVMBuildGEP2(
                 self.llbuilder,
                 ty,
                 ptr,
