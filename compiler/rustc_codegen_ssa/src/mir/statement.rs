@@ -1,3 +1,4 @@
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 use rustc_middle::mir::NonDivergingIntrinsic;
 use rustc_session::config::OptLevel;
@@ -8,7 +9,12 @@ use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
-    pub fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
+    pub fn codegen_statement(
+        &mut self,
+        bx: &mut Bx,
+        bb: mir::BasicBlock,
+        statement: &mir::Statement<'tcx>,
+    ) {
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
@@ -75,7 +81,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             // The Expect intrinsic is processed with the BB terminator
             // in codegen_switchint_terminator()
-            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(..)) => {}
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(..)) => {
+                if !self.blocks_with_expect.is_some() {
+                    self.blocks_with_expect =
+                        Some(Box::new(BitSet::new_empty(self.mir.basic_blocks.len())));
+                }
+                self.blocks_with_expect.as_mut().unwrap().insert(bb);
+            }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
             )) => {

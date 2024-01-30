@@ -323,18 +323,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return None;
         };
 
-        let no_expect = self.mir[bb].statements.iter().all(|stmt| {
-            let is_expect =
-                if let mir::StatementKind::Intrinsic(box mir::NonDivergingIntrinsic::Expect(..)) =
-                    stmt.kind
-                {
-                    true
-                } else {
-                    false
-                };
-            !is_expect
-        });
-        if no_expect {
+        if let Some(ref blocks) = self.blocks_with_expect {
+            if !blocks.contains(bb) {
+                return None;
+            }
+        } else {
             return None;
         }
 
@@ -1239,7 +1232,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             debug!("codegen_block({:?}={:?})", bb, data);
 
             for statement in &data.statements {
-                self.codegen_statement(bx, statement);
+                self.codegen_statement(bx, bb, statement);
             }
 
             let merging_succ = self.codegen_terminator(bx, bb, data.terminator());

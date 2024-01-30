@@ -110,6 +110,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
+
+    /// The set of blocks that contain `expect` intrinsics.
+    blocks_with_expect: Option<Box<BitSet<mir::BasicBlock>>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -207,6 +210,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context,
         per_local_var_debug_info: None,
         caller_location: None,
+        blocks_with_expect: None,
     };
 
     // It may seem like we should iterate over `required_consts` to ensure they all successfully
