@@ -76,6 +76,7 @@ impl server::FreeFunctions for RaSpanServer {
 
         let kind = literal_to_external(literal.kind()).ok_or(Err(()))?;
 
+        // FIXME: handle more than just int and float suffixes
         let suffix = match literal.kind() {
             ast::LiteralKind::FloatNumber(num) | ast::LiteralKind::IntNumber(num) => num.suffix(),
             _ => None,
