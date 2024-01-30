@@ -4,8 +4,7 @@ fn main() {
     println!("us\u{202B}e\u{202A}r");
     println!("{:?}", r#"us\u{202B}e\u{202A}r"#);
     println!("{:?}", b"us\u{202B}e\u{202A}r");
-    //~^ ERROR unicode escape in byte string
-    //~| ERROR unicode escape in byte string
+    //~^ ERROR mixed utf8 b"" and br"" literals are experimental
     println!("{:?}", br##"us\u{202B}e\u{202A}r"##);
 
     println!("{:?}", "/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only ");
@@ -14,15 +13,9 @@ fn main() {
     println!("{:?}", r##"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only "##);
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
     println!("{:?}", b"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only ");
-    //~^ ERROR non-ASCII character in byte string literal
-    //~| ERROR non-ASCII character in byte string literal
-    //~| ERROR non-ASCII character in byte string literal
-    //~| ERROR non-ASCII character in byte string literal
+    //~^ ERROR mixed utf8 b"" and br"" literals are experimental
     println!("{:?}", br##"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only "##);
-    //~^ ERROR non-ASCII character in raw byte string literal
-    //~| ERROR non-ASCII character in raw byte string literal
-    //~| ERROR non-ASCII character in raw byte string literal
-    //~| ERROR non-ASCII character in raw byte string literal
+    //~^ ERROR mixed utf8 b"" and br"" literals are experimental
     println!("{:?}", '‮');
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
 }

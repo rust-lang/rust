@@ -508,6 +508,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             }
         };
     }
+    gate_all!(mixed_utf8_literals, r#"mixed utf8 b"" and br"" literals are experimental"#);
     gate_all!(
         if_let_guard,
         "`if let` guards are experimental",

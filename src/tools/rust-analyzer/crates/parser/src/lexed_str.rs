@@ -365,9 +365,11 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
         EscapeError::NonAsciiCharInByte if mode == Mode::Byte => {
             "non-ASCII character in byte literal"
         }
+        // Note: once rfc3349 stabilizes, this arm will be unreachable.
         EscapeError::NonAsciiCharInByte if mode == Mode::ByteStr => {
             "non-ASCII character in byte string literal"
         }
+        // Note: once rfc3349 stabilizes, this arm will be unreachable.
         EscapeError::NonAsciiCharInByte => "non-ASCII character in raw byte string literal",
         EscapeError::NulInCStr => "null character in C string literal",
         EscapeError::UnskippedWhitespaceWarning => "",
@@ -378,15 +380,17 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
 fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
     let mut error_message = "";
     match mode {
-        Mode::CStr => {
-            rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
+        Mode::ByteStr | Mode::CStr => {
+            // Can ignore the `Rfc3349` return value.
+            _ = rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
             });
         }
-        Mode::ByteStr | Mode::Str => {
-            rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
+        Mode::Str => {
+            // Can ignore the `Rfc3349` return value.
+            _ = rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }

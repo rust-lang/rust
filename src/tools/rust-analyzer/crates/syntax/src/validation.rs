@@ -136,11 +136,13 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
     };
 
+    // Ignores the `Rfc3349` return value from the `unescape_*` functions, thus
+    // permitting mixed utf8 literals.
     match literal.kind() {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_unicode(without_quotes, Mode::Str, &mut |range, char| {
+                    _ = unescape_unicode(without_quotes, Mode::Str, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -151,7 +153,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_unicode(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    _ = unescape_mixed(without_quotes, Mode::ByteStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -162,7 +164,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_mixed(without_quotes, Mode::CStr, &mut |range, char| {
+                    _ = unescape_mixed(without_quotes, Mode::CStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -172,7 +174,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unescape_unicode(without_quotes, Mode::Char, &mut |range, char| {
+                _ = unescape_unicode(without_quotes, Mode::Char, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(1, range.start, err);
                     }
@@ -181,7 +183,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unescape_unicode(without_quotes, Mode::Byte, &mut |range, char| {
+                _ = unescape_unicode(without_quotes, Mode::Byte, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(2, range.start, err);
                     }

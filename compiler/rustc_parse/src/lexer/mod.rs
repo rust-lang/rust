@@ -8,9 +8,8 @@ use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{codes::*, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
-use rustc_lexer::unescape::{self, EscapeError, Mode};
-use rustc_lexer::{Base, DocStyle, RawStrError};
-use rustc_lexer::{Cursor, LiteralKind};
+use rustc_lexer::unescape::{self, EscapeError, Mode, Rfc3349};
+use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
@@ -436,7 +435,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                         .with_code(E0766)
                         .emit()
                 }
-                self.cook_unicode(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
+                self.cook_mixed(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
@@ -697,13 +696,13 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         end: BytePos,
         prefix_len: u32,
         postfix_len: u32,
-        unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
+        unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)) -> Rfc3349,
     ) -> (token::LitKind, Symbol) {
         let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
-        unescape(lit_content, mode, &mut |range, result| {
+        let rfc3349 = unescape(lit_content, mode, &mut |range, result| {
             // Here we only check for errors. The actual unescaping is done later.
             if let Err(err) = result {
                 let span_with_quotes = self.mk_sp(start, end);
@@ -725,6 +724,9 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 );
             }
         });
+        if rfc3349 == Rfc3349::Used {
+            self.sess.gated_spans.gate(sym::mixed_utf8_literals, self.mk_sp(start, end));
+        }
 
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.

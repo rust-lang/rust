@@ -175,6 +175,7 @@ pub(crate) fn emit_unescape_error(
         EscapeError::NonAsciiCharInByte => {
             let (c, span) = last_char();
             let desc = match mode {
+                // Note: once rfc3349 stabilizes, only `Mode::Byte` will be reachable here.
                 Mode::Byte => "byte literal",
                 Mode::ByteStr => "byte string literal",
                 Mode::RawByteStr => "raw byte string literal",
@@ -188,7 +189,7 @@ pub(crate) fn emit_unescape_error(
             };
             err.span_label(span, format!("must be ASCII{postfix}"));
             // Note: the \\xHH suggestions are not given for raw byte string
-            // literals, because they are araw and so cannot use any escapes.
+            // literals, because they cannot use escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
                 err.span_suggestion(
                     span,

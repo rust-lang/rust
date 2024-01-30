@@ -85,7 +85,7 @@ impl EscapeError {
 ///
 /// Values are returned by invoking `callback`. For `Char` and `Byte` modes,
 /// the callback will be called exactly once.
-pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F)
+pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F) -> Rfc3349
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
@@ -94,8 +94,9 @@ where
             let mut chars = src.chars();
             let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
+            Rfc3349::Unused // rfc3349 not relevant for `Mode::{Char,Byte}`
         }
-        Str | ByteStr => unescape_non_raw_common(src, mode, callback),
+        Str => unescape_non_raw_common(src, mode, callback),
         RawStr | RawByteStr => check_raw_common(src, mode, callback),
         RawCStr => check_raw_common(src, mode, &mut |r, mut result| {
             if let Ok('\0') = result {
@@ -103,7 +104,7 @@ where
             }
             callback(r, result)
         }),
-        CStr => unreachable!(),
+        ByteStr | CStr => unreachable!(),
     }
 }
 
@@ -142,18 +143,19 @@ impl From<u8> for MixedUnit {
 /// a sequence of escaped characters or errors.
 ///
 /// Values are returned by invoking `callback`.
-pub fn unescape_mixed<F>(src: &str, mode: Mode, callback: &mut F)
+pub fn unescape_mixed<F>(src: &str, mode: Mode, callback: &mut F) -> Rfc3349
 where
     F: FnMut(Range<usize>, Result<MixedUnit, EscapeError>),
 {
     match mode {
+        ByteStr => unescape_non_raw_common(src, mode, callback),
         CStr => unescape_non_raw_common(src, mode, &mut |r, mut result| {
             if let Ok(MixedUnit::Char('\0')) = result {
                 result = Err(EscapeError::NulInCStr);
             }
             callback(r, result)
         }),
-        Char | Byte | Str | RawStr | ByteStr | RawByteStr | RawCStr => unreachable!(),
+        Char | Byte | Str | RawStr | RawByteStr | RawCStr => unreachable!(),
     }
 }
 
@@ -167,6 +169,15 @@ pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
 /// unescaped byte or an error.
 pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
     unescape_char_or_byte(&mut src.chars(), Byte).map(byte_from_char)
+}
+
+/// Used to indicate if rfc3349 (mixed-utf8-literals) was required for the
+/// literal to be valid. Once rfc3349 is stabilized this type can be removed.
+#[derive(Debug, PartialEq)]
+#[must_use]
+pub enum Rfc3349 {
+    Used,
+    Unused,
 }
 
 /// What kind of literal do we parse.
@@ -205,17 +216,25 @@ impl Mode {
 
     /// Are unicode (non-ASCII) chars allowed?
     #[inline]
-    fn allow_unicode_chars(self) -> bool {
+    fn allow_unicode_chars(self, rfc3349: &mut Rfc3349) -> bool {
         match self {
-            Byte | ByteStr | RawByteStr => false,
+            Byte => false,
+            ByteStr | RawByteStr => {
+                *rfc3349 = Rfc3349::Used;
+                true
+            }
             Char | Str | RawStr | CStr | RawCStr => true,
         }
     }
 
     /// Are unicode escapes (`\u`) allowed?
-    fn allow_unicode_escapes(self) -> bool {
+    fn allow_unicode_escapes(self, rfc3349: &mut Rfc3349) -> bool {
         match self {
-            Byte | ByteStr => false,
+            Byte => false,
+            ByteStr => {
+                *rfc3349 = Rfc3349::Used;
+                true
+            }
             Char | Str | CStr => true,
             RawByteStr | RawStr | RawCStr => unreachable!(),
         }
@@ -233,6 +252,7 @@ impl Mode {
 fn scan_escape<T: From<char> + From<u8>>(
     chars: &mut Chars<'_>,
     mode: Mode,
+    rfc3349: &mut Rfc3349,
 ) -> Result<T, EscapeError> {
     // Previous character was '\\', unescape what follows.
     let res: char = match chars.next().ok_or(EscapeError::LoneSlash)? {
@@ -262,13 +282,17 @@ fn scan_escape<T: From<char> + From<u8>>(
                 Ok(T::from(value as u8))
             };
         }
-        'u' => return scan_unicode(chars, mode.allow_unicode_escapes()).map(T::from),
+        'u' => return scan_unicode(chars, mode, rfc3349).map(T::from),
         _ => return Err(EscapeError::InvalidEscape),
     };
     Ok(T::from(res))
 }
 
-fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<char, EscapeError> {
+fn scan_unicode(
+    chars: &mut Chars<'_>,
+    mode: Mode,
+    rfc3349: &mut Rfc3349,
+) -> Result<char, EscapeError> {
     // We've parsed '\u', now we have to parse '{..}'.
 
     if chars.next() != Some('{') {
@@ -296,7 +320,7 @@ fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<ch
 
                 // Incorrect syntax has higher priority for error reporting
                 // than unallowed value for a literal.
-                if !allow_unicode_escapes {
+                if !mode.allow_unicode_escapes(rfc3349) {
                     return Err(EscapeError::UnicodeEscapeInByte);
                 }
 
@@ -322,18 +346,27 @@ fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<ch
 }
 
 #[inline]
-fn ascii_check(c: char, allow_unicode_chars: bool) -> Result<char, EscapeError> {
-    if allow_unicode_chars || c.is_ascii() { Ok(c) } else { Err(EscapeError::NonAsciiCharInByte) }
+fn ascii_check(c: char, mode: Mode, rfc3349: &mut Rfc3349) -> Result<char, EscapeError> {
+    // We must check `is_ascii` first, to avoid setting `rfc3349` unnecessarily.
+    if c.is_ascii() || mode.allow_unicode_chars(rfc3349) {
+        Ok(c)
+    } else {
+        Err(EscapeError::NonAsciiCharInByte)
+    }
 }
 
 fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
     let c = chars.next().ok_or(EscapeError::ZeroChars)?;
+    let mut rfc3349 = Rfc3349::Unused;
     let res = match c {
-        '\\' => scan_escape(chars, mode),
+        '\\' => scan_escape(chars, mode, &mut rfc3349),
         '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
         '\r' => Err(EscapeError::BareCarriageReturn),
-        _ => ascii_check(c, mode.allow_unicode_chars()),
+        _ => ascii_check(c, mode, &mut rfc3349),
     }?;
+
+    assert_eq!(rfc3349, Rfc3349::Unused); // rfc3349 not relevant for `Mode::{Char,Byte}`
+
     if chars.next().is_some() {
         return Err(EscapeError::MoreThanOneChar);
     }
@@ -342,12 +375,16 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-fn unescape_non_raw_common<F, T: From<char> + From<u8>>(src: &str, mode: Mode, callback: &mut F)
+fn unescape_non_raw_common<F, T: From<char> + From<u8>>(
+    src: &str,
+    mode: Mode,
+    callback: &mut F,
+) -> Rfc3349
 where
     F: FnMut(Range<usize>, Result<T, EscapeError>),
 {
     let mut chars = src.chars();
-    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
+    let mut rfc3349 = Rfc3349::Unused;
 
     // The `start` and `end` computation here is complicated because
     // `skip_ascii_whitespace` makes us to skip over chars without counting
@@ -367,16 +404,17 @@ where
                         });
                         continue;
                     }
-                    _ => scan_escape::<T>(&mut chars, mode),
+                    _ => scan_escape::<T>(&mut chars, mode, &mut rfc3349),
                 }
             }
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, allow_unicode_chars).map(T::from),
+            _ => ascii_check(c, mode, &mut rfc3349).map(T::from),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
     }
+    rfc3349
 }
 
 fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
@@ -409,12 +447,12 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only produce errors on bare CR.
-fn check_raw_common<F>(src: &str, mode: Mode, callback: &mut F)
+fn check_raw_common<F>(src: &str, mode: Mode, callback: &mut F) -> Rfc3349
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     let mut chars = src.chars();
-    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
+    let mut rfc3349 = Rfc3349::Unused;
 
     // The `start` and `end` computation here matches the one in
     // `unescape_non_raw_common` for consistency, even though this function
@@ -423,16 +461,17 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let res = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            _ => ascii_check(c, allow_unicode_chars),
+            _ => ascii_check(c, mode, &mut rfc3349),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
     }
+    rfc3349
 }
 
 #[inline]
-pub fn byte_from_char(c: char) -> u8 {
+pub(crate) fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    debug_assert!(res <= u8::MAX as u32, "guaranteed because of ByteStr");
+    debug_assert!(res <= u8::MAX as u32, "guaranteed because of Byte");
     res as u8
 }

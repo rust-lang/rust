@@ -1,7 +1,4 @@
 fn main() {
-    let _ = b"\u{a66e}";
-    //~^ ERROR unicode escape in byte string
-
     let _ = b'\u{a66e}';
     //~^ ERROR unicode escape in byte string
 
@@ -20,10 +17,9 @@ fn main() {
     let _ = '\xxy';
     //~^ ERROR invalid character in numeric character escape: `x`
 
-    let _ = b"\u{a4a4} \xf \u";
-    //~^ ERROR unicode escape in byte string
-    //~^^ ERROR invalid character in numeric character escape: ` `
-    //~^^^ ERROR incorrect unicode escape sequence
+    let _ = b"\xf \u";
+    //~^ ERROR invalid character in numeric character escape: ` `
+    //~^^ ERROR incorrect unicode escape sequence
 
     let _ = "\xf \u";
     //~^ ERROR invalid character in numeric character escape: ` `
