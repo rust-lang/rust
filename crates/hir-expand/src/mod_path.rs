@@ -232,7 +232,7 @@ fn convert_path(
         ast::PathSegmentKind::SuperKw => {
             let mut deg = 1;
             let mut next_segment = None;
-            while let Some(segment) = segments.next() {
+            for segment in segments.by_ref() {
                 match segment.kind()? {
                     ast::PathSegmentKind::SuperKw => deg += 1,
                     ast::PathSegmentKind::Name(name) => {

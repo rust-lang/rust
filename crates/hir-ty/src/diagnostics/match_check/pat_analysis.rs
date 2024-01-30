@@ -237,7 +237,7 @@ impl<'p> MatchCheckCtx<'p> {
                 ctor = Or;
                 // Collect here because `Arena::alloc_extend` panics on reentrancy.
                 let subpats: SmallVec<[_; 2]> =
-                    pats.into_iter().map(|pat| self.lower_pat(pat)).collect();
+                    pats.iter().map(|pat| self.lower_pat(pat)).collect();
                 fields = self.pattern_arena.alloc_extend(subpats);
             }
         }
