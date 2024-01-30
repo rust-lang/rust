@@ -433,7 +433,7 @@ pub(crate) fn parse(
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FormatArgumentsCollector {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
@@ -452,7 +452,7 @@ impl FormatArgumentsCollector {
     }
 
     pub fn new() -> Self {
-        Self { arguments: vec![], names: vec![], num_unnamed_args: 0, num_explicit_args: 0 }
+        Default::default()
     }
 
     pub fn add(&mut self, arg: FormatArgument) -> usize {
