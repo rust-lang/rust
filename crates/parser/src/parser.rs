@@ -26,7 +26,7 @@ pub(crate) struct Parser<'t> {
     pos: usize,
     events: Vec<Event>,
     steps: Cell<u32>,
-    edition: Edition,
+    _edition: Edition,
 }
 
 #[non_exhaustive]
@@ -40,7 +40,7 @@ static PARSER_STEP_LIMIT: Limit = Limit::new(15_000_000);
 
 impl<'t> Parser<'t> {
     pub(super) fn new(inp: &'t Input, edition: Edition) -> Parser<'t> {
-        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0), edition }
+        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0), _edition: edition }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {
