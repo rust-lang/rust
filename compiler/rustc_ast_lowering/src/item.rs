@@ -496,8 +496,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let res =
-                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
+                let res = self.lower_import_res(id);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
@@ -567,8 +566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let res =
-                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
+                let res = self.lower_import_res(id);
                 let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
