@@ -318,11 +318,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         discr: &mir::Operand<'tcx>,
     ) -> Option<mir::ExpectKind> {
         // First do a quick test if there are any `expect` intrinsics in the BB.
-
-        let Some(discr) = discr.place() else {
-            return None;
-        };
-
         if let Some(ref blocks) = self.blocks_with_expect {
             if !blocks.contains(bb) {
                 return None;
@@ -330,6 +325,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             return None;
         }
+
+        let Some(discr) = discr.place() else {
+            return None;
+        };
 
         // There are `expect` intrinsics in the BB, so we need to do the full analysis.
 
