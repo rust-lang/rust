@@ -17,6 +17,7 @@ use syntax::{
 use crate::{
     imports::merge_imports::{
         common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_cmp, MergeBehavior,
+        NormalizationStyle,
     },
     RootDatabase,
 };
@@ -38,6 +39,15 @@ pub enum ImportGranularity {
     /// Merge all imports into a single use statement as long as they have the same visibility
     /// and attributes.
     One,
+}
+
+impl From<ImportGranularity> for NormalizationStyle {
+    fn from(granularity: ImportGranularity) -> Self {
+        match granularity {
+            ImportGranularity::One => NormalizationStyle::One,
+            _ => NormalizationStyle::Default,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

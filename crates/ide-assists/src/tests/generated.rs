@@ -2218,6 +2218,19 @@ fn t() {}
 }
 
 #[test]
+fn doctest_normalize_import() {
+    check_doc_test(
+        "normalize_import",
+        r#####"
+use$0 std::{io, {fmt::Formatter}};
+"#####,
+        r#####"
+use std::{fmt::Formatter, io};
+"#####,
+    )
+}
+
+#[test]
 fn doctest_promote_local_to_const() {
     check_doc_test(
         "promote_local_to_const",
