@@ -238,8 +238,7 @@ impl Diagnostic {
             Level::Bug
             | Level::DelayedBug(DelayedBugKind::Normal)
             | Level::Fatal
-            | Level::Error
-            | Level::FailureNote => true,
+            | Level::Error => true,
 
             Level::ForceWarning(_)
             | Level::Warning
@@ -248,6 +247,7 @@ impl Diagnostic {
             | Level::OnceNote
             | Level::Help
             | Level::OnceHelp
+            | Level::FailureNote
             | Level::Allow
             | Level::Expect(_) => false,
         }
