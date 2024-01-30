@@ -119,10 +119,18 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::likely => {
                 self.call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(true)])
             }
-            sym::is_val_statically_known => self.call_intrinsic(
-                &format!("llvm.is.constant.{:?}", args[0].layout.immediate_llvm_type(self.cx)),
-                &[args[0].immediate()],
-            ),
+            sym::is_val_statically_known => {
+                let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
+                match self.type_kind(intrinsic_type) {
+                    TypeKind::Pointer | TypeKind::Integer | TypeKind::Float | TypeKind::Double => {
+                        self.call_intrinsic(
+                            &format!("llvm.is.constant.{:?}", intrinsic_type),
+                            &[args[0].immediate()],
+                        )
+                    }
+                    _ => self.const_bool(false),
+                }
+            }
             sym::unlikely => self
                 .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
             kw::Try => {
