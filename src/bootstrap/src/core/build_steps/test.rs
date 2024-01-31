@@ -1470,7 +1470,6 @@ impl Step for MirOpt {
         };
 
         if builder.config.cmd.bless() {
-            crate::utils::cc_detect::find_target(builder, self.compiler.host);
             // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
             // but while we're at it we might as well flex our cross-compilation support. This
             // selection covers all our tier 1 operating systems and architectures using only tier

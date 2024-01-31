@@ -2468,7 +2468,6 @@ impl<'test> TestCx<'test> {
                     "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
                     "--crate-type=rlib",
-                    "-Clink-dead-code",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
