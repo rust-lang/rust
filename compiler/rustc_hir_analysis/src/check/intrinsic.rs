@@ -13,7 +13,7 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 fn equate_intrinsic_type<'tcx>(
@@ -136,8 +136,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
-    let generics = tcx.generics_of(it.owner_id);
+pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Span) {
+    let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
         if let Some(&ty::GenericParamDef {
             name, kind: ty::GenericParamDefKind::Type { .. }, ..
@@ -145,10 +145,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         {
             Ty::new_param(tcx, n, name)
         } else {
-            Ty::new_error_with_message(tcx, tcx.def_span(it.owner_id), "expected param")
+            Ty::new_error_with_message(tcx, span, "expected param")
         }
     };
-    let intrinsic_id = it.owner_id.def_id;
     let intrinsic_name = tcx.item_name(intrinsic_id.into());
     let name_str = intrinsic_name.as_str();
 
@@ -191,7 +190,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | "umin" => (1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
             "fence" | "singlethreadfence" => (0, Vec::new(), Ty::new_unit(tcx)),
             op => {
-                tcx.dcx().emit_err(UnrecognizedAtomicOperation { span: it.span, op });
+                tcx.dcx().emit_err(UnrecognizedAtomicOperation { span, op });
                 return;
             }
         };
@@ -479,7 +478,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::debug_assertions => (0, Vec::new(), tcx.types.bool),
 
             other => {
-                tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
+                tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
                 return;
             }
         };
@@ -487,12 +486,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     };
     let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
-    equate_intrinsic_type(tcx, it.span, intrinsic_id, n_tps, n_lts, 0, sig)
+    equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, 0, sig)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
-    let generics = tcx.generics_of(it.owner_id);
+pub fn check_platform_intrinsic_type(
+    tcx: TyCtxt<'_>,
+    intrinsic_id: LocalDefId,
+    span: Span,
+    name: Symbol,
+) {
+    let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
         if let Some(&ty::GenericParamDef {
             name, kind: ty::GenericParamDefKind::Type { .. }, ..
@@ -500,11 +504,9 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         {
             Ty::new_param(tcx, n, name)
         } else {
-            Ty::new_error_with_message(tcx, tcx.def_span(it.owner_id), "expected param")
+            Ty::new_error_with_message(tcx, span, "expected param")
         }
     };
-
-    let name = it.ident.name;
 
     let (n_tps, n_cts, inputs, output) = match name {
         sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
@@ -578,12 +580,12 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.dcx().span_err(it.span, msg);
+            tcx.dcx().span_err(span, msg);
             return;
         }
     };
 
     let sig = tcx.mk_fn_sig(inputs, output, false, hir::Unsafety::Unsafe, Abi::PlatformIntrinsic);
     let sig = ty::Binder::dummy(sig);
-    equate_intrinsic_type(tcx, it.span, it.owner_id.def_id, n_tps, 0, n_cts, sig)
+    equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, 0, n_cts, sig)
 }

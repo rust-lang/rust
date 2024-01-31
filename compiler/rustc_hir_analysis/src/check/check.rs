@@ -533,15 +533,18 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             match abi {
                 Abi::RustIntrinsic => {
                     for item in items {
-                        let item = tcx.hir().foreign_item(item.id);
-                        intrinsic::check_intrinsic_type(tcx, item);
+                        intrinsic::check_intrinsic_type(tcx, item.id.owner_id.def_id, item.span);
                     }
                 }
 
                 Abi::PlatformIntrinsic => {
                     for item in items {
-                        let item = tcx.hir().foreign_item(item.id);
-                        intrinsic::check_platform_intrinsic_type(tcx, item);
+                        intrinsic::check_platform_intrinsic_type(
+                            tcx,
+                            item.id.owner_id.def_id,
+                            item.span,
+                            item.ident.name,
+                        );
                     }
                 }
 
