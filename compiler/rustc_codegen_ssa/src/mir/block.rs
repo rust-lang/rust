@@ -837,8 +837,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             };
         }
 
-        match intrinsic {
-            None | Some(sym::drop_in_place) => {}
+        let instance = match intrinsic {
+            None | Some(sym::drop_in_place) => instance,
             Some(intrinsic) => {
                 let mut llargs = Vec::with_capacity(1);
                 let ret_dest = self.make_return_dest(
@@ -882,27 +882,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     })
                     .collect();
 
-                Self::codegen_intrinsic_call(
-                    bx,
-                    *instance.as_ref().unwrap(),
-                    fn_abi,
-                    &args,
-                    dest,
-                    span,
-                );
+                let instance = *instance.as_ref().unwrap();
+                match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span) {
+                    Ok(()) => {
+                        if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                            self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
+                        }
 
-                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
+                        return if let Some(target) = target {
+                            helper.funclet_br(self, bx, target, mergeable_succ)
+                        } else {
+                            bx.unreachable();
+                            MergingSucc::False
+                        };
+                    }
+                    Err(instance) => Some(instance),
                 }
-
-                return if let Some(target) = target {
-                    helper.funclet_br(self, bx, target, mergeable_succ)
-                } else {
-                    bx.unreachable();
-                    MergingSucc::False
-                };
             }
-        }
+        };
 
         let mut llargs = Vec::with_capacity(arg_count);
         let destination = target.as_ref().map(|&target| {

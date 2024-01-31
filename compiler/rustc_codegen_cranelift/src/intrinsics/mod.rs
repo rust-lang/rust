@@ -268,7 +268,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     destination: CPlace<'tcx>,
     target: Option<BasicBlock>,
     source_info: mir::SourceInfo,
-) -> Result<(), ()> {
+) -> Result<(), Instance<'tcx>> {
     let intrinsic = fx.tcx.item_name(instance.def_id());
     let instance_args = instance.args;
 
@@ -431,7 +431,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
     destination: Option<BasicBlock>,
     source_info: mir::SourceInfo,
-) -> Result<(), ()> {
+) -> Result<(), Instance<'tcx>> {
     assert_eq!(generic_args, instance.args);
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
@@ -1229,14 +1229,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(cmp, ret.layout()));
         }
 
-        sym::const_allocate => {
-            intrinsic_args!(fx, args => (_size, _align); intrinsic);
-
-            // returns a null pointer at runtime.
-            let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            ret.write_cvalue(fx, CValue::by_val(null, ret.layout()));
-        }
-
         sym::const_deallocate => {
             intrinsic_args!(fx, args => (_ptr, _size, _align); intrinsic);
             // nop at runtime.
@@ -1257,7 +1249,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             );
         }
 
-        _ => return Err(()),
+        // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
+        // by converting the `InstanceDef::Intrinsic` to an `InstanceDef::Item`.
+        _ => return Err(Instance::new(instance.def_id(), instance.args)),
     }
 
     let ret_block = fx.get_block(destination.unwrap());

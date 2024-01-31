@@ -2368,18 +2368,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
 
-    /// Allocates a block of memory at compile time.
-    /// At runtime, just returns a null pointer.
-    ///
-    /// # Safety
-    ///
-    /// - The `align` argument must be a power of two.
-    ///    - At compile time, a compile error occurs if this constraint is violated.
-    ///    - At runtime, it is not checked.
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[rustc_nounwind]
-    pub fn const_allocate(size: usize, align: usize) -> *mut u8;
-
     /// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
     /// At runtime, does nothing.
     ///
@@ -2592,6 +2580,22 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 pub(crate) const unsafe fn debug_assertions() -> bool {
     cfg!(debug_assertions)
+}
+
+/// Allocates a block of memory at compile time.
+/// At runtime, just returns a null pointer.
+///
+/// # Safety
+///
+/// - The `align` argument must be a power of two.
+///    - At compile time, a compile error occurs if this constraint is violated.
+///    - At runtime, it is not checked.
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
+    // const eval overrides this function, but runtime code should always just return null pointers.
+    crate::ptr::null_mut()
 }
 
 // Some functions are defined here because they accidentally got made

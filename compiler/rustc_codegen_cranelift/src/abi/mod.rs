@@ -396,9 +396,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     source_info,
                 ) {
                     Ok(()) => return,
-                    // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
-                    // by converting the `InstanceDef::Intrinsic` to an `InstanceDef::Item`.
-                    Err(()) => Some(Instance::new(instance.def_id(), instance.args)),
+                    Err(instance) => Some(instance),
                 }
             }
             InstanceDef::DropGlue(_, None) => {
