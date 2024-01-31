@@ -2590,7 +2590,7 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub(crate) const fn debug_assertions() -> bool {
+pub(crate) const unsafe fn debug_assertions() -> bool {
     cfg!(debug_assertions)
 }
 

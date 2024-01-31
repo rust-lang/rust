@@ -26,7 +26,8 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (own_counts, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::ForeignItem(hir::ForeignItem {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
+        | hir::Node::ForeignItem(hir::ForeignItem {
             kind: hir::ForeignItemKind::Fn(.., generics),
             ..
         }) => {
@@ -136,7 +137,13 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Span) {
+pub fn check_intrinsic_type(
+    tcx: TyCtxt<'_>,
+    intrinsic_id: LocalDefId,
+    span: Span,
+    intrinsic_name: Symbol,
+    abi: Abi,
+) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
         if let Some(&ty::GenericParamDef {
@@ -148,7 +155,6 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Spa
             Ty::new_error_with_message(tcx, span, "expected param")
         }
     };
-    let intrinsic_name = tcx.item_name(intrinsic_id.into());
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(&[
@@ -479,7 +485,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Spa
 
             sym::black_box => (1, 0, vec![param(0)], param(0)),
 
-            sym::is_val_statically_known => (1, 0, vec![param(0)], tcx.types.bool),
+            sym::is_val_statically_known => (1, 1, vec![param(0)], tcx.types.bool),
 
             sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
 
@@ -487,7 +493,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Spa
                 (0, 0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
 
-            sym::debug_assertions => (0, 0, Vec::new(), tcx.types.bool),
+            sym::debug_assertions => (0, 1, Vec::new(), tcx.types.bool),
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
@@ -496,7 +502,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId, span: Spa
         };
         (n_tps, 0, n_cts, inputs, output, unsafety)
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, Abi::RustIntrinsic);
+    let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, abi);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

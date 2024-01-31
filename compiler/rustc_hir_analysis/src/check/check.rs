@@ -472,7 +472,18 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::Enum => {
             check_enum(tcx, def_id);
         }
-        DefKind::Fn => {} // entirely within check_item_body
+        DefKind::Fn => {
+            if let Some(name) = tcx.intrinsic(def_id) {
+                intrinsic::check_intrinsic_type(
+                    tcx,
+                    def_id,
+                    tcx.def_ident_span(def_id).unwrap(),
+                    name,
+                    Abi::Rust,
+                )
+            }
+            // Everything else is checked entirely within check_item_body
+        }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(def_id) {
                 check_impl_items_against_trait(tcx, def_id, impl_trait_ref.instantiate_identity());
@@ -533,7 +544,13 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             match abi {
                 Abi::RustIntrinsic => {
                     for item in items {
-                        intrinsic::check_intrinsic_type(tcx, item.id.owner_id.def_id, item.span);
+                        intrinsic::check_intrinsic_type(
+                            tcx,
+                            item.id.owner_id.def_id,
+                            item.span,
+                            item.ident.name,
+                            abi,
+                        );
                     }
                 }
 
