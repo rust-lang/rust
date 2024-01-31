@@ -294,7 +294,7 @@ jobs:
           - name: x86_64-gnu-integration
             env:
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-debug
             os: ubuntu-20.04-8core-32gb
             env: {}
