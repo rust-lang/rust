@@ -132,6 +132,22 @@ fn foo() -> u8 {
     }
 
     #[test]
+    fn remove_trailing_return_in_if() {
+        check_diagnostics(
+            r#"
+fn foo(x: usize) -> u8 {
+    if x > 0 {
+        return 1;
+      //^^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
+    } else {
+        return 0;
+    } //^^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
+}
+"#,
+        );
+    }
+
+    #[test]
     fn no_diagnostic_if_no_return_keyword() {
         check_diagnostics(
             r#"
@@ -255,6 +271,50 @@ fn foo() -> u8 {
         2
     };
     bar()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_in_if() {
+        check_fix(
+            r#"
+fn foo(x: usize) -> u8 {
+    if x > 0 {
+        return$0 1;
+    } else {
+        0
+    }
+}
+"#,
+            r#"
+fn foo(x: usize) -> u8 {
+    if x > 0 {
+        1
+    } else {
+        0
+    }
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn foo(x: usize) -> u8 {
+    if x > 0 {
+        1
+    } else {
+        return$0 0;
+    }
+}
+"#,
+            r#"
+fn foo(x: usize) -> u8 {
+    if x > 0 {
+        1
+    } else {
+        0
+    }
 }
 "#,
         );

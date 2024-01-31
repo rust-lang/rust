@@ -266,6 +266,12 @@ impl ExprValidator {
                     self.check_for_trailing_return(last_stmt, body);
                 }
             }
+            Expr::If { then_branch, else_branch, .. } => {
+                self.check_for_trailing_return(*then_branch, body);
+                if let Some(else_branch) = else_branch {
+                    self.check_for_trailing_return(*else_branch, body);
+                }
+            }
             Expr::Return { .. } => {
                 self.diagnostics.push(BodyValidationDiagnostic::RemoveTrailingReturn {
                     return_expr: body_expr,
