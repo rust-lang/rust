@@ -258,7 +258,6 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
         PtxKernel => Conv::PtxKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,
-        AmdGpuKernel => Conv::AmdGpuKernel,
         AvrInterrupt => Conv::AvrInterrupt,
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
         RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
