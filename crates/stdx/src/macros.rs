@@ -1,15 +1,5 @@
 //! Convenience macros.
 
-#[macro_export]
-macro_rules! eprintln {
-    ($($tt:tt)*) => {{
-        if $crate::is_ci() {
-            panic!("Forgot to remove debug-print?")
-        }
-        std::eprintln!($($tt)*)
-    }}
-}
-
 /// Appends formatted string to a `String`.
 #[macro_export]
 macro_rules! format_to {
