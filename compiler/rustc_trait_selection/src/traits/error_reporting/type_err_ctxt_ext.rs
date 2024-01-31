@@ -448,8 +448,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME(effects)
                         let predicate_is_const = false;
 
-                        if let Some(guar) = self.dcx().has_errors()
-                            && trait_predicate.references_error()
+                        if let Err(guar) = trait_predicate.error_reported()
                         {
                             return guar;
                         }
@@ -2625,9 +2624,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                if let Some(e) = self.dcx().has_errors() {
-                    return e;
-                }
 
                 self.emit_inference_failure_err(
                     obligation.cause.body_id,
@@ -2643,10 +2639,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return e;
                 }
                 if let Some(e) = self.tainted_by_errors() {
-                    return e;
-                }
-                if let Some(e) = self.dcx().has_errors() {
-                    // no need to overload user in such cases
                     return e;
                 }
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
@@ -2726,10 +2718,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             _ => {
                 if let Some(e) = self.tainted_by_errors() {
-                    return e;
-                }
-                if let Some(e) = self.dcx().has_errors() {
-                    // no need to overload user in such cases
                     return e;
                 }
                 struct_span_code_err!(
