@@ -1207,17 +1207,12 @@ impl<'p, Cx: TypeCx> fmt::Debug for Matrix<'p, Cx> {
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 ///
 /// See the top of the file for more detailed explanations and examples.
+#[derive(Debug)]
 struct WitnessStack<Cx: TypeCx>(Vec<WitnessPat<Cx>>);
 
 impl<Cx: TypeCx> Clone for WitnessStack<Cx> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
-    }
-}
-
-impl<Cx: TypeCx> fmt::Debug for WitnessStack<Cx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_tuple("WitnessStack").field(&self.0).finish()
     }
 }
 
@@ -1265,17 +1260,12 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
 ///
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
+#[derive(Debug)]
 struct WitnessMatrix<Cx: TypeCx>(Vec<WitnessStack<Cx>>);
 
 impl<Cx: TypeCx> Clone for WitnessMatrix<Cx> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
-    }
-}
-
-impl<Cx: TypeCx> fmt::Debug for WitnessMatrix<Cx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_tuple("WitnessMatrix").field(&self.0).finish()
     }
 }
 
