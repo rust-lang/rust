@@ -254,7 +254,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
         map: &mut named_variable_map,
         scope: &Scope::Root { opt_parent_item: None },
     };
-    match tcx.hir().owner(local_def_id) {
+    match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
         hir::OwnerNode::TraitItem(item) => {

@@ -135,13 +135,8 @@ pub fn provide(providers: &mut Providers) {
             MaybeOwner::NonOwner(hir_id) => hir_id,
         })
     };
-    providers.hir_owner_nodes = |tcx, id| {
-        if let Some(i) = tcx.hir_crate(()).owners.get(id.def_id) {
-            i.map(|i| &i.nodes)
-        } else {
-            MaybeOwner::Phantom
-        }
-    };
+    providers.opt_hir_owner_nodes =
+        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {

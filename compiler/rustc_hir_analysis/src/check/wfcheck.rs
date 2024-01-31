@@ -188,7 +188,7 @@ where
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
-    let node = tcx.hir().owner(def_id);
+    let node = tcx.hir_owner_node(def_id);
     let mut res = match node {
         hir::OwnerNode::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
         hir::OwnerNode::Item(item) => check_item(tcx, item),
