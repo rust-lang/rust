@@ -2720,10 +2720,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                if let Some(e) = self.dcx().has_errors() {
-                    // no need to overload user in such cases
-                    return e;
-                }
                 struct_span_code_err!(
                     self.dcx(),
                     span,
