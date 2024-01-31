@@ -6,7 +6,6 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::usefulness::PlaceCtxt;
 use crate::{Captures, TypeCx};
 
 use self::Constructor::*;
@@ -331,9 +330,9 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(crate) fn wild_from_ctor(pcx: &PlaceCtxt<'_, Cx>, ctor: Constructor<Cx>) -> Self {
-        let fields = pcx.ctor_sub_tys(&ctor).map(|ty| Self::wildcard(ty)).collect();
-        Self::new(ctor, fields, pcx.ty.clone())
+    pub(crate) fn wild_from_ctor(cx: &Cx, ctor: Constructor<Cx>, ty: Cx::Ty) -> Self {
+        let fields = cx.ctor_sub_tys(&ctor, &ty).map(|ty| Self::wildcard(ty)).collect();
+        Self::new(ctor, fields, ty)
     }
 
     pub fn ctor(&self) -> &Constructor<Cx> {
