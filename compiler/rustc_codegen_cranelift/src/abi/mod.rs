@@ -387,15 +387,19 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(
+                match crate::intrinsics::codegen_intrinsic_call(
                     fx,
                     instance,
                     args,
                     ret_place,
                     target,
                     source_info,
-                );
-                return;
+                ) {
+                    Ok(()) => return,
+                    // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
+                    // by converting the `InstanceDef::Intrinsic` to an `InstanceDef::Item`.
+                    Err(()) => Some(Instance::new(instance.def_id(), instance.args)),
+                }
             }
             InstanceDef::DropGlue(_, None) => {
                 // empty drop glue - a nop.
