@@ -1604,6 +1604,7 @@ impl Expr<'_> {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Unreachable => ExprPrecedence::Unreachable,
             ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }
@@ -1671,6 +1672,7 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..)
+            | ExprKind::Unreachable
             | ExprKind::Err(_) => false,
         }
     }
@@ -1706,7 +1708,10 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) => false,
+            ExprKind::Path(_)
+            | ExprKind::Lit(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::Unreachable => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -1930,6 +1935,10 @@ pub enum ExprKind<'hir> {
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
+
+    /// The absent body of a match arm without a body, encountered in the presence of never
+    /// patterns. Statically known to be unreachable.
+    Unreachable,
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),

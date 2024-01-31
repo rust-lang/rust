@@ -248,7 +248,10 @@ fn recurse_build<'tcx>(
             error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
         }
         // let expressions imply control flow
-        ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } => {
+        ExprKind::Match { .. }
+        | ExprKind::If { .. }
+        | ExprKind::Let { .. }
+        | ExprKind::Unreachable => {
             error(GenericConstantTooComplexSub::ControlFlowNotSupported(node.span))?
         }
         ExprKind::InlineAsm { .. } => {
@@ -341,6 +344,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Break { .. }
             | thir::ExprKind::Continue { .. }
             | thir::ExprKind::Return { .. }
+            | thir::ExprKind::Unreachable { .. }
             | thir::ExprKind::Become { .. }
             | thir::ExprKind::Array { .. }
             | thir::ExprKind::Tuple { .. }

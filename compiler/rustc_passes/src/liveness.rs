@@ -440,6 +440,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::Type(..)
+            | hir::ExprKind::Unreachable
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {}
@@ -1103,6 +1104,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Lit(..)
             | hir::ExprKind::ConstBlock(..)
+            | hir::ExprKind::Unreachable
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..))
@@ -1396,6 +1398,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Path(_)
         | hir::ExprKind::Yield(..)
         | hir::ExprKind::Type(..)
+        | hir::ExprKind::Unreachable
         | hir::ExprKind::Err(_) => {}
     }
 }

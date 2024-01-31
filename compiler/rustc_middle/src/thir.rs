@@ -496,6 +496,9 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+    /// The absent body of a match arm without a body, encountered in the presence of never
+    /// patterns. Statically known to be unreachable.
+    Unreachable,
 }
 
 /// Represents the association of a field identifier and an expression.

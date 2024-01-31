@@ -287,6 +287,7 @@ pub enum ExprPrecedence {
     Struct,
     Gen,
     Await,
+    Unreachable,
     Err,
 }
 
@@ -353,6 +354,7 @@ impl ExprPrecedence {
             | ExprPrecedence::TryBlock
             | ExprPrecedence::Gen
             | ExprPrecedence::Struct
+            | ExprPrecedence::Unreachable
             | ExprPrecedence::Err => PREC_PAREN,
         }
     }

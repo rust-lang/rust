@@ -538,6 +538,9 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            Unreachable => {
+                print_indented!(self, "Unreachable", depth_lvl);
+            }
         }
     }
 

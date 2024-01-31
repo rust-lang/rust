@@ -1519,6 +1519,9 @@ impl<'a> State<'a> {
                 self.word_space("yield");
                 self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
             }
+            hir::ExprKind::Unreachable => {
+                self.word("unreachable!()");
+            }
             hir::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
@@ -1883,10 +1886,10 @@ impl<'a> State<'a> {
             self.print_expr(g);
             self.space();
         }
-        self.word_space("=>");
 
         match arm.body.kind {
             hir::ExprKind::Block(blk, opt_label) => {
+                self.word_space("=>");
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -1900,7 +1903,13 @@ impl<'a> State<'a> {
                     self.word(",");
                 }
             }
+            hir::ExprKind::Unreachable => {
+                // Empty body following a never pattern.
+                self.end(); // close the ibox for the pattern
+                self.word(",");
+            }
             _ => {
+                self.word_space("=>");
                 self.end(); // close the ibox for the pattern
                 self.print_expr(arm.body);
                 self.word(",");

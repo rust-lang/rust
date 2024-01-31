@@ -786,6 +786,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
+            hir::ExprKind::Unreachable => ExprKind::Unreachable,
             hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };
 

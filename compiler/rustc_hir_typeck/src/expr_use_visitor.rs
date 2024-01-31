@@ -298,6 +298,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::Continue(..)
+            | hir::ExprKind::Unreachable
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::OffsetOf(..)
