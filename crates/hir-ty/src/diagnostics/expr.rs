@@ -272,6 +272,12 @@ impl ExprValidator {
                     self.check_for_trailing_return(*else_branch, body);
                 }
             }
+            Expr::Match { arms, .. } => {
+                for arm in arms.iter() {
+                    let MatchArm { expr, .. } = arm;
+                    self.check_for_trailing_return(*expr, body);
+                }
+            }
             Expr::Return { .. } => {
                 self.diagnostics.push(BodyValidationDiagnostic::RemoveTrailingReturn {
                     return_expr: body_expr,

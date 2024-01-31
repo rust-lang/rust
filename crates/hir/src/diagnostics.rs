@@ -11,7 +11,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{body::SyntheticSyntax, hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId};
 use hir_expand::{name::Name, HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
+use syntax::{ast, AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
 use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
 
@@ -459,13 +459,16 @@ impl AnyDiagnostic {
             }
             BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
                 if let Ok(source_ptr) = source_map.expr_syntax(return_expr) {
-                    return Some(
-                        RemoveTrailingReturn {
-                            file_id: source_ptr.file_id,
-                            return_expr: source_ptr.value,
-                        }
-                        .into(),
-                    );
+                    // Filters out desugared return expressions (e.g. desugared try operators).
+                    if ast::ReturnExpr::can_cast(source_ptr.value.kind()) {
+                        return Some(
+                            RemoveTrailingReturn {
+                                file_id: source_ptr.file_id,
+                                return_expr: source_ptr.value,
+                            }
+                            .into(),
+                        );
+                    }
                 }
             }
             BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr } => {

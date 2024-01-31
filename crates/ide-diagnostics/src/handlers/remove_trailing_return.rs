@@ -148,6 +148,21 @@ fn foo(x: usize) -> u8 {
     }
 
     #[test]
+    fn remove_trailing_return_in_match() {
+        check_diagnostics(
+            r#"
+fn foo<T, E>(x: Result<T, E>) -> u8 {
+    match x {
+        Ok(_) => return 1,
+               //^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
+        Err(_) => return 0,
+    }           //^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
+}
+"#,
+        );
+    }
+
+    #[test]
     fn no_diagnostic_if_no_return_keyword() {
         check_diagnostics(
             r#"
@@ -314,6 +329,46 @@ fn foo(x: usize) -> u8 {
         1
     } else {
         0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_in_match() {
+        check_fix(
+            r#"
+fn foo<T, E>(x: Result<T, E>) -> u8 {
+    match x {
+        Ok(_) => return$0 1,
+        Err(_) => 0,
+    }
+}
+"#,
+            r#"
+fn foo<T, E>(x: Result<T, E>) -> u8 {
+    match x {
+        Ok(_) => 1,
+        Err(_) => 0,
+    }
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn foo<T, E>(x: Result<T, E>) -> u8 {
+    match x {
+        Ok(_) => 1,
+        Err(_) => return$0 0,
+    }
+}
+"#,
+            r#"
+fn foo<T, E>(x: Result<T, E>) -> u8 {
+    match x {
+        Ok(_) => 1,
+        Err(_) => 0,
     }
 }
 "#,
