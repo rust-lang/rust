@@ -18,7 +18,6 @@
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "hurd",
-    target_os = "freebsd",
     target_os = "netbsd",
     target_os = "dragonfly"
 ))]
@@ -118,7 +117,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     target_os = "vxworks",
     target_os = "horizon",
     target_os = "emscripten",
-    target_os = "aix"
+    target_os = "aix",
+    target_os = "freebsd",
 ))]
 #[cfg_attr(target_family = "wasm", allow(unused))] // might remain unused depending on target details (e.g. wasm32-unknown-emscripten)
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
