@@ -817,23 +817,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
-        let mut llargs = Vec::with_capacity(arg_count);
-
-        // Prepare the return value destination
-        let ret_dest = self.make_return_dest(
-            bx,
-            destination,
-            &fn_abi.ret,
-            &mut llargs,
-            intrinsic.is_some(),
-            target.is_some(),
-        );
 
         if intrinsic == Some(sym::caller_location) {
             return if let Some(target) = target {
                 let location =
                     self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
+                let mut llargs = Vec::with_capacity(arg_count);
+                let ret_dest =
+                    self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, true, true);
+                assert_eq!(llargs, []);
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(bx, tmp);
                 }
@@ -847,6 +840,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match intrinsic {
             None | Some(sym::drop_in_place) => {}
             Some(intrinsic) => {
+                let mut llargs = Vec::with_capacity(1);
+                let ret_dest = self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    true,
+                    target.is_some(),
+                );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
                     ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
@@ -901,6 +903,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
             }
         }
+
+        let mut llargs = Vec::with_capacity(arg_count);
+        let destination = target.as_ref().map(|&target| {
+            (self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, false, true), target)
+        });
 
         // Split the rust-call tupled arguments off.
         let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
@@ -1042,14 +1049,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (_, Some(llfn)) => llfn,
             _ => span_bug!(span, "no instance or llfn for call"),
         };
-
         helper.do_call(
             self,
             bx,
             fn_abi,
             fn_ptr,
             &llargs,
-            target.as_ref().map(|&target| (ret_dest, target)),
+            destination,
             unwind,
             &copied_constant_arguments,
             mergeable_succ,
