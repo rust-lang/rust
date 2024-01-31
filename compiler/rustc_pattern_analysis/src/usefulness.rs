@@ -828,6 +828,8 @@ struct PlaceInfo<Cx: TypeCx> {
     ty: Cx::Ty,
     /// Whether the place is known to contain valid data.
     validity: ValidityConstraint,
+    /// Whether the place is the scrutinee itself or a subplace of it.
+    is_scrutinee: bool,
 }
 
 impl<Cx: TypeCx> PlaceInfo<Cx> {
@@ -838,13 +840,17 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
-        ctor_sub_tys.map(move |ty| PlaceInfo { ty, validity: ctor_sub_validity })
+        ctor_sub_tys.map(move |ty| PlaceInfo {
+            ty,
+            validity: ctor_sub_validity,
+            is_scrutinee: false,
+        })
     }
 }
 
 impl<Cx: TypeCx> Clone for PlaceInfo<Cx> {
     fn clone(&self) -> Self {
-        Self { ty: self.ty.clone(), validity: self.validity }
+        Self { ty: self.ty.clone(), validity: self.validity, is_scrutinee: self.is_scrutinee }
     }
 }
 
@@ -1051,7 +1057,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let place_info = PlaceInfo { ty: scrut_ty, validity: scrut_validity };
+        let place_info = PlaceInfo { ty: scrut_ty, validity: scrut_validity, is_scrutinee: true };
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
             place_info: smallvec![place_info],
@@ -1446,11 +1452,10 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 /// - unspecialization, where we lift the results from the previous step into results for this step
 ///     (using `apply_constructor` and by updating `row.useful` for each parent row).
 /// This is all explained at the top of the file.
-#[instrument(level = "debug", skip(mcx, is_top_level), ret)]
+#[instrument(level = "debug", skip(mcx), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: UsefulnessCtxt<'a, Cx>,
     matrix: &mut Matrix<'p, Cx>,
-    is_top_level: bool,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
@@ -1488,7 +1493,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     // We treat match scrutinees of type `!` or `EmptyEnum` differently.
     let is_toplevel_exception =
-        is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
+        place.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
     // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
     // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
     let empty_arms_are_unreachable = place.validity.is_known_valid()
@@ -1517,7 +1522,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     // Decide what constructors to report.
     let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. });
-    let always_report_all = is_top_level && !is_integers;
+    let always_report_all = place.is_scrutinee && !is_integers;
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
@@ -1538,7 +1543,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant)?;
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
+            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix)
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
@@ -1613,8 +1618,7 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let cx = UsefulnessCtxt { tycx };
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
