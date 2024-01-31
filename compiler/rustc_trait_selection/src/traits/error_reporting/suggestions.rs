@@ -1432,20 +1432,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> bool {
         let span = obligation.cause.span;
 
-        let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
-            obligation.cause.code()
-        {
-            parent_code
-        } else if let ObligationCauseCode::ItemObligation(_)
-        | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
-        {
-            obligation.cause.code()
-        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
-            span.ctxt().outer_expn_data().kind
-        {
-            obligation.cause.code()
-        } else {
-            return false;
+        let code = match obligation.cause.code() {
+            ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => parent_code,
+            c @ ObligationCauseCode::ItemObligation(_)
+            | c @ ObligationCauseCode::ExprItemObligation(..) => c,
+            c if matches!(
+                span.ctxt().outer_expn_data().kind,
+                ExpnKind::Desugaring(DesugaringKind::ForLoop)
+            ) =>
+            {
+                c
+            }
+            _ => return false,
         };
 
         // List of traits for which it would be nonsensical to suggest borrowing.
@@ -4978,16 +4976,27 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             _ => None,
         };
 
+        let pred = obligation.predicate;
+        let (_, base) = obligation.cause.code().peel_derives_with_predicate();
+        let post = if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
+            && let ty::ClauseKind::Trait(pred) = clause
+            && let Some(base) = base
+            && base.skip_binder() != pred
+        {
+            format!(", which is required by `{base}`")
+        } else {
+            String::new()
+        };
         match ty_desc {
             Some(desc) => format!(
-                "{}the trait `{}` is not implemented for {} `{}`",
+                "{}the trait `{}` is not implemented for {} `{}`{post}",
                 pre_message,
                 trait_predicate.print_modifiers_and_trait_path(),
                 desc,
                 tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
             ),
             None => format!(
-                "{}the trait `{}` is not implemented for `{}`",
+                "{}the trait `{}` is not implemented for `{}`{post}",
                 pre_message,
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_ty_string(trait_ref.skip_binder().self_ty(), &mut None),
