@@ -363,7 +363,6 @@ has_interner!(CallableSig);
 pub enum FnAbi {
     Aapcs,
     AapcsUnwind,
-    AmdgpuKernel,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     C,
@@ -422,7 +421,6 @@ impl FnAbi {
         match s {
             "aapcs-unwind" => FnAbi::AapcsUnwind,
             "aapcs" => FnAbi::Aapcs,
-            "amdgpu-kernel" => FnAbi::AmdgpuKernel,
             "avr-interrupt" => FnAbi::AvrInterrupt,
             "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
             "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
@@ -465,7 +463,6 @@ impl FnAbi {
         match self {
             FnAbi::Aapcs => "aapcs",
             FnAbi::AapcsUnwind => "aapcs-unwind",
-            FnAbi::AmdgpuKernel => "amdgpu-kernel",
             FnAbi::AvrInterrupt => "avr-interrupt",
             FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
             FnAbi::C => "C",
