@@ -2624,9 +2624,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                if let Some(e) = self.dcx().has_errors() {
-                    return e;
-                }
 
                 self.emit_inference_failure_err(
                     obligation.cause.body_id,

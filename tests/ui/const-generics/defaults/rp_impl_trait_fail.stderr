@@ -31,6 +31,18 @@ LL |     1_u64
    |
    = help: the trait `Traitor<1, 2>` is implemented for `u64`
 
-error: aborting due to 3 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/rp_impl_trait_fail.rs:28:5
+   |
+LL |     uwu();
+   |     ^^^ cannot infer the value of the const parameter `N` declared on the function `uwu`
+   |
+help: consider specifying the generic argument
+   |
+LL |     uwu::<N>();
+   |        +++++
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0282.
+For more information about an error, try `rustc --explain E0277`.
