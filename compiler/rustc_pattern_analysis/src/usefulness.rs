@@ -767,12 +767,6 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
         self.cx.ctor_arity(ctor, self.ty)
     }
-    fn ctor_sub_tys(
-        &'a self,
-        ctor: &'a Constructor<Cx>,
-    ) -> impl Iterator<Item = Cx::Ty> + ExactSizeIterator + Captures<'a> {
-        self.cx.ctor_sub_tys(ctor, self.ty)
-    }
     fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
         self.cx.ctors_for_ty(self.ty)
     }
@@ -825,6 +819,32 @@ impl fmt::Display for ValidityConstraint {
             MaybeInvalid => "?",
         };
         write!(f, "{s}")
+    }
+}
+
+/// Data about a place under investigation.
+struct PlaceInfo<Cx: TypeCx> {
+    /// The type of the place.
+    ty: Cx::Ty,
+    /// Whether the place is known to contain valid data.
+    validity: ValidityConstraint,
+}
+
+impl<Cx: TypeCx> PlaceInfo<Cx> {
+    fn specialize<'a>(
+        &'a self,
+        cx: &'a Cx,
+        ctor: &'a Constructor<Cx>,
+    ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
+        let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
+        let ctor_sub_validity = self.validity.specialize(ctor);
+        ctor_sub_tys.map(move |ty| PlaceInfo { ty, validity: ctor_sub_validity })
+    }
+}
+
+impl<Cx: TypeCx> Clone for PlaceInfo<Cx> {
+    fn clone(&self) -> Self {
+        Self { ty: self.ty.clone(), validity: self.validity }
     }
 }
 
@@ -1001,10 +1021,9 @@ struct Matrix<'p, Cx: TypeCx> {
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
     rows: Vec<MatrixRow<'p, Cx>>,
-    /// Track the type of each column/place.
-    place_ty: SmallVec<[Cx::Ty; 2]>,
-    /// Track for each column/place whether it contains a known valid value.
-    place_validity: SmallVec<[ValidityConstraint; 2]>,
+    /// Track info about each place. Each place corresponds to a column in `rows`, and their types
+    /// must match.
+    place_info: SmallVec<[PlaceInfo<Cx>; 2]>,
     /// Track whether the virtual wildcard row used to compute exhaustiveness is relevant. See top
     /// of the file for details on relevancy.
     wildcard_row_is_relevant: bool,
@@ -1032,10 +1051,10 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
+        let place_info = PlaceInfo { ty: scrut_ty, validity: scrut_validity };
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
-            place_ty: smallvec![scrut_ty],
-            place_validity: smallvec![scrut_validity],
+            place_info: smallvec![place_info],
             wildcard_row_is_relevant: true,
         };
         for (row_id, arm) in arms.iter().enumerate() {
@@ -1051,11 +1070,11 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self) -> Option<&Cx::Ty> {
-        self.place_ty.first()
+    fn head_place(&self) -> Option<&PlaceInfo<Cx>> {
+        self.place_info.first()
     }
     fn column_count(&self) -> usize {
-        self.place_ty.len()
+        self.place_info.len()
     }
 
     fn rows(
@@ -1083,18 +1102,13 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> Result<Matrix<'p, Cx>, Cx::Error> {
-        let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
-        let arity = ctor_sub_tys.len();
-        let specialized_place_ty = ctor_sub_tys.chain(self.place_ty[1..].iter().cloned()).collect();
-        let ctor_sub_validity = self.place_validity[0].specialize(ctor);
-        let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
-            .take(arity)
-            .chain(self.place_validity[1..].iter().copied())
-            .collect();
+        let subfield_place_info = self.place_info[0].specialize(pcx.cx, ctor);
+        let arity = subfield_place_info.len();
+        let specialized_place_info =
+            subfield_place_info.chain(self.place_info[1..].iter().cloned()).collect();
         let mut matrix = Matrix {
             rows: Vec::new(),
-            place_ty: specialized_place_ty,
-            place_validity: specialized_place_validity,
+            place_info: specialized_place_info,
             wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
         };
         for (i, row) in self.rows().enumerate() {
@@ -1127,11 +1141,11 @@ impl<'p, Cx: TypeCx> fmt::Debug for Matrix<'p, Cx> {
             .map(|row| row.iter().map(|pat| format!("{pat:?}")).collect())
             .collect();
         pretty_printed_matrix
-            .push(self.place_validity.iter().map(|validity| format!("{validity}")).collect());
+            .push(self.place_info.iter().map(|place| format!("{}", place.validity)).collect());
 
         let column_count = self.column_count();
         assert!(self.rows.iter().all(|row| row.len() == column_count));
-        assert!(self.place_validity.len() == column_count);
+        assert!(self.place_info.len() == column_count);
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
             .collect();
@@ -1447,7 +1461,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         return Ok(WitnessMatrix::empty());
     }
 
-    let Some(ty) = matrix.head_ty().cloned() else {
+    let Some(place) = matrix.head_place() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         let mut useful = true; // Whether the next row is useful.
@@ -1467,18 +1481,17 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         };
     };
 
-    debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { cx: mcx.tycx, ty: &ty };
+    let ty = &place.ty.clone(); // Clone it out so we can mutate `matrix` later.
+    let pcx = &PlaceCtxt { cx: mcx.tycx, ty };
+    debug!("ty: {:?}", pcx.ty);
     let ctors_for_ty = pcx.ctors_for_ty()?;
 
-    // Whether the place/column we are inspecting is known to contain valid data.
-    let place_validity = matrix.place_validity[0];
     // We treat match scrutinees of type `!` or `EmptyEnum` differently.
     let is_toplevel_exception =
         is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
     // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
     // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
-    let empty_arms_are_unreachable = place_validity.is_known_valid()
+    let empty_arms_are_unreachable = place.validity.is_known_valid()
         && (is_toplevel_exception
             || mcx.tycx.is_exhaustive_patterns_feature_on()
             || mcx.tycx.is_min_exhaustive_patterns_feature_on());
