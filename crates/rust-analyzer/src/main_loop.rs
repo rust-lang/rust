@@ -60,6 +60,17 @@ enum Event {
     Flycheck(flycheck::Message),
 }
 
+impl fmt::Display for Event {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Event::Lsp(_) => write!(f, "Event::Lsp"),
+            Event::Task(_) => write!(f, "Event::Task"),
+            Event::Vfs(_) => write!(f, "Event::Vfs"),
+            Event::Flycheck(_) => write!(f, "Event::Flycheck"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
@@ -196,7 +207,8 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event").entered();
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event", event = %event)
+            .entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);

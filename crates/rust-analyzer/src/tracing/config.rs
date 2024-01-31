@@ -14,7 +14,7 @@ use tracing_subscriber::{
 };
 use tracing_tree::HierarchicalLayer;
 
-pub mod hprof;
+use crate::tracing::hprof;
 
 pub struct Config<T> {
     pub writer: T,
