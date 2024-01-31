@@ -994,7 +994,10 @@ pub trait Read {
             }
 
             if cursor.written() == prev_written {
-                return Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill buffer"));
+                return Err(error::const_io_error!(
+                    ErrorKind::UnexpectedEof,
+                    "failed to fill whole buffer"
+                ));
             }
         }
 
