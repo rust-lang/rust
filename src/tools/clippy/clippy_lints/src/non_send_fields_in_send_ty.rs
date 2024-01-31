@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                     |diag| {
                         for field in non_send_fields {
                             diag.span_note(
-                                field.def.span,
+                                field.def.span(),
                                 format!(
                                     "it is not safe to send field `{}` to another thread",
                                     field.def.ident.name

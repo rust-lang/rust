@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            diag.span_help(field.span, "remove this field");
+                            diag.span_help(field.span(), "remove this field");
                         },
                     );
                 }
