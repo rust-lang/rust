@@ -2118,6 +2118,7 @@ impl HumanEmitter {
                 }
                 if !self.short_message {
                     for child in children {
+                        assert!(child.level.can_be_top_or_sub().1);
                         let span = &child.span;
                         if let Err(err) = self.emit_messages_default_inner(
                             span,
