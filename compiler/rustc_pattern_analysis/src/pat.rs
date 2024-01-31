@@ -297,6 +297,7 @@ impl<'p, Cx: TypeCx> fmt::Debug for PatOrWild<'p, Cx> {
 
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
+#[derive(Debug)]
 pub struct WitnessPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,
@@ -306,16 +307,6 @@ pub struct WitnessPat<Cx: TypeCx> {
 impl<Cx: TypeCx> Clone for WitnessPat<Cx> {
     fn clone(&self) -> Self {
         Self { ctor: self.ctor.clone(), fields: self.fields.clone(), ty: self.ty.clone() }
-    }
-}
-
-impl<Cx: TypeCx> fmt::Debug for WitnessPat<Cx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_struct("WitnessPat")
-            .field("ctor", &self.ctor)
-            .field("fields", &self.fields)
-            .field("ty", &self.ty)
-            .finish()
     }
 }
 
