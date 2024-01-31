@@ -1,4 +1,4 @@
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -135,7 +135,7 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
                 RESULT_LARGE_ERR,
                 hir_ty_span,
                 "the `Err`-variant returned from this function is very large",
-                |diag: &mut Diagnostic| {
+                |diag: &mut DiagnosticBuilder<'_, ()>| {
                     diag.span_label(hir_ty_span, format!("the `Err`-variant is at least {ty_size} bytes"));
                     diag.help(format!("try reducing the size of `{err_ty}`, for example by boxing large elements or replacing it with `Box<{err_ty}>`"));
                 },

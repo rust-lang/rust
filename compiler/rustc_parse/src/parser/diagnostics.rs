@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, FatalError, PErr, PResult,
+    pluralize, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed,
+    FatalError, PErr, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -208,11 +208,11 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit(self, err: &mut Diagnostic) {
+    fn emit(self, err: &mut DiagnosticBuilder<'_>) {
         err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 
-    fn emit_verbose(self, err: &mut Diagnostic) {
+    fn emit_verbose(self, err: &mut DiagnosticBuilder<'_>) {
         err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
     }
 }
@@ -846,7 +846,7 @@ impl<'a> Parser<'a> {
         err.emit();
     }
 
-    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
             (
@@ -2179,7 +2179,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parameter_without_type(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
         first_param: bool,

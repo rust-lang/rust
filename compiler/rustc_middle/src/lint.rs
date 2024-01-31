@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
@@ -204,7 +204,7 @@ pub fn explain_lint_level_source(
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_, ()>,
 ) {
     let name = lint.name_lower();
     if let Level::Allow = level {
@@ -359,7 +359,7 @@ pub fn lint_level(
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
         // This will therefore directly call the decorate function which will in turn emit
-        // the `Diagnostic`.
+        // the diagnostic.
         if let Level::Expect(_) = level {
             decorate(&mut err);
             err.emit();
@@ -401,7 +401,7 @@ pub fn lint_level(
 
         // Finally, run `decorate`.
         decorate(&mut err);
-        explain_lint_level_source(lint, level, src, &mut *err);
+        explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }
     lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))

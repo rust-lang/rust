@@ -15,7 +15,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
-    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan, StashKey,
+    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, MultiSpan,
+    StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -156,7 +157,11 @@ pub fn feature_warn_issue(
 }
 
 /// Adds the diagnostics for a feature to an existing error.
-pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &Session, feature: Symbol) {
+pub fn add_feature_diagnostics<G: EmissionGuarantee>(
+    err: &mut DiagnosticBuilder<'_, G>,
+    sess: &Session,
+    feature: Symbol,
+) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false);
 }
 
@@ -165,8 +170,8 @@ pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &Session, feature: Sy
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-pub fn add_feature_diagnostics_for_issue(
-    err: &mut Diagnostic,
+pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
+    err: &mut DiagnosticBuilder<'_, G>,
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,

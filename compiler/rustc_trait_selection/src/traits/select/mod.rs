@@ -29,7 +29,7 @@ use crate::traits::ProjectionCacheKey;
 use crate::traits::Unimplemented;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagnosticBuilder, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime;
@@ -70,7 +70,10 @@ pub enum IntercrateAmbiguityCause<'tcx> {
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diagnostic) {
+    pub fn add_intercrate_ambiguity_hint<G: EmissionGuarantee>(
+        &self,
+        err: &mut DiagnosticBuilder<'_, G>,
+    ) {
         err.note(self.intercrate_ambiguity_hint());
     }
 

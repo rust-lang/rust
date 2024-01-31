@@ -21,8 +21,8 @@ use crate::traits::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan, StashKey, StringPart,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan, StashKey, StringPart,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -185,7 +185,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         predicate: &T,
         span: Span,
         suggest_increasing_limit: bool,
-        mutate: impl FnOnce(&mut Diagnostic),
+        mutate: impl FnOnce(&mut DiagnosticBuilder<'_>),
     ) -> !
     where
         T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
@@ -272,7 +272,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
     }
 
-    fn suggest_new_overflow_limit(&self, err: &mut Diagnostic) {
+    fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
         let suggested_limit = match self.tcx.recursion_limit() {
             Limit(0) => Limit(2),
             limit => limit * 2,
@@ -1020,7 +1020,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) -> bool {
         let span = obligation.cause.span;
         struct V<'v> {
@@ -1810,7 +1810,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl_candidates: &[ImplCandidate<'tcx>],
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_def_id: LocalDefId,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         other: bool,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
@@ -1897,7 +1897,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         let other = if other { "other " } else { "" };
-        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
+        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut DiagnosticBuilder<'_>| {
             if candidates.is_empty() {
                 return false;
             }
@@ -2032,7 +2032,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
         body_def_id: LocalDefId,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         // This is *almost* equivalent to
         // `obligation.cause.code().peel_derives()`, but it gives us the
@@ -2103,7 +2103,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// a probable version mismatch is added to `err`
     fn note_version_mismatch(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> bool {
         let get_trait_impls = |trait_def_id| {
@@ -2572,7 +2572,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn annotate_source_of_ambiguity(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         ambiguities: &[ambiguity::Ambiguity],
         predicate: ty::Predicate<'tcx>,
     ) {
@@ -2715,7 +2715,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         })
     }
 
-    fn note_obligation_cause(&self, err: &mut Diagnostic, obligation: &PredicateObligation<'tcx>) {
+    fn note_obligation_cause(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
@@ -2744,7 +2748,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip_all)]
     fn suggest_unsized_bound_if_applicable(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) {
         let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
@@ -2770,7 +2774,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn maybe_suggest_unsized_generics(&self, err: &mut Diagnostic, span: Span, node: Node<'tcx>) {
+    fn maybe_suggest_unsized_generics(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        node: Node<'tcx>,
+    ) {
         let Some(generics) = node.generics() else {
             return;
         };
@@ -2822,7 +2831,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn maybe_indirection_for_unsized(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         item: &Item<'tcx>,
         param: &GenericParam<'tcx>,
     ) -> bool {
@@ -3016,7 +3025,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn add_tuple_trait_message(
         &self,
         obligation_cause_code: &ObligationCauseCode<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         match obligation_cause_code {
             ObligationCauseCode::RustCall => {
@@ -3041,7 +3050,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
         is_fn_trait: bool,
         suggested: bool,
@@ -3122,7 +3131,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn add_help_message_for_fn_trait(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         implemented_kind: ty::ClosureKind,
         params: ty::Binder<'tcx, Ty<'tcx>>,
     ) {
@@ -3178,7 +3187,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn maybe_add_note_for_unsatisfied_const(
         &self,
         _trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        _err: &mut Diagnostic,
+        _err: &mut DiagnosticBuilder<'_>,
         _span: Span,
     ) -> UnsatisfiedConst {
         let unsatisfied_const = UnsatisfiedConst(false);

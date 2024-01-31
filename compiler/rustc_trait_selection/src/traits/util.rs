@@ -1,7 +1,7 @@
 use super::NormalizeExt;
 use super::{ObligationCause, PredicateObligation, SelectionContext};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::GenericArgsRef;
@@ -43,7 +43,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     /// trait aliases.
     pub fn label_with_exp_info(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
         top_label: &'static str,
         use_desc: &str,
     ) {

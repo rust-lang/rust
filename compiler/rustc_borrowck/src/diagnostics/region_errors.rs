@@ -1,7 +1,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
@@ -808,7 +808,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// ```
     fn add_static_impl_trait_suggestion(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
         fr: RegionVid,
         // We need to pass `fr_name` - computing it again will label it twice.
         fr_name: RegionName,
@@ -897,7 +897,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn maybe_suggest_constrain_dyn_trait_impl(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
         f: Region<'tcx>,
         o: Region<'tcx>,
         category: &ConstraintCategory<'tcx>,
@@ -959,7 +959,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     #[instrument(skip(self, err), level = "debug")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         found_dids: &FxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
@@ -994,7 +994,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn suggest_adding_lifetime_params(
         &self,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
         sub: RegionVid,
         sup: RegionVid,
     ) {
@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
     }
 
-    fn suggest_move_on_borrowing_closure(&self, diag: &mut Diagnostic) {
+    fn suggest_move_on_borrowing_closure(&self, diag: &mut DiagnosticBuilder<'_>) {
         let map = self.infcx.tcx.hir();
         let body_id = map.body_owned_by(self.mir_def_id());
         let expr = &map.body(body_id).value.peel_blocks();

@@ -1248,7 +1248,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
     // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
-    let report = |dis: Discr<'tcx>, idx, err: &mut Diagnostic| {
+    let report = |dis: Discr<'tcx>, idx, err: &mut DiagnosticBuilder<'_>| {
         let var = adt.variant(idx); // HIR for the duplicate discriminant
         let (span, display_discr) = match var.discr {
             ty::VariantDiscr::Explicit(discr_def_id) => {

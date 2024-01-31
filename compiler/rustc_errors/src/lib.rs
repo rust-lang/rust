@@ -1745,9 +1745,9 @@ impl Level {
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.
-pub fn add_elided_lifetime_in_path_suggestion<E: EmissionGuarantee>(
+pub fn add_elided_lifetime_in_path_suggestion<G: EmissionGuarantee>(
     source_map: &SourceMap,
-    diag: &mut DiagnosticBuilder<'_, E>,
+    diag: &mut DiagnosticBuilder<'_, G>,
     n: usize,
     path_span: Span,
     incl_angl_brckt: bool,
