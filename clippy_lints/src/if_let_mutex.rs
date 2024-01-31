@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{higher, SpanlessEq};
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir::intravisit::{self as visit, Visitor};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
                 arm_visit.visit_expr(if_else);
 
                 if let Some(arm_mutex) = arm_visit.found_mutex_if_same_as(op_mutex) {
-                    let diag = |diag: &mut Diagnostic| {
+                    let diag = |diag: &mut DiagnosticBuilder<'_, ()>| {
                         diag.span_label(
                             op_mutex.span,
                             "this Mutex will remain locked for the entire `if let`-block...",
