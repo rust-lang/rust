@@ -13,11 +13,6 @@
 
 pub mod cli;
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 mod caps;
 mod cargo_target_spec;
 mod diagnostics;
