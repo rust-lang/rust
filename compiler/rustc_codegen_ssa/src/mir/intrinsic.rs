@@ -281,11 +281,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            sym::const_deallocate => {
-                // nop at runtime.
-                return Ok(());
-            }
-
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]"
             name if let Some(atomic) = name_str.strip_prefix("atomic_") => {

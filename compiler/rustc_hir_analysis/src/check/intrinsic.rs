@@ -367,7 +367,7 @@ pub fn check_intrinsic_type(
             }
             sym::const_deallocate => (
                 0,
-                0,
+                1,
                 vec![Ty::new_mut_ptr(tcx, tcx.types.u8), tcx.types.usize, tcx.types.usize],
                 Ty::new_unit(tcx),
             ),

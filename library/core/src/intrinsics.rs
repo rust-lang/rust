@@ -2368,20 +2368,6 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
 
-    /// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
-    /// At runtime, does nothing.
-    ///
-    /// # Safety
-    ///
-    /// - The `align` argument must be a power of two.
-    ///    - At compile time, a compile error occurs if this constraint is violated.
-    ///    - At runtime, it is not checked.
-    /// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
-    /// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[rustc_nounwind]
-    pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
-
     /// Determines whether the raw bytes of the two values are equal.
     ///
     /// This is particularly handy for arrays, since it allows things like just
@@ -2591,12 +2577,29 @@ pub(crate) const unsafe fn debug_assertions() -> bool {
 ///    - At compile time, a compile error occurs if this constraint is violated.
 ///    - At runtime, it is not checked.
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code should always just return null pointers.
     crate::ptr::null_mut()
 }
+
+/// Deallocates a memory which allocated by `intrinsics::const_allocate` at compile time.
+/// At runtime, does nothing.
+///
+/// # Safety
+///
+/// - The `align` argument must be a power of two.
+///    - At compile time, a compile error occurs if this constraint is violated.
+///    - At runtime, it is not checked.
+/// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
+/// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
