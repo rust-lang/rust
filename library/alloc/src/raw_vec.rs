@@ -17,6 +17,15 @@ use crate::collections::TryReserveErrorKind::*;
 #[cfg(test)]
 mod tests;
 
+// One central function responsible for reporting capacity overflows. This'll
+// ensure that the code generation related to these panics is minimal as there's
+// only one location which panics rather than a bunch throughout the module.
+#[cfg(not(no_global_oom_handling))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+fn capacity_overflow() -> ! {
+    panic!("capacity overflow");
+}
+
 enum AllocInit {
     /// The contents of the new memory are uninitialized.
     Uninitialized,
@@ -575,13 +584,4 @@ fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     } else {
         Ok(())
     }
-}
-
-// One central function responsible for reporting capacity overflows. This'll
-// ensure that the code generation related to these panics is minimal as there's
-// only one location which panics rather than a bunch throughout the module.
-#[cfg(not(no_global_oom_handling))]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-fn capacity_overflow() -> ! {
-    panic!("capacity overflow");
 }
