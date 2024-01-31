@@ -222,6 +222,9 @@ impl<'hir> Map<'hir> {
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
+            // FIXME: This function never returns `None` right now, and the parent chain end is
+            // determined by checking for `parent(id) == id`. This function should return `None`
+            // for the crate root instead.
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner);

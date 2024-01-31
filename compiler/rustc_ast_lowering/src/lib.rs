@@ -753,6 +753,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_import_res(&mut self, id: NodeId) -> SmallVec<[Res; 3]> {
         let res = self.resolver.get_import_res(id).present_items();
         let res: SmallVec<_> = res.map(|res| self.lower_res(res)).collect();
+        // FIXME: The `Res::Err` doesn't necessarily mean an error was reported, it also happens
+        // for import list stem items with non-empty list. Instead, consider not emitting such
+        // items into HIR at all, or fill the `import_res_map` tables for them in resolve if that
+        // is not possible. Then add `span_delayed_bug` here.
         if !res.is_empty() { res } else { smallvec![Res::Err] }
     }
 

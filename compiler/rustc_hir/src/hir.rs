@@ -3499,6 +3499,7 @@ pub enum Node<'hir> {
     Crate(&'hir Mod<'hir>),
     Infer(&'hir InferArg),
     WhereBoundPredicate(&'hir WhereBoundPredicate<'hir>),
+    // FIXME: Merge into `Node::Infer`.
     ArrayLenInfer(&'hir InferArg),
     // Span by reference to minimize `Node`'s size
     #[allow(rustc::pass_by_value)]
