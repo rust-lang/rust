@@ -9,7 +9,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::panic::{BacktraceStyle, PanicInfo};
+use crate::panic::{BacktraceStyle, PanicHookInfo};
 use core::panic::{Location, PanicPayload};
 
 use crate::any::Any;
@@ -70,12 +70,12 @@ extern "C" fn __rust_foreign_exception() -> ! {
 
 enum Hook {
     Default,
-    Custom(Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>),
+    Custom(Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>),
 }
 
 impl Hook {
     #[inline]
-    fn into_box(self) -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
+    fn into_box(self) -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
         match self {
             Hook::Default => Box::new(default_hook),
             Hook::Custom(hook) => hook,
@@ -105,7 +105,7 @@ static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 ///
 /// [`take_hook`]: ./fn.take_hook.html
 ///
-/// The hook is provided with a `PanicInfo` struct which contains information
+/// The hook is provided with a `PanicHookInfo` struct which contains information
 /// about the origin of the panic, including the payload passed to `panic!` and
 /// the source code location from which the panic originated.
 ///
@@ -129,7 +129,7 @@ static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 /// panic!("Normal panic");
 /// ```
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
+pub fn set_hook(hook: Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>) {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
@@ -173,7 +173,7 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
 /// ```
 #[must_use]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
+pub fn take_hook() -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
@@ -219,7 +219,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub fn update_hook<F>(hook_fn: F)
 where
-    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static), &PanicInfo<'_>)
+    F: Fn(&(dyn Fn(&PanicHookInfo<'_>) + Send + Sync + 'static), &PanicHookInfo<'_>)
         + Sync
         + Send
         + 'static,
@@ -234,7 +234,7 @@ where
 }
 
 /// The default panic handler.
-fn default_hook(info: &PanicInfo<'_>) {
+fn default_hook(info: &PanicHookInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
     let backtrace = if info.force_no_backtrace() {
@@ -791,10 +791,15 @@ fn rust_panic_with_hook(
         // formatting.)
         Hook::Default if panic_output().is_none() => {}
         Hook::Default => {
-            default_hook(&PanicInfo::new(location, payload.get(), can_unwind, force_no_backtrace));
+            default_hook(&PanicHookInfo::new(
+                location,
+                payload.get(),
+                can_unwind,
+                force_no_backtrace,
+            ));
         }
         Hook::Custom(ref hook) => {
-            hook(&PanicInfo::new(location, payload.get(), can_unwind, force_no_backtrace));
+            hook(&PanicHookInfo::new(location, payload.get(), can_unwind, force_no_backtrace));
         }
     }
 

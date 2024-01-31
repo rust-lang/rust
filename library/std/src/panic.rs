@@ -10,15 +10,21 @@ use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
 
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[deprecated(
+    since = "1.77.0",
+    note = "use `PanicHookInfo` instead",
+    suggestion = "std::panic::PanicHookInfo"
+)]
 /// A struct providing information about a panic.
 ///
-/// `PanicInfo` structure is passed to a panic hook set by the [`set_hook`] function.
+/// `PanicInfo` has been renamed to [`PanicHookInfo`] to avoid confusion with
+/// [`core::panic::PanicInfo`].
+pub type PanicInfo<'a> = PanicHookInfo<'a>;
+
+/// A struct providing information about a panic.
 ///
-/// There two `PanicInfo` types:
-/// - [`core::panic::PanicInfo`], which is used as an argument to a `#[panic_handler]` in `#![no_std]` programs.
-/// - `std::panic::PanicInfo`, which is used as an argument to a panic hook set by [`set_hook`].
-///
-/// This is the second one.
+/// `PanicHookInfo` structure is passed to a panic hook set by the [`set_hook`] function.
 ///
 /// # Examples
 ///
@@ -32,18 +38,17 @@ use crate::thread::Result;
 /// panic!("critical system failure");
 /// ```
 ///
-/// [`core::panic::PanicInfo`]: ../../core/panic/struct.PanicInfo.html
 /// [`set_hook`]: ../../std/panic/fn.set_hook.html
-#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[stable(feature = "panic_hook_info", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
-pub struct PanicInfo<'a> {
+pub struct PanicHookInfo<'a> {
     payload: &'a (dyn Any + Send),
     location: &'a Location<'a>,
     can_unwind: bool,
     force_no_backtrace: bool,
 }
 
-impl<'a> PanicInfo<'a> {
+impl<'a> PanicHookInfo<'a> {
     #[inline]
     pub(crate) fn new(
         location: &'a Location<'a>,
@@ -51,7 +56,7 @@ impl<'a> PanicInfo<'a> {
         can_unwind: bool,
         force_no_backtrace: bool,
     ) -> Self {
-        PanicInfo { payload, location, can_unwind, force_no_backtrace }
+        PanicHookInfo { payload, location, can_unwind, force_no_backtrace }
     }
 
     /// Returns the payload associated with the panic.
@@ -145,7 +150,7 @@ impl<'a> PanicInfo<'a> {
 }
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
-impl fmt::Display for PanicInfo<'_> {
+impl fmt::Display for PanicHookInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         self.location.fmt(formatter)?;
@@ -204,7 +209,7 @@ pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 /// The message can be of any (`Any + Send`) type, not just strings.
 ///
 /// The message is wrapped in a `Box<'static + Any + Send>`, which can be
-/// accessed later using [`PanicInfo::payload`].
+/// accessed later using [`PanicHookInfo::payload`].
 ///
 /// See the [`panic!`] macro for more information about panicking.
 #[stable(feature = "panic_any", since = "1.51.0")]
