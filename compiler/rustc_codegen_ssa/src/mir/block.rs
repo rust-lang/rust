@@ -820,12 +820,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if target.is_some() {
-            let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
-        } else {
-            ReturnDest::Nothing
-        };
+        let ret_dest = self.make_return_dest(
+            bx,
+            destination,
+            &fn_abi.ret,
+            &mut llargs,
+            intrinsic.is_some(),
+            target.is_some(),
+        );
 
         if intrinsic == Some(sym::caller_location) {
             return if let Some(target) = target {
@@ -1632,7 +1634,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         is_intrinsic: bool,
+        has_target: bool,
     ) -> ReturnDest<'tcx, Bx::Value> {
+        if !has_target {
+            return ReturnDest::Nothing;
+        }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
