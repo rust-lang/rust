@@ -26,7 +26,6 @@ fn abi_can_unwind(abi: Abi) -> bool {
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
-        | AmdGpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
