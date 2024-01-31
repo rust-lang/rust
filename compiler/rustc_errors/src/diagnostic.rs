@@ -306,7 +306,7 @@ impl Diagnostic {
     #[track_caller]
     pub fn downgrade_to_delayed_bug(&mut self) {
         assert!(
-            self.is_error(),
+            matches!(self.level, Level::Error | Level::DelayedBug(_)),
             "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
             self.level
         );
