@@ -909,6 +909,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.is.constant.isize", fn(t_isize) -> i1);
         ifn!("llvm.is.constant.f32", fn(t_f32) -> i1);
         ifn!("llvm.is.constant.f64", fn(t_f64) -> i1);
+        ifn!("llvm.is.constant.ptr", fn(ptr) -> i1);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(ptr) -> t_i32);
