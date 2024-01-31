@@ -29,11 +29,11 @@ LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)`
-note: required by a bound in `Bar`
+note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/hir-wf-canonicalized.rs:9:16
    |
 LL | struct Bar<'a, T> {
-   |                ^ required by this bound in `Bar`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Bar<'a, T: ?Sized> {

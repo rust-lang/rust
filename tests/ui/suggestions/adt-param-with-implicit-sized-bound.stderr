@@ -6,11 +6,11 @@ LL | struct Struct5<T: ?Sized>{
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `X`
+note: required by an implicit `Sized` bound in `X`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
 LL | struct X<T>(T);
-   |          ^ required by this bound in `X`
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `X`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
@@ -30,11 +30,11 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func1() -> Struct1<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct1`
+note: required by an implicit `Sized` bound in `Struct1`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:8:16
    |
 LL | struct Struct1<T>{
-   |                ^ required by this bound in `Struct1`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct1`
 help: consider further restricting `Self`
    |
 LL |     fn func1() -> Struct1<Self> where Self: Sized;
@@ -50,11 +50,11 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func2<'a>() -> Struct2<'a, Self>;
    |                       ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct2`
+note: required by an implicit `Sized` bound in `Struct2`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:11:20
    |
 LL | struct Struct2<'a, T>{
-   |                    ^ required by this bound in `Struct2`
+   |                    ^ required by the implicit `Sized` requirement on this type parameter in `Struct2`
 help: consider further restricting `Self`
    |
 LL |     fn func2<'a>() -> Struct2<'a, Self> where Self: Sized;
@@ -70,11 +70,11 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func3() -> Struct3<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct3`
+note: required by an implicit `Sized` bound in `Struct3`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
    |
 LL | struct Struct3<T>{
-   |                ^ required by this bound in `Struct3`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct3`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
    |
@@ -93,11 +93,11 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func4() -> Struct4<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct4`
+note: required by an implicit `Sized` bound in `Struct4`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:20:16
    |
 LL | struct Struct4<T>{
-   |                ^ required by this bound in `Struct4`
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct4`
 help: consider further restricting `Self`
    |
 LL |     fn func4() -> Struct4<Self> where Self: Sized;

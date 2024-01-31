@@ -6,11 +6,11 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `Sized`
    |
-note: required by a bound in `Foo`
+note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/unsized-enum.rs:4:10
    |
 LL | enum Foo<U> { FooSome(U), FooNone }
-   |          ^ required by this bound in `Foo`
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: you could relax the implicit `Sized` bound on `U` if it were used through indirection like `&U` or `Box<U>`
   --> $DIR/unsized-enum.rs:4:10
    |
