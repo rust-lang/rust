@@ -269,7 +269,7 @@ impl DefMap {
                 stdx::never!(module.is_block_module());
 
                 if self.block != def_map.block {
-                    // If we have a different `DefMap` from `self` (the orignal `DefMap` we started
+                    // If we have a different `DefMap` from `self` (the original `DefMap` we started
                     // with), resolve the remaining path segments in that `DefMap`.
                     let path =
                         ModPath::from_segments(PathKind::Super(0), path.segments().iter().cloned());
@@ -540,7 +540,7 @@ impl DefMap {
     }
 }
 
-/// Given a block module, returns its nearest non-block module and the `DefMap` it blongs to.
+/// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
 fn adjust_to_nearest_non_block_module(
     db: &dyn DefDatabase,
     def_map: &DefMap,

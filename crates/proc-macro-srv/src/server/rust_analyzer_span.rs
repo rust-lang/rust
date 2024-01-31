@@ -1,4 +1,4 @@
-//! proc-macro server backend based on rust-analyzer's internal span represention
+//! proc-macro server backend based on rust-analyzer's internal span representation
 //! This backend is used solely by rust-analyzer as it ties into rust-analyzer internals.
 //!
 //! It is an unfortunate result of how the proc-macro API works that we need to look into the

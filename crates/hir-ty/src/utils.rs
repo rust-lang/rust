@@ -192,7 +192,7 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
 /// and it doesn't store the closure types and fields.
 ///
 /// Codes should not assume this ordering, and should always use methods available
-/// on this struct for retriving, and `TyBuilder::substs_for_closure` for creating.
+/// on this struct for retrieving, and `TyBuilder::substs_for_closure` for creating.
 pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 
 impl<'a> ClosureSubst<'a> {

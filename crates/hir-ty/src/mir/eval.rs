@@ -362,8 +362,8 @@ impl MirEvalError {
                             func
                         )?;
                     }
-                    Either::Right(clos) => {
-                        writeln!(f, "In {:?}", clos)?;
+                    Either::Right(closure) => {
+                        writeln!(f, "In {:?}", closure)?;
                     }
                 }
                 let source_map = db.body_with_source_map(*def).1;
