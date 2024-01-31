@@ -440,7 +440,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
             (db.enum_data(e).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
-            let size = tag.size(&*target_data_layout).bytes_usize();
+            let size = tag.size(target_data_layout).bytes_usize();
             let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
             let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], false));
             match tag_encoding {
