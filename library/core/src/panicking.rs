@@ -1,11 +1,11 @@
 //! Panic support for core
 //!
-//! In core, panicking is always done with a message, resulting in a core::panic::PanicInfo
-//! containing a fmt::Arguments. In std, however, panicking can be done with panic_any, which throws
-//! a `Box<dyn Any>` containing any type of value. Because of this, std::panic::PanicInfo is a
-//! different type, which contains a &dyn Any instead of a fmt::Arguments.
-//! std's panic handler will convert the fmt::Arguments to a &dyn Any containing either a
-//! &'static str or String containing the formatted message.
+//! In core, panicking is always done with a message, resulting in a `core::panic::PanicInfo`
+//! containing a `fmt::Arguments`. In std, however, panicking can be done with panic_any, which
+//! throws a `Box<dyn Any>` containing any type of value. Because of this,
+//! `std::panic::PanicHookInfo` is a different type, which contains a `&dyn Any` instead of a
+//! `fmt::Arguments`. std's panic handler will convert the `fmt::Arguments` to a `&dyn Any`
+//! containing either a `&'static str` or `String` containing the formatted message.
 //!
 //! The core library cannot define any panic handler, but it can invoke it.
 //! This means that the functions inside of core are allowed to panic, but to be
