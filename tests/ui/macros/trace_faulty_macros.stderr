@@ -111,7 +111,7 @@ LL |     test!(let x = 1+1);
    = note: expanding `test! { let x = 1+1 }`
    = note: to `test! ((x, 1 + 1))`
    = note: expanding `test! { (x, 1 + 1) }`
-   = note: to `let x = 1 + 1 ;`
+   = note: to `let x = 1 + 1;`
 
 error: aborting due to 5 previous errors
 

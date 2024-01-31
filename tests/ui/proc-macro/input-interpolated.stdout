@@ -5,7 +5,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         span: #0 bytes(503..504),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): const A : u8 = 0 ;
+PRINT-ATTR INPUT (DISPLAY): const A : u8 = 0;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "const",
