@@ -1,4 +1,4 @@
-use rustc_errors::{struct_span_code_err, DiagCtxt, DiagnosticBuilder};
+use rustc_errors::{codes::*, struct_span_code_err, DiagCtxt, DiagnosticBuilder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 

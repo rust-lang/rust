@@ -60,7 +60,6 @@ This API is completely unstable and subject to change.
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
-#![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
@@ -71,8 +70,6 @@ This API is completely unstable and subject to change.
 #![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
-#![feature(type_alias_impl_trait)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;

@@ -5,7 +5,7 @@ LL |         fn my_fn();
    |         ----------- `MyTrait::my_fn` defined here
 ...
 LL |         MyTrait::my_fn();
-   |         ^^^^^^^^^^^^^^ cannot call associated function of trait
+   |         ^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use the fully-qualified path to the only available implementation
    |
@@ -33,7 +33,7 @@ LL |         fn my_fn();
    |         ----------- `MyTrait::my_fn` defined here
 ...
 LL |     inner::MyTrait::my_fn();
-   |     ^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use the fully-qualified path to the only available implementation
    |
@@ -61,7 +61,7 @@ LL |     fn my_fn();
    |     ----------- `MyTrait2::my_fn` defined here
 ...
 LL |     MyTrait2::my_fn();
-   |     ^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use a fully-qualified path to a specific available implementation
    |

@@ -33,7 +33,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     locations: Locations,
     span: Span,
     category: ConstraintCategory<'tcx>,
@@ -47,7 +47,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
         locations: Locations,
         span: Span,
         category: ConstraintCategory<'tcx>,
@@ -59,7 +59,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             universal_regions,
             region_bound_pairs,
             implicit_region_bound,
-            param_env,
+            known_type_outlives_obligations,
             locations,
             span,
             category,
@@ -136,7 +136,11 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
         // Extract out various useful fields we'll need below.
         let ConstraintConversion {
-            tcx, region_bound_pairs, implicit_region_bound, param_env, ..
+            tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            known_type_outlives_obligations,
+            ..
         } = *self;
 
         let ty::OutlivesPredicate(k1, r2) = predicate;
@@ -157,7 +161,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     tcx,
                     region_bound_pairs,
                     Some(implicit_region_bound),
-                    param_env,
+                    known_type_outlives_obligations,
                 )
                 .type_must_outlive(origin, t1, r2, constraint_category);
             }

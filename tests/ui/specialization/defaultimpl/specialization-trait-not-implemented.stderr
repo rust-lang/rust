@@ -12,10 +12,7 @@ error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait b
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | struct MyStruct;
-   | ---------------
-   | |
-   | method `foo_one` not found for this struct
-   | doesn't satisfy `MyStruct: Foo`
+   | --------------- method `foo_one` not found for this struct because it doesn't satisfy `MyStruct: Foo`
 ...
 LL |     println!("{}", MyStruct.foo_one());
    |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds

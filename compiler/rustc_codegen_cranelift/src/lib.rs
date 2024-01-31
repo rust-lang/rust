@@ -18,7 +18,6 @@ extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
-extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -42,7 +41,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -190,8 +189,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![] // FIXME necessary for #[cfg(target_feature]
+    fn target_features(&self, sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
+        // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
+        if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support
+            vec![Symbol::intern("fxsr"), sym::sse, Symbol::intern("sse2")]
+        } else if sess.target.arch == "aarch64" && sess.target.os != "none" {
+            // AArch64 mandates Neon support
+            vec![sym::neon]
+        } else {
+            vec![]
+        }
     }
 
     fn print_version(&self) {
@@ -305,16 +313,13 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
     let flags = settings::Flags::new(flags_builder);
 
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
-        Some("native") => {
-            let builder = cranelift_native::builder_with_options(true).unwrap();
-            builder
-        }
+        Some("native") => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
                     sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
-            if let Err(_) = builder.enable(value) {
+            if builder.enable(value).is_err() {
                 sess.dcx()
                     .fatal("the specified target cpu isn't currently supported by Cranelift.");
             }

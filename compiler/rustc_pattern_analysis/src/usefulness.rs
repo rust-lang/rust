@@ -548,11 +548,12 @@
 //! [`ValidityConstraint::specialize`].
 //!
 //! Having said all that, in practice we don't fully follow what's been presented in this section.
-//! Under `exhaustive_patterns`, we allow omitting empty arms even in `!known_valid` places, for
-//! backwards-compatibility until we have a better alternative. Without `exhaustive_patterns`, we
-//! mostly treat empty types as inhabited, except specifically a non-nested `!` or empty enum. In
-//! this specific case we also allow the empty match regardless of place validity, for
-//! backwards-compatibility. Hopefully we can eventually deprecate this.
+//! Let's call "toplevel exception" the case where the match scrutinee itself has type `!` or
+//! `EmptyEnum`. First, on stable rust, we require `_` patterns for empty types in all cases apart
+//! from the toplevel exception. The `exhaustive_patterns` and `min_exaustive_patterns` allow
+//! omitting patterns in the cases described above. There's a final detail: in the toplevel
+//! exception or with the `exhaustive_patterns` feature, we ignore place validity when checking
+//! whether a pattern is required for exhaustiveness. I (Nadrieril) hope to deprecate this behavior.
 //!
 //!
 //!
@@ -730,14 +731,24 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 }
 
 /// Context that provides information local to a place under investigation.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
 pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
-    #[derivative(Debug = "ignore")]
     pub(crate) mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
-    #[derivative(Clone(clone_with = "Clone::clone"))] // See rust-derivative#90
     pub(crate) ty: &'a Cx::Ty,
+}
+
+impl<'a, Cx: TypeCx> Clone for PlaceCtxt<'a, Cx> {
+    fn clone(&self) -> Self {
+        Self { mcx: self.mcx, ty: self.ty }
+    }
+}
+
+impl<'a, Cx: TypeCx> Copy for PlaceCtxt<'a, Cx> {}
+
+impl<'a, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, Cx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("PlaceCtxt").field("ty", self.ty).finish()
+    }
 }
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
@@ -812,8 +823,6 @@ impl fmt::Display for ValidityConstraint {
 // The three lifetimes are:
 // - 'p coming from the input
 // - Cx global compilation context
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
 struct PatStack<'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
@@ -821,6 +830,12 @@ struct PatStack<'p, Cx: TypeCx> {
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
     relevant: bool,
+}
+
+impl<'p, Cx: TypeCx> Clone for PatStack<'p, Cx> {
+    fn clone(&self) -> Self {
+        Self { pats: self.pats.clone(), relevant: self.relevant }
+    }
 }
 
 impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
@@ -1183,9 +1198,19 @@ impl<'p, Cx: TypeCx> fmt::Debug for Matrix<'p, Cx> {
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 ///
 /// See the top of the file for more detailed explanations and examples.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct WitnessStack<Cx: TypeCx>(Vec<WitnessPat<Cx>>);
+
+impl<Cx: TypeCx> Clone for WitnessStack<Cx> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<Cx: TypeCx> fmt::Debug for WitnessStack<Cx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_tuple("WitnessStack").field(&self.0).finish()
+    }
+}
 
 impl<Cx: TypeCx> WitnessStack<Cx> {
     /// Asserts that the witness contains a single pattern, and returns it.
@@ -1231,18 +1256,28 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
 ///
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
-#[derive(derivative::Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct WitnessMatrix<Cx: TypeCx>(Vec<WitnessStack<Cx>>);
+
+impl<Cx: TypeCx> Clone for WitnessMatrix<Cx> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<Cx: TypeCx> fmt::Debug for WitnessMatrix<Cx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_tuple("WitnessMatrix").field(&self.0).finish()
+    }
+}
 
 impl<Cx: TypeCx> WitnessMatrix<Cx> {
     /// New matrix with no witnesses.
     fn empty() -> Self {
-        WitnessMatrix(vec![])
+        WitnessMatrix(Vec::new())
     }
     /// New matrix with one `()` witness, i.e. with no columns.
     fn unit_witness() -> Self {
-        WitnessMatrix(vec![WitnessStack(vec![])])
+        WitnessMatrix(vec![WitnessStack(Vec::new())])
     }
 
     /// Whether this has any witnesses.
@@ -1442,10 +1477,17 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     // We treat match scrutinees of type `!` or `EmptyEnum` differently.
     let is_toplevel_exception =
         is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
-    // Whether empty patterns can be omitted for exhaustiveness.
-    let can_omit_empty_arms = is_toplevel_exception || mcx.tycx.is_exhaustive_patterns_feature_on();
-    // Whether empty patterns are counted as useful or not.
-    let empty_arms_are_unreachable = place_validity.is_known_valid() && can_omit_empty_arms;
+    // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
+    // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
+    let empty_arms_are_unreachable = place_validity.is_known_valid()
+        && (is_toplevel_exception
+            || mcx.tycx.is_exhaustive_patterns_feature_on()
+            || mcx.tycx.is_min_exhaustive_patterns_feature_on());
+    // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
+    // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
+    let can_omit_empty_arms = empty_arms_are_unreachable
+        || is_toplevel_exception
+        || mcx.tycx.is_exhaustive_patterns_feature_on();
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());

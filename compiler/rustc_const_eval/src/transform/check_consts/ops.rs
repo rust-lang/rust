@@ -2,7 +2,7 @@
 
 use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
-use rustc_errors::{error_code, DiagnosticBuilder};
+use rustc_errors::{codes::*, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -372,7 +372,7 @@ impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
         ccx.dcx().create_err(errors::UnallowedHeapAllocations {
             span,
             kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(&error_code!(E0010)).then_some(()),
+            teach: ccx.tcx.sess.teach(E0010).then_some(()),
         })
     }
 }
@@ -434,14 +434,14 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
                 span,
                 opt_help: Some(()),
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(&error_code!(E0492)).then_some(()),
+                teach: ccx.tcx.sess.teach(E0492).then_some(()),
             })
         } else {
             ccx.dcx().create_err(errors::InteriorMutableDataRefer {
                 span,
                 opt_help: None,
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(&error_code!(E0492)).then_some(()),
+                teach: ccx.tcx.sess.teach(E0492).then_some(()),
             })
         }
     }
@@ -469,12 +469,12 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
             hir::BorrowKind::Raw => ccx.tcx.dcx().create_err(errors::UnallowedMutableRaw {
                 span,
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
+                teach: ccx.tcx.sess.teach(E0764).then_some(()),
             }),
             hir::BorrowKind::Ref => ccx.dcx().create_err(errors::UnallowedMutableRefs {
                 span,
                 kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
+                teach: ccx.tcx.sess.teach(E0764).then_some(()),
             }),
         }
     }
@@ -588,7 +588,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         ccx.dcx().create_err(errors::StaticAccessErr {
             span,
             kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(&error_code!(E0013)).then_some(()),
+            teach: ccx.tcx.sess.teach(E0013).then_some(()),
         })
     }
 }

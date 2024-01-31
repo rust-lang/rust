@@ -60,7 +60,7 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
     DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
@@ -518,6 +518,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
+
+                    RegionResolutionError::CannotNormalize(ty, origin) => {
+                        self.tcx
+                            .dcx()
+                            .struct_span_err(origin.span(), format!("cannot normalize `{ty}`"))
+                            .emit();
+                    }
                 }
             }
         }
@@ -559,7 +566,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
-            | RegionResolutionError::UpperBoundUniverseConflict(..) => false,
+            | RegionResolutionError::UpperBoundUniverseConflict(..)
+            | RegionResolutionError::CannotNormalize(..) => false,
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
@@ -574,6 +582,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
             RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
+            RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
         });
         errors
     }
@@ -2362,9 +2371,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .dcx()
             .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
         err.code(match sub.kind() {
-            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-            ty::ReStatic => error_code!(E0310),
-            _ => error_code!(E0311),
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => E0309,
+            ty::ReStatic => E0310,
+            _ => E0311,
         });
 
         '_explain: {
@@ -2914,7 +2923,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         use crate::traits::ObligationCauseCode::*;
         let kind = match self.0.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",

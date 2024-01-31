@@ -25,8 +25,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, StashKey,
+    codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic,
+    DiagnosticBuilder, ErrCode, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_args(expr, expected, &[])
+        self.check_expr_with_expectation_and_args(expr, expected, &[], None)
     }
 
     /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
@@ -187,6 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
+        call: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         if self.tcx().sess.verbose_internals() {
             // make this code only run with -Zverbose-internals because it is probably slow
@@ -233,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
-            ) => self.check_expr_path(qpath, expr, args),
+            ) => self.check_expr_path(qpath, expr, args, call),
             _ => self.check_expr_kind(expr, expected),
         });
         let ty = self.resolve_vars_if_possible(ty);
@@ -300,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Path(QPath::LangItem(lang_item, _)) => {
                 self.check_lang_item_path(lang_item, expr)
             }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[]),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, &[], None),
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
@@ -320,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
             ExprKind::Become(call) => self.check_expr_become(call, expr),
-            ExprKind::Let(let_expr) => self.check_expr_let(let_expr),
+            ExprKind::Let(let_expr) => self.check_expr_let(let_expr, expr.hir_id),
             ExprKind::Loop(body, _, source, _) => {
                 self.check_expr_loop(body, source, expected, expr)
             }
@@ -514,6 +515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx hir::QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
+        call: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
@@ -527,10 +529,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, E0533, "value");
                 Ty::new_error(tcx, e)
             }
-            _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
+            _ => {
+                self.instantiate_value_path(
+                    segs,
+                    opt_ty,
+                    res,
+                    call.map_or(expr.span, |e| e.span),
+                    expr.span,
+                    expr.hir_id,
+                )
+                .0
+            }
         };
 
         if let ty::FnDef(did, _) = *ty.kind() {
@@ -585,7 +597,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::BoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
-            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+            self.require_type_is_sized_deferred(
+                output,
+                call.map_or(expr.span, |e| e.span),
+                traits::SizedCallReturnType,
+            );
         }
 
         // We always require that the type provided as the value for
@@ -939,7 +955,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_lhs_assignable(
         &self,
         lhs: &'tcx hir::Expr<'tcx>,
-        err_code: &'static str,
+        code: ErrCode,
         op_span: Span,
         adjust_err: impl FnOnce(&mut Diagnostic),
     ) {
@@ -948,7 +964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
-        err.code(err_code.into());
+        err.code(code);
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {
@@ -1244,7 +1260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             diag.emit();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", span, |err| {
+        self.check_lhs_assignable(lhs, E0070, span, |err| {
             if let Some(rhs_ty) = self.typeck_results.borrow().expr_ty_opt(rhs) {
                 suggest_deref_binop(err, rhs_ty);
             }
@@ -1259,12 +1275,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(super) fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>) -> Ty<'tcx> {
+    pub(super) fn check_expr_let(&self, let_expr: &'tcx hir::Let<'tcx>, hir_id: HirId) -> Ty<'tcx> {
         // for let statements, this is done in check_stmt
         let init = let_expr.init;
         self.warn_if_unreachable(init.hir_id, init.span, "block in `let` expression");
         // otherwise check exactly as a let statement
-        self.check_decl(let_expr.into());
+        self.check_decl((let_expr, hir_id).into());
         // but return a bool, for this is a boolean expression
         if let Some(error_guaranteed) = let_expr.is_recovered {
             self.set_tainted_by_errors(error_guaranteed);
@@ -1950,6 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let len = remaining_fields.len();
 
+        #[allow(rustc::potential_query_instability)]
         let mut displayable_field_names: Vec<&str> =
             remaining_fields.keys().map(|ident| ident.as_str()).collect();
         // sorting &str primitives here, sort_unstable is ok

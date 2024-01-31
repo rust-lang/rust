@@ -160,6 +160,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use TokenTree::Delimited as Del;
     use TokenTree::Token as Tok;
 
+    fn is_punct(tt: &TokenTree) -> bool {
+        matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
+    }
+
     // Each match arm has one or more examples in comments. The default is to
     // insert space between adjacent tokens, except for the cases listed in
     // this match.
@@ -167,24 +171,35 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         // No space after line doc comments.
         (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
 
-        // `.` + ANYTHING: `x.y`, `tup.0`
-        // `$` + ANYTHING: `$e`
-        (Tok(Token { kind: Dot | Dollar, .. }, _), _) => false,
+        // `.` + NON-PUNCT: `x.y`, `tup.0`
+        (Tok(Token { kind: Dot, .. }, _), tt2) if !is_punct(tt2) => false,
 
-        // ANYTHING + `,`: `foo,`
-        // ANYTHING + `.`: `x.y`, `tup.0`
-        // ANYTHING + `!`: `foo! { ... }`
-        //
-        // FIXME: Incorrect cases:
-        // - Logical not: `x =! y`, `if! x { f(); }`
-        // - Never type: `Fn() ->!`
-        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+        // `$` + IDENT: `$e`
+        (Tok(Token { kind: Dollar, .. }, _), Tok(Token { kind: Ident(..), .. }, _)) => false,
 
-        // IDENT + `(`: `f(3)`
-        //
-        // FIXME: Incorrect cases:
-        // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, _, Parenthesis, _)) => false,
+        // NON-PUNCT + `,`: `foo,`
+        // NON-PUNCT + `;`: `x = 3;`, `[T; 3]`
+        // NON-PUNCT + `.`: `x.y`, `tup.0`
+        (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
+
+        // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+            if !Ident::new(*sym, *span).is_reserved() || *is_raw =>
+        {
+            false
+        }
+
+        // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
+        //      but `let (a, b) = (1, 2)` needs a space after the `let`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
+            if !Ident::new(*sym, *span).is_reserved()
+                || *sym == kw::Fn
+                || *sym == kw::SelfUpper
+                || *sym == kw::Pub
+                || *is_raw =>
+        {
+            false
+        }
 
         // `#` + `[`: `#[attr]`
         (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,

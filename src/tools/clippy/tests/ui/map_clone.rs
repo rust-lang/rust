@@ -69,15 +69,48 @@ fn main() {
     //~^ ERROR: you are explicitly cloning with `.map()`
     let y = x.map(Clone::clone);
     //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `cloned` method
     let y = x.map(String::clone);
     //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `cloned` method
+
+    let x: Option<u32> = Some(0);
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.map(|x| u32::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `copied` method
+    let y = x.map(|x| Clone::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `copied` method
+
+    // Should not suggest `copied` or `cloned` here since `T` is not a reference.
+    let x: Option<u32> = Some(0);
+    let y = x.map(|x| u32::clone(&x));
+    let y = x.map(|x| Clone::clone(&x));
 
     // Testing with `Result` now.
     let x: Result<String, ()> = Ok(String::new());
     let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
     let y = x.map(|x| String::clone(x));
     //~^ ERROR: you are explicitly cloning with `.map()`
-    let y = x.map(|x| String::clone(x));
+    //~| HELP: consider calling the dedicated `cloned` method
+    let y = x.map(|x| Clone::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `cloned` method
+
+    let x: Result<u32, ()> = Ok(0);
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.map(|x| u32::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `copied` method
+    let y = x.map(|x| Clone::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    //~| HELP: consider calling the dedicated `copied` method
+
+    // Should not suggest `copied` or `cloned` here since `T` is not a reference.
+    let x: Result<u32, ()> = Ok(0);
+    let y = x.map(|x| u32::clone(&x));
+    let y = x.map(|x| Clone::clone(&x));
 
     // We ensure that no warning is emitted here because `useless_asref` is taking over.
     let x = Some(String::new());

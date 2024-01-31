@@ -34,6 +34,7 @@ x--expand-yaml-anchors--remove:
     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
     HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
@@ -301,6 +302,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 defaults:
   run:

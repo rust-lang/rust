@@ -45,12 +45,14 @@ type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 pub(crate) struct CreateResult<'tcx> {
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) region_bound_pairs: RegionBoundPairs<'tcx>,
+    pub(crate) known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
 pub(crate) fn create<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     implicit_region_bound: ty::Region<'tcx>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
@@ -58,6 +60,7 @@ pub(crate) fn create<'tcx>(
     UniversalRegionRelationsBuilder {
         infcx,
         param_env,
+        known_type_outlives_obligations,
         implicit_region_bound,
         constraints,
         universal_regions: universal_regions.clone(),
@@ -175,6 +178,7 @@ impl UniversalRegionRelations<'_> {
 struct UniversalRegionRelationsBuilder<'this, 'tcx> {
     infcx: &'this InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
     constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
@@ -200,7 +204,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let defining_ty_def_id = self.universal_regions.defining_ty.def_id().expect_local();
         let span = tcx.def_span(defining_ty_def_id);
 
-        // Insert the facts we know from the predicates. Why? Why not.
+        // Insert the `'a: 'b` we know from the predicates.
+        // This does not consider the type-outlives.
         let param_env = self.param_env;
         self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
 
@@ -308,6 +313,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 outlives: self.outlives.freeze(),
                 inverse_outlives: self.inverse_outlives.freeze(),
             }),
+            known_type_outlives_obligations: self.known_type_outlives_obligations,
             region_bound_pairs: self.region_bound_pairs,
             normalized_inputs_and_output,
         }
@@ -322,7 +328,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             &self.universal_regions,
             &self.region_bound_pairs,
             self.implicit_region_bound,
-            self.param_env,
+            self.known_type_outlives_obligations,
             Locations::All(span),
             span,
             ConstraintCategory::Internal,

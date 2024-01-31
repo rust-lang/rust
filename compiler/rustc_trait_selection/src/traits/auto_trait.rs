@@ -179,7 +179,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(full_env);
-        infcx.process_registered_region_obligations(&outlives_env);
+        let _ = infcx.process_registered_region_obligations::<!>(&outlives_env, |ty, _| Ok(ty));
 
         let region_data =
             infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();
@@ -513,6 +513,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         while !vid_map.is_empty() {
+            #[allow(rustc::potential_query_instability)]
             let target = *vid_map.keys().next().expect("Keys somehow empty");
             let deps = vid_map.remove(&target).expect("Entry somehow missing");
 

@@ -1,6 +1,6 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
-use rustc_errors::error_code;
+use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
@@ -180,8 +180,8 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
         Default::default()
     });
     let main_def_opt = tcx.resolutions(()).main_def;
-    let code = error_code!(E0601);
-    let add_teach_note = tcx.sess.teach(&code);
+    let code = E0601;
+    let add_teach_note = tcx.sess.teach(code);
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.

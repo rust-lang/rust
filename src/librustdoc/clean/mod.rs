@@ -15,6 +15,7 @@ use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_errors::{codes::*, struct_span_code_err, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
@@ -1835,7 +1836,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Array(ty, ref length) => {
             let length = match length {
-                hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                hir::ArrayLen::Infer(..) => "_".to_string(),
                 hir::ArrayLen::Body(anon_const) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
@@ -2271,7 +2272,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
-        ty::Error(_) => rustc_errors::FatalError.raise(),
+        ty::Error(_) => FatalError.raise(),
     }
 }
 
@@ -2995,7 +2996,7 @@ fn clean_use_statement_inner<'tcx>(
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
     if pub_underscore && let Some(ref inline) = inline_attr {
-        rustc_errors::struct_span_code_err!(
+        struct_span_code_err!(
             cx.tcx.dcx(),
             inline.span(),
             E0780,

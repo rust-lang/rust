@@ -367,13 +367,10 @@ fn copy_self_contained_objects(
         let srcdir = builder
             .wasi_root(target)
             .unwrap_or_else(|| {
-                panic!(
-                    "Target {:?} does not have a \"wasi-root\" key in Config.toml",
-                    target.triple
-                )
+                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
             })
             .join("lib")
-            .join(target.to_string().replace("-preview1", "").replace("-preview2", ""));
+            .join(target.to_string().replace("-preview1", ""));
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -1116,16 +1113,11 @@ pub fn rustc_cargo_env(
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    let target_config = builder.config.target_config.get(&target);
-
     if builder.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &llvm_config);
-    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-        cargo.env("CFG_LLVM_ROOT", s);
-    }
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by

@@ -18,12 +18,11 @@
 #![allow(internal_features)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(extend_one)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
+#![feature(iterator_try_collect)]
 #![feature(min_specialization)]
-#![feature(never_type)]
 #![feature(try_blocks)]
 #![recursion_limit = "512"] // For rustdoc
 

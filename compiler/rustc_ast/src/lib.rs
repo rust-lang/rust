@@ -13,13 +13,11 @@
 #![feature(rustdoc_internals)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
-#![feature(const_trait_impl)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(stmt_expr_attributes)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

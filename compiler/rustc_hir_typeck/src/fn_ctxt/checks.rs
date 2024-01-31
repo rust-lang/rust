@@ -12,7 +12,9 @@ use crate::{
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
+use rustc_errors::{
+    codes::*, pluralize, Applicability, Diagnostic, ErrCode, ErrorGuaranteed, MultiSpan, StashKey,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -177,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
-        let mut err_code = "E0061";
+        let mut err_code = E0061;
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
@@ -187,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     if arg_types.len() != provided_args.len() {
-                        err_code = "E0057";
+                        err_code = E0057;
                     }
                     let expected_input_tys = match expected_input_tys {
                         Some(expected_input_tys) => match expected_input_tys.get(0) {
@@ -358,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if c_variadic && provided_arg_count < minimum_input_count {
-            err_code = "E0060";
+            err_code = E0060;
         }
 
         for arg in provided_args.iter().skip(minimum_input_count) {
@@ -424,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
-            self.report_arg_errors(
+            self.set_tainted_by_errors(self.report_arg_errors(
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
@@ -433,7 +435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn_def_id,
                 call_span,
                 call_expr,
-            );
+            ));
         }
     }
 
@@ -443,11 +445,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
         c_variadic: bool,
-        err_code: &str,
+        err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         // Next, let's construct the error
         let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
@@ -486,10 +488,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
-        self.set_tainted_by_errors(
-            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
-        );
 
         // Get the argument span in the context of the call span so that
         // suggestions and labels are (more) correct when an arg is a
@@ -696,8 +694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(mismatch_idx),
                         is_method,
                     );
-                    err.emit();
-                    return;
+                    return err.emit();
                 }
             }
         }
@@ -721,11 +718,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                return tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
-            return;
         }
 
+        let mut reported = None;
         errors.retain(|error| {
             let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
                 error
@@ -736,16 +733,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
-                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                reported = Some(self.err_ctxt().report_and_explain_type_error(trace, *e).emit());
                 return false;
             }
             true
         });
 
         // We're done if we found errors, but we already emitted them.
-        if errors.is_empty() {
-            return;
+        if let Some(reported) = reported {
+            assert!(errors.is_empty());
+            return reported;
         }
+        assert!(!errors.is_empty());
 
         // Okay, now that we've emitted the special errors separately, we
         // are only left missing/extra/swapped and mismatched arguments, both
@@ -802,8 +801,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(expected_idx.as_usize()),
                 is_method,
             );
-            err.emit();
-            return;
+            return err.emit();
         }
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
@@ -1251,7 +1249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn suggest_ptr_null_mut(

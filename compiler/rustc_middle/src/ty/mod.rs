@@ -583,13 +583,13 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }
 
 impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }

@@ -5,8 +5,8 @@ use std::num::NonZeroU32;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder, DiagnosticMessage,
-    DiagnosticStyledString, SubdiagnosticMessage, SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder,
+    DiagnosticMessage, DiagnosticStyledString, SubdiagnosticMessage, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -1065,7 +1065,7 @@ pub enum UnknownLintSuggestion {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unknown_lint, code = "E0602")]
+#[diag(lint_unknown_lint, code = E0602)]
 pub struct UnknownLintFromCommandLine<'a> {
     pub name: String,
     #[subdiagnostic]

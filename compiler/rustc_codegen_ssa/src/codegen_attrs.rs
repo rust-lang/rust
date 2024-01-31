@@ -1,6 +1,6 @@
 use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};

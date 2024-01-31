@@ -8,7 +8,7 @@ use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{error_code, Diagnostic, PResult};
+use rustc_errors::{codes::*, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
                     let mut err = self
                         .dcx()
                         .struct_span_err(span, fluent::parse_inner_doc_comment_not_permitted);
-                    err.code(error_code!(E0753));
+                    err.code(E0753);
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
                         &mut err,
                         span,

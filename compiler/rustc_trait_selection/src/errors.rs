@@ -1,7 +1,7 @@
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, EmissionGuarantee,
-    IntoDiagnostic, Level, SubdiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    EmissionGuarantee, IntoDiagnostic, Level, SubdiagnosticMessage,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
@@ -25,7 +25,7 @@ pub struct UnableToConstructConstantValue<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_empty_on_clause_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_empty_on_clause_in_rustc_on_unimplemented, code = E0232)]
 pub struct EmptyOnClauseInOnUnimplemented {
     #[primary_span]
     #[label]
@@ -33,7 +33,7 @@ pub struct EmptyOnClauseInOnUnimplemented {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_invalid_on_clause_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_invalid_on_clause_in_rustc_on_unimplemented, code = E0232)]
 pub struct InvalidOnClauseInOnUnimplemented {
     #[primary_span]
     #[label]
@@ -41,7 +41,7 @@ pub struct InvalidOnClauseInOnUnimplemented {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_no_value_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_no_value_in_rustc_on_unimplemented, code = E0232)]
 #[note]
 pub struct NoValueInOnUnimplemented {
     #[primary_span]
@@ -59,17 +59,13 @@ pub struct NegativePositiveConflict<'tcx> {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NegativePositiveConflict<'_> {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        dcx: &DiagCtxt,
-        level: Level,
-    ) -> rustc_errors::DiagnosticBuilder<'_, G> {
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag =
             DiagnosticBuilder::new(dcx, level, fluent::trait_selection_negative_positive_conflict);
         diag.arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.arg("self_desc", self.self_ty.map_or_else(|| "none".to_string(), |ty| ty.to_string()));
         diag.span(self.impl_span);
-        diag.code(rustc_errors::error_code!(E0751));
+        diag.code(E0751);
         match self.negative_impl_span {
             Ok(span) => {
                 diag.span_label(span, fluent::trait_selection_negative_implementation_here);
@@ -132,7 +128,7 @@ impl AddToDiagnostic for AdjustSignatureBorrow {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_closure_kind_mismatch, code = "E0525")]
+#[diag(trait_selection_closure_kind_mismatch, code = E0525)]
 pub struct ClosureKindMismatch {
     #[primary_span]
     #[label]

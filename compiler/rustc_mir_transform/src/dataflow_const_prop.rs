@@ -403,12 +403,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             operand,
             &mut |elem, op| match elem {
                 TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).ok(),
-                TrackElem::Variant(idx) => {
-                    if op.layout.for_variant(&self.ecx, idx).abi.is_uninhabited() {
-                        return None;
-                    }
-                    self.ecx.project_downcast(op, idx).ok()
-                }
+                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).ok()?;
                     let discr_value =

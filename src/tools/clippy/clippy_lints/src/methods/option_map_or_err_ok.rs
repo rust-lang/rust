@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
             OPTION_MAP_OR_ERR_OK,
             expr.span,
             msg,
-            "try using `ok_or` instead",
+            "consider using `ok_or`",
             format!("{self_snippet}.ok_or({err_snippet})"),
             Applicability::MachineApplicable,
         );

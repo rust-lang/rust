@@ -6,6 +6,7 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
+use crate::regions::InferCtxtRegionExt;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::engine::TraitEngineExt;

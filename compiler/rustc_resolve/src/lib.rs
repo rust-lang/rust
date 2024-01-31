@@ -15,9 +15,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
-#![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]
@@ -37,7 +35,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrCode};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -258,7 +256,7 @@ enum ResolutionError<'a> {
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
-        code: String,
+        code: ErrCode,
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },

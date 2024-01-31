@@ -5,8 +5,10 @@
 //! item.
 
 use crate::{errors, fluent_generated as fluent};
-use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
+use rustc_ast::{ast, AttrKind, AttrStyle, Attribute, LitKind};
+use rustc_ast::{MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::StashKey;
 use rustc_errors::{Applicability, DiagCtxt, IntoDiagnosticArg, MultiSpan};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -78,7 +80,7 @@ pub(crate) enum ProcMacroKind {
 }
 
 impl IntoDiagnosticArg for ProcMacroKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         match self {
             ProcMacroKind::Attribute => "attribute proc macro",
             ProcMacroKind::Derive => "derive proc macro",
@@ -2530,6 +2532,14 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         if attr.style == AttrStyle::Inner {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
+                    if let AttrKind::Normal(ref p) = attr.kind
+                        && let Some(diag) = tcx.dcx().steal_diagnostic(
+                            p.item.path.span,
+                            StashKey::UndeterminedMacroResolution,
+                        )
+                    {
+                        diag.cancel();
+                    }
                     let item = tcx
                         .hir()
                         .items()
