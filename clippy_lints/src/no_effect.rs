@@ -357,7 +357,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             }
         },
         ExprKind::Block(block, _) => {
-            if block.stmts.is_empty() {
+            if block.stmts.is_empty() && !block.targeted_by_break {
                 block.expr.as_ref().and_then(|e| {
                     match block.rules {
                         BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => None,
