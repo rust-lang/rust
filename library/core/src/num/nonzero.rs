@@ -35,7 +35,7 @@ mod private {
 pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {}
 
 macro_rules! impl_zeroable_primitive {
-    ($NonZero:ident ( $primitive:ty )) => {
+    ($primitive:ty) => {
         #[unstable(
             feature = "nonzero_internals",
             reason = "implementation detail which may disappear or be replaced at any time",
@@ -52,18 +52,18 @@ macro_rules! impl_zeroable_primitive {
     };
 }
 
-impl_zeroable_primitive!(NonZeroU8(u8));
-impl_zeroable_primitive!(NonZeroU16(u16));
-impl_zeroable_primitive!(NonZeroU32(u32));
-impl_zeroable_primitive!(NonZeroU64(u64));
-impl_zeroable_primitive!(NonZeroU128(u128));
-impl_zeroable_primitive!(NonZeroUsize(usize));
-impl_zeroable_primitive!(NonZeroI8(i8));
-impl_zeroable_primitive!(NonZeroI16(i16));
-impl_zeroable_primitive!(NonZeroI32(i32));
-impl_zeroable_primitive!(NonZeroI64(i64));
-impl_zeroable_primitive!(NonZeroI128(i128));
-impl_zeroable_primitive!(NonZeroIsize(isize));
+impl_zeroable_primitive!(u8);
+impl_zeroable_primitive!(u16);
+impl_zeroable_primitive!(u32);
+impl_zeroable_primitive!(u64);
+impl_zeroable_primitive!(u128);
+impl_zeroable_primitive!(usize);
+impl_zeroable_primitive!(i8);
+impl_zeroable_primitive!(i16);
+impl_zeroable_primitive!(i32);
+impl_zeroable_primitive!(i64);
+impl_zeroable_primitive!(i128);
+impl_zeroable_primitive!(isize);
 
 /// A value that is known not to equal zero.
 ///
