@@ -1595,7 +1595,7 @@ fn format_tuple_struct(
             .snippet_provider
             .span_after(mk_sp(lo, span.hi()), "(")
     } else {
-        fields[0].span.lo()
+        fields[0].span().lo()
     };
     let body_hi = if fields.is_empty() {
         context
@@ -1603,7 +1603,7 @@ fn format_tuple_struct(
             .span_after(mk_sp(body_lo, span.hi()), ")")
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
-        let last_arg_span = fields[fields.len() - 1].span;
+        let last_arg_span = fields[fields.len() - 1].span();
         context
             .snippet_provider
             .opt_span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
@@ -1954,9 +1954,9 @@ pub(crate) fn rewrite_struct_field(
     let attrs_str = field.attrs.rewrite_result(context, shape)?;
     let attrs_extendable = field.ident.is_none() && is_attributes_extendable(&attrs_str);
     let missing_span = if field.attrs.is_empty() {
-        mk_sp(field.span.lo(), field.span.lo())
+        mk_sp(field.span().lo(), field.span().lo())
     } else {
-        mk_sp(field.attrs.last().unwrap().span.hi(), field.span.lo())
+        mk_sp(field.attrs.last().unwrap().span.hi(), field.span().lo())
     };
     let mut spacing = String::from(if field.ident.is_some() {
         type_annotation_spacing.1
