@@ -648,6 +648,7 @@ impl OpaqueId {
 /// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
+#[derive(Debug)]
 pub enum Constructor<Cx: TypeCx> {
     /// Tuples and structs.
     Struct,
@@ -713,33 +714,6 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,
             Constructor::Missing => Constructor::Missing,
-        }
-    }
-}
-
-impl<Cx: TypeCx> fmt::Debug for Constructor<Cx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Constructor::Struct => f.debug_tuple("Struct").finish(),
-            Constructor::Variant(idx) => f.debug_tuple("Variant").field(idx).finish(),
-            Constructor::Ref => f.debug_tuple("Ref").finish(),
-            Constructor::Slice(slice) => f.debug_tuple("Slice").field(slice).finish(),
-            Constructor::UnionField => f.debug_tuple("UnionField").finish(),
-            Constructor::Bool(b) => f.debug_tuple("Bool").field(b).finish(),
-            Constructor::IntRange(range) => f.debug_tuple("IntRange").field(range).finish(),
-            Constructor::F32Range(lo, hi, end) => {
-                f.debug_tuple("F32Range").field(lo).field(hi).field(end).finish()
-            }
-            Constructor::F64Range(lo, hi, end) => {
-                f.debug_tuple("F64Range").field(lo).field(hi).field(end).finish()
-            }
-            Constructor::Str(value) => f.debug_tuple("Str").field(value).finish(),
-            Constructor::Opaque(inner) => f.debug_tuple("Opaque").field(inner).finish(),
-            Constructor::Or => f.debug_tuple("Or").finish(),
-            Constructor::Wildcard => f.debug_tuple("Wildcard").finish(),
-            Constructor::NonExhaustive => f.debug_tuple("NonExhaustive").finish(),
-            Constructor::Hidden => f.debug_tuple("Hidden").finish(),
-            Constructor::Missing => f.debug_tuple("Missing").finish(),
         }
     }
 }
