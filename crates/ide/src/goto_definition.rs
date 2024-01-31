@@ -241,11 +241,39 @@ mod tests {
     fn goto_def_in_included_file() {
         check(
             r#"
+//- minicore:include
 //- /main.rs
-#[rustc_builtin_macro]
-macro_rules! include {}
 
 include!("a.rs");
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_in_included_file_nested() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+macro_rules! passthrough {
+    ($($tt:tt)*) => { $($tt)* }
+}
+
+passthrough!(include!("a.rs"));
 
 fn main() {
     foo();
