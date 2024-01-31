@@ -159,6 +159,7 @@ use core::iter::FusedIterator;
 use core::marker::Tuple;
 use core::marker::Unsize;
 use core::mem::{self, SizedTypeProperties};
+use core::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use core::ops::{
     CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut, DispatchFromDyn, Receiver,
 };
@@ -2027,6 +2028,34 @@ impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, 
 impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
         <F as Fn<Args>>::call(self, args)
+    }
+}
+
+#[unstable(feature = "async_fn_traits", issue = "none")]
+impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args> for Box<F, A> {
+    type Output = F::Output;
+    type CallOnceFuture = F::CallOnceFuture;
+
+    extern "rust-call" fn async_call_once(self, args: Args) -> Self::CallOnceFuture {
+        F::async_call_once(*self, args)
+    }
+}
+
+#[unstable(feature = "async_fn_traits", issue = "none")]
+impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> for Box<F, A> {
+    type CallMutFuture<'a> = F::CallMutFuture<'a> where Self: 'a;
+
+    extern "rust-call" fn async_call_mut(&mut self, args: Args) -> Self::CallMutFuture<'_> {
+        F::async_call_mut(self, args)
+    }
+}
+
+#[unstable(feature = "async_fn_traits", issue = "none")]
+impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box<F, A> {
+    type CallFuture<'a> = F::CallFuture<'a> where Self: 'a;
+
+    extern "rust-call" fn async_call(&self, args: Args) -> Self::CallFuture<'_> {
+        F::async_call(self, args)
     }
 }
 

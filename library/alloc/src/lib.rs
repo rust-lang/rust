@@ -106,6 +106,7 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(assert_matches)]
+#![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
