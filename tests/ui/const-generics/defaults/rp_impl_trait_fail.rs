@@ -25,6 +25,6 @@ fn owo() -> impl Traitor {
 
 fn main() {
     rawr();
-    uwu();
+    uwu(); //~ ERROR: type annotations needed
     owo();
 }

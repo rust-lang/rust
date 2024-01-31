@@ -14,6 +14,7 @@ impl<T> Default for T {
     default type Id = T; //~ ERROR type annotations needed
     // This will be fixed by #111994
     fn intu(&self) -> &Self::Id {
+        //~^ ERROR type annotations needed
         self
     }
 }
