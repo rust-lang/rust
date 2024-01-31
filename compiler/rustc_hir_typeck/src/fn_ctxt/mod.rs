@@ -45,14 +45,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
-    /// Number of errors that had been reported when we started
-    /// checking this function. On exit, if we find that *more* errors
-    /// have been reported, we will skip regionck and other work that
-    /// expects the types within the function to be consistent.
-    // FIXME(matthewjasper) This should not exist, and it's not correct
-    // if type checking is run in parallel.
-    err_count_on_creation: usize,
-
     /// If `Some`, this stores coercion information for returned
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
@@ -126,7 +118,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
-            err_count_on_creation: inh.tcx.dcx().err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,
@@ -194,10 +185,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 steps
             }),
         }
-    }
-
-    pub fn errors_reported_since_creation(&self) -> bool {
-        self.dcx().err_count() > self.err_count_on_creation
     }
 }
 
@@ -369,6 +356,14 @@ pub struct LoweredTy<'tcx> {
 
 impl<'tcx> LoweredTy<'tcx> {
     pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
-        LoweredTy { raw, normalized: fcx.normalize(span, raw) }
+        // FIXME(-Znext-solver): We're still figuring out how to best handle
+        // normalization and this doesn't feel too great. We should look at this
+        // code again before stabilizing it.
+        let normalized = if fcx.next_trait_solver() {
+            fcx.try_structurally_resolve_type(span, raw)
+        } else {
+            fcx.normalize(span, raw)
+        };
+        LoweredTy { raw, normalized }
     }
 }

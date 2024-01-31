@@ -11,8 +11,8 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_macro_input, parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature,
-    TraitItem, Type,
+    parse_macro_input, parse_quote, FnArg, ImplItem, ItemFn, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType,
+    Signature, TraitItem, Type,
 };
 
 #[proc_macro_attribute]
@@ -94,4 +94,34 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
     }
 
     TokenStream::from(quote!(#item))
+}
+
+#[proc_macro_attribute]
+pub fn fake_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut item = parse_macro_input!(item as ItemFn);
+    let span = item.block.brace_token.span;
+
+    if item.sig.asyncness.is_some() {
+        item.sig.asyncness = None;
+    }
+
+    let crate_name = quote! { fake_crate };
+    let block = item.block;
+    item.block = syn::parse_quote_spanned! {
+        span =>
+        {
+            #crate_name::block_on(async {
+                #block
+            })
+        }
+    };
+
+    quote! {
+        mod #crate_name {
+            pub fn block_on<F: ::std::future::Future>(_fut: F) {}
+        }
+
+        #item
+    }
+    .into()
 }

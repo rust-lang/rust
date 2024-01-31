@@ -9,7 +9,7 @@ union PtrRepr<T: ?Sized> {
 
 #[repr(C)]
 struct PtrComponents<T: Pointee + ?Sized> {
-    data_address: *const (),
+    data_pointer: *const (),
     metadata: <T as Pointee>::Metadata,
 }
 

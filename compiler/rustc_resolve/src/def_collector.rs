@@ -289,12 +289,18 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
                 match closure.coroutine_kind {
-                    Some(coroutine_kind) => self.create_def(
-                        coroutine_kind.closure_id(),
-                        kw::Empty,
-                        DefKind::Closure,
-                        expr.span,
-                    ),
+                    Some(coroutine_kind) => {
+                        self.with_parent(closure_def, |this| {
+                            let coroutine_def = this.create_def(
+                                coroutine_kind.closure_id(),
+                                kw::Empty,
+                                DefKind::Closure,
+                                expr.span,
+                            );
+                            this.with_parent(coroutine_def, |this| visit::walk_expr(this, expr));
+                        });
+                        return;
+                    }
                     None => closure_def,
                 }
             }

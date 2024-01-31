@@ -3,7 +3,9 @@
 use either::Either;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{
+    codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};

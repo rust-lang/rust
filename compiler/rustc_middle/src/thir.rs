@@ -674,7 +674,7 @@ impl<'tcx> Pat<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         format!("{self}").into_diagnostic_arg()
     }
 }

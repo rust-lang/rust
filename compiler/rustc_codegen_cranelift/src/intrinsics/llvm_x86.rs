@@ -610,230 +610,56 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16&ig_expand=4903
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
+            pack_instruction(fx, a, b, ret, PackSize::U8, PackWidth::Sse);
+        }
 
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i16);
-            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
-            assert_eq!(lane_count * 2, ret_lane_count);
+        "llvm.x86.sse2.packsswb.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi16&ig_expand=4848
+            intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            let zero = fx.bcx.ins().iconst(types::I16, 0);
-            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
-            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
-
-            for idx in 0..lane_count {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
-            }
+            pack_instruction(fx, a, b, ret, PackSize::S8, PackWidth::Sse);
         }
 
         "llvm.x86.avx2.packuswb" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16&ig_expand=4906
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
-
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i16);
-            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
-            assert_eq!(lane_count * 2, ret_lane_count);
-
-            let zero = fx.bcx.ins().iconst(types::I16, 0);
-            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
-            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
-
-            for idx in 0..lane_count / 2 {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, zero);
-                let sat = fx.bcx.ins().umin(sat, max_u8);
-                let res = fx.bcx.ins().ireduce(types::I8, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
-            }
+            pack_instruction(fx, a, b, ret, PackSize::U8, PackWidth::Avx);
         }
 
-        "llvm.x86.sse2.packssdw.128" => {
-            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32&ig_expand=4889
+        "llvm.x86.avx2.packsswb" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16&ig_expand=4851
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
-
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i32);
-            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
-            assert_eq!(lane_count * 2, ret_lane_count);
-
-            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
-            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
-            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
-
-            for idx in 0..lane_count {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
-            }
+            pack_instruction(fx, a, b, ret, PackSize::S8, PackWidth::Avx);
         }
 
         "llvm.x86.sse41.packusdw" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi32&ig_expand=4912
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
+            pack_instruction(fx, a, b, ret, PackSize::U16, PackWidth::Sse);
+        }
 
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i32);
-            assert_eq!(ret_lane_ty, fx.tcx.types.u16);
-            assert_eq!(lane_count * 2, ret_lane_count);
+        "llvm.x86.sse2.packssdw.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32&ig_expand=4889
+            intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            let min_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MIN));
-            let max_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MAX));
-            let ret_lane_layout = fx.layout_of(fx.tcx.types.u16);
+            pack_instruction(fx, a, b, ret, PackSize::S16, PackWidth::Sse);
+        }
 
-            for idx in 0..lane_count {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_u16);
-                let sat = fx.bcx.ins().smin(sat, max_u16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
+        "llvm.x86.avx2.packusdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32&ig_expand=4883
+            intrinsic_args!(fx, args => (a, b); intrinsic);
 
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_u16);
-                let sat = fx.bcx.ins().smin(sat, max_u16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
-            }
+            pack_instruction(fx, a, b, ret, PackSize::U16, PackWidth::Avx);
         }
 
         "llvm.x86.avx2.packssdw" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32&ig_expand=4892
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
-
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i32);
-            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
-            assert_eq!(lane_count * 2, ret_lane_count);
-
-            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
-            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
-            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
-
-            for idx in 0..lane_count / 2 {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = a.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
-            }
-
-            for idx in 0..lane_count / 2 {
-                let lane = b.value_lane(fx, idx).load_scalar(fx);
-                let sat = fx.bcx.ins().smax(lane, min_i16);
-                let sat = fx.bcx.ins().smin(sat, max_i16);
-                let res = fx.bcx.ins().ireduce(types::I16, sat);
-
-                let res_lane = CValue::by_val(res, ret_lane_layout);
-                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
-            }
+            pack_instruction(fx, a, b, ret, PackSize::S16, PackWidth::Avx);
         }
 
         "llvm.x86.fma.vfmaddsub.ps"
@@ -1406,4 +1232,116 @@ fn llvm_add_sub<'tcx>(
     let cb_out = fx.bcx.ins().bor(cb0, cb1);
 
     (cb_out, c)
+}
+
+enum PackSize {
+    U8,
+    U16,
+    S8,
+    S16,
+}
+
+impl PackSize {
+    fn ret_clif_type(&self) -> Type {
+        match self {
+            Self::U8 | Self::S8 => types::I8,
+            Self::U16 | Self::S16 => types::I16,
+        }
+    }
+    fn src_clif_type(&self) -> Type {
+        match self {
+            Self::U8 | Self::S8 => types::I16,
+            Self::U16 | Self::S16 => types::I32,
+        }
+    }
+    fn src_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Self::U8 | Self::S8 => tcx.types.i16,
+            Self::U16 | Self::S16 => tcx.types.i32,
+        }
+    }
+    fn ret_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            Self::U8 => tcx.types.u8,
+            Self::S8 => tcx.types.i8,
+            Self::U16 => tcx.types.u16,
+            Self::S16 => tcx.types.i16,
+        }
+    }
+    fn max(&self) -> i64 {
+        match self {
+            Self::U8 => u8::MAX as u64 as i64,
+            Self::S8 => i8::MAX as u8 as u64 as i64,
+            Self::U16 => u16::MAX as u64 as i64,
+            Self::S16 => i16::MAX as u64 as u64 as i64,
+        }
+    }
+    fn min(&self) -> i64 {
+        match self {
+            Self::U8 | Self::U16 => 0,
+            Self::S8 => i16::from(i8::MIN) as u16 as i64,
+            Self::S16 => i32::from(i16::MIN) as u32 as i64,
+        }
+    }
+}
+
+enum PackWidth {
+    Sse = 1,
+    Avx = 2,
+}
+impl PackWidth {
+    fn divisor(&self) -> u64 {
+        match self {
+            Self::Sse => 1,
+            Self::Avx => 2,
+        }
+    }
+}
+
+/// Implement an x86 pack instruction with the intrinsic `_mm{,256}pack{us,s}_epi{16,32}`.
+/// Validated for correctness against LLVM, see commit `c8f5d35508e062bd2d95e6c03429bfec831db6d3`.
+fn pack_instruction<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    a: CValue<'tcx>,
+    b: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    ret_size: PackSize,
+    width: PackWidth,
+) {
+    assert_eq!(a.layout(), b.layout());
+    let layout = a.layout();
+
+    let (src_lane_count, src_lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    assert_eq!(src_lane_ty, ret_size.src_ty(fx.tcx));
+    assert_eq!(ret_lane_ty, ret_size.ret_ty(fx.tcx));
+    assert_eq!(src_lane_count * 2, ret_lane_count);
+
+    let min = fx.bcx.ins().iconst(ret_size.src_clif_type(), ret_size.min());
+    let max = fx.bcx.ins().iconst(ret_size.src_clif_type(), ret_size.max());
+    let ret_lane_layout = fx.layout_of(ret_size.ret_ty(fx.tcx));
+
+    let mut round = |source: CValue<'tcx>, source_offset: u64, dest_offset: u64| {
+        let step_amount = src_lane_count / width.divisor();
+        let dest_offset = step_amount * dest_offset;
+        for idx in 0..step_amount {
+            let lane = source.value_lane(fx, step_amount * source_offset + idx).load_scalar(fx);
+            let sat = fx.bcx.ins().smax(lane, min);
+            let sat = match ret_size {
+                PackSize::U8 | PackSize::U16 => fx.bcx.ins().umin(sat, max),
+                PackSize::S8 | PackSize::S16 => fx.bcx.ins().smin(sat, max),
+            };
+            let res = fx.bcx.ins().ireduce(ret_size.ret_clif_type(), sat);
+            let res_lane = CValue::by_val(res, ret_lane_layout);
+            ret.place_lane(fx, dest_offset + idx).write_cvalue(fx, res_lane);
+        }
+    };
+
+    round(a, 0, 0);
+    round(b, 0, 1);
+
+    if let PackWidth::Avx = width {
+        round(a, 1, 2);
+        round(b, 1, 3);
+    }
 }

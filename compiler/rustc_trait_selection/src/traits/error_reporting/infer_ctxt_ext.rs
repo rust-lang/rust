@@ -1,7 +1,7 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty};

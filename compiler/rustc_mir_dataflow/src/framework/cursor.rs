@@ -185,8 +185,8 @@ where
         debug_assert_eq!(target.block, self.pos.block);
 
         let block_data = &self.body[target.block];
+        #[rustfmt::skip]
         let next_effect = if A::Direction::IS_FORWARD {
-            #[rustfmt::skip]
             self.pos.curr_effect_index.map_or_else(
                 || Effect::Before.at_index(0),
                 EffectIndex::next_in_forward_order,

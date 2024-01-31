@@ -34,7 +34,7 @@ impl MachineStopType for ConstEvalErrKind {
     }
     fn add_args(
         self: Box<Self>,
-        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue<'static>),
+        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue),
     ) {
         use ConstEvalErrKind::*;
         match *self {

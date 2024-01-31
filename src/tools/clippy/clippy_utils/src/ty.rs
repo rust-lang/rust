@@ -219,7 +219,8 @@ pub fn implements_trait<'tcx>(
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
 ///
-/// The `callee_id` argument is used to determine whether this is a function call in a `const fn` environment, used for checking const traits.
+/// The `callee_id` argument is used to determine whether this is a function call in a `const fn`
+/// environment, used for checking const traits.
 pub fn implements_trait_with_env<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,

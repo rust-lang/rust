@@ -816,12 +816,12 @@ impl Error {
         }
     }
 
-    /// Attempt to downgrade the inner error to `E` if any.
+    /// Attempt to downcast the inner error to `E` if any.
     ///
     /// If this [`Error`] was constructed via [`new`] then this function will
     /// attempt to perform downgrade on it, otherwise it will return [`Err`].
     ///
-    /// If downgrade succeeds, it will return [`Ok`], otherwise it will also
+    /// If the downcast succeeds, it will return [`Ok`], otherwise it will also
     /// return [`Err`].
     ///
     /// [`new`]: Error::new
@@ -852,13 +852,39 @@ impl Error {
     /// impl From<io::Error> for E {
     ///     fn from(err: io::Error) -> E {
     ///         err.downcast::<E>()
-    ///             .map(|b| *b)
     ///             .unwrap_or_else(E::Io)
     ///     }
     /// }
+    ///
+    /// impl From<E> for io::Error {
+    ///     fn from(err: E) -> io::Error {
+    ///         match err {
+    ///             E::Io(io_error) => io_error,
+    ///             e => io::Error::new(io::ErrorKind::Other, e),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// # fn main() {
+    /// let e = E::SomeOtherVariant;
+    /// // Convert it to an io::Error
+    /// let io_error = io::Error::from(e);
+    /// // Cast it back to the original variant
+    /// let e = E::from(io_error);
+    /// assert!(matches!(e, E::SomeOtherVariant));
+    ///
+    /// let io_error = io::Error::from(io::ErrorKind::AlreadyExists);
+    /// // Convert it to E
+    /// let e = E::from(io_error);
+    /// // Cast it back to the original variant
+    /// let io_error = io::Error::from(e);
+    /// assert_eq!(io_error.kind(), io::ErrorKind::AlreadyExists);
+    /// assert!(io_error.get_ref().is_none());
+    /// assert!(io_error.raw_os_error().is_none());
+    /// # }
     /// ```
     #[unstable(feature = "io_error_downcast", issue = "99262")]
-    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
+    pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,
     {
@@ -872,7 +898,7 @@ impl Error {
                 // And the compiler should be able to eliminate the branch
                 // that produces `Err` here since b.error.is::<E>()
                 // returns true.
-                Ok(res.unwrap())
+                Ok(*res.unwrap())
             }
             repr_data => Err(Self { repr: Repr::new(repr_data) }),
         }

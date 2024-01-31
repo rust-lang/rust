@@ -49,10 +49,7 @@ error[E0599]: `Foo` is not an iterator
   --> $DIR/method-call-err-msg.rs:19:7
    |
 LL |   pub struct Foo;
-   |   --------------
-   |   |
-   |   method `take` not found for this struct
-   |   doesn't satisfy `Foo: Iterator`
+   |   -------------- method `take` not found for this struct because it doesn't satisfy `Foo: Iterator`
 ...
 LL | /     y.zero()
 LL | |      .take()

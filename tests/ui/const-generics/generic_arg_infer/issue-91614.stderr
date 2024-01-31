@@ -2,7 +2,7 @@ error[E0283]: type annotations needed for `Mask<_, N>`
   --> $DIR/issue-91614.rs:6:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
-   |         ^   ------------------- type must be known at this point
+   |         ^   -------------------------- type must be known at this point
    |
    = note: cannot satisfy `_: MaskElement`
    = help: the following types implement trait `MaskElement`:

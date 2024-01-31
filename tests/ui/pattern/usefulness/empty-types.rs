@@ -1,4 +1,5 @@
-// revisions: normal exhaustive_patterns
+// revisions: normal min_exh_pats exhaustive_patterns
+// gate-test-min_exhaustive_patterns
 //
 // This tests correct handling of empty types in exhaustiveness checking.
 //
@@ -9,6 +10,8 @@
 // This feature is useful to avoid `!` falling back to `()` all the time.
 #![feature(never_type_fallback)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
+#![cfg_attr(min_exh_pats, feature(min_exhaustive_patterns))]
+//[min_exh_pats]~^ WARN the feature `min_exhaustive_patterns` is incomplete
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 
@@ -66,17 +69,17 @@ fn basic(x: NeverBundle) {
     match tuple_half_never {}
     //[normal]~^ ERROR non-empty
     match tuple_half_never {
-        (_, _) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        (_, _) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
 
     let tuple_never: (!, !) = x.tuple_never;
     match tuple_never {}
     //[normal]~^ ERROR non-empty
     match tuple_never {
-        _ => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        _ => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match tuple_never {
-        (_, _) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        (_, _) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match tuple_never.0 {}
     match tuple_never.0 {
@@ -92,12 +95,12 @@ fn basic(x: NeverBundle) {
     }
     match res_u32_never {
         Ok(_) => {}
-        Err(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Err(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match res_u32_never {
         //~^ ERROR non-exhaustive
         Ok(0) => {}
-        Err(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Err(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     let Ok(_x) = res_u32_never;
     //[normal]~^ ERROR refutable
@@ -106,25 +109,25 @@ fn basic(x: NeverBundle) {
     // Non-obvious difference: here there's an implicit dereference in the patterns, which makes the
     // inner place !known_valid. `exhaustive_patterns` ignores this.
     let Ok(_x) = &res_u32_never;
-    //[normal]~^ ERROR refutable
+    //[normal,min_exh_pats]~^ ERROR refutable
 
     let result_never: Result<!, !> = x.result_never;
     match result_never {}
     //[normal]~^ ERROR non-exhaustive
     match result_never {
-        _ => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        _ => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match result_never {
         //[normal]~^ ERROR non-exhaustive
-        Ok(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Ok(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match result_never {
-        Ok(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
-        _ => {}     //[exhaustive_patterns]~ ERROR unreachable pattern
+        Ok(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
+        _ => {}     //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match result_never {
-        Ok(_) => {}  //[exhaustive_patterns]~ ERROR unreachable pattern
-        Err(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Ok(_) => {}  //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
+        Err(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
 }
 
@@ -145,11 +148,11 @@ fn void_same_as_never(x: NeverBundle) {
         }
         match opt_void {
             None => {}
-            Some(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+            Some(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
         }
         match opt_void {
             None => {}
-            _ => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+            _ => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
         }
 
         let ref_void: &Void = &x.void;
@@ -159,7 +162,7 @@ fn void_same_as_never(x: NeverBundle) {
         }
         let ref_opt_void: &Option<Void> = &None;
         match *ref_opt_void {
-            //[normal]~^ ERROR non-exhaustive
+            //[normal,min_exh_pats]~^ ERROR non-exhaustive
             None => {}
         }
         match *ref_opt_void {
@@ -284,11 +287,11 @@ fn nested_validity_tracking(bundle: NeverBundle) {
         _ => {} //~ ERROR unreachable pattern
     }
     match tuple_never {
-        (_, _) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        (_, _) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match result_never {
-        Ok(_) => {}  //[exhaustive_patterns]~ ERROR unreachable pattern
-        Err(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Ok(_) => {}  //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
+        Err(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
 
     // These should be considered !known_valid and not warn unreachable.
@@ -309,13 +312,13 @@ fn invalid_empty_match(bundle: NeverBundle) {
     match *x {}
 
     let x: &(u32, !) = &bundle.tuple_half_never;
-    match *x {} //[normal]~ ERROR non-exhaustive
+    match *x {} //[normal,min_exh_pats]~ ERROR non-exhaustive
     let x: &(!, !) = &bundle.tuple_never;
-    match *x {} //[normal]~ ERROR non-exhaustive
+    match *x {} //[normal,min_exh_pats]~ ERROR non-exhaustive
     let x: &Result<!, !> = &bundle.result_never;
-    match *x {} //[normal]~ ERROR non-exhaustive
+    match *x {} //[normal,min_exh_pats]~ ERROR non-exhaustive
     let x: &[!; 3] = &bundle.array_3_never;
-    match *x {} //[normal]~ ERROR non-exhaustive
+    match *x {} //[normal,min_exh_pats]~ ERROR non-exhaustive
 }
 
 fn arrays_and_slices(x: NeverBundle) {
@@ -323,7 +326,7 @@ fn arrays_and_slices(x: NeverBundle) {
     match slice_never {}
     //~^ ERROR non-empty
     match slice_never {
-        //[normal]~^ ERROR not covered
+        //[normal,min_exh_pats]~^ ERROR not covered
         [] => {}
     }
     match slice_never {
@@ -332,7 +335,7 @@ fn arrays_and_slices(x: NeverBundle) {
         [_, _, ..] => {}
     }
     match slice_never {
-        //[normal]~^ ERROR `&[]`, `&[_]` and `&[_, _]` not covered
+        //[normal,min_exh_pats]~^ ERROR `&[]`, `&[_]` and `&[_, _]` not covered
         //[exhaustive_patterns]~^^ ERROR `&[]` not covered
         [_, _, _, ..] => {}
     }
@@ -345,7 +348,7 @@ fn arrays_and_slices(x: NeverBundle) {
         _x => {}
     }
     match slice_never {
-        //[normal]~^ ERROR `&[]` and `&[_, ..]` not covered
+        //[normal,min_exh_pats]~^ ERROR `&[]` and `&[_, ..]` not covered
         //[exhaustive_patterns]~^^ ERROR `&[]` not covered
         &[..] if false => {}
     }
@@ -360,13 +363,13 @@ fn arrays_and_slices(x: NeverBundle) {
     match array_3_never {}
     //[normal]~^ ERROR non-empty
     match array_3_never {
-        _ => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        _ => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match array_3_never {
-        [_, _, _] => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        [_, _, _] => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match array_3_never {
-        [_, ..] => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        [_, ..] => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
 
     let ref_array_3_never: &[!; 3] = &array_3_never;
@@ -408,22 +411,22 @@ fn bindings(x: NeverBundle) {
     match opt_never {
         None => {}
         // !useful, !reachable
-        Some(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Some(_) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match opt_never {
         None => {}
         // !useful, !reachable
-        Some(_a) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        Some(_a) => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match opt_never {
         None => {}
         // !useful, !reachable
-        _ => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        _ => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
     match opt_never {
         None => {}
         // !useful, !reachable
-        _a => {} //[exhaustive_patterns]~ ERROR unreachable pattern
+        _a => {} //[exhaustive_patterns,min_exh_pats]~ ERROR unreachable pattern
     }
 
     // The scrutinee is known_valid, but under the `&` isn't anymore.
@@ -444,7 +447,7 @@ fn bindings(x: NeverBundle) {
         &_a => {}
     }
     match ref_opt_never {
-        //[normal]~^ ERROR non-exhaustive
+        //[normal,min_exh_pats]~^ ERROR non-exhaustive
         &None => {}
     }
     match ref_opt_never {
@@ -485,7 +488,7 @@ fn bindings(x: NeverBundle) {
         ref _a => {}
     }
     match *ref_opt_never {
-        //[normal]~^ ERROR non-exhaustive
+        //[normal,min_exh_pats]~^ ERROR non-exhaustive
         None => {}
     }
     match *ref_opt_never {
@@ -533,7 +536,7 @@ fn bindings(x: NeverBundle) {
 
     let ref_res_never: &Result<!, !> = &x.result_never;
     match *ref_res_never {
-        //[normal]~^ ERROR non-exhaustive
+        //[normal,min_exh_pats]~^ ERROR non-exhaustive
         // useful, reachable
         Ok(_) => {}
     }
@@ -544,7 +547,7 @@ fn bindings(x: NeverBundle) {
         _ => {}
     }
     match *ref_res_never {
-        //[normal]~^ ERROR non-exhaustive
+        //[normal,min_exh_pats]~^ ERROR non-exhaustive
         // useful, !reachable
         Ok(_a) => {}
     }
@@ -563,7 +566,7 @@ fn bindings(x: NeverBundle) {
 
     let ref_tuple_half_never: &(u32, !) = &x.tuple_half_never;
     match *ref_tuple_half_never {}
-    //[normal]~^ ERROR non-empty
+    //[normal,min_exh_pats]~^ ERROR non-empty
     match *ref_tuple_half_never {
         // useful, reachable
         (_, _) => {}
@@ -614,6 +617,7 @@ fn guards_and_validity(x: NeverBundle) {
         // useful, reachable
         _ => {}
     }
+
     // Now the madness commences. The guard caused a load of the value thus asserting validity. So
     // there's no invalid value for `_` to catch. So the second pattern is unreachable despite the
     // guard not being taken.
@@ -629,7 +633,7 @@ fn guards_and_validity(x: NeverBundle) {
         _a if false => {}
     }
     match ref_never {
-        //[normal]~^ ERROR non-exhaustive
+        //[normal,min_exh_pats]~^ ERROR non-exhaustive
         // useful, !reachable
         &_a if false => {}
     }
@@ -657,7 +661,7 @@ fn diagnostics_subtlety(x: NeverBundle) {
     // Regression test for diagnostics: don't report `Some(Ok(_))` and `Some(Err(_))`.
     let x: &Option<Result<!, !>> = &None;
     match *x {
-        //[normal]~^ ERROR `Some(_)` not covered
+        //[normal,min_exh_pats]~^ ERROR `Some(_)` not covered
         None => {}
     }
 }

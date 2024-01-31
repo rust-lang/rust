@@ -34,6 +34,7 @@ use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 use smallvec::SmallVec;
 
 use libc::c_uint;
+use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
@@ -155,8 +156,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
-    if sess.target.is_builtin {
-        // tm is disposed by its drop impl
+    {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
 
@@ -164,33 +164,13 @@ pub unsafe fn create_module<'ll>(
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
             .expect("got a non-UTF8 data-layout from LLVM");
 
-        // Unfortunately LLVM target specs change over time, and right now we
-        // don't have proper support to work with any more than one
-        // `data_layout` than the one that is in the rust-lang/rust repo. If
-        // this compiler is configured against a custom LLVM, we may have a
-        // differing data layout, even though we should update our own to use
-        // that one.
-        //
-        // As an interim hack, if CFG_LLVM_ROOT is not an empty string then we
-        // disable this check entirely as we may be configured with something
-        // that has a different target layout.
-        //
-        // Unsure if this will actually cause breakage when rustc is configured
-        // as such.
-        //
-        // FIXME(#34960)
-        let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
-        let custom_llvm_used = !cfg_llvm_root.trim().is_empty();
-
-        if !custom_llvm_used && target_data_layout != llvm_data_layout {
-            bug!(
-                "data-layout for target `{rustc_target}`, `{rustc_layout}`, \
-                  differs from LLVM target's `{llvm_target}` default layout, `{llvm_layout}`",
-                rustc_target = sess.opts.target_triple,
-                rustc_layout = target_data_layout,
-                llvm_target = sess.target.llvm_target,
-                llvm_layout = llvm_data_layout
-            );
+        if target_data_layout != llvm_data_layout {
+            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+                rustc_target: sess.opts.target_triple.to_string().as_str(),
+                rustc_layout: target_data_layout.as_str(),
+                llvm_target: sess.target.llvm_target.borrow(),
+                llvm_layout: llvm_data_layout,
+            });
         }
     }
 

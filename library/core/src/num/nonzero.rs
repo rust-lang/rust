@@ -3,6 +3,8 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+#[cfg(bootstrap)]
+use crate::marker::StructuralEq;
 use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
@@ -30,9 +32,7 @@ mod private {
     issue = "none"
 )]
 #[const_trait]
-pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {
-    type NonZero;
-}
+pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {}
 
 macro_rules! impl_zeroable_primitive {
     ($NonZero:ident ( $primitive:ty )) => {
@@ -48,9 +48,7 @@ macro_rules! impl_zeroable_primitive {
             reason = "implementation detail which may disappear or be replaced at any time",
             issue = "none"
         )]
-        impl const ZeroablePrimitive for $primitive {
-            type NonZero = $NonZero;
-        }
+        impl const ZeroablePrimitive for $primitive {}
     };
 }
 
@@ -67,12 +65,23 @@ impl_zeroable_primitive!(NonZeroI64(i64));
 impl_zeroable_primitive!(NonZeroI128(i128));
 impl_zeroable_primitive!(NonZeroIsize(isize));
 
-#[unstable(
-    feature = "nonzero_internals",
-    reason = "implementation detail which may disappear or be replaced at any time",
-    issue = "none"
-)]
-pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
+/// A value that is known not to equal zero.
+///
+/// This enables some memory layout optimization.
+/// For example, `Option<NonZero<u32>>` is the same size as `u32`:
+///
+/// ```
+/// #![feature(generic_nonzero)]
+/// use core::mem::size_of;
+///
+/// assert_eq!(size_of::<Option<core::num::NonZero<u32>>>(), size_of::<u32>());
+/// ```
+#[unstable(feature = "generic_nonzero", issue = "120257")]
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+#[rustc_diagnostic_item = "NonZero"]
+pub struct NonZero<T: ZeroablePrimitive>(T);
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -131,12 +140,7 @@ macro_rules! nonzero_integer {
         ///
         /// [null pointer optimization]: crate::option#representation
         #[$stability]
-        #[derive(Copy, Eq)]
-        #[repr(transparent)]
-        #[rustc_layout_scalar_valid_range_start(1)]
-        #[rustc_nonnull_optimization_guaranteed]
-        #[rustc_diagnostic_item = stringify!($Ty)]
-        pub struct $Ty($Int);
+        pub type $Ty = NonZero<$Int>;
 
         impl $Ty {
             /// Creates a non-zero without checking whether the value is non-zero.
@@ -544,6 +548,9 @@ macro_rules! nonzero_integer {
         }
 
         #[$stability]
+        impl Copy for $Ty {}
+
+        #[$stability]
         impl PartialEq for $Ty {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
@@ -558,6 +565,13 @@ macro_rules! nonzero_integer {
 
         #[unstable(feature = "structural_match", issue = "31434")]
         impl StructuralPartialEq for $Ty {}
+
+        #[$stability]
+        impl Eq for $Ty {}
+
+        #[unstable(feature = "structural_match", issue = "31434")]
+        #[cfg(bootstrap)]
+        impl StructuralEq for $Ty {}
 
         #[$stability]
         impl PartialOrd for $Ty {

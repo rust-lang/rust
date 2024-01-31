@@ -2,11 +2,7 @@ error[E0599]: the function or associated item `partial_cmp` exists for struct `A
   --> $DIR/derive-sugg-arg-arity.rs:5:23
    |
 LL | pub struct A;
-   | ------------
-   | |
-   | function or associated item `partial_cmp` not found for this struct
-   | doesn't satisfy `A: Iterator`
-   | doesn't satisfy `A: PartialOrd<_>`
+   | ------------ function or associated item `partial_cmp` not found for this struct because it doesn't satisfy `A: Iterator` or `A: PartialOrd<_>`
 ...
 LL |         _ => match A::partial_cmp() {},
    |                       ^^^^^^^^^^^ function or associated item cannot be called on `A` due to unsatisfied trait bounds

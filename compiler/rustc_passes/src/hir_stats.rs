@@ -328,11 +328,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_expr(self, e)
     }
 
-    fn visit_let_expr(&mut self, lex: &'v hir::Let<'v>) {
-        self.record("Let", Id::Node(lex.hir_id), lex);
-        hir_visit::walk_let_expr(self, lex)
-    }
-
     fn visit_expr_field(&mut self, f: &'v hir::ExprField<'v>) {
         self.record("ExprField", Id::Node(f.hir_id), f);
         hir_visit::walk_expr_field(self, f)

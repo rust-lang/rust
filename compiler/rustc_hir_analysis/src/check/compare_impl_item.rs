@@ -2,7 +2,7 @@ use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
@@ -20,6 +20,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_span::Span;
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -1382,7 +1383,7 @@ fn compare_number_of_generics<'tcx>(
                     kind = kind,
                 ),
             );
-            err.code("E0049".into());
+            err.code(E0049);
 
             let msg =
                 format!("expected {trait_count} {kind} parameter{}", pluralize!(trait_count),);

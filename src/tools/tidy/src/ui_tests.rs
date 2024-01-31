@@ -8,9 +8,12 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+// FIXME: GitHub's UI truncates file lists that exceed 1000 entries, so these
+// should all be 1000 or lower. Limits significantly smaller than 1000 are also
+// desirable, because large numbers of files are unwieldy in general. See issue
+// #73494.
 const ENTRY_LIMIT: usize = 900;
-// FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1849;
+const ISSUES_ENTRY_LIMIT: usize = 1807;
 const ROOT_ENTRY_LIMIT: usize = 870;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
@@ -24,9 +27,10 @@ const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
 
 const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
     "tests/ui/asm/named-asm-labels.s", // loading an external asm file to test named labels lint
-    "tests/ui/check-cfg/my-awesome-platform.json", // testing custom targets with cfgs
-    "tests/ui/commandline-argfile-badutf8.args", // passing args via a file
-    "tests/ui/commandline-argfile.args", // passing args via a file
+    "tests/ui/codegen/mismatched-data-layout.json", // testing mismatched data layout w/ custom targets
+    "tests/ui/check-cfg/my-awesome-platform.json",  // testing custom targets with cfgs
+    "tests/ui/commandline-argfile-badutf8.args",    // passing args via a file
+    "tests/ui/commandline-argfile.args",            // passing args via a file
     "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
     "tests/ui/include-macros/data.bin", // testing including data with the include macros
     "tests/ui/include-macros/file.txt", // testing including data with the include macros

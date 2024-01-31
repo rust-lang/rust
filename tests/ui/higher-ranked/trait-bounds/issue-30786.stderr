@@ -2,10 +2,7 @@ error[E0599]: the method `filterx` exists for struct `Map<Repeat, {closure@issue
   --> $DIR/issue-30786.rs:120:22
    |
 LL | pub struct Map<S, F> {
-   | --------------------
-   | |
-   | method `filterx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | -------------------- method `filterx` not found for this struct because it doesn't satisfy `_: StreamExt`
 ...
 LL |     let filter = map.filterx(|x: &_| true);
    |                      ^^^^^^^ method cannot be called on `Map<Repeat, {closure@issue-30786.rs:119:27}>` due to unsatisfied trait bounds
@@ -23,10 +20,7 @@ error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64)
   --> $DIR/issue-30786.rs:132:24
    |
 LL | pub struct Filter<S, F> {
-   | -----------------------
-   | |
-   | method `countx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | ----------------------- method `countx` not found for this struct because it doesn't satisfy `_: StreamExt`
 ...
 LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds

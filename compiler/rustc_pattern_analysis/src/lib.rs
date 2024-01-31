@@ -95,6 +95,7 @@ pub trait TypeCx: Sized + fmt::Debug {
     type PatData: Clone;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
+    fn is_min_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
@@ -135,22 +136,34 @@ pub trait TypeCx: Sized + fmt::Debug {
 }
 
 /// Context that provides information global to a match.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""))]
 pub struct MatchCtxt<'a, Cx: TypeCx> {
     /// The context for type information.
     pub tycx: &'a Cx,
 }
 
+impl<'a, Cx: TypeCx> Clone for MatchCtxt<'a, Cx> {
+    fn clone(&self) -> Self {
+        Self { tycx: self.tycx }
+    }
+}
+
+impl<'a, Cx: TypeCx> Copy for MatchCtxt<'a, Cx> {}
+
 /// The arm of a match expression.
 #[derive(Debug)]
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""))]
 pub struct MatchArm<'p, Cx: TypeCx> {
     pub pat: &'p DeconstructedPat<'p, Cx>,
     pub has_guard: bool,
     pub arm_data: Cx::ArmData,
 }
+
+impl<'p, Cx: TypeCx> Clone for MatchArm<'p, Cx> {
+    fn clone(&self) -> Self {
+        Self { pat: self.pat, has_guard: self.has_guard, arm_data: self.arm_data }
+    }
+}
+
+impl<'p, Cx: TypeCx> Copy for MatchArm<'p, Cx> {}
 
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.

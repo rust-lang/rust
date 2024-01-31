@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
                                         ident.span,
                                         "non-standard lint formulation",
                                         None,
-                                        &format!("try using `{}` instead", formulation.correction),
+                                        &format!("consider using `{}`", formulation.correction),
                                     );
                                 }
                                 return;

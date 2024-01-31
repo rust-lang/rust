@@ -129,6 +129,6 @@ unimplemented_serialize! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PubUnderscoreFieldsBehaviour {
-    PublicallyExported,
+    PubliclyExported,
     AllPubFields,
 }

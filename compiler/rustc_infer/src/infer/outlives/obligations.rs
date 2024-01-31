@@ -70,6 +70,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::DUMMY_SP;
 use smallvec::smallvec;
 
 use super::env::OutlivesEnvironment;
@@ -123,26 +124,54 @@ impl<'tcx> InferCtxt<'tcx> {
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
-    #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
+    pub fn process_registered_region_obligations<E>(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        mut deeply_normalize_ty: impl FnMut(Ty<'tcx>, SubregionOrigin<'tcx>) -> Result<Ty<'tcx>, E>,
+    ) -> Result<(), (E, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
+
+        let normalized_caller_bounds: Vec<_> = outlives_env
+            .param_env
+            .caller_bounds()
+            .iter()
+            .filter_map(|clause| {
+                let bound_clause = clause.kind();
+                let ty::ClauseKind::TypeOutlives(outlives) = bound_clause.skip_binder() else {
+                    return None;
+                };
+                Some(
+                    deeply_normalize_ty(
+                        outlives.0,
+                        SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
+                    )
+                    .map(|ty| bound_clause.rebind(ty::OutlivesPredicate(ty, outlives.1))),
+                )
+            })
+            // FIXME(-Znext-solver): How do we accurately report an error here :(
+            .try_collect()
+            .map_err(|e| (e, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP)))?;
 
         let my_region_obligations = self.take_registered_region_obligations();
 
         for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+            let sup_type =
+                deeply_normalize_ty(sup_type, origin.clone()).map_err(|e| (e, origin.clone()))?;
             debug!(?sup_type, ?sub_region, ?origin);
-            let sup_type = self.resolve_vars_if_possible(sup_type);
 
             let outlives = &mut TypeOutlives::new(
                 self,
                 self.tcx,
                 outlives_env.region_bound_pairs(),
                 None,
-                outlives_env.param_env,
+                &normalized_caller_bounds,
             );
             let category = origin.to_constraint_category();
             outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
+
+        Ok(())
     }
 }
 
@@ -190,7 +219,7 @@ where
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
     ) -> Self {
         Self {
             delegate,
@@ -199,7 +228,7 @@ where
                 tcx,
                 region_bound_pairs,
                 implicit_region_bound,
-                param_env,
+                caller_bounds,
             ),
         }
     }

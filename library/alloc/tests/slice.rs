@@ -1614,10 +1614,10 @@ fn subslice_patterns() {
 }
 
 #[test]
-fn test_group_by() {
+fn test_chunk_by() {
     let slice = &[1, 1, 1, 3, 3, 2, 2, 2, 1, 0];
 
-    let mut iter = slice.group_by(|a, b| a == b);
+    let mut iter = slice.chunk_by(|a, b| a == b);
     assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
     assert_eq!(iter.next(), Some(&[3, 3][..]));
     assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
@@ -1625,7 +1625,7 @@ fn test_group_by() {
     assert_eq!(iter.next(), Some(&[0][..]));
     assert_eq!(iter.next(), None);
 
-    let mut iter = slice.group_by(|a, b| a == b);
+    let mut iter = slice.chunk_by(|a, b| a == b);
     assert_eq!(iter.next_back(), Some(&[0][..]));
     assert_eq!(iter.next_back(), Some(&[1][..]));
     assert_eq!(iter.next_back(), Some(&[2, 2, 2][..]));
@@ -1633,7 +1633,7 @@ fn test_group_by() {
     assert_eq!(iter.next_back(), Some(&[1, 1, 1][..]));
     assert_eq!(iter.next_back(), None);
 
-    let mut iter = slice.group_by(|a, b| a == b);
+    let mut iter = slice.chunk_by(|a, b| a == b);
     assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
     assert_eq!(iter.next_back(), Some(&[0][..]));
     assert_eq!(iter.next(), Some(&[3, 3][..]));
@@ -1643,10 +1643,10 @@ fn test_group_by() {
 }
 
 #[test]
-fn test_group_by_mut() {
+fn test_chunk_by_mut() {
     let slice = &mut [1, 1, 1, 3, 3, 2, 2, 2, 1, 0];
 
-    let mut iter = slice.group_by_mut(|a, b| a == b);
+    let mut iter = slice.chunk_by_mut(|a, b| a == b);
     assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
     assert_eq!(iter.next(), Some(&mut [3, 3][..]));
     assert_eq!(iter.next(), Some(&mut [2, 2, 2][..]));
@@ -1654,7 +1654,7 @@ fn test_group_by_mut() {
     assert_eq!(iter.next(), Some(&mut [0][..]));
     assert_eq!(iter.next(), None);
 
-    let mut iter = slice.group_by_mut(|a, b| a == b);
+    let mut iter = slice.chunk_by_mut(|a, b| a == b);
     assert_eq!(iter.next_back(), Some(&mut [0][..]));
     assert_eq!(iter.next_back(), Some(&mut [1][..]));
     assert_eq!(iter.next_back(), Some(&mut [2, 2, 2][..]));
@@ -1662,7 +1662,7 @@ fn test_group_by_mut() {
     assert_eq!(iter.next_back(), Some(&mut [1, 1, 1][..]));
     assert_eq!(iter.next_back(), None);
 
-    let mut iter = slice.group_by_mut(|a, b| a == b);
+    let mut iter = slice.chunk_by_mut(|a, b| a == b);
     assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
     assert_eq!(iter.next_back(), Some(&mut [0][..]));
     assert_eq!(iter.next(), Some(&mut [3, 3][..]));

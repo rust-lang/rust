@@ -35,6 +35,10 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     }
 
     match intrinsic {
+        "llvm.prefetch" => {
+            // Nothing to do. This is merely a perf hint.
+        }
+
         _ if intrinsic.starts_with("llvm.ctlz.v") => {
             intrinsic_args!(fx, args => (a); intrinsic);
 

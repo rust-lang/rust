@@ -278,7 +278,8 @@ pub struct InferCtxt<'tcx> {
 
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
+    pub reported_trait_errors:
+        RefCell<FxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
 
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
