@@ -776,14 +776,14 @@ impl Read for &File {
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
+        buf.try_reserve(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_string(self, buf, size)
     }
 }
