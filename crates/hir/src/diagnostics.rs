@@ -11,7 +11,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{body::SyntheticSyntax, hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId};
 use hir_expand::{name::Name, HirFileId, InFile};
-use syntax::{ast, AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
+use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
 use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
 
@@ -346,8 +346,7 @@ pub struct TraitImplRedundantAssocItems {
 
 #[derive(Debug)]
 pub struct RemoveTrailingReturn {
-    pub file_id: HirFileId,
-    pub return_expr: AstPtr<ast::Expr>,
+    pub return_expr: InFile<AstPtr<ast::ReturnExpr>>,
 }
 
 #[derive(Debug)]
@@ -460,11 +459,10 @@ impl AnyDiagnostic {
             BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
                 if let Ok(source_ptr) = source_map.expr_syntax(return_expr) {
                     // Filters out desugared return expressions (e.g. desugared try operators).
-                    if ast::ReturnExpr::can_cast(source_ptr.value.kind()) {
+                    if let Some(ptr) = source_ptr.value.cast::<ast::ReturnExpr>() {
                         return Some(
                             RemoveTrailingReturn {
-                                file_id: source_ptr.file_id,
-                                return_expr: source_ptr.value,
+                                return_expr: InFile::new(source_ptr.file_id, ptr),
                             }
                             .into(),
                         );

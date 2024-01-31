@@ -1,9 +1,9 @@
-use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn, HirFileIdExt, InFile};
-use ide_db::{assists::Assist, source_change::SourceChange};
-use syntax::{ast, AstNode, SyntaxNodePtr};
+use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn};
+use ide_db::{assists::Assist, base_db::FileRange, source_change::SourceChange};
+use syntax::{ast, AstNode};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range, fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: remove-trailing-return
 //
@@ -13,12 +13,12 @@ pub(crate) fn remove_trailing_return(
     ctx: &DiagnosticsContext<'_>,
     d: &RemoveTrailingReturn,
 ) -> Diagnostic {
-    let display_range = ctx.sema.diagnostics_display_range(InFile {
-        file_id: d.file_id,
-        value: expr_stmt(ctx, d)
-            .as_ref()
-            .map(|stmt| SyntaxNodePtr::new(stmt.syntax()))
-            .unwrap_or_else(|| d.return_expr.into()),
+    let display_range = adjusted_display_range(ctx, d.return_expr, &|return_expr| {
+        return_expr
+            .syntax()
+            .parent()
+            .and_then(ast::ExprStmt::cast)
+            .map(|stmt| stmt.syntax().text_range())
     });
     Diagnostic::new(
         DiagnosticCode::Clippy("needless_return"),
@@ -29,15 +29,20 @@ pub(crate) fn remove_trailing_return(
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<Vec<Assist>> {
-    let return_expr = return_expr(ctx, d)?;
-    let stmt = expr_stmt(ctx, d);
+    let root = ctx.sema.db.parse_or_expand(d.return_expr.file_id);
+    let return_expr = d.return_expr.value.to_node(&root);
+    let stmt = return_expr.syntax().parent().and_then(ast::ExprStmt::cast);
 
-    let range = stmt.as_ref().map_or(return_expr.syntax(), AstNode::syntax).text_range();
+    let FileRange { range, file_id } =
+        ctx.sema.original_range_opt(stmt.as_ref().map_or(return_expr.syntax(), AstNode::syntax))?;
+    if Some(file_id) != d.return_expr.file_id.file_id() {
+        return None;
+    }
+
     let replacement =
         return_expr.expr().map_or_else(String::new, |expr| format!("{}", expr.syntax().text()));
-
     let edit = TextEdit::replace(range, replacement);
-    let source_change = SourceChange::from_text_edit(d.file_id.original_file(ctx.sema.db), edit);
+    let source_change = SourceChange::from_text_edit(file_id, edit);
 
     Some(vec![fix(
         "remove_trailing_return",
@@ -45,17 +50,6 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<Vec<A
         source_change,
         range,
     )])
-}
-
-fn return_expr(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<ast::ReturnExpr> {
-    let root = ctx.sema.db.parse_or_expand(d.file_id);
-    let expr = d.return_expr.to_node(&root);
-    ast::ReturnExpr::cast(expr.syntax().clone())
-}
-
-fn expr_stmt(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<ast::ExprStmt> {
-    let return_expr = return_expr(ctx, d)?;
-    return_expr.syntax().parent().and_then(ast::ExprStmt::cast)
 }
 
 #[cfg(test)]
