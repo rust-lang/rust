@@ -80,6 +80,9 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::invoke(SpanMap::new)]
     fn span_map(&self, file_id: HirFileId) -> SpanMap;
 
+    #[salsa::transparent]
+    #[salsa::invoke(crate::span_map::expansion_span_map)]
+    fn expansion_span_map(&self, file_id: MacroFileId) -> Arc<ExpansionSpanMap>;
     #[salsa::invoke(crate::span_map::real_span_map)]
     fn real_span_map(&self, file_id: FileId) -> Arc<RealSpanMap>;
 

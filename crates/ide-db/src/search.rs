@@ -303,14 +303,18 @@ impl Definition {
                 DefWithBody::InTypeConst(_) => return SearchScope::empty(),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
 
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
@@ -327,7 +331,9 @@ impl Definition {
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
