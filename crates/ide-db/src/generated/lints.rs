@@ -967,17 +967,6 @@ The tracking issue for this feature is: [#44839]
 "##,
     },
     Lint {
-        label: "abi_amdgpu_kernel",
-        description: r##"# `abi_amdgpu_kernel`
-
-The tracking issue for this feature is: [#51575]
-
-[#51575]: https://github.com/rust-lang/rust/issues/51575
-
-------------------------
-"##,
-    },
-    Lint {
         label: "abi_avr_interrupt",
         description: r##"# `abi_avr_interrupt`
 
