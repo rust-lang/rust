@@ -1248,24 +1248,36 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        // The `LintExpectationId` can be stable or unstable depending on when it was created.
-        // Diagnostics created before the definition of `HirId`s are unstable and can not yet
-        // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
-        // a stable one by the `LintLevelsBuilder`.
-        if let Some(LintExpectationId::Unstable { .. }) = diagnostic.level.get_expectation_id() {
-            self.unstable_expect_diagnostics.push(diagnostic.clone());
-            return None;
+        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
+            // The `LintExpectationId` can be stable or unstable depending on when it was created.
+            // Diagnostics created before the definition of `HirId`s are unstable and can not yet
+            // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
+            // a stable one by the `LintLevelsBuilder`.
+            if let LintExpectationId::Unstable { .. } = expectation_id {
+                self.unstable_expect_diagnostics.push(diagnostic.clone());
+                return None;
+            }
+            self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
-        // FIXME(eddyb) this should check for `has_errors` and stop pushing
-        // once *any* errors were emitted (and truncate `span_delayed_bugs`
-        // when an error is first emitted, also), but maybe there's a case
-        // in which that's not sound? otherwise this is really inefficient.
+        if diagnostic.has_future_breakage() {
+            self.future_breakage_diagnostics.push(diagnostic.clone());
+        }
+
+        if matches!(diagnostic.level, DelayedBug(_)) && self.flags.eagerly_emit_delayed_bugs {
+            diagnostic.level = Error;
+        }
+
         match diagnostic.level {
-            DelayedBug(_) if self.flags.eagerly_emit_delayed_bugs => {
-                diagnostic.level = Error;
+            // This must come after the possible promotion of `DelayedBug` to `Error` above.
+            Fatal | Error if self.treat_next_err_as_bug() => {
+                diagnostic.level = Bug;
             }
             DelayedBug(DelayedBugKind::Normal) => {
+                // FIXME(eddyb) this should check for `has_errors` and stop pushing
+                // once *any* errors were emitted (and truncate `span_delayed_bugs`
+                // when an error is first emitted, also), but maybe there's a case
+                // in which that's not sound? otherwise this is really inefficient.
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.span_delayed_bugs
                     .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
@@ -1280,39 +1292,22 @@ impl DiagCtxtInner {
 
                 return None;
             }
-            _ => {}
-        }
-
-        // This must come after the possible promotion of `DelayedBug` to
-        // `Error` above.
-        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
-            diagnostic.level = Bug;
-        }
-
-        if diagnostic.has_future_breakage() {
-            self.future_breakage_diagnostics.push(diagnostic.clone());
-        }
-
-        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
-            self.fulfilled_expectations.insert(expectation_id.normalize());
-        }
-
-        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
-            if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+            Warning if !self.flags.can_emit_warnings => {
+                if diagnostic.has_future_breakage() {
+                    (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                }
+                return None;
             }
-            return None;
-        }
-
-        if matches!(diagnostic.level, Expect(_)) {
-            self.suppressed_expected_diag = true;
-            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
-            return None;
-        }
-
-        if matches!(diagnostic.level, Allow) {
-            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
-            return None;
+            Allow => {
+                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                return None;
+            }
+            Expect(_) => {
+                self.suppressed_expected_diag = true;
+                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                return None;
+            }
+            _ => {}
         }
 
         let mut guaranteed = None;
