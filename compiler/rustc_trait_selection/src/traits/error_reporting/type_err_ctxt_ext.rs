@@ -2641,10 +2641,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                if let Some(e) = self.dcx().has_errors() {
-                    // no need to overload user in such cases
-                    return e;
-                }
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
