@@ -265,6 +265,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
+        // FIXME: walk path segment with `path_segment.hir_id` parent.
         self.insert(path_segment.ident.span, path_segment.hir_id, Node::PathSegment(path_segment));
         intravisit::walk_path_segment(self, path_segment);
     }
