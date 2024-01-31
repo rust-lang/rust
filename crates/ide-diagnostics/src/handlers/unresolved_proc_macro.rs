@@ -32,7 +32,7 @@ pub(crate) fn unresolved_proc_macro(
     let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };
     let def_map = ctx.sema.db.crate_def_map(d.krate);
     let message = if config_enabled {
-        def_map.proc_macro_loading_error().unwrap_or("proc macro not found in the built dylib")
+        def_map.proc_macro_loading_error().unwrap_or("internal error")
     } else {
         match d.kind {
             hir::MacroKind::Attr if proc_macros_enabled => "attribute macro expansion is disabled",
