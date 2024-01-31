@@ -32,7 +32,7 @@ use core::{
 /// `WS`: A string of 32 newlines followed by 128 spaces.
 pub struct SmolStr(Repr);
 
-impl Clone for SmolStr{
+impl Clone for SmolStr {
     #[inline]
     fn clone(&self) -> Self {
         if !self.is_heap_allocated() {
@@ -43,7 +43,6 @@ impl Clone for SmolStr{
 }
 
 impl SmolStr {
-    
     #[deprecated = "Use `new_inline` instead"]
     pub const fn new_inline_from_ascii(len: usize, bytes: &[u8]) -> SmolStr {
         assert!(len <= INLINE_CAP);
