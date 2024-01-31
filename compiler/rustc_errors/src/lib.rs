@@ -1179,7 +1179,6 @@ impl DiagCtxt {
         inner.check_unstable_expect_diagnostics = true;
 
         if !diags.is_empty() {
-            inner.suppressed_expected_diag = true;
             for mut diag in diags.into_iter() {
                 diag.update_unstable_expectation_id(unstable_to_stable);
 
@@ -1291,15 +1290,10 @@ impl DiagCtxtInner {
         }
 
         if diagnostic.has_future_breakage() {
-            // Future breakages aren't emitted if they're Level::Allow,
-            // but they still need to be constructed and stashed below,
-            // so they'll trigger the good-path bug check.
-            self.suppressed_expected_diag = true;
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
         if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
-            self.suppressed_expected_diag = true;
             self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
@@ -1310,7 +1304,13 @@ impl DiagCtxtInner {
             return None;
         }
 
-        if matches!(diagnostic.level, Expect(_) | Allow) {
+        if matches!(diagnostic.level, Expect(_)) {
+            self.suppressed_expected_diag = true;
+            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+            return None;
+        }
+
+        if matches!(diagnostic.level, Allow) {
             (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             return None;
         }
