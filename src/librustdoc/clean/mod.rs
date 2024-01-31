@@ -148,6 +148,17 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     )
 }
 
+fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
+    if let Some(node) = tcx.opt_hir_node_by_def_id(import_id)
+        && let hir::Node::Item(item) = node
+        && let hir::ItemKind::Use(_, use_kind) = item.kind
+    {
+        use_kind == hir::UseKind::Glob
+    } else {
+        false
+    }
+}
+
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
@@ -158,10 +169,17 @@ fn generate_item_with_correct_attrs(
 ) -> Item {
     let target_attrs = inline::load_attrs(cx, def_id);
     let attrs = if let Some(import_id) = import_id {
+        // glob reexports are treated the same as `#[doc(inline)]` items.
+        //
+        // For glob re-exports the item may or may not exist to be re-exported (potentially the cfgs
+        // on the path up until the glob can be removed, and only cfgs on the globbed item itself
+        // matter), for non-inlined re-exports see #85043.
         let is_inline = inline::load_attrs(cx, import_id.to_def_id())
             .lists(sym::doc)
             .get_word_attr(sym::inline)
-            .is_some();
+            .is_some()
+            || (is_glob_import(cx.tcx, import_id)
+                && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
         let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
         add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
         attrs
