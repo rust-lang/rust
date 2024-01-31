@@ -448,8 +448,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME(effects)
                         let predicate_is_const = false;
 
-                        if let Some(guar) = self.dcx().has_errors()
-                            && trait_predicate.references_error()
+                        if let Err(guar) = trait_predicate.error_reported()
                         {
                             return guar;
                         }
