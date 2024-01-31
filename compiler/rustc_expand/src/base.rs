@@ -67,7 +67,7 @@ impl Annotatable {
             Annotatable::PatField(fp) => fp.pat.span,
             Annotatable::GenericParam(gp) => gp.ident.span,
             Annotatable::Param(p) => p.span,
-            Annotatable::FieldDef(sf) => sf.span,
+            Annotatable::FieldDef(sf) => sf.span(),
             Annotatable::Variant(v) => v.span,
             Annotatable::Crate(c) => c.spans.inner_span,
         }

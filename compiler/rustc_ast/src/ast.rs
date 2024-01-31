@@ -3016,12 +3016,17 @@ impl VisibilityKind {
 pub struct FieldDef {
     pub attrs: AttrVec,
     pub id: NodeId,
-    pub span: Span,
     pub vis: Visibility,
     pub ident: Option<Ident>,
 
     pub ty: P<Ty>,
     pub is_placeholder: bool,
+}
+
+impl FieldDef {
+    pub fn span(&self) -> Span {
+        self.vis.span.to(self.ty.span)
+    }
 }
 
 /// Was parsing recovery performed?

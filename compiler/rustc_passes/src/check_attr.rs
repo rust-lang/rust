@@ -2383,7 +2383,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_field_def(&mut self, struct_field: &'tcx hir::FieldDef<'tcx>) {
-        self.check_attributes(struct_field.hir_id, struct_field.span, Target::Field, None);
+        self.check_attributes(struct_field.hir_id, struct_field.span(), Target::Field, None);
         intravisit::walk_field_def(self, struct_field);
     }
 

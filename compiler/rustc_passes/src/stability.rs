@@ -457,7 +457,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
         self.annotate(
             s.def_id,
-            s.span,
+            s.span(),
             None,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -599,7 +599,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
-        self.check_missing_stability(s.def_id, s.span);
+        self.check_missing_stability(s.def_id, s.span());
         intravisit::walk_field_def(self, s);
     }
 

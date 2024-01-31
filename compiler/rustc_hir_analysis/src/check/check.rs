@@ -186,7 +186,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
             if !allowed_union_field(field_ty, tcx, param_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
-                    Some(Node::Field(field)) => (field.span, field.ty.span),
+                    Some(Node::Field(field)) => (field.span(), field.ty.span),
                     _ => unreachable!("mir field has to correspond to hir field"),
                 };
                 tcx.dcx().emit_err(errors::InvalidUnionField {
