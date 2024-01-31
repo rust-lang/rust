@@ -777,6 +777,11 @@ Internal config, path to proc-macro server executable.
 --
 Exclude imports from find-all-references.
 --
+[[rust-analyzer.references.excludeTests]]rust-analyzer.references.excludeTests (default: `false`)::
++
+--
+Exclude tests from find-all-references.
+--
 [[rust-analyzer.rename.allowExternalItems]]rust-analyzer.rename.allowExternalItems (default: `false`)::
 +
 --

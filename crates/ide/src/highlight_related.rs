@@ -519,6 +519,7 @@ mod tests {
                             ReferenceCategory::Read => "read",
                             ReferenceCategory::Write => "write",
                             ReferenceCategory::Import => "import",
+                            ReferenceCategory::Test => "test",
                         }
                         .to_string()
                     }),

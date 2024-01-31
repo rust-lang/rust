@@ -92,6 +92,7 @@ pub(crate) fn document_highlight_kind(
         ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
         ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
         ReferenceCategory::Import => None,
+        ReferenceCategory::Test => None,
     }
 }
 

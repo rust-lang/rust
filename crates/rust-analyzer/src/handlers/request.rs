@@ -1055,6 +1055,7 @@ pub(crate) fn handle_references(
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
+    let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
     let refs = match snap.analysis.find_all_refs(position, None)? {
         None => return Ok(None),
@@ -1078,7 +1079,8 @@ pub(crate) fn handle_references(
                 .flat_map(|(file_id, refs)| {
                     refs.into_iter()
                         .filter(|&(_, category)| {
-                            !exclude_imports || category != Some(ReferenceCategory::Import)
+                            (!exclude_imports || category != Some(ReferenceCategory::Import))
+                                && (!exclude_tests || category != Some(ReferenceCategory::Test))
                         })
                         .map(move |(range, _)| FileRange { file_id, range })
                 })
