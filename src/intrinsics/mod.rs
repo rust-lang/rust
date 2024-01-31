@@ -1229,11 +1229,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(cmp, ret.layout()));
         }
 
-        sym::const_deallocate => {
-            intrinsic_args!(fx, args => (_ptr, _size, _align); intrinsic);
-            // nop at runtime.
-        }
-
         sym::black_box => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
