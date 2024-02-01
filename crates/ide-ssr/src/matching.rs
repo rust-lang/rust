@@ -706,7 +706,7 @@ where
 // we are trying to match that bit of code. This saves us having to pass a boolean into all the bits
 // of code that can make the decision to not match.
 thread_local! {
-    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = Cell::new(false);
+    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = const { Cell::new(false) };
 }
 
 fn recording_match_fail_reasons() -> bool {

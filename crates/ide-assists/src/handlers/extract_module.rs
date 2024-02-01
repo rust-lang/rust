@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    iter,
-};
+use std::iter;
 
 use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::{
@@ -9,6 +6,7 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
+    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -235,9 +233,9 @@ impl Module {
     fn get_usages_and_record_fields(
         &self,
         ctx: &AssistContext<'_>,
-    ) -> (HashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
+    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
         let mut adt_fields = Vec::new();
-        let mut refs: HashMap<FileId, Vec<(TextRange, String)>> = HashMap::new();
+        let mut refs: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
 
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
@@ -320,7 +318,7 @@ impl Module {
         &self,
         ctx: &AssistContext<'_>,
         node_def: Definition,
-        refs_in_files: &mut HashMap<FileId, Vec<(TextRange, String)>>,
+        refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
     ) {
         for (file_id, references) in node_def.usages(&ctx.sema).all() {
             let source_file = ctx.sema.parse(file_id);
@@ -400,7 +398,7 @@ impl Module {
         ctx: &AssistContext<'_>,
     ) -> Vec<TextRange> {
         let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
-        let mut node_set: HashSet<String> = HashSet::new();
+        let mut node_set: FxHashSet<String> = FxHashSet::default();
 
         for item in self.body_items.clone() {
             for x in item.syntax().descendants() {

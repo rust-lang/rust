@@ -241,6 +241,7 @@ fn unescape(s: &str) -> String {
     s.replace(r#"\""#, "").replace(r#"\n"#, "\n").replace(r#"\r"#, "")
 }
 
+#[allow(clippy::print_stderr)]
 fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let file_content = std::fs::read_to_string(path).unwrap();
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();

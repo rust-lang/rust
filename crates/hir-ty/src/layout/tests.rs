@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
+use rustc_hash::FxHashMap;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
@@ -16,7 +15,7 @@ use crate::{
 mod closure;
 
 fn current_machine_data_layout() -> String {
-    project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
+    project_model::target_data_layout::get(None, None, &FxHashMap::default()).unwrap()
 }
 
 fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutError> {

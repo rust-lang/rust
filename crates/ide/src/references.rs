@@ -9,8 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use std::collections::HashMap;
-
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -79,7 +77,7 @@ pub(crate) fn find_all_refs(
                             .collect(),
                     )
                 })
-                .collect::<HashMap<_, Vec<_>, _>>();
+                .collect::<IntMap<_, Vec<_>>>();
             let declaration = match def {
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))

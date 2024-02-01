@@ -46,6 +46,7 @@ impl CheckReparse {
         Some(CheckReparse { text, edit, edited_text })
     }
 
+    #[allow(clippy::print_stderr)]
     pub fn run(&self) {
         let parse = SourceFile::parse(&self.text);
         let new_parse = parse.reparse(&self.edit);

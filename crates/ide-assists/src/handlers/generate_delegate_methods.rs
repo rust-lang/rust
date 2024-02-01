@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
 use hir::{self, HasCrate, HasVisibility};
-use ide_db::path_transform::PathTransform;
+use ide_db::{path_transform::PathTransform, FxHashSet};
 use syntax::{
     ast::{
         self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
@@ -71,7 +69,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
     let mut methods = vec![];
-    let mut seen_names = HashSet::new();
+    let mut seen_names = FxHashSet::default();
 
     for ty in sema_field_ty.autoderef(ctx.db()) {
         let krate = ty.krate(ctx.db());

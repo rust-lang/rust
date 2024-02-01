@@ -493,9 +493,7 @@ impl CargoActor {
                     // Skip certain kinds of messages to only spend time on what's useful
                     JsonMessage::Cargo(message) => match message {
                         cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender
-                                .send(CargoMessage::CompilerArtifact(Box::new(artifact)))
-                                .unwrap();
+                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
                         }
                         cargo_metadata::Message::CompilerMessage(msg) => {
                             self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
@@ -539,8 +537,9 @@ impl CargoActor {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum CargoMessage {
-    CompilerArtifact(Box<cargo_metadata::Artifact>),
+    CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),
 }
 

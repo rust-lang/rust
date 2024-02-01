@@ -164,6 +164,8 @@ len_without_is_empty = "allow"
 enum_variant_names = "allow"
 # Builder pattern disagrees
 new_ret_no_self = "allow"
+# Has a bunch of false positives
+useless_asref = "allow"
 
 ## Following lints should be tackled at some point
 borrowed_box = "allow"
@@ -178,9 +180,12 @@ type_complexity = "allow"
 wrong_self_convention = "allow"
 
 ## warn at following lints
+# CI raises these to deny
 dbg_macro = "warn"
 todo = "warn"
-unimplemented = "allow"
+print_stdout = "warn"
+print_stderr = "warn"
+
 rc_buffer = "warn"
 # FIXME enable this, we use this pattern a lot so its annoying work ...
 # str_to_string = "warn"

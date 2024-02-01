@@ -1,10 +1,6 @@
 //! SCIP generator
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    time::Instant,
-};
+use std::{path::PathBuf, time::Instant};
 
 use ide::{
     LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
@@ -12,6 +8,7 @@ use ide::{
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types as scip_types;
 
 use crate::{
@@ -76,9 +73,10 @@ impl flags::Scip {
         };
         let mut documents = Vec::new();
 
-        let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
-        let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
-        let mut tokens_to_enclosing_symbol: HashMap<TokenId, Option<String>> = HashMap::new();
+        let mut symbols_emitted: FxHashSet<TokenId> = FxHashSet::default();
+        let mut tokens_to_symbol: FxHashMap<TokenId, String> = FxHashMap::default();
+        let mut tokens_to_enclosing_symbol: FxHashMap<TokenId, Option<String>> =
+            FxHashMap::default();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;

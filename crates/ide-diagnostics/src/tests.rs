@@ -1,3 +1,4 @@
+#![allow(clippy::print_stderr)]
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 

@@ -1283,6 +1283,7 @@ dependencies = [
  "object 0.32.0",
  "paths",
  "profile",
+ "rustc-hash",
  "serde",
  "serde_json",
  "snap",

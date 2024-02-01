@@ -47,9 +47,7 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
 
-    let Some(ok_type) = unwrap_result_type(type_ref) else {
-        return None;
-    };
+    let ok_type = unwrap_result_type(type_ref)?;
 
     acc.add(
         AssistId("unwrap_result_return_type", AssistKind::RefactorRewrite),
