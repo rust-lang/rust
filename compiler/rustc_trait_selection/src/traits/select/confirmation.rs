@@ -162,20 +162,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx.enter_forall_and_leak_universe(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
-        let (def_id, args) = match *placeholder_self_ty.kind() {
-            // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                (def_id, args)
-            }
-            _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
-        };
 
-        let candidate_predicate =
-            tcx.item_bounds(def_id).map_bound(|i| i[idx]).instantiate(tcx, args);
+        let candidate_predicate = self
+            .for_each_item_bound(
+                placeholder_self_ty,
+                |_, clause, clause_idx| {
+                    if clause_idx == idx {
+                        ControlFlow::Break(clause)
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                },
+                || unreachable!(),
+            )
+            .break_value()
+            .expect("expected to index into clause that exists");
         let candidate = candidate_predicate
             .as_trait_clause()
             .expect("projection candidate is not a trait predicate")
             .map_bound(|t| t.trait_ref);
+
         let mut obligations = Vec::new();
         let candidate = normalize_with_depth_to(
             self,
@@ -194,8 +200,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .map_err(|_| Unimplemented)
         })?);
 
-        if let ty::Alias(ty::Projection, ..) = placeholder_self_ty.kind() {
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
+        // FIXME(compiler-errors): I don't think this is needed.
+        if let ty::Alias(ty::Projection, alias_ty) = placeholder_self_ty.kind() {
+            let predicates = tcx.predicates_of(alias_ty.def_id).instantiate_own(tcx, alias_ty.args);
             for (predicate, _) in predicates {
                 let normalized = normalize_with_depth_to(
                     self,
