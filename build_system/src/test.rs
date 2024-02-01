@@ -990,12 +990,7 @@ where
         let start = current_part * count;
         let end = current_part * count + count;
         // We remove the files we don't want to test.
-        for path in files
-            .iter()
-            .enumerate()
-            .filter(|(pos, _)| *pos < start || *pos >= end)
-            .map(|(_, path)| path)
-        {
+        for path in files.iter().skip(start).take(count) {
             remove_file(&rust_path.join(path))?;
         }
     }
