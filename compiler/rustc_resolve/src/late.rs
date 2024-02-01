@@ -645,6 +645,13 @@ struct DiagMetadata<'ast> {
     current_elision_failures: Vec<MissingLifetime>,
 }
 
+#[derive(Debug)]
+struct ResolvedNestedElisionTarget {
+    segment_id: NodeId,
+    elided_lifetime_span: Span,
+    diagnostic: lint::BuiltinLintDiag,
+}
+
 struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     r: &'b mut Resolver<'a, 'tcx>,
 
@@ -685,6 +692,9 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+
+    /// Track which types participated in lifetime elision
+    resolved_lifetime_elisions: Vec<ResolvedNestedElisionTarget>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1298,6 +1308,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
+            resolved_lifetime_elisions: Vec::new(),
         }
     }
 
@@ -1942,18 +1953,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if should_lint {
-                self.r.lint_buffer.buffer_lint_with_diagnostic(
-                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+                self.resolved_lifetime_elisions.push(ResolvedNestedElisionTarget {
                     segment_id,
                     elided_lifetime_span,
-                    "hidden lifetime parameters in types are deprecated",
-                    lint::BuiltinLintDiag::ElidedLifetimesInPaths(
+                    diagnostic: lint::BuiltinLintDiag::ElidedLifetimesInPaths(
                         expected_lifetimes,
                         path_span,
                         !segment.has_generic_args,
                         elided_lifetime_span,
                     ),
-                );
+                });
             }
         }
     }
@@ -1996,11 +2005,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
         output_ty: &'ast FnRetTy,
     ) {
+        let outer_resolved_lifetime_elisions = take(&mut self.resolved_lifetime_elisions);
+
         // Add each argument to the rib.
         let elision_lifetime = self.resolve_fn_params(has_self, inputs);
         debug!(?elision_lifetime);
+        let param_resolved_lifetime_elisions = take(&mut self.resolved_lifetime_elisions);
 
         let outer_failures = take(&mut self.diag_metadata.current_elision_failures);
+
         let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
             self.r.lifetime_elision_allowed.insert(fn_id);
             LifetimeRibKind::Elided(*res)
@@ -2008,11 +2021,30 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             LifetimeRibKind::ElisionFailure
         };
         self.with_lifetime_rib(output_rib, |this| visit::walk_fn_ret_ty(this, output_ty));
+
         let elision_failures =
             replace(&mut self.diag_metadata.current_elision_failures, outer_failures);
         if !elision_failures.is_empty() {
             let Err(failure_info) = elision_lifetime else { bug!() };
             self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
+        }
+
+        let output_resolved_lifetime_elisions =
+            replace(&mut self.resolved_lifetime_elisions, outer_resolved_lifetime_elisions);
+
+        let resolved_lifetime_elisions =
+            param_resolved_lifetime_elisions.into_iter().chain(output_resolved_lifetime_elisions);
+
+        for re in resolved_lifetime_elisions {
+            let ResolvedNestedElisionTarget { segment_id, elided_lifetime_span, diagnostic } = re;
+
+            self.r.lint_buffer.buffer_lint_with_diagnostic(
+                lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+                segment_id,
+                elided_lifetime_span,
+                "hidden lifetime parameters in types are deprecated",
+                diagnostic,
+            );
         }
     }
 
