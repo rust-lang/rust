@@ -252,12 +252,9 @@ fn update_attribute(
                 .collect::<Vec<_>>()
         });
         // ...which are interspersed with ", "
-        let tt = Itertools::intersperse(
-            tt,
-            vec![make::token(T![,]).into(), make::tokens::single_space().into()],
-        );
+        let tt = Itertools::intersperse(tt, vec![make::token(T![,]), make::tokens::single_space()]);
         // ...wrap them into the appropriate `NodeOrToken` variant
-        let tt = tt.flatten().map(|token| syntax::NodeOrToken::Token(token));
+        let tt = tt.flatten().map(syntax::NodeOrToken::Token);
         // ...and make them into a flat list of tokens
         let tt = tt.collect::<Vec<_>>();
 

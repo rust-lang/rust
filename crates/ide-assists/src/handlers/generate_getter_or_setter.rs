@@ -272,17 +272,15 @@ fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldI
 
     // Make the param list
     // `(&mut self, $field_name: $field_ty)`
-    let field_param = make::param(
-        make::ident_pat(false, false, make::name(&field_name)).into(),
-        field_ty.clone(),
-    );
+    let field_param =
+        make::param(make::ident_pat(false, false, make::name(field_name)).into(), field_ty.clone());
     let params = make::param_list(Some(make::mut_self_param()), [field_param]);
 
     // Make the assignment body
     // `self.$field_name = $field_name`
     let self_expr = make::ext::expr_self();
-    let lhs = make::expr_field(self_expr, &field_name);
-    let rhs = make::expr_path(make::ext::ident_path(&field_name));
+    let lhs = make::expr_field(self_expr, field_name);
+    let rhs = make::expr_path(make::ext::ident_path(field_name));
     let assign_stmt = make::expr_stmt(make::expr_assignment(lhs, rhs));
     let body = make::block_expr([assign_stmt.into()], None);
 

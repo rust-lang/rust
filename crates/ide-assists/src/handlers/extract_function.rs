@@ -187,7 +187,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     impl_.syntax().clone()
                 }
                 _ => {
-                    fn_def.indent(new_indent.into());
+                    fn_def.indent(new_indent);
 
                     fn_def.syntax().clone()
                 }
@@ -1416,17 +1416,13 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> Sy
         [var] => {
             let name = var.local.name(ctx.db());
             let name = make::name(&name.display(ctx.db()).to_string());
-            Some(ast::Pat::IdentPat(make::ident_pat(
-                false,
-                var.mut_usage_outside_body,
-                name.into(),
-            )))
+            Some(ast::Pat::IdentPat(make::ident_pat(false, var.mut_usage_outside_body, name)))
         }
         vars => {
             let binding_pats = vars.iter().map(|var| {
                 let name = var.local.name(ctx.db());
                 let name = make::name(&name.display(ctx.db()).to_string());
-                make::ident_pat(false, var.mut_usage_outside_body, name.into()).into()
+                make::ident_pat(false, var.mut_usage_outside_body, name).into()
             });
             Some(ast::Pat::TuplePat(make::tuple_pat(binding_pats)))
         }
@@ -1874,7 +1870,7 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
         }
     };
 
-    let block = match &handler {
+    match &handler {
         FlowHandler::None => block,
         FlowHandler::Try { kind } => {
             let block = with_default_tail_expr(block, make::expr_unit());
@@ -1909,9 +1905,7 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
             let args = make::arg_list(iter::once(tail_expr));
             make::expr_call(ok, args)
         }),
-    };
-
-    block
+    }
 }
 
 fn map_tail_expr(block: ast::BlockExpr, f: impl FnOnce(ast::Expr) -> ast::Expr) -> ast::BlockExpr {
