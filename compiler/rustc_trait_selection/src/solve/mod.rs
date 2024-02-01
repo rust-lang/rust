@@ -15,14 +15,13 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
     QueryResult, Response,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
+use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
@@ -285,49 +284,32 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
 
-    /// Normalize a type when it is structually matched on.
+    /// Normalize a type for when it is structurally matched on.
     ///
-    /// In nearly all cases this function must be used before matching on a type.
+    /// This function is necessary in nearly all cases before matching on a type.
     /// Not doing so is likely to be incomplete and therefore unsound during
     /// coherence.
-    #[instrument(level = "debug", skip(self), ret)]
-    fn try_normalize_ty(
+    fn structurally_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        self.try_normalize_ty_recur(param_env, DefineOpaqueTypes::Yes, 0, ty)
-    }
-
-    fn try_normalize_ty_recur(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: DefineOpaqueTypes,
-        depth: usize,
-        ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if !self.tcx().recursion_limit().value_within_limit(depth) {
-            return None;
-        }
-
-        let ty::Alias(_, alias) = *ty.kind() else {
-            return Some(ty);
-        };
-
-        match self.commit_if_ok(|this| {
-            let normalized_ty = this.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                this.tcx(),
+    ) -> Result<Ty<'tcx>, NoSolution> {
+        if let ty::Alias(..) = ty.kind() {
+            let normalized_ty = self.next_ty_infer();
+            let alias_relate_goal = Goal::new(
+                self.tcx(),
                 param_env,
-                ty::NormalizesTo { alias, term: normalized_ty.into() },
+                ty::PredicateKind::AliasRelate(
+                    ty.into(),
+                    normalized_ty.into(),
+                    AliasRelationDirection::Equate,
+                ),
             );
-            this.add_goal(GoalSource::Misc, normalizes_to_goal);
-            this.try_evaluate_added_goals()?;
-            let ty = this.resolve_vars_if_possible(normalized_ty);
-            Ok(this.try_normalize_ty_recur(param_env, define_opaque_types, depth + 1, ty))
-        }) {
-            Ok(ty) => ty,
-            Err(NoSolution) => Some(ty),
+            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            self.try_evaluate_added_goals()?;
+            Ok(self.resolve_vars_if_possible(normalized_ty))
+        } else {
+            Ok(ty)
         }
     }
 }
