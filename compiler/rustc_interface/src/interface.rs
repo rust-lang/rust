@@ -54,11 +54,10 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                 ($reason: expr) => {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
-                    dcx.struct_fatal(format!(
+                    dcx.fatal(format!(
                         concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
                         s
-                    ))
-                    .emit();
+                    ));
                 };
             }
 
@@ -117,11 +116,10 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             ($reason:expr) => {
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                dcx.struct_fatal(format!(
+                dcx.fatal(format!(
                     concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                     s
                 ))
-                .emit()
             };
         }
 
