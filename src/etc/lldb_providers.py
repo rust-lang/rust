@@ -173,6 +173,35 @@ def StdStrSummaryProvider(valobj, dict):
     return '"%s"' % data
 
 
+def StdPathBufSummaryProvider(valobj, dict):
+    # type: (SBValue, dict) -> str
+    # logger = Logger.Logger()
+    # logger >> "[StdPathBufSummaryProvider] for " + str(valobj.GetName())
+    return StdOsStringSummaryProvider(valobj.GetChildMemberWithName("inner"), dict)
+
+
+def StdPathSummaryProvider(valobj, dict):
+    # type: (SBValue, dict) -> str
+    # logger = Logger.Logger()
+    # logger >> "[StdPathSummaryProvider] for " + str(valobj.GetName())
+    length = valobj.GetChildMemberWithName("length").GetValueAsUnsigned()
+    if length == 0:
+        return '""'
+
+    data_ptr = valobj.GetChildMemberWithName("data_ptr")
+
+    start = data_ptr.GetValueAsUnsigned()
+    error = SBError()
+    process = data_ptr.GetProcess()
+    data = process.ReadMemory(start, length, error)
+    if PY3:
+        try:
+            data = data.decode(encoding='UTF-8')
+        except UnicodeDecodeError:
+            return '%r' % data
+    return '"%s"' % data
+
+
 class StructSyntheticProvider:
     """Pretty-printer for structs and struct enum variants"""
 
