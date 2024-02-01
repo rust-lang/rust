@@ -12,7 +12,7 @@ trait TraversesWorld {
         let direction = str_to_direction(directionStr);
         let maybe_room = room.direction_to_room.get(&direction);
         match maybe_room {
-            Some(entry) => Ok(entry),
+            Some(entry) => Ok(entry), //~ ERROR: lifetime may not live long enough
             _ => Err("Direction does not exist in room.")
         }
     }

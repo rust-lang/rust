@@ -38,6 +38,19 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |                  |          variable not in all patterns
    |                  variable not in all patterns
 
-error: aborting due to 4 previous errors
+error[E0381]: used binding `a` is possibly-uninitialized
+  --> $DIR/issue-39698.rs:10:79
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |               -                                      -                        ^ `a` used here but it is possibly-uninitialized
+   |               |                                      |
+   |               |                                      binding initialized here in some conditions
+   |               binding initialized here in some conditions
+   |               binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0408`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0381, E0408.
+For more information about an error, try `rustc --explain E0381`.
