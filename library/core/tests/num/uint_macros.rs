@@ -204,6 +204,7 @@ macro_rules! uint_module {
                 assert_eq!(r.checked_pow(2), None);
                 assert_eq!(r.overflowing_pow(2), (1 as $T, true));
                 assert_eq!(r.saturating_pow(2), MAX);
+                assert_eq!(2u64.checked_pow(64), None); // issue #120537
             }
 
             #[test]

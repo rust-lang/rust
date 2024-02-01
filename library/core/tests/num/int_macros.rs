@@ -288,6 +288,7 @@ macro_rules! int_module {
                 assert_eq!(r.saturating_pow(2), 4 as $T);
                 assert_eq!(r.saturating_pow(3), -8 as $T);
                 assert_eq!(r.saturating_pow(0), 1 as $T);
+                assert_eq!(2i64.checked_pow(64), None); // issue #120537
             }
 
             #[test]

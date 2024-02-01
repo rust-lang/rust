@@ -1389,9 +1389,9 @@ macro_rules! int_impl {
                 }
                 // SAFETY: We just checked this is a power of two. and above zero.
                 let power_used = unsafe { intrinsics::cttz_nonzero(self.wrapping_abs()) as u32 };
-                if exp > Self::BITS / power_used { return None; } // Division of constants is free
+                if exp >= Self::BITS / power_used { return None; } // Division of constants is free
 
-                // SAFETY: exp <= Self::BITS / power_used
+                // SAFETY: exp < Self::BITS / power_used
                 let res = unsafe { intrinsics::unchecked_shl(
                     1 as Self,
                     intrinsics::unchecked_mul(power_used, exp) as Self
@@ -2106,9 +2106,9 @@ macro_rules! int_impl {
                 }
                 // SAFETY: We just checked this is a power of two. and above zero.
                 let power_used = unsafe { intrinsics::cttz_nonzero(self.wrapping_abs()) as u32 };
-                if exp > Self::BITS / power_used { return 0; } // Division of constants is free
+                if exp >= Self::BITS / power_used { return 0; } // Division of constants is free
 
-                // SAFETY: exp <= Self::BITS / power_used
+                // SAFETY: exp < Self::BITS / power_used
                 let res = unsafe { intrinsics::unchecked_shl(
                     1 as Self,
                     intrinsics::unchecked_mul(power_used, exp) as Self
@@ -2640,9 +2640,9 @@ macro_rules! int_impl {
                 }
                 // SAFETY: We just checked this is a power of two. and above zero.
                 let power_used = unsafe { intrinsics::cttz_nonzero(self.wrapping_abs()) as u32 };
-                if exp > Self::BITS / power_used { return (0, true); } // Division of constants is free
+                if exp >= Self::BITS / power_used { return (0, true); } // Division of constants is free
 
-                // SAFETY: exp <= Self::BITS / power_used
+                // SAFETY: exp < Self::BITS / power_used
                 let res = unsafe { intrinsics::unchecked_shl(
                     1 as Self,
                     intrinsics::unchecked_mul(power_used, exp) as Self
@@ -2721,12 +2721,12 @@ macro_rules! int_impl {
                 }
                 // SAFETY: We just checked this is a power of two. and above zero.
                 let power_used = unsafe { intrinsics::cttz_nonzero(self.wrapping_abs()) as u32 };
-                if exp > Self::BITS / power_used { // Division of constants is free
+                if exp >= Self::BITS / power_used { // Division of constants is free
                     #[allow(arithmetic_overflow)]
                     return Self::MAX * Self::MAX * 0;
                 }
 
-                // SAFETY: exp <= Self::BITS / power_used
+                // SAFETY: exp < Self::BITS / power_used
                 let res = unsafe { intrinsics::unchecked_shl(
                     1 as Self,
                     intrinsics::unchecked_mul(power_used, exp) as Self
