@@ -590,7 +590,6 @@ fn infer_placeholder_type<'a>(
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
-                // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
                 if let Ok(suggestions) = &mut err.suggestions {
                     suggestions.clear();
                 }

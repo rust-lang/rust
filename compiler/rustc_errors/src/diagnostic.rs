@@ -116,7 +116,7 @@ pub struct Diagnostic {
 
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
-    pub emitted_at: DiagnosticLocation,
+    pub(crate) emitted_at: DiagnosticLocation,
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -206,9 +206,6 @@ impl StringPart {
     }
 }
 
-// Note: most of these methods are setters that return `&mut Self`. The small
-// number of simple getter functions all have `get_` prefixes to distinguish
-// them from the setters.
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
@@ -889,15 +886,6 @@ impl Diagnostic {
         self
     }
 
-    pub fn clear_code(&mut self) -> &mut Self {
-        self.code = None;
-        self
-    }
-
-    pub fn get_code(&self) -> Option<ErrCode> {
-        self.code
-    }
-
     pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
@@ -921,10 +909,6 @@ impl Diagnostic {
 
     pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
-    }
-
-    pub fn messages(&self) -> &[(DiagnosticMessage, Style)] {
-        &self.messages
     }
 
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by

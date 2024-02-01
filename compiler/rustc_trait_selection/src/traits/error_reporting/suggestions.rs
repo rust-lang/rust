@@ -2717,7 +2717,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let (trait_name, trait_verb) =
                 if name == sym::Send { ("`Send`", "sent") } else { ("`Sync`", "shared") };
 
-            err.clear_code();
+            err.code = None;
             err.primary_message(format!(
                 "{future_or_coroutine} cannot be {trait_verb} between threads safely"
             ));
