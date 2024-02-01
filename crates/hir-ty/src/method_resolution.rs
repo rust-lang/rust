@@ -1439,14 +1439,14 @@ fn is_valid_fn_candidate(
             _ => unreachable!(),
         };
 
-        let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
-            .fill_with_inference_vars(table)
-            .build();
-
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {
             check_that!(data.has_self_param());
+
+            let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
+                .fill_with_inference_vars(table)
+                .build();
 
             let sig = db.callable_item_signature(fn_id.into());
             let expected_receiver =
