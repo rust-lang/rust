@@ -1,0 +1,16 @@
+error[E0284]: type annotations needed: cannot satisfy `Foo == _`
+  --> $DIR/type-alias-impl-trait-tuple.rs:21:24
+   |
+LL |         Blah { my_foo: make_foo(), my_u8: 12 }
+   |                        ^^^^^^^^^^ cannot satisfy `Foo == _`
+
+error[E0282]: type annotations needed
+  --> $DIR/type-alias-impl-trait-tuple.rs:24:28
+   |
+LL |     fn into_inner(self) -> (Foo, u8, Foo) {
+   |                            ^^^^^^^^^^^^^^ cannot infer type for tuple `(Foo, u8, Foo)`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0284.
+For more information about an error, try `rustc --explain E0282`.
