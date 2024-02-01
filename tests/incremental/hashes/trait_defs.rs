@@ -559,7 +559,7 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddBuiltinBoundToMethodTypeParameter {
     #[rustc_clean(except="opt_hir_owner_nodes", cfg="cfail2")]
