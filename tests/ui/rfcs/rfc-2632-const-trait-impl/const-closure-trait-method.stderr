@@ -4,5 +4,19 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
    |                                       ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/const-closure-trait-method.rs:15:5
+   |
+LL |     x(())
+   |     ^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const std::ops::FnOnce<((),)>>(x: T) -> i32 {
+   |                                                         ++++++++++++++++++++++++++++++++
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

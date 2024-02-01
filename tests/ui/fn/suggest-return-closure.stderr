@@ -21,7 +21,7 @@ LL | fn fn_mut() -> _ {
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/suggest-return-closure.rs:25:13
+  --> $DIR/suggest-return-closure.rs:31:13
    |
 LL | fn fun() -> _ {
    |             ^
@@ -31,6 +31,29 @@ LL | fn fun() -> _ {
    |
    = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 
-error: aborting due to 3 previous errors
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/suggest-return-closure.rs:22:9
+   |
+LL |     let x = String::new();
+   |         - help: consider changing this to be mutable: `mut x`
+...
+LL |         x.push(c);
+   |         ^ cannot borrow as mutable
 
-For more information about this error, try `rustc --explain E0121`.
+error[E0597]: `x` does not live long enough
+  --> $DIR/suggest-return-closure.rs:22:9
+   |
+LL |     |c| {
+   |     --- value captured here
+LL |         x.push(c);
+   |         ^ borrowed value does not live long enough
+...
+LL | }
+   | -- borrow later used here
+   | |
+   | `x` dropped here while still borrowed
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0121, E0596, E0597.
+For more information about an error, try `rustc --explain E0121`.

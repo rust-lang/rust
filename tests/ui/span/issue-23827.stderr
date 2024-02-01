@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Output`
-  --> $DIR/issue-23827.rs:26:1
+  --> $DIR/issue-23827.rs:27:1
    |
 LL | impl<C: Component> FnOnce<(C,)> for Prototype {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Output` in implementation

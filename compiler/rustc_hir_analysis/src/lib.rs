@@ -209,7 +209,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.ensure().check_unused_traits(());
 
-    if let Some(reported) = tcx.dcx().has_errors() { Err(reported) } else { Ok(()) }
+    Ok(())
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

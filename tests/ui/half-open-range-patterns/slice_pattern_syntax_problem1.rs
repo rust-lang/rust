@@ -5,4 +5,5 @@ fn main() {
     //~^ `X..` patterns in slices are experimental
     //~| exclusive range pattern syntax is experimental
     //~| exclusive range pattern syntax is experimental
+    //~| ERROR: refutable pattern
 }

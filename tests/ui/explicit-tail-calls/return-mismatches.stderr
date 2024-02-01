@@ -22,6 +22,17 @@ error[E0308]: mismatched types
 LL |     become _g2();
    |     ^^^^^^^^^^^^ expected `u32`, found `u16`
 
-error: aborting due to 3 previous errors
+warning: function cannot return without recursing
+  --> $DIR/return-mismatches.rs:16:1
+   |
+LL | fn _g1() -> ! {
+   | ^^^^^^^^^^^^^ cannot return without recursing
+LL |     become _g1();
+   |            ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

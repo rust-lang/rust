@@ -1,47 +1,47 @@
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:16:15
+  --> $DIR/bindings.rs:17:15
    |
 LL |         Err(&(_a, _b, !)),
    |               ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:16:19
+  --> $DIR/bindings.rs:17:19
    |
 LL |         Err(&(_a, _b, !)),
    |                   ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:21:25
+  --> $DIR/bindings.rs:22:25
    |
 LL |         Ok(_ok) | Err(&(_a, _b, !)) => {}
    |                         ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:21:29
+  --> $DIR/bindings.rs:22:29
    |
 LL |         Ok(_ok) | Err(&(_a, _b, !)) => {}
    |                             ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:34:10
+  --> $DIR/bindings.rs:35:10
    |
 LL |     let (_a, (! | !)) = (true, void);
    |          ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:38:9
+  --> $DIR/bindings.rs:39:9
    |
 LL |     let _a @ ! = void;
    |         ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:41:10
+  --> $DIR/bindings.rs:42:10
    |
 LL |     let (_a @ (), !) = ((), void);
    |          ^^ help: use a wildcard `_` instead
 
 error: never patterns cannot contain variable bindings
-  --> $DIR/bindings.rs:44:14
+  --> $DIR/bindings.rs:45:14
    |
 LL |             (_b @ (_, !))) = (true, void);
    |              ^^ help: use a wildcard `_` instead
