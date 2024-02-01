@@ -21,11 +21,11 @@ note: but lifetime parameter must outlive the lifetime `'a` as defined here
 LL | struct Foo<'a,'b,'c> {
    |            ^^
 
-error[E0392]: parameter `'c` is never used
+error[E0392]: lifetime parameter `'c` is never used
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:18
    |
 LL | struct Foo<'a,'b,'c> {
-   |                  ^^ unused parameter
+   |                  ^^ unused lifetime parameter
    |
    = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
 
