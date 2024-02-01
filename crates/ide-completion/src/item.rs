@@ -297,6 +297,7 @@ pub enum CompletionItemKind {
     Method,
     Snippet,
     UnresolvedReference,
+    Expression,
 }
 
 impl_from!(SymbolKind for CompletionItemKind);
@@ -341,6 +342,7 @@ impl CompletionItemKind {
             CompletionItemKind::Method => "me",
             CompletionItemKind::Snippet => "sn",
             CompletionItemKind::UnresolvedReference => "??",
+            CompletionItemKind::Expression => "ex",
         }
     }
 }

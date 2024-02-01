@@ -377,6 +377,7 @@ impl AttrsWithOwner {
             AttrDefId::GenericParamId(it) => match it {
                 GenericParamId::ConstParamId(it) => {
                     let src = it.parent().child_source(db);
+                    // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
                             db.upcast(),
@@ -388,6 +389,7 @@ impl AttrsWithOwner {
                 }
                 GenericParamId::TypeParamId(it) => {
                     let src = it.parent().child_source(db);
+                    // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
                             db.upcast(),
@@ -399,6 +401,7 @@ impl AttrsWithOwner {
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
+                    // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id) {
                         Some(val) => RawAttrs::from_attrs_owner(
                             db.upcast(),

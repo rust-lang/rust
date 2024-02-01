@@ -93,9 +93,10 @@ xflags::xflags! {
             /// and annotations. This is useful for benchmarking the memory usage on a project that has
             /// been worked on for a bit in a longer running session.
             optional --run-all-ide-things
-            /// Run term search
+            /// Run term search on all the tail expressions (of functions, block, if statements etc.)
             optional --run-term-search
-            /// Validate term search by running `cargo check` on every response
+            /// Validate term search by running `cargo check` on every response.
+            /// Note that this also temporarily modifies the files on disk, use with caution!
             optional --validate-term-search
         }
 

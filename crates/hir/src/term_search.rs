@@ -57,10 +57,10 @@ impl AlternativeExprs {
     /// # Arguments
     /// `threshold` - threshold value for many trees (more than that is many)
     /// `exprs` - expressions iterator
-    fn extend_with_threshold(&mut self, threshold: usize, mut exprs: impl Iterator<Item = Expr>) {
+    fn extend_with_threshold(&mut self, threshold: usize, exprs: impl Iterator<Item = Expr>) {
         match self {
             AlternativeExprs::Few(tts) => {
-                while let Some(it) = exprs.next() {
+                for it in exprs {
                     if tts.len() > threshold {
                         *self = AlternativeExprs::Many;
                         break;
@@ -131,7 +131,7 @@ impl LookupTable {
                 self.data
                     .iter()
                     .find(|(t, _)| {
-                        Type::reference(t, Mutability::Shared).could_unify_with_deeply(db, &ty)
+                        Type::reference(t, Mutability::Shared).could_unify_with_deeply(db, ty)
                     })
                     .map(|(t, it)| {
                         it.exprs(t)

@@ -295,22 +295,24 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let label = expr.gen_source_code(
-        &ctx.scope,
-        &mut label_formatter,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
-    );
+    let label = expr
+        .gen_source_code(
+            &ctx.scope,
+            &mut label_formatter,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
+        .ok()?;
 
     let source_range = match ctx.original_token.parent() {
-        Some(node) => match node.ancestors().find_map(|n| ast::Path::cast(n)) {
+        Some(node) => match node.ancestors().find_map(ast::Path::cast) {
             Some(path) => path.syntax().text_range(),
             None => node.text_range(),
         },
         None => ctx.source_range(),
     };
 
-    let mut item = CompletionItem::new(CompletionItemKind::Snippet, source_range, label.clone());
+    let mut item = CompletionItem::new(CompletionItemKind::Expression, source_range, label.clone());
 
     let snippet = format!(
         "{}$0",
@@ -320,6 +322,7 @@ pub(crate) fn render_expr(
             ctx.config.prefer_no_std,
             ctx.config.prefer_prelude
         )
+        .ok()?
     );
     let edit = TextEdit::replace(source_range, snippet);
     item.snippet_edit(ctx.config.snippet_cap?, edit);
@@ -1034,6 +1037,7 @@ fn func(input: Struct) { }
                 st Self [type]
                 sp Self [type]
                 st Struct [type]
+                ex Struct [type]
                 lc self [local]
                 fn func(…) []
                 me self.test() []
@@ -1058,6 +1062,9 @@ fn main() {
 "#,
             expect![[r#"
                 lc input [type+name+local]
+                ex input [type]
+                ex true [type]
+                ex false [type]
                 lc inputbad [local]
                 fn main() []
                 fn test(…) []
@@ -1738,6 +1745,10 @@ fn f() { A { bar: b$0 }; }
             expect![[r#"
                 fn bar() [type+name]
                 fn baz() [type]
+                ex baz() [type]
+                ex bar() [type]
+                ex A { bar: baz() }.bar [type]
+                ex A { bar: bar() }.bar [type]
                 st A []
                 fn f() []
             "#]],
@@ -1822,6 +1833,8 @@ fn main() {
                 lc s [type+name+local]
                 st S [type]
                 st S [type]
+                ex s [type]
+                ex S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1839,6 +1852,8 @@ fn main() {
                 lc ssss [type+local]
                 st S [type]
                 st S [type]
+                ex ssss [type]
+                ex S [type]
                 fn foo(…) []
                 fn main() []
             "#]],
@@ -1871,6 +1886,8 @@ fn main() {
 }
             "#,
             expect![[r#"
+                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
+                ex core::ops::Deref::deref(&t) (use core::ops::Deref) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &t [type+local]
@@ -1919,6 +1936,8 @@ fn main() {
 }
             "#,
             expect![[r#"
+                ex core::ops::DerefMut::deref_mut(&mut T(S)) (use core::ops::DerefMut) [type_could_unify]
+                ex core::ops::DerefMut::deref_mut(&mut t) (use core::ops::DerefMut) [type_could_unify]
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]
@@ -1967,6 +1986,8 @@ fn bar(t: Foo) {}
                 ev Foo::A [type]
                 ev Foo::B [type]
                 en Foo [type]
+                ex Foo::A [type]
+                ex Foo::B [type]
                 fn bar(…) []
                 fn foo() []
             "#]],
@@ -2020,6 +2041,8 @@ fn main() {
 }
 "#,
             expect![[r#"
+                ex core::ops::Deref::deref(&T(S)) (use core::ops::Deref) [type_could_unify]
+                ex core::ops::Deref::deref(&bar()) (use core::ops::Deref) [type_could_unify]
                 st S []
                 st &S [type]
                 st S []
@@ -2233,6 +2256,7 @@ fn foo() {
 "#,
             expect![[r#"
                 lc foo [type+local]
+                ex foo [type]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
                 en Foo [type_could_unify]
@@ -2267,8 +2291,6 @@ fn main() {
             &[CompletionItemKind::Snippet, CompletionItemKind::Method],
             expect![[r#"
                 sn not [snippet]
-                sn true [type]
-                sn false [type]
                 me not() (use ops::Not) [type_could_unify+requires_import]
                 sn if []
                 sn while []

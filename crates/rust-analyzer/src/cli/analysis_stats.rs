@@ -333,10 +333,12 @@ impl flags::AnalysisStats {
         mut file_ids: Vec<FileId>,
         verbosity: Verbosity,
     ) {
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = match self.no_sysroot {
-            true => None,
-            false => Some(RustLibSource::Discover),
+        let cargo_config = CargoConfig {
+            sysroot: match self.no_sysroot {
+                true => None,
+                false => Some(RustLibSource::Discover),
+            },
+            ..Default::default()
         };
 
         let mut bar = match verbosity {
@@ -392,16 +394,15 @@ impl flags::AnalysisStats {
                     continue;
                 }
 
-                let range = sema.original_range(&expected_tail.syntax()).range;
+                let range = sema.original_range(expected_tail.syntax()).range;
                 let original_text: String = db
                     .file_text(file_id)
                     .chars()
-                    .into_iter()
                     .skip(usize::from(range.start()))
                     .take(usize::from(range.end()) - usize::from(range.start()))
                     .collect();
 
-                let scope = match sema.scope(&expected_tail.syntax()) {
+                let scope = match sema.scope(expected_tail.syntax()) {
                     Some(it) => it,
                     None => continue,
                 };
@@ -425,14 +426,15 @@ impl flags::AnalysisStats {
                 };
 
                 fn trim(s: &str) -> String {
-                    s.chars().into_iter().filter(|c| !c.is_whitespace()).collect()
+                    s.chars().filter(|c| !c.is_whitespace()).collect()
                 }
 
                 let todo = syntax::ast::make::ext::expr_todo().to_string();
                 let mut formatter = |_: &hir::Type| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
-                    let generated = term.gen_source_code(&scope, &mut formatter, false, true);
+                    let generated =
+                        term.gen_source_code(&scope, &mut formatter, false, true).unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks

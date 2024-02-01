@@ -902,9 +902,9 @@
                     },
                     "type": "object"
                 },
-                "rust-analyzer.completion.term.search.enable": {
+                "rust-analyzer.completion.termSearch.enable": {
                     "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
-                    "default": true,
+                    "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.disabled": {

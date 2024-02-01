@@ -1085,6 +1085,7 @@ impl Field {
         Type::new(db, var_id, ty)
     }
 
+    // FIXME: Find better API to also handle const generics
     pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
         let var_id = self.parent.into();
         let def_id: AdtId = match self.parent {
@@ -1094,12 +1095,11 @@ impl Field {
         };
         let mut generics = generics.map(|it| it.ty.clone());
         let substs = TyBuilder::subst_for_def(db, def_id, None)
-            .fill(|x| {
-                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
-                match x {
-                    ParamKind::Type => ty.cast(Interner),
-                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            .fill(|x| match x {
+                ParamKind::Type => {
+                    generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
                 }
+                ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
             })
             .build();
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1157,21 +1157,6 @@ impl Struct {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
-    }
-
-    pub fn ty_with_args(self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
-        let mut generics = generics.map(|it| it.ty.clone());
-        let substs = TyBuilder::subst_for_def(db, self.id, None)
-            .fill(|x| {
-                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
-                match x {
-                    ParamKind::Type => ty.cast(Interner),
-                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
-                }
-            })
-            .build();
-        let ty = db.ty(self.id.into()).substitute(Interner, &substs);
-        Type::new(db, self.id, ty)
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
@@ -1271,22 +1256,6 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
-    }
-
-    pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
-        let mut generics = generics.map(|it| it.ty.clone());
-        let substs = TyBuilder::subst_for_def(db, self.id, None)
-            .fill(|x| {
-                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
-                match x {
-                    ParamKind::Type => ty.cast(Interner),
-                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
-                }
-            })
-            .build();
-
-        let ty = db.ty(self.id.into()).substitute(Interner, &substs);
-        Type::new(db, self.id, ty)
     }
 
     /// The type of the enum variant bodies.
@@ -1463,9 +1432,9 @@ impl Adt {
 
     /// Turns this ADT into a type with the given type parameters. This isn't
     /// the greatest API, FIXME find a better one.
-    pub fn ty_with_args(self, db: &dyn HirDatabase, args: &[Type]) -> Type {
+    pub fn ty_with_args(self, db: &dyn HirDatabase, args: impl Iterator<Item = Type>) -> Type {
         let id = AdtId::from(self);
-        let mut it = args.iter().map(|t| t.ty.clone());
+        let mut it = args.map(|t| t.ty.clone());
         let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
@@ -1858,6 +1827,7 @@ impl Function {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
+    // FIXME: Find better API to also handle const generics
     pub fn ret_type_with_args(
         self,
         db: &dyn HirDatabase,
@@ -1870,12 +1840,11 @@ impl Function {
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
         let mut generics = generics.map(|it| it.ty.clone());
-        let mut filler = |x: &_| {
-            let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
-            match x {
-                ParamKind::Type => ty.cast(Interner),
-                ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+        let mut filler = |x: &_| match x {
+            ParamKind::Type => {
+                generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
+            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
         };
 
         let parent_substs =
@@ -1953,10 +1922,11 @@ impl Function {
             .collect()
     }
 
-    pub fn params_without_self_with_generics(
+    // FIXME: Find better API to also handle const generics
+    pub fn params_without_self_with_args(
         self,
         db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
+        generics: impl Iterator<Item = Type>,
     ) -> Vec<Param> {
         let environment = db.trait_environment(self.id.into());
         let parent_id: Option<GenericDefId> = match self.id.lookup(db.upcast()).container {
@@ -1964,20 +1934,23 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
+        let mut generics = generics.map(|it| it.ty.clone());
         let parent_substs = parent_id.map(|id| {
             TyBuilder::subst_for_def(db, id, None)
-                .fill(|_| {
-                    GenericArg::new(
-                        Interner,
-                        GenericArgData::Ty(generics.next().unwrap().ty.clone()),
-                    )
+                .fill(|x| match x {
+                    ParamKind::Type => generics
+                        .next()
+                        .unwrap_or_else(|| TyKind::Error.intern(Interner))
+                        .cast(Interner),
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 })
                 .build()
         });
 
         let substs = TyBuilder::subst_for_def(db, self.id, parent_substs)
             .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
+                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                GenericArg::new(Interner, GenericArgData::Ty(ty))
             })
             .build();
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
@@ -2197,6 +2170,7 @@ impl SelfParam {
         Type { env: environment, ty }
     }
 
+    // FIXME: Find better API to also handle const generics
     pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
         let parent_id: GenericDefId = match self.func.lookup(db.upcast()).container {
             ItemContainerId::ImplId(it) => it.into(),
@@ -2207,12 +2181,11 @@ impl SelfParam {
         };
 
         let mut generics = generics.map(|it| it.ty.clone());
-        let mut filler = |x: &_| {
-            let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
-            match x {
-                ParamKind::Type => ty.cast(Interner),
-                ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+        let mut filler = |x: &_| match x {
+            ParamKind::Type => {
+                generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
             }
+            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
         };
 
         let parent_substs = TyBuilder::subst_for_def(db, parent_id, None).fill(&mut filler).build();
@@ -2936,40 +2909,6 @@ impl GenericDef {
             })
             .collect()
     }
-
-    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
-        let generics = db.generic_params(self.into());
-        generics
-            .type_or_consts
-            .iter()
-            .filter_map(|(local_id, data)| match data {
-                hir_def::generics::TypeOrConstParamData::TypeParamData(_) => Some(TypeParam {
-                    id: TypeParamId::from_unchecked(TypeOrConstParamId {
-                        parent: self.into(),
-                        local_id,
-                    }),
-                }),
-                hir_def::generics::TypeOrConstParamData::ConstParamData(_) => None,
-            })
-            .collect()
-    }
-
-    pub fn const_params(self, db: &dyn HirDatabase) -> Vec<ConstParam> {
-        let generics = db.generic_params(self.into());
-        generics
-            .type_or_consts
-            .iter()
-            .filter_map(|(local_id, data)| match data {
-                hir_def::generics::TypeOrConstParamData::TypeParamData(_) => None,
-                hir_def::generics::TypeOrConstParamData::ConstParamData(_) => Some(ConstParam {
-                    id: ConstParamId::from_unchecked(TypeOrConstParamId {
-                        parent: self.into(),
-                        local_id,
-                    }),
-                }),
-            })
-            .collect()
-    }
 }
 
 /// A single local definition.
@@ -3451,6 +3390,26 @@ impl TypeOrConstParam {
             Either::Right(it) => it.ty(db),
         }
     }
+
+    pub fn as_type_param(self, db: &dyn HirDatabase) -> Option<TypeParam> {
+        let params = db.generic_params(self.id.parent);
+        match &params.type_or_consts[self.id.local_id] {
+            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
+                Some(TypeParam { id: TypeParamId::from_unchecked(self.id) })
+            }
+            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => None,
+        }
+    }
+
+    pub fn as_const_param(self, db: &dyn HirDatabase) -> Option<ConstParam> {
+        let params = db.generic_params(self.id.parent);
+        match &params.type_or_consts[self.id.local_id] {
+            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => None,
+            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
+                Some(ConstParam { id: ConstParamId::from_unchecked(self.id) })
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -3496,7 +3455,11 @@ impl Impl {
             )
         });
 
-        for Crate { id } in Crate::all(db) {
+        for id in def_crates
+            .iter()
+            .flat_map(|&id| Crate { id }.transitive_reverse_dependencies(db))
+            .map(|Crate { id }| id)
+        {
             all.extend(
                 db.trait_impls_in_crate(id)
                     .for_self_ty_without_blanket_impls(fp)
@@ -3976,14 +3939,16 @@ impl Type {
         )
     }
 
+    // FIXME: Find better API that also handles const generics
     pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
         let mut it = args.iter().map(|t| t.ty.clone());
         let trait_ref = TyBuilder::trait_ref(db, trait_.id)
             .push(self.ty.clone())
             .fill(|x| {
-                let r = it.next().unwrap();
                 match x {
-                    ParamKind::Type => r.cast(Interner),
+                    ParamKind::Type => {
+                        it.next().unwrap_or_else(|| TyKind::Error.intern(Interner)).cast(Interner)
+                    }
                     ParamKind::Const(ty) => {
                         // FIXME: this code is not covered in tests.
                         unknown_const_as_generic(ty.clone())
@@ -4617,12 +4582,19 @@ impl Type {
 
         walk_type(db, self, &mut cb);
     }
-
+    /// Check if type unifies with another type.
+    ///
+    /// Note that we consider placeholder types to unify with everything.
+    /// For example `Option<T>` and `Option<U>` unify although there is unresolved goal `T = U`.
     pub fn could_unify_with(&self, db: &dyn HirDatabase, other: &Type) -> bool {
         let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), other.ty.clone()));
         hir_ty::could_unify(db, self.env.clone(), &tys)
     }
 
+    /// Check if type unifies with another type eagerly making sure there are no unresolved goals.
+    ///
+    /// This means that placeholder types are not considered to unify if there are any bounds set on
+    /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
     pub fn could_unify_with_deeply(&self, db: &dyn HirDatabase, other: &Type) -> bool {
         let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), other.ty.clone()));
         hir_ty::could_unify_deeply(db, self.env.clone(), &tys)

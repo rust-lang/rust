@@ -287,7 +287,7 @@ config_data! {
             }
         }"#,
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
-        completion_term_search_enable: bool = "true",
+        completion_termSearch_enable: bool = "false",
 
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
@@ -1537,7 +1537,7 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
-            enable_term_search: self.data.completion_term_search_enable,
+            enable_term_search: self.data.completion_termSearch_enable,
             full_function_signatures: self.data.completion_fullFunctionSignatures_enable,
             callable: match self.data.completion_callable_snippets {
                 CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),

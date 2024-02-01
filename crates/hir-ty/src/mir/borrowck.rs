@@ -15,7 +15,7 @@ use crate::{
     db::{HirDatabase, InternedClosure},
     mir::Operand,
     utils::ClosureSubst,
-    ClosureId, Interner, Ty, TyExt, TypeFlags,
+    ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
 };
 
 use super::{
@@ -105,6 +105,18 @@ pub fn borrowck_query(
     Ok(res.into())
 }
 
+fn make_fetch_closure_field(
+    db: &dyn HirDatabase,
+) -> impl FnOnce(ClosureId, &Substitution, usize) -> Ty + '_ {
+    |c: ClosureId, subst: &Substitution, f: usize| {
+        let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
+        let infer = db.infer(def);
+        let (captures, _) = infer.closure_info(&c);
+        let parent_subst = ClosureSubst(subst).parent_subst();
+        captures.get(f).expect("broken closure field").ty.clone().substitute(Interner, parent_subst)
+    }
+}
+
 fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> {
     let mut result = vec![];
     let mut for_operand = |op: &Operand, span: MirSpan| match op {
@@ -118,18 +130,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 ty = proj.projected_ty(
                     ty,
                     db,
-                    |c, subst, f| {
-                        let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
-                        let infer = db.infer(def);
-                        let (captures, _) = infer.closure_info(&c);
-                        let parent_subst = ClosureSubst(subst).parent_subst();
-                        captures
-                            .get(f)
-                            .expect("broken closure field")
-                            .ty
-                            .clone()
-                            .substitute(Interner, parent_subst)
-                    },
+                    make_fetch_closure_field(db),
                     body.owner.module(db.upcast()).krate(),
                 );
             }
@@ -216,18 +217,7 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
                 ty = proj.projected_ty(
                     ty,
                     db,
-                    |c, subst, f| {
-                        let (def, _) = db.lookup_intern_closure(c.into());
-                        let infer = db.infer(def);
-                        let (captures, _) = infer.closure_info(&c);
-                        let parent_subst = ClosureSubst(subst).parent_subst();
-                        captures
-                            .get(f)
-                            .expect("broken closure field")
-                            .ty
-                            .clone()
-                            .substitute(Interner, parent_subst)
-                    },
+                    make_fetch_closure_field(db),
                     body.owner.module(db.upcast()).krate(),
                 );
             }
@@ -309,23 +299,17 @@ fn borrow_regions(db: &dyn HirDatabase, body: &MirBody) -> Vec<BorrowRegion> {
     for (_, block) in body.basic_blocks.iter() {
         db.unwind_if_cancelled();
         for statement in &block.statements {
-            match &statement.kind {
-                StatementKind::Assign(_, r) => match r {
-                    Rvalue::Ref(kind, p) => {
-                        borrows
-                            .entry(p.local)
-                            .and_modify(|it: &mut BorrowRegion| {
-                                it.places.push(statement.span);
-                            })
-                            .or_insert_with(|| BorrowRegion {
-                                local: p.local,
-                                kind: *kind,
-                                places: vec![statement.span],
-                            });
-                    }
-                    _ => (),
-                },
-                _ => (),
+            if let StatementKind::Assign(_, Rvalue::Ref(kind, p)) = &statement.kind {
+                borrows
+                    .entry(p.local)
+                    .and_modify(|it: &mut BorrowRegion| {
+                        it.places.push(statement.span);
+                    })
+                    .or_insert_with(|| BorrowRegion {
+                        local: p.local,
+                        kind: *kind,
+                        places: vec![statement.span],
+                    });
             }
         }
         match &block.terminator {
@@ -379,18 +363,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
         ty = proj.projected_ty(
             ty,
             db,
-            |c, subst, f| {
-                let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
-                let infer = db.infer(def);
-                let (captures, _) = infer.closure_info(&c);
-                let parent_subst = ClosureSubst(subst).parent_subst();
-                captures
-                    .get(f)
-                    .expect("broken closure field")
-                    .ty
-                    .clone()
-                    .substitute(Interner, parent_subst)
-            },
+            make_fetch_closure_field(db),
             body.owner.module(db.upcast()).krate(),
         );
     }

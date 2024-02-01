@@ -2,7 +2,10 @@
 
 use hir_def::find_path::PrefixKind;
 use hir_expand::mod_path::ModPath;
-use hir_ty::{db::HirDatabase, display::HirDisplay};
+use hir_ty::{
+    db::HirDatabase,
+    display::{DisplaySourceCodeError, HirDisplay},
+};
 use itertools::Itertools;
 
 use crate::{
@@ -48,9 +51,10 @@ fn mod_item_path_str(
     def: &ModuleDef,
     prefer_no_std: bool,
     prefer_prelude: bool,
-) -> String {
+) -> Result<String, DisplaySourceCodeError> {
     let path = mod_item_path(sema_scope, def, prefer_no_std, prefer_prelude);
-    path.map(|it| it.display(sema_scope.db.upcast()).to_string()).unwrap()
+    path.map(|it| it.display(sema_scope.db.upcast()).to_string())
+        .ok_or(DisplaySourceCodeError::PathNotFound)
 }
 
 /// Helper function to get path to `Type`
@@ -59,30 +63,34 @@ fn type_path(
     ty: &Type,
     prefer_no_std: bool,
     prefer_prelude: bool,
-) -> String {
+) -> Result<String, DisplaySourceCodeError> {
     let db = sema_scope.db;
+    let m = sema_scope.module();
+
     match ty.as_adt() {
         Some(adt) => {
-            let ty_name = ty.display(db).to_string();
+            let ty_name = ty.display_source_code(db, m.id, true)?;
 
             let mut path =
                 mod_item_path(sema_scope, &ModuleDef::Adt(adt), prefer_no_std, prefer_prelude)
                     .unwrap();
             path.pop_segment();
             let path = path.display(db.upcast()).to_string();
-            match path.is_empty() {
+            let res = match path.is_empty() {
                 true => ty_name,
                 false => format!("{path}::{ty_name}"),
-            }
+            };
+            Ok(res)
         }
-        None => ty.display(db).to_string(),
+        None => ty.display_source_code(db, m.id, true),
     }
 }
 
 /// Helper function to filter out generic parameters that are default
 fn non_default_generics(db: &dyn HirDatabase, def: GenericDef, generics: &[Type]) -> Vec<Type> {
-    def.type_params(db)
+    def.type_or_const_params(db)
         .into_iter()
+        .filter_map(|it| it.as_type_param(db))
         .zip(generics)
         .filter(|(tp, arg)| tp.default(db).as_ref() != Some(arg))
         .map(|(_, arg)| arg.clone())
@@ -150,28 +158,30 @@ impl Expr {
         many_formatter: &mut dyn FnMut(&Type) -> String,
         prefer_no_std: bool,
         prefer_prelude: bool,
-    ) -> String {
+    ) -> Result<String, DisplaySourceCodeError> {
         let db = sema_scope.db;
         let mod_item_path_str = |s, def| mod_item_path_str(s, def, prefer_no_std, prefer_prelude);
         match self {
             Expr::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
-            Expr::Local(it) => return it.name(db).display(db.upcast()).to_string(),
-            Expr::ConstParam(it) => return it.name(db).display(db.upcast()).to_string(),
-            Expr::FamousType { value, .. } => return value.to_string(),
+            Expr::Local(it) => Ok(it.name(db).display(db.upcast()).to_string()),
+            Expr::ConstParam(it) => Ok(it.name(db).display(db.upcast()).to_string()),
+            Expr::FamousType { value, .. } => Ok(value.to_string()),
             Expr::Function { func, params, .. } => {
                 let args = params
                     .iter()
                     .map(|f| {
                         f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
                     })
+                    .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                    .into_iter()
                     .join(", ");
 
                 match func.as_assoc_item(db).map(|it| it.container(db)) {
                     Some(container) => {
                         let container_name = match container {
                             crate::AssocItemContainer::Trait(trait_) => {
-                                mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))
+                                mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))?
                             }
                             crate::AssocItemContainer::Impl(imp) => {
                                 let self_ty = imp.self_ty(db);
@@ -190,17 +200,17 @@ impl Expr {
                             }
                         };
                         let fn_name = func.name(db).display(db.upcast()).to_string();
-                        format!("{container_name}::{fn_name}({args})",)
+                        Ok(format!("{container_name}::{fn_name}({args})"))
                     }
                     None => {
-                        let fn_name = mod_item_path_str(sema_scope, &ModuleDef::Function(*func));
-                        format!("{fn_name}({args})",)
+                        let fn_name = mod_item_path_str(sema_scope, &ModuleDef::Function(*func))?;
+                        Ok(format!("{fn_name}({args})"))
                     }
                 }
             }
             Expr::Method { func, target, params, .. } => {
                 if target.contains_many_in_illegal_pos() {
-                    return many_formatter(&target.ty(db));
+                    return Ok(many_formatter(&target.ty(db)));
                 }
 
                 let func_name = func.name(db).display(db.upcast()).to_string();
@@ -210,28 +220,31 @@ impl Expr {
                     many_formatter,
                     prefer_no_std,
                     prefer_prelude,
-                );
+                )?;
                 let args = params
                     .iter()
                     .map(|f| {
                         f.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude)
                     })
+                    .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                    .into_iter()
                     .join(", ");
 
-                match func.as_assoc_item(db).and_then(|it| it.containing_trait_or_trait_impl(db)) {
+                match func.as_assoc_item(db).and_then(|it| it.container_or_implemented_trait(db)) {
                     Some(trait_) => {
-                        let trait_name = mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_));
+                        let trait_name = mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))?;
                         let target = match self_param.access(db) {
                             crate::Access::Shared => format!("&{target}"),
                             crate::Access::Exclusive => format!("&mut {target}"),
                             crate::Access::Owned => target,
                         };
-                        match args.is_empty() {
+                        let res = match args.is_empty() {
                             true => format!("{trait_name}::{func_name}({target})",),
                             false => format!("{trait_name}::{func_name}({target}, {args})",),
-                        }
+                        };
+                        Ok(res)
                     }
-                    None => format!("{target}.{func_name}({args})"),
+                    None => Ok(format!("{target}.{func_name}({args})")),
                 }
             }
             Expr::Variant { variant, generics, params } => {
@@ -242,6 +255,8 @@ impl Expr {
                         let generics = generics
                             .iter()
                             .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                            .into_iter()
                             .join(", ");
                         format!("::<{generics}>")
                     }
@@ -258,6 +273,8 @@ impl Expr {
                                     prefer_prelude,
                                 )
                             })
+                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                            .into_iter()
                             .join(", ");
                         format!("{generics_str}({args})")
                     }
@@ -267,25 +284,28 @@ impl Expr {
                             .iter()
                             .zip(fields.iter())
                             .map(|(a, f)| {
-                                format!(
+                                let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast()).to_string(),
+                                    f.name(db).display(db.upcast()),
                                     a.gen_source_code(
                                         sema_scope,
                                         many_formatter,
                                         prefer_no_std,
                                         prefer_prelude
-                                    )
-                                )
+                                    )?
+                                );
+                                Ok(tmp)
                             })
+                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                            .into_iter()
                             .join(", ");
                         format!("{generics_str}{{ {args} }}")
                     }
                     StructKind::Unit => generics_str,
                 };
 
-                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant));
-                format!("{prefix}{inner}")
+                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant))?;
+                Ok(format!("{prefix}{inner}"))
             }
             Expr::Struct { strukt, generics, params } => {
                 let generics = non_default_generics(db, (*strukt).into(), generics);
@@ -301,6 +321,8 @@ impl Expr {
                                     prefer_prelude,
                                 )
                             })
+                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                            .into_iter()
                             .join(", ");
                         format!("({args})")
                     }
@@ -310,17 +332,20 @@ impl Expr {
                             .iter()
                             .zip(fields.iter())
                             .map(|(a, f)| {
-                                format!(
+                                let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast()).to_string(),
+                                    f.name(db).display(db.upcast()),
                                     a.gen_source_code(
                                         sema_scope,
                                         many_formatter,
                                         prefer_no_std,
                                         prefer_prelude
-                                    )
-                                )
+                                    )?
+                                );
+                                Ok(tmp)
                             })
+                            .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                            .into_iter()
                             .join(", ");
                         format!(" {{ {args} }}")
                     }
@@ -330,35 +355,45 @@ impl Expr {
                             let generics = generics
                                 .iter()
                                 .map(|it| type_path(sema_scope, it, prefer_no_std, prefer_prelude))
+                                .collect::<Result<Vec<String>, DisplaySourceCodeError>>()?
+                                .into_iter()
                                 .join(", ");
                             format!("::<{generics}>")
                         }
                     },
                 };
 
-                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Adt(Adt::Struct(*strukt)));
-                format!("{prefix}{inner}")
+                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Adt(Adt::Struct(*strukt)))?;
+                Ok(format!("{prefix}{inner}"))
             }
             Expr::Field { expr, field } => {
                 if expr.contains_many_in_illegal_pos() {
-                    return many_formatter(&expr.ty(db));
+                    return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let strukt =
-                    expr.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude);
+                let strukt = expr.gen_source_code(
+                    sema_scope,
+                    many_formatter,
+                    prefer_no_std,
+                    prefer_prelude,
+                )?;
                 let field = field.name(db).display(db.upcast()).to_string();
-                format!("{strukt}.{field}")
+                Ok(format!("{strukt}.{field}"))
             }
             Expr::Reference(expr) => {
                 if expr.contains_many_in_illegal_pos() {
-                    return many_formatter(&expr.ty(db));
+                    return Ok(many_formatter(&expr.ty(db)));
                 }
 
-                let inner =
-                    expr.gen_source_code(sema_scope, many_formatter, prefer_no_std, prefer_prelude);
-                format!("&{inner}")
+                let inner = expr.gen_source_code(
+                    sema_scope,
+                    many_formatter,
+                    prefer_no_std,
+                    prefer_prelude,
+                )?;
+                Ok(format!("&{inner}"))
             }
-            Expr::Many(ty) => many_formatter(ty),
+            Expr::Many(ty) => Ok(many_formatter(ty)),
         }
     }
 
@@ -380,10 +415,10 @@ impl Expr {
                 target.ty(db).type_arguments().chain(generics.iter().cloned()),
             ),
             Expr::Variant { variant, generics, .. } => {
-                variant.parent_enum(db).ty_with_args(db, generics.iter().cloned())
+                Adt::from(variant.parent_enum(db)).ty_with_args(db, generics.iter().cloned())
             }
             Expr::Struct { strukt, generics, .. } => {
-                strukt.ty_with_args(db, generics.iter().cloned())
+                Adt::from(*strukt).ty_with_args(db, generics.iter().cloned())
             }
             Expr::Field { expr, field } => field.ty_with_args(db, expr.ty(db).type_arguments()),
             Expr::Reference(it) => it.ty(db),
@@ -395,16 +430,13 @@ impl Expr {
     pub fn traits_used(&self, db: &dyn HirDatabase) -> Vec<Trait> {
         let mut res = Vec::new();
 
-        match self {
-            Expr::Method { func, params, .. } => {
-                res.extend(params.iter().flat_map(|it| it.traits_used(db)));
-                if let Some(it) = func.as_assoc_item(db) {
-                    if let Some(it) = it.containing_trait_or_trait_impl(db) {
-                        res.push(it);
-                    }
+        if let Expr::Method { func, params, .. } = self {
+            res.extend(params.iter().flat_map(|it| it.traits_used(db)));
+            if let Some(it) = func.as_assoc_item(db) {
+                if let Some(it) = it.container_or_implemented_trait(db) {
+                    res.push(it);
                 }
             }
-            _ => (),
         }
 
         res

@@ -16,7 +16,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     Adt, AssocItem, Enum, GenericDef, GenericParam, HasVisibility, Impl, ModuleDef, ScopeDef, Type,
-    Variant,
+    TypeParam, Variant,
 };
 
 use crate::term_search::{Expr, TermSearchConfig};
@@ -82,7 +82,7 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
             return None;
         }
 
-        ty.could_unify_with_deeply(db, &ctx.goal).then(|| expr)
+        ty.could_unify_with_deeply(db, &ctx.goal).then_some(expr)
     })
 }
 
@@ -118,20 +118,21 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
         }
 
         let generics = GenericDef::from(variant.parent_enum(db));
-
-        // Ignore enums with const generics
-        if !generics.const_params(db).is_empty() {
+        let Some(type_params) = generics
+            .type_or_const_params(db)
+            .into_iter()
+            .map(|it| it.as_type_param(db))
+            .collect::<Option<Vec<TypeParam>>>()
+        else {
+            // Ignore enums with const generics
             return Vec::new();
-        }
+        };
 
         // We currently do not check lifetime bounds so ignore all types that have something to do
         // with them
         if !generics.lifetime_params(db).is_empty() {
             return Vec::new();
         }
-
-        // Only account for stable type parameters for now
-        let type_params = generics.type_params(db);
 
         // Only account for stable type parameters for now, unstable params can be default
         // tho, for example in `Box<T, #[unstable] A: Allocator>`
@@ -154,13 +155,10 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 let mut g = generics.into_iter();
                 let generics: Vec<_> = type_params
                     .iter()
-                    .map(|it| match it.default(db) {
-                        Some(ty) => ty,
-                        None => g.next().expect("Missing type param"),
-                    })
+                    .map(|it| it.default(db).unwrap_or_else(|| g.next().expect("No generic")))
                     .collect();
 
-                let enum_ty = parent_enum.ty_with_args(db, generics.iter().cloned());
+                let enum_ty = Adt::from(parent_enum).ty_with_args(db, generics.iter().cloned());
 
                 // Allow types with generics only if they take us straight to goal for
                 // performance reasons
@@ -212,9 +210,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 let exprs: Vec<(Type, Vec<Expr>)> = enum_
                     .variants(db)
                     .into_iter()
-                    .flat_map(|it| {
-                        variant_helper(db, lookup, enum_.clone(), it, &ctx.goal, &ctx.config)
-                    })
+                    .flat_map(|it| variant_helper(db, lookup, *enum_, it, &ctx.goal, &ctx.config))
                     .collect();
 
                 if !exprs.is_empty() {
@@ -231,18 +227,18 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
 
                 let generics = GenericDef::from(*it);
 
-                // Ignore enums with const generics
-                if !generics.const_params(db).is_empty() {
-                    return None;
-                }
+                // Ignore const params for now
+                let type_params = generics
+                    .type_or_const_params(db)
+                    .into_iter()
+                    .map(|it| it.as_type_param(db))
+                    .collect::<Option<Vec<TypeParam>>>()?;
 
                 // We currently do not check lifetime bounds so ignore all types that have something to do
                 // with them
                 if !generics.lifetime_params(db).is_empty() {
                     return None;
                 }
-
-                let type_params = generics.type_params(db);
 
                 // Only account for stable type parameters for now, unstable params can be default
                 // tho, for example in `Box<T, #[unstable] A: Allocator>`
@@ -265,12 +261,13 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                         let mut g = generics.into_iter();
                         let generics: Vec<_> = type_params
                             .iter()
-                            .map(|it| match it.default(db) {
-                                Some(ty) => ty,
-                                None => g.next().expect("Missing type param"),
+                            .map(|it| {
+                                it.default(db)
+                                    .unwrap_or_else(|| g.next().expect("Missing type param"))
                             })
                             .collect();
-                        let struct_ty = it.ty_with_args(db, generics.iter().cloned());
+
+                        let struct_ty = Adt::from(*it).ty_with_args(db, generics.iter().cloned());
 
                         // Allow types with generics only if they take us straight to goal for
                         // performance reasons
@@ -324,7 +321,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
 
@@ -352,17 +349,17 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
             ScopeDef::ModuleDef(ModuleDef::Function(it)) => {
                 let generics = GenericDef::from(*it);
 
-                // Skip functions that require const generics
-                if !generics.const_params(db).is_empty() {
-                    return None;
-                }
+                // Ignore const params for now
+                let type_params = generics
+                    .type_or_const_params(db)
+                    .into_iter()
+                    .map(|it| it.as_type_param(db))
+                    .collect::<Option<Vec<TypeParam>>>()?;
 
                 // Ignore lifetimes as we do not check them
                 if !generics.lifetime_params(db).is_empty() {
                     return None;
                 }
-
-                let type_params = generics.type_params(db);
 
                 // Only account for stable type parameters for now, unstable params can be default
                 // tho, for example in `Box<T, #[unstable] A: Allocator>`
@@ -391,10 +388,14 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                         let generics: Vec<_> = type_params
                             .iter()
                             .map(|it| match it.default(db) {
-                                Some(ty) => ty,
-                                None => g.next().expect("Missing type param"),
+                                Some(ty) => Some(ty),
+                                None => {
+                                    let generic = g.next().expect("Missing type param");
+                                    // Filter out generics that do not unify due to trait bounds
+                                    it.ty(db).could_unify_with(db, &generic).then_some(generic)
+                                }
                             })
-                            .collect();
+                            .collect::<Option<_>>()?;
 
                         let ret_ty = it.ret_type_with_args(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
@@ -409,13 +410,13 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
 
                         // Early exit if some param cannot be filled from lookup
                         let param_exprs: Vec<Vec<Expr>> = it
-                            .params_without_self_with_generics(db, generics.iter().cloned())
+                            .params_without_self_with_args(db, generics.iter().cloned())
                             .into_iter()
                             .map(|field| {
                                 let ty = field.ty();
                                 match ty.is_mutable_reference() {
                                     true => None,
-                                    false => lookup.find_autoref(db, &ty),
+                                    false => lookup.find_autoref(db, ty),
                                 }
                             })
                             .collect::<Option<_>>()?;
@@ -447,7 +448,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
 
@@ -487,11 +488,19 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
 
-            // Ignore impl if it has const type arguments
-            if !fn_generics.const_params(db).is_empty() || !imp_generics.const_params(db).is_empty()
-            {
-                return None;
-            }
+            // Ignore const params for now
+            let imp_type_params = imp_generics
+                .type_or_const_params(db)
+                .into_iter()
+                .map(|it| it.as_type_param(db))
+                .collect::<Option<Vec<TypeParam>>>()?;
+
+            // Ignore const params for now
+            let fn_type_params = fn_generics
+                .type_or_const_params(db)
+                .into_iter()
+                .map(|it| it.as_type_param(db))
+                .collect::<Option<Vec<TypeParam>>>()?;
 
             // Ignore all functions that have something to do with lifetimes as we don't check them
             if !fn_generics.lifetime_params(db).is_empty() {
@@ -507,9 +516,6 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
             if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
                 return None;
             }
-
-            let imp_type_params = imp_generics.type_params(db);
-            let fn_type_params = fn_generics.type_params(db);
 
             // Only account for stable type parameters for now, unstable params can be default
             // tho, for example in `Box<T, #[unstable] A: Allocator>`
@@ -544,10 +550,14 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                         .iter()
                         .chain(fn_type_params.iter())
                         .map(|it| match it.default(db) {
-                            Some(ty) => ty,
-                            None => g.next().expect("Missing type param"),
+                            Some(ty) => Some(ty),
+                            None => {
+                                let generic = g.next().expect("Missing type param");
+                                // Filter out generics that do not unify due to trait bounds
+                                it.ty(db).could_unify_with(db, &generic).then_some(generic)
+                            }
                         })
-                        .collect();
+                        .collect::<Option<_>>()?;
 
                     let ret_ty = it.ret_type_with_args(
                         db,
@@ -579,16 +589,16 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
 
                     // Early exit if some param cannot be filled from lookup
                     let param_exprs: Vec<Vec<Expr>> = it
-                        .params_without_self_with_generics(
+                        .params_without_self_with_args(
                             db,
                             ty.type_arguments().chain(generics.iter().cloned()),
                         )
                         .into_iter()
-                        .map(|field| lookup.find_autoref(db, &field.ty()))
+                        .map(|field| lookup.find_autoref(db, field.ty()))
                         .collect::<Option<_>>()?;
 
                     let fn_exprs: Vec<Expr> = std::iter::once(target_type_exprs)
-                        .chain(param_exprs.into_iter())
+                        .chain(param_exprs)
                         .multi_cartesian_product()
                         .map(|params| {
                             let mut params = params.into_iter();
@@ -609,7 +619,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
             Some(exprs)
         })
         .flatten()
-        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
 
@@ -647,7 +657,7 @@ pub(super) fn struct_projection<'a, DB: HirDatabase>(
                 Some((filed_ty, exprs))
             })
         })
-        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
 
@@ -719,11 +729,19 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
 
-            // Ignore impl if it has const type arguments
-            if !fn_generics.const_params(db).is_empty() || !imp_generics.const_params(db).is_empty()
-            {
-                return None;
-            }
+            // Ignore const params for now
+            let imp_type_params = imp_generics
+                .type_or_const_params(db)
+                .into_iter()
+                .map(|it| it.as_type_param(db))
+                .collect::<Option<Vec<TypeParam>>>()?;
+
+            // Ignore const params for now
+            let fn_type_params = fn_generics
+                .type_or_const_params(db)
+                .into_iter()
+                .map(|it| it.as_type_param(db))
+                .collect::<Option<Vec<TypeParam>>>()?;
 
             // Ignore all functions that have something to do with lifetimes as we don't check them
             if !fn_generics.lifetime_params(db).is_empty()
@@ -741,9 +759,6 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
             if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
                 return None;
             }
-
-            let imp_type_params = imp_generics.type_params(db);
-            let fn_type_params = fn_generics.type_params(db);
 
             // Only account for stable type parameters for now, unstable params can be default
             // tho, for example in `Box<T, #[unstable] A: Allocator>`
@@ -778,10 +793,17 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                         .iter()
                         .chain(fn_type_params.iter())
                         .map(|it| match it.default(db) {
-                            Some(ty) => ty,
-                            None => g.next().expect("Missing type param"),
+                            Some(ty) => Some(ty),
+                            None => {
+                                let generic = g.next().expect("Missing type param");
+                                it.trait_bounds(db)
+                                    .into_iter()
+                                    .all(|bound| generic.impls_trait(db, bound, &[]));
+                                // Filter out generics that do not unify due to trait bounds
+                                it.ty(db).could_unify_with(db, &generic).then_some(generic)
+                            }
                         })
-                        .collect();
+                        .collect::<Option<_>>()?;
 
                     let ret_ty = it.ret_type_with_args(
                         db,
@@ -801,12 +823,12 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
 
                     // Early exit if some param cannot be filled from lookup
                     let param_exprs: Vec<Vec<Expr>> = it
-                        .params_without_self_with_generics(
+                        .params_without_self_with_args(
                             db,
                             ty.type_arguments().chain(generics.iter().cloned()),
                         )
                         .into_iter()
-                        .map(|field| lookup.find_autoref(db, &field.ty()))
+                        .map(|field| lookup.find_autoref(db, field.ty()))
                         .collect::<Option<_>>()?;
 
                     // Note that we need special case for 0 param constructors because of multi cartesian
@@ -832,6 +854,6 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
             Some(exprs)
         })
         .flatten()
-        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }

@@ -51,17 +51,21 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
     };
     let paths = term_search(&term_search_ctx);
 
-    let mut assists = vec![];
     let mut formatter = |_: &hir::Type| String::from("_");
-    for path in paths.into_iter().unique() {
-        let code = path.gen_source_code(
-            &scope,
-            &mut formatter,
-            ctx.config.prefer_no_std,
-            ctx.config.prefer_prelude,
-        );
 
-        assists.push(Assist {
+    let assists: Vec<Assist> = paths
+        .into_iter()
+        .filter_map(|path| {
+            path.gen_source_code(
+                &scope,
+                &mut formatter,
+                ctx.config.prefer_no_std,
+                ctx.config.prefer_prelude,
+            )
+            .ok()
+        })
+        .unique()
+        .map(|code| Assist {
             id: AssistId("typed-hole", AssistKind::QuickFix),
             label: Label::new(format!("Replace `_` with `{}`", &code)),
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
@@ -71,8 +75,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                 TextEdit::replace(original_range.range, code),
             )),
             trigger_signature_help: false,
-        });
-    }
+        })
+        .collect();
+
     if !assists.is_empty() {
         Some(assists)
     } else {
@@ -242,31 +247,33 @@ fn main<const CP: Foo>(param: Foo) {
         check_has_fix(
             r#"
 struct Bar;
+struct Baz;
 trait Foo {
     fn foo(self) -> Bar;
 }
-impl Foo for i32 {
+impl Foo for Baz {
     fn foo(self) -> Bar {
         unimplemented!()
     }
 }
 fn asd() -> Bar {
-    let a: i32 = 1;
+    let a = Baz;
     _$0
 }
 "#,
             r"
 struct Bar;
+struct Baz;
 trait Foo {
     fn foo(self) -> Bar;
 }
-impl Foo for i32 {
+impl Foo for Baz {
     fn foo(self) -> Bar {
         unimplemented!()
     }
 }
 fn asd() -> Bar {
-    let a: i32 = 1;
+    let a = Baz;
     Foo::foo(a)
 }
 ",
@@ -330,30 +337,32 @@ fn main() {
         check_has_fix(
             r#"
 struct Bar {}
+struct A;
 trait Foo {
     type Res;
     fn foo(&self) -> Self::Res;
 }
-impl Foo for i32 {
+impl Foo for A {
     type Res = Bar;
     fn foo(&self) -> Self::Res { Bar { } }
 }
 fn main() {
-    let a: i32 = 1;
+    let a = A;
     let c: Bar = _$0;
 }"#,
             r#"
 struct Bar {}
+struct A;
 trait Foo {
     type Res;
     fn foo(&self) -> Self::Res;
 }
-impl Foo for i32 {
+impl Foo for A {
     type Res = Bar;
     fn foo(&self) -> Self::Res { Bar { } }
 }
 fn main() {
-    let a: i32 = 1;
+    let a = A;
     let c: Bar = Foo::foo(&a);
 }"#,
         );

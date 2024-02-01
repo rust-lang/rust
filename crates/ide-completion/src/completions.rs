@@ -159,9 +159,8 @@ impl Completions {
     }
 
     pub(crate) fn add_expr(&mut self, ctx: &CompletionContext<'_>, expr: &hir::term_search::Expr) {
-        match render_expr(ctx, expr) {
-            Some(item) => item.add_to(self, ctx.db),
-            None => (),
+        if let Some(item) = render_expr(ctx, expr) {
+            item.add_to(self, ctx.db)
         }
     }
 
@@ -759,7 +758,6 @@ pub(super) fn complete_name_ref(
             flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
             dot::complete_dot(acc, ctx, dot_access);
             postfix::complete_postfix(acc, ctx, dot_access);
-            expr::complete_expr(acc, ctx);
         }
         NameRefKind::Keyword(item) => {
             keyword::complete_for_and_where(acc, ctx, item);

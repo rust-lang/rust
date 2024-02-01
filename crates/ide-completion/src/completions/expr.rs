@@ -342,7 +342,7 @@ pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) 
 
     if let Some(ty) = &ctx.expected_type {
         // Ignore unit types as they are not very interesting
-        if ty.is_unit() {
+        if ty.is_unit() || ty.is_unknown() {
             return;
         }
 
