@@ -900,7 +900,7 @@ impl Diagnostic {
 
     pub fn arg(
         &mut self,
-        name: impl Into<Cow<'static, str>>,
+        name: impl Into<DiagnosticArgName>,
         arg: impl IntoDiagnosticArg,
     ) -> &mut Self {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
