@@ -1924,7 +1924,7 @@ impl ModCollector<'_, '_> {
                         item_tree: self.item_tree,
                         mod_dir,
                     }
-                    .collect_in_top_module(&*items);
+                    .collect_in_top_module(items);
                     if is_macro_use {
                         self.import_all_legacy_macros(module_id);
                     }

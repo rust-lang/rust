@@ -297,7 +297,7 @@ impl SearchMode {
             SearchMode::Exact => candidate.eq_ignore_ascii_case(query),
             SearchMode::Prefix => {
                 query.len() <= candidate.len() && {
-                    let prefix = &candidate[..query.len() as usize];
+                    let prefix = &candidate[..query.len()];
                     if case_sensitive {
                         prefix == query
                     } else {
@@ -396,7 +396,7 @@ impl Query {
 pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: CrateId,
-    ref query: Query,
+    query: &Query,
 ) -> FxHashSet<ItemInNs> {
     let _p = tracing::span!(tracing::Level::INFO, "search_dependencies", ?query).entered();
 
@@ -446,7 +446,7 @@ fn search_maps(
             let end = (value & 0xFFFF_FFFF) as usize;
             let start = (value >> 32) as usize;
             let ImportMap { item_to_info_map, importables, .. } = &*import_maps[import_map_idx];
-            let importables = &importables[start as usize..end];
+            let importables = &importables[start..end];
 
             let iter = importables
                 .iter()
@@ -516,7 +516,7 @@ mod tests {
             })
             .expect("could not find crate");
 
-        let actual = search_dependencies(db.upcast(), krate, query)
+        let actual = search_dependencies(db.upcast(), krate, &query)
             .into_iter()
             .filter_map(|dependency| {
                 let dependency_krate = dependency.krate(db.upcast())?;

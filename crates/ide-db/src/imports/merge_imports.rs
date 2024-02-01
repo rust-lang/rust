@@ -467,8 +467,7 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
                     }
                     ted::replace_all(start..=end, elements);
                 } else {
-                    let new_use_tree_list =
-                        make::use_tree_list(subtrees.into_iter()).clone_for_update();
+                    let new_use_tree_list = make::use_tree_list(subtrees).clone_for_update();
                     ted::replace(use_tree_list.syntax(), new_use_tree_list.syntax());
                 }
                 modified = true;

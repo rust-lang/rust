@@ -33,7 +33,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
                 }
             )
         }),
-        DefWithBodyId::InTypeConstId(_) => format!("In type const = "),
+        DefWithBodyId::InTypeConstId(_) => "In type const = ".to_string(),
         DefWithBodyId::VariantId(it) => {
             let loc = it.lookup(db);
             let enum_loc = loc.parent.lookup(db);

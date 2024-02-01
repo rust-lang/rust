@@ -782,7 +782,7 @@ impl<'a> AssocItemCollector<'a> {
             self.diagnostics.push(DefDiagnostic::macro_expansion_parse_error(
                 self.module_id.local_id,
                 error_call_kind(),
-                errors.into(),
+                errors,
             ));
         }
 
