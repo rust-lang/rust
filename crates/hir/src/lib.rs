@@ -563,6 +563,17 @@ impl Module {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
                     }
+
+                    for item in t.items(db) {
+                        let def: DefWithBody = match item {
+                            AssocItem::Function(it) => it.into(),
+                            AssocItem::Const(it) => it.into(),
+                            AssocItem::TypeAlias(_) => continue,
+                        };
+
+                        def.diagnostics(db, acc);
+                    }
+
                     acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Adt(adt) => {

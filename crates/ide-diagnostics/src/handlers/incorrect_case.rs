@@ -388,14 +388,13 @@ mod F {
 
     #[test]
     fn complex_ignore() {
-        // FIXME: this should trigger errors for the second case.
         check_diagnostics(
             r#"
 trait T { fn a(); }
 struct U {}
 impl T for U {
     fn a() {
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, non_upper_case_globals)]
         trait __BitFlagsOk {
             const HiImAlsoBad: u8 = 2;
             fn Dirty(&self) -> bool { false }
@@ -403,7 +402,9 @@ impl T for U {
 
         trait __BitFlagsBad {
             const HiImAlsoBad: u8 = 2;
+               // ^^^^^^^^^^^ 💡 warn: Constant `HiImAlsoBad` should have UPPER_SNAKE_CASE name, e.g. `HI_IM_ALSO_BAD`
             fn Dirty(&self) -> bool { false }
+            // ^^^^^💡 warn: Function `Dirty` should have snake_case name, e.g. `dirty`
         }
     }
 }
@@ -463,14 +464,16 @@ extern {
 
     #[test]
     fn incorrect_trait_and_assoc_item_names() {
-        // FIXME: Traits and functions in traits aren't currently checked by
-        // r-a, even though rustc will complain about them.
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
    // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
     fn BAD_FUNCTION();
+    // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
+    // ^^^^^^^^^^^ 💡 warn: Function `BadFunction` should have snake_case name, e.g. `bad_function`
 }
     "#,
         );
