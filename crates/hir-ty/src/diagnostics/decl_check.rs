@@ -20,7 +20,7 @@ use hir_def::{
     hir::{Pat, PatId},
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
-    StaticId, StructId,
+    StaticId, StructId, TraitId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -79,12 +79,13 @@ pub enum IdentType {
     Enum,
     Field,
     Function,
+    Module,
     Parameter,
     StaticVariable,
     Structure,
+    Trait,
     Variable,
     Variant,
-    Module,
 }
 
 impl fmt::Display for IdentType {
@@ -94,12 +95,13 @@ impl fmt::Display for IdentType {
             IdentType::Enum => "Enum",
             IdentType::Field => "Field",
             IdentType::Function => "Function",
+            IdentType::Module => "Module",
             IdentType::Parameter => "Parameter",
             IdentType::StaticVariable => "Static variable",
             IdentType::Structure => "Structure",
+            IdentType::Trait => "Trait",
             IdentType::Variable => "Variable",
             IdentType::Variant => "Variant",
-            IdentType::Module => "Module",
         };
 
         repr.fmt(f)
@@ -136,6 +138,7 @@ impl<'a> DeclValidator<'a> {
     pub(super) fn validate_item(&mut self, item: ModuleDefId) {
         match item {
             ModuleDefId::ModuleId(module_id) => self.validate_module(module_id),
+            ModuleDefId::TraitId(trait_id) => self.validate_trait(trait_id),
             ModuleDefId::FunctionId(func) => self.validate_func(func),
             ModuleDefId::AdtId(adt) => self.validate_adt(adt),
             ModuleDefId::ConstId(const_id) => self.validate_const(const_id),
@@ -280,6 +283,47 @@ impl<'a> DeclValidator<'a> {
 
                 self.sink.push(diagnostic);
             }
+        }
+    }
+
+    fn validate_trait(&mut self, trait_id: TraitId) {
+        // Check whether non-snake case identifiers are allowed for this trait.
+        if self.allowed(trait_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
+            return;
+        }
+
+        // Check the trait name.
+        let data = self.db.trait_data(trait_id);
+        let trait_name = data.name.display(self.db.upcast()).to_string();
+        let trait_name_replacement = to_camel_case(&trait_name).map(|new_name| Replacement {
+            current_name: data.name.clone(),
+            suggested_text: new_name,
+            expected_case: CaseType::UpperCamelCase,
+        });
+
+        if let Some(replacement) = trait_name_replacement {
+            let trait_loc = trait_id.lookup(self.db.upcast());
+            let trait_src = trait_loc.source(self.db.upcast());
+
+            let Some(ast_ptr) = trait_src.value.name() else {
+                never!(
+                    "Replacement ({:?}) was generated for a trait without a name: {:?}",
+                    replacement,
+                    trait_src
+                );
+                return;
+            };
+
+            let diagnostic = IncorrectCase {
+                file: trait_src.file_id,
+                ident_type: IdentType::Trait,
+                ident: AstPtr::new(&ast_ptr),
+                expected_case: replacement.expected_case,
+                ident_text: trait_name,
+                suggested_text: replacement.suggested_text,
+            };
+
+            self.sink.push(diagnostic);
         }
     }
 

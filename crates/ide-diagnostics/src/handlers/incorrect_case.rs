@@ -462,12 +462,13 @@ extern {
     }
 
     #[test]
-    fn bug_traits_arent_checked() {
+    fn incorrect_trait_and_assoc_item_names() {
         // FIXME: Traits and functions in traits aren't currently checked by
         // r-a, even though rustc will complain about them.
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
     fn BAD_FUNCTION();
     fn BadFunction();
 }
