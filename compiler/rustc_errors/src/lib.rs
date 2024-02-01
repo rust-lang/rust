@@ -1252,7 +1252,7 @@ impl DiagCtxtInner {
         // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
         // a stable one by the `LintLevelsBuilder`.
         if let Some(LintExpectationId::Unstable { .. }) = diagnostic.level.get_expectation_id() {
-            self.unstable_expect_diagnostics.push(diagnostic.clone());
+            self.unstable_expect_diagnostics.push(diagnostic);
             return None;
         }
 
@@ -1267,16 +1267,14 @@ impl DiagCtxtInner {
             DelayedBug(DelayedBugKind::Normal) => {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.span_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
-
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
                 #[allow(deprecated)]
                 return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             }
             DelayedBug(DelayedBugKind::GoodPath) => {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.good_path_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
-
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
                 return None;
             }
             _ => {}
