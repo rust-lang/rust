@@ -1,12 +1,10 @@
 //! Assorted functions shared by several assists.
 
-use std::ops;
-
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
@@ -217,43 +215,6 @@ pub fn add_trait_assoc_items_to_impl(
     first_item.unwrap()
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Cursor<'a> {
-    Replace(&'a SyntaxNode),
-    Before(&'a SyntaxNode),
-}
-
-impl<'a> Cursor<'a> {
-    fn node(self) -> &'a SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-
-pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor<'_>) -> String {
-    assert!(cursor.node().ancestors().any(|it| it == *node));
-    let range = cursor.node().text_range() - node.text_range().start();
-    let range: ops::Range<usize> = range.into();
-
-    let mut placeholder = cursor.node().to_string();
-    escape(&mut placeholder);
-    let tab_stop = match cursor {
-        Cursor::Replace(placeholder) => format!("${{0:{placeholder}}}"),
-        Cursor::Before(placeholder) => format!("$0{placeholder}"),
-    };
-
-    let mut buf = node.to_string();
-    buf.replace_range(range, &tab_stop);
-    return buf;
-
-    fn escape(buf: &mut String) {
-        stdx::replace(buf, '{', r"\{");
-        stdx::replace(buf, '}', r"\}");
-        stdx::replace(buf, '$', r"\$");
-    }
-}
-
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
         .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
@@ -443,15 +404,6 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     }
 
     false
-}
-
-/// Find the start of the `impl` block for the given `ast::Impl`.
-//
-// FIXME: this partially overlaps with `find_struct_impl`
-pub(crate) fn find_impl_block_start(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
-    buf.push('\n');
-    let start = impl_def.assoc_item_list().and_then(|it| it.l_curly_token())?.text_range().end();
-    Some(start)
 }
 
 /// Find the end of the `impl` block for the given `ast::Impl`.
