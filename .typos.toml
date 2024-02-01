@@ -1,0 +1,55 @@
+[default.extend-identifiers]
+makro = "makro"
+VisibilityExplicity = "VisibilityExplicity"
+impl_froms = "impl_froms"
+AnserStyle = "AnserStyle"
+explicity = "explicity"
+syntaxically = "syntaxically"
+datas = "datas"
+selfs = "selfs"
+TOOD = "TOOD"
+strustS = "strustS"
+new_function_with_generics_and_wheres = "new_function_with_generics_and_wheres"
+Defaul = "Defaul"
+nto = "nto"
+nknown = "nknown"
+ded = "ded"
+truct = "truct"
+inpu = "inpu"
+Convertable = "Convertable"
+substitude = "substitude"
+nner = "nner"
+Contro = "Contro"
+numbe = "numbe"
+MyUnio = "MyUnio"
+
+[default.extend-words]
+anser = "anser"
+ba = "ba"
+fromed = "fromed"
+fo = "fo"
+trivias = "trivias"
+mmaped = "mmaped"
+mis = "mis"
+ket = "ket"
+foor = "foor"
+FPR = "FPR"
+mak = "mak"
+OT = "OT"
+raison = "raison"
+strat = "strat"
+unaccessable = "unaccessable"
+
+[default]
+extend-ignore-re = [
+    # ignore string which contains $x (x is a num), which use widely in test
+    ".*\\$\\d.*"
+]
+
+[files]
+extend-exclude = [
+  "*.json",
+  "*.rast",
+  "crates/parser/test_data/lexer/err/*",
+  "bench_data/*",
+]
