@@ -171,6 +171,7 @@ fn find_path_inner(ctx: FindPathCtx<'_>, item: ItemInNs, from: ModuleId) -> Opti
     .map(|(item, _)| item)
 }
 
+#[tracing::instrument(skip_all)]
 fn find_path_for_module(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,
@@ -312,6 +313,7 @@ fn find_self_super(def_map: &DefMap, item: ModuleId, from: ModuleId) -> Option<M
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn calculate_best_path(
     ctx: FindPathCtx<'_>,
     def_map: &DefMap,

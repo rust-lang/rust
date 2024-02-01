@@ -605,6 +605,7 @@ fn assoc_to_item(assoc: AssocItem) -> ItemInNs {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn get_mod_path(
     db: &RootDatabase,
     item_to_search: ItemInNs,
