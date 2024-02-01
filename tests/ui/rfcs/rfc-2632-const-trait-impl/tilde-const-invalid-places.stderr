@@ -272,11 +272,11 @@ LL |     type Type<T: ~const Trait> = ();
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/tilde-const-invalid-places.rs:11:19
    |
 LL | struct UnitStruct<T: ~const Trait>;
-   |                   ^ unused parameter
+   |                   ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
