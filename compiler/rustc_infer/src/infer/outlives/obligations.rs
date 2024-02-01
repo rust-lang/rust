@@ -154,10 +154,16 @@ impl<'tcx> InferCtxt<'tcx> {
             .map_err(|e| (e, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP)))?;
 
         // Must loop since the process of normalizing may itself register region obligations.
-        loop {
+        for iteration in 0.. {
             let my_region_obligations = self.take_registered_region_obligations();
             if my_region_obligations.is_empty() {
                 break;
+            }
+
+            if !self.tcx.recursion_limit().value_within_limit(iteration) {
+                bug!(
+                    "FIXME(-Znext-solver): Overflowed when processing region obligations: {my_region_obligations:#?}"
+                );
             }
 
             for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
