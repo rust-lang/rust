@@ -285,13 +285,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             vec![Candidate { source, result }]
         };
 
-        let Some(normalized_self_ty) =
-            self.try_normalize_ty(goal.param_env, goal.predicate.self_ty())
+        let Ok(normalized_self_ty) =
+            self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            debug!("overflow while evaluating self type");
-            return dummy_candidate(self, Certainty::OVERFLOW);
+            return vec![];
         };
-
         if normalized_self_ty.is_ty_var() {
             debug!("self type has been normalized to infer");
             return dummy_candidate(self, Certainty::AMBIGUOUS);
@@ -793,19 +791,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
-            #[derive(Debug)]
-            struct Overflow;
-            let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
-                Some(ty) => Ok(ty),
-                None => Err(Overflow),
-            };
+            let lazily_normalize_ty = |ty| ecx.structurally_normalize_ty(goal.param_env, ty);
 
-            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
-                Err(Overflow) => {
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
-                }
-                Ok(Ok(())) => Err(NoSolution),
-                Ok(Err(_)) => {
+            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty)? {
+                Ok(()) => Err(NoSolution),
+                Err(_) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             }
