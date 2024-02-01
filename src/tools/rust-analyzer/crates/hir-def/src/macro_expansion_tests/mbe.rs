@@ -1,11 +1,11 @@
 //! Tests specific to declarative macros, aka macros by example. This covers
 //! both stable `macro_rules!` macros as well as unstable `macro` macros.
 
-mod tt_conversion;
 mod matching;
 mod meta_syntax;
 mod metavar_expr;
 mod regression;
+mod tt_conversion;
 
 use expect_test::expect;
 

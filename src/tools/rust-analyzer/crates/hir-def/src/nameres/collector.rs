@@ -30,9 +30,7 @@ use triomphe::Arc;
 
 use crate::{
     attr::Attrs,
-    attr_macro_as_call_id,
     db::DefDatabase,
-    derive_macro_as_call_id,
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
         self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
@@ -40,6 +38,7 @@ use crate::{
     },
     macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
+        attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
         path_resolution::ReachedFixedPoint,
@@ -1245,7 +1244,9 @@ impl DefCollector<'_> {
                         MacroDefId { kind: MacroDefKind::BuiltInAttr(expander, _),.. }
                         if expander.is_derive()
                     ) {
-                        // Resolved to `#[derive]`
+                        // Resolved to `#[derive]`, we don't actually expand this attribute like
+                        // normal (as that would just be an identity expansion with extra output)
+                        // Instead we treat derive attributes special and apply them separately.
 
                         let item_tree = tree.item_tree(self.db);
                         let ast_adt_id: FileAstId<ast::Adt> = match *mod_item {
@@ -1284,7 +1285,8 @@ impl DefCollector<'_> {
                                 }
 
                                 // We treat the #[derive] macro as an attribute call, but we do not resolve it for nameres collection.
-                                // This is just a trick to be able to resolve the input to derives as proper paths.
+                                // This is just a trick to be able to resolve the input to derives
+                                // as proper paths in `Semantics`.
                                 // Check the comment in [`builtin_attr_macro`].
                                 let call_id = attr_macro_as_call_id(
                                     self.db,
