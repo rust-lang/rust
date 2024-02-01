@@ -4,11 +4,11 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
    |                                                 ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `From`
+note: required by an implicit `Sized` bound in `From`
   --> $DIR/issue-20005.rs:1:12
    |
 LL | trait From<Src> {
-   |            ^^^ required by this bound in `From`
+   |            ^^^ required by the implicit `Sized` requirement on this type parameter in `From`
 help: consider further restricting `Self`
    |
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
