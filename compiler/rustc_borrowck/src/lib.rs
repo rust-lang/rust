@@ -178,7 +178,6 @@ fn do_mir_borrowck<'tcx>(
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
-        errors.set_tainted_by_errors(e);
     }
 
     // Replace all regions with fresh inference variables. This
@@ -2437,10 +2436,6 @@ mod error {
 
         pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'_, ()>) {
             self.buffered.push(t.into_diagnostic());
-        }
-
-        pub fn set_tainted_by_errors(&mut self, e: ErrorGuaranteed) {
-            self.tainted_by_errors = Some(e);
         }
     }
 
