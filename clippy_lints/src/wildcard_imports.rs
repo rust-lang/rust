@@ -101,15 +101,15 @@ declare_clippy_lint! {
 pub struct WildcardImports {
     warn_on_all: bool,
     test_modules_deep: u32,
-    ignored_segments: FxHashSet<String>,
+    allowed_segments: FxHashSet<String>,
 }
 
 impl WildcardImports {
-    pub fn new(warn_on_all: bool, ignored_wildcard_imports: FxHashSet<String>) -> Self {
+    pub fn new(warn_on_all: bool, allowed_wildcard_imports: FxHashSet<String>) -> Self {
         Self {
             warn_on_all,
             test_modules_deep: 0,
-            ignored_segments: ignored_wildcard_imports,
+            allowed_segments: allowed_wildcard_imports,
         }
     }
 }
@@ -193,7 +193,7 @@ impl WildcardImports {
         item.span.from_expansion()
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
-            || is_ignored_via_config(segments, &self.ignored_segments)
+            || is_allowed_via_config(segments, &self.allowed_segments)
     }
 }
 
@@ -211,9 +211,9 @@ fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
 }
 
 // Allow skipping imports containing user configured segments,
-// i.e. "...::utils::...::*" if user put `ignored-wildcard-imports = ["utils"]` in `Clippy.toml`
-fn is_ignored_via_config(segments: &[PathSegment<'_>], ignored_segments: &FxHashSet<String>) -> bool {
+// i.e. "...::utils::...::*" if user put `allowed-wildcard-imports = ["utils"]` in `Clippy.toml`
+fn is_allowed_via_config(segments: &[PathSegment<'_>], allowed_segments: &FxHashSet<String>) -> bool {
     // segment matching need to be exact instead of using 'contains', in case user unintentionaly put
     // a single character in the config thus skipping most of the warnings.
-    segments.iter().any(|seg| ignored_segments.contains(seg.ident.as_str()))
+    segments.iter().any(|seg| allowed_segments.contains(seg.ident.as_str()))
 }

@@ -524,6 +524,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ref allowed_dotfiles,
         ref allowed_idents_below_min_chars,
         ref allowed_scripts,
+        ref allowed_wildcard_imports,
         ref arithmetic_side_effects_allowed_binary,
         ref arithmetic_side_effects_allowed_unary,
         ref arithmetic_side_effects_allowed,
@@ -545,7 +546,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         excessive_nesting_threshold,
         future_size_threshold,
         ref ignore_interior_mutability,
-        ref ignored_wildcard_imports,
         large_error_threshold,
         literal_representation_threshold,
         matches_for_let_else,
@@ -880,7 +880,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(wildcard_imports::WildcardImports::new(
             warn_on_all_wildcard_imports,
-            ignored_wildcard_imports.clone(),
+            allowed_wildcard_imports.clone(),
         ))
     });
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());

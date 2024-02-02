@@ -573,20 +573,20 @@ define_Conf! {
     (allow_comparison_to_zero: bool = true),
     /// Lint: WILDCARD_IMPORTS.
     ///
-    /// List of path segments to ignore when checking wildcard imports.
+    /// List of path segments allowed to have wildcard imports.
     ///
     /// #### Example
     ///
     /// ```toml
-    /// ignored-wildcard-imports = [ "utils", "common" ]
+    /// allowed-wildcard-imports = [ "utils", "common" ]
     /// ```
     ///
     /// #### Noteworthy
     ///
     /// 1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
     /// 2. Paths with any segment that containing the word 'prelude'
-    /// are already ignored by default.
-    (ignored_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
+    /// are already allowed by default.
+    (allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
 }
 
 /// Search for the configuration file.

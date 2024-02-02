@@ -1,1 +1,1 @@
-ignored-wildcard-imports = ["utils"]
+allowed-wildcard-imports = ["utils"]
