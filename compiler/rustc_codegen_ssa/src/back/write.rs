@@ -1754,7 +1754,6 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
     InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
-    AbortIfErrors,
     Fatal(String),
 }
 
@@ -1802,7 +1801,6 @@ impl Translate for SharedEmitter {
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(diag.clone())));
-        drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
@@ -1828,6 +1826,7 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     sess.dcx().emit_diagnostic(diag);
+                    sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
@@ -1859,9 +1858,6 @@ impl SharedEmitterMain {
                     }
 
                     err.emit();
-                }
-                Ok(SharedEmitterMessage::AbortIfErrors) => {
-                    sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
                     sess.dcx().fatal(msg);
