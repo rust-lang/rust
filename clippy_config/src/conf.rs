@@ -571,6 +571,22 @@ define_Conf! {
     ///
     /// Don't lint when comparing the result of a modulo operation to zero.
     (allow_comparison_to_zero: bool = true),
+    /// Lint: WILDCARD_IMPORTS.
+    ///
+    /// List of path segments allowed to have wildcard imports.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// allowed-wildcard-imports = [ "utils", "common" ]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// 1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
+    /// 2. Paths with any segment that containing the word 'prelude'
+    /// are already allowed by default.
+    (allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
 }
 
 /// Search for the configuration file.

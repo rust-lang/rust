@@ -838,3 +838,25 @@ Don't lint when comparing the result of a modulo operation to zero.
 * [`modulo_arithmetic`](https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic)
 
 
+## `allowed-wildcard-imports`
+List of path segments allowed to have wildcard imports.
+
+#### Example
+
+```toml
+allowed-wildcard-imports = [ "utils", "common" ]
+```
+
+#### Noteworthy
+
+1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
+2. Paths with any segment that containing the word 'prelude'
+are already allowed by default.
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`wildcard_imports`](https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports)
+
+
