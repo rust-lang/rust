@@ -207,24 +207,25 @@ jobs:
         working-directory: ./editors/code
         if: needs.changes.outputs.typescript == 'true'
 
-  typos-check:
-    name: Typos Check
+  typo-check:
+    name: Typo Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       FORCE_COLOR: 1
+      TYPOS_VERSION: v1.18.0
     steps:
-      - uses: actions/checkout@v4
-      - run: curl -LsSf https://github.com/crate-ci/typos/releases/download/v1.17.2/typos-v1.17.2-x86_64-unknown-linux-musl.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: download typos
+        run: curl -LsSf https://github.com/crate-ci/typos/releases/download/$TYPOS_VERSION/typos-$TYPOS_VERSION-x86_64-unknown-linux-musl.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: do typos check with typos-cli
+      - name: check for typos
         run: typos
 
   end-success:
     name: bors build finished
     if: github.event.pusher.name == 'bors' && success()
     runs-on: ubuntu-latest
-    needs: [rust, rust-cross, typescript, typos-check]
+    needs: [rust, rust-cross, typescript, typo-check]
     steps:
       - name: Mark the job as successful
         run: exit 0
@@ -233,7 +234,7 @@ jobs:
     name: bors build finished
     if: github.event.pusher.name == 'bors' && !success()
     runs-on: ubuntu-latest
-    needs: [rust, rust-cross, typescript, typos-check]
+    needs: [rust, rust-cross, typescript, typo-check]
     steps:
       - name: Mark the job as a failure
         run: exit 1
