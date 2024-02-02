@@ -13,6 +13,7 @@
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(cell_update)]
+#![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_eval_select)]
 #![feature(const_swap_nonoverlapping)]

@@ -18,7 +18,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::char::{encode_utf8_raw, encode_utf16_raw};
+use core::char::{MAX_LEN_UTF8, MAX_LEN_UTF16, encode_utf8_raw, encode_utf16_raw};
 use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
@@ -240,7 +240,7 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let mut bytes = [0; 4];
+        let mut bytes = [0; MAX_LEN_UTF8];
         let bytes = encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
@@ -1001,7 +1001,7 @@ impl<'a> Iterator for EncodeWide<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0; 2];
+        let mut buf = [0; MAX_LEN_UTF16];
         self.code_points.next().map(|code_point| {
             let n = encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {

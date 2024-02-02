@@ -3,7 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
-use crate::char::EscapeDebugExtArgs;
+use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
 use crate::marker::PhantomData;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
@@ -187,7 +187,7 @@ pub trait Write {
     /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        self.write_str(c.encode_utf8(&mut [0; 4]))
+        self.write_str(c.encode_utf8(&mut [0; MAX_LEN_UTF8]))
     }
 
     /// Glue for usage of the [`write!`] macro with implementors of this trait.
@@ -2768,7 +2768,7 @@ impl Display for char {
         if f.options.width.is_none() && f.options.precision.is_none() {
             f.write_char(*self)
         } else {
-            f.pad(self.encode_utf8(&mut [0; 4]))
+            f.pad(self.encode_utf8(&mut [0; MAX_LEN_UTF8]))
         }
     }
 }

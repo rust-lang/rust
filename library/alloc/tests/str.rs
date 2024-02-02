@@ -2,6 +2,7 @@
 
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
+use std::char::MAX_LEN_UTF8;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::str::{from_utf8, from_utf8_unchecked};
 
@@ -1231,7 +1232,7 @@ fn test_to_uppercase_rev_iterator() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_chars_decoding() {
-    let mut bytes = [0; 4];
+    let mut bytes = [0; MAX_LEN_UTF8];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
         let s = c.encode_utf8(&mut bytes);
         if Some(c) != s.chars().next() {
@@ -1243,7 +1244,7 @@ fn test_chars_decoding() {
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_chars_rev_decoding() {
-    let mut bytes = [0; 4];
+    let mut bytes = [0; MAX_LEN_UTF8];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
         let s = c.encode_utf8(&mut bytes);
         if Some(c) != s.chars().rev().next() {
