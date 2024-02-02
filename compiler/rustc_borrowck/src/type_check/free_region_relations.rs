@@ -11,7 +11,7 @@ use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
-use rustc_trait_selection::solve::deeply_normalize_with_skipped_universes;
+use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
@@ -226,18 +226,16 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let mut constraints = vec![];
         let mut known_type_outlives_obligations = vec![];
         for bound in param_env.caller_bounds() {
-            let Some(outlives) = bound.as_type_outlives_clause() else { continue };
-            let ty::OutlivesPredicate(mut ty, region) = outlives.skip_binder();
+            let Some(mut outlives) = bound.as_type_outlives_clause() else { continue };
 
             // In the new solver, normalize the type-outlives obligation assumptions.
             if self.infcx.next_trait_solver() {
-                match deeply_normalize_with_skipped_universes(
+                match deeply_normalize(
                     self.infcx.at(&ObligationCause::misc(span, defining_ty_def_id), self.param_env),
-                    ty,
-                    vec![None; ty.outer_exclusive_binder().as_usize()],
+                    outlives,
                 ) {
-                    Ok(normalized_ty) => {
-                        ty = normalized_ty;
+                    Ok(normalized_outlives) => {
+                        outlives = normalized_outlives;
                     }
                     Err(e) => {
                         self.infcx.err_ctxt().report_fulfillment_errors(e);
@@ -245,8 +243,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 }
             }
 
-            known_type_outlives_obligations
-                .push(outlives.rebind(ty::OutlivesPredicate(ty, region)));
+            known_type_outlives_obligations.push(outlives);
         }
         let known_type_outlives_obligations =
             self.infcx.tcx.arena.alloc_slice(&known_type_outlives_obligations);

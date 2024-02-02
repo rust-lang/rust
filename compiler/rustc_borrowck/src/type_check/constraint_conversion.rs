@@ -5,13 +5,11 @@ use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelega
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::solve::deeply_normalize;
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 
@@ -146,7 +144,6 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         let ConstraintConversion {
             tcx,
             infcx,
-            param_env,
             region_bound_pairs,
             implicit_region_bound,
             known_type_outlives_obligations,
@@ -178,43 +175,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                         // Normalize the type we receive from a `TypeOutlives` obligation
                         // in the new trait solver.
                         if infcx.next_trait_solver() {
-                            let result = CustomTypeOp::new(
-                                |ocx| {
-                                    match deeply_normalize(
-                                        ocx.infcx.at(
-                                            &ObligationCause::dummy_with_span(self.span),
-                                            param_env,
-                                        ),
-                                        t1,
-                                    ) {
-                                        Ok(normalized_ty) => {
-                                            t1 = normalized_ty;
-                                        }
-                                        Err(e) => {
-                                            infcx.err_ctxt().report_fulfillment_errors(e);
-                                        }
-                                    }
-
-                                    Ok(())
-                                },
-                                "normalize type outlives obligation",
-                            )
-                            .fully_perform(infcx, self.span);
-
-                            match result {
-                                Ok(TypeOpOutput { output: (), constraints, .. }) => {
-                                    if let Some(constraints) = constraints {
-                                        assert!(
-                                            constraints.member_constraints.is_empty(),
-                                            "no member constraints expected from normalizing: {:#?}",
-                                            constraints.member_constraints
-                                        );
-                                        next_outlives_predicates
-                                            .extend(constraints.outlives.iter().copied());
-                                    }
-                                }
-                                Err(_) => {}
-                            }
+                            t1 = self.normalize_and_add_type_outlives_constraints(
+                                t1,
+                                &mut next_outlives_predicates,
+                            );
                         }
 
                         // we don't actually use this for anything, but
@@ -305,6 +269,42 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
         debug!("add_type_test(type_test={:?})", type_test);
         self.constraints.type_tests.push(type_test);
+    }
+
+    fn normalize_and_add_type_outlives_constraints(
+        &self,
+        ty: Ty<'tcx>,
+        next_outlives_predicates: &mut Vec<(
+            ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+            ConstraintCategory<'tcx>,
+        )>,
+    ) -> Ty<'tcx> {
+        let result = CustomTypeOp::new(
+            |ocx| {
+                deeply_normalize(
+                    ocx.infcx.at(&ObligationCause::dummy_with_span(self.span), self.param_env),
+                    ty,
+                )
+                .map_err(|_| NoSolution)
+            },
+            "normalize type outlives obligation",
+        )
+        .fully_perform(self.infcx, self.span);
+
+        match result {
+            Ok(TypeOpOutput { output: ty, constraints, .. }) => {
+                if let Some(constraints) = constraints {
+                    assert!(
+                        constraints.member_constraints.is_empty(),
+                        "no member constraints expected from normalizing: {:#?}",
+                        constraints.member_constraints
+                    );
+                    next_outlives_predicates.extend(constraints.outlives.iter().copied());
+                }
+                ty
+            }
+            Err(_) => ty,
+        }
     }
 }
 

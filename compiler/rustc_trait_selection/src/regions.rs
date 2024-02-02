@@ -1,5 +1,6 @@
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 
 pub trait InferCtxtRegionExt<'tcx> {
@@ -24,15 +25,14 @@ impl<'tcx> InferCtxtRegionExt<'tcx> for InferCtxt<'tcx> {
             let ty = self.resolve_vars_if_possible(ty);
 
             if self.next_trait_solver() {
-                crate::solve::deeply_normalize_with_skipped_universes(
+                crate::solve::deeply_normalize(
                     self.at(
                         &ObligationCause::dummy_with_span(origin.span()),
                         outlives_env.param_env,
                     ),
                     ty,
-                    vec![None; ty.outer_exclusive_binder().as_usize()],
                 )
-                .map_err(|_| ty)
+                .map_err(|_| NoSolution)
             } else {
                 Ok(ty)
             }
