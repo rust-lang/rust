@@ -2435,7 +2435,7 @@ mod error {
             self.buffered.push(t.into_diagnostic());
         }
 
-        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
+        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'_, ()>) {
             self.buffered.push(t.into_diagnostic());
         }
 
@@ -2449,8 +2449,8 @@ mod error {
             self.errors.buffer_error(t);
         }
 
-        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
-            self.errors.buffer_non_error_diag(t);
+        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'_, ()>) {
+            self.errors.buffer_non_error(t);
         }
 
         pub fn buffer_move_error(
