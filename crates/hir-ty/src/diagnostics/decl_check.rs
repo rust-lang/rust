@@ -20,7 +20,7 @@ use hir_def::{
     hir::{Pat, PatId},
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
-    StaticId, StructId, TraitId,
+    StaticId, StructId, TraitId, TypeAliasId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -84,6 +84,7 @@ pub enum IdentType {
     StaticVariable,
     Structure,
     Trait,
+    TypeAlias,
     Variable,
     Variant,
 }
@@ -100,6 +101,7 @@ impl fmt::Display for IdentType {
             IdentType::StaticVariable => "Static variable",
             IdentType::Structure => "Structure",
             IdentType::Trait => "Trait",
+            IdentType::TypeAlias => "Type alias",
             IdentType::Variable => "Variable",
             IdentType::Variant => "Variant",
         };
@@ -143,6 +145,7 @@ impl<'a> DeclValidator<'a> {
             ModuleDefId::AdtId(adt) => self.validate_adt(adt),
             ModuleDefId::ConstId(const_id) => self.validate_const(const_id),
             ModuleDefId::StaticId(static_id) => self.validate_static(static_id),
+            ModuleDefId::TypeAliasId(type_alias_id) => self.validate_type_alias(type_alias_id),
             _ => (),
         }
     }
@@ -843,6 +846,54 @@ impl<'a> DeclValidator<'a> {
         };
 
         self.sink.push(diagnostic);
+    }
+
+    fn validate_type_alias(&mut self, type_alias_id: TypeAliasId) {
+        let container = type_alias_id.lookup(self.db.upcast()).container;
+        if self.is_trait_impl_container(container) {
+            cov_mark::hit!(trait_impl_assoc_type_incorrect_case_ignored);
+            return;
+        }
+
+        // Check whether non-snake case identifiers are allowed for this type alias.
+        if self.allowed(type_alias_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
+            return;
+        }
+
+        // Check the type alias name.
+        let data = self.db.type_alias_data(type_alias_id);
+        let type_alias_name = data.name.display(self.db.upcast()).to_string();
+        let type_alias_name_replacement =
+            to_camel_case(&type_alias_name).map(|new_name| Replacement {
+                current_name: data.name.clone(),
+                suggested_text: new_name,
+                expected_case: CaseType::UpperCamelCase,
+            });
+
+        if let Some(replacement) = type_alias_name_replacement {
+            let type_alias_loc = type_alias_id.lookup(self.db.upcast());
+            let type_alias_src = type_alias_loc.source(self.db.upcast());
+
+            let Some(ast_ptr) = type_alias_src.value.name() else {
+                never!(
+                    "Replacement ({:?}) was generated for a type alias without a name: {:?}",
+                    replacement,
+                    type_alias_src
+                );
+                return;
+            };
+
+            let diagnostic = IncorrectCase {
+                file: type_alias_src.file_id,
+                ident_type: IdentType::TypeAlias,
+                ident: AstPtr::new(&ast_ptr),
+                expected_case: replacement.expected_case,
+                ident_text: type_alias_name,
+                suggested_text: replacement.suggested_text,
+            };
+
+            self.sink.push(diagnostic);
+        }
     }
 
     fn is_trait_impl_container(&self, container_id: ItemContainerId) -> bool {

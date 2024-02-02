@@ -565,13 +565,7 @@ impl Module {
                     }
 
                     for item in t.items(db) {
-                        let def: DefWithBody = match item {
-                            AssocItem::Function(it) => it.into(),
-                            AssocItem::Const(it) => it.into(),
-                            AssocItem::TypeAlias(_) => continue,
-                        };
-
-                        def.diagnostics(db, acc);
+                        item.diagnostics(db, acc);
                     }
 
                     acc.extend(def.diagnostics(db))
@@ -741,13 +735,7 @@ impl Module {
             }
 
             for &item in &db.impl_data(impl_def.id).items {
-                let def: DefWithBody = match AssocItem::from(item) {
-                    AssocItem::Function(it) => it.into(),
-                    AssocItem::Const(it) => it.into(),
-                    AssocItem::TypeAlias(_) => continue,
-                };
-
-                def.diagnostics(db, acc);
+                AssocItem::from(item).diagnostics(db, acc);
             }
         }
     }
@@ -2660,6 +2648,22 @@ impl AssocItem {
         match self {
             Self::TypeAlias(v) => Some(v),
             _ => None,
+        }
+    }
+
+    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
+        match self {
+            AssocItem::Function(func) => {
+                DefWithBody::from(func).diagnostics(db, acc);
+            }
+            AssocItem::Const(const_) => {
+                DefWithBody::from(const_).diagnostics(db, acc);
+            }
+            AssocItem::TypeAlias(type_alias) => {
+                for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {
+                    acc.push(diag.into());
+                }
+            }
         }
     }
 }
