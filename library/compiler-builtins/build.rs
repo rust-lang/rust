@@ -347,29 +347,12 @@ mod c {
             ]);
         }
 
-        if target_env == "msvc" {
-            if target_arch == "x86_64" {
-                sources.extend(&[("__floatdixf", "x86_64/floatdixf.c")]);
-            }
-        } else {
-            // None of these seem to be used on x86_64 windows, and they've all
-            // got the wrong ABI anyway, so we want to avoid them.
-            if target_os != "windows" {
-                if target_arch == "x86_64" {
-                    sources.extend(&[
-                        ("__floatdixf", "x86_64/floatdixf.c"),
-                        ("__floatundixf", "x86_64/floatundixf.S"),
-                    ]);
-                }
-            }
-
+        if target_env != "msvc" {
             if target_arch == "x86" {
                 sources.extend(&[
                     ("__ashldi3", "i386/ashldi3.S"),
                     ("__ashrdi3", "i386/ashrdi3.S"),
                     ("__divdi3", "i386/divdi3.S"),
-                    ("__floatdixf", "i386/floatdixf.S"),
-                    ("__floatundixf", "i386/floatundixf.S"),
                     ("__lshrdi3", "i386/lshrdi3.S"),
                     ("__moddi3", "i386/moddi3.S"),
                     ("__muldi3", "i386/muldi3.S"),
