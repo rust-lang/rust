@@ -10,17 +10,64 @@ use rustc_span::{sym, Span};
 
 use super::UNNECESSARY_FALLIBLE_CONVERSIONS;
 
+#[derive(Copy, Clone)]
+enum SpansKind {
+    TraitFn { trait_span: Span, fn_span: Span },
+    Fn { fn_span: Span },
+}
+
 /// What function is being called and whether that call is written as a method call or a function
 /// call
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[expect(clippy::enum_variant_names)]
 enum FunctionKind {
     /// `T::try_from(U)`
-    TryFromFunction(Option<Vec<Span>>),
+    TryFromFunction(Option<SpansKind>),
     /// `t.try_into()`
     TryIntoMethod,
     /// `U::try_into(t)`
-    TryIntoFunction(Option<Vec<Span>>),
+    TryIntoFunction(Option<SpansKind>),
+}
+
+impl FunctionKind {
+    fn applicability(&self, parent_unwrap_call: &Option<Span>) -> Applicability {
+        if parent_unwrap_call.is_none() {
+            return Applicability::Unspecified;
+        }
+        match &self {
+            FunctionKind::TryFromFunction(None) | FunctionKind::TryIntoFunction(None) => Applicability::Unspecified,
+            _ => Applicability::MachineApplicable,
+        }
+    }
+
+    fn default_sugg(&self, primary_span: Span) -> Vec<(Span, String)> {
+        match *self {
+            FunctionKind::TryFromFunction(_) => vec![(primary_span, String::from("From::from"))],
+            FunctionKind::TryIntoFunction(_) => vec![(primary_span, String::from("Into::into"))],
+            FunctionKind::TryIntoMethod => vec![(primary_span, String::from("into"))],
+        }
+    }
+
+    fn machine_applicable_sugg(&self, primary_span: Span, unwrap_span: Span) -> Vec<(Span, String)> {
+        let mut sugg = match *self {
+            FunctionKind::TryFromFunction(Some(spans)) => match spans {
+                SpansKind::TraitFn { trait_span, fn_span } => {
+                    vec![(trait_span, String::from("From")), (fn_span, String::from("from"))]
+                },
+                SpansKind::Fn { fn_span } => vec![(fn_span, String::from("from"))],
+            },
+            FunctionKind::TryIntoFunction(Some(spans)) => match spans {
+                SpansKind::TraitFn { trait_span, fn_span } => {
+                    vec![(trait_span, String::from("Into")), (fn_span, String::from("into"))]
+                },
+                SpansKind::Fn { fn_span } => vec![(fn_span, String::from("into"))],
+            },
+            FunctionKind::TryIntoMethod => vec![(primary_span, String::from("into"))],
+            _ => unreachable!(),
+        };
+        sugg.push((unwrap_span, String::new()));
+        sugg
+    }
 }
 
 fn check<'tcx>(
@@ -69,47 +116,17 @@ fn check<'tcx>(
             primary_span
         };
 
-        let (source_ty, target_ty, sugg, applicability) = match (kind, parent_unwrap_call) {
-            (FunctionKind::TryIntoMethod, Some(unwrap_span)) => {
-                let sugg = vec![(primary_span, String::from("into")), (unwrap_span, String::new())];
-                (self_ty, other_ty, sugg, Applicability::MachineApplicable)
-            },
-            (FunctionKind::TryFromFunction(Some(spans)), Some(unwrap_span)) => {
-                let sugg = match spans.len() {
-                    1 => vec![(spans[0], String::from("from")), (unwrap_span, String::new())],
-                    2 => vec![
-                        (spans[0], String::from("From")),
-                        (spans[1], String::from("from")),
-                        (unwrap_span, String::new()),
-                    ],
-                    _ => unreachable!(),
-                };
-                (other_ty, self_ty, sugg, Applicability::MachineApplicable)
-            },
-            (FunctionKind::TryIntoFunction(Some(spans)), Some(unwrap_span)) => {
-                let sugg = match spans.len() {
-                    1 => vec![(spans[0], String::from("into")), (unwrap_span, String::new())],
-                    2 => vec![
-                        (spans[0], String::from("Into")),
-                        (spans[1], String::from("into")),
-                        (unwrap_span, String::new()),
-                    ],
-                    _ => unreachable!(),
-                };
-                (self_ty, other_ty, sugg, Applicability::MachineApplicable)
-            },
-            (FunctionKind::TryFromFunction(_), _) => {
-                let sugg = vec![(primary_span, String::from("From::from"))];
-                (other_ty, self_ty, sugg, Applicability::Unspecified)
-            },
-            (FunctionKind::TryIntoFunction(_), _) => {
-                let sugg = vec![(primary_span, String::from("Into::into"))];
-                (self_ty, other_ty, sugg, Applicability::Unspecified)
-            },
-            (FunctionKind::TryIntoMethod, _) => {
-                let sugg = vec![(primary_span, String::from("into"))];
-                (self_ty, other_ty, sugg, Applicability::Unspecified)
-            },
+        let (source_ty, target_ty) = match kind {
+            FunctionKind::TryIntoMethod | FunctionKind::TryIntoFunction(_) => (self_ty, other_ty),
+            FunctionKind::TryFromFunction(_) => (other_ty, self_ty),
+        };
+
+        let applicability = kind.applicability(&parent_unwrap_call);
+
+        let sugg = if applicability == Applicability::MachineApplicable {
+            kind.machine_applicable_sugg(primary_span, parent_unwrap_call.unwrap())
+        } else {
+            kind.default_sugg(primary_span)
         };
 
         span_lint_and_then(
@@ -151,10 +168,18 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Exp
     {
         let qpath_spans = match qpath {
             QPath::Resolved(_, path) => {
-                let segments = path.segments.iter().map(|seg| seg.ident).collect::<Vec<_>>();
-                (segments.len() == 2).then(|| vec![segments[0].span, segments[1].span])
+                if let [trait_seg, fn_seg] = path.segments {
+                    Some(SpansKind::TraitFn {
+                        trait_span: trait_seg.ident.span,
+                        fn_span: fn_seg.ident.span,
+                    })
+                } else {
+                    None
+                }
             },
-            QPath::TypeRelative(_, seg) => Some(vec![seg.ident.span]),
+            QPath::TypeRelative(_, seg) => Some(SpansKind::Fn {
+                fn_span: seg.ident.span,
+            }),
             QPath::LangItem(_, _) => unreachable!("`TryFrom` and `TryInto` are not lang items"),
         };
 
