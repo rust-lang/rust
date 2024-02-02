@@ -21,7 +21,7 @@ RUN dpkg --add-architecture i386 && \
 
 COPY scripts/android-sdk.sh /scripts/
 COPY scripts/android-sdk-manager.py /scripts/
-COPY host-x86_64/arm-android/android-sdk.lock /android/sdk/android-sdk.lock
+COPY host-x86_64/aarch64-android/android-sdk.lock /android/sdk/android-sdk.lock
 RUN /scripts/android-sdk.sh
 
 ENV PATH=$PATH:/android/sdk/emulator

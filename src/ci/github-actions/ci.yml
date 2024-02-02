@@ -381,7 +381,7 @@ jobs:
           - name: aarch64-gnu
             <<: *job-aarch64-linux
 
-          - name: arm-android
+          - name: aarch64-android
             <<: *job-linux-8c
 
           - name: armhf-gnu
