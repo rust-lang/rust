@@ -1,5 +1,3 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};//, StableOrd};
-use crate::HashStableContext;
 use crate::expand::typetree::TypeTree;
 use thin_vec::ThinVec;
 use std::str::FromStr;
@@ -7,7 +5,7 @@ use std::str::FromStr;
 use crate::NestedMetaItem;
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum DiffMode {
     Inactive,
     Source,
@@ -16,43 +14,15 @@ pub enum DiffMode {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum DiffActivity {
     None,
     Active,
     Const,
+    Dual,
+    DualNoNeed,
     Duplicated,
     DuplicatedNoNeed,
-}
-fn clause_diffactivity_discriminant(value: &DiffActivity) -> usize {
-    match value {
-        DiffActivity::None => 0,
-        DiffActivity::Active => 1,
-        DiffActivity::Const => 2,
-        DiffActivity::Duplicated => 3,
-        DiffActivity::DuplicatedNoNeed => 4,
-    }
-}
-fn clause_diffmode_discriminant(value: &DiffMode) -> usize {
-    match value {
-        DiffMode::Inactive => 0,
-        DiffMode::Source => 1,
-        DiffMode::Forward => 2,
-        DiffMode::Reverse => 3,
-    }
-}
-
-
-impl<CTX: HashStableContext> HashStable<CTX> for DiffMode {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        clause_diffmode_discriminant(self).hash_stable(hcx, hasher);
-    }
-}
-
-impl<CTX: HashStableContext> HashStable<CTX> for DiffActivity {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        clause_diffactivity_discriminant(self).hash_stable(hcx, hasher);
-    }
 }
 
 impl FromStr for DiffMode {
@@ -74,6 +44,8 @@ impl FromStr for DiffActivity {
             "None" => Ok(DiffActivity::None),
             "Active" => Ok(DiffActivity::Active),
             "Const" => Ok(DiffActivity::Const),
+            "Dual" => Ok(DiffActivity::Dual),
+            "DualNoNeed" => Ok(DiffActivity::DualNoNeed),
             "Duplicated" => Ok(DiffActivity::Duplicated),
             "DuplicatedNoNeed" => Ok(DiffActivity::DuplicatedNoNeed),
             _ => Err(()),

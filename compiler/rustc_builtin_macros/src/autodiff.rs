@@ -240,7 +240,7 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span
         //dbg!(&arg);
         d_inputs.push(arg.clone());
         match activity {
-            DiffActivity::Duplicated => {
+            DiffActivity::Duplicated | DiffActivity::Dual => {
                 let mut shadow_arg = arg.clone();
                 shadow_arg.ty = P(assure_mut_ref(&arg.ty));
                 // adjust name depending on mode

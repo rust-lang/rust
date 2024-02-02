@@ -2689,6 +2689,8 @@ fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
         DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
         DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
         DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Dual => CDIFFE_TYPE::DFT_DUP_ARG,
+        DiffActivity::DualNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
         DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
         DiffActivity::DuplicatedNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
     };
