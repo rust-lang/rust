@@ -28,7 +28,7 @@ ENV PATH=$PATH:/android/sdk/emulator
 ENV PATH=$PATH:/android/sdk/tools
 ENV PATH=$PATH:/android/sdk/platform-tools
 
-ENV TARGETS=arm-linux-androideabi
+ENV TARGETS=arm-linux-androideabi,aarch64-linux-android
 
 ENV RUST_CONFIGURE_ARGS --android-ndk=/android/ndk/
 
