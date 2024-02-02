@@ -38,6 +38,7 @@
     issue = "27721"
 )]
 
+use crate::char::MAX_LEN_UTF8;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
@@ -548,7 +549,7 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
-        let mut utf8_encoded = [0; 4];
+        let mut utf8_encoded = [0; MAX_LEN_UTF8];
         let utf8_size = self
             .encode_utf8(&mut utf8_encoded)
             .len()

@@ -10,6 +10,7 @@ use crate::str;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys::handle::Handle;
+use core::char::MAX_LEN_UTF8;
 use core::str::utf8_char_width;
 
 #[cfg(test)]
@@ -417,7 +418,7 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 
 impl IncompleteUtf8 {
     pub const fn new() -> IncompleteUtf8 {
-        IncompleteUtf8 { bytes: [0; 4], len: 0 }
+        IncompleteUtf8 { bytes: [0; MAX_LEN_UTF8], len: 0 }
     }
 }
 
