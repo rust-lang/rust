@@ -87,7 +87,7 @@ use self::Ordering::*;
 /// *not* do `impl PartialEq<LocalType> for ForeignType`.
 ///
 /// This avoids the problem of transitive chains that criss-cross crate boundaries: for all local
-/// types `T`, you may assue that no other crate will add `impl`s that allow comparing `T == U`. In
+/// types `T`, you may assume that no other crate will add `impl`s that allow comparing `T == U`. In
 /// other words, if other crates add `impl`s that allow building longer transitive chains `U1 == ...
 /// == T == V1 == ...`, then all the types that appear to the right of `T` must be types that the
 /// crate defining `T` already knows about. This rules out transitive chains where downstream crates
@@ -967,7 +967,7 @@ pub macro Ord($item:item) {
 /// *not* do `impl PartialOrd<LocalType> for ForeignType`.
 ///
 /// This avoids the problem of transitive chains that criss-cross crate boundaries: for all local
-/// types `T`, you may assue that no other crate will add `impl`s that allow comparing `T < U`. In
+/// types `T`, you may assume that no other crate will add `impl`s that allow comparing `T < U`. In
 /// other words, if other crates add `impl`s that allow building longer transitive chains `U1 < ...
 /// < T < V1 < ...`, then all the types that appear to the right of `T` must be types that the crate
 /// defining `T` already knows about. This rules out transitive chains where downstream crates can
