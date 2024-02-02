@@ -379,14 +379,14 @@ fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
     let mut error_message = "";
     match mode {
         Mode::CStr => {
-            rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+            rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
             });
         }
         Mode::ByteStr | Mode::Str => {
-            rustc_lexer::unescape::unescape_literal(text, mode, &mut |_, res| {
+            rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
