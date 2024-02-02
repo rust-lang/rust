@@ -1799,8 +1799,8 @@ impl Translate for SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        drop(self.sender.send(SharedEmitterMessage::Diagnostic(diag.clone())));
+    fn emit_diagnostic(&mut self, diag: rustc_errors::Diagnostic) {
+        drop(self.sender.send(SharedEmitterMessage::Diagnostic(diag)));
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {

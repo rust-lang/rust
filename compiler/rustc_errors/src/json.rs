@@ -176,7 +176,7 @@ impl Translate for JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
@@ -201,7 +201,7 @@ impl Emitter for JsonEmitter {
                 }
                 FutureBreakageItem {
                     diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
-                        &diag, self,
+                        diag, self,
                     )),
                 }
             })
@@ -340,7 +340,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(diag: crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message =
@@ -382,6 +382,28 @@ impl Diagnostic {
                 Ok(())
             }
         }
+
+        let translated_message = je.translate_messages(&diag.messages, &args);
+
+        let code = if let Some(code) = diag.code {
+            Some(DiagnosticCode {
+                code: code.to_string(),
+                explanation: je.registry.as_ref().unwrap().try_find_description(code).ok(),
+            })
+        } else if let Some(IsLint { name, .. }) = &diag.is_lint {
+            Some(DiagnosticCode { code: name.to_string(), explanation: None })
+        } else {
+            None
+        };
+        let level = diag.level.to_str();
+        let spans = DiagnosticSpan::from_multispan(&diag.span, &args, je);
+        let children = diag
+            .children
+            .iter()
+            .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
+            .chain(sugg)
+            .collect();
+
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
@@ -398,30 +420,12 @@ impl Diagnostic {
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
-        let translated_message = je.translate_messages(&diag.messages, &args);
-
-        let code = if let Some(code) = diag.code {
-            Some(DiagnosticCode {
-                code: code.to_string(),
-                explanation: je.registry.as_ref().unwrap().try_find_description(code).ok(),
-            })
-        } else if let Some(IsLint { name, .. }) = &diag.is_lint {
-            Some(DiagnosticCode { code: name.to_string(), explanation: None })
-        } else {
-            None
-        };
-
         Diagnostic {
             message: translated_message.to_string(),
             code,
-            level: diag.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&diag.span, &args, je),
-            children: diag
-                .children
-                .iter()
-                .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
-                .chain(sugg)
-                .collect(),
+            level,
+            spans,
+            children,
             rendered: Some(output),
         }
     }
