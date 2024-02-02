@@ -173,7 +173,7 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut errors = error::BorrowckErrors::new();
+    let mut diags = diags::BorrowckDiags::new();
 
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
@@ -243,7 +243,7 @@ fn do_mir_borrowck<'tcx>(
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
-        &mut errors,
+        &mut diags,
     );
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
@@ -304,11 +304,11 @@ fn do_mir_borrowck<'tcx>(
             next_region_name: RefCell::new(1),
             polonius_output: None,
             move_errors: Vec::new(),
-            errors,
+            diags,
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
-        errors = promoted_mbcx.errors;
+        diags = promoted_mbcx.diags;
 
         struct MoveVisitor<'a, 'cx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'cx, 'tcx>,
@@ -345,7 +345,7 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         move_errors: Vec::new(),
-        errors,
+        diags,
     };
 
     // Compute and report region errors, if any.
@@ -573,7 +573,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Rc<PoloniusOutput>>,
 
-    errors: error::BorrowckErrors<'tcx>,
+    diags: diags::BorrowckDiags<'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -2382,7 +2382,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 }
 
-mod error {
+mod diags {
     use rustc_errors::ErrorGuaranteed;
 
     use super::*;
@@ -2401,7 +2401,7 @@ mod error {
         }
     }
 
-    pub struct BorrowckErrors<'tcx> {
+    pub struct BorrowckDiags<'tcx> {
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
         /// There are situations where many errors can be reported for a single move out (see
@@ -2425,9 +2425,9 @@ mod error {
         buffered_diags: Vec<BufferedDiag<'tcx>>,
     }
 
-    impl<'tcx> BorrowckErrors<'tcx> {
+    impl<'tcx> BorrowckDiags<'tcx> {
         pub fn new() -> Self {
-            BorrowckErrors {
+            BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
                 buffered_mut_errors: Default::default(),
                 buffered_diags: Default::default(),
@@ -2445,11 +2445,11 @@ mod error {
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'tcx>) {
-            self.errors.buffer_error(t);
+            self.diags.buffer_error(t);
         }
 
         pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'tcx, ()>) {
-            self.errors.buffer_non_error(t);
+            self.diags.buffer_non_error(t);
         }
 
         pub fn buffer_move_error(
@@ -2458,7 +2458,7 @@ mod error {
             place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
         ) -> bool {
             if let Some((_, diag)) =
-                self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
+                self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
             {
                 // Cancel the old diagnostic so we don't ICE
                 diag.cancel();
@@ -2472,31 +2472,31 @@ mod error {
             &mut self,
             span: Span,
         ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
-            self.errors.buffered_mut_errors.remove(&span)
+            self.diags.buffered_mut_errors.remove(&span)
         }
 
         pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
-            self.errors.buffered_mut_errors.insert(span, (t, count));
+            self.diags.buffered_mut_errors.insert(span, (t, count));
         }
 
         pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
             let mut res = None;
 
             // Buffer any move errors that we collected and de-duplicated.
-            for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
+            for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                self.errors.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
             }
-            for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
+            for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                self.errors.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
             }
 
-            if !self.errors.buffered_diags.is_empty() {
-                self.errors.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-                for buffered_diag in self.errors.buffered_diags.drain(..) {
+            if !self.diags.buffered_diags.is_empty() {
+                self.diags.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
+                for buffered_diag in self.diags.buffered_diags.drain(..) {
                     match buffered_diag {
                         BufferedDiag::Error(diag) => res = Some(diag.emit()),
                         BufferedDiag::NonError(diag) => diag.emit(),
@@ -2508,14 +2508,14 @@ mod error {
         }
 
         pub(crate) fn has_buffered_diags(&self) -> bool {
-            self.errors.buffered_diags.is_empty()
+            self.diags.buffered_diags.is_empty()
         }
 
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
         ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)> {
-            self.errors.buffered_move_errors.get(move_out_indices)
+            self.diags.buffered_move_errors.get(move_out_indices)
         }
     }
 }
