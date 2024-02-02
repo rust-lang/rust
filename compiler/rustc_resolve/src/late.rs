@@ -646,7 +646,24 @@ struct DiagMetadata<'ast> {
 }
 
 #[derive(Debug)]
-struct ResolvedNestedElisionTarget {
+enum ResolvedElisionTarget {
+    /// Elision in `&u8` -> `&'_ u8`
+    TopLevel(NodeId),
+    /// Elision in `Foo` -> `Foo<'_>`
+    Nested(NestedResolvedElisionTarget),
+}
+
+impl ResolvedElisionTarget {
+    fn node_id(&self) -> NodeId {
+        match *self {
+            Self::TopLevel(n) => n,
+            Self::Nested(NestedResolvedElisionTarget { segment_id, .. }) => segment_id,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct NestedResolvedElisionTarget {
     segment_id: NodeId,
     elided_lifetime_span: Span,
     diagnostic: lint::BuiltinLintDiag,
@@ -694,7 +711,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
 
     /// Track which types participated in lifetime elision
-    resolved_lifetime_elisions: Vec<ResolvedNestedElisionTarget>,
+    resolved_lifetime_elisions: Vec<ResolvedElisionTarget>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1742,6 +1759,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             LifetimeElisionCandidate::Ignore,
         );
         self.resolve_anonymous_lifetime(&lt, true);
+
+        self.resolved_lifetime_elisions.push(ResolvedElisionTarget::TopLevel(anchor_id));
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1953,16 +1972,18 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if should_lint {
-                self.resolved_lifetime_elisions.push(ResolvedNestedElisionTarget {
-                    segment_id,
-                    elided_lifetime_span,
-                    diagnostic: lint::BuiltinLintDiag::ElidedLifetimesInPaths(
-                        expected_lifetimes,
-                        path_span,
-                        !segment.has_generic_args,
+                self.resolved_lifetime_elisions.push(ResolvedElisionTarget::Nested(
+                    NestedResolvedElisionTarget {
+                        segment_id,
                         elided_lifetime_span,
-                    ),
-                });
+                        diagnostic: lint::BuiltinLintDiag::ElidedLifetimesInPaths(
+                            expected_lifetimes,
+                            path_span,
+                            !segment.has_generic_args,
+                            elided_lifetime_span,
+                        ),
+                    },
+                ));
             }
         }
     }
@@ -2024,22 +2045,80 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
         let elision_failures =
             replace(&mut self.diag_metadata.current_elision_failures, outer_failures);
-        if !elision_failures.is_empty() {
-            let Err(failure_info) = elision_lifetime else { bug!() };
-            self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
-        }
+
+        let elision_lifetime = match (elision_failures.is_empty(), elision_lifetime) {
+            (true, Ok(lifetime)) => Some(lifetime),
+
+            (true, Err(_)) => None,
+
+            (false, Ok(_)) => bug!(),
+
+            (false, Err(failure_info)) => {
+                self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
+                None
+            }
+        };
+
+        // We've recorded all elisions that occurred in the params and
+        // outputs, categorized by top-level or nested.
+        //
+        // Our primary lint case is when an output lifetime is tied to
+        // an input lifetime. In that case, we want to warn about any
+        // nested hidden lifetimes in those params or outputs.
+        //
+        // The secondary case is for nested elisions that are not part
+        // of the tied lifetime relationship.
 
         let output_resolved_lifetime_elisions =
             replace(&mut self.resolved_lifetime_elisions, outer_resolved_lifetime_elisions);
 
-        let resolved_lifetime_elisions =
-            param_resolved_lifetime_elisions.into_iter().chain(output_resolved_lifetime_elisions);
+        match (output_resolved_lifetime_elisions.is_empty(), elision_lifetime) {
+            (true, _) | (_, None) => {
+                // Treat all parameters as untied
+                self.report_elided_lifetimes_in_paths(
+                    param_resolved_lifetime_elisions,
+                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS_UNTIED,
+                );
+            }
+            (false, Some(elision_lifetime)) => {
+                let (primary, secondary): (Vec<_>, Vec<_>) =
+                    param_resolved_lifetime_elisions.into_iter().partition(|re| {
+                        // Recover the `NodeId` of an elided lifetime
+                        let lvl1 = &self.r.lifetimes_res_map[&re.node_id()];
+                        let lvl2 = match lvl1 {
+                            LifetimeRes::ElidedAnchor { start, .. } => {
+                                &self.r.lifetimes_res_map[&start]
+                            }
+                            o => o,
+                        };
 
-        for re in resolved_lifetime_elisions {
-            let ResolvedNestedElisionTarget { segment_id, elided_lifetime_span, diagnostic } = re;
+                        lvl2 == &elision_lifetime
+                    });
+
+                self.report_elided_lifetimes_in_paths(
+                    primary.into_iter().chain(output_resolved_lifetime_elisions),
+                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS_TIED,
+                );
+                self.report_elided_lifetimes_in_paths(
+                    secondary,
+                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS_UNTIED,
+                );
+            }
+        }
+    }
+
+    fn report_elided_lifetimes_in_paths(
+        &mut self,
+        resolved_elisions: impl IntoIterator<Item = ResolvedElisionTarget>,
+        lint: &'static lint::Lint,
+    ) {
+        for re in resolved_elisions {
+            let ResolvedElisionTarget::Nested(d) = re else { continue };
+
+            let NestedResolvedElisionTarget { segment_id, elided_lifetime_span, diagnostic } = d;
 
             self.r.lint_buffer.buffer_lint_with_diagnostic(
-                lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+                lint,
                 segment_id,
                 elided_lifetime_span,
                 "hidden lifetime parameters in types are deprecated",

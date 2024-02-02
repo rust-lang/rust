@@ -4,7 +4,8 @@ warning: hidden lifetime parameters in types are deprecated
 LL | fn foo(x: &Foo) {}
    |            ^^^ expected lifetime parameter
    |
-   = note: requested on the command line with `--force-warn elided-lifetimes-in-paths`
+   = note: `--force-warn elided-lifetimes-in-paths-untied` implied by `--force-warn elided-lifetimes-in-paths`
+   = help: to override `--force-warn elided-lifetimes-in-paths` add `#[allow(elided_lifetimes_in_paths_untied)]`
 help: indicate the anonymous lifetime
    |
 LL | fn foo(x: &Foo<'_>) {}
