@@ -595,7 +595,7 @@ dependencies = [
  "profile",
  "project-model",
  "ra-ap-rustc_abi",
- "ra-ap-rustc_index 0.33.0",
+ "ra-ap-rustc_index 0.35.0",
  "ra-ap-rustc_pattern_analysis",
  "rustc-hash",
  "scoped-tls",
@@ -1426,12 +1426,12 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.33.0"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ce9100fc66c6c60aeeb076868ead9c2eaa65d6a5a90404f08c242327a92ff4b"
+checksum = "3c0baa423a2c2bfd6e4bd40e7215f7ddebd12a649ce0b65078a38b91068895aa"
 dependencies = [
  "bitflags 2.4.1",
- "ra-ap-rustc_index 0.33.0",
+ "ra-ap-rustc_index 0.35.0",
  "tracing",
 ]
 
