@@ -40,7 +40,7 @@ const fn bar() {
 
 #[lang = "Try"]
 #[const_trait]
-trait Try: FromResidual {
+trait Try: FromResidual<Self::Residual> {
     type Output;
     type Residual;
 
@@ -53,7 +53,7 @@ trait Try: FromResidual {
 
 // FIXME
 // #[const_trait]
-trait FromResidual<R = <Self as Try>::Residual> {
+trait FromResidual<R = <Self as /* FIXME: ~const */ Try>::Residual> {
     #[lang = "from_residual"]
     fn from_residual(residual: R) -> Self;
 }
@@ -507,9 +507,6 @@ trait Clone: Sized {
 #[lang = "structural_peq"]
 trait StructuralPartialEq {}
 
-#[lang = "structural_teq"]
-trait StructuralEq {}
-
 const fn drop<T: ~const Destruct>(_: T) {}
 
 extern "rust-intrinsic" {
@@ -519,9 +516,14 @@ extern "rust-intrinsic" {
         called_in_const: F,
         called_at_rt: G,
     ) -> RET
-    /* where clauses enforced by built-in method confirmation:
     where
-        F: const FnOnce<Arg, Output = RET>,
-        G: FnOnce<Arg, Output = RET>,
-     */;
+        F: const FnOnce<ARG, Output = RET>,
+        G: FnOnce<ARG, Output = RET>;
+}
+
+fn test_const_eval_select() {
+    const fn const_fn() {}
+    fn rt_fn() {}
+
+    unsafe { const_eval_select((), const_fn, rt_fn); }
 }

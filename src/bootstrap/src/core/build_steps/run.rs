@@ -148,9 +148,8 @@ impl Step for Miri {
         let target = self.target;
         let compiler = builder.compiler(stage, host);
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let miri =
+            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler, &miri, target);
 
         // # Run miri.

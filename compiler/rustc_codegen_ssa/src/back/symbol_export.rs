@@ -3,7 +3,7 @@ use crate::base::allocator_kind_for_codegen;
 use std::collections::hash_map::Entry::*;
 
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -54,8 +54,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
     // export level, however, as they're just implementation details.
     // Down below we'll hardwire all of the symbols to the `Rust` export
     // level instead.
-    let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
-    let special_runtime_crate = tcx.is_panic_runtime(LOCAL_CRATE) || is_compiler_builtins;
+    let special_runtime_crate =
+        tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(())
@@ -105,14 +105,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             }
         })
         .map(|def_id| {
-            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             // We won't link right if this symbol is stripped during LTO.
             let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
-            // We have to preserve the symbols of the built-in functions during LTO.
-            let is_builtin_fn = is_compiler_builtins
-                && symbol_export_level(tcx, def_id.to_def_id())
-                    .is_below_threshold(SymbolExportLevel::C)
-                && codegen_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
             let used = name == "rust_eh_personality";
 
             let export_level = if special_runtime_crate {
@@ -120,6 +114,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
             };
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
                 tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
@@ -139,7 +134,6 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
                     || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
                     || used,
-                used_compiler: is_builtin_fn,
             };
             (def_id.to_def_id(), info)
         })
@@ -152,7 +146,6 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: false,
-                used_compiler: false,
             },
         );
     }
@@ -201,7 +194,6 @@ fn exported_symbols_provider_local(
                         level: info.level,
                         kind: SymbolExportKind::Text,
                         used: info.used,
-                        used_compiler: false,
                     },
                 )
             })
@@ -218,7 +210,6 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Text,
                 used: false,
-                used_compiler: false,
             },
         ));
     }
@@ -238,7 +229,6 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::Rust,
                     kind: SymbolExportKind::Text,
                     used: false,
-                    used_compiler: false,
                 },
             ));
         }
@@ -251,7 +241,6 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::Rust,
                 kind: SymbolExportKind::Data,
                 used: false,
-                used_compiler: false,
             },
         ))
     }
@@ -271,7 +260,6 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
-                    used_compiler: false,
                 },
             )
         }));
@@ -297,7 +285,6 @@ fn exported_symbols_provider_local(
                     level: SymbolExportLevel::C,
                     kind: SymbolExportKind::Data,
                     used: false,
-                    used_compiler: false,
                 },
             )
         }));
@@ -315,7 +302,6 @@ fn exported_symbols_provider_local(
                 level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
                 used: true,
-                used_compiler: false,
             },
         ));
     }
@@ -333,6 +319,8 @@ fn exported_symbols_provider_local(
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
+        // The symbols created in this loop are sorted below it
+        #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
@@ -356,7 +344,6 @@ fn exported_symbols_provider_local(
                                 level: SymbolExportLevel::Rust,
                                 kind: SymbolExportKind::Text,
                                 used: false,
-                                used_compiler: false,
                             },
                         ));
                     }
@@ -373,7 +360,6 @@ fn exported_symbols_provider_local(
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
                             used: false,
-                            used_compiler: false,
                         },
                     ));
                 }
@@ -393,10 +379,10 @@ fn exported_symbols_provider_local(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<FxHashMap<GenericArgsRef<'_>, CrateNum>> {
+) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
-    let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
+    let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
     let drop_in_place_fn_def_id = tcx.lang_items().drop_in_place_fn();
 
@@ -445,7 +431,7 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&FxHashMap<GenericArgsRef<'_>, CrateNum>> {
+) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
@@ -656,7 +642,7 @@ fn maybe_emutls_symbol_name<'tcx>(
     }
 }
 
-fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
+fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<String> {
     // Build up a map from DefId to a `NativeLib` structure, where
     // `NativeLib` internally contains information about
     // `#[link(wasm_import_module = "...")]` for example.
@@ -665,9 +651,9 @@ fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, S
     let def_id_to_native_lib = native_libs
         .iter()
         .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
-        .collect::<FxHashMap<_, _>>();
+        .collect::<DefIdMap<_>>();
 
-    let mut ret = FxHashMap::default();
+    let mut ret = DefIdMap::default();
     for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
         let module = def_id_to_native_lib.get(def_id).and_then(|s| s.wasm_import_module());
         let Some(module) = module else { continue };

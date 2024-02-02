@@ -26,16 +26,7 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        Abi::ScalarPair(..) => {
-            return cx.type_struct(
-                &[
-                    layout.scalar_pair_element_llvm_type(cx, 0, false),
-                    layout.scalar_pair_element_llvm_type(cx, 1, false),
-                ],
-                false,
-            );
-        }
-        Abi::Uninhabited | Abi::Aggregate { .. } => {}
+        Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalarPair(..) => {}
     }
 
     let name = match layout.ty.kind() {
@@ -54,7 +45,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                     write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
-            if let (&ty::Coroutine(_, _, _), &Variants::Single { index }) =
+            if let (&ty::Coroutine(_, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::CoroutineArgs::variant_name(index)).unwrap();
@@ -275,11 +266,25 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let Abi::Scalar(scalar) = self.abi {
-            if scalar.is_bool() {
-                return cx.type_i1();
+        match self.abi {
+            Abi::Scalar(scalar) => {
+                if scalar.is_bool() {
+                    return cx.type_i1();
+                }
             }
-        }
+            Abi::ScalarPair(..) => {
+                // An immediate pair always contains just the two elements, without any padding
+                // filler, as it should never be stored to memory.
+                return cx.type_struct(
+                    &[
+                        self.scalar_pair_element_llvm_type(cx, 0, true),
+                        self.scalar_pair_element_llvm_type(cx, 1, true),
+                    ],
+                    false,
+                );
+            }
+            _ => {}
+        };
         self.llvm_type(cx)
     }
 

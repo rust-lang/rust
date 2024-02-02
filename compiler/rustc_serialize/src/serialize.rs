@@ -70,14 +70,6 @@ pub trait Encoder {
     }
 
     fn emit_raw_bytes(&mut self, s: &[u8]);
-
-    fn emit_enum_variant<F>(&mut self, v_id: usize, f: F)
-    where
-        F: FnOnce(&mut Self),
-    {
-        self.emit_usize(v_id);
-        f(self);
-    }
 }
 
 // Note: all the methods in this trait are infallible, which may be surprising.
@@ -131,10 +123,6 @@ pub trait Decoder {
     }
 
     fn read_raw_bytes(&mut self, len: usize) -> &[u8];
-
-    // Although there is an `emit_enum_variant` method in `Encoder`, the code
-    // patterns in decoding are different enough to encoding that there is no
-    // need for a corresponding `read_enum_variant` method here.
 
     fn peek_byte(&self) -> u8;
     fn position(&self) -> usize;
@@ -372,15 +360,18 @@ impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) {
         match *self {
-            None => s.emit_enum_variant(0, |_| {}),
-            Some(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+            None => s.emit_u8(0),
+            Some(ref v) => {
+                s.emit_u8(1);
+                v.encode(s);
+            }
         }
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &mut D) -> Option<T> {
-        match d.read_usize() {
+        match d.read_u8() {
             0 => None,
             1 => Some(Decodable::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Option`."),
@@ -391,15 +382,21 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
     fn encode(&self, s: &mut S) {
         match *self {
-            Ok(ref v) => s.emit_enum_variant(0, |s| v.encode(s)),
-            Err(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+            Ok(ref v) => {
+                s.emit_u8(0);
+                v.encode(s);
+            }
+            Err(ref v) => {
+                s.emit_u8(1);
+                v.encode(s);
+            }
         }
     }
 }
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
-        match d.read_usize() {
+        match d.read_u8() {
             0 => Ok(T1::decode(d)),
             1 => Err(T2::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Result`."),

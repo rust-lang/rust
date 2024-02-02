@@ -13,7 +13,9 @@ use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
-use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
+use crate::traits::{
+    self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine, TraitEngineExt,
+};
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -23,8 +25,8 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxt, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::{select, DefiningAnchor};
@@ -38,7 +40,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtx
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -276,9 +278,10 @@ pub struct InferCtxt<'tcx> {
 
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
+    pub reported_trait_errors:
+        RefCell<FxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
 
-    pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
+    pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
     /// errors that are due to this original failure. Normally, we
@@ -334,6 +337,8 @@ pub struct InferCtxt<'tcx> {
     pub intercrate: bool,
 
     next_trait_solver: bool,
+
+    pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 }
 
 impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
@@ -702,12 +707,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
-            reported_closure_mismatch: Default::default(),
+            reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.dcx().err_count(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
+            obligation_inspector: Cell::new(None),
         }
     }
 }
@@ -1086,7 +1092,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } })
+            .new_key(ConstVariableValue::Unknown { origin, universe })
             .vid;
         ty::Const::new_var(self.tcx, vid, ty)
     }
@@ -1095,10 +1101,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVarValue {
-                origin,
-                val: ConstVariableValue::Unknown { universe: self.universe() },
-            })
+            .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
             .vid
     }
 
@@ -1217,10 +1220,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .inner
                     .borrow_mut()
                     .const_unification_table()
-                    .new_key(ConstVarValue {
-                        origin,
-                        val: ConstVariableValue::Unknown { universe: self.universe() },
-                    })
+                    .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
                     .vid;
                 ty::Const::new_var(
                     self.tcx,
@@ -1410,9 +1410,9 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn probe_const_var(&self, vid: ty::ConstVid) -> Result<ty::Const<'tcx>, ty::UniverseIndex> {
-        match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
             ConstVariableValue::Known { value } => Ok(value),
-            ConstVariableValue::Unknown { universe } => Err(universe),
+            ConstVariableValue::Unknown { origin: _, universe } => Err(universe),
         }
     }
 
@@ -1434,10 +1434,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     bug!("`{value:?}` is not fully resolved");
                 }
                 if value.has_infer_regions() {
-                    let guar = self
-                        .tcx
-                        .dcx()
-                        .span_delayed_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
+                    let guar =
+                        self.tcx.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))
@@ -1711,7 +1709,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match self.inner.borrow_mut().const_unification_table().probe_value(v).val {
+                match self.inner.borrow_mut().const_unification_table().probe_value(v) {
                     ConstVariableValue::Unknown { .. } => false,
                     ConstVariableValue::Known { .. } => true,
                 }
@@ -1725,6 +1723,15 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.probe_effect_var(v).is_some()
             }
         }
+    }
+
+    /// Attach a callback to be invoked on each root obligation evaluated in the new trait solver.
+    pub fn attach_obligation_inspector(&self, inspector: ObligationInspector<'tcx>) {
+        debug_assert!(
+            self.obligation_inspector.get().is_none(),
+            "shouldn't override a set obligation inspector"
+        );
+        self.obligation_inspector.set(Some(inspector));
     }
 }
 
@@ -1878,7 +1885,6 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
                 .borrow_mut()
                 .const_unification_table()
                 .probe_value(vid)
-                .val
                 .known()
                 .unwrap_or(ct),
             ty::ConstKind::Infer(InferConst::EffectVar(vid)) => self

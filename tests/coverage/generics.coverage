@@ -1,11 +1,11 @@
    LL|       |#![allow(unused_assignments)]
    LL|       |// failure-status: 1
    LL|       |
-   LL|       |struct Firework<T> where T: Copy + std::fmt::Display {
+   LL|       |struct Firework<T: Copy + std::fmt::Display> {
    LL|       |    strength: T,
    LL|       |}
    LL|       |
-   LL|       |impl<T> Firework<T> where T: Copy + std::fmt::Display {
+   LL|       |impl<T: Copy + std::fmt::Display> Firework<T> {
    LL|       |    #[inline(always)]
    LL|      3|    fn set_strength(&mut self, new_strength: T) {
    LL|      3|        self.strength = new_strength;
@@ -23,7 +23,7 @@
   ------------------
    LL|       |}
    LL|       |
-   LL|       |impl<T> Drop for Firework<T> where T: Copy + std::fmt::Display {
+   LL|       |impl<T: Copy + std::fmt::Display> Drop for Firework<T> {
    LL|       |    #[inline(always)]
    LL|      2|    fn drop(&mut self) {
    LL|      2|        println!("BOOM times {}!!!", self.strength);

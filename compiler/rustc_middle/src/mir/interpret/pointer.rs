@@ -277,6 +277,12 @@ impl From<AllocId> for Pointer {
         Pointer::new(alloc_id.into(), Size::ZERO)
     }
 }
+impl From<CtfeProvenance> for Pointer {
+    #[inline(always)]
+    fn from(prov: CtfeProvenance) -> Self {
+        Pointer::new(prov, Size::ZERO)
+    }
+}
 
 impl<Prov> From<Pointer<Prov>> for Pointer<Option<Prov>> {
     #[inline(always)]

@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.76.0"]
     pub UNINHABITED_REFERENCES,
-    suspicious,
+    nursery,
     "reference to uninhabited type"
 }
 
@@ -57,11 +57,11 @@ impl LateLintPass<'_> for UninhabitedReferences {
         }
     }
 
-    fn check_fn(
+    fn check_fn<'tcx>(
         &mut self,
-        cx: &LateContext<'_>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'_>,
-        fndecl: &'_ FnDecl<'_>,
+        fndecl: &'_ FnDecl<'tcx>,
         _: &'_ Body<'_>,
         span: Span,
         _: LocalDefId,

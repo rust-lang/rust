@@ -6,11 +6,12 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
+use crate::regions::InferCtxtRegionExt;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::solve::{deeply_normalize_for_diagnostics, inspect};
 use crate::traits::engine::TraitEngineExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
+use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
@@ -31,7 +32,6 @@ use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
-use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -197,7 +197,7 @@ fn overlap<'tcx>(
         .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
         .build();
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::with_treat_inductive_cycle_as_ambig(&infcx);
     if track_ambiguity_causes.is_yes() {
         selcx.enable_tracking_intercrate_ambiguity_causes();
     }
@@ -224,61 +224,10 @@ fn overlap<'tcx>(
     );
 
     if overlap_mode.use_implicit_negative() {
-        for mode in [TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
-            if let Some(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
-                impl_intersection_has_impossible_obligation(selcx, &obligations)
-            }) {
-                if matches!(mode, TreatInductiveCycleAs::Recur) {
-                    let first_local_impl = impl1_header
-                        .impl_def_id
-                        .as_local()
-                        .or(impl2_header.impl_def_id.as_local())
-                        .expect("expected one of the impls to be local");
-                    infcx.tcx.struct_span_lint_hir(
-                        COINDUCTIVE_OVERLAP_IN_COHERENCE,
-                        infcx.tcx.local_def_id_to_hir_id(first_local_impl),
-                        infcx.tcx.def_span(first_local_impl),
-                        format!(
-                            "implementations {} will conflict in the future",
-                            match impl1_header.trait_ref {
-                                Some(trait_ref) => {
-                                    let trait_ref = infcx.resolve_vars_if_possible(trait_ref);
-                                    format!(
-                                        "of `{}` for `{}`",
-                                        trait_ref.print_trait_sugared(),
-                                        trait_ref.self_ty()
-                                    )
-                                }
-                                None => format!(
-                                    "for `{}`",
-                                    infcx.resolve_vars_if_possible(impl1_header.self_ty)
-                                ),
-                            },
-                        ),
-                        |lint| {
-                            lint.note(
-                                "impls that are not considered to overlap may be considered to \
-                                overlap in the future",
-                            )
-                            .span_label(
-                                infcx.tcx.def_span(impl1_header.impl_def_id),
-                                "the first impl is here",
-                            )
-                            .span_label(
-                                infcx.tcx.def_span(impl2_header.impl_def_id),
-                                "the second impl is here",
-                            );
-                            lint.note(format!(
-                                "`{}` may be considered to hold in future releases, \
-                                    causing the impls to overlap",
-                                infcx.resolve_vars_if_possible(failing_obligation.predicate)
-                            ));
-                        },
-                    );
-                }
-
-                return None;
-            }
+        if let Some(_failing_obligation) =
+            impl_intersection_has_impossible_obligation(selcx, &obligations)
+        {
+            return None;
         }
     }
 

@@ -4,7 +4,7 @@ use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    AdtId, AssocItemId, EnumVariantId, GenericDefId, ItemContainerId, Lookup,
+    AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
 use stdx::never;
@@ -34,7 +34,7 @@ impl InferenceContext<'_> {
 
         self.add_required_obligations_for_value_path(generic_def, &substs);
 
-        let ty = self.db.value_ty(value_def).substitute(Interner, &substs);
+        let ty = self.db.value_ty(value_def)?.substitute(Interner, &substs);
         let ty = self.normalize_associated_types_in(ty);
         Some(ty)
     }
@@ -98,7 +98,7 @@ impl InferenceContext<'_> {
         let Some(generic_def) = value_def.to_generic_def_id() else {
             // `value_def` is the kind of item that can never be generic (i.e. statics, at least
             // currently). We can just skip the binders to get its type.
-            let (ty, binders) = self.db.value_ty(value_def).into_value_and_skipped_binders();
+            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
             stdx::always!(
                 parent_substs.is_none() && binders.is_empty(Interner),
                 "non-empty binders for non-generic def",
@@ -340,6 +340,9 @@ impl InferenceContext<'_> {
             },
         );
         let res = res.or(not_visible);
+        if res.is_none() {
+            self.push_diagnostic(InferenceDiagnostic::UnresolvedAssocItem { id });
+        }
         let (item, visible) = res?;
 
         let (def, container) = match item {
@@ -386,14 +389,13 @@ impl InferenceContext<'_> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        let ty = self.resolve_ty_shallow(&ty);
+        let ty = self.resolve_ty_shallow(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,
         };
         let enum_data = self.db.enum_data(enum_id);
-        let local_id = enum_data.variant(name)?;
-        let variant = EnumVariantId { parent: enum_id, local_id };
+        let variant = enum_data.variant(name)?;
         self.write_variant_resolution(id, variant.into());
         Some((ValueNs::EnumVariantId(variant), subst.clone()))
     }

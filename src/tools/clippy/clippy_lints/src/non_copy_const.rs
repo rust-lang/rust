@@ -15,7 +15,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
-use rustc_middle::query::Key;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -188,7 +187,7 @@ impl NonCopyConst {
     }
 
     fn is_ty_ignored(&self, ty: Ty<'_>) -> bool {
-        matches!(ty.ty_adt_id(), Some(adt_id) if self.ignore_mut_def_ids.contains(&adt_id))
+        matches!(ty.ty_adt_def(), Some(adt) if self.ignore_mut_def_ids.contains(&adt.did()))
     }
 
     fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {

@@ -73,8 +73,6 @@ mod nested_local {
 
 mod function_def {
     fn ret_f64() -> f64 {
-        // Even though the output type is specified,
-        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
         1.
     }
 

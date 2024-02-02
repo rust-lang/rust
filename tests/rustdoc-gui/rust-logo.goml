@@ -11,12 +11,6 @@ define-function: (
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".rust-logo", {"filter": |filter|})
-        // Going to the source code page.
-        go-to: "file://" + |DOC_PATH| + "/src/staged_api/lib.rs.html"
-        // Changing theme (since it's local files, the local storage works by folder).
-        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
-        reload:
-        assert-css: (".rust-logo", {"filter": |filter|})
         // Now we check that the non-rust logos don't have a CSS filter set.
         go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
         // Changing theme on the new page (again...).
@@ -28,10 +22,6 @@ define-function: (
         assert-css: (".sidebar .logo-container img", {"filter": "none"})
         // Now we check that this page has no logo at all
         go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-        assert-false: ".rust-logo"
-        assert-false: ".logo-container"
-        assert-false: ".sub-logo-container"
-        go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
         assert-false: ".rust-logo"
         assert-false: ".logo-container"
         assert-false: ".sub-logo-container"

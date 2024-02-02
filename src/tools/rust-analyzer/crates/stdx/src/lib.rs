@@ -6,13 +6,13 @@ use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
 
+pub mod anymap;
 mod macros;
-pub mod process;
-pub mod panic_context;
 pub mod non_empty_vec;
+pub mod panic_context;
+pub mod process;
 pub mod rand;
 pub mod thread;
-pub mod anymap;
 
 pub use always_assert::{always, never};
 pub use itertools;
@@ -56,6 +56,17 @@ impl<T, U> TupleExt for (T, U) {
     }
     fn tail(self) -> Self::Tail {
         self.1
+    }
+}
+
+impl<T, U, V> TupleExt for (T, U, V) {
+    type Head = T;
+    type Tail = V;
+    fn head(self) -> Self::Head {
+        self.0
+    }
+    fn tail(self) -> Self::Tail {
+        self.2
     }
 }
 
@@ -158,6 +169,10 @@ pub fn to_camel_case(ident: &str) -> String {
 // Taken from rustc.
 pub fn char_has_case(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()
+}
+
+pub fn is_upper_snake_case(s: &str) -> bool {
+    s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {

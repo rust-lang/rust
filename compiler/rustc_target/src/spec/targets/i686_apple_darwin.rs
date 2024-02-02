@@ -18,7 +18,7 @@ pub fn target() -> Target {
         llvm_target: macos_llvm_target(Arch::I686).into(),
         pointer_width: 32,
         data_layout: "e-m:o-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
-            f64:32:64-f80:128-n8:16:32-S128"
+            i128:128-f64:32:64-f80:128-n8:16:32-S128"
             .into(),
         arch: arch.target_arch(),
         options: TargetOptions { mcount: "\u{1}mcount".into(), ..base },

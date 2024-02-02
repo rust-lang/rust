@@ -29,7 +29,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(round_char_boundary)]
-#![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]

@@ -313,7 +313,7 @@ sub_impl! { f16 f128 }
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot multiply `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} * {Rhs}`"
 )]
@@ -450,7 +450,7 @@ mul_impl! { f16 f128 }
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot divide `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} / {Rhs}`"
 )]
@@ -555,7 +555,7 @@ div_impl_float! { f16 f128 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot calculate the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} % {Rhs}`"
 )]
@@ -747,7 +747,7 @@ neg_impl! { f16 f128 }
 /// ```
 #[lang = "add_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot add-assign `{Rhs}` to `{Self}`",
     label = "no implementation for `{Self} += {Rhs}`"
 )]
@@ -817,7 +817,7 @@ add_assign_impl! { f16 f128 }
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot subtract-assign `{Rhs}` from `{Self}`",
     label = "no implementation for `{Self} -= {Rhs}`"
 )]
@@ -878,7 +878,7 @@ sub_assign_impl! { f16 f128 }
 /// ```
 #[lang = "mul_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot multiply-assign `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} *= {Rhs}`"
 )]
@@ -939,7 +939,7 @@ mul_assign_impl! { f16 f128 }
 /// ```
 #[lang = "div_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot divide-assign `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} /= {Rhs}`"
 )]
@@ -1003,7 +1003,7 @@ div_assign_impl! { f16 f128 }
 /// ```
 #[lang = "rem_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot calculate and assign the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} %= {Rhs}`"
 )]

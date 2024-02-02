@@ -4,7 +4,7 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, print::TraitPredPrintModifiersAndPath, Ty, TypeFoldable,
 };
-use rustc_span::Span;
+use rustc_span::{symbol::kw, Span};
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
@@ -96,6 +96,17 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 continue;
             }
 
+            // HACK: `async fn() -> Self` in traits is "ok"...
+            // This is not really that great, but it's similar to why the `-> Self`
+            // return type is well-formed in traits even when `Self` isn't sized.
+            if let ty::Param(param_ty) = *proj_term.kind()
+                && param_ty.name == kw::SelfUpper
+                && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(_))
+                && opaque.in_trait
+            {
+                continue;
+            }
+
             let proj_ty =
                 Ty::new_projection(cx.tcx, proj.projection_ty.def_id, proj.projection_ty.args);
             // For every instance of the projection type in the bounds,
@@ -145,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         }),
                         _ => None,
                     };
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         OPAQUE_HIDDEN_INFERRED_BOUND,
                         pred_span,
                         OpaqueHiddenInferredBoundLint {

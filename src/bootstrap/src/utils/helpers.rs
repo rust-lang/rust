@@ -21,7 +21,6 @@ use crate::LldMode;
 pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
-#[path = "../tests/helpers.rs"]
 mod tests;
 
 /// A helper macro to `unwrap` a result except also print out details like:
@@ -551,4 +550,23 @@ where
     T: AsRef<[u8]>,
 {
     input.as_ref().iter().map(|x| format!("{:02x}", x)).collect()
+}
+
+/// Create a `--check-cfg` argument invocation for a given name
+/// and it's values.
+pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
+    // Creating a string of the values by concatenating each value:
+    // ',values("tvos","watchos")' or '' (nothing) when there are no values.
+    let next = match values {
+        Some(values) => {
+            let mut tmp =
+                values.iter().map(|val| [",", "\"", val, "\""]).flatten().collect::<String>();
+
+            tmp.insert_str(1, "values(");
+            tmp.push_str(")");
+            tmp
+        }
+        None => "".to_string(),
+    };
+    format!("--check-cfg=cfg({name}{next})")
 }

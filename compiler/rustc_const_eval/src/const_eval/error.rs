@@ -34,7 +34,7 @@ impl MachineStopType for ConstEvalErrKind {
     }
     fn add_args(
         self: Box<Self>,
-        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue<'static>),
+        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue),
     ) {
         use ConstEvalErrKind::*;
         match *self {
@@ -175,7 +175,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint,
         // We use the root frame for this so the crate that defines the const defines whether the
         // lint is emitted.

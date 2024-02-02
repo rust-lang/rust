@@ -191,7 +191,14 @@ error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:33:10
    |
 LL | type H = Fn(u8) -> (u8)::Output;
-   |          ^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn Fn(u8) -> u8 + 'static) as IntoFuture>::Output`
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL | type H = <(dyn Fn(u8) -> u8 + 'static) as AsyncFnOnce>::Output;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | type H = <(dyn Fn(u8) -> u8 + 'static) as IntoFuture>::Output;
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:39:19
@@ -299,7 +306,7 @@ LL | union O<F, T> where F: Fn() -> T {
    |          +++                   ~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
-  --> $DIR/bad-assoc-ty.rs:76:29
+  --> $DIR/bad-assoc-ty.rs:77:29
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
@@ -310,7 +317,7 @@ LL | trait P<F, T> where F: Fn() -> T {
    |          +++                   ~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:81:38
+  --> $DIR/bad-assoc-ty.rs:82:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
    |                                      ^ not allowed in type signatures
@@ -320,7 +327,19 @@ help: use type parameters instead
 LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
    |             +++                         ~
 
-error: aborting due to 28 previous errors; 1 warning emitted
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/bad-assoc-ty.rs:73:5
+   |
+LL |     foo: F,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     foo: std::mem::ManuallyDrop<F>,
+   |          +++++++++++++++++++++++ +
 
-Some errors have detailed explanations: E0121, E0223.
+error: aborting due to 29 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0121, E0223, E0740.
 For more information about an error, try `rustc --explain E0121`.

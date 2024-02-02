@@ -134,6 +134,7 @@ pub fn eq_struct_rest(l: &StructRest, r: &StructRest) -> bool {
     }
 }
 
+#[allow(clippy::too_many_lines)] // Just a big match statement
 pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     use ExprKind::*;
     if !over(&l.attrs, &r.attrs, eq_attr) {

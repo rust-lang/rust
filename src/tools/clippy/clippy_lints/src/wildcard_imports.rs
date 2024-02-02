@@ -142,7 +142,7 @@ impl LateLintPass<'_> for WildcardImports {
             } else {
                 // In this case, the `use_path.span` ends right before the `::*`, so we need to
                 // extend it up to the `*`. Since it is hard to find the `*` in weird
-                // formattings like `use _ ::  *;`, we extend it up to, but not including the
+                // formatting like `use _ ::  *;`, we extend it up to, but not including the
                 // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
                 // can just use the end of the item span
                 let mut span = use_path.span.with_hi(item.span.hi());

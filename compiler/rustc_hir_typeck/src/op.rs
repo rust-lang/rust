@@ -1,10 +1,11 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{has_expected_num_generic_args, FnCtxt};
+use super::FnCtxt;
 use crate::Expectation;
 use rustc_ast as ast;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_data_structures::packed::Pu128;
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -43,7 +44,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", op.span, |err| {
+        self.check_lhs_assignable(lhs, E0067, op.span, |err| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
                 if self
                     .lookup_op_method(
@@ -306,7 +307,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
                 let (mut err, output_def_id) = match is_assign {
                     IsAssign::Yes => {
-                        let mut err = struct_span_err!(
+                        let mut err = struct_span_code_err!(
                             self.dcx(),
                             expr.span,
                             E0368,
@@ -318,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_expr.span,
                             format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
                         );
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        self.note_unmet_impls_on_type(&mut err, errors, false);
                         (err, None)
                     }
                     IsAssign::No => {
@@ -370,12 +371,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                                 .cloned()
                         });
-                        let mut err = struct_span_err!(self.dcx(), op.span, E0369, "{message}");
+                        let mut err =
+                            struct_span_code_err!(self.dcx(), op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
                             err.span_label(lhs_expr.span, lhs_ty.to_string());
                             err.span_label(rhs_expr.span, rhs_ty.to_string());
                         }
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
+                        self.note_unmet_impls_on_type(&mut err, errors, suggest_derive);
                         (err, output_def_id)
                     }
                 };
@@ -384,7 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::ExprKind::Assign(..) = expr.kind
                 {
                     // We defer to the later error produced by `check_lhs_assignable`.
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
 
                 let suggest_deref_binop =
@@ -787,7 +790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
-                    let mut err = struct_span_err!(
+                    let mut err = struct_span_code_err!(
                         self.dcx(),
                         ex.span,
                         E0600,
@@ -832,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     hir::Expr {
                                         kind:
                                             hir::ExprKind::Lit(Spanned {
-                                                node: ast::LitKind::Int(1, _),
+                                                node: ast::LitKind::Int(Pu128(1), _),
                                                 ..
                                             }),
                                         ..
@@ -852,7 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
                             Ref(_, lty, _) if *lty.kind() == Str => {}
                             _ => {
-                                self.note_unmet_impls_on_type(&mut err, errors);
+                                self.note_unmet_impls_on_type(&mut err, errors, true);
                             }
                         }
                     }
@@ -883,25 +886,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
             lhs_ty, op, opname, trait_did
         );
-
-        // Catches cases like #83893, where a lang item is declared with the
-        // wrong number of generic arguments. Should have yielded an error
-        // elsewhere by now, but we have to catch it here so that we do not
-        // index `other_tys` out of bounds (if the lang item has too many
-        // generic arguments, `other_tys` is too short).
-        if !has_expected_num_generic_args(
-            self.tcx,
-            trait_did,
-            match op {
-                // Binary ops have a generic right-hand side, unary ops don't
-                Op::Binary(..) => 1,
-                Op::Unary(..) => 0,
-            },
-        ) {
-            self.dcx()
-                .span_delayed_bug(span, "operator didn't have the right number of generic args");
-            return Err(vec![]);
-        }
 
         let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();

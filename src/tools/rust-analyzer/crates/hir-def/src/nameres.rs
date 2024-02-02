@@ -48,19 +48,22 @@
 //! the result
 
 pub mod attr_resolution;
-pub mod proc_macro;
-pub mod diagnostics;
 mod collector;
+pub mod diagnostics;
 mod mod_resolution;
 mod path_resolution;
+pub mod proc_macro;
 
 #[cfg(test)]
 mod tests;
 
 use std::{cmp::Ord, ops::Deref};
 
-use base_db::{CrateId, Edition, FileId, ProcMacroKind};
-use hir_expand::{ast_id_map::FileAstId, name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
+use base_db::{CrateId, Edition, FileId};
+use hir_expand::{
+    ast_id_map::FileAstId, name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId,
+    MacroDefId,
+};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -76,9 +79,9 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    visibility::Visibility,
-    AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, LocalModuleId, Lookup,
-    MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    visibility::{Visibility, VisibilityExplicity},
+    AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
+    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -97,7 +100,7 @@ pub struct DefMap {
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
-    modules: Arena<ModuleData>,
+    pub modules: Arena<ModuleData>,
     krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
@@ -110,6 +113,7 @@ pub struct DefMap {
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     /// ExternCrateId being None implies it being imported from the general prelude import.
     macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
+    pub(crate) enum_definitions: FxHashMap<EnumId, Box<[EnumVariantId]>>,
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
@@ -329,7 +333,10 @@ impl DefMap {
         // NB: we use `None` as block here, which would be wrong for implicit
         // modules declared by blocks with items. At the moment, we don't use
         // this visibility for anything outside IDE, so that's probably OK.
-        let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
+        let visibility = Visibility::Module(
+            ModuleId { krate, local_id, block: None },
+            VisibilityExplicity::Implicit,
+        );
         let module_data = ModuleData::new(
             ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },
             visibility,
@@ -364,6 +371,7 @@ impl DefMap {
             macro_use_prelude: FxHashMap::default(),
             derive_helpers_in_scope: FxHashMap::default(),
             diagnostics: Vec::new(),
+            enum_definitions: FxHashMap::default(),
             data: Arc::new(DefMapCrateData {
                 extern_prelude: FxHashMap::default(),
                 exported_derives: FxHashMap::default(),
@@ -606,12 +614,14 @@ impl DefMap {
             krate: _,
             prelude: _,
             data: _,
+            enum_definitions,
         } = self;
 
         macro_use_prelude.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
         derive_helpers_in_scope.shrink_to_fit();
+        enum_definitions.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();
@@ -623,8 +633,9 @@ impl DefMap {
         self.diagnostics.as_slice()
     }
 
-    pub fn recursion_limit(&self) -> Option<u32> {
-        self.data.recursion_limit
+    pub fn recursion_limit(&self) -> u32 {
+        // 128 is the default in rustc
+        self.data.recursion_limit.unwrap_or(128)
     }
 }
 

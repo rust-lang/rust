@@ -521,7 +521,7 @@ impl GlobalState {
 
                         if self.config.run_build_scripts() && workspaces_updated {
                             self.fetch_build_data_queue
-                                .request_op(format!("workspace updated"), ());
+                                .request_op("workspace updated".to_string(), ());
                         }
 
                         (Progress::End, None)
@@ -571,35 +571,51 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
-            vfs::loader::Message::Loaded { files } => {
+            vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
-                    if !self.mem_docs.contains(&path) {
+                    // if the file is in mem docs, it's managed by the client via notifications
+                    // so only set it if its not in there
+                    if !self.mem_docs.contains(&path)
+                        && (is_changed || vfs.file_id(&path).is_none())
+                    {
                         vfs.set_file_contents(path, contents);
                     }
                 }
             }
-            vfs::loader::Message::Progress { n_total, n_done, config_version } => {
+            vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
                 always!(config_version <= self.vfs_config_version);
+
+                let state = match n_done {
+                    None => Progress::Begin,
+                    Some(done) if done == n_total => Progress::End,
+                    Some(_) => Progress::Report,
+                };
+                let n_done = n_done.unwrap_or_default();
 
                 self.vfs_progress_config_version = config_version;
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
-                let state = if n_done == 0 {
-                    Progress::Begin
-                } else if n_done < n_total {
-                    Progress::Report
-                } else {
-                    assert_eq!(n_done, n_total);
-                    Progress::End
-                };
+                let mut message = format!("{n_done}/{n_total}");
+                if let Some(dir) = dir {
+                    message += &format!(
+                        ": {}",
+                        match dir.strip_prefix(self.config.root_path()) {
+                            Some(relative_path) => relative_path.as_ref(),
+                            None => dir.as_ref(),
+                        }
+                        .display()
+                    );
+                }
+
                 self.report_progress(
                     "Roots Scanned",
                     state,
-                    Some(format!("{n_done}/{n_total}")),
+                    Some(message),
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 );

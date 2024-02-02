@@ -8,5 +8,4 @@ struct Baz<'foo, 'bar> {
     //~^ ERROR ambiguous lifetime bound, explicit lifetime bound required
 }
 
-fn main() {
-}
+fn main() {}

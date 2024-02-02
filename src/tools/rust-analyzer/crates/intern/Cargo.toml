@@ -16,5 +16,8 @@ doctest = false
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap.workspace = true
 hashbrown.workspace = true
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 triomphe.workspace = true
+
+[lints]
+workspace = true

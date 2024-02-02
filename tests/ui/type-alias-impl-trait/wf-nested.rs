@@ -43,7 +43,9 @@ mod pass_sound {
 
     fn test<T>() {
         let outer = define::<T>();
-        let _ = outer.get(); //[pass_sound]~ ERROR `T` may not live long enough
+        let _ = outer.get();
+        //[pass_sound]~^ ERROR `T` may not live long enough
+        //[pass_sound]~| ERROR `T` may not live long enough
     }
 }
 

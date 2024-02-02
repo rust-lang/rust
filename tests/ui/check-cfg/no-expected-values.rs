@@ -6,7 +6,7 @@
 // compile-flags: --check-cfg=cfg(values,simple,mixed,empty)
 // [simple]compile-flags: --check-cfg=cfg(test) --check-cfg=cfg(feature)
 // [mixed]compile-flags: --check-cfg=cfg(test,feature)
-// [empty]compile-flags: --check-cfg=cfg(test,feature,values())
+// [empty]compile-flags: --check-cfg=cfg(test,feature,values(none()))
 
 #[cfg(feature = "foo")]
 //~^ WARNING unexpected `cfg` condition value

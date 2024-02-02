@@ -101,6 +101,7 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     struct EventFilter: u16 {
         const GENERIC_ACTIVITIES  = 1 << 0;
         const QUERY_PROVIDERS     = 1 << 1;
@@ -114,14 +115,14 @@ bitflags::bitflags! {
         const INCR_RESULT_HASHING = 1 << 8;
         const ARTIFACT_SIZES = 1 << 9;
 
-        const DEFAULT = Self::GENERIC_ACTIVITIES.bits |
-                        Self::QUERY_PROVIDERS.bits |
-                        Self::QUERY_BLOCKED.bits |
-                        Self::INCR_CACHE_LOADS.bits |
-                        Self::INCR_RESULT_HASHING.bits |
-                        Self::ARTIFACT_SIZES.bits;
+        const DEFAULT = Self::GENERIC_ACTIVITIES.bits() |
+                        Self::QUERY_PROVIDERS.bits() |
+                        Self::QUERY_BLOCKED.bits() |
+                        Self::INCR_CACHE_LOADS.bits() |
+                        Self::INCR_RESULT_HASHING.bits() |
+                        Self::ARTIFACT_SIZES.bits();
 
-        const ARGS = Self::QUERY_KEYS.bits | Self::FUNCTION_ARGS.bits;
+        const ARGS = Self::QUERY_KEYS.bits() | Self::FUNCTION_ARGS.bits();
     }
 }
 

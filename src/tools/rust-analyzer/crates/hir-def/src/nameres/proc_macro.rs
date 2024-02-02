@@ -19,11 +19,13 @@ pub enum ProcMacroKind {
 }
 
 impl ProcMacroKind {
-    pub(super) fn to_basedb_kind(&self) -> base_db::ProcMacroKind {
+    pub(super) fn to_basedb_kind(&self) -> hir_expand::proc_macro::ProcMacroKind {
         match self {
-            ProcMacroKind::CustomDerive { .. } => base_db::ProcMacroKind::CustomDerive,
-            ProcMacroKind::FnLike => base_db::ProcMacroKind::FuncLike,
-            ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
+            ProcMacroKind::CustomDerive { .. } => {
+                hir_expand::proc_macro::ProcMacroKind::CustomDerive
+            }
+            ProcMacroKind::FnLike => hir_expand::proc_macro::ProcMacroKind::FuncLike,
+            ProcMacroKind::Attr => hir_expand::proc_macro::ProcMacroKind::Attr,
         }
     }
 }

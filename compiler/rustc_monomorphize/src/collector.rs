@@ -194,7 +194,7 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    self, EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
     TypeLengthLimit,
 };
 
@@ -614,8 +614,8 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
-        let limit = self.tcx.move_size_limit().0;
-        if limit == 0 {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
             return;
         }
 
@@ -627,48 +627,19 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             return;
         }
 
-        let limit = Size::from_bytes(limit);
-        let ty = operand.ty(self.body, self.tcx);
-        let ty = self.monomorphize(ty);
-        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else { return };
-        if layout.size <= limit {
-            return;
-        }
-        debug!(?layout);
         let source_info = self.body.source_info(location);
         debug!(?source_info);
-        for span in &self.move_size_spans {
-            if span.overlaps(source_info.span) {
-                return;
-            }
-        }
-        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-        debug!(?lint_root);
-        let Some(lint_root) = lint_root else {
-            // This happens when the issue is in a function from a foreign crate that
-            // we monomorphized in the current crate. We can't get a `HirId` for things
-            // in other crates.
-            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
-            // but correct span? This would make the lint at least accept crate-level lint attributes.
-            return;
+
+        if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
+            self.lint_large_assignment(limit.0, too_large_size, location, source_info.span);
         };
-        self.tcx.emit_spanned_lint(
-            LARGE_ASSIGNMENTS,
-            lint_root,
-            source_info.span,
-            LargeAssignmentsLint {
-                span: source_info.span,
-                size: layout.size.bytes(),
-                limit: limit.bytes(),
-            },
-        );
-        self.move_size_spans.push(source_info.span);
     }
 
     fn check_fn_args_move_size(
         &mut self,
         callee_ty: Ty<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[Spanned<mir::Operand<'tcx>>],
+        fn_span: Span,
         location: Location,
     ) {
         let limit = self.tcx.move_size_limit();
@@ -692,9 +663,64 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             return;
         }
 
+        debug!(?def_id, ?fn_span);
+
         for arg in args {
-            self.check_operand_move_size(arg, location);
+            if let Some(too_large_size) = self.operand_size_if_too_large(limit, &arg.node) {
+                self.lint_large_assignment(limit.0, too_large_size, location, arg.span);
+            };
         }
+    }
+
+    fn operand_size_if_too_large(
+        &mut self,
+        limit: Limit,
+        operand: &mir::Operand<'tcx>,
+    ) -> Option<Size> {
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
+            return None;
+        };
+        if layout.size.bytes_usize() > limit.0 {
+            debug!(?layout);
+            Some(layout.size)
+        } else {
+            None
+        }
+    }
+
+    fn lint_large_assignment(
+        &mut self,
+        limit: usize,
+        too_large_size: Size,
+        location: Location,
+        span: Span,
+    ) {
+        let source_info = self.body.source_info(location);
+        debug!(?source_info);
+        for reported_span in &self.move_size_spans {
+            if reported_span.overlaps(span) {
+                return;
+            }
+        }
+        let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
+        debug!(?lint_root);
+        let Some(lint_root) = lint_root else {
+            // This happens when the issue is in a function from a foreign crate that
+            // we monomorphized in the current crate. We can't get a `HirId` for things
+            // in other crates.
+            // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
+            // but correct span? This would make the lint at least accept crate-level lint attributes.
+            return;
+        };
+        self.tcx.emit_node_span_lint(
+            LARGE_ASSIGNMENTS,
+            lint_root,
+            span,
+            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
+        );
+        self.move_size_spans.push(span);
     }
 }
 
@@ -757,8 +783,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             def_id,
                             args,
                             ty::ClosureKind::FnOnce,
-                        )
-                        .expect("failed to normalize and resolve closure during codegen");
+                        );
                         if should_codegen_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(self.tcx, instance, span));
                         }
@@ -813,11 +838,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, .. } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                self.check_fn_args_move_size(callee_ty, args, location);
-                visit_fn_use(self.tcx, callee_ty, true, source, self.output)
+                self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -1088,7 +1113,13 @@ fn find_vtable_types_for_unsizing<'tcx>(
             assert_eq!(source_adt_def, target_adt_def);
 
             let CustomCoerceUnsized::Struct(coerce_index) =
-                crate::custom_coerce_unsize_info(tcx, source_ty, target_ty);
+                match crate::custom_coerce_unsize_info(tcx, source_ty, target_ty) {
+                    Ok(ccu) => ccu,
+                    Err(e) => {
+                        let e = Ty::new_error(tcx.tcx, e);
+                        return (e, e);
+                    }
+                };
 
             let source_fields = &source_adt_def.non_enum_variant().fields;
             let target_fields = &target_adt_def.non_enum_variant().fields;
@@ -1119,7 +1150,10 @@ fn create_fn_mono_item<'tcx>(
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
     let def_id = instance.def_id();
-    if tcx.sess.opts.unstable_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id) {
+    if tcx.sess.opts.unstable_opts.profile_closures
+        && def_id.is_local()
+        && tcx.is_closure_or_coroutine(def_id)
+    {
         crate::util::dump_closure_profile(tcx, instance);
     }
 
@@ -1269,7 +1303,9 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
-        let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
+        let Some(start_def_id) = self.tcx.lang_items().start_fn() else {
+            self.tcx.dcx().emit_fatal(errors::StartNotFound);
+        };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
         // Given that `main()` has no arguments,
@@ -1402,7 +1438,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
 }
 
 fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id) {
+    for impl_def_id in tcx.inherent_impls(def_id).ok()? {
         if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
             tcx,
             fn_ident,

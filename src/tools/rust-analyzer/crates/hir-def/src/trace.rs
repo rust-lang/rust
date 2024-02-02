@@ -18,6 +18,7 @@ pub(crate) struct Trace<T, V> {
 }
 
 impl<T, V> Trace<T, V> {
+    #[allow(dead_code)]
     pub(crate) fn new_for_arena() -> Trace<T, V> {
         Trace { arena: Some(Arena::default()), map: None, len: 0 }
     }
@@ -41,6 +42,7 @@ impl<T, V> Trace<T, V> {
         id
     }
 
+    #[allow(dead_code)]
     pub(crate) fn into_arena(mut self) -> Arena<T> {
         self.arena.take().unwrap()
     }

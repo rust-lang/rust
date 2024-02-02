@@ -20,7 +20,7 @@ const WRAP_DIRECT_PARAM: WrapParam<NoDerive> = WrapParam(NoDerive(0));
 fn main() {
     match WRAP_DIRECT_PARAM {
         WRAP_DIRECT_PARAM => { panic!("WRAP_DIRECT_PARAM matched itself"); }
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         _ => { println!("WRAP_DIRECT_PARAM did not match itself"); }
     }
 }

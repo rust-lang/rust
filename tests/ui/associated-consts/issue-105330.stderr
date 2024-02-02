@@ -23,6 +23,7 @@ LL | fn foo<A: TraitWAssocConst<A=32>>() {
    |
    = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
    = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated const equality is incomplete
   --> $DIR/issue-105330.rs:15:29
@@ -32,20 +33,17 @@ LL | fn main<A: TraitWAssocConst<A=32>>() {
    |
    = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
    = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in impl headers
+error[E0562]: `impl Trait` is not allowed in impl headers
   --> $DIR/issue-105330.rs:6:27
    |
 LL | impl TraitWAssocConst for impl Demo {
    |                           ^^^^^^^^^
-
-error[E0131]: `main` function is not allowed to have generic parameters
-  --> $DIR/issue-105330.rs:15:8
    |
-LL | fn main<A: TraitWAssocConst<A=32>>() {
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` cannot have generic parameters
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0131, E0404, E0562, E0658.
-For more information about an error, try `rustc --explain E0131`.
+Some errors have detailed explanations: E0404, E0562, E0658.
+For more information about an error, try `rustc --explain E0404`.

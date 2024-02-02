@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): fn main() { match() { | () => () } }
+PRINT-ATTR INPUT (DISPLAY): fn main() { match () { | () => () } }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",

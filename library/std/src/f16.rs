@@ -105,7 +105,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "round_ties_even", issue = "96710")]
+    #[unstable(feature = "round_ties_even", issue = "none")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round_ties_even(self) -> f16 {
         unsafe { intrinsics::rintf16(self) }

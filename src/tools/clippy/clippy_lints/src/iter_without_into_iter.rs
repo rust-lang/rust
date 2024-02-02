@@ -5,7 +5,8 @@ use clippy_utils::ty::{implements_trait, make_normalized_projection};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::{sym, Symbol};
@@ -49,7 +50,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.75.0"]
     pub ITER_WITHOUT_INTO_ITER,
     pedantic,
     "implementing `iter(_mut)` without an associated `IntoIterator for (&|&mut) Type` impl"
@@ -101,7 +102,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.75.0"]
     pub INTO_ITER_WITHOUT_ITER,
     pedantic,
     "implementing `IntoIterator for (&|&mut) Type` without an inherent `iter(_mut)` method"
@@ -138,7 +139,7 @@ fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iter
 
 fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
     if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).iter().any(|&did| {
+        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
             cx.tcx
                 .associated_items(did)
                 .filter_by_name_unhygienic(method_name)
@@ -152,7 +153,8 @@ fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol
 
 impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        if let ItemKind::Impl(imp) = item.kind
+        if !in_external_macro(cx.sess(), item.span)
+            && let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
             && let Some(trait_ref) = imp.of_trait
             && trait_ref
@@ -219,7 +221,8 @@ impl {self_ty_without_ref} {{
             _ => return,
         };
 
-        if let ImplItemKind::Fn(sig, _) = item.kind
+        if !in_external_macro(cx.sess(), item.span)
+            && let ImplItemKind::Fn(sig, _) = item.kind
             && let FnRetTy::Return(ret) = sig.decl.output
             && is_nameable_in_impl_trait(ret)
             && cx.tcx.generics_of(item_did).params.is_empty()

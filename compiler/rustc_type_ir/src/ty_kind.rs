@@ -207,7 +207,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
-    Coroutine(I::DefId, I::GenericArgs, Movability),
+    Coroutine(I::DefId, I::GenericArgs),
 
     /// A type representing the types stored inside a coroutine.
     /// This should only appear as part of the `CoroutineArgs`.
@@ -317,7 +317,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Coroutine(_, _, _) => 16,
+        Coroutine(_, _) => 16,
         CoroutineWitness(_, _) => 17,
         Never => 18,
         Tuple(_) => 19,
@@ -356,9 +356,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                a_d == b_d && a_s == b_s && a_m == b_m
-            }
+            (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
             (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
@@ -432,9 +430,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
-            Coroutine(d, s, m) => {
-                f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).field(m).finish()
-            }
+            Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
             CoroutineWitness(d, s) => {
                 f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
             }

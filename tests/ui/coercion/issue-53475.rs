@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::ops::CoerceUnsized;
 
-struct Foo<T> {
+struct Foo<T: ?Sized> {
     data: Box<T>,
 }
 

@@ -84,7 +84,7 @@
 
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -99,6 +99,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
@@ -109,7 +110,7 @@ pub struct GVN;
 
 impl<'tcx> MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -238,14 +239,18 @@ struct VnState<'body, 'tcx> {
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
-    /// First local to be assigned that value.
-    rev_locals: FxHashMap<VnIndex, Vec<Local>>,
+    /// Locals that are assigned that value.
+    // This vector does not hold all the values of `VnIndex` that we create.
+    // It stops at the largest value created in the first phase of collecting assignments.
+    rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
     values: FxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
+    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
+    feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: &'body Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
@@ -265,10 +270,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: FxHashMap::default(),
+            rev_locals: IndexVec::default(),
             values: FxIndexSet::default(),
             evaluated: IndexVec::new(),
             next_opaque: Some(0),
+            feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),
@@ -316,10 +322,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.locals[local] = Some(value);
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
-        let is_sized = !self.tcx.features().unsized_locals
+        let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.entry(value).or_default().push(local);
+            self.rev_locals.ensure_contains_elem(value, SmallVec::new);
+            self.rev_locals[value].push(local);
         }
     }
 
@@ -338,9 +345,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         Some(self.insert(Value::Constant { value, disambiguator }))
     }
 
+    fn insert_bool(&mut self, flag: bool) -> VnIndex {
+        // Booleans are deterministic.
+        self.insert(Value::Constant { value: Const::from_bool(self.tcx, flag), disambiguator: 0 })
+    }
+
     fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
         self.insert_constant(Const::from_scalar(self.tcx, scalar, ty))
             .expect("scalars are deterministic")
+    }
+
+    fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
+        self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::from_u32(0), values))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -630,6 +646,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if place.is_indirect()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
+            && place.local != new_local
         {
             place.local = new_local;
             self.reused_locals.insert(new_local);
@@ -639,8 +656,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         for i in 0..projection.len() {
             let elem = projection[i];
-            if let ProjectionElem::Index(idx) = elem
-                && let Some(idx) = self.locals[idx]
+            if let ProjectionElem::Index(idx_local) = elem
+                && let Some(idx) = self.locals[idx_local]
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Ok(offset) = self.ecx.read_target_usize(offset)
@@ -648,9 +665,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 {
                     projection.to_mut()[i] =
                         ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-                } else if let Some(new_idx) = self.try_as_local(idx, location) {
-                    projection.to_mut()[i] = ProjectionElem::Index(new_idx);
-                    self.reused_locals.insert(new_idx);
+                } else if let Some(new_idx_local) = self.try_as_local(idx, location)
+                    && idx_local != new_idx_local
+                {
+                    projection.to_mut()[i] = ProjectionElem::Index(new_idx_local);
+                    self.reused_locals.insert(new_idx_local);
                 }
             }
         }
@@ -757,10 +776,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Operations.
-            Rvalue::Len(ref mut place) => {
-                let place = self.simplify_place_value(place, location)?;
-                Value::Len(place)
-            }
+            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(kind, ref mut value, to) => {
                 let from = value.ty(self.local_decls, self.tcx);
                 let value = self.simplify_operand(value, location)?;
@@ -775,17 +791,36 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::Cast { kind, value, from, to }
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
-                Value::BinaryOp(op, lhs?, rhs?)
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
+                let lhs = lhs?;
+                let rhs = rhs?;
+                if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
+                    return Some(value);
+                }
+                Value::BinaryOp(op, lhs, rhs)
             }
             Rvalue::CheckedBinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
-                Value::CheckedBinaryOp(op, lhs?, rhs?)
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
+                let lhs = lhs?;
+                let rhs = rhs?;
+                if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
+                    return Some(value);
+                }
+                Value::CheckedBinaryOp(op, lhs, rhs)
             }
             Rvalue::UnaryOp(op, ref mut arg) => {
                 let arg = self.simplify_operand(arg, location)?;
+                if let Some(value) = self.simplify_unary(op, arg) {
+                    return Some(value);
+                }
                 Value::UnaryOp(op, arg)
             }
             Rvalue::Discriminant(ref mut place) => {
@@ -850,7 +885,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs, _) => {
+            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
                 (AggregateTy::Def(did, substs), FIRST_VARIANT)
             }
             AggregateKind::Adt(did, variant_index, substs, _, None) => {
@@ -883,6 +918,150 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn simplify_unary(&mut self, op: UnOp, value: VnIndex) -> Option<VnIndex> {
+        let value = match (op, self.get(value)) {
+            (UnOp::Not, Value::UnaryOp(UnOp::Not, inner)) => return Some(*inner),
+            (UnOp::Neg, Value::UnaryOp(UnOp::Neg, inner)) => return Some(*inner),
+            (UnOp::Not, Value::BinaryOp(BinOp::Eq, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Ne, *lhs, *rhs)
+            }
+            (UnOp::Not, Value::BinaryOp(BinOp::Ne, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Eq, *lhs, *rhs)
+            }
+            _ => return None,
+        };
+
+        Some(self.insert(value))
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn simplify_binary(
+        &mut self,
+        op: BinOp,
+        checked: bool,
+        lhs_ty: Ty<'tcx>,
+        lhs: VnIndex,
+        rhs: VnIndex,
+    ) -> Option<VnIndex> {
+        // Floats are weird enough that none of the logic below applies.
+        let reasonable_ty =
+            lhs_ty.is_integral() || lhs_ty.is_bool() || lhs_ty.is_char() || lhs_ty.is_any_ptr();
+        if !reasonable_ty {
+            return None;
+        }
+
+        let layout = self.ecx.layout_of(lhs_ty).ok()?;
+
+        let as_bits = |value| {
+            let constant = self.evaluated[value].as_ref()?;
+            if layout.abi.is_scalar() {
+                let scalar = self.ecx.read_scalar(constant).ok()?;
+                scalar.to_bits(constant.layout.size).ok()
+            } else {
+                // `constant` is a wide pointer. Do not evaluate to bits.
+                None
+            }
+        };
+
+        // Represent the values as `Left(bits)` or `Right(VnIndex)`.
+        use Either::{Left, Right};
+        let a = as_bits(lhs).map_or(Right(lhs), Left);
+        let b = as_bits(rhs).map_or(Right(rhs), Left);
+        let result = match (op, a, b) {
+            // Neutral elements.
+            (BinOp::Add | BinOp::BitOr | BinOp::BitXor, Left(0), Right(p))
+            | (
+                BinOp::Add
+                | BinOp::BitOr
+                | BinOp::BitXor
+                | BinOp::Sub
+                | BinOp::Offset
+                | BinOp::Shl
+                | BinOp::Shr,
+                Right(p),
+                Left(0),
+            )
+            | (BinOp::Mul, Left(1), Right(p))
+            | (BinOp::Mul | BinOp::Div, Right(p), Left(1)) => p,
+            // Attempt to simplify `x & ALL_ONES` to `x`, with `ALL_ONES` depending on type size.
+            (BinOp::BitAnd, Right(p), Left(ones)) | (BinOp::BitAnd, Left(ones), Right(p))
+                if ones == layout.size.truncate(u128::MAX)
+                    || (layout.ty.is_bool() && ones == 1) =>
+            {
+                p
+            }
+            // Absorbing elements.
+            (BinOp::Mul | BinOp::BitAnd, _, Left(0))
+            | (BinOp::Rem, _, Left(1))
+            | (
+                BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::BitAnd | BinOp::Shl | BinOp::Shr,
+                Left(0),
+                _,
+            ) => self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty),
+            // Attempt to simplify `x | ALL_ONES` to `ALL_ONES`.
+            (BinOp::BitOr, _, Left(ones)) | (BinOp::BitOr, Left(ones), _)
+                if ones == layout.size.truncate(u128::MAX)
+                    || (layout.ty.is_bool() && ones == 1) =>
+            {
+                self.insert_scalar(Scalar::from_uint(ones, layout.size), lhs_ty)
+            }
+            // Sub/Xor with itself.
+            (BinOp::Sub | BinOp::BitXor, a, b) if a == b => {
+                self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty)
+            }
+            // Comparison:
+            // - if both operands can be computed as bits, just compare the bits;
+            // - if we proved that both operands have the same value, we can insert true/false;
+            // - otherwise, do nothing, as we do not try to prove inequality.
+            (BinOp::Eq, Left(a), Left(b)) => self.insert_bool(a == b),
+            (BinOp::Eq, a, b) if a == b => self.insert_bool(true),
+            (BinOp::Ne, Left(a), Left(b)) => self.insert_bool(a != b),
+            (BinOp::Ne, a, b) if a == b => self.insert_bool(false),
+            _ => return None,
+        };
+
+        if checked {
+            let false_val = self.insert_bool(false);
+            Some(self.insert_tuple(vec![result, false_val]))
+        } else {
+            Some(result)
+        }
+    }
+
+    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
+        // Trivial case: we are fetching a statically known length.
+        let place_ty = place.ty(self.local_decls, self.tcx).ty;
+        if let ty::Array(_, len) = place_ty.kind() {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        let mut inner = self.simplify_place_value(place, location)?;
+
+        // The length information is stored in the fat pointer.
+        // Reborrowing copies length information from one pointer to the other.
+        while let Value::Address { place: borrowed, .. } = self.get(inner)
+            && let [PlaceElem::Deref] = borrowed.projection[..]
+            && let Some(borrowed) = self.locals[borrowed.local]
+        {
+            inner = borrowed;
+        }
+
+        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        if let Value::Cast { kind, from, to, .. } = self.get(inner)
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let Some(from) = from.builtin_deref(true)
+            && let ty::Array(_, len) = from.ty.kind()
+            && let Some(to) = to.builtin_deref(true)
+            && let ty::Slice(..) = to.ty.kind()
+        {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        // Fallback: a symbolic `Len`.
+        Some(self.insert(Value::Len(inner)))
     }
 }
 
@@ -986,11 +1165,11 @@ impl<'tcx> VnState<'_, 'tcx> {
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.rev_locals.get(&index)?;
+        let other = self.rev_locals.get(index)?;
         other
             .iter()
+            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
             .copied()
-            .find(|&other| self.ssa.assignment_dominates(self.dominators, other, loc))
     }
 }
 
@@ -1008,23 +1187,32 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
+        if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
+            self.simplify_place_projection(lhs, location);
+
             // Do not try to simplify a constant, it's already in canonical shape.
-            && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
-        {
-            if let Some(value) = self.simplify_rvalue(rvalue, location) {
-                if let Some(const_) = self.try_as_constant(value) {
-                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                } else if let Some(local) = self.try_as_local(value, location)
-                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
-                {
-                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                    self.reused_locals.insert(local);
-                }
+            if matches!(rvalue, Rvalue::Use(Operand::Constant(_))) {
+                return;
             }
-        } else {
-            self.super_statement(stmt, location);
+
+            let value = lhs
+                .as_local()
+                .and_then(|local| self.locals[local])
+                .or_else(|| self.simplify_rvalue(rvalue, location));
+            let Some(value) = value else { return };
+
+            if let Some(const_) = self.try_as_constant(value) {
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+            } else if let Some(local) = self.try_as_local(value, location)
+                && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+            {
+                *rvalue = Rvalue::Use(Operand::Copy(local.into()));
+                self.reused_locals.insert(local);
+            }
+
+            return;
         }
+        self.super_statement(stmt, location);
     }
 }
 

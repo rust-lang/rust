@@ -150,6 +150,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
+                // We must include lint errors here.
                 if compiler.sess.dcx().has_errors_or_lint_errors().is_some() {
                     FatalError.raise();
                 }
@@ -557,7 +558,7 @@ pub(crate) fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::{Emitter, EmitterWriter};
+            use rustc_errors::emitter::{Emitter, HumanEmitter};
             use rustc_errors::DiagCtxt;
             use rustc_parse::parser::ForceCollect;
             use rustc_span::source_map::FilePathMapping;
@@ -572,11 +573,11 @@ pub(crate) fn make_test(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,
             );
-            supports_color = EmitterWriter::stderr(ColorConfig::Auto, fallback_bundle.clone())
+            supports_color = HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone())
                 .diagnostic_width(Some(80))
                 .supports_color();
 
-            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
+            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
@@ -589,7 +590,7 @@ pub(crate) fn make_test(
             let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
-                    drop(errs);
+                    errs.into_iter().for_each(|err| err.cancel());
                     return (found_main, found_extern_crate, found_macro);
                 }
             };
@@ -739,7 +740,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
     }
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::emitter::HumanEmitter;
             use rustc_errors::DiagCtxt;
             use rustc_span::source_map::FilePathMapping;
 
@@ -752,15 +753,17 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
+            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,
-                    Err(_) => {
-                        // If there is an unclosed delimiter, an error will be returned by the tokentrees.
+                    Err(errs) => {
+                        errs.into_iter().for_each(|err| err.cancel());
+                        // If there is an unclosed delimiter, an error will be returned by the
+                        // tokentrees.
                         return false;
                     }
                 };

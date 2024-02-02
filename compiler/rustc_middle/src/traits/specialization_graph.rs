@@ -30,18 +30,16 @@ pub struct Graph {
 
     /// The "root" impls are found by looking up the trait's def_id.
     pub children: DefIdMap<Children>,
-
-    /// Whether an error was emitted while constructing the graph.
-    pub has_errored: Option<ErrorGuaranteed>,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { parent: Default::default(), children: Default::default(), has_errored: None }
+        Graph { parent: Default::default(), children: Default::default() }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the
     /// impl is a "specialization root".
+    #[track_caller]
     pub fn parent(&self, child: DefId) -> DefId {
         *self.parent.get(&child).unwrap_or_else(|| panic!("Failed to get parent for {child:?}"))
     }
@@ -255,13 +253,9 @@ pub fn ancestors(
     trait_def_id: DefId,
     start_from_impl: DefId,
 ) -> Result<Ancestors<'_>, ErrorGuaranteed> {
-    let specialization_graph = tcx.specialization_graph_of(trait_def_id);
+    let specialization_graph = tcx.specialization_graph_of(trait_def_id)?;
 
-    if let Some(reported) = specialization_graph.has_errored {
-        Err(reported)
-    } else if let Err(reported) =
-        tcx.type_of(start_from_impl).instantiate_identity().error_reported()
-    {
+    if let Err(reported) = tcx.type_of(start_from_impl).instantiate_identity().error_reported() {
         Err(reported)
     } else {
         Ok(Ancestors {

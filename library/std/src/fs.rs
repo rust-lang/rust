@@ -31,6 +31,10 @@ use crate::time::SystemTime;
 /// on closing are ignored by the implementation of `Drop`.  Use the method
 /// [`sync_all`] if these errors must be manually handled.
 ///
+/// `File` does not buffer reads and writes. For efficiency, consider wrapping the
+/// file in a [`BufReader`] or [`BufWriter`] when performing many small [`read`]
+/// or [`write`] calls, unless unbuffered reads and writes are required.
+///
 /// # Examples
 ///
 /// Creates a new file and write bytes to it (you can also use [`write()`]):
@@ -61,8 +65,7 @@ use crate::time::SystemTime;
 /// }
 /// ```
 ///
-/// It can be more efficient to read the contents of a file with a buffered
-/// [`Read`]er. This can be accomplished with [`BufReader<R>`]:
+/// Using a buffered [`Read`]er:
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -93,8 +96,11 @@ use crate::time::SystemTime;
 /// perform synchronous I/O operations. Therefore the underlying file must not
 /// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
 ///
-/// [`BufReader<R>`]: io::BufReader
+/// [`BufReader`]: io::BufReader
+/// [`BufWriter`]: io::BufReader
 /// [`sync_all`]: File::sync_all
+/// [`write`]: File::write
+/// [`read`]: File::read
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "File")]
 pub struct File {
@@ -254,7 +260,8 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
-        let mut bytes = Vec::with_capacity(size.unwrap_or(0));
+        let mut bytes = Vec::new();
+        bytes.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_end(&mut file, &mut bytes, size)?;
         Ok(bytes)
     }
@@ -296,7 +303,8 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
         let size = file.metadata().map(|m| m.len() as usize).ok();
-        let mut string = String::with_capacity(size.unwrap_or(0));
+        let mut string = String::new();
+        string.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_string(&mut file, &mut string, size)?;
         Ok(string)
     }
@@ -768,14 +776,14 @@ impl Read for &File {
     // Reserves space in the buffer based on the file size when available.
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.reserve(size.unwrap_or(0));
+        buf.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_end(self, buf, size)
     }
 
     // Reserves space in the buffer based on the file size when available.
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         let size = buffer_capacity_required(self);
-        buf.reserve(size.unwrap_or(0));
+        buf.try_reserve_exact(size.unwrap_or(0)).map_err(|_| io::ErrorKind::OutOfMemory)?;
         io::default_read_to_string(self, buf, size)
     }
 }

@@ -1,6 +1,11 @@
 //@no-rustfix: overlapping suggestions
 #![feature(lint_reasons)]
-#![allow(unused, clippy::diverging_sub_expression, clippy::needless_if)]
+#![allow(
+    unused,
+    clippy::diverging_sub_expression,
+    clippy::needless_if,
+    clippy::redundant_pattern_matching
+)]
 #![warn(clippy::nonminimal_bool)]
 #![allow(clippy::useless_vec)]
 

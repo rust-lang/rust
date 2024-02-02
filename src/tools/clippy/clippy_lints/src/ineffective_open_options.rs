@@ -16,7 +16,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// `.append(true)` already enables `write(true)`, making this one
-    /// superflous.
+    /// superfluous.
     ///
     /// ### Example
     /// ```no_run

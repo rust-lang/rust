@@ -132,6 +132,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("dissimilar", "Apache-2.0"),
     ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
     ("snap", "BSD-3-Clause"),
@@ -194,6 +195,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
+    "anstyle",
     "ar_archive_writer",
     "arrayvec",
     "autocfg",
@@ -325,6 +327,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha1",
     "sha2",
     "sharded-slab",
+    "shlex",
     "smallvec",
     "snap",
     "stable_deref_trait",
@@ -338,8 +341,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "termize",
     "thin-vec",
     "thiserror",
-    "thiserror-core",
-    "thiserror-core-impl",
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
@@ -357,7 +358,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tracing-tree",
     "twox-hash",
     "type-map",
-    "typed-arena",
     "typenum",
     "unic-langid",
     "unic-langid-impl",
@@ -390,7 +390,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
     "writeable",
-    "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
     "yoke",
     "yoke-derive",
     "zerocopy",

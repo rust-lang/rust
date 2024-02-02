@@ -2,10 +2,8 @@ use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
@@ -27,7 +25,7 @@ use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::symbol::sym;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, StableSourceFileId, SyntaxContext,
+    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
 };
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -125,68 +123,90 @@ impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for CrateNum {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        if *self != LOCAL_CRATE && s.is_proc_macro {
-            panic!("Attempted to encode non-local CrateNum {self:?} for proc-macro crate");
-        }
-        s.emit_u32(self.as_u32());
-    }
-}
-
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        s.emit_u32(self.as_u32());
-    }
-}
-
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
         s.emit_u32(self.as_u32());
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_ctxt, s);
+impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        if crate_num != LOCAL_CRATE && self.is_proc_macro {
+            panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
+        }
+        self.emit_u32(crate_num.as_u32());
     }
-}
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        if self.krate == LOCAL_CRATE {
+    fn encode_def_index(&mut self, def_index: DefIndex) {
+        self.emit_u32(def_index.as_u32());
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.krate.encode(self);
+        def_id.index.encode(self);
+    }
+
+    fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
+        rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_ctxt, self);
+    }
+
+    fn encode_expn_id(&mut self, expn_id: ExpnId) {
+        if expn_id.krate == LOCAL_CRATE {
             // We will only write details for local expansions. Non-local expansions will fetch
             // data from the corresponding crate's metadata.
             // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
             // metadata from proc-macro crates.
-            s.hygiene_ctxt.schedule_expn_data_for_encoding(*self);
+            self.hygiene_ctxt.schedule_expn_data_for_encoding(expn_id);
         }
-        self.krate.encode(s);
-        self.local_id.encode(s);
+        expn_id.krate.encode(self);
+        expn_id.local_id.encode(self);
     }
-}
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        match s.span_shorthands.entry(*self) {
+    fn encode_span(&mut self, span: Span) {
+        match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
                 // This saves space since smaller numbers encode in less bits.
                 let last_location = *o.get();
                 // This cannot underflow. Metadata is written with increasing position(), so any
                 // previously saved offset must be smaller than the current position.
-                let offset = s.opaque.position() - last_location;
+                let offset = self.opaque.position() - last_location;
                 if offset < last_location {
-                    SpanEncodingMode::RelativeOffset(offset).encode(s)
+                    SpanTag::indirect(true).encode(self);
+                    offset.encode(self);
                 } else {
-                    SpanEncodingMode::AbsoluteOffset(last_location).encode(s)
+                    SpanTag::indirect(false).encode(self);
+                    last_location.encode(self);
                 }
             }
             Entry::Vacant(v) => {
-                let position = s.opaque.position();
+                let position = self.opaque.position();
                 v.insert(position);
-                SpanEncodingMode::Direct.encode(s);
-                self.data().encode(s);
+                // Data is encoded with a SpanTag prefix (see below).
+                span.data().encode(self);
+            }
+        }
+    }
+
+    fn encode_symbol(&mut self, symbol: Symbol) {
+        // if symbol preinterned, emit tag and symbol index
+        if symbol.is_preinterned() {
+            self.opaque.emit_u8(SYMBOL_PREINTERNED);
+            self.opaque.emit_u32(symbol.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match self.symbol_table.entry(symbol) {
+                Entry::Vacant(o) => {
+                    self.opaque.emit_u8(SYMBOL_STR);
+                    let pos = self.opaque.position();
+                    o.insert(pos);
+                    self.emit_str(symbol.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
             }
         }
     }
@@ -225,14 +245,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // IMPORTANT: If this is ever changed, be sure to update
         // `rustc_span::hygiene::raw_encode_expn_id` to handle
         // encoding `ExpnData` for proc-macro crates.
-        if s.is_proc_macro {
-            SyntaxContext::root().encode(s);
-        } else {
-            self.ctxt.encode(s);
-        }
+        let ctxt = if s.is_proc_macro { SyntaxContext::root() } else { self.ctxt };
 
         if self.is_dummy() {
-            return TAG_PARTIAL_SPAN.encode(s);
+            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
+            tag.encode(s);
+            if tag.context().is_none() {
+                ctxt.encode(s);
+            }
+            return;
         }
 
         // The Span infrastructure should make sure that this invariant holds:
@@ -250,7 +271,12 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         if !source_file.contains(self.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_PARTIAL_SPAN.encode(s);
+            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
+            tag.encode(s);
+            if tag.context().is_none() {
+                ctxt.encode(s);
+            }
+            return;
         }
 
         // There are two possible cases here:
@@ -269,7 +295,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+        let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came
             // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
             // values are relative to the source map information for the 'foreign' crate whose
@@ -287,7 +313,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
                 }
             };
 
-            (TAG_VALID_SPAN_FOREIGN, metadata_index)
+            (SpanKind::Foreign, metadata_index)
         } else {
             // Record the fact that we need to encode the data for this `SourceFile`
             let source_files =
@@ -296,7 +322,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let metadata_index: u32 =
                 metadata_index.try_into().expect("cannot export more than U32_MAX files");
 
-            (TAG_VALID_SPAN_LOCAL, metadata_index)
+            (SpanKind::Local, metadata_index)
         };
 
         // Encode the start position relative to the file start, so we profit more from the
@@ -307,43 +333,24 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // from the variable-length integer encoding that we use.
         let len = self.hi - self.lo;
 
+        let tag = SpanTag::new(kind, ctxt, len.0 as usize);
         tag.encode(s);
+        if tag.context().is_none() {
+            ctxt.encode(s);
+        }
         lo.encode(s);
-        len.encode(s);
+        if tag.length().is_none() {
+            len.encode(s);
+        }
 
         // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
         metadata_index.encode(s);
 
-        if tag == TAG_VALID_SPAN_FOREIGN {
+        if kind == SpanKind::Foreign {
             // This needs to be two lines to avoid holding the `s.source_file_cache`
             // while calling `cnum.encode(s)`
             let cnum = s.source_file_cache.0.cnum;
             cnum.encode(s);
-        }
-    }
-}
-
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        // if symbol preinterned, emit tag and symbol index
-        if self.is_preinterned() {
-            s.opaque.emit_u8(SYMBOL_PREINTERNED);
-            s.opaque.emit_u32(self.as_u32());
-        } else {
-            // otherwise write it as string or as offset to it
-            match s.symbol_table.entry(*self) {
-                Entry::Vacant(o) => {
-                    s.opaque.emit_u8(SYMBOL_STR);
-                    let pos = s.opaque.position();
-                    o.insert(pos);
-                    s.emit_str(self.as_str());
-                }
-                Entry::Occupied(o) => {
-                    let x = *o.get();
-                    s.emit_u8(SYMBOL_OFFSET);
-                    s.emit_usize(x);
-                }
-            }
         }
     }
 }
@@ -1444,7 +1451,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if def_kind == DefKind::Closure
                 && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
-                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind));
+                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind))
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1478,7 +1485,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).inherent_impls.to_sorted(&hcx, true)
+            tcx.crate_inherent_impls(()).unwrap().inherent_impls.to_sorted(&hcx, true)
         });
         for (def_id, impls) in inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
@@ -1900,14 +1907,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let lib_features = tcx.lib_features(LOCAL_CRATE);
-        self.lazy_array(lib_features.to_vec())
+        self.lazy_array(lib_features.to_sorted_vec())
     }
 
     fn encode_stability_implications(&mut self) -> LazyArray<(Symbol, Symbol)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let implications = tcx.stability_implications(LOCAL_CRATE);
-        self.lazy_array(implications.iter().map(|(k, v)| (*k, *v)))
+        let sorted = implications.to_sorted_stable_ord();
+        self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
     }
 
     fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, DefIndex)> {
@@ -1986,7 +1994,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // if this is an impl of `CoerceUnsized`, create its
                 // "unsized info", else just store None
                 if Some(trait_ref.def_id) == tcx.lang_items().coerce_unsized_trait() {
-                    let coerce_unsized_info = tcx.coerce_unsized_info(def_id);
+                    let coerce_unsized_info = tcx.coerce_unsized_info(def_id).unwrap();
                     record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
                 }
             }
@@ -2019,14 +2027,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
-        tcx.with_stable_hashing_context(|mut ctx| {
-            all_impls.sort_by_cached_key(|&(&simp, _)| {
-                let mut hasher = StableHasher::new();
-                simp.hash_stable(&mut ctx, &mut hasher);
-                hasher.finish::<Fingerprint>()
-            })
+        let all_impls = tcx.with_stable_hashing_context(|hcx| {
+            tcx.crate_inherent_impls(()).unwrap().incoherent_impls.to_sorted(&hcx, true)
         });
+
         let all_impls: Vec<_> = all_impls
             .into_iter()
             .map(|(&simp, impls)| {
@@ -2241,12 +2245,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // If we forget this, compilation can succeed with an incomplete rmeta file,
     // causing an ICE when the rmeta file is read by another compilation.
     if let Err((path, err)) = ecx.opaque.finish() {
-        tcx.dcx().emit_err(FailWriteFile { path: &path, err });
+        tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
     }
 
     let file = ecx.opaque.file();
     if let Err(err) = encode_root_position(file, root.position.get()) {
-        tcx.dcx().emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
     // Record metadata size for self-profiling

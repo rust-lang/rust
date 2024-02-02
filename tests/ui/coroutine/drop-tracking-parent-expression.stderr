@@ -2,7 +2,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -13,7 +13,7 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `derived_drop::Client`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `derived_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
@@ -42,7 +42,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -53,7 +53,7 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `significant_drop::Client`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `significant_drop::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
@@ -82,7 +82,7 @@ error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ coroutine is not `Send`
+   |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -93,7 +93,7 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `insignificant_dtor::Client`, which is required by `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}: Send`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |

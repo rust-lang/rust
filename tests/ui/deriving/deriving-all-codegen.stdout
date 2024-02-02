@@ -56,8 +56,6 @@ impl ::core::cmp::PartialEq for Empty {
     fn eq(&self, other: &Empty) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::marker::StructuralEq for Empty { }
-#[automatically_derived]
 impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
@@ -131,8 +129,6 @@ impl ::core::cmp::PartialEq for Point {
         self.x == other.x && self.y == other.y
     }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for Point { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Point {
     #[inline]
@@ -218,8 +214,6 @@ impl ::core::cmp::PartialEq for PackedPoint {
         ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
     }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for PackedPoint { }
 #[automatically_derived]
 impl ::core::cmp::Eq for PackedPoint {
     #[inline]
@@ -332,8 +326,6 @@ impl ::core::cmp::PartialEq for Big {
             self.b8 == other.b8
     }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for Big { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Big {
     #[inline]
@@ -500,8 +492,6 @@ impl ::core::cmp::PartialEq for Unsized {
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
-impl ::core::marker::StructuralEq for Unsized { }
-#[automatically_derived]
 impl ::core::cmp::Eq for Unsized {
     #[inline]
     #[doc(hidden)]
@@ -615,8 +605,6 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
         self.t == other.t && self.ta == other.ta && self.u == other.u
     }
 }
-#[automatically_derived]
-impl<T: Trait, U> ::core::marker::StructuralEq for Generic<T, U> { }
 #[automatically_derived]
 impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
     Generic<T, U> where T::A: ::core::cmp::Eq {
@@ -739,8 +727,6 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     }
 }
 #[automatically_derived]
-impl<T: Trait, U> ::core::marker::StructuralEq for PackedGeneric<T, U> { }
-#[automatically_derived]
 impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
     ::core::marker::Copy> ::core::cmp::Eq for PackedGeneric<T, U> where
     T::A: ::core::cmp::Eq + ::core::marker::Copy {
@@ -825,8 +811,6 @@ impl ::core::cmp::PartialEq for Enum0 {
     fn eq(&self, other: &Enum0) -> bool { match *self {} }
 }
 #[automatically_derived]
-impl ::core::marker::StructuralEq for Enum0 { }
-#[automatically_derived]
 impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
@@ -897,8 +881,6 @@ impl ::core::cmp::PartialEq for Enum1 {
     }
 }
 #[automatically_derived]
-impl ::core::marker::StructuralEq for Enum1 { }
-#[automatically_derived]
 impl ::core::cmp::Eq for Enum1 {
     #[inline]
     #[doc(hidden)]
@@ -964,8 +946,6 @@ impl ::core::cmp::PartialEq for Fieldless1 {
     #[inline]
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
@@ -1040,8 +1020,6 @@ impl ::core::cmp::PartialEq for Fieldless {
         __self_tag == __arg1_tag
     }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless {
     #[inline]
@@ -1149,8 +1127,6 @@ impl ::core::cmp::PartialEq for Mixed {
             }
     }
 }
-#[automatically_derived]
-impl ::core::marker::StructuralEq for Mixed { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Mixed {
     #[inline]
@@ -1279,8 +1255,6 @@ impl ::core::cmp::PartialEq for Fielded {
     }
 }
 #[automatically_derived]
-impl ::core::marker::StructuralEq for Fielded { }
-#[automatically_derived]
 impl ::core::cmp::Eq for Fielded {
     #[inline]
     #[doc(hidden)]
@@ -1401,8 +1375,6 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
             }
     }
 }
-#[automatically_derived]
-impl<T, U> ::core::marker::StructuralEq for EnumGeneric<T, U> { }
 #[automatically_derived]
 impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
     EnumGeneric<T, U> {

@@ -1,5 +1,5 @@
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/issue-28576.rs:7:12
+  --> $DIR/issue-28576.rs:9:12
    |
 LL | /            dyn Bar
 LL | |               <Assoc=()>
@@ -14,7 +14,52 @@ LL | pub trait Bar: Foo<Assoc=()> {
    |           |    |   ...because it uses `Self` as a type parameter
    |           |    ...because it uses `Self` as a type parameter
    |           this trait cannot be made into an object...
+help: consider using an opaque type instead
+   |
+LL |            impl Bar
+   |            ~~~~
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `Foo`
+  --> $DIR/issue-28576.rs:1:15
+   |
+LL | pub trait Foo<RHS=Self> {
+   |               ^^^^^^^^ required by this bound in `Foo`
+help: consider further restricting `Self`
+   |
+LL | pub trait Bar: Foo<Assoc=()> + Sized {
+   |                              +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS=Self: ?Sized> {
+   |                       ++++++++
 
-For more information about this error, try `rustc --explain E0038`.
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `Foo`
+  --> $DIR/issue-28576.rs:1:15
+   |
+LL | pub trait Foo<RHS=Self> {
+   |               ^^^^^^^^ required by this bound in `Foo`
+help: consider further restricting `Self`
+   |
+LL |     ) where Self: Sized;
+   |       +++++++++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS=Self: ?Sized> {
+   |                       ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

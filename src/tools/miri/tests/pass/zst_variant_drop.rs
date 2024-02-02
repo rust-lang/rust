@@ -10,7 +10,7 @@ impl Drop for Foo {
 static mut FOO: bool = false;
 
 enum Bar {
-    A(Box<i32>),
+    A(#[allow(dead_code)] Box<i32>),
     B(Foo),
 }
 

@@ -6,12 +6,14 @@ use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy, TupleArgumentsFlag,
+    struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
+    TupleArgumentsFlag,
 };
+use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan, StashKey,
+    codes::*, pluralize, Applicability, Diagnostic, ErrCode, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -177,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
-        let mut err_code = "E0061";
+        let mut err_code = E0061;
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
@@ -187,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     if arg_types.len() != provided_args.len() {
-                        err_code = "E0057";
+                        err_code = E0057;
                     }
                     let expected_input_tys = match expected_input_tys {
                         Some(expected_input_tys) => match expected_input_tys.get(0) {
@@ -204,7 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
-                    struct_span_err!(
+                    struct_span_code_err!(
                         tcx.dcx(),
                         call_span,
                         E0059,
@@ -358,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if c_variadic && provided_arg_count < minimum_input_count {
-            err_code = "E0060";
+            err_code = E0060;
         }
 
         for arg in provided_args.iter().skip(minimum_input_count) {
@@ -420,11 +422,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys
                     .iter()
                     .copied()
-                    .zip(expected_input_tys.iter().copied())
+                    .zip_eq(expected_input_tys.iter().copied())
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
-            self.report_arg_errors(
+            self.set_tainted_by_errors(self.report_arg_errors(
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
@@ -433,7 +435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn_def_id,
                 call_span,
                 call_expr,
-            );
+            ));
         }
     }
 
@@ -443,11 +445,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
         c_variadic: bool,
-        err_code: &str,
+        err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         // Next, let's construct the error
         let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
@@ -486,10 +488,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
-        self.set_tainted_by_errors(
-            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
-        );
 
         // Get the argument span in the context of the call span so that
         // suggestions and labels are (more) correct when an arg is a
@@ -664,7 +662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.dcx().struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -676,8 +674,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 potentially_plural_count(provided_args.len(), "argument"),
                                 pluralize!("was", provided_args.len())
                             ),
-                            DiagnosticId::Error(err_code.to_owned()),
                         );
+                        err.code(err_code.to_owned());
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
@@ -696,8 +694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(mismatch_idx),
                         is_method,
                     );
-                    err.emit();
-                    return;
+                    return err.emit();
                 }
             }
         }
@@ -721,11 +718,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                return tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
-            return;
         }
 
+        let mut reported = None;
         errors.retain(|error| {
             let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
                 error
@@ -736,16 +733,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
-                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                reported = Some(self.err_ctxt().report_and_explain_type_error(trace, *e).emit());
                 return false;
             }
             true
         });
 
         // We're done if we found errors, but we already emitted them.
-        if errors.is_empty() {
-            return;
+        if let Some(reported) = reported {
+            assert!(errors.is_empty());
+            return reported;
         }
+        assert!(!errors.is_empty());
 
         // Okay, now that we've emitted the special errors separately, we
         // are only left missing/extra/swapped and mismatched arguments, both
@@ -802,12 +801,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(expected_idx.as_usize()),
                 is_method,
             );
-            err.emit();
-            return;
+            return err.emit();
         }
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 full_call_span,
                 E0308,
@@ -815,18 +813,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_name,
             )
         } else {
-            tcx.dcx().struct_span_err_with_code(
-                full_call_span,
-                format!(
-                    "this {} takes {}{} but {} {} supplied",
-                    call_name,
-                    if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
-                    potentially_plural_count(provided_args.len(), "argument"),
-                    pluralize!("was", provided_args.len())
-                ),
-                DiagnosticId::Error(err_code.to_owned()),
-            )
+            tcx.dcx()
+                .struct_span_err(
+                    full_call_span,
+                    format!(
+                        "this {} takes {}{} but {} {} supplied",
+                        call_name,
+                        if c_variadic { "at least " } else { "" },
+                        potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
+                        potentially_plural_count(provided_args.len(), "argument"),
+                        pluralize!("was", provided_args.len())
+                    ),
+                )
+                .with_code(err_code.to_owned())
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion
@@ -1250,7 +1249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn suggest_ptr_null_mut(
@@ -1326,7 +1325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         hir_id: hir::HirId,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
@@ -1377,14 +1376,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // (issue #88844).
                     guar
                 }
-                _ => struct_span_err!(
+                _ => struct_span_code_err!(
                     self.dcx(),
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
                     ty.normalized.sort_string(self.tcx)
                 )
-                .span_label(path_span, "not a struct")
+                .with_span_label(path_span, "not a struct")
                 .emit(),
             })
         }
@@ -1459,8 +1458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
-            if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            if let Some(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
                 err.emit();
             }
@@ -1471,6 +1469,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check a `let` statement.
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
         self.check_decl(local.into());
+        if local.pat.is_never_pattern() {
+            self.diverges.set(Diverges::Always {
+                span: local.pat.span,
+                custom_note: Some("any code following a never pattern is unreachable"),
+            });
+        }
     }
 
     pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
@@ -1783,15 +1787,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(
         &self,
-        qpath: &QPath<'_>,
+        qpath: &QPath<'tcx>,
         path_span: Span,
         hir_id: hir::HirId,
-    ) -> (Res, RawTy<'tcx>) {
+    ) -> (Res, LoweredTy<'tcx>) {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
                 let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
-                (path.res, self.handle_raw_ty(path_span, ty))
+                (path.res, LoweredTy::from_raw(self, path_span, ty))
             }
             QPath::TypeRelative(qself, segment) => {
                 let ty = self.to_ty(qself);
@@ -1802,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
-                let ty = self.handle_raw_ty(path_span, ty);
+                let ty = LoweredTy::from_raw(self, path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -1812,7 +1816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             QPath::LangItem(lang_item, span) => {
                 let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
-                (res, self.handle_raw_ty(path_span, ty))
+                (res, LoweredTy::from_raw(self, path_span, ty))
             }
         }
     }

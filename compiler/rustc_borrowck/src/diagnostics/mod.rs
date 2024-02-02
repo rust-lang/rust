@@ -23,6 +23,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::util::{call_kind, CallDesugaringKind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
+use rustc_span::source_map::Spanned;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -111,9 +112,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
-                        Some(Operand::Copy(place) | Operand::Move(place))
-                            if target == place.local_or_deref_local() =>
-                        {
+                        Some(Spanned {
+                            node: Operand::Copy(place) | Operand::Move(place), ..
+                        }) if target == place.local_or_deref_local() => {
                             place.local_or_deref_local().unwrap()
                         }
                         _ => return false,
@@ -370,7 +371,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) => {
                     self.describe_field_from_ty(ty, field, variant_index, including_tuple_field)
                 }
-                ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
+                ty::Closure(def_id, _) | ty::Coroutine(def_id, _) => {
                     // We won't be borrowck'ing here if the closure came from another crate,
                     // so it's safe to call `expect_local`.
                     //
@@ -792,8 +793,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
-            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) =
-                **kind
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _) = **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
@@ -928,7 +928,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_coroutine) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
-                    box AggregateKind::Coroutine(def_id, _, _) => (def_id, true),
+                    box AggregateKind::Coroutine(def_id, _) => (def_id, true),
                     _ => continue,
                 };
                 let def_id = def_id.expect_local();
@@ -1179,9 +1179,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             } else {
                                 vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
                             };
-                            if let Some(errors) =
-                                self.infcx.could_impl_trait(clone_trait, ty, self.param_env)
-                                && !has_sugg
+                            if let Some(errors) = self.infcx.type_implements_trait_shallow(
+                                clone_trait,
+                                ty,
+                                self.param_env,
+                            ) && !has_sugg
                             {
                                 let msg = match &errors[..] {
                                     [] => "you can `clone` the value and consume it, but this \
@@ -1214,7 +1216,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                                 for error in errors {
-                                    if let FulfillmentErrorCode::CodeSelectionError(
+                                    if let FulfillmentErrorCode::SelectionError(
                                         SelectionError::Unimplemented,
                                     ) = error.code
                                         && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(

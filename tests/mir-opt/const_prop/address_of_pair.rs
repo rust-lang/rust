@@ -1,6 +1,6 @@
-// unit-test: ConstProp
+// unit-test: GVN
 
-// EMIT_MIR address_of_pair.fn0.ConstProp.diff
+// EMIT_MIR address_of_pair.fn0.GVN.diff
 pub fn fn0() -> bool {
     // CHECK-LABEL: fn fn0(
     // CHECK: debug pair => [[pair:_.*]];

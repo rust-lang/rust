@@ -14,9 +14,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
+    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
+    SelectionError, SelectionResult, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -239,20 +239,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    // Sets the `TreatInductiveCycleAs` mode temporarily in the selection context
-    pub fn with_treat_inductive_cycle_as<T>(
-        &mut self,
-        treat_inductive_cycle: TreatInductiveCycleAs,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn with_treat_inductive_cycle_as_ambig(
+        infcx: &'cx InferCtxt<'tcx>,
+    ) -> SelectionContext<'cx, 'tcx> {
         // Should be executed in a context where caching is disabled,
         // otherwise the cache is poisoned with the temporary result.
-        assert!(self.is_intercrate());
-        let treat_inductive_cycle =
-            std::mem::replace(&mut self.treat_inductive_cycle, treat_inductive_cycle);
-        let value = f(self);
-        self.treat_inductive_cycle = treat_inductive_cycle;
-        value
+        assert!(infcx.intercrate);
+        SelectionContext {
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
+            ..SelectionContext::new(infcx)
+        }
     }
 
     pub fn with_query_mode(
@@ -500,7 +496,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Ok(_) => Ok(None),
                 Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
@@ -1237,7 +1232,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
-            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -2176,7 +2170,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Coroutine(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2185,26 +2178,31 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Coroutine(_, args, hir::Movability::Movable) => {
-                if self.tcx().features().coroutine_clone {
-                    let resolved_upvars =
-                        self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                    let resolved_witness =
-                        self.infcx.shallow_resolve(args.as_coroutine().witness());
-                    if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
-                        // Not yet resolved.
-                        Ambiguous
-                    } else {
-                        let all = args
-                            .as_coroutine()
-                            .upvar_tys()
-                            .iter()
-                            .chain([args.as_coroutine().witness()])
-                            .collect::<Vec<_>>();
-                        Where(obligation.predicate.rebind(all))
+            ty::Coroutine(coroutine_def_id, args) => {
+                match self.tcx().coroutine_movability(coroutine_def_id) {
+                    hir::Movability::Static => None,
+                    hir::Movability::Movable => {
+                        if self.tcx().features().coroutine_clone {
+                            let resolved_upvars =
+                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                                // Not yet resolved.
+                                Ambiguous
+                            } else {
+                                let all = args
+                                    .as_coroutine()
+                                    .upvar_tys()
+                                    .iter()
+                                    .chain([args.as_coroutine().witness()])
+                                    .collect::<Vec<_>>();
+                                Where(obligation.predicate.rebind(all))
+                            }
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    None
                 }
             }
 
@@ -2307,7 +2305,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(vec![ty])
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())

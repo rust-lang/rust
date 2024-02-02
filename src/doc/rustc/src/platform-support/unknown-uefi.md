@@ -82,13 +82,29 @@ rustup target add x86_64-unknown-uefi
 cargo build --target x86_64-unknown-uefi
 ```
 
+### Building a driver
+
+There are three types of UEFI executables: application, boot service
+driver, and runtime driver. All of Rust's UEFI targets default to
+producing applications. To build a driver instead, pass a
+[`subsystem`][linker-subsystem] linker flag with a value of
+`efi_boot_service_driver` or `efi_runtime_driver`.
+
+Example:
+
+```toml
+# In .cargo/config.toml:
+[build]
+rustflags = ["-C", "link-args=/subsystem:efi_runtime_driver"]
+```
+
 ## Testing
 
 UEFI applications can be copied into the ESP on any UEFI system and executed
 via the firmware boot menu. The qemu suite allows emulating UEFI systems and
 executing UEFI applications as well. See its documentation for details.
 
-The [uefi-run](https://github.com/Richard-W/uefi-run) rust tool is a simple
+The [uefi-run] rust tool is a simple
 wrapper around `qemu` that can spawn UEFI applications in qemu. You can install
 it via `cargo install uefi-run` and execute qemu applications as
 `uefi-run ./application.efi`.
@@ -132,19 +148,19 @@ have been developed to provide access to UEFI protocols and make UEFI
 programming more ergonomic in rust. The following list is a short overview (in
 alphabetical ordering):
 
-- **efi**: *Ergonomic Rust bindings for writing UEFI applications*. Provides
+- **[efi][efi-crate]**: *Ergonomic Rust bindings for writing UEFI applications*. Provides
   _rustified_ access to UEFI protocols, implements allocators and a safe
   environment to write UEFI applications.
-- **r-efi**: *UEFI Reference Specification Protocol Constants and Definitions*.
+- **[r-efi]**: *UEFI Reference Specification Protocol Constants and Definitions*.
   A pure transpose of the UEFI specification into rust. This provides the raw
   definitions from the specification, without any extended helpers or
   _rustification_. It serves as baseline to implement any more elaborate rust
   UEFI layers.
-- **uefi-rs**: *Safe and easy-to-use wrapper for building UEFI apps*. An
+- **[uefi-rs]**: *Safe and easy-to-use wrapper for building UEFI apps*. An
   elaborate library providing safe abstractions for UEFI protocols and
   features. It implements allocators and provides an execution environment to
   UEFI applications written in rust.
-- **uefi-run**: *Run UEFI applications*. A small wrapper around _qemu_ to spawn
+- **[uefi-run]**: *Run UEFI applications*. A small wrapper around _qemu_ to spawn
   UEFI applications in an emulated `x86_64` machine.
 
 ## Example: Freestanding
@@ -311,3 +327,9 @@ pub fn main() {
 The current implementation of std makes `BootServices` unavailable once `ExitBootServices` is called. Refer to [Runtime Drivers](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/7_driver_entry_point/711_runtime_drivers) for more information regarding how to handle switching from using physical addresses to using virtual addresses.
 
 Note: It should be noted that it is up to the user to drop all allocated memory before `ExitBootServices` is called.
+
+[efi-crate]: https://github.com/gurry/efi
+[linker-subsystem]: https://learn.microsoft.com/en-us/cpp/build/reference/subsystem
+[r-efi]: https://github.com/r-efi/r-efi
+[uefi-rs]: https://github.com/rust-osdev/uefi-rs
+[uefi-run]: https://github.com/Richard-W/uefi-run

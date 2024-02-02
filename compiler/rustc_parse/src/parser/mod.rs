@@ -46,12 +46,14 @@ use crate::errors::{
 };
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
         const CONST_EXPR        = 1 << 2;
         const ALLOW_LET         = 1 << 3;
         const IN_IF_GUARD       = 1 << 4;
+        const IS_PAT            = 1 << 5;
     }
 }
 
@@ -320,9 +322,15 @@ impl TokenType {
     }
 }
 
+/// Used by [`Parser::expect_any_with_type`].
 #[derive(Copy, Clone, Debug)]
 enum TokenExpectType {
+    /// Unencountered tokens are inserted into [`Parser::expected_tokens`].
+    /// See [`Parser::check`].
     Expect,
+
+    /// Unencountered tokens are not inserted into [`Parser::expected_tokens`].
+    /// See [`Parser::check_noexpect`].
     NoExpect,
 }
 
@@ -492,7 +500,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found_err();
+            let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -504,18 +512,10 @@ impl<'a> Parser<'a> {
     }
 
     fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
-        let result = self.token.ident().ok_or_else(|| self.expected_ident_found(recover));
-
-        let (ident, is_raw) = match result {
-            Ok(ident) => ident,
-            Err(err) => match err {
-                // we recovered!
-                Ok(ident) => ident,
-                Err(err) => return Err(err),
-            },
-        };
-
-        Ok((ident, is_raw))
+        match self.token.ident() {
+            Some(ident) => Ok(ident),
+            None => self.expected_ident_found(recover),
+        }
     }
 
     /// Checks if the next token is `tok`, and returns `true` if so.
@@ -766,13 +766,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Checks if the next token is contained within `kets`, and returns `true` if so.
     fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
         kets.iter().any(|k| match expect {
             TokenExpectType::Expect => self.check(k),
-            TokenExpectType::NoExpect => self.token == **k,
+            TokenExpectType::NoExpect => self.check_noexpect(k),
         })
     }
 
+    /// Parses a sequence until the specified delimiters. The function
+    /// `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_seq_to_before_tokens<T>(
         &mut self,
         kets: &[&TokenKind],
@@ -791,13 +795,15 @@ impl<'a> Parser<'a> {
             }
             if let Some(t) = &sep.sep {
                 if first {
+                    // no separator for the first element
                     first = false;
                 } else {
+                    // check for separator
                     match self.expect(t) {
-                        Ok(false) => {
+                        Ok(false) /* not recovered */ => {
                             self.current_closure.take();
                         }
-                        Ok(true) => {
+                        Ok(true) /* recovered */ => {
                             self.current_closure.take();
                             recovered = true;
                             break;
@@ -842,7 +848,7 @@ impl<'a> Parser<'a> {
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
-                                    .span_suggestion_verbose(
+                                    .with_span_suggestion_verbose(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
                                         msg,
                                         " @ ",
@@ -858,7 +864,7 @@ impl<'a> Parser<'a> {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
                                     expect_err
-                                        .span_suggestion_short(
+                                        .with_span_suggestion_short(
                                             sp,
                                             format!("missing `{token_str}`"),
                                             token_str,
@@ -920,9 +926,8 @@ impl<'a> Parser<'a> {
                 });
         }
 
-        expect_err.set_primary_message(
-            "closure bodies that contain statements must be surrounded by braces",
-        );
+        expect_err
+            .primary_message("closure bodies that contain statements must be surrounded by braces");
 
         let preceding_pipe_span = closure_spans.closing_pipe;
         let following_token_span = self.token.span;
@@ -946,7 +951,7 @@ impl<'a> Parser<'a> {
         );
         expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
 
-        expect_err.set_span(vec![preceding_pipe_span, following_token_span]);
+        expect_err.span(vec![preceding_pipe_span, following_token_span]);
 
         let opening_suggestion_str = " {".to_string();
         let closing_suggestion_str = "}".to_string();
@@ -965,7 +970,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a sequence, not including the closing delimiter. The function
+    /// Parses a sequence, not including the delimiters. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_seq_to_before_end<T>(
@@ -973,11 +978,11 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
-    /// Parses a sequence, including the closing delimiter. The function
+    /// Parses a sequence, including only the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_seq_to_end<T>(
@@ -993,7 +998,7 @@ impl<'a> Parser<'a> {
         Ok((val, trailing))
     }
 
-    /// Parses a sequence, including the closing delimiter. The function
+    /// Parses a sequence, including both delimiters. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_unspanned_seq<T>(
@@ -1002,16 +1007,19 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
     }
 
+    /// Parses a comma-separated sequence, including both delimiters.
+    /// The function `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_delim_comma_seq<T>(
         &mut self,
         delim: Delimiter,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
             &token::CloseDelim(delim),
@@ -1020,10 +1028,13 @@ impl<'a> Parser<'a> {
         )
     }
 
+    /// Parses a comma-separated sequence delimited by parentheses (e.g. `(x, y)`).
+    /// The function `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.parse_delim_comma_seq(Delimiter::Parenthesis, f)
     }
 

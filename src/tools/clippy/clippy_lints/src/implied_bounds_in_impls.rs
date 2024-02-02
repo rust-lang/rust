@@ -158,7 +158,7 @@ fn try_resolve_type<'tcx>(
 
 /// This function tries to, for all generic type parameters in a supertrait predicate `trait ...<U>:
 /// GenericTrait<U>`, check if the substituted type in the implied-by bound matches with what's
-/// subtituted in the implied bound.
+/// substituted in the implied bound.
 ///
 /// Consider this example.
 /// ```rust,ignore

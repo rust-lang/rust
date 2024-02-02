@@ -298,24 +298,18 @@ where
 
     let mut filtered = FilteredTests { tests: Vec::new(), benches: Vec::new(), next_id: 0 };
 
-    for test in filter_tests(opts, tests) {
+    let mut filtered_tests = filter_tests(opts, tests);
+    if !opts.bench_benchmarks {
+        filtered_tests = convert_benchmarks_to_tests(filtered_tests);
+    }
+
+    for test in filtered_tests {
         let mut desc = test.desc;
         desc.name = desc.name.with_padding(test.testfn.padding());
 
         match test.testfn {
-            DynBenchFn(benchfn) => {
-                if opts.bench_benchmarks {
-                    filtered.add_bench(desc, DynBenchFn(benchfn));
-                } else {
-                    filtered.add_test(desc, DynBenchAsTestFn(benchfn));
-                }
-            }
-            StaticBenchFn(benchfn) => {
-                if opts.bench_benchmarks {
-                    filtered.add_bench(desc, StaticBenchFn(benchfn));
-                } else {
-                    filtered.add_test(desc, StaticBenchAsTestFn(benchfn));
-                }
+            DynBenchFn(_) | StaticBenchFn(_) => {
+                filtered.add_bench(desc, test.testfn);
             }
             testfn => {
                 filtered.add_test(desc, testfn);
@@ -546,7 +540,7 @@ pub fn run_test(
 
     // Emscripten can catch panics but other wasm targets cannot
     let ignore_because_no_process_support = desc.should_panic != ShouldPanic::No
-        && cfg!(target_family = "wasm")
+        && (cfg!(target_family = "wasm") || cfg!(target_os = "zkvm"))
         && !cfg!(target_os = "emscripten");
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {

@@ -8,10 +8,9 @@ use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
     data::{adt::StructFlags, ImplData},
-    item_scope::ItemScope,
     nameres::DefMap,
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, TraitId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -87,7 +86,7 @@ impl TyFingerprint {
             TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
             TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
             TyKind::Tuple(_, subst) => {
-                let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(Interner));
+                let first_ty = subst.interned().first().map(|arg| arg.assert_ty_ref(Interner));
                 match first_ty {
                     Some(ty) => return TyFingerprint::for_trait_impl(ty),
                     None => TyFingerprint::Unit,
@@ -97,8 +96,8 @@ impl TyFingerprint {
             | TyKind::OpaqueType(_, _)
             | TyKind::FnDef(_, _)
             | TyKind::Closure(_, _)
-            | TyKind::Generator(..)
-            | TyKind::GeneratorWitness(..) => TyFingerprint::Unnameable,
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineWitness(..) => TyFingerprint::Unnameable,
             TyKind::Function(fn_ptr) => {
                 TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }
@@ -132,34 +131,40 @@ pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
 ];
 
+type TraitFpMap = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Box<[ImplId]>>>;
+type TraitFpMapCollector = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>;
+
 /// Trait impls defined or available in some crate.
 #[derive(Debug, Eq, PartialEq)]
 pub struct TraitImpls {
     // If the `Option<TyFingerprint>` is `None`, the impl may apply to any self type.
-    map: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
+    map: TraitFpMap,
 }
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
         let _p = profile::span("trait_impls_in_crate_query").detail(|| format!("{krate:?}"));
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = FxHashMap::default();
 
-        let crate_def_map = db.crate_def_map(krate);
-        impls.collect_def_map(db, &crate_def_map);
-        impls.shrink_to_fit();
+        Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
 
-        Arc::new(impls)
+        Arc::new(Self::finish(impls))
     }
 
-    pub(crate) fn trait_impls_in_block_query(db: &dyn HirDatabase, block: BlockId) -> Arc<Self> {
+    pub(crate) fn trait_impls_in_block_query(
+        db: &dyn HirDatabase,
+        block: BlockId,
+    ) -> Option<Arc<Self>> {
         let _p = profile::span("trait_impls_in_block_query");
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = FxHashMap::default();
 
-        let block_def_map = db.block_def_map(block);
-        impls.collect_def_map(db, &block_def_map);
-        impls.shrink_to_fit();
+        Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
 
-        Arc::new(impls)
+        if impls.is_empty() {
+            None
+        } else {
+            Some(Arc::new(Self::finish(impls)))
+        }
     }
 
     pub(crate) fn trait_impls_in_deps_query(
@@ -174,15 +179,16 @@ impl TraitImpls {
         )
     }
 
-    fn shrink_to_fit(&mut self) {
-        self.map.shrink_to_fit();
-        self.map.values_mut().for_each(|map| {
-            map.shrink_to_fit();
-            map.values_mut().for_each(Vec::shrink_to_fit);
-        });
+    fn finish(map: TraitFpMapCollector) -> TraitImpls {
+        TraitImpls {
+            map: map
+                .into_iter()
+                .map(|(k, v)| (k, v.into_iter().map(|(k, v)| (k, v.into_boxed_slice())).collect()))
+                .collect(),
+        }
     }
 
-    fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
+    fn collect_def_map(db: &dyn HirDatabase, map: &mut TraitFpMapCollector, def_map: &DefMap) {
         for (_module_id, module_data) in def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 // Reservation impls should be ignored during trait resolution, so we never need
@@ -200,20 +206,15 @@ impl TraitImpls {
                 };
                 let self_ty = db.impl_self_ty(impl_id);
                 let self_ty_fp = TyFingerprint::for_trait_impl(self_ty.skip_binders());
-                self.map
-                    .entry(target_trait)
-                    .or_default()
-                    .entry(self_ty_fp)
-                    .or_default()
-                    .push(impl_id);
+                map.entry(target_trait).or_default().entry(self_ty_fp).or_default().push(impl_id);
             }
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in collect_unnamed_consts(db, &module_data.scope) {
+            for konst in module_data.scope.unnamed_consts(db.upcast()) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
-                    self.collect_def_map(db, &block_def_map);
+                    Self::collect_def_map(db, map, &block_def_map);
                 }
             }
         }
@@ -281,7 +282,10 @@ impl InherentImpls {
         Arc::new(impls)
     }
 
-    pub(crate) fn inherent_impls_in_block_query(db: &dyn HirDatabase, block: BlockId) -> Arc<Self> {
+    pub(crate) fn inherent_impls_in_block_query(
+        db: &dyn HirDatabase,
+        block: BlockId,
+    ) -> Option<Arc<Self>> {
         let _p = profile::span("inherent_impls_in_block_query");
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
@@ -289,7 +293,11 @@ impl InherentImpls {
         impls.collect_def_map(db, &block_def_map);
         impls.shrink_to_fit();
 
-        Arc::new(impls)
+        if impls.map.is_empty() && impls.invalid_impls.is_empty() {
+            None
+        } else {
+            Some(Arc::new(impls))
+        }
     }
 
     fn shrink_to_fit(&mut self) {
@@ -321,7 +329,7 @@ impl InherentImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in collect_unnamed_consts(db, &module_data.scope) {
+            for konst in module_data.scope.unnamed_consts(db.upcast()) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);
@@ -365,34 +373,6 @@ pub(crate) fn incoherent_inherent_impl_crates(
     }
 
     res
-}
-
-fn collect_unnamed_consts<'a>(
-    db: &'a dyn HirDatabase,
-    scope: &'a ItemScope,
-) -> impl Iterator<Item = ConstId> + 'a {
-    let unnamed_consts = scope.unnamed_consts();
-
-    // FIXME: Also treat consts named `_DERIVE_*` as unnamed, since synstructure generates those.
-    // Should be removed once synstructure stops doing that.
-    let synstructure_hack_consts = scope.values().filter_map(|(item, _)| match item {
-        ModuleDefId::ConstId(id) => {
-            let loc = id.lookup(db.upcast());
-            let item_tree = loc.id.item_tree(db.upcast());
-            if item_tree[loc.id.value]
-                .name
-                .as_ref()
-                .map_or(false, |n| n.to_smol_str().starts_with("_DERIVE_"))
-            {
-                Some(id)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    });
-
-    unnamed_consts.chain(synstructure_hack_consts)
 }
 
 pub fn def_crates(
@@ -561,7 +541,7 @@ impl ReceiverAdjustments {
                 if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
                     if let TyKind::Array(inner, _) = inner.kind(Interner) {
                         break 'it TyKind::Ref(
-                            m.clone(),
+                            *m,
                             l.clone(),
                             TyKind::Slice(inner.clone()).intern(Interner),
                         )
@@ -737,7 +717,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let impls = db.trait_impls_in_deps(env.krate);
     let self_impls = match self_ty.kind(Interner) {
         TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().map(|it| db.trait_impls_in_block(it))
+            id.0.module(db.upcast()).containing_block().and_then(|it| db.trait_impls_in_block(it))
         }
         _ => None,
     };
@@ -973,7 +953,7 @@ pub fn iterate_method_candidates_dyn(
             let ty = table.instantiate_canonical(ty.clone());
             let deref_chain = autoderef_method_receiver(&mut table, ty);
 
-            let result = deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
+            deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
                 iterate_method_candidates_with_autoref(
                     &receiver_ty,
                     adj,
@@ -984,8 +964,7 @@ pub fn iterate_method_candidates_dyn(
                     name,
                     callback,
                 )
-            });
-            result
+            })
         }
         LookupMode::Path => {
             // No autoderef for path lookups
@@ -1254,17 +1233,18 @@ fn iterate_inherent_methods(
     };
 
     while let Some(block_id) = block {
-        let impls = db.inherent_impls_in_block(block_id);
-        impls_for_self_ty(
-            &impls,
-            self_ty,
-            table,
-            name,
-            receiver_ty,
-            receiver_adjustments.clone(),
-            module,
-            callback,
-        )?;
+        if let Some(impls) = db.inherent_impls_in_block(block_id) {
+            impls_for_self_ty(
+                &impls,
+                self_ty,
+                table,
+                name,
+                receiver_ty,
+                receiver_adjustments.clone(),
+                module,
+                callback,
+            )?;
+        }
 
         block = db.block_def_map(block_id).parent().and_then(|module| module.containing_block());
     }
@@ -1350,7 +1330,7 @@ pub(crate) fn resolve_indexing_op(
     ty: Canonical<Ty>,
     index_trait: TraitId,
 ) -> Option<ReceiverAdjustments> {
-    let mut table = InferenceTable::new(db, env.clone());
+    let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
     let deref_chain = autoderef_method_receiver(&mut table, ty);
     for (ty, adj) in deref_chain {

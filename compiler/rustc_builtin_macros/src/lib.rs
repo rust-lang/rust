@@ -5,16 +5,14 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
-#![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
-#![recursion_limit = "256"]
 
 extern crate proc_macro;
 

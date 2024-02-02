@@ -103,7 +103,7 @@ macro_rules! arena_types {
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct<'tcx>,
 
             [decode] trait_impl_trait_tys:
-                rustc_data_structures::fx::FxHashMap<
+                rustc_data_structures::unord::UnordMap<
                     rustc_hir::def_id::DefId,
                     rustc_middle::ty::EarlyBinder<rustc_middle::ty::Ty<'tcx>>
                 >,
@@ -113,6 +113,8 @@ macro_rules! arena_types {
             [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
             [] features: rustc_feature::Features,
+            [decode] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
+            [] crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
         ]);
     )
 }

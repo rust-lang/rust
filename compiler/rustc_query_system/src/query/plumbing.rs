@@ -44,6 +44,18 @@ enum QueryResult {
     Poisoned,
 }
 
+impl QueryResult {
+    /// Unwraps the query job expecting that it has started.
+    fn expect_job(self) -> QueryJob {
+        match self {
+            Self::Started(job) => job,
+            Self::Poisoned => {
+                panic!("job for query failed to start and was poisoned")
+            }
+        }
+    }
+}
+
 impl<K> QueryState<K>
 where
     K: Eq + Hash + Copy + Debug,
@@ -112,7 +124,7 @@ fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     cycle_error: &CycleError,
-    mut error: DiagnosticBuilder<'_>,
+    error: DiagnosticBuilder<'_>,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
@@ -122,7 +134,7 @@ where
     match query.handle_cycle_error() {
         Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Fatal => {
             error.emit();
@@ -131,7 +143,7 @@ where
         }
         DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -142,7 +154,7 @@ where
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
     }
 }
@@ -169,10 +181,7 @@ where
 
         let job = {
             let mut lock = state.active.lock_shard_by_value(&key);
-            match lock.remove(&key).unwrap() {
-                QueryResult::Started(job) => job,
-                QueryResult::Poisoned => panic!(),
-            }
+            lock.remove(&key).unwrap().expect_job()
         };
 
         job.signal_complete();
@@ -190,10 +199,8 @@ where
         let state = self.state;
         let job = {
             let mut shard = state.active.lock_shard_by_value(&self.key);
-            let job = match shard.remove(&self.key).unwrap() {
-                QueryResult::Started(job) => job,
-                QueryResult::Poisoned => panic!(),
-            };
+            let job = shard.remove(&self.key).unwrap().expect_job();
+
             shard.insert(self.key, QueryResult::Poisoned);
             job
         };
@@ -204,7 +211,7 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CycleError {
+pub struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
     pub cycle: Vec<QueryInfo>,
@@ -277,11 +284,14 @@ where
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
+
                     match lock.get(&key) {
-                        // The query we waited on panicked. Continue unwinding here.
-                        Some(QueryResult::Poisoned) => FatalError.raise(),
+                        Some(QueryResult::Poisoned) => {
+                            panic!("query '{}' not cached due to poisoning", query.name())
+                        }
                         _ => panic!(
-                            "query result must in the cache or the query must be poisoned after a wait"
+                            "query '{}' result must be in the cache or the query must be poisoned after a wait",
+                            query.name()
                         ),
                     }
                 })
@@ -421,17 +431,14 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    format!(
-                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                qcx.dep_context().sess().dcx().delayed_bug(format!(
+                    "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
                         computed={:#?}\nfed={:#?}",
-                        query.dep_kind(),
-                        key,
-                        formatter(&result),
-                        formatter(&cached_result),
-                    ),
-                );
+                    query.dep_kind(),
+                    key,
+                    formatter(&result),
+                    formatter(&cached_result),
+                ));
             }
         }
     }
@@ -531,10 +538,9 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    let diagnostics = diagnostics.into_inner();
-    let side_effects = QuerySideEffects { diagnostics };
+    let side_effects = QuerySideEffects { diagnostics: diagnostics.into_inner() };
 
-    if std::intrinsics::unlikely(!side_effects.is_empty()) {
+    if std::intrinsics::unlikely(side_effects.maybe_any()) {
         if query.anon() {
             qcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {

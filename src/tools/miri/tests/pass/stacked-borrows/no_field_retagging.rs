@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-retag-fields=none
 
-struct Newtype<'a>(&'a mut i32);
+struct Newtype<'a>(#[allow(dead_code)] &'a mut i32);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
     dealloc();

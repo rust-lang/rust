@@ -15,7 +15,7 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 tracing.workspace = true
 either.workspace = true
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 la-arena.workspace = true
 itertools.workspace = true
 hashbrown.workspace = true
@@ -32,6 +32,10 @@ profile.workspace = true
 tt.workspace = true
 mbe.workspace = true
 limit.workspace = true
+span.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
+
+[lints]
+workspace = true

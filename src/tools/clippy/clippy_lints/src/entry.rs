@@ -8,7 +8,7 @@ use core::fmt::{self, Write};
 use rustc_errors::Applicability;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, SyntaxContext, DUMMY_SP};
@@ -465,7 +465,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
                         self.visit_pat(arm.pat);
-                        if let Some(Guard::If(guard) | Guard::IfLet(&Let { init: guard, .. })) = arm.guard {
+                        if let Some(guard) = arm.guard {
                             self.visit_non_tail_expr(guard);
                         }
                         is_map_used |= self.visit_cond_arm(arm.body);

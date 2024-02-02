@@ -227,7 +227,7 @@ impl<T: ?Sized> *mut T {
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
-    /// Provenance][../index.html#strict-provenance] rules. Supporting
+    /// Provenance][super#strict-provenance] rules. Supporting
     /// [`from_exposed_addr_mut`][] complicates specification and reasoning and may not be supported
     /// by tools that help you to stay conformant with the Rust memory model, so it is recommended
     /// to use [`addr`][pointer::addr] wherever possible.
@@ -239,7 +239,7 @@ impl<T: ?Sized> *mut T {
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
-    /// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+    /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
     /// [`from_exposed_addr_mut`]: from_exposed_addr_mut
     #[must_use]
@@ -292,7 +292,7 @@ impl<T: ?Sized> *mut T {
         self.with_addr(f(self.addr()))
     }
 
-    /// Decompose a (possibly wide) pointer into its address and metadata components.
+    /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]

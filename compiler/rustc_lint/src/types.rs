@@ -29,7 +29,6 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use rustc_type_ir::DynKind;
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -255,7 +254,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
         }
     };
 
-    cx.emit_spanned_lint(
+    cx.emit_span_lint(
         OVERFLOWING_LITERALS,
         struct_expr.span,
         RangeEndpointOutOfRange { ty, sub: sub_sugg },
@@ -372,7 +371,7 @@ fn report_bin_hex_error(
         })
         .flatten();
 
-    cx.emit_spanned_lint(
+    cx.emit_span_lint(
         OVERFLOWING_LITERALS,
         expr.span,
         OverflowingBinHex {
@@ -474,7 +473,7 @@ fn lint_int_literal<'tcx>(
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             OVERFLOWING_LITERALS,
             span,
             OverflowingInt { ty: t.name_str(), lit, min, max, help },
@@ -493,7 +492,7 @@ fn lint_uint_literal<'tcx>(
     let lit_val: u128 = match lit.node {
         // _v is u8, within range by definition
         ast::LitKind::Byte(_v) => return,
-        ast::LitKind::Int(v, _) => v,
+        ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
     if lit_val < min || lit_val > max {
@@ -502,7 +501,7 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             OVERFLOWING_LITERALS,
                             par_e.span,
                             OnlyCastu8ToChar { span: par_e.span, literal: lit_val },
@@ -529,7 +528,7 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             OVERFLOWING_LITERALS,
             e.span,
             OverflowingUInt {
@@ -556,7 +555,7 @@ fn lint_literal<'tcx>(
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, type_limits, e, lit, t, v)
+                    lint_int_literal(cx, type_limits, e, lit, t, v.get())
                 }
                 _ => bug!(),
             };
@@ -575,7 +574,7 @@ fn lint_literal<'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     OVERFLOWING_LITERALS,
                     e.span,
                     OverflowingLiteral {
@@ -659,7 +658,7 @@ fn lint_nan<'tcx>(
         _ => return,
     };
 
-    cx.emit_spanned_lint(INVALID_NAN_COMPARISONS, e.span, lint);
+    cx.emit_span_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
 fn lint_wide_pointer<'tcx>(
@@ -679,7 +678,7 @@ fn lint_wide_pointer<'tcx>(
         }
         match ty.kind() {
             ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
-                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, DynKind::Dyn)))),
+                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn)))),
             _ => None,
         }
     };
@@ -705,7 +704,7 @@ fn lint_wide_pointer<'tcx>(
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
-        return cx.emit_spanned_lint(
+        return cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
             e.span,
             AmbiguousWidePointerComparisons::Spanless,
@@ -723,7 +722,7 @@ fn lint_wide_pointer<'tcx>(
     let deref_left = &*"*".repeat(l_ty_refs);
     let deref_right = &*"*".repeat(r_ty_refs);
 
-    cx.emit_spanned_lint(
+    cx.emit_span_lint(
         AMBIGUOUS_WIDE_POINTER_COMPARISONS,
         e.span,
         AmbiguousWidePointerComparisons::Spanful {
@@ -775,7 +774,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) {
                     if !check_limits(cx, binop, l, r) {
-                        cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
+                        cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
                         lint_wide_pointer(cx, e, binop.node, l, r);
@@ -847,7 +846,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                             ast::LitKind::Int(
                                 v,
                                 ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
-                            ) => v as i128,
+                            ) => v.get() as i128,
                             _ => return true,
                         },
                         _ => bug!(),
@@ -858,7 +857,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.kind {
                         hir::ExprKind::Lit(li) => match li.node {
-                            ast::LitKind::Int(v, _) => v,
+                            ast::LitKind::Int(v, _) => v.get(),
                             _ => return true,
                         },
                         _ => bug!(),
@@ -1469,7 +1468,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             None
         };
-        self.cx.emit_spanned_lint(
+        self.cx.emit_span_lint(
             lint,
             sp,
             ImproperCTypes { ty, desc, label: sp, help, note, span_note },
@@ -1797,7 +1796,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             // We only warn if the largest variant is at least thrice as large as
             // the second-largest.
             if largest > slargest * 3 && slargest > 0 {
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     VARIANT_SIZE_DIFFERENCES,
                     enum_definition.variants[largest_index].span,
                     VariantSizeDifferencesDiag { largest },
@@ -1918,17 +1917,9 @@ impl InvalidAtomicOrdering {
             && (ordering == invalid_ordering || ordering == sym::AcqRel)
         {
             if method == sym::load {
-                cx.emit_spanned_lint(
-                    INVALID_ATOMIC_ORDERING,
-                    ordering_arg.span,
-                    AtomicOrderingLoad,
-                );
+                cx.emit_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingLoad);
             } else {
-                cx.emit_spanned_lint(
-                    INVALID_ATOMIC_ORDERING,
-                    ordering_arg.span,
-                    AtomicOrderingStore,
-                );
+                cx.emit_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, AtomicOrderingStore);
             };
         }
     }
@@ -1940,7 +1931,7 @@ impl InvalidAtomicOrdering {
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))
             && Self::match_ordering(cx, &args[0]) == Some(sym::Relaxed)
         {
-            cx.emit_spanned_lint(INVALID_ATOMIC_ORDERING, args[0].span, AtomicOrderingFence);
+            cx.emit_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, AtomicOrderingFence);
         }
     }
 
@@ -1962,7 +1953,7 @@ impl InvalidAtomicOrdering {
         let Some(fail_ordering) = Self::match_ordering(cx, fail_order_arg) else { return };
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 INVALID_ATOMIC_ORDERING,
                 fail_order_arg.span,
                 InvalidAtomicOrderingDiag { method, fail_order_arg_span: fail_order_arg.span },

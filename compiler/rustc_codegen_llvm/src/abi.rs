@@ -6,7 +6,7 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc_codegen_ssa::mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
@@ -253,7 +253,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 bx.lifetime_end(llscratch, scratch_size);
             }
         } else {
-            OperandValue::Immediate(val).store(bx, dst);
+            OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);
         }
     }
 
@@ -590,7 +590,6 @@ impl From<Conv> for llvm::CallConv {
             Conv::Cold => llvm::ColdCallConv,
             Conv::PreserveMost => llvm::PreserveMost,
             Conv::PreserveAll => llvm::PreserveAll,
-            Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,

@@ -7,7 +7,6 @@ LL |     debug_assertions = "_UNEXPECTED_VALUE",
    |                     help: remove the value
    |
    = note: no expected value for `debug_assertions`
-   = help: to expect this configuration use `--check-cfg=cfg(debug_assertions, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
@@ -20,7 +19,6 @@ LL |     doc = "_UNEXPECTED_VALUE",
    |        help: remove the value
    |
    = note: no expected value for `doc`
-   = help: to expect this configuration use `--check-cfg=cfg(doc, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -32,7 +30,6 @@ LL |     doctest = "_UNEXPECTED_VALUE",
    |            help: remove the value
    |
    = note: no expected value for `doctest`
-   = help: to expect this configuration use `--check-cfg=cfg(doctest, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -44,7 +41,6 @@ LL |     miri = "_UNEXPECTED_VALUE",
    |         help: remove the value
    |
    = note: no expected value for `miri`
-   = help: to expect this configuration use `--check-cfg=cfg(miri, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -56,7 +52,6 @@ LL |     overflow_checks = "_UNEXPECTED_VALUE",
    |                    help: remove the value
    |
    = note: no expected value for `overflow_checks`
-   = help: to expect this configuration use `--check-cfg=cfg(overflow_checks, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -66,7 +61,6 @@ LL |     panic = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `panic` are: `abort`, `unwind`
-   = help: to expect this configuration use `--check-cfg=cfg(panic, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -78,7 +72,6 @@ LL |     proc_macro = "_UNEXPECTED_VALUE",
    |               help: remove the value
    |
    = note: no expected value for `proc_macro`
-   = help: to expect this configuration use `--check-cfg=cfg(proc_macro, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -88,7 +81,6 @@ LL |     relocation_model = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `relocation_model` are: `dynamic-no-pic`, `pic`, `pie`, `ropi`, `ropi-rwpi`, `rwpi`, `static`
-   = help: to expect this configuration use `--check-cfg=cfg(relocation_model, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -98,7 +90,6 @@ LL |     sanitize = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `sanitize` are: `address`, `cfi`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`
-   = help: to expect this configuration use `--check-cfg=cfg(sanitize, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -108,7 +99,6 @@ LL |     target_abi = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_abi` are: ``, `abi64`, `abiv2`, `abiv2hf`, `eabi`, `eabihf`, `elf`, `fortanix`, `ilp32`, `llvm`, `macabi`, `sim`, `softfloat`, `spe`, `uwp`, `vec-extabi`, `x32`
-   = help: to expect this configuration use `--check-cfg=cfg(target_abi, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -118,7 +108,6 @@ LL |     target_arch = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_arch` are: `aarch64`, `arm`, `avr`, `bpf`, `csky`, `hexagon`, `loongarch64`, `m68k`, `mips`, `mips32r6`, `mips64`, `mips64r6`, `msp430`, `nvptx64`, `powerpc`, `powerpc64`, `riscv32`, `riscv64`, `s390x`, `sparc`, `sparc64`, `wasm32`, `wasm64`, `x86`, `x86_64`
-   = help: to expect this configuration use `--check-cfg=cfg(target_arch, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -128,7 +117,6 @@ LL |     target_endian = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_endian` are: `big`, `little`
-   = help: to expect this configuration use `--check-cfg=cfg(target_endian, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -138,7 +126,6 @@ LL |     target_env = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_env` are: ``, `eabihf`, `gnu`, `gnueabihf`, `msvc`, `musl`, `newlib`, `nto70`, `nto71`, `ohos`, `psx`, `relibc`, `sgx`, `uclibc`
-   = help: to expect this configuration use `--check-cfg=cfg(target_env, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -148,7 +135,6 @@ LL |     target_family = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_family` are: `unix`, `wasm`, `windows`
-   = help: to expect this configuration use `--check-cfg=cfg(target_family, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -158,7 +144,6 @@ LL |     target_feature = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_feature` are: `10e60`, `2e3`, `3e3r1`, `3e3r2`, `3e3r3`, `3e7`, `7e10`, `a`, `aclass`, `adx`, `aes`, `altivec`, `alu32`, `atomics`, `avx`, `avx2`, `avx512bf16`, `avx512bitalg`, `avx512bw`, `avx512cd`, `avx512dq`, `avx512er`, `avx512f`, `avx512ifma`, `avx512pf`, `avx512vbmi`, `avx512vbmi2`, `avx512vl`, `avx512vnni`, `avx512vp2intersect`, `avx512vpopcntdq`, `bf16`, `bmi1`, `bmi2`, `bti`, `bulk-memory`, `c`, `cache`, `cmpxchg16b`, `crc`, `crt-static`, `d`, `d32`, `dit`, `doloop`, `dotprod`, `dpb`, `dpb2`, `dsp`, `dsp1e2`, `dspe60`, `e`, `e1`, `e2`, `edsp`, `elrw`, `ermsb`, `exception-handling`, `f`, `f16c`, `f32mm`, `f64mm`, `fast-unaligned-access`, `fcma`, `fdivdu`, `fhm`, `flagm`, `float1e2`, `float1e3`, `float3e4`, `float7e60`, `floate1`, `fma`, `fp-armv8`, `fp16`, `fp64`, `fpuv2_df`, `fpuv2_sf`, `fpuv3_df`, `fpuv3_hf`, `fpuv3_hi`, `fpuv3_sf`, `frintts`, `fxsr`, `gfni`, `hard-float`, `hard-float-abi`, `hard-tp`, `high-registers`, `hvx`, `hvx-length128b`, `hwdiv`, `i8mm`, `jsconv`, `lasx`, `lbt`, `lor`, `lse`, `lsx`, `lvz`, `lzcnt`, `m`, `mclass`, `movbe`, `mp`, `mp1e2`, `msa`, `mte`, `multivalue`, `mutable-globals`, `neon`, `nontrapping-fptoint`, `nvic`, `paca`, `pacg`, `pan`, `pclmulqdq`, `pmuv3`, `popcnt`, `power10-vector`, `power8-altivec`, `power8-vector`, `power9-altivec`, `power9-vector`, `rand`, `ras`, `rclass`, `rcpc`, `rcpc2`, `rdm`, `rdrand`, `rdseed`, `reference-types`, `relax`, `relaxed-simd`, `rtm`, `sb`, `sha`, `sha2`, `sha3`, `sign-ext`, `simd128`, `sm4`, `spe`, `ssbs`, `sse`, `sse2`, `sse3`, `sse4.1`, `sse4.2`, `sse4a`, `ssse3`, `sve`, `sve2`, `sve2-aes`, `sve2-bitperm`, `sve2-sha3`, `sve2-sm4`, `tbm`, `thumb-mode`, `thumb2`, `tme`, `trust`, `trustzone`, `ual`, `v`, `v5te`, `v6`, `v6k`, `v6t2`, `v7`, `v8`, `v8.1a`, `v8.2a`, `v8.3a`, `v8.4a`, `v8.5a`, `v8.6a`, `v8.7a`, `vaes`, `vdsp2e60f`, `vdspv1`, `vdspv2`, `vfp2`, `vfp3`, `vfp4`, `vh`, `virt`, `virtualization`, `vpclmulqdq`, `vsx`, `xsave`, `xsavec`, `xsaveopt`, `xsaves`, `zba`, `zbb`, `zbc`, `zbkb`, `zbkc`, `zbkx`, `zbs`, `zdinx`, `zfh`, `zfhmin`, `zfinx`, `zhinx`, `zhinxmin`, `zk`, `zkn`, `zknd`, `zkne`, `zknh`, `zkr`, `zks`, `zksed`, `zksh`, `zkt`
-   = help: to expect this configuration use `--check-cfg=cfg(target_feature, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -168,7 +153,6 @@ LL |     target_has_atomic = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_has_atomic` are: (none), `128`, `16`, `32`, `64`, `8`, `ptr`
-   = help: to expect this configuration use `--check-cfg=cfg(target_has_atomic, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -178,7 +162,6 @@ LL |     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_has_atomic_equal_alignment` are: (none), `128`, `16`, `32`, `64`, `8`, `ptr`
-   = help: to expect this configuration use `--check-cfg=cfg(target_has_atomic_equal_alignment, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -188,7 +171,6 @@ LL |     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_has_atomic_load_store` are: (none), `128`, `16`, `32`, `64`, `8`, `ptr`
-   = help: to expect this configuration use `--check-cfg=cfg(target_has_atomic_load_store, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -197,8 +179,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_os = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`
-   = help: to expect this configuration use `--check-cfg=cfg(target_os, values("_UNEXPECTED_VALUE"))`
+   = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -208,7 +189,6 @@ LL |     target_pointer_width = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_pointer_width` are: `16`, `32`, `64`
-   = help: to expect this configuration use `--check-cfg=cfg(target_pointer_width, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -220,7 +200,6 @@ LL |     target_thread_local = "_UNEXPECTED_VALUE",
    |                        help: remove the value
    |
    = note: no expected value for `target_thread_local`
-   = help: to expect this configuration use `--check-cfg=cfg(target_thread_local, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -229,8 +208,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_vendor = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_vendor` are: `apple`, `espressif`, `fortanix`, `ibm`, `kmc`, `nintendo`, `nvidia`, `pc`, `sony`, `sun`, `unikraft`, `unknown`, `uwp`, `win7`, `wrs`
-   = help: to expect this configuration use `--check-cfg=cfg(target_vendor, values("_UNEXPECTED_VALUE"))`
+   = note: expected values for `target_vendor` are: `apple`, `espressif`, `fortanix`, `ibm`, `kmc`, `nintendo`, `nvidia`, `pc`, `risc0`, `sony`, `sun`, `unikraft`, `unknown`, `uwp`, `win7`, `wrs`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -242,7 +220,6 @@ LL |     test = "_UNEXPECTED_VALUE",
    |         help: remove the value
    |
    = note: no expected value for `test`
-   = help: to expect this configuration use `--check-cfg=cfg(test, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -254,7 +231,6 @@ LL |     unix = "_UNEXPECTED_VALUE",
    |         help: remove the value
    |
    = note: no expected value for `unix`
-   = help: to expect this configuration use `--check-cfg=cfg(unix, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
@@ -266,7 +242,6 @@ LL |     windows = "_UNEXPECTED_VALUE",
    |            help: remove the value
    |
    = note: no expected value for `windows`
-   = help: to expect this configuration use `--check-cfg=cfg(windows, values("_UNEXPECTED_VALUE"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `linuz`
@@ -277,8 +252,7 @@ LL | #[cfg(target_os = "linuz")] // testing that we suggest `linux`
    |                   |
    |                   help: there is a expected value with a similar name: `"linux"`
    |
-   = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`
-   = help: to expect this configuration use `--check-cfg=cfg(target_os, values("linuz"))`
+   = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: 26 warnings emitted

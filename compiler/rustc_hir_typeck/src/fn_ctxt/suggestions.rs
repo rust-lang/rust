@@ -11,6 +11,7 @@ use crate::ty::TypeAndMut;
 use core::cmp::min;
 use core::iter;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -784,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_missing_return_type(
         &self,
         err: &mut Diagnostic,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
@@ -995,7 +996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
-        fn_decl: &hir::FnDecl<'_>,
+        fn_decl: &hir::FnDecl<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         id: hir::HirId,
@@ -1409,8 +1410,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 let (_, suffix) = snippet.split_at(snippet.len() - 3);
                 let value = match suffix {
-                    "f32" => (lit - 0xf32) / (16 * 16 * 16),
-                    "f64" => (lit - 0xf64) / (16 * 16 * 16),
+                    "f32" => (lit.get() - 0xf32) / (16 * 16 * 16),
+                    "f64" => (lit.get() - 0xf64) / (16 * 16 * 16),
                     _ => return false,
                 };
                 err.span_suggestions(
@@ -1440,7 +1441,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Provided expression needs to be a literal `0`.
-        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(0, _), span }) = expr.kind else {
+        let ExprKind::Lit(Spanned { node: rustc_ast::LitKind::Int(Pu128(0), _), span }) = expr.kind
+        else {
             return false;
         };
 
@@ -1468,7 +1470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn suggest_associated_const(
         &self,
         err: &mut Diagnostic,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
         let Some((DefKind::AssocFn, old_def_id)) =
@@ -1623,7 +1625,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 if let Some(errors) =
-                    self.could_impl_trait(clone_trait_did, expected_ty, self.param_env)
+                    self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
                     match &errors[..] {
                         [] => {}
@@ -1648,7 +1650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     for error in errors {
-                        if let traits::FulfillmentErrorCode::CodeSelectionError(
+                        if let traits::FulfillmentErrorCode::SelectionError(
                             traits::SelectionError::Unimplemented,
                         ) = error.code
                             && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
@@ -2038,7 +2040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
                         sole_field.vis.is_accessible_from(expr.hir_id.owner.def_id, self.tcx)
-                        // Skip suggestions for unstable public fields (for example `Pin::pointer`)
+                        // Skip suggestions for unstable public fields (for example `Pin::__pointer`)
                         && matches!(self.tcx.eval_stability(sole_field.did, None, expr.span, None), EvalResult::Allow | EvalResult::Unmarked);
 
                     if !field_is_local && !field_is_accessible {
@@ -2138,46 +2140,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let (adt, unwrap) = match expected.kind() {
+        let (adt, substs, unwrap) = match expected.kind() {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
-            ty::Adt(adt, args) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
-                // Unwrap option
-                let ty::Adt(adt, _) = args.type_at(0).kind() else {
+            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+                let nonzero_type = substs.type_at(0); // Unwrap option type.
+                let ty::Adt(adt, substs) = nonzero_type.kind() else {
                     return false;
                 };
-
-                (adt, "")
+                (adt, substs, "")
             }
-            // In case NonZero* is wanted, but * is provided also add `.unwrap()` to satisfy types
-            ty::Adt(adt, _) => (adt, ".unwrap()"),
+            // In case `NonZero<*>` is wanted but `*` is provided, also add `.unwrap()` to satisfy types.
+            ty::Adt(adt, substs) => (adt, substs, ".unwrap()"),
             _ => return false,
         };
 
-        let map = [
-            (sym::NonZeroU8, tcx.types.u8),
-            (sym::NonZeroU16, tcx.types.u16),
-            (sym::NonZeroU32, tcx.types.u32),
-            (sym::NonZeroU64, tcx.types.u64),
-            (sym::NonZeroU128, tcx.types.u128),
-            (sym::NonZeroI8, tcx.types.i8),
-            (sym::NonZeroI16, tcx.types.i16),
-            (sym::NonZeroI32, tcx.types.i32),
-            (sym::NonZeroI64, tcx.types.i64),
-            (sym::NonZeroI128, tcx.types.i128),
+        if !self.tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
+            return false;
+        }
+
+        // FIXME: This can be simplified once `NonZero<T>` is stable.
+        let coercable_types = [
+            ("NonZeroU8", tcx.types.u8),
+            ("NonZeroU16", tcx.types.u16),
+            ("NonZeroU32", tcx.types.u32),
+            ("NonZeroU64", tcx.types.u64),
+            ("NonZeroU128", tcx.types.u128),
+            ("NonZeroI8", tcx.types.i8),
+            ("NonZeroI16", tcx.types.i16),
+            ("NonZeroI32", tcx.types.i32),
+            ("NonZeroI64", tcx.types.i64),
+            ("NonZeroI128", tcx.types.i128),
         ];
 
-        let Some((s, _)) = map.iter().find(|&&(s, t)| {
-            self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t)
+        let int_type = substs.type_at(0);
+
+        let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
+            if *t == int_type && self.can_coerce(expr_ty, *t) { Some(nonzero_alias) } else { None }
         }) else {
             return false;
         };
 
-        let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
-
         err.multipart_suggestion(
-            format!("consider calling `{s}::new`"),
+            format!("consider calling `{nonzero_alias}::new`"),
             vec![
-                (expr.span.shrink_to_lo(), format!("{path}::new(")),
+                (expr.span.shrink_to_lo(), format!("{nonzero_alias}::new(")),
                 (expr.span.shrink_to_hi(), format!("){unwrap}")),
             ],
             Applicability::MaybeIncorrect,

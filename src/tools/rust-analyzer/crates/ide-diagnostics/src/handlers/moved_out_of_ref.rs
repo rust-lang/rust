@@ -9,7 +9,7 @@ pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOf
         ctx,
         DiagnosticCode::RustcHardError("E0507"),
         format!("cannot move `{}` out of reference", d.ty.display(ctx.sema.db)),
-        d.span.clone(),
+        d.span,
     )
     .experimental() // spans are broken, and I'm not sure how precise we can detect copy types
 }

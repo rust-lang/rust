@@ -1,6 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 use std::ops::AddAssign;
 use std::mem::ManuallyDrop;
 

@@ -504,9 +504,8 @@ fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<S
     }
 
     let searcher = AhoCorasickBuilder::new()
-        .dfa(true)
         .match_kind(aho_corasick::MatchKind::LeftmostLongest)
-        .build_with_size::<u16, _, _>(replacements.iter().map(|&(x, _)| x.as_bytes()))
+        .build(replacements.iter().map(|&(x, _)| x.as_bytes()))
         .unwrap();
 
     let mut result = String::with_capacity(contents.len() + 1024);
@@ -928,7 +927,7 @@ fn remove_line_splices(s: &str) -> String {
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    unescape::unescape_literal(s, unescape::Mode::Str, &mut |range, ch| {
+    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |range, ch| {
         if ch.is_ok() {
             res.push_str(&s[range]);
         }

@@ -1,11 +1,14 @@
-use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
+use crate::errors::{
+    InvalidMetaItem, InvalidMetaItemSuggQuoteIdent, InvalidMetaItemUnquotedIdent,
+    SuffixedLiteralInAttribute,
+};
 use crate::fluent_generated as fluent;
 
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{error_code, Diagnostic, PResult};
+use rustc_errors::{codes::*, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -55,11 +58,10 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style != ast::AttrStyle::Outer {
                     let span = self.token.span;
-                    let mut err = self.dcx().struct_span_err_with_code(
-                        span,
-                        fluent::parse_inner_doc_comment_not_permitted,
-                        error_code!(E0753),
-                    );
+                    let mut err = self
+                        .dcx()
+                        .struct_span_err(span, fluent::parse_inner_doc_comment_not_permitted);
+                    err.code(E0753);
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
                         &mut err,
                         span,
@@ -174,7 +176,7 @@ impl<'a> Parser<'a> {
         ) {
             Ok(Some(item)) => {
                 // FIXME(#100717)
-                err.set_arg("item", item.kind.descr());
+                err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
                 err.span_suggestion_verbose(
                     replacement_span,
@@ -200,23 +202,25 @@ impl<'a> Parser<'a> {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
-                    let mut diag = self.dcx().struct_span_err(
-                        attr_sp,
-                        fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment);
-                    diag
+                    self.dcx()
+                        .struct_span_err(
+                            attr_sp,
+                            fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
+                        )
+                        .with_span_label(attr_sp, fluent::parse_label_attr)
+                        .with_span_label(
+                            prev_doc_comment_span,
+                            fluent::parse_label_prev_doc_comment,
+                        )
                 }
-                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
-                    let mut diag = self.dcx().struct_span_err(
+                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => self
+                    .dcx()
+                    .struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr);
-                    diag
-                }
+                    )
+                    .with_span_label(attr_sp, fluent::parse_label_attr)
+                    .with_span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr),
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
                     self.dcx().struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
@@ -416,9 +420,26 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        Err(self
-            .dcx()
-            .create_err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }))
+        let token = self.token.clone();
+
+        // Check for unquoted idents in meta items, e.g.: #[cfg(key = foo)]
+        // `from_expansion()` ensures we don't suggest for cases such as
+        // `#[cfg(feature = $expr)]` in macros
+        if self.prev_token == token::Eq && !self.token.span.from_expansion() {
+            let before = self.token.span.shrink_to_lo();
+            while matches!(self.token.kind, token::Ident(..)) {
+                self.bump();
+            }
+            let after = self.prev_token.span.shrink_to_hi();
+            let sugg = InvalidMetaItemSuggQuoteIdent { before, after };
+            return Err(self.dcx().create_err(InvalidMetaItemUnquotedIdent {
+                span: token.span,
+                token,
+                sugg,
+            }));
+        }
+
+        Err(self.dcx().create_err(InvalidMetaItem { span: token.span, token }))
     }
 }
 

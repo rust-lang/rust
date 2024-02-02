@@ -1,0 +1,63 @@
+error[E0796]: reference of mutable static is disallowed
+  --> $DIR/reference-of-mut-static-unsafe-fn.rs:9:14
+   |
+LL |     let _y = &X;
+   |              ^^ reference of mutable static
+   |
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL |     let _y = addr_of!(X);
+   |              ~~~~~~~~~~~
+
+error[E0796]: reference of mutable static is disallowed
+  --> $DIR/reference-of-mut-static-unsafe-fn.rs:12:18
+   |
+LL |     let ref _a = X;
+   |                  ^ reference of mutable static
+   |
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL |     let ref _a = addr_of!(X);
+   |                  ~~~~~~~~~~~
+
+error[E0796]: reference of mutable static is disallowed
+  --> $DIR/reference-of-mut-static-unsafe-fn.rs:15:21
+   |
+LL |     let (_b, _c) = (&X, &Y);
+   |                     ^^ reference of mutable static
+   |
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL |     let (_b, _c) = (addr_of!(X), &Y);
+   |                     ~~~~~~~~~~~
+
+error[E0796]: reference of mutable static is disallowed
+  --> $DIR/reference-of-mut-static-unsafe-fn.rs:15:25
+   |
+LL |     let (_b, _c) = (&X, &Y);
+   |                         ^^ reference of mutable static
+   |
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL |     let (_b, _c) = (&X, addr_of!(Y));
+   |                         ~~~~~~~~~~~
+
+error[E0796]: reference of mutable static is disallowed
+  --> $DIR/reference-of-mut-static-unsafe-fn.rs:19:9
+   |
+LL |     foo(&X);
+   |         ^^ reference of mutable static
+   |
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL |     foo(addr_of!(X));
+   |         ~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0796`.

@@ -26,11 +26,11 @@ use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
-fn test_translation(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let main_fn = stable_mir::entry_fn().unwrap();
     let body = main_fn.body();
     let orig_ty = body.locals()[0].ty;
-    let rustc_ty = rustc_internal::internal(&orig_ty);
+    let rustc_ty = rustc_internal::internal(tcx, &orig_ty);
     assert!(rustc_ty.is_unit());
     ControlFlow::Continue(())
 }
@@ -48,7 +48,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, tcx, test_translation(tcx)).unwrap();
+    run_with_tcx!(args, test_translation).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

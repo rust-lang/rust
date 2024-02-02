@@ -1,6 +1,6 @@
 # `riscv32{i,im,imc,imac,imafc}-unknown-none-elf`
 
-**Tier: 2/3**
+**Tier: 2**
 
 Bare-metal target for RISC-V CPUs with the RV32I, RV32IM, RV32IMC, RV32IMAFC and RV32IMAC ISAs.
 
@@ -24,11 +24,11 @@ This target is included in Rust and can be installed via `rustup`.
 
 ## Testing
 
-This is a cross-compiled no-std target, which must be run either in a simulator
+This is a cross-compiled `no-std` target, which must be run either in a simulator
 or by programming them onto suitable hardware. It is not possible to run the
-Rust testsuite on this target.
+Rust test-suite on this target.
 
 ## Cross-compilation toolchains and C code
 
 This target supports C code. If interlinking with C or C++, you may need to use
-riscv64-unknown-elf-gcc as a linker instead of rust-lld.
+`riscv64-unknown-elf-gcc` as a linker instead of `rust-lld`.

@@ -206,7 +206,7 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagnosticArg for CguReuse {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
@@ -267,9 +267,13 @@ impl CguReuseTracker {
 
     fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
-            for (cgu_name, &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind)) in
-                &data.expected_reuse
-            {
+            #[allow(rustc::potential_query_instability)]
+            let mut keys = data.expected_reuse.keys().collect::<Vec<_>>();
+            keys.sort_unstable();
+            for cgu_name in keys {
+                let &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind) =
+                    data.expected_reuse.get(cgu_name).unwrap();
+
                 if let Some(&actual_reuse) = data.actual_reuse.get(cgu_name) {
                     let (error, at_least) = match comparison_kind {
                         ComparisonKind::Exact => (expected_reuse != actual_reuse, false),

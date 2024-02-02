@@ -20,17 +20,18 @@
 
 pub use crate::format::*;
 pub use crate::util::parser::ExprPrecedence;
+pub use rustc_span::AttrId;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
@@ -625,7 +626,8 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::MacCall(_) => {}
+            | PatKind::MacCall(_)
+            | PatKind::Err(_) => {}
         }
     }
 
@@ -809,6 +811,9 @@ pub enum PatKind {
 
     /// A macro pattern; pre-expansion.
     MacCall(P<MacCall>),
+
+    /// Placeholder for a pattern that wasn't syntactically well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// Whether the `..` is present in a struct fields pattern.
@@ -1829,7 +1834,7 @@ pub enum LitKind {
     /// A character literal (`'a'`).
     Char(char),
     /// An integer literal (`1`).
-    Int(u128, LitIntType),
+    Int(Pu128, LitIntType),
     /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
@@ -2177,9 +2182,10 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u16 {
+    impl InlineAsmOptions: u16 {
         const PURE            = 1 << 0;
         const NOMEM           = 1 << 1;
         const READONLY        = 1 << 2;
@@ -2189,6 +2195,12 @@ bitflags::bitflags! {
         const ATT_SYNTAX      = 1 << 6;
         const RAW             = 1 << 7;
         const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl std::fmt::Debug for InlineAsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
@@ -2681,22 +2693,6 @@ pub enum AttrStyle {
     Inner,
 }
 
-rustc_index::newtype_index! {
-    #[orderable]
-    #[debug_format = "AttrId({})"]
-    pub struct AttrId {}
-}
-
-impl<S: Encoder> Encodable<S> for AttrId {
-    fn encode(&self, _s: &mut S) {}
-}
-
-impl<D: Decoder> Decodable<D> for AttrId {
-    default fn decode(_: &mut D) -> AttrId {
-        panic!("cannot decode `AttrId` with `{}`", std::any::type_name::<D>());
-    }
-}
-
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
@@ -2888,6 +2884,7 @@ impl Item {
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
             | ItemKind::MacCall(_)
+            | ItemKind::Delegation(_)
             | ItemKind::MacroDef(_) => None,
             ItemKind::Static(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
@@ -3035,6 +3032,15 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Delegation {
+    /// Path resolution id.
+    pub id: NodeId,
+    pub qself: Option<P<QSelf>>,
+    pub path: Path,
+    pub body: Option<P<Block>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ty: P<Ty>,
     pub mutability: Mutability,
@@ -3119,6 +3125,11 @@ pub enum ItemKind {
 
     /// A macro definition.
     MacroDef(MacroDef),
+
+    /// A delegation item (`reuse`).
+    ///
+    /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
+    Delegation(Box<Delegation>),
 }
 
 impl ItemKind {
@@ -3126,7 +3137,8 @@ impl ItemKind {
         use ItemKind::*;
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
+            | Delegation(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3150,6 +3162,7 @@ impl ItemKind {
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
+            ItemKind::Delegation(..) => "delegated function",
         }
     }
 
@@ -3191,6 +3204,8 @@ pub enum AssocItemKind {
     Type(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(P<MacCall>),
+    /// An associated delegation item.
+    Delegation(Box<Delegation>),
 }
 
 impl AssocItemKind {
@@ -3199,7 +3214,7 @@ impl AssocItemKind {
             Self::Const(box ConstItem { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
-            Self::MacCall(..) => Defaultness::Final,
+            Self::MacCall(..) | Self::Delegation(..) => Defaultness::Final,
         }
     }
 }
@@ -3211,6 +3226,7 @@ impl From<AssocItemKind> for ItemKind {
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
+            AssocItemKind::Delegation(delegation) => ItemKind::Delegation(delegation),
         }
     }
 }
@@ -3224,6 +3240,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
+            ItemKind::Delegation(d) => AssocItemKind::Delegation(d),
             _ => return Err(item_kind),
         })
     }

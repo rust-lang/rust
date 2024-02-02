@@ -271,7 +271,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
-    let trait_ref = if tcx.generics_of(fn_trait_def_id).host_effect_index.is_some() {
+    let trait_ref = if tcx.has_host_param(fn_trait_def_id) {
         ty::TraitRef::new(
             tcx,
             fn_trait_def_id,

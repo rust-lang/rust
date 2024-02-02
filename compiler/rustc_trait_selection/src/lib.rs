@@ -19,7 +19,7 @@
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
 #![feature(let_chains)]
-#![feature(if_let_guard)]
+#![feature(option_take_if)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 #![feature(min_specialization)]
@@ -39,6 +39,7 @@ extern crate smallvec;
 
 pub mod errors;
 pub mod infer;
+pub mod regions;
 pub mod solve;
 pub mod traits;
 

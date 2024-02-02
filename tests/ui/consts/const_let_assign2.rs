@@ -16,6 +16,7 @@ static mut BB: AA = AA::new();
 
 fn main() {
     let ptr = unsafe { &mut BB };
+    //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
     for a in ptr.data.iter() {
         println!("{}", a);
     }

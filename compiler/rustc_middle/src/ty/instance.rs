@@ -3,6 +3,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
@@ -11,6 +12,7 @@ use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
 
+use std::assert_matches::assert_matches;
 use std::fmt;
 
 /// A monomorphized `InstanceDef`.
@@ -293,12 +295,16 @@ impl<'tcx> InstanceDef<'tcx> {
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: &Instance<'_>,
-    type_length: rustc_session::Limit,
+    type_length: Option<rustc_session::Limit>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let args = tcx.lift(instance.args).expect("could not lift for printing");
 
-        let mut cx = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length);
+        let mut cx = if let Some(type_length) = type_length {
+            FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+        } else {
+            FmtPrinter::new(tcx, Namespace::ValueNS)
+        };
         cx.print_def_path(instance.def_id(), args)?;
         let s = cx.into_buffer();
         f.write_str(&s)
@@ -324,13 +330,13 @@ pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
 
 impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
     }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
+        fmt_instance(f, self, None)
     }
 }
 
@@ -426,7 +432,10 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
-        assert!(!tcx.is_closure(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
+        assert!(
+            !tcx.is_closure_or_coroutine(def_id),
+            "Called `resolve_for_fn_ptr` on closure: {def_id:?}"
+        );
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -488,7 +497,7 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            if tcx.is_closure(def) {
+                            if tcx.is_closure_or_coroutine(def) {
                                 debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
                                        def, def_id, args);
 
@@ -521,12 +530,12 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         requested_kind: ty::ClosureKind,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let actual_kind = args.as_closure().kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, args),
-            _ => Some(Instance::new(def_id, args)),
+            _ => Instance::new(def_id, args),
         }
     }
 
@@ -541,7 +550,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -555,14 +564,60 @@ impl<'tcx> Instance<'tcx> {
 
         let self_ty = Ty::new_closure(tcx, closure_did, args);
 
-        let sig = args.as_closure().sig();
-        let sig =
-            tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
-        assert_eq!(sig.inputs().len(), 1);
-        let args = tcx.mk_args_trait(self_ty, [sig.inputs()[0].into()]);
+        let tupled_inputs_ty = args.as_closure().sig().map_bound(|sig| sig.inputs()[0]);
+        let tupled_inputs_ty = tcx.instantiate_bound_regions_with_erased(tupled_inputs_ty);
+        let args = tcx.mk_args_trait(self_ty, [tupled_inputs_ty.into()]);
 
-        debug!(?self_ty, ?sig);
-        Some(Instance { def, args })
+        debug!(?self_ty, args=?tupled_inputs_ty.tuple_fields());
+        Instance { def, args }
+    }
+
+    pub fn try_resolve_item_for_coroutine(
+        tcx: TyCtxt<'tcx>,
+        trait_item_id: DefId,
+        trait_id: DefId,
+        rcvr_args: ty::GenericArgsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
+        let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
+            return None;
+        };
+        let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
+
+        let lang_items = tcx.lang_items();
+        let coroutine_callable_item = if Some(trait_id) == lang_items.future_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+            );
+            hir::LangItem::FuturePoll
+        } else if Some(trait_id) == lang_items.iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+            );
+            hir::LangItem::IteratorNext
+        } else if Some(trait_id) == lang_items.async_iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
+            );
+            hir::LangItem::AsyncIteratorPollNext
+        } else if Some(trait_id) == lang_items.coroutine_trait() {
+            assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
+            hir::LangItem::CoroutineResume
+        } else {
+            return None;
+        };
+
+        if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+            Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args: args })
+        } else {
+            // All other methods should be defaulted methods of the built-in trait.
+            // This is important for `Iterator`'s combinators, but also useful for
+            // adding future default methods to `Future`, for instance.
+            debug_assert!(tcx.defaultness(trait_item_id).has_value());
+            Some(Instance::new(trait_item_id, rcvr_args))
+        }
     }
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
@@ -658,12 +713,10 @@ fn polymorphize<'tcx>(
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let def_id = instance.def_id();
-    let upvars_ty = if tcx.is_closure(def_id) {
-        Some(args.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).skip_binder().is_coroutine() {
-        Some(args.as_coroutine().tupled_upvars_ty())
-    } else {
-        None
+    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
+        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
+        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
@@ -689,13 +742,13 @@ fn polymorphize<'tcx>(
                         Ty::new_closure(self.tcx, def_id, polymorphized_args)
                     }
                 }
-                ty::Coroutine(def_id, args, movability) => {
+                ty::Coroutine(def_id, args) => {
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceDef::Item(def_id), args);
                     if args == polymorphized_args {
                         ty
                     } else {
-                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args, movability)
+                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args)
                     }
                 }
                 _ => ty.super_fold_with(self),

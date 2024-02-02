@@ -19,6 +19,8 @@ pub fn check_async() {
 
     if passes_ident!(async) == 1 {} // OK
     if passes_ident!(r#async) == 1 {} // OK
+    if passes_tt!(async) == 1 {} // OK
+    if passes_tt!(r#async) == 1 {} // OK
     module::async(); // OK
     module::r#async(); // OK
 }

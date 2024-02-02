@@ -1,13 +1,10 @@
 // check-pass
-// compile-flags: -Z span-debug --error-format human
+// compile-flags: -Z span-debug
 // aux-build:test-macros.rs
 
 // Regression test for issue #75930
 // Tests that we cfg-strip all targets before invoking
 // a derive macro
-// We need '--error-format human' to stop compiletest from
-// trying to interpret proc-macro output as JSON messages
-// (a pretty-printed struct may cause a line to start with '{' )
 // FIXME: We currently lose spans here (see issue #43081)
 
 #![no_std] // Don't load unnecessary hygiene information from std
@@ -47,6 +44,8 @@ extern crate test_macros;
 // that kind of correction caused the problem seen in #76399, so maybe not.
 
 #[print_helper(a)] //~ WARN derive helper attribute is used before it is introduced
+                   //~| WARN derive helper attribute is used before it is introduced
+                   //~| WARN this was previously accepted
                    //~| WARN this was previously accepted
 #[cfg_attr(not(FALSE), allow(dead_code))]
 #[print_attr]

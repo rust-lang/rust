@@ -1,3 +1,4 @@
+use rustc_errors::codes::*;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -7,16 +8,16 @@ use rustc_span::{
 use crate::{late::PatternSource, Res};
 
 #[derive(Diagnostic)]
-#[diag(resolve_parent_module_reset_for_binding, code = "E0637")]
+#[diag(resolve_parent_module_reset_for_binding, code = E0637)]
 pub(crate) struct ParentModuleResetForBinding;
 
 #[derive(Diagnostic)]
-#[diag(resolve_ampersand_used_without_explicit_lifetime_name, code = "E0637")]
+#[diag(resolve_ampersand_used_without_explicit_lifetime_name, code = E0637)]
 #[note]
 pub(crate) struct AmpersandUsedWithoutExplicitLifetimeName(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag(resolve_underscore_lifetime_name_cannot_be_used_here, code = "E0637")]
+#[diag(resolve_underscore_lifetime_name_cannot_be_used_here, code = E0637)]
 #[note]
 pub(crate) struct UnderscoreLifetimeNameCannotBeUsedHere(#[primary_span] pub(crate) Span);
 
@@ -33,7 +34,7 @@ pub(crate) struct CrateRootNamesMustBeNamedExplicitly(#[primary_span] pub(crate)
 pub(crate) struct ResolutionError(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag(resolve_generic_params_from_outer_item, code = "E0401")]
+#[diag(resolve_generic_params_from_outer_item, code = E0401)]
 pub(crate) struct GenericParamsFromOuterItem {
     #[primary_span]
     #[label]
@@ -67,7 +68,7 @@ pub(crate) struct GenericParamsFromOuterItemSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_name_is_already_used_as_generic_parameter, code = "E0403")]
+#[diag(resolve_name_is_already_used_as_generic_parameter, code = E0403)]
 pub(crate) struct NameAlreadyUsedInParameterList {
     #[primary_span]
     #[label]
@@ -78,7 +79,7 @@ pub(crate) struct NameAlreadyUsedInParameterList {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_method_not_member_of_trait, code = "E0407")]
+#[diag(resolve_method_not_member_of_trait, code = E0407)]
 pub(crate) struct MethodNotMemberOfTrait {
     #[primary_span]
     #[label]
@@ -102,7 +103,7 @@ pub(crate) struct AssociatedFnWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_type_not_member_of_trait, code = "E0437")]
+#[diag(resolve_type_not_member_of_trait, code = E0437)]
 pub(crate) struct TypeNotMemberOfTrait {
     #[primary_span]
     #[label]
@@ -126,7 +127,7 @@ pub(crate) struct AssociatedTypeWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_const_not_member_of_trait, code = "E0438")]
+#[diag(resolve_const_not_member_of_trait, code = E0438)]
 pub(crate) struct ConstNotMemberOfTrait {
     #[primary_span]
     #[label]
@@ -150,7 +151,7 @@ pub(crate) struct AssociatedConstWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_variable_bound_with_different_mode, code = "E0409")]
+#[diag(resolve_variable_bound_with_different_mode, code = E0409)]
 pub(crate) struct VariableBoundWithDifferentMode {
     #[primary_span]
     #[label]
@@ -161,7 +162,7 @@ pub(crate) struct VariableBoundWithDifferentMode {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_ident_bound_more_than_once_in_parameter_list, code = "E0415")]
+#[diag(resolve_ident_bound_more_than_once_in_parameter_list, code = E0415)]
 pub(crate) struct IdentifierBoundMoreThanOnceInParameterList {
     #[primary_span]
     #[label]
@@ -170,7 +171,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInParameterList {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_ident_bound_more_than_once_in_same_pattern, code = "E0416")]
+#[diag(resolve_ident_bound_more_than_once_in_same_pattern, code = E0416)]
 pub(crate) struct IdentifierBoundMoreThanOnceInSamePattern {
     #[primary_span]
     #[label]
@@ -179,7 +180,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInSamePattern {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_undeclared_label, code = "E0426")]
+#[diag(resolve_undeclared_label, code = E0426)]
 pub(crate) struct UndeclaredLabel {
     #[primary_span]
     #[label]
@@ -217,7 +218,7 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_import_can_only_appear_once_in_the_list, code = "E0430")]
+#[diag(resolve_self_import_can_only_appear_once_in_the_list, code = E0430)]
 pub(crate) struct SelfImportCanOnlyAppearOnceInTheList {
     #[primary_span]
     #[label]
@@ -225,7 +226,7 @@ pub(crate) struct SelfImportCanOnlyAppearOnceInTheList {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_import_only_in_import_list_with_non_empty_prefix, code = "E0431")]
+#[diag(resolve_self_import_only_in_import_list_with_non_empty_prefix, code = E0431)]
 pub(crate) struct SelfImportOnlyInImportListWithNonEmptyPrefix {
     #[primary_span]
     #[label]
@@ -233,7 +234,7 @@ pub(crate) struct SelfImportOnlyInImportListWithNonEmptyPrefix {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_cannot_capture_dynamic_environment_in_fn_item, code = "E0434")]
+#[diag(resolve_cannot_capture_dynamic_environment_in_fn_item, code = E0434)]
 #[help]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
     #[primary_span]
@@ -241,7 +242,7 @@ pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_attempt_to_use_non_constant_value_in_constant, code = "E0435")]
+#[diag(resolve_attempt_to_use_non_constant_value_in_constant, code = E0435)]
 pub(crate) struct AttemptToUseNonConstantValueInConstant<'a> {
     #[primary_span]
     pub(crate) span: Span,
@@ -283,7 +284,7 @@ pub(crate) struct AttemptToUseNonConstantValueInConstantWithoutSuggestion<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_imports_only_allowed_within, code = "E0429")]
+#[diag(resolve_self_imports_only_allowed_within, code = E0429)]
 pub(crate) struct SelfImportsOnlyAllowedWithin {
     #[primary_span]
     pub(crate) span: Span,
@@ -317,7 +318,7 @@ pub(crate) struct SelfImportsOnlyAllowedWithinMultipartSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_binding_shadows_something_unacceptable, code = "E0530")]
+#[diag(resolve_binding_shadows_something_unacceptable, code = E0530)]
 pub(crate) struct BindingShadowsSomethingUnacceptable<'a> {
     #[primary_span]
     #[label]
@@ -346,7 +347,7 @@ pub(crate) struct BindingShadowsSomethingUnacceptableSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_forward_declared_generic_param, code = "E0128")]
+#[diag(resolve_forward_declared_generic_param, code = E0128)]
 pub(crate) struct ForwardDeclaredGenericParam {
     #[primary_span]
     #[label]
@@ -354,7 +355,7 @@ pub(crate) struct ForwardDeclaredGenericParam {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_param_in_ty_of_const_param, code = "E0770")]
+#[diag(resolve_param_in_ty_of_const_param, code = E0770)]
 pub(crate) struct ParamInTyOfConstParam {
     #[primary_span]
     #[label]
@@ -376,7 +377,7 @@ pub(crate) enum ParamKindInTyOfConstParam {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_self_in_generic_param_default, code = "E0735")]
+#[diag(resolve_self_in_generic_param_default, code = E0735)]
 pub(crate) struct SelfInGenericParamDefault {
     #[primary_span]
     #[label]
@@ -412,7 +413,7 @@ pub(crate) enum ParamKindInNonTrivialAnonConst {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_unreachable_label, code = "E0767")]
+#[diag(resolve_unreachable_label, code = E0767)]
 #[note]
 pub(crate) struct UnreachableLabel {
     #[primary_span]
@@ -456,7 +457,7 @@ pub(crate) struct UnreachableLabelSubLabelUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_trait_impl_mismatch, code = "{code}")]
+#[diag(resolve_trait_impl_mismatch)]
 pub(crate) struct TraitImplMismatch {
     #[primary_span]
     #[label]
@@ -466,7 +467,6 @@ pub(crate) struct TraitImplMismatch {
     #[label(resolve_label_trait_item)]
     pub(crate) trait_item_span: Span,
     pub(crate) trait_path: String,
-    pub(crate) code: String,
 }
 
 #[derive(Diagnostic)]
@@ -486,8 +486,17 @@ pub(crate) struct LowercaseSelf {
     pub(crate) span: Span,
 }
 
+#[derive(Debug)]
 #[derive(Diagnostic)]
-#[diag(resolve_trait_impl_duplicate, code = "E0201")]
+#[diag(resolve_binding_in_never_pattern)]
+pub(crate) struct BindingInNeverPattern {
+    #[primary_span]
+    #[suggestion(code = "_", applicability = "machine-applicable", style = "short")]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_trait_impl_duplicate, code = E0201)]
 pub(crate) struct TraitImplDuplicate {
     #[primary_span]
     #[label]
@@ -510,11 +519,11 @@ pub(crate) struct Relative2018 {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_ancestor_only, code = "E0742")]
+#[diag(resolve_ancestor_only, code = E0742)]
 pub(crate) struct AncestorOnly(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
-#[diag(resolve_expected_found, code = "E0577")]
+#[diag(resolve_expected_found, code = E0577)]
 pub(crate) struct ExpectedFound {
     #[primary_span]
     #[label]
@@ -524,7 +533,7 @@ pub(crate) struct ExpectedFound {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_indeterminate, code = "E0578")]
+#[diag(resolve_indeterminate, code = E0578)]
 pub(crate) struct Indeterminate(#[primary_span] pub(crate) Span);
 
 #[derive(Diagnostic)]
@@ -706,7 +715,7 @@ pub(crate) struct CannotDetermineMacroResolution {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_cannot_be_reexported_private, code = "E0364")]
+#[diag(resolve_cannot_be_reexported_private, code = E0364)]
 pub(crate) struct CannotBeReexportedPrivate {
     #[primary_span]
     pub(crate) span: Span,
@@ -714,7 +723,7 @@ pub(crate) struct CannotBeReexportedPrivate {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_cannot_be_reexported_crate_public, code = "E0364")]
+#[diag(resolve_cannot_be_reexported_crate_public, code = E0364)]
 pub(crate) struct CannotBeReexportedCratePublic {
     #[primary_span]
     pub(crate) span: Span,
@@ -722,7 +731,7 @@ pub(crate) struct CannotBeReexportedCratePublic {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_cannot_be_reexported_private, code = "E0365")]
+#[diag(resolve_cannot_be_reexported_private, code = E0365)]
 #[note(resolve_consider_declaring_with_pub)]
 pub(crate) struct CannotBeReexportedPrivateNS {
     #[primary_span]
@@ -732,7 +741,7 @@ pub(crate) struct CannotBeReexportedPrivateNS {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_cannot_be_reexported_crate_public, code = "E0365")]
+#[diag(resolve_cannot_be_reexported_crate_public, code = E0365)]
 #[note(resolve_consider_declaring_with_pub)]
 pub(crate) struct CannotBeReexportedCratePublicNS {
     #[primary_span]
@@ -771,7 +780,7 @@ pub(crate) struct ItemsInTraitsAreNotImportable {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_is_not_directly_importable, code = "E0253")]
+#[diag(resolve_is_not_directly_importable, code = E0253)]
 pub(crate) struct IsNotDirectlyImportable {
     #[primary_span]
     #[label]

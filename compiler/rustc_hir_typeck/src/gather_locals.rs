@@ -48,9 +48,9 @@ impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     }
 }
 
-impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
-    fn from(let_expr: &'a hir::Let<'a>) -> Self {
-        let hir::Let { hir_id, pat, ty, span, init, is_recovered: _ } = *let_expr;
+impl<'a> From<(&'a hir::Let<'a>, hir::HirId)> for Declaration<'a> {
+    fn from((let_expr, hir_id): (&'a hir::Let<'a>, hir::HirId)) -> Self {
+        let hir::Let { pat, ty, span, init, is_recovered: _ } = *let_expr;
         Declaration { hir_id, pat, ty, span, init: Some(init), origin: DeclOrigin::LetExpr }
     }
 }
@@ -60,7 +60,7 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
-    outermost_fn_param_pat: Option<Span>,
+    outermost_fn_param_pat: Option<(Span, hir::HirId)>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
@@ -125,13 +125,16 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         intravisit::walk_local(self, local)
     }
 
-    fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) {
-        self.declare(let_expr.into());
-        intravisit::walk_let_expr(self, let_expr);
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if let hir::ExprKind::Let(let_expr) = expr.kind {
+            self.declare((let_expr, expr.hir_id).into());
+        }
+        intravisit::walk_expr(self, expr)
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let old_outermost_fn_param_pat = self.outermost_fn_param_pat.replace(param.ty_span);
+        let old_outermost_fn_param_pat =
+            self.outermost_fn_param_pat.replace((param.ty_span, param.hir_id));
         intravisit::walk_param(self, param);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
     }
@@ -141,7 +144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            if let Some(ty_span) = self.outermost_fn_param_pat {
+            if let Some((ty_span, hir_id)) = self.outermost_fn_param_pat {
                 if !self.fcx.tcx.features().unsized_fn_params {
                     self.fcx.require_type_is_sized(
                         var_ty,
@@ -150,11 +153,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         // ascription, or if it's an implicit `self` parameter
                         traits::SizedArgumentType(
                             if ty_span == ident.span
-                                && self.fcx.tcx.is_closure(self.fcx.body_id.into())
+                                && self.fcx.tcx.is_closure_or_coroutine(self.fcx.body_id.into())
                             {
                                 None
                             } else {
-                                Some(ty_span)
+                                Some(hir_id)
                             },
                         ),
                     );

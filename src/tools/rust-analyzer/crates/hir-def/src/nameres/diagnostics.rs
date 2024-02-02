@@ -40,6 +40,23 @@ pub enum DefDiagnosticKind {
     MacroDefError { ast: AstId<ast::Macro>, message: String },
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DefDiagnostics(Option<triomphe::Arc<Box<[DefDiagnostic]>>>);
+
+impl DefDiagnostics {
+    pub fn new(diagnostics: Vec<DefDiagnostic>) -> Self {
+        Self(if diagnostics.is_empty() {
+            None
+        } else {
+            Some(triomphe::Arc::new(diagnostics.into_boxed_slice()))
+        })
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DefDiagnostic> {
+        self.0.as_ref().into_iter().flat_map(|it| &***it)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefDiagnostic {
     pub in_module: LocalModuleId,

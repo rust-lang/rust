@@ -2,28 +2,27 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod input;
 mod change;
-pub mod fixture;
-pub mod span;
+mod input;
 
 use std::panic;
 
-use rustc_hash::FxHashSet;
-use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
+use syntax::{ast, Parse, SourceFile};
 use triomphe::Arc;
 
 pub use crate::{
-    change::Change,
+    change::FileChange,
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
-        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander,
-        ProcMacroExpansionError, ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths,
-        ProcMacros, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, SourceRoot,
+        SourceRootId, TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};
+pub use span::{FilePosition, FileRange};
 pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
+
+pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -43,25 +42,14 @@ pub trait Upcast<T: ?Sized> {
     fn upcast(&self) -> &T;
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct FilePosition {
-    pub file_id: FileId,
-    pub offset: TextSize,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct FileRange {
-    pub file_id: FileId,
-    pub range: TextRange,
-}
-
 pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
+pub const DEFAULT_BORROWCK_LRU_CAP: usize = 256;
 
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -74,10 +62,6 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
-
-    /// The proc macros.
-    #[salsa::input]
-    fn proc_macros(&self) -> Arc<ProcMacros>;
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
@@ -100,19 +84,21 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
 }
 
-fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[CrateId]> {
     let graph = db.crate_graph();
-    let res = graph
+    let mut crates = graph
         .iter()
         .filter(|&krate| {
             let root_file = graph[krate].root_file_id;
             db.file_source_root(root_file) == id
         })
-        .collect();
-    Arc::new(res)
+        .collect::<Vec<_>>();
+    crates.sort();
+    crates.dedup();
+    crates.into_iter().collect()
 }
 
 /// Silly workaround for cyclic deps between the traits
@@ -129,7 +115,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         source_root.resolve_path(path)
     }
 
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
         let _p = profile::span("relevant_crates");
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)

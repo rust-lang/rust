@@ -207,10 +207,28 @@ fn merge_gen_params(
         (None, Some(bs)) => Some(bs),
         (Some(ps), None) => Some(ps),
         (Some(ps), Some(bs)) => {
-            for b in bs.generic_params() {
-                ps.add_generic_param(b);
-            }
-            Some(ps)
+            // make sure lifetime is placed before other generic params
+            let generic_params = ps.generic_params().merge_by(bs.generic_params(), |_, b| {
+                !matches!(b, ast::GenericParam::LifetimeParam(_))
+            });
+            Some(generic_param_list(generic_params))
+        }
+    }
+}
+
+fn merge_where_clause(
+    ps: Option<ast::WhereClause>,
+    bs: Option<ast::WhereClause>,
+) -> Option<ast::WhereClause> {
+    match (ps, bs) {
+        (None, None) => None,
+        (None, Some(bs)) => Some(bs),
+        (Some(ps), None) => Some(ps),
+        (Some(ps), Some(bs)) => {
+            let preds = where_clause(std::iter::empty()).clone_for_update();
+            ps.predicates().for_each(|p| preds.add_predicate(p));
+            bs.predicates().for_each(|p| preds.add_predicate(p));
+            Some(preds)
         }
     }
 }
@@ -245,15 +263,12 @@ pub fn impl_(
     ast_from_text(&format!("impl{gen_params} {path_type}{tr_gen_args}{where_clause}{{{}}}", body))
 }
 
-// FIXME : We must make *_gen_args' type ast::GenericArgList but in order to do so we must implement in `edit_in_place.rs`
-// `add_generic_arg()` just like `add_generic_param()`
-// is implemented for `ast::GenericParamList`
 pub fn impl_trait(
     is_unsafe: bool,
     trait_gen_params: Option<ast::GenericParamList>,
-    trait_gen_args: Option<ast::GenericParamList>,
+    trait_gen_args: Option<ast::GenericArgList>,
     type_gen_params: Option<ast::GenericParamList>,
-    type_gen_args: Option<ast::GenericParamList>,
+    type_gen_args: Option<ast::GenericArgList>,
     is_negative: bool,
     path_type: ast::Type,
     ty: ast::Type,
@@ -262,15 +277,9 @@ pub fn impl_trait(
     body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
 ) -> ast::Impl {
     let is_unsafe = if is_unsafe { "unsafe " } else { "" };
-    let ty_gen_args = match merge_gen_params(type_gen_params.clone(), type_gen_args) {
-        Some(pars) => pars.to_generic_args().to_string(),
-        None => String::new(),
-    };
 
-    let tr_gen_args = match merge_gen_params(trait_gen_params.clone(), trait_gen_args) {
-        Some(pars) => pars.to_generic_args().to_string(),
-        None => String::new(),
-    };
+    let trait_gen_args = trait_gen_args.map(|args| args.to_string()).unwrap_or_default();
+    let type_gen_args = type_gen_args.map(|args| args.to_string()).unwrap_or_default();
 
     let gen_params = match merge_gen_params(trait_gen_params, type_gen_params) {
         Some(pars) => pars.to_string(),
@@ -279,25 +288,15 @@ pub fn impl_trait(
 
     let is_negative = if is_negative { "! " } else { "" };
 
-    let where_clause = match (ty_where_clause, trait_where_clause) {
-        (None, None) => " ".to_string(),
-        (None, Some(tr)) => format!("\n{}\n", tr).to_string(),
-        (Some(ty), None) => format!("\n{}\n", ty).to_string(),
-        (Some(ty), Some(tr)) => {
-            let updated = ty.clone_for_update();
-            tr.predicates().for_each(|p| {
-                ty.add_predicate(p);
-            });
-            format!("\n{}\n", updated).to_string()
-        }
-    };
+    let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
+        .map_or_else(|| " ".to_string(), |wc| format!("\n{}\n", wc));
 
     let body = match body {
         Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{tr_gen_args} for {ty}{ty_gen_args}{where_clause}{{{}}}" , body))
+    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{}}}" , body))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
@@ -595,6 +594,9 @@ pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
 }
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {expr}") } else { format!("&{expr}") })
+}
+pub fn expr_reborrow(expr: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("&mut *{expr}"))
 }
 pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr) -> ast::Expr {
     let params = pats.into_iter().join(", ");
@@ -922,6 +924,10 @@ pub fn type_param(name: ast::Name, bounds: Option<ast::TypeBoundList>) -> ast::T
     ast_from_text(&format!("fn f<{name}{bounds}>() {{ }}"))
 }
 
+pub fn const_param(name: ast::Name, ty: ast::Type) -> ast::ConstParam {
+    ast_from_text(&format!("fn f<const {name}: {ty}>() {{ }}"))
+}
+
 pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {
     ast_from_text(&format!("fn f<{lifetime}>() {{ }}"))
 }
@@ -948,9 +954,7 @@ pub fn turbofish_generic_arg_list(
     ast_from_text(&format!("const S: T::<{args}> = ();"))
 }
 
-pub(crate) fn generic_arg_list(
-    args: impl IntoIterator<Item = ast::GenericArg>,
-) -> ast::GenericArgList {
+pub fn generic_arg_list(args: impl IntoIterator<Item = ast::GenericArg>) -> ast::GenericArgList {
     let args = args.into_iter().join(", ");
     ast_from_text(&format!("const S: T<{args}> = ();"))
 }

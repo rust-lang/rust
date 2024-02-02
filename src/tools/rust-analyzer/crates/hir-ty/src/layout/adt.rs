@@ -6,10 +6,9 @@ use base_db::salsa::Cycle;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, LayoutCalculator, ReprOptions, TargetDataLayout},
-    AdtId, EnumVariantId, LocalEnumVariantId, VariantId,
+    AdtId, VariantId,
 };
-use la_arena::RawIdx;
-use rustc_dependencies::index::IndexVec;
+use rustc_index::IndexVec;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -22,8 +21,8 @@ use crate::{
 
 use super::LayoutCx;
 
-pub(crate) const fn struct_variant_idx() -> RustcEnumVariantIdx {
-    RustcEnumVariantIdx(LocalEnumVariantId::from_raw(RawIdx::from_u32(0)))
+pub(crate) fn struct_variant_idx() -> RustcEnumVariantIdx {
+    RustcEnumVariantIdx(0)
 }
 
 pub fn layout_of_adt_query(
@@ -62,12 +61,7 @@ pub fn layout_of_adt_query(
             let r = data
                 .variants
                 .iter()
-                .map(|(idx, v)| {
-                    handle_variant(
-                        EnumVariantId { parent: e, local_id: idx }.into(),
-                        &v.variant_data,
-                    )
-                })
+                .map(|&(v, _)| handle_variant(v.into(), &db.enum_variant_data(v).variant_data))
                 .collect::<Result<SmallVec<_>, _>>()?;
             (r, data.repr.unwrap_or_default())
         }
@@ -86,11 +80,10 @@ pub fn layout_of_adt_query(
             matches!(def, AdtId::EnumId(..)),
             is_unsafe_cell(db, def),
             layout_scalar_valid_range(db, def),
-            |min, max| repr_discr(&dl, &repr, min, max).unwrap_or((Integer::I8, false)),
+            |min, max| repr_discr(dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
-                let d =
-                    db.const_eval_discriminant(EnumVariantId { parent: e, local_id: id.0 }).ok()?;
+                let d = db.const_eval_discriminant(db.enum_data(e).variants[id.0].0).ok()?;
                 Some((id, d))
             }),
             // FIXME: The current code for niche-filling relies on variant indices

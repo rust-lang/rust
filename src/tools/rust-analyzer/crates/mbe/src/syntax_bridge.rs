@@ -1,6 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::{SpanAnchor, SpanData, SpanMap};
 use stdx::{never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
@@ -10,10 +11,10 @@ use syntax::{
 };
 use tt::{
     buffer::{Cursor, TokenBuffer},
-    Span, SpanData, SyntaxContext,
+    Span,
 };
 
-use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, SpanMap};
+use crate::{to_parser_input::to_parser_input, tt_iter::TtIter};
 
 #[cfg(test)]
 mod tests;
@@ -36,66 +37,70 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 
 /// Dummy things for testing where spans don't matter.
 pub(crate) mod dummy_test_span_utils {
+
     use super::*;
 
-    pub type DummyTestSpanData = tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext>;
-    pub const DUMMY: DummyTestSpanData = DummyTestSpanData::DUMMY;
+    pub type DummyTestSpanData = span::SpanData<DummyTestSyntaxContext>;
+    pub const DUMMY: DummyTestSpanData = span::SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: span::SpanAnchor {
+            file_id: span::FileId::BOGUS,
+            ast_id: span::ROOT_ERASED_FILE_AST_ID,
+        },
+        ctx: DummyTestSyntaxContext,
+    };
 
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-    pub struct DummyTestSpanAnchor;
-    impl tt::SpanAnchor for DummyTestSpanAnchor {
-        const DUMMY: Self = DummyTestSpanAnchor;
-    }
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct DummyTestSyntaxContext;
-    impl SyntaxContext for DummyTestSyntaxContext {
-        const DUMMY: Self = DummyTestSyntaxContext;
-    }
 
     pub struct DummyTestSpanMap;
 
-    impl SpanMapper<tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext>> for DummyTestSpanMap {
-        fn span_for(
-            &self,
-            range: syntax::TextRange,
-        ) -> tt::SpanData<DummyTestSpanAnchor, DummyTestSyntaxContext> {
-            tt::SpanData { range, anchor: DummyTestSpanAnchor, ctx: DummyTestSyntaxContext }
+    impl SpanMapper<span::SpanData<DummyTestSyntaxContext>> for DummyTestSpanMap {
+        fn span_for(&self, range: syntax::TextRange) -> span::SpanData<DummyTestSyntaxContext> {
+            span::SpanData {
+                range,
+                anchor: span::SpanAnchor {
+                    file_id: span::FileId::BOGUS,
+                    ast_id: span::ROOT_ERASED_FILE_AST_ID,
+                },
+                ctx: DummyTestSyntaxContext,
+            }
         }
     }
 }
 
 /// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
 /// subtree's spans.
-pub fn syntax_node_to_token_tree<Anchor, Ctx, SpanMap>(
+pub fn syntax_node_to_token_tree<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
-) -> tt::Subtree<SpanData<Anchor, Ctx>>
+    span: SpanData<Ctx>,
+) -> tt::Subtree<SpanData<Ctx>>
 where
-    SpanData<Anchor, Ctx>: Span,
-    Anchor: Copy,
-    Ctx: SyntaxContext,
-    SpanMap: SpanMapper<SpanData<Anchor, Ctx>>,
+    SpanData<Ctx>: Span,
+    Ctx: Copy,
+    SpanMap: SpanMapper<SpanData<Ctx>>,
 {
-    let mut c = Converter::new(node, map, Default::default(), Default::default());
+    let mut c = Converter::new(node, map, Default::default(), Default::default(), span);
     convert_tokens(&mut c)
 }
 
 /// Converts a syntax tree to a [`tt::Subtree`] using the provided span map to populate the
 /// subtree's spans. Additionally using the append and remove parameters, the additional tokens can
 /// be injected or hidden from the output.
-pub fn syntax_node_to_token_tree_modified<Anchor, Ctx, SpanMap>(
+pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
-    append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Anchor, Ctx>>>>,
+    append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
     remove: FxHashSet<SyntaxNode>,
-) -> tt::Subtree<SpanData<Anchor, Ctx>>
+    call_site: SpanData<Ctx>,
+) -> tt::Subtree<SpanData<Ctx>>
 where
-    SpanMap: SpanMapper<SpanData<Anchor, Ctx>>,
-    SpanData<Anchor, Ctx>: Span,
-    Anchor: Copy,
-    Ctx: SyntaxContext,
+    SpanMap: SpanMapper<SpanData<Ctx>>,
+    SpanData<Ctx>: Span,
+    Ctx: Copy,
 {
-    let mut c = Converter::new(node, map, append, remove);
+    let mut c = Converter::new(node, map, append, remove, call_site);
     convert_tokens(&mut c)
 }
 
@@ -113,14 +118,13 @@ where
 
 /// Converts a [`tt::Subtree`] back to a [`SyntaxNode`].
 /// The produced `SpanMap` contains a mapping from the syntax nodes offsets to the subtree's spans.
-pub fn token_tree_to_syntax_node<Anchor, Ctx>(
-    tt: &tt::Subtree<SpanData<Anchor, Ctx>>,
+pub fn token_tree_to_syntax_node<Ctx>(
+    tt: &tt::Subtree<SpanData<Ctx>>,
     entry_point: parser::TopEntryPoint,
-) -> (Parse<SyntaxNode>, SpanMap<SpanData<Anchor, Ctx>>)
+) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>)
 where
-    SpanData<Anchor, Ctx>: Span,
-    Anchor: Copy,
-    Ctx: SyntaxContext,
+    SpanData<Ctx>: Span,
+    Ctx: Copy,
 {
     let buffer = match tt {
         tt::Subtree {
@@ -150,21 +154,20 @@ where
 
 /// Convert a string to a `TokenTree`. The spans of the subtree will be anchored to the provided
 /// anchor with the given context.
-pub fn parse_to_token_tree<Anchor, Ctx>(
-    anchor: Anchor,
+pub fn parse_to_token_tree<Ctx>(
+    anchor: SpanAnchor,
     ctx: Ctx,
     text: &str,
-) -> Option<tt::Subtree<SpanData<Anchor, Ctx>>>
+) -> Option<tt::Subtree<SpanData<Ctx>>>
 where
-    SpanData<Anchor, Ctx>: Span,
-    Anchor: Copy,
-    Ctx: SyntaxContext,
+    SpanData<Ctx>: Span,
+    Ctx: Copy,
 {
     let lexed = parser::LexedStr::new(text);
     if lexed.errors().next().is_some() {
         return None;
     }
-    let mut conv = RawConverter { lexed, pos: 0, anchor, ctx };
+    let mut conv = RawConverter { lexed, anchor, pos: 0, ctx };
     Some(convert_tokens(&mut conv))
 }
 
@@ -182,7 +185,11 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::Subtree<S>> {
+pub fn parse_exprs_with_sep<S: Span>(
+    tt: &tt::Subtree<S>,
+    sep: char,
+    span: S,
+) -> Vec<tt::Subtree<S>> {
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -195,7 +202,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
         res.push(match expanded.value {
             None => break,
-            Some(tt) => tt.subtree_or_wrap(),
+            Some(tt) => tt.subtree_or_wrap(tt::DelimSpan { open: span, close: span }),
         });
 
         let mut fork = iter.clone();
@@ -207,7 +214,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
     if iter.peek_n(0).is_some() {
         res.push(tt::Subtree {
-            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+            delimiter: tt::Delimiter::invisible_spanned(span),
             token_trees: iter.cloned().collect(),
         });
     }
@@ -220,11 +227,14 @@ where
     C: TokenConverter<S>,
     S: Span,
 {
-    let entry = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] };
+    let entry = tt::Subtree {
+        delimiter: tt::Delimiter::invisible_spanned(conv.call_site()),
+        token_trees: vec![],
+    };
     let mut stack = NonEmptyVec::new(entry);
 
     while let Some((token, abs_range)) = conv.bump() {
-        let tt::Subtree { delimiter, token_trees: result } = stack.last_mut();
+        let tt::Subtree { delimiter, token_trees } = stack.last_mut();
 
         let tt = match token.as_leaf() {
             Some(leaf) => tt::TokenTree::Leaf(leaf.clone()),
@@ -233,7 +243,7 @@ where
                 COMMENT => {
                     let span = conv.span_for(abs_range);
                     if let Some(tokens) = conv.convert_doc_comment(&token, span) {
-                        result.extend(tokens);
+                        token_trees.extend(tokens);
                     }
                     continue;
                 }
@@ -307,7 +317,7 @@ where
                                 span: conv
                                     .span_for(TextRange::at(abs_range.start(), TextSize::of('\''))),
                             });
-                            result.push(apostrophe.into());
+                            token_trees.push(apostrophe.into());
 
                             let ident = tt::Leaf::from(tt::Ident {
                                 text: SmolStr::new(&token.to_text(conv)[1..]),
@@ -316,7 +326,7 @@ where
                                     abs_range.end(),
                                 )),
                             });
-                            result.push(ident.into());
+                            token_trees.push(ident.into());
                             continue;
                         }
                         _ => continue,
@@ -327,7 +337,7 @@ where
             },
         };
 
-        result.push(tt);
+        token_trees.push(tt);
     }
 
     // If we get here, we've consumed all input tokens.
@@ -401,9 +411,20 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
         text = &text[0..text.len() - 2];
     }
 
-    // Quote the string
+    let mut num_of_hashes = 0;
+    let mut count = 0;
+    for ch in text.chars() {
+        count = match ch {
+            '"' => 1,
+            '#' if count > 0 => count + 1,
+            _ => 0,
+        };
+        num_of_hashes = num_of_hashes.max(count);
+    }
+
+    // Quote raw string with delimiters
     // Note that `tt::Literal` expect an escaped string
-    let text = format!("\"{}\"", text.escape_debug());
+    let text = format!("r{delim}\"{text}\"{delim}", delim = "#".repeat(num_of_hashes));
     text.into()
 }
 
@@ -450,10 +471,10 @@ fn convert_doc_comment<S: Copy>(
 }
 
 /// A raw token (straight from lexer) converter
-struct RawConverter<'a, Anchor, Ctx> {
+struct RawConverter<'a, Ctx> {
     lexed: parser::LexedStr<'a>,
     pos: usize,
-    anchor: Anchor,
+    anchor: SpanAnchor,
     ctx: Ctx,
 }
 /// A raw token (straight from lexer) converter that gives every token the same span.
@@ -485,18 +506,20 @@ trait TokenConverter<S>: Sized {
     fn peek(&self) -> Option<Self::Token>;
 
     fn span_for(&self, range: TextRange) -> S;
+
+    fn call_site(&self) -> S;
 }
 
-impl<Anchor, S, Ctx> SrcToken<RawConverter<'_, Anchor, Ctx>, S> for usize {
-    fn kind(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> SyntaxKind {
+impl<S, Ctx> SrcToken<RawConverter<'_, Ctx>, S> for usize {
+    fn kind(&self, ctx: &RawConverter<'_, Ctx>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> Option<char> {
+    fn to_char(&self, ctx: &RawConverter<'_, Ctx>) -> Option<char> {
         ctx.lexed.text(*self).chars().next()
     }
 
-    fn to_text(&self, ctx: &RawConverter<'_, Anchor, Ctx>) -> SmolStr {
+    fn to_text(&self, ctx: &RawConverter<'_, Ctx>) -> SmolStr {
         ctx.lexed.text(*self).into()
     }
 }
@@ -515,18 +538,17 @@ impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
     }
 }
 
-impl<Anchor: Copy, Ctx: SyntaxContext> TokenConverter<SpanData<Anchor, Ctx>>
-    for RawConverter<'_, Anchor, Ctx>
+impl<Ctx: Copy> TokenConverter<SpanData<Ctx>> for RawConverter<'_, Ctx>
 where
-    SpanData<Anchor, Ctx>: Span,
+    SpanData<Ctx>: Span,
 {
     type Token = usize;
 
     fn convert_doc_comment(
         &self,
         &token: &usize,
-        span: SpanData<Anchor, Ctx>,
-    ) -> Option<Vec<tt::TokenTree<SpanData<Anchor, Ctx>>>> {
+        span: SpanData<Ctx>,
+    ) -> Option<Vec<tt::TokenTree<SpanData<Ctx>>>> {
         let text = self.lexed.text(token);
         convert_doc_comment(&doc_comment(text), span)
     }
@@ -550,8 +572,12 @@ where
         Some(self.pos)
     }
 
-    fn span_for(&self, range: TextRange) -> SpanData<Anchor, Ctx> {
+    fn span_for(&self, range: TextRange) -> SpanData<Ctx> {
         SpanData { range, anchor: self.anchor, ctx: self.ctx }
+    }
+
+    fn call_site(&self) -> SpanData<Ctx> {
+        SpanData { range: TextRange::empty(0.into()), anchor: self.anchor, ctx: self.ctx }
     }
 }
 
@@ -588,6 +614,10 @@ where
     fn span_for(&self, _: TextRange) -> S {
         self.span
     }
+
+    fn call_site(&self) -> S {
+        self.span
+    }
 }
 
 struct Converter<SpanMap, S> {
@@ -600,6 +630,7 @@ struct Converter<SpanMap, S> {
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
     remove: FxHashSet<SyntaxNode>,
+    call_site: S,
 }
 
 impl<SpanMap, S> Converter<SpanMap, S> {
@@ -608,6 +639,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
         map: SpanMap,
         append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
         remove: FxHashSet<SyntaxNode>,
+        call_site: S,
     ) -> Self {
         let mut this = Converter {
             current: None,
@@ -617,6 +649,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
             map,
             append,
             remove,
+            call_site,
             current_leafs: vec![],
         };
         let first = this.next_token();
@@ -742,7 +775,7 @@ where
             self.punct_offset = Some((curr.clone(), 0.into()));
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));
-            (SynToken::Punct { token: curr, offset: 0 as usize }, range)
+            (SynToken::Punct { token: curr, offset: 0_usize }, range)
         } else {
             self.punct_offset = None;
             let range = curr.text_range();
@@ -766,7 +799,7 @@ where
         }
 
         let token = if curr.kind().is_punct() {
-            SynToken::Punct { token: curr, offset: 0 as usize }
+            SynToken::Punct { token: curr, offset: 0_usize }
         } else {
             SynToken::Ordinary(curr)
         };
@@ -776,24 +809,27 @@ where
     fn span_for(&self, range: TextRange) -> S {
         self.map.span_for(range)
     }
+    fn call_site(&self) -> S {
+        self.call_site
+    }
 }
 
-struct TtTreeSink<'a, Anchor, Ctx>
+struct TtTreeSink<'a, Ctx>
 where
-    SpanData<Anchor, Ctx>: Span,
+    SpanData<Ctx>: Span,
 {
     buf: String,
-    cursor: Cursor<'a, SpanData<Anchor, Ctx>>,
+    cursor: Cursor<'a, SpanData<Ctx>>,
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
-    token_map: SpanMap<SpanData<Anchor, Ctx>>,
+    token_map: SpanMap<SpanData<Ctx>>,
 }
 
-impl<'a, Anchor, Ctx> TtTreeSink<'a, Anchor, Ctx>
+impl<'a, Ctx> TtTreeSink<'a, Ctx>
 where
-    SpanData<Anchor, Ctx>: Span,
+    SpanData<Ctx>: Span,
 {
-    fn new(cursor: Cursor<'a, SpanData<Anchor, Ctx>>) -> Self {
+    fn new(cursor: Cursor<'a, SpanData<Ctx>>) -> Self {
         TtTreeSink {
             buf: String::new(),
             cursor,
@@ -803,7 +839,7 @@ where
         }
     }
 
-    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<SpanData<Anchor, Ctx>>) {
+    fn finish(mut self) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>) {
         self.token_map.finish();
         (self.inner.finish(), self.token_map)
     }
@@ -821,9 +857,9 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> Option<&'static str> {
     Some(&texts[idx..texts.len() - (1 - idx)])
 }
 
-impl<Anchor, Ctx> TtTreeSink<'_, Anchor, Ctx>
+impl<Ctx> TtTreeSink<'_, Ctx>
 where
-    SpanData<Anchor, Ctx>: Span,
+    SpanData<Ctx>: Span,
 {
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.

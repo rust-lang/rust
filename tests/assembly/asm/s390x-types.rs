@@ -112,6 +112,30 @@ check!(reg_i32, i32, reg, "lgr");
 // CHECK: #NO_APP
 check!(reg_i64, i64, reg, "lgr");
 
+// CHECK-LABEL: reg_i8_addr:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i8_addr, i8, reg_addr, "lgr");
+
+// CHECK-LABEL: reg_i16_addr:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i16_addr, i16, reg_addr, "lgr");
+
+// CHECK-LABEL: reg_i32_addr:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i32_addr, i32, reg_addr, "lgr");
+
+// CHECK-LABEL: reg_i64_addr:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_i64_addr, i64, reg_addr, "lgr");
+
 // CHECK-LABEL: reg_f32:
 // CHECK: #APP
 // CHECK: ler %f{{[0-9]+}}, %f{{[0-9]+}}

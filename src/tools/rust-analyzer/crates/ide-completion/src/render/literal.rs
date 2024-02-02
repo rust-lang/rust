@@ -57,11 +57,11 @@ fn render(
 ) -> Option<Builder> {
     let db = completion.db;
     let mut kind = thing.kind(db);
-    let should_add_parens = match &path_ctx {
-        PathCompletionCtx { has_call_parens: true, .. } => false,
-        PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. } => false,
-        _ => true,
-    };
+    let should_add_parens = !matches!(
+        path_ctx,
+        PathCompletionCtx { has_call_parens: true, .. }
+            | PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. }
+    );
 
     let fields = thing.fields(completion)?;
     let (qualified_name, short_qualified_name, qualified) = match path {

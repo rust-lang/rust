@@ -7,7 +7,6 @@ fn main() {
     let res: Result<u32, Void> = Ok(0);
     let (Ok(_x) | Err(&!)) = res.as_ref();
     //~^ ERROR `!` patterns are experimental
-    //~| ERROR: is not bound in all patterns
 
     unsafe {
         let ptr: *const Void = NonNull::dangling().as_ptr();

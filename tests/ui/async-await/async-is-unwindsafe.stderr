@@ -1,19 +1,21 @@
 error[E0277]: the type `&mut Context<'_>` may not be safely transferred across an unwind boundary
   --> $DIR/async-is-unwindsafe.rs:12:5
    |
-LL |       is_unwindsafe(async {
-   |  _____^^^^^^^^^^^^^_-
-   | |     |
-   | |     `&mut Context<'_>` may not be safely transferred across an unwind boundary
-LL | |
-LL | |         use std::ptr::null;
-LL | |         use std::task::{Context, RawWaker, RawWakerVTable, Waker};
-...  |
-LL | |         drop(cx_ref);
-LL | |     });
-   | |_____- within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`
+LL |        is_unwindsafe(async {
+   |   _____^_____________-
+   |  |_____|
+   | ||
+LL | ||
+LL | ||         use std::ptr::null;
+LL | ||         use std::task::{Context, RawWaker, RawWakerVTable, Waker};
+...  ||
+LL | ||         drop(cx_ref);
+LL | ||     });
+   | ||_____-^ `&mut Context<'_>` may not be safely transferred across an unwind boundary
+   |  |_____|
+   |        within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`
    |
-   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`
+   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`, which is required by `{async block@$DIR/async-is-unwindsafe.rs:12:19: 29:6}: UnwindSafe`
    = note: `UnwindSafe` is implemented for `&Context<'_>`, but not for `&mut Context<'_>`
 note: future does not implement `UnwindSafe` as this value is used across an await
   --> $DIR/async-is-unwindsafe.rs:25:18

@@ -72,5 +72,13 @@ LL |     debug_assert!(true);
    |
    = help: remove it
 
-error: aborting due to 9 previous errors
+error: `assert!(true)` will be optimized out by the compiler
+  --> $DIR/assertions_on_constants.rs:49:19
+   |
+LL |     const _: () = assert!(true);
+   |                   ^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: aborting due to 10 previous errors
 

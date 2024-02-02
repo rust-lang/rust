@@ -8,9 +8,9 @@ mod context;
 mod item;
 mod render;
 
+mod snippet;
 #[cfg(test)]
 mod tests;
-mod snippet;
 
 use ide_db::{
     base_db::FilePosition,
@@ -211,12 +211,14 @@ pub fn completions(
             CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,
                 fake_attribute_under_caret: Some(attr),
+                extern_crate,
             } => {
                 completions::attribute::complete_known_attribute_input(
                     acc,
                     ctx,
                     colon_prefix,
                     attr,
+                    extern_crate.as_ref(),
                 );
             }
             CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),
@@ -254,7 +256,6 @@ pub fn resolve_completion_edits(
             current_crate,
             NameToImport::exact_case_sensitive(imported_name),
             items_locator::AssocSearchMode::Include,
-            Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
         );
         let import = items_with_name
             .filter_map(|candidate| {

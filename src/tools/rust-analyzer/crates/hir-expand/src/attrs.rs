@@ -1,19 +1,20 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops};
 
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
+use span::Span;
 use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
-    span::SpanMapRef,
+    span_map::SpanMapRef,
     tt::{self, Subtree},
     InFile,
 };
@@ -30,7 +31,7 @@ impl ops::Deref for RawAttrs {
 
     fn deref(&self) -> &[Attr] {
         match &self.entries {
-            Some(it) => &*it,
+            Some(it) => it,
             None => &[],
         }
     }
@@ -52,7 +53,7 @@ impl RawAttrs {
                 id,
                 input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                 path: Interned::new(ModPath::from(crate::name!(doc))),
-                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
+                span: span_map.span_for_range(comment.syntax().text_range()),
             }),
         });
         let entries: Arc<[Attr]> = Arc::from_iter(entries);
@@ -78,7 +79,7 @@ impl RawAttrs {
                 Self {
                     entries: Some(Arc::from_iter(a.iter().cloned().chain(b.iter().map(|it| {
                         let mut it = it.clone();
-                        it.id.id = it.id.ast_index() as u32 + last_ast_index
+                        it.id.id = (it.id.ast_index() as u32 + last_ast_index)
                             | (it.id.cfg_attr_index().unwrap_or(0) as u32)
                                 << AttrId::AST_INDEX_BITS;
                         it
@@ -116,14 +117,10 @@ impl RawAttrs {
                 None => return smallvec![attr.clone()],
             };
             let index = attr.id;
-            let attrs =
-                parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
-                    let tree = Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
-                        token_trees: attr.to_vec(),
-                    };
-                    Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
-                });
+            let attrs = parts
+                .enumerate()
+                .take(1 << AttrId::CFG_ATTR_BITS)
+                .filter_map(|(idx, attr)| Attr::from_tt(db, attr, index.with_cfg_attr(idx)));
 
             let cfg_options = &crate_graph[krate].cfg_options;
             let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
@@ -176,7 +173,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Interned<AttrInput>>,
-    pub ctxt: SyntaxContextId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -205,6 +202,7 @@ impl Attr {
         id: AttrId,
     ) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(db, ast.path()?, span_map)?);
+        let span = span_map.span_for_range(ast.syntax().text_range());
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
@@ -212,20 +210,48 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map);
+            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
-        Some(Attr { id, path, input, ctxt: span_map.span_for_range(ast.syntax().text_range()).ctx })
+        Some(Attr { id, path, input, span })
     }
 
-    fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
-        // FIXME: Unecessary roundtrip tt -> ast -> tt
-        let (parse, map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
-        let ast = ast::Meta::cast(parse.syntax_node())?;
+    fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
+        let span = tt.first()?.first_span();
+        let path_end = tt
+            .iter()
+            .position(|tt| {
+                !matches!(
+                    tt,
+                    tt::TokenTree::Leaf(
+                        tt::Leaf::Punct(tt::Punct { char: ':' | '$', .. }) | tt::Leaf::Ident(_),
+                    )
+                )
+            })
+            .unwrap_or_else(|| tt.len());
 
-        Self::from_src(db, ast, SpanMapRef::ExpansionSpanMap(&map), id)
+        let (path, input) = tt.split_at(path_end);
+        let path = Interned::new(ModPath::from_tt(db, path)?);
+
+        let input = match input.get(0) {
+            Some(tt::TokenTree::Subtree(tree)) => {
+                Some(Interned::new(AttrInput::TokenTree(Box::new(tree.clone()))))
+            }
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. }))) => {
+                let input = match input.get(1) {
+                    Some(tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { text, .. }))) => {
+                        //FIXME the trimming here isn't quite right, raw strings are not handled
+                        Some(Interned::new(AttrInput::Literal(text.trim_matches('"').into())))
+                    }
+                    _ => None,
+                };
+                input
+            }
+            _ => None,
+        };
+        Some(Attr { id, path, input, span })
     }
 
     pub fn path(&self) -> &ModPath {
@@ -265,7 +291,7 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-    ) -> Option<impl Iterator<Item = (ModPath, SyntaxContextId)> + 'a> {
+    ) -> Option<impl Iterator<Item = (ModPath, Span)> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
@@ -275,29 +301,8 @@ impl Attr {
             .token_trees
             .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
             .filter_map(move |tts| {
-                if tts.is_empty() {
-                    return None;
-                }
-                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
-                // here or maybe just parse a mod path from a token tree directly
-                let subtree = tt::Subtree {
-                    delimiter: tt::Delimiter::dummy_invisible(),
-                    token_trees: tts.to_vec(),
-                };
-                let (parse, span_map) =
-                    mbe::token_tree_to_syntax_node(&subtree, mbe::TopEntryPoint::MetaItem);
-                let meta = ast::Meta::cast(parse.syntax_node())?;
-                // Only simple paths are allowed.
-                if meta.eq_token().is_some() || meta.expr().is_some() || meta.token_tree().is_some()
-                {
-                    return None;
-                }
-                let path = meta.path()?;
-                let call_site = span_map.span_at(path.syntax().text_range().start()).ctx;
-                Some((
-                    ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
-                    call_site,
-                ))
+                let span = tts.first()?.first_span();
+                Some((ModPath::from_tt(db, tts)?, span))
             });
 
         Some(paths)

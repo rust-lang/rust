@@ -5,13 +5,13 @@ use base_db::{
         debug::{DebugQueryTable, TableEntry},
         Database, Durability, Query, QueryTable,
     },
-    Change, SourceRootId,
+    SourceRootId,
 };
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
-use crate::{symbol_index::SymbolsDatabase, RootDatabase};
+use crate::{symbol_index::SymbolsDatabase, Change, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
@@ -23,7 +23,7 @@ impl RootDatabase {
         let _p = profile::span("RootDatabase::apply_change");
         self.request_cancellation();
         tracing::trace!("apply_change {:?}", change);
-        if let Some(roots) = &change.roots {
+        if let Some(roots) = &change.source_change.roots {
             let mut local_roots = FxHashSet::default();
             let mut library_roots = FxHashSet::default();
             for (idx, root) in roots.iter().enumerate() {
@@ -84,73 +84,11 @@ impl RootDatabase {
             )*}
         }
         purge_each_query![
-            // SourceDatabase
-            base_db::ParseQuery
-            base_db::CrateGraphQuery
-            base_db::ProcMacrosQuery
-
-            // SourceDatabaseExt
-            base_db::FileTextQuery
-            base_db::FileSourceRootQuery
-            base_db::SourceRootQuery
-            base_db::SourceRootCratesQuery
-
-            // ExpandDatabase
-            hir::db::AstIdMapQuery
-            hir::db::DeclMacroExpanderQuery
-            hir::db::ExpandProcMacroQuery
-            hir::db::InternMacroCallQuery
-            hir::db::InternSyntaxContextQuery
-            hir::db::MacroArgQuery
-            hir::db::ParseMacroExpansionQuery
-            hir::db::RealSpanMapQuery
-
-            // DefDatabase
-            hir::db::FileItemTreeQuery
-            hir::db::CrateDefMapQueryQuery
-            hir::db::BlockDefMapQuery
-            hir::db::StructDataQuery
-            hir::db::StructDataWithDiagnosticsQuery
-            hir::db::UnionDataQuery
-            hir::db::UnionDataWithDiagnosticsQuery
-            hir::db::EnumDataQuery
-            hir::db::EnumDataWithDiagnosticsQuery
-            hir::db::ImplDataQuery
-            hir::db::ImplDataWithDiagnosticsQuery
-            hir::db::TraitDataQuery
-            hir::db::TraitDataWithDiagnosticsQuery
-            hir::db::TraitAliasDataQuery
-            hir::db::TypeAliasDataQuery
-            hir::db::FunctionDataQuery
-            hir::db::ConstDataQuery
-            hir::db::StaticDataQuery
-            hir::db::Macro2DataQuery
-            hir::db::MacroRulesDataQuery
-            hir::db::ProcMacroDataQuery
-            hir::db::BodyWithSourceMapQuery
-            hir::db::BodyQuery
-            hir::db::ExprScopesQuery
-            hir::db::GenericParamsQuery
-            hir::db::VariantsAttrsQuery
-            hir::db::FieldsAttrsQuery
-            hir::db::VariantsAttrsSourceMapQuery
-            hir::db::FieldsAttrsSourceMapQuery
-            hir::db::AttrsQuery
-            hir::db::CrateLangItemsQuery
-            hir::db::LangItemQuery
-            hir::db::ImportMapQuery
-            hir::db::FieldVisibilitiesQuery
-            hir::db::FunctionVisibilityQuery
-            hir::db::ConstVisibilityQuery
-            hir::db::CrateSupportsNoStdQuery
-            hir::db::BlockItemTreeQueryQuery
-            hir::db::ExternCrateDeclDataQuery
-            hir::db::LangAttrQuery
-            hir::db::InternAnonymousConstQuery
-            hir::db::InternExternCrateQuery
-            hir::db::InternInTypeConstQuery
-            hir::db::InternUseQuery
-
+            // SymbolsDatabase
+            crate::symbol_index::ModuleSymbolsQuery
+            crate::symbol_index::LibrarySymbolsQuery
+            crate::symbol_index::LocalRootsQuery
+            crate::symbol_index::LibraryRootsQuery
             // HirDatabase
             hir::db::InferQueryQuery
             hir::db::MirBodyQuery
@@ -182,7 +120,7 @@ impl RootDatabase {
             hir::db::InternImplTraitIdQuery
             hir::db::InternTypeOrConstParamIdQuery
             hir::db::InternClosureQuery
-            hir::db::InternGeneratorQuery
+            hir::db::InternCoroutineQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
@@ -194,14 +132,44 @@ impl RootDatabase {
             hir::db::TraitSolveQueryQuery
             hir::db::ProgramClausesForChalkEnvQuery
 
-            // SymbolsDatabase
-            crate::symbol_index::ModuleSymbolsQuery
-            crate::symbol_index::LibrarySymbolsQuery
-            crate::symbol_index::LocalRootsQuery
-            crate::symbol_index::LibraryRootsQuery
-
-            // LineIndexDatabase
-            crate::LineIndexQuery
+            // DefDatabase
+            hir::db::FileItemTreeQuery
+            hir::db::CrateDefMapQueryQuery
+            hir::db::BlockDefMapQuery
+            hir::db::StructDataWithDiagnosticsQuery
+            hir::db::UnionDataWithDiagnosticsQuery
+            hir::db::EnumDataQuery
+            hir::db::EnumVariantDataWithDiagnosticsQuery
+            hir::db::ImplDataWithDiagnosticsQuery
+            hir::db::TraitDataWithDiagnosticsQuery
+            hir::db::TraitAliasDataQuery
+            hir::db::TypeAliasDataQuery
+            hir::db::FunctionDataQuery
+            hir::db::ConstDataQuery
+            hir::db::StaticDataQuery
+            hir::db::Macro2DataQuery
+            hir::db::MacroRulesDataQuery
+            hir::db::ProcMacroDataQuery
+            hir::db::BodyWithSourceMapQuery
+            hir::db::BodyQuery
+            hir::db::ExprScopesQuery
+            hir::db::GenericParamsQuery
+            hir::db::FieldsAttrsQuery
+            hir::db::FieldsAttrsSourceMapQuery
+            hir::db::AttrsQuery
+            hir::db::CrateLangItemsQuery
+            hir::db::LangItemQuery
+            hir::db::ImportMapQuery
+            hir::db::FieldVisibilitiesQuery
+            hir::db::FunctionVisibilityQuery
+            hir::db::ConstVisibilityQuery
+            hir::db::CrateSupportsNoStdQuery
+            hir::db::BlockItemTreeQueryQuery
+            hir::db::ExternCrateDeclDataQuery
+            hir::db::InternAnonymousConstQuery
+            hir::db::InternExternCrateQuery
+            hir::db::InternInTypeConstQuery
+            hir::db::InternUseQuery
 
             // InternDatabase
             hir::db::InternFunctionQuery
@@ -219,6 +187,30 @@ impl RootDatabase {
             hir::db::InternMacro2Query
             hir::db::InternProcMacroQuery
             hir::db::InternMacroRulesQuery
+
+            // ExpandDatabase
+            hir::db::AstIdMapQuery
+            hir::db::DeclMacroExpanderQuery
+            hir::db::ExpandProcMacroQuery
+            hir::db::InternMacroCallQuery
+            hir::db::InternSyntaxContextQuery
+            hir::db::MacroArgQuery
+            hir::db::ParseMacroExpansionQuery
+            hir::db::RealSpanMapQuery
+            hir::db::ProcMacrosQuery
+
+            // LineIndexDatabase
+            crate::LineIndexQuery
+
+            // SourceDatabase
+            base_db::ParseQuery
+            base_db::CrateGraphQuery
+
+            // SourceDatabaseExt
+            base_db::FileTextQuery
+            base_db::FileSourceRootQuery
+            base_db::SourceRootQuery
+            base_db::SourceRootCratesQuery
         ];
 
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));

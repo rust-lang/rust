@@ -4,6 +4,7 @@ use crate::char::TryFromCharError;
 use crate::convert::TryFrom;
 use crate::error::Error;
 use crate::fmt;
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::mem::transmute;
 use crate::str::FromStr;
 
@@ -23,7 +24,13 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 #[must_use]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
-    if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
+    unsafe {
+        assert_unsafe_precondition!(
+            "invalid value for `char`",
+            (i: u32) => char_try_from_u32(i).is_ok()
+        );
+        transmute(i)
+    }
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]

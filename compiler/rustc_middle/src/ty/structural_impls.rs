@@ -9,6 +9,7 @@ use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -578,9 +579,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Ref(r, ty, mutbl) => {
                 ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
             }
-            ty::Coroutine(did, args, movability) => {
-                ty::Coroutine(did, args.try_fold_with(folder)?, movability)
-            }
+            ty::Coroutine(did, args) => ty::Coroutine(did, args.try_fold_with(folder)?),
             ty::CoroutineWitness(did, args) => {
                 ty::CoroutineWitness(did, args.try_fold_with(folder)?)
             }
@@ -630,7 +629,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
                 r.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }
-            ty::Coroutine(_did, ref args, _) => args.visit_with(visitor),
+            ty::Coroutine(_did, ref args) => args.visit_with(visitor),
             ty::CoroutineWitness(_did, ref args) => args.visit_with(visitor),
             ty::Closure(_did, ref args) => args.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
@@ -819,5 +818,29 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_ty(self.ty)
+    }
+}
+
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>> + Debug + Clone> TypeVisitable<TyCtxt<'tcx>>
+    for Spanned<T>
+{
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.node.visit_with(visitor)?;
+        self.span.visit_with(visitor)?;
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Debug + Clone> TypeFoldable<TyCtxt<'tcx>>
+    for Spanned<T>
+{
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(Spanned {
+            node: self.node.try_fold_with(folder)?,
+            span: self.span.try_fold_with(folder)?,
+        })
     }
 }

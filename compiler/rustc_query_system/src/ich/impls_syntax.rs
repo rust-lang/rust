@@ -57,6 +57,8 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     }
 }
 
+impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {}
+
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {

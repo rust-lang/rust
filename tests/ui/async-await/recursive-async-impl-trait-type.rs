@@ -3,7 +3,7 @@
 // otherwise forbidden when using `async` and `await`.
 
 async fn recursive_async_function() -> () {
-    //~^ ERROR recursion in an `async fn` requires boxing
+    //~^ ERROR recursion in an async fn requires boxing
     recursive_async_function().await;
 }
 

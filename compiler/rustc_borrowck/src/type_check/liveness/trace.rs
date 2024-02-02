@@ -1,12 +1,13 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::WithSuccessors;
-use rustc_index::bit_set::HybridBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -17,7 +18,7 @@ use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::ResultsCursor;
 
 use crate::{
-    region_infer::values::{self, LiveLoans, PointIndex, RegionValueElements},
+    region_infer::values::{self, LiveLoans},
     type_check::liveness::local_use_map::LocalUseMap,
     type_check::liveness::polonius,
     type_check::NormalizeLocation,
@@ -41,7 +42,7 @@ use crate::{
 pub(super) fn trace<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &Rc<RegionValueElements>,
+    elements: &Rc<DenseLocationMap>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
@@ -105,7 +106,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,
 
     /// Defines the `PointIndex` mapping
-    elements: &'me RegionValueElements,
+    elements: &'me DenseLocationMap,
 
     /// MIR we are analyzing.
     body: &'me Body<'tcx>,
@@ -134,7 +135,7 @@ struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     cx: LivenessContext<'me, 'typeck, 'flow, 'tcx>,
 
     /// Set of points that define the current local.
-    defs: HybridBitSet<PointIndex>,
+    defs: BitSet<PointIndex>,
 
     /// Points where the current variable is "use live" -- meaning
     /// that there is a future "full use" that may use its value.
@@ -157,7 +158,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         let num_points = cx.elements.num_points();
         LivenessResults {
             cx,
-            defs: HybridBitSet::new_empty(num_points),
+            defs: BitSet::new_empty(num_points),
             use_live_at: IntervalSet::new(num_points),
             drop_live_at: IntervalSet::new(num_points),
             drop_locations: vec![],
@@ -570,7 +571,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     }
 
     fn make_all_regions_live(
-        elements: &RegionValueElements,
+        elements: &DenseLocationMap,
         typeck: &mut TypeChecker<'_, 'tcx>,
         value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,

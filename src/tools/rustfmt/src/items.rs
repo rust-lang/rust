@@ -728,7 +728,9 @@ impl<'a> FmtVisitor<'a> {
                 (Const(..), Const(..)) | (MacCall(..), MacCall(..)) => {
                     a.ident.as_str().cmp(b.ident.as_str())
                 }
-                (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
+                (Fn(..), Fn(..)) | (Delegation(..), Delegation(..)) => {
+                    a.span.lo().cmp(&b.span.lo())
+                }
                 (Type(ty), _) if is_type(&ty.ty) => Ordering::Less,
                 (_, Type(ty)) if is_type(&ty.ty) => Ordering::Greater,
                 (Type(..), _) => Ordering::Less,
@@ -737,6 +739,8 @@ impl<'a> FmtVisitor<'a> {
                 (_, Const(..)) => Ordering::Greater,
                 (MacCall(..), _) => Ordering::Less,
                 (_, MacCall(..)) => Ordering::Greater,
+                (Delegation(..), _) => Ordering::Less,
+                (_, Delegation(..)) => Ordering::Greater,
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {

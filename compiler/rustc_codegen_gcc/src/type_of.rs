@@ -98,7 +98,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
                     write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
-            if let (&ty::Coroutine(_, _, _), &Variants::Single { index }) =
+            if let (&ty::Coroutine(_, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::CoroutineArgs::variant_name(index)).unwrap();

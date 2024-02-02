@@ -38,10 +38,11 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -50,7 +51,7 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{ExpnId, ExpnKind, Span};
+use rustc_span::{hygiene, ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -62,6 +63,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
+use std::ptr::NonNull;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
@@ -201,6 +203,10 @@ pub struct ResolverAstLowering {
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
+
+    /// Information about functions signatures for delegation items expansion
+    pub has_self: LocalDefIdSet,
+    pub fn_parameter_counts: LocalDefIdMap<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -333,7 +339,8 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotConst => f.write_str("normal"),
-            _ => write!(f, "`{self}`"),
+            Self::Const => f.write_str("const"),
+            Self::ConstIfConst => f.write_str("~const"),
         }
     }
 }
@@ -576,13 +583,13 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }
 
 impl rustc_errors::IntoDiagnosticArg for Clause<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
     }
 }
@@ -654,7 +661,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
+    pub predicates: DefIdMap<&'tcx [(Clause<'tcx>, Span)]>,
 }
 
 impl<'tcx> Clause<'tcx> {
@@ -842,9 +849,22 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Term<'tcx> {
-    ptr: NonZeroUsize,
+    ptr: NonNull<()>,
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
+
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> rustc_data_structures::sync::DynSend for Term<'tcx> where
+    &'tcx (Ty<'tcx>, Const<'tcx>): rustc_data_structures::sync::DynSend
+{
+}
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> rustc_data_structures::sync::DynSync for Term<'tcx> where
+    &'tcx (Ty<'tcx>, Const<'tcx>): rustc_data_structures::sync::DynSync
+{
+}
+unsafe impl<'tcx> Send for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Send {}
+unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync {}
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -908,17 +928,19 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
 impl<'tcx> Term<'tcx> {
     #[inline]
     pub fn unpack(self) -> TermKind<'tcx> {
-        let ptr = self.ptr.get();
+        let ptr = unsafe {
+            self.ptr.map_addr(|addr| NonZeroUsize::new_unchecked(addr.get() & !TAG_MASK))
+        };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
         unsafe {
-            match ptr & TAG_MASK {
+            match self.ptr.addr().get() & TAG_MASK {
                 TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::ConstData<'tcx>>>().as_ref(),
                 ))),
                 _ => core::intrinsics::unreachable(),
             }
@@ -980,16 +1002,16 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
+                (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
 
-        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
+        Term { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
     }
 }
 
@@ -1771,9 +1793,10 @@ pub struct Destructor {
     pub constness: hir::Constness,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct VariantFlags(u8);
 bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct VariantFlags: u8 {
+    impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
@@ -1782,6 +1805,7 @@ bitflags! {
         const IS_RECOVERED = 1 << 1;
     }
 }
+rustc_data_structures::external_bitflags_debug! { VariantFlags }
 
 /// Definition of a variant -- a struct's fields or an enum variant.
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]
@@ -2514,21 +2538,20 @@ impl<'tcx> TyCtxt<'tcx> {
         (ident, scope)
     }
 
-    /// Returns `true` if the debuginfo for `span` should be collapsed to the outermost expansion
-    /// site. Only applies when `Span` is the result of macro expansion.
+    /// Returns corrected span if the debuginfo for `span` should be collapsed to the outermost
+    /// expansion site (with collapse_debuginfo attribute if the corresponding feature enabled).
+    /// Only applies when `Span` is the result of macro expansion.
     ///
     /// - If the `collapse_debuginfo` feature is enabled then debuginfo is not collapsed by default
-    ///   and only when a macro definition is annotated with `#[collapse_debuginfo]`.
+    ///   and only when a (some enclosing) macro definition is annotated with `#[collapse_debuginfo]`.
     /// - If `collapse_debuginfo` is not enabled, then debuginfo is collapsed by default.
     ///
     /// When `-Zdebug-macros` is provided then debuginfo will never be collapsed.
-    pub fn should_collapse_debuginfo(self, span: Span) -> bool {
-        !self.sess.opts.unstable_opts.debug_macros
-            && if self.features().collapse_debuginfo {
-                span.in_macro_expansion_with_collapse_debuginfo()
-            } else {
-                span.from_expansion()
-            }
+    pub fn collapsed_debuginfo(self, span: Span, upto: Span) -> Span {
+        if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
+            return span;
+        }
+        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]
@@ -2657,7 +2680,7 @@ pub fn provide(providers: &mut Providers) {
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
     pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
-    pub incoherent_impls: FxHashMap<SimplifiedType, Vec<LocalDefId>>,
+    pub incoherent_impls: UnordMap<SimplifiedType, Vec<LocalDefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]

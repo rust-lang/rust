@@ -22,6 +22,12 @@ fn main() {
         bar();
     }
 
+    // Issue 6459
+    if Ready(42).is_ready() {}
+
+    // Issue 6459
+    if Pending::<()>.is_pending() {}
+
     while Ready(42).is_ready() {}
 
     while Ready(42).is_pending() {}

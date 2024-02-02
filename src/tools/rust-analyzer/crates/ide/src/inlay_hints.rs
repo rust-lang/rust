@@ -25,13 +25,14 @@ mod bind_pat;
 mod binding_mode;
 mod chaining;
 mod closing_brace;
-mod closure_ret;
 mod closure_captures;
+mod closure_ret;
 mod discriminant;
 mod fn_lifetime_fn;
+mod implicit_drop;
 mod implicit_static;
 mod param_name;
-mod implicit_drop;
+mod range_exclusive;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -51,6 +52,7 @@ pub struct InlayHintsConfig {
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub hide_closure_initialization_hints: bool,
+    pub range_exclusive_hints: bool,
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
@@ -127,6 +129,7 @@ pub enum InlayKind {
     Parameter,
     Type,
     Drop,
+    RangeExclusive,
 }
 
 #[derive(Debug)]
@@ -354,7 +357,7 @@ fn label_of_ty(
         label_builder: &mut InlayHintLabelBuilder<'_>,
         config: &InlayHintsConfig,
     ) -> Result<(), HirDisplayError> {
-        let iter_item_type = hint_iterator(sema, famous_defs, &ty);
+        let iter_item_type = hint_iterator(sema, famous_defs, ty);
         match iter_item_type {
             Some((iter_trait, item, ty)) => {
                 const LABEL_START: &str = "impl ";
@@ -517,13 +520,20 @@ fn hints(
                         closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
                         closure_ret::hints(hints, famous_defs, config, file_id, it)
                     },
+                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, config, it),
                     _ => None,
                 }
             },
             ast::Pat(it) => {
                 binding_mode::hints(hints, sema, config, &it);
-                if let ast::Pat::IdentPat(it) = it {
-                    bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                match it {
+                    ast::Pat::IdentPat(it) => {
+                        bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                    }
+                    ast::Pat::RangePat(it) => {
+                        range_exclusive::hints(hints, config, it);
+                    }
+                    _ => {}
                 }
                 Some(())
             },
@@ -593,7 +603,6 @@ mod tests {
     use hir::ClosureStyle;
     use itertools::Itertools;
     use test_utils::extract_annotations;
-    use text_edit::{TextRange, TextSize};
 
     use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::DiscriminantHints;
@@ -622,6 +631,7 @@ mod tests {
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
         implicit_drop_hints: false,
+        range_exclusive_hints: false,
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
@@ -652,29 +662,6 @@ mod tests {
         expected.sort_by_key(|(range, _)| range.start());
 
         assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        expect.assert_debug_eq(&inlay_hints)
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect_clear_loc(
-        config: InlayHintsConfig,
-        ra_fixture: &str,
-        expect: Expect,
-    ) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let mut inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        inlay_hints.iter_mut().flat_map(|hint| &mut hint.label.parts).for_each(|hint| {
-            if let Some(loc) = &mut hint.linked_location {
-                loc.range = TextRange::empty(TextSize::from(0));
-            }
-        });
-        expect.assert_debug_eq(&inlay_hints)
     }
 
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs

@@ -186,14 +186,13 @@ impl TypeLocation {
     }
 
     pub(crate) fn complete_consts(&self) -> bool {
-        match self {
+        matches!(
+            self,
             TypeLocation::GenericArg {
                 corresponding_param: Some(ast::GenericParam::ConstParam(_)),
                 ..
-            } => true,
-            TypeLocation::AssocConstEq => true,
-            _ => false,
-        }
+            } | TypeLocation::AssocConstEq
+        )
     }
 
     pub(crate) fn complete_types(&self) -> bool {
@@ -371,6 +370,7 @@ pub(super) enum CompletionAnalysis {
     UnexpandedAttrTT {
         colon_prefix: bool,
         fake_attribute_under_caret: Option<ast::Attr>,
+        extern_crate: Option<ast::ExternCrate>,
     },
 }
 
@@ -526,6 +526,11 @@ impl CompletionContext<'_> {
             Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
             None => false,
         }
+    }
+
+    /// Whether the given trait has `#[doc(notable_trait)]`
+    pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
+        trait_.attrs(self.db).has_doc_notable_trait()
     }
 
     /// Returns the traits in scope, with the [`Drop`] trait removed.
@@ -693,7 +698,7 @@ impl<'a> CompletionContext<'a> {
         let krate = scope.krate();
         let module = scope.module();
 
-        let toolchain = db.crate_graph()[krate.into()].channel;
+        let toolchain = db.crate_graph()[krate.into()].channel();
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);

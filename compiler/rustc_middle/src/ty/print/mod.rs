@@ -259,7 +259,7 @@ fn characteristic_def_id_of_type_cached<'a>(
 
         ty::FnDef(def_id, _)
         | ty::Closure(def_id, _)
-        | ty::Coroutine(def_id, _, _)
+        | ty::Coroutine(def_id, _)
         | ty::CoroutineWitness(def_id, _)
         | ty::Foreign(def_id) => Some(def_id),
 

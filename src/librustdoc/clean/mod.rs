@@ -15,6 +15,7 @@ use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_errors::{codes::*, struct_span_code_err, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
@@ -147,6 +148,17 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     )
 }
 
+fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
+    if let Some(node) = tcx.opt_hir_node_by_def_id(import_id)
+        && let hir::Node::Item(item) = node
+        && let hir::ItemKind::Use(_, use_kind) = item.kind
+    {
+        use_kind == hir::UseKind::Glob
+    } else {
+        false
+    }
+}
+
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
@@ -157,10 +169,17 @@ fn generate_item_with_correct_attrs(
 ) -> Item {
     let target_attrs = inline::load_attrs(cx, def_id);
     let attrs = if let Some(import_id) = import_id {
+        // glob reexports are treated the same as `#[doc(inline)]` items.
+        //
+        // For glob re-exports the item may or may not exist to be re-exported (potentially the cfgs
+        // on the path up until the glob can be removed, and only cfgs on the globbed item itself
+        // matter), for non-inlined re-exports see #85043.
         let is_inline = inline::load_attrs(cx, import_id.to_def_id())
             .lists(sym::doc)
             .get_word_attr(sym::inline)
-            .is_some();
+            .is_some()
+            || (is_glob_import(cx.tcx, import_id)
+                && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
         let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
         add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
         attrs
@@ -207,8 +226,13 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
         span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {kind:?}");
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
-    let path =
-        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.map_bound(|tr| tr.args));
+    let path = clean_middle_path(
+        cx,
+        trait_ref.def_id(),
+        true,
+        bindings,
+        trait_ref.map_bound(|tr| tr.args),
+    );
 
     debug!(?trait_ref);
 
@@ -467,7 +491,7 @@ fn projection_to_path_segment<'tcx>(
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
-            args: ty_args_to_args(
+            args: clean_middle_generic_args(
                 cx,
                 ty.map_bound(|ty| &ty.args[generics.parent_count..]),
                 false,
@@ -1044,7 +1068,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
                         func.decl
                             .inputs
                             .values
-                            .insert(a as _, Argument { name, type_: *ty, is_const: true });
+                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -1830,7 +1854,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Array(ty, ref length) => {
             let length = match length {
-                hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                hir::ArrayLen::Infer(..) => "_".to_string(),
                 hir::ArrayLen::Body(anon_const) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
@@ -1865,7 +1889,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) => Infer,
+        TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) | TyKind::InferDelegation(..) => Infer,
     }
 }
 
@@ -1903,7 +1927,7 @@ fn normalize<'tcx>(
 
 fn clean_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
-    container: Option<ContainerTy<'tcx>>,
+    container: Option<ContainerTy<'_, 'tcx>>,
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> Option<Lifetime> {
@@ -1932,7 +1956,7 @@ fn clean_trait_object_lifetime_bound<'tcx>(
 
 fn can_elide_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
-    container: Option<ContainerTy<'tcx>>,
+    container: Option<ContainerTy<'_, 'tcx>>,
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
@@ -1979,21 +2003,22 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
 }
 
 #[derive(Debug)]
-pub(crate) enum ContainerTy<'tcx> {
+pub(crate) enum ContainerTy<'a, 'tcx> {
     Ref(ty::Region<'tcx>),
     Regular {
         ty: DefId,
-        args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
-        has_self: bool,
+        /// The arguments *have* to contain an arg for the self type if the corresponding generics
+        /// contain a self type.
+        args: ty::Binder<'tcx, &'a [ty::GenericArg<'tcx>]>,
         arg: usize,
     },
 }
 
-impl<'tcx> ContainerTy<'tcx> {
+impl<'tcx> ContainerTy<'_, 'tcx> {
     fn object_lifetime_default(self, tcx: TyCtxt<'tcx>) -> ObjectLifetimeDefault<'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
-            Self::Regular { ty: container, args, has_self, arg: index } => {
+            Self::Regular { ty: container, args, arg: index } => {
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
@@ -2006,14 +2031,7 @@ impl<'tcx> ContainerTy<'tcx> {
                 let generics = tcx.generics_of(container);
                 debug_assert_eq!(generics.parent_count, 0);
 
-                // If the container is a trait object type, the arguments won't contain the self type but the
-                // generics of the corresponding trait will. In such a case, offset the index by one.
-                // For comparison, if the container is a trait inside a bound, the arguments do contain the
-                // self type.
-                let offset =
-                    if !has_self && generics.parent.is_none() && generics.has_self { 1 } else { 0 };
-                let param = generics.params[index + offset].def_id;
-
+                let param = generics.params[index].def_id;
                 let default = tcx.object_lifetime_default(param);
                 match default {
                     rbv::ObjectLifetimeDefault::Param(lifetime) => {
@@ -2045,7 +2063,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     bound_ty: ty::Binder<'tcx, Ty<'tcx>>,
     cx: &mut DocContext<'tcx>,
     parent_def_id: Option<DefId>,
-    container: Option<ContainerTy<'tcx>>,
+    container: Option<ContainerTy<'_, 'tcx>>,
 ) -> Type {
     let bound_ty = normalize(cx, bound_ty).unwrap_or(bound_ty);
     match *bound_ty.skip_binder().kind() {
@@ -2096,12 +2114,12 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 AdtKind::Enum => ItemType::Enum,
             };
             inline::record_extern_fqn(cx, did, kind);
-            let path = external_path(cx, did, false, ThinVec::new(), bound_ty.rebind(args));
+            let path = clean_middle_path(cx, did, false, ThinVec::new(), bound_ty.rebind(args));
             Type::Path { path }
         }
         ty::Foreign(did) => {
             inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-            let path = external_path(
+            let path = clean_middle_path(
                 cx,
                 did,
                 false,
@@ -2132,7 +2150,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let mut bounds = dids
                 .map(|did| {
                     let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-                    let path = external_path(cx, did, false, ThinVec::new(), empty);
+                    let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     PolyTrait { trait_: path, generic_params: Vec::new() }
                 })
@@ -2171,7 +2189,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .collect();
             let late_bound_regions = late_bound_regions.into_iter().collect();
 
-            let path = external_path(cx, did, false, bindings, args);
+            let path = clean_middle_path(cx, did, false, bindings, args);
             bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
@@ -2193,7 +2211,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 assoc: PathSegment {
                     name: cx.tcx.associated_item(def_id).name,
                     args: GenericArgs::AngleBracketed {
-                        args: ty_args_to_args(
+                        args: clean_middle_generic_args(
                             cx,
                             alias_ty.map_bound(|ty| ty.args.as_slice()),
                             true,
@@ -2213,7 +2231,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             if cx.tcx.features().lazy_type_alias {
                 // Weak type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
-                let path = external_path(
+                let path = clean_middle_path(
                     cx,
                     data.def_id,
                     false,
@@ -2243,7 +2261,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // If it's already in the same alias, don't get an infinite loop.
             if cx.current_type_aliases.contains_key(&def_id) {
-                let path = external_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
+                let path =
+                    clean_middle_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
                 Type::Path { path }
             } else {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
@@ -2271,7 +2290,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
-        ty::Error(_) => rustc_errors::FatalError.raise(),
+        ty::Error(_) => FatalError.raise(),
     }
 }
 
@@ -2995,13 +3014,13 @@ fn clean_use_statement_inner<'tcx>(
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
     if pub_underscore && let Some(ref inline) = inline_attr {
-        rustc_errors::struct_span_err!(
+        struct_span_code_err!(
             cx.tcx.dcx(),
             inline.span(),
             E0780,
             "anonymous imports cannot be inlined"
         )
-        .span_label(import.span, "anonymous import")
+        .with_span_label(import.span, "anonymous import")
         .emit();
     }
 

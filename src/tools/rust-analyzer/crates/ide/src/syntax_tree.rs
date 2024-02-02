@@ -67,8 +67,6 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
 
     let node_len = node_range.len();
 
-    let start = start;
-
     // We want to cap our length
     let len = len.min(node_len);
 

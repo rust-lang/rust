@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::{ControlFlow, Deref};
+use std::ptr::NonNull;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -31,12 +32,31 @@ use std::ops::{ControlFlow, Deref};
 /// `Region` and `Const` are all interned.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArg<'tcx> {
-    ptr: NonZeroUsize,
+    ptr: NonNull<()>,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
 }
 
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> rustc_data_structures::sync::DynSend for GenericArg<'tcx> where
+    &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): rustc_data_structures::sync::DynSend
+{
+}
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> rustc_data_structures::sync::DynSync for GenericArg<'tcx> where
+    &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): rustc_data_structures::sync::DynSync
+{
+}
+unsafe impl<'tcx> Send for GenericArg<'tcx> where
+    &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): Send
+{
+}
+unsafe impl<'tcx> Sync for GenericArg<'tcx> where
+    &'tcx (Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>): Sync
+{
+}
+
 impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -60,21 +80,21 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
-                (REGION_TAG, lt.0.0 as *const ty::RegionKind<'tcx> as usize)
+                (REGION_TAG, NonNull::from(lt.0.0).cast())
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
+                (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
 
-        GenericArg { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
+        GenericArg { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
     }
 }
 
@@ -123,20 +143,22 @@ impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
-        let ptr = self.ptr.get();
+        let ptr = unsafe {
+            self.ptr.map_addr(|addr| NonZeroUsize::new_unchecked(addr.get() & !TAG_MASK))
+        };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
         unsafe {
-            match ptr & TAG_MASK {
+            match self.ptr.addr().get() & TAG_MASK {
                 REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
+                    ptr.cast::<ty::RegionKind<'tcx>>().as_ref(),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::ConstData<'tcx>>>().as_ref(),
                 ))),
                 _ => intrinsics::unreachable(),
             }

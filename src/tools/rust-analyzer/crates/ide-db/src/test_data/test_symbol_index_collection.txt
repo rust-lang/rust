@@ -23,12 +23,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: TYPE_ALIAS,
-                        range: 397..417,
+                        range: 470..490,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 402..407,
+                            range: 475..480,
                         },
                     ),
                 },
@@ -51,12 +51,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: CONST,
-                        range: 340..361,
+                        range: 413..434,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 346..351,
+                            range: 419..424,
                         },
                     ),
                 },
@@ -79,12 +79,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: CONST,
-                        range: 520..592,
+                        range: 593..665,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 526..542,
+                            range: 599..615,
                         },
                     ),
                 },
@@ -139,12 +139,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
-                        range: 654..676,
+                        range: 727..749,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 663..676,
+                            range: 736..749,
                         },
                     ),
                 },
@@ -197,12 +197,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STATIC,
-                        range: 362..396,
+                        range: 435..469,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 369..375,
+                            range: 442..448,
                         },
                     ),
                 },
@@ -276,7 +276,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4,
+                                5,
                             ),
                         },
                     ),
@@ -287,12 +287,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
-                        range: 318..336,
+                        range: 391..409,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 325..335,
+                            range: 398..408,
                         },
                     ),
                 },
@@ -308,7 +308,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                5,
+                                6,
                             ),
                         },
                     ),
@@ -319,12 +319,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
-                        range: 555..581,
+                        range: 628..654,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 562..580,
+                            range: 635..653,
                         },
                     ),
                 },
@@ -340,7 +340,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                6,
+                                7,
                             ),
                         },
                     ),
@@ -351,12 +351,42 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
-                        range: 479..507,
+                        range: 552..580,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 486..506,
+                            range: 559..579,
+                        },
+                    ),
+                },
+                container_name: None,
+                is_alias: false,
+                is_assoc: false,
+            },
+            FileSymbol {
+                name: "StructT",
+                def: Adt(
+                    Struct(
+                        Struct {
+                            id: StructId(
+                                2,
+                            ),
+                        },
+                    ),
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: STRUCT,
+                        range: 261..279,
+                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 268..275,
                         },
                     ),
                 },
@@ -379,12 +409,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: TRAIT,
-                        range: 261..300,
+                        range: 334..373,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 267..272,
+                            range: 340..345,
                         },
                     ),
                 },
@@ -409,12 +439,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
-                        range: 682..696,
+                        range: 755..769,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 691..696,
+                            range: 764..769,
                         },
                     ),
                 },
@@ -469,12 +499,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MODULE,
-                        range: 419..457,
+                        range: 492..530,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 423..428,
+                            range: 496..501,
                         },
                     ),
                 },
@@ -499,12 +529,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MODULE,
-                        range: 594..604,
+                        range: 667..677,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 598..603,
+                            range: 671..676,
                         },
                     ),
                 },
@@ -543,6 +573,36 @@
                 is_assoc: false,
             },
             FileSymbol {
+                name: "generic_impl_fn",
+                def: Function(
+                    Function {
+                        id: FunctionId(
+                            3,
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        0,
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: FN,
+                        range: 307..330,
+                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 310..325,
+                        },
+                    ),
+                },
+                container_name: Some(
+                    "StructT<T>",
+                ),
+                is_alias: false,
+                is_assoc: true,
+            },
+            FileSymbol {
                 name: "impl_fn",
                 def: Function(
                     Function {
@@ -566,7 +626,9 @@
                         },
                     ),
                 },
-                container_name: None,
+                container_name: Some(
+                    "Struct",
+                ),
                 is_alias: false,
                 is_assoc: true,
             },
@@ -615,12 +677,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
-                        range: 302..338,
+                        range: 375..411,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 305..309,
+                            range: 378..382,
                         },
                     ),
                 },
@@ -645,12 +707,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
-                        range: 611..648,
+                        range: 684..721,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 628..648,
+                            range: 701..721,
                         },
                     ),
                 },
@@ -673,12 +735,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
-                        range: 279..298,
+                        range: 352..371,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 282..290,
+                            range: 355..363,
                         },
                     ),
                 },
@@ -705,7 +767,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                2,
+                                3,
                             ),
                         },
                     ),
@@ -716,12 +778,12 @@
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
-                        range: 435..455,
+                        range: 508..528,
                     },
                     name_ptr: AstPtr(
                         SyntaxNodePtr {
                             kind: NAME,
-                            range: 442..454,
+                            range: 515..527,
                         },
                     ),
                 },
@@ -776,7 +838,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3,
+                                4,
                             ),
                         },
                     ),
@@ -836,7 +898,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3,
+                                4,
                             ),
                         },
                     ),
@@ -866,7 +928,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                3,
+                                4,
                             ),
                         },
                     ),

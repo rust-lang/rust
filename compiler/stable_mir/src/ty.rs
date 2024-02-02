@@ -12,7 +12,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Ty(pub usize);
+pub struct Ty(usize);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -138,7 +138,7 @@ impl Const {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(pub usize);
+pub struct ConstId(usize);
 
 type Ident = Opaque;
 
@@ -460,6 +460,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
@@ -715,7 +716,14 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait's definition.
     pub TraitDef;
+}
+
+impl TraitDef {
+    pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
+        with(|cx| cx.trait_decl(trait_def))
+    }
 }
 
 crate_def! {
@@ -727,7 +735,15 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait impl definition.
     pub ImplDef;
+}
+
+impl ImplDef {
+    /// Retrieve information about this implementation.
+    pub fn trait_impl(&self) -> ImplTrait {
+        with(|cx| cx.trait_impl(self))
+    }
 }
 
 crate_def! {
@@ -850,7 +866,6 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdGpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,

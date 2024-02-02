@@ -1,6 +1,10 @@
 //@compile-flags: -Zmiri-retag-fields=scalar
 
-struct Newtype<'a>(&'a mut i32, i32, i32);
+struct Newtype<'a>(
+    #[allow(dead_code)] &'a mut i32,
+    #[allow(dead_code)] i32,
+    #[allow(dead_code)] i32,
+);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
     dealloc();

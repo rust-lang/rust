@@ -39,7 +39,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     1: CrateData {
         root_file_id: FileId(
@@ -72,7 +72,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     2: CrateData {
         root_file_id: FileId(
@@ -105,7 +105,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     3: CrateData {
         root_file_id: FileId(
@@ -138,7 +138,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     4: CrateData {
         root_file_id: FileId(
@@ -182,13 +182,13 @@
             },
         ],
         origin: Lang(
-            Other,
+            ProcMacro,
         ),
         is_proc_macro: false,
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     5: CrateData {
         root_file_id: FileId(
@@ -221,7 +221,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     6: CrateData {
         root_file_id: FileId(
@@ -319,7 +319,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     7: CrateData {
         root_file_id: FileId(
@@ -352,7 +352,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     8: CrateData {
         root_file_id: FileId(
@@ -385,7 +385,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     9: CrateData {
         root_file_id: FileId(
@@ -418,7 +418,7 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
     10: CrateData {
         root_file_id: FileId(
@@ -495,6 +495,6 @@
         target_layout: Err(
             "rust-project.json projects have no target layout set",
         ),
-        channel: None,
+        toolchain: None,
     },
 }

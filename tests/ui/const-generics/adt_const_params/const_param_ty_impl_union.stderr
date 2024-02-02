@@ -1,11 +1,11 @@
 error: this trait cannot be derived for unions
-  --> $DIR/const_param_ty_impl_union.rs:19:10
+  --> $DIR/const_param_ty_impl_union.rs:18:10
    |
 LL | #[derive(std::marker::ConstParamTy)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the type `Union` does not `#[derive(PartialEq)]`
-  --> $DIR/const_param_ty_impl_union.rs:16:36
+  --> $DIR/const_param_ty_impl_union.rs:15:36
    |
 LL | impl std::marker::ConstParamTy for Union {}
    |                                    ^^^^^ the trait `StructuralPartialEq` is not implemented for `Union`

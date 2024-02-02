@@ -3,9 +3,8 @@
 //! as required by the query system.
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
 use std::{
-    borrow::Borrow,
+    borrow::{Borrow, BorrowMut},
     collections::hash_map::Entry,
     hash::Hash,
     iter::{Product, Sum},
@@ -14,7 +13,7 @@ use std::{
 
 use crate::{
     fingerprint::Fingerprint,
-    stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey},
+    stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey},
 };
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
@@ -134,36 +133,78 @@ impl<'a, T: Copy + 'a, I: Iterator<Item = &'a T>> UnordItems<&'a T, I> {
     }
 }
 
-impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
+impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
+    #[inline]
     pub fn into_sorted<HCX>(self, hcx: &HCX) -> Vec<T>
     where
         T: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<T> = self.0.collect();
-        items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
-        items
+        self.collect_sorted(hcx, true)
     }
 
     #[inline]
     pub fn into_sorted_stable_ord(self) -> Vec<T>
     where
-        T: Ord + StableOrd,
+        T: StableCompare,
     {
-        let mut items: Vec<T> = self.0.collect();
-        if !T::CAN_USE_UNSTABLE_SORT {
-            items.sort();
-        } else {
-            items.sort_unstable()
+        self.collect_stable_ord_by_key(|x| x)
+    }
+
+    #[inline]
+    pub fn into_sorted_stable_ord_by_key<K, C>(self, project_to_key: C) -> Vec<T>
+    where
+        K: StableCompare,
+        C: for<'a> Fn(&'a T) -> &'a K,
+    {
+        self.collect_stable_ord_by_key(project_to_key)
+    }
+
+    #[inline]
+    pub fn collect_sorted<HCX, C>(self, hcx: &HCX, cache_sort_key: bool) -> C
+    where
+        T: ToStableHashKey<HCX>,
+        C: FromIterator<T> + BorrowMut<[T]>,
+    {
+        let mut items: C = self.0.collect();
+
+        let slice = items.borrow_mut();
+        if slice.len() > 1 {
+            if cache_sort_key {
+                slice.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
+            } else {
+                slice.sort_by_key(|x| x.to_stable_hash_key(hcx));
+            }
         }
+
         items
     }
 
-    pub fn into_sorted_small_vec<HCX, const LEN: usize>(self, hcx: &HCX) -> SmallVec<[T; LEN]>
+    #[inline]
+    pub fn collect_stable_ord_by_key<K, C, P>(self, project_to_key: P) -> C
     where
-        T: ToStableHashKey<HCX>,
+        K: StableCompare,
+        P: for<'a> Fn(&'a T) -> &'a K,
+        C: FromIterator<T> + BorrowMut<[T]>,
     {
-        let mut items: SmallVec<[T; LEN]> = self.0.collect();
-        items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
+        let mut items: C = self.0.collect();
+
+        let slice = items.borrow_mut();
+        if slice.len() > 1 {
+            if !K::CAN_USE_UNSTABLE_SORT {
+                slice.sort_by(|a, b| {
+                    let a_key = project_to_key(a);
+                    let b_key = project_to_key(b);
+                    a_key.stable_cmp(b_key)
+                });
+            } else {
+                slice.sort_unstable_by(|a, b| {
+                    let a_key = project_to_key(a);
+                    let b_key = project_to_key(b);
+                    a_key.stable_cmp(b_key)
+                });
+            }
+        }
+
         items
     }
 }
@@ -185,7 +226,7 @@ trait UnordCollection {}
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordSet<V: Eq + Hash> {
     inner: FxHashSet<V>,
 }
@@ -268,16 +309,30 @@ impl<V: Eq + Hash> UnordSet<V> {
     }
 
     /// Returns the items of this set in stable sort order (as defined by
-    /// `StableOrd`). This method is much more efficient than
+    /// `StableCompare`). This method is much more efficient than
     /// `into_sorted` because it does not need to transform keys to their
     /// `ToStableHashKey` equivalent.
     #[inline]
-    pub fn to_sorted_stable_ord(&self) -> Vec<V>
+    pub fn to_sorted_stable_ord(&self) -> Vec<&V>
     where
-        V: Ord + StableOrd + Clone,
+        V: StableCompare,
     {
-        let mut items: Vec<V> = self.inner.iter().cloned().collect();
-        items.sort_unstable();
+        let mut items: Vec<&V> = self.inner.iter().collect();
+        items.sort_unstable_by(|a, b| a.stable_cmp(*b));
+        items
+    }
+
+    /// Returns the items of this set in stable sort order (as defined by
+    /// `StableCompare`). This method is much more efficient than
+    /// `into_sorted` because it does not need to transform keys to their
+    /// `ToStableHashKey` equivalent.
+    #[inline]
+    pub fn into_sorted_stable_ord(self) -> Vec<V>
+    where
+        V: StableCompare,
+    {
+        let mut items: Vec<V> = self.inner.into_iter().collect();
+        items.sort_unstable_by(V::stable_cmp);
         items
     }
 
@@ -362,7 +417,7 @@ impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordSet<V> {
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordMap<K: Eq + Hash, V> {
     inner: FxHashMap<K, V>,
 }
@@ -483,16 +538,16 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         to_sorted_vec(hcx, self.inner.iter(), cache_sort_key, |&(k, _)| k)
     }
 
-    /// Returns the entries of this map in stable sort order (as defined by `StableOrd`).
+    /// Returns the entries of this map in stable sort order (as defined by `StableCompare`).
     /// This method can be much more efficient than `into_sorted` because it does not need
     /// to transform keys to their `ToStableHashKey` equivalent.
     #[inline]
-    pub fn to_sorted_stable_ord(&self) -> Vec<(K, &V)>
+    pub fn to_sorted_stable_ord(&self) -> Vec<(&K, &V)>
     where
-        K: Ord + StableOrd + Copy,
+        K: StableCompare,
     {
-        let mut items: Vec<(K, &V)> = self.inner.iter().map(|(&k, v)| (k, v)).collect();
-        items.sort_unstable_by_key(|&(k, _)| k);
+        let mut items: Vec<_> = self.inner.iter().collect();
+        items.sort_unstable_by(|(a, _), (b, _)| a.stable_cmp(*b));
         items
     }
 
@@ -508,6 +563,19 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         K: ToStableHashKey<HCX>,
     {
         to_sorted_vec(hcx, self.inner.into_iter(), cache_sort_key, |(k, _)| k)
+    }
+
+    /// Returns the entries of this map in stable sort order (as defined by `StableCompare`).
+    /// This method can be much more efficient than `into_sorted` because it does not need
+    /// to transform keys to their `ToStableHashKey` equivalent.
+    #[inline]
+    pub fn into_sorted_stable_ord(self) -> Vec<(K, V)>
+    where
+        K: StableCompare,
+    {
+        let mut items: Vec<(K, V)> = self.inner.into_iter().collect();
+        items.sort_unstable_by(|a, b| a.0.stable_cmp(&b.0));
+        items
     }
 
     /// Returns the values of this map in stable sort order (as defined by K's
@@ -558,7 +626,7 @@ impl<HCX, K: Hash + Eq + HashStable<HCX>, V: HashStable<HCX>> HashStable<HCX> fo
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Default, Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Default, Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordBag<V> {
     inner: Vec<V>,
 }

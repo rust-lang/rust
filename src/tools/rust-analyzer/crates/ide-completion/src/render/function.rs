@@ -4,7 +4,7 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::{AstNode, SmolStr};
+use syntax::{format_smolstr, AstNode, SmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
@@ -52,13 +52,12 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!(
+            format_smolstr!(
                 "{}.{}",
                 receiver.unescaped().display(ctx.db()),
                 name.unescaped().display(ctx.db())
-            )
-            .into(),
-            format!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())).into(),
+            ),
+            format_smolstr!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())),
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
@@ -74,10 +73,13 @@ fn render(
     );
 
     let ret_type = func.ret_type(db);
-    let is_op_method = func
-        .as_assoc_item(ctx.db())
-        .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
-        .map_or(false, |trait_| completion.is_ops_trait(trait_));
+    let assoc_item = func.as_assoc_item(db);
+
+    let trait_ = assoc_item.and_then(|trait_| trait_.containing_trait_or_trait_impl(db));
+    let is_op_method = trait_.map_or(false, |trait_| completion.is_ops_trait(trait_));
+
+    let is_item_from_notable_trait =
+        trait_.map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
 
     let (has_dot_receiver, has_call_parens, cap) = match func_kind {
         FuncKind::Function(&PathCompletionCtx {
@@ -105,6 +107,7 @@ fn render(
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         is_op_method,
+        is_item_from_notable_trait,
         ..ctx.completion_relevance()
     });
 
@@ -141,7 +144,7 @@ fn render(
             item.add_import(import_to_add);
         }
         None => {
-            if let Some(actm) = func.as_assoc_item(db) {
+            if let Some(actm) = assoc_item {
                 if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
                     item.trait_name(trt.name(db).to_smol_str());
                 }
@@ -301,16 +304,17 @@ fn params(
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
-    if ctx.config.callable.is_none() {
-        return None;
-    }
+    ctx.config.callable.as_ref()?;
 
-    // Don't add parentheses if the expected type is some function reference.
-    if let Some(ty) = &ctx.expected_type {
-        // FIXME: check signature matches?
-        if ty.is_fn() {
-            cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
-            return None;
+    // Don't add parentheses if the expected type is a function reference with the same signature.
+    if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn()) {
+        if let Some(expected) = expected.as_callable(ctx.db) {
+            if let Some(completed) = func.ty(ctx.db).as_callable(ctx.db) {
+                if expected.sig() == completed.sig() {
+                    cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
+                    return None;
+                }
+            }
         }
     }
 

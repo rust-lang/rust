@@ -82,7 +82,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                     Ok(..) => {}
                     Err(err) => err.cancel(),
                 },
-                Err(errs) => drop(errs),
+                Err(errs) => errs.into_iter().for_each(|err| err.cancel()),
             }
 
             // If the user tried to use a key="value" flag, but is missing the quotes, provide
@@ -129,9 +129,12 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let Ok(mut parser) = maybe_new_parser_from_source_str(&sess, filename, s.to_string())
-        else {
-            expected_error();
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+            Ok(parser) => parser,
+            Err(errs) => {
+                errs.into_iter().for_each(|err| err.cancel());
+                expected_error();
+            }
         };
 
         let meta_item = match parser.parse_meta_item() {
@@ -199,8 +202,15 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
                         if !args.is_empty() {
                             error!("`any()` must be empty");
                         }
+                    } else if arg.has_name(sym::none)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        values.insert(None);
+                        if !args.is_empty() {
+                            error!("`none()` must be empty");
+                        }
                     } else {
-                        error!("`values()` arguments must be string literals or `any()`");
+                        error!("`values()` arguments must be string literals, `none()` or `any()`");
                     }
                 }
             } else {
@@ -208,7 +218,9 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             }
         }
 
-        if values.is_empty() && !values_any_specified && !any_specified {
+        if !values_specified && !any_specified {
+            // `cfg(name)` is equivalent to `cfg(name, values(none()))` so add
+            // an implicit `none()`
             values.insert(None);
         } else if !values.is_empty() && values_any_specified {
             error!(

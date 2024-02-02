@@ -64,7 +64,7 @@ fn infer_macros_expanded() {
         "#,
         expect![[r#"
             !0..17 '{Foo(v...,2,])}': Foo
-            !1..4 'Foo': Foo({unknown}) -> Foo
+            !1..4 'Foo': extern "rust-call" Foo({unknown}) -> Foo
             !1..16 'Foo(vec![1,2,])': Foo
             !5..15 'vec![1,2,]': {unknown}
             155..181 '{     ...,2); }': ()
@@ -97,7 +97,7 @@ fn infer_legacy_textual_scoped_macros_expanded() {
         "#,
         expect![[r#"
             !0..17 '{Foo(v...,2,])}': Foo
-            !1..4 'Foo': Foo({unknown}) -> Foo
+            !1..4 'Foo': extern "rust-call" Foo({unknown}) -> Foo
             !1..16 'Foo(vec![1,2,])': Foo
             !5..15 'vec![1,2,]': {unknown}
             194..250 '{     ...,2); }': ()
@@ -987,15 +987,12 @@ fn infer_builtin_macros_env() {
 fn infer_builtin_macros_option_env() {
     check_types(
         r#"
-        //- minicore: option
-        //- /main.rs env:foo=bar
-        #[rustc_builtin_macro]
-        macro_rules! option_env {() => {}}
-
-        fn main() {
-            let x = option_env!("foo");
-              //^ Option<&str>
-        }
+//- minicore: env
+//- /main.rs env:foo=bar
+fn main() {
+    let x = option_env!("foo");
+      //^ Option<&str>
+}
         "#,
     );
 }
@@ -1005,6 +1002,21 @@ fn infer_derive_clone_simple() {
     check_types(
         r#"
 //- minicore: derive, clone
+#[derive(Clone)]
+struct S;
+fn test() {
+    S.clone();
+} //^^^^^^^^^ S
+"#,
+    );
+}
+
+#[test]
+fn infer_builtin_derive_resolves_with_core_module() {
+    check_types(
+        r#"
+//- minicore: derive, clone
+mod core {}
 #[derive(Clone)]
 struct S;
 fn test() {

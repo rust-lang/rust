@@ -17,7 +17,7 @@ use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult};
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::metadata::Reexport;
@@ -80,7 +80,11 @@ pub(crate) enum ImportKind<'a> {
         target: Ident,
         id: NodeId,
     },
-    MacroUse,
+    MacroUse {
+        /// A field has been added indicating whether it should be reported as a lint,
+        /// addressing issue#119301.
+        warn_private: bool,
+    },
     MacroExport,
 }
 
@@ -127,7 +131,7 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("target", target)
                 .field("id", id)
                 .finish(),
-            MacroUse => f.debug_struct("MacroUse").finish(),
+            MacroUse { .. } => f.debug_struct("MacroUse").finish(),
             MacroExport => f.debug_struct("MacroExport").finish(),
         }
     }
@@ -197,7 +201,7 @@ impl<'a> ImportData<'a> {
             ImportKind::Single { id, .. }
             | ImportKind::Glob { id, .. }
             | ImportKind::ExternCrate { id, .. } => Some(id),
-            ImportKind::MacroUse | ImportKind::MacroExport => None,
+            ImportKind::MacroUse { .. } | ImportKind::MacroExport => None,
         }
     }
 
@@ -207,7 +211,7 @@ impl<'a> ImportData<'a> {
             ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
             ImportKind::Glob { id, .. } => Reexport::Glob(to_def_id(id)),
             ImportKind::ExternCrate { id, .. } => Reexport::ExternCrate(to_def_id(id)),
-            ImportKind::MacroUse => Reexport::MacroUse,
+            ImportKind::MacroUse { .. } => Reexport::MacroUse,
             ImportKind::MacroExport => Reexport::MacroExport,
         }
     }
@@ -686,7 +690,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        let mut diag = struct_span_err!(self.dcx(), span, E0432, "{}", &msg);
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());
@@ -886,6 +890,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             PathResult::Failed {
                 is_error_from_last_segment: false,
                 span,
+                segment_name,
                 label,
                 suggestion,
                 module,
@@ -895,7 +900,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            last_segment: None,
+                            segment: Some(segment_name),
                             label,
                             suggestion,
                             module,
@@ -1233,7 +1238,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
             } else {
                 if ns == TypeNS {
-                    let mut err = if crate_private_reexport {
+                    let err = if crate_private_reexport {
                         self.dcx().create_err(CannotBeReexportedCratePublicNS {
                             span: import.span,
                             ident,
@@ -1371,12 +1376,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.dcx().create_err(CannotGlobImportAllCrates { span: import.span }).emit();
+            self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
             return;
         };
 
         if module.is_trait() {
-            self.dcx().create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
+            self.dcx().emit_err(ItemsInTraitsAreNotImportable { span: import.span });
             return;
         } else if module == import.parent_scope.module {
             return;
@@ -1481,7 +1486,7 @@ fn import_kind_to_string(import_kind: &ImportKind<'_>) -> String {
         ImportKind::Single { source, .. } => source.to_string(),
         ImportKind::Glob { .. } => "*".to_string(),
         ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
-        ImportKind::MacroUse => "#[macro_use]".to_string(),
+        ImportKind::MacroUse { .. } => "#[macro_use]".to_string(),
         ImportKind::MacroExport => "#[macro_export]".to_string(),
     }
 }

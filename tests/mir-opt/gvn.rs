@@ -166,69 +166,89 @@ fn repeated_index<T: Copy, const N: usize>(x: T, idx: usize) {
     opaque(a[idx]);
 }
 
+fn unary(x: i64) {
+    // CHECK-LABEL: fn unary(
+    // CHECK: opaque::<i64>(_1)
+    opaque(--x); // This is `x`.
+
+    // CHECK: [[b:_.*]] = Lt(_1, const 13_i64);
+    // CHECK: opaque::<bool>([[b]])
+    let b = x < 13;
+    opaque(!!b); // This is `b`.
+
+    // Both lines should test the same thing.
+    // CHECK: [[c:_.*]] = Ne(_1, const 15_i64);
+    // CHECK: opaque::<bool>([[c]])
+    // CHECK: opaque::<bool>([[c]])
+    opaque(x != 15);
+    opaque(!(x == 15));
+
+    // Both lines should test the same thing.
+    // CHECK: [[d:_.*]] = Eq(_1, const 35_i64);
+    // CHECK: opaque::<bool>([[d]])
+    // CHECK: opaque::<bool>([[d]])
+    opaque(x == 35);
+    opaque(!(x != 35));
+}
+
 /// Verify symbolic integer arithmetic simplifications.
 fn arithmetic(x: u64) {
     // CHECK-LABEL: fn arithmetic(
-    // CHECK: [[add:_.*]] = Add(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[add]])
+    // CHECK: opaque::<u64>(_1)
     opaque(x + 0);
-    // CHECK: [[sub:_.*]] = Sub(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[sub]])
+    // CHECK: opaque::<u64>(_1)
     opaque(x - 0);
-    // CHECK: [[mul0:_.*]] = Mul(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[mul0]])
+    // CHECK: opaque::<u64>(const 0_u64)
+    opaque(x - x);
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(x * 0);
-    // CHECK: [[mul1:_.*]] = Mul(_1, const 1_u64);
-    // CHECK: opaque::<u64>(move [[mul1]])
+    // CHECK: opaque::<u64>(_1)
     opaque(x * 1);
+    // CHECK: assert(!const true, "attempt to divide `{}` by zero",
     // CHECK: [[div0:_.*]] = Div(_1, const 0_u64);
     // CHECK: opaque::<u64>(move [[div0]])
     opaque(x / 0);
-    // CHECK: [[div1:_.*]] = Div(_1, const 1_u64);
-    // CHECK: opaque::<u64>(move [[div1]])
+    // CHECK: opaque::<u64>(_1)
     opaque(x / 1);
-    // CHECK: [[zdiv:_.*]] = Div(const 0_u64, _1);
-    // CHECK: opaque::<u64>(move [[zdiv]])
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(0 / x);
     // CHECK: [[odiv:_.*]] = Div(const 1_u64, _1);
     // CHECK: opaque::<u64>(move [[odiv]])
     opaque(1 / x);
+    // CHECK: assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of zero"
     // CHECK: [[rem0:_.*]] = Rem(_1, const 0_u64);
     // CHECK: opaque::<u64>(move [[rem0]])
     opaque(x % 0);
-    // CHECK: [[rem1:_.*]] = Rem(_1, const 1_u64);
-    // CHECK: opaque::<u64>(move [[rem1]])
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(x % 1);
-    // CHECK: [[zrem:_.*]] = Rem(const 0_u64, _1);
-    // CHECK: opaque::<u64>(move [[zrem]])
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(0 % x);
     // CHECK: [[orem:_.*]] = Rem(const 1_u64, _1);
     // CHECK: opaque::<u64>(move [[orem]])
     opaque(1 % x);
-    // CHECK: [[and:_.*]] = BitAnd(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[and]])
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(x & 0);
-    // CHECK: [[or:_.*]] = BitOr(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[or]])
+    // CHECK: opaque::<u64>(_1)
+    opaque(x & u64::MAX);
+    // CHECK: opaque::<u64>(_1)
     opaque(x | 0);
-    // CHECK: [[xor:_.*]] = BitXor(_1, const 0_u64);
-    // CHECK: opaque::<u64>(move [[xor]])
+    // CHECK: opaque::<u64>(const u64::MAX)
+    opaque(x | u64::MAX);
+    // CHECK: opaque::<u64>(_1)
     opaque(x ^ 0);
-    // CHECK: [[shr:_.*]] = Shr(_1, const 0_i32);
-    // CHECK: opaque::<u64>(move [[shr]])
+    // CHECK: opaque::<u64>(const 0_u64)
+    opaque(x ^ x);
+    // CHECK: opaque::<u64>(_1)
     opaque(x >> 0);
-    // CHECK: [[shl:_.*]] = Shl(_1, const 0_i32);
-    // CHECK: opaque::<u64>(move [[shl]])
+    // CHECK: opaque::<u64>(_1)
     opaque(x << 0);
 }
 
 fn comparison(x: u64, y: u64) {
     // CHECK-LABEL: fn comparison(
-    // CHECK: [[eqxx:_.*]] = Eq(_1, _1);
-    // CHECK: opaque::<bool>(move [[eqxx]])
+    // CHECK: opaque::<bool>(const true)
     opaque(x == x);
-    // CHECK: [[nexx:_.*]] = Ne(_1, _1);
-    // CHECK: opaque::<bool>(move [[nexx]])
+    // CHECK: opaque::<bool>(const false)
     opaque(x != x);
     // CHECK: [[eqxy:_.*]] = Eq(_1, _2);
     // CHECK: opaque::<bool>(move [[eqxy]])
@@ -242,21 +262,20 @@ fn comparison(x: u64, y: u64) {
 #[rustc_inherit_overflow_checks]
 fn arithmetic_checked(x: u64) {
     // CHECK-LABEL: fn arithmetic_checked(
-    // CHECK: [[cadd:_.*]] = CheckedAdd(_1, const 0_u64);
-    // CHECK: [[add:_.*]] = move ([[cadd]].0: u64);
-    // CHECK: opaque::<u64>(move [[add]])
+    // CHECK: assert(!const false,
+    // CHECK: opaque::<u64>(_1)
     opaque(x + 0);
-    // CHECK: [[csub:_.*]] = CheckedSub(_1, const 0_u64);
-    // CHECK: [[sub:_.*]] = move ([[csub]].0: u64);
-    // CHECK: opaque::<u64>(move [[sub]])
+    // CHECK: assert(!const false,
+    // CHECK: opaque::<u64>(_1)
     opaque(x - 0);
-    // CHECK: [[cmul0:_.*]] = CheckedMul(_1, const 0_u64);
-    // CHECK: [[mul0:_.*]] = move ([[cmul0]].0: u64);
-    // CHECK: opaque::<u64>(move [[mul0]])
+    // CHECK: assert(!const false,
+    // CHECK: opaque::<u64>(const 0_u64)
+    opaque(x - x);
+    // CHECK: assert(!const false,
+    // CHECK: opaque::<u64>(const 0_u64)
     opaque(x * 0);
-    // CHECK: [[cmul1:_.*]] = CheckedMul(_1, const 1_u64);
-    // CHECK: [[mul1:_.*]] = move ([[cmul1]].0: u64);
-    // CHECK: opaque::<u64>(move [[mul1]])
+    // CHECK: assert(!const false,
+    // CHECK: opaque::<u64>(_1)
     opaque(x * 1);
 }
 
@@ -529,31 +548,31 @@ fn duplicate_slice() -> (bool, bool) {
             // CHECK: [[a:_.*]] = (const "a",);
             // CHECK: [[au:_.*]] = ([[a]].0: &str) as u128 (Transmute);
             let a = ("a",);
-            Call(au = transmute::<_, u128>(a.0), bb1, UnwindContinue())
+            Call(au = transmute::<_, u128>(a.0), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
             // CHECK: [[c:_.*]] = identity::<&str>(([[a]].0: &str))
-            Call(c = identity(a.0), bb2, UnwindContinue())
+            Call(c = identity(a.0), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
             // CHECK: [[cu:_.*]] = [[c]] as u128 (Transmute);
-            Call(cu = transmute::<_, u128>(c), bb3, UnwindContinue())
+            Call(cu = transmute::<_, u128>(c), ReturnTo(bb3), UnwindContinue())
         }
         bb3 = {
             // This slice is different from `a.0`. Hence `bu` is not `au`.
             // CHECK: [[b:_.*]] = const "a";
             // CHECK: [[bu:_.*]] = [[b]] as u128 (Transmute);
             let b = "a";
-            Call(bu = transmute::<_, u128>(b), bb4, UnwindContinue())
+            Call(bu = transmute::<_, u128>(b), ReturnTo(bb4), UnwindContinue())
         }
         bb4 = {
             // This returns a copy of `b`, which is not `a`.
             // CHECK: [[d:_.*]] = identity::<&str>([[b]])
-            Call(d = identity(b), bb5, UnwindContinue())
+            Call(d = identity(b), ReturnTo(bb5), UnwindContinue())
         }
         bb5 = {
             // CHECK: [[du:_.*]] = [[d]] as u128 (Transmute);
-            Call(du = transmute::<_, u128>(d), bb6, UnwindContinue())
+            Call(du = transmute::<_, u128>(d), ReturnTo(bb6), UnwindContinue())
         }
         bb6 = {
             // `direct` must not fold to `true`, as `indirect` will not.
@@ -625,10 +644,32 @@ fn constant_index_overflow<T: Copy>(x: &[T]) {
     opaque(b)
 }
 
+fn wide_ptr_ops() {
+    let a: *const dyn Send = &1 as &dyn Send;
+    let b: *const dyn Send = &1 as &dyn Send;
+    let _val = a == b;
+    let _val = a != b;
+    let _val = a < b;
+    let _val = a <= b;
+    let _val = a > b;
+    let _val = a >= b;
+
+    let a: *const [u8] = unsafe { transmute((1usize, 1usize)) };
+    let b: *const [u8] = unsafe { transmute((1usize, 2usize)) };
+
+    opaque(!(a == b));
+    opaque(a != b);
+    opaque(a <= b);
+    opaque(a < b);
+    opaque(!(a >= b));
+    opaque(!(a > b));
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
     repeated_index::<u32, 7>(5, 3);
+    unary(i64::MIN);
     arithmetic(5);
     comparison(5, 6);
     arithmetic_checked(5);
@@ -644,6 +685,7 @@ fn main() {
     fn_pointers();
     indirect_static();
     constant_index_overflow(&[5, 3]);
+    wide_ptr_ops();
 }
 
 #[inline(never)]
@@ -657,6 +699,7 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
 // EMIT_MIR gvn.repeated_index.GVN.diff
+// EMIT_MIR gvn.unary.GVN.diff
 // EMIT_MIR gvn.arithmetic.GVN.diff
 // EMIT_MIR gvn.comparison.GVN.diff
 // EMIT_MIR gvn.arithmetic_checked.GVN.diff
@@ -671,3 +714,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.fn_pointers.GVN.diff
 // EMIT_MIR gvn.indirect_static.GVN.diff
 // EMIT_MIR gvn.constant_index_overflow.GVN.diff
+// EMIT_MIR gvn.wide_ptr_ops.GVN.diff

@@ -26,7 +26,7 @@ pub(crate) fn unresolved_module(
                 )
             }
         },
-        d.decl.clone().map(|it| it.into()),
+        d.decl.map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }
@@ -58,9 +58,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
 
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
-
-    use crate::tests::{check_diagnostics, check_expect};
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn unresolved_module() {
@@ -78,99 +76,11 @@ mod baz {}
 
     #[test]
     fn test_unresolved_module_diagnostic() {
-        check_expect(
-            r#"mod foo;"#,
-            expect![[r#"
-                [
-                    Diagnostic {
-                        code: RustcHardError(
-                            "E0583",
-                        ),
-                        message: "unresolved module, can't find module file: foo.rs, or foo/mod.rs",
-                        range: FileRange {
-                            file_id: FileId(
-                                0,
-                            ),
-                            range: 0..8,
-                        },
-                        severity: Error,
-                        unused: false,
-                        experimental: false,
-                        fixes: Some(
-                            [
-                                Assist {
-                                    id: AssistId(
-                                        "create_module",
-                                        QuickFix,
-                                    ),
-                                    label: "Create module at `foo.rs`",
-                                    group: None,
-                                    target: 0..8,
-                                    source_change: Some(
-                                        SourceChange {
-                                            source_file_edits: {},
-                                            file_system_edits: [
-                                                CreateFile {
-                                                    dst: AnchoredPathBuf {
-                                                        anchor: FileId(
-                                                            0,
-                                                        ),
-                                                        path: "foo.rs",
-                                                    },
-                                                    initial_contents: "",
-                                                },
-                                            ],
-                                            is_snippet: false,
-                                        },
-                                    ),
-                                    trigger_signature_help: false,
-                                },
-                                Assist {
-                                    id: AssistId(
-                                        "create_module",
-                                        QuickFix,
-                                    ),
-                                    label: "Create module at `foo/mod.rs`",
-                                    group: None,
-                                    target: 0..8,
-                                    source_change: Some(
-                                        SourceChange {
-                                            source_file_edits: {},
-                                            file_system_edits: [
-                                                CreateFile {
-                                                    dst: AnchoredPathBuf {
-                                                        anchor: FileId(
-                                                            0,
-                                                        ),
-                                                        path: "foo/mod.rs",
-                                                    },
-                                                    initial_contents: "",
-                                                },
-                                            ],
-                                            is_snippet: false,
-                                        },
-                                    ),
-                                    trigger_signature_help: false,
-                                },
-                            ],
-                        ),
-                        main_node: Some(
-                            InFileWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                value: MODULE@0..8
-                                  MOD_KW@0..3 "mod"
-                                  WHITESPACE@3..4 " "
-                                  NAME@4..7
-                                    IDENT@4..7 "foo"
-                                  SEMICOLON@7..8 ";"
-                                ,
-                            },
-                        ),
-                    },
-                ]
-            "#]],
+        check_diagnostics(
+            r#"
+  mod foo;
+//^^^^^^^^ 💡 error: unresolved module, can't find module file: foo.rs, or foo/mod.rs
+"#,
         );
     }
 }

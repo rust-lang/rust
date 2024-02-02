@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -119,7 +119,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
             ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
-                    if let Some(Guard::If(if_expr)) = arm.guard {
+                    if let Some(if_expr) = arm.guard {
                         self.visit_expr(if_expr);
                     }
                     // make sure top level arm expressions aren't linted

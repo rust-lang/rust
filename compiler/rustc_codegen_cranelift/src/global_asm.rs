@@ -154,6 +154,8 @@ pub(crate) fn compile_global_asm(
         }
     } else {
         let mut child = Command::new(std::env::current_exe().unwrap())
+            // Avoid a warning about the jobserver fd not being passed
+            .env_remove("CARGO_MAKEFLAGS")
             .arg("--target")
             .arg(&config.target)
             .arg("--crate-type")

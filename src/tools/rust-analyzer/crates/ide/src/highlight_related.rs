@@ -15,10 +15,10 @@ use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
     SyntaxKind::{self, IDENT, INT_NUMBER},
-    SyntaxNode, SyntaxToken, TextRange, T,
+    SyntaxToken, TextRange, T,
 };
 
-use crate::{navigation_target::ToNav, references, NavigationTarget, TryToNav};
+use crate::{navigation_target::ToNav, NavigationTarget, TryToNav};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
@@ -81,7 +81,7 @@ pub(crate) fn highlight_related(
         }
         T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
         T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
-        _ if config.references => highlight_references(sema, &syntax, token, pos),
+        _ if config.references => highlight_references(sema, token, pos),
         _ => None,
     }
 }
@@ -129,7 +129,6 @@ fn highlight_closure_captures(
 
 fn highlight_references(
     sema: &Semantics<'_, RootDatabase>,
-    node: &SyntaxNode,
     token: SyntaxToken,
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
@@ -239,7 +238,7 @@ fn highlight_references(
                         continue;
                     }
                     let hl_range = nav.focus_range.map(|range| {
-                        let category = references::decl_mutability(&def, node, range)
+                        let category = matches!(def, Definition::Local(l) if l.is_mut(sema.db))
                             .then_some(ReferenceCategory::Write);
                         HighlightedRange { range, category }
                     });
@@ -476,8 +475,7 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
     sema.descend_into_macros(DescendPreference::None, token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
-        .map(IdentClass::definitions_no_ops)
-        .flatten()
+        .flat_map(IdentClass::definitions_no_ops)
         .collect()
 }
 

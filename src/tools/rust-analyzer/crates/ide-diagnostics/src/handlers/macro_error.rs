@@ -20,7 +20,7 @@ pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
 pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range =
-        ctx.resolve_precise_location(&d.node.clone().map(|it| it.syntax_node_ptr()), d.name);
+        ctx.resolve_precise_location(&d.node.map(|it| it.syntax_node_ptr()), d.name);
     Diagnostic::new(
         DiagnosticCode::Ra("macro-def-error", Severity::Error),
         d.message.clone(),

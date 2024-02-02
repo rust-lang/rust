@@ -39,8 +39,7 @@ mod executor {
     #[coverage(off)]
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
         let mut future = pin!(future);
-        let waker = Waker::noop();
-        let mut context = Context::from_waker(&waker);
+        let mut context = Context::from_waker(Waker::noop());
 
         loop {
             if let Poll::Ready(val) = future.as_mut().poll(&mut context) {

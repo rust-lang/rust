@@ -4,7 +4,7 @@ use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, DescendPreference, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -73,8 +73,13 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
+
             if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
                 if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), file_id) {
+                    return Some(vec![x]);
+                }
+
+                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
                     return Some(vec![x]);
                 }
             }
@@ -138,6 +143,27 @@ fn try_lookup_include_path(
         description: None,
         docs: None,
     })
+}
+
+fn try_lookup_macro_def_in_macro_use(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> Option<NavigationTarget> {
+    let extern_crate = token.parent()?.ancestors().find_map(ast::ExternCrate::cast)?;
+    let extern_crate = sema.to_def(&extern_crate)?;
+    let krate = extern_crate.resolved_crate(sema.db)?;
+
+    for mod_def in krate.root_module().declarations(sema.db) {
+        if let ModuleDef::Macro(mac) = mod_def {
+            if mac.name(sema.db).as_str() == Some(token.text()) {
+                if let Some(nav) = mac.try_to_nav(sema.db) {
+                    return Some(nav.call_site);
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// finds the trait definition of an impl'd item, except function
@@ -2079,6 +2105,49 @@ fn test() {
     format_args!("hello {a$0}");
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn goto_macro_def_from_macro_use() {
+        check(
+            r#"
+//- /main.rs crate:main deps:mac
+#[macro_use(foo$0)]
+extern crate mac;
+
+//- /mac.rs crate:mac
+#[macro_export]
+macro_rules! foo {
+           //^^^
+    () => {};
+}
+            "#,
+        );
+
+        check(
+            r#"
+//- /main.rs crate:main deps:mac
+#[macro_use(foo, bar$0, baz)]
+extern crate mac;
+
+//- /mac.rs crate:mac
+#[macro_export]
+macro_rules! foo {
+    () => {};
+}
+
+#[macro_export]
+macro_rules! bar {
+           //^^^
+    () => {};
+}
+
+#[macro_export]
+macro_rules! baz {
+    () => {};
+}
+            "#,
         );
     }
 }

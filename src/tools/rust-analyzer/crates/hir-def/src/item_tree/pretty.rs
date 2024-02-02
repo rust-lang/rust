@@ -2,6 +2,8 @@
 
 use std::fmt::{self, Write};
 
+use span::ErasedFileAstId;
+
 use crate::{
     generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
     pretty::{print_path, print_type_bounds, print_type_ref},
@@ -104,7 +106,9 @@ impl Printer<'_> {
 
     fn print_visibility(&mut self, vis: RawVisibilityId) {
         match &self.tree[vis] {
-            RawVisibility::Module(path) => w!(self, "pub({}) ", path.display(self.db.upcast())),
+            RawVisibility::Module(path, _expl) => {
+                w!(self, "pub({}) ", path.display(self.db.upcast()))
+            }
             RawVisibility::Public => w!(self, "pub "),
         };
     }
@@ -116,7 +120,11 @@ impl Printer<'_> {
                 w!(self, "{{");
                 self.indented(|this| {
                     for field in fields.clone() {
-                        let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
+                        let Field { visibility, name, type_ref, ast_id } = &this.tree[field];
+                        this.print_ast_id(match ast_id {
+                            FieldAstId::Record(it) => it.erase(),
+                            FieldAstId::Tuple(it) => it.erase(),
+                        });
                         this.print_attrs_of(field, "\n");
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db.upcast()));
@@ -130,7 +138,11 @@ impl Printer<'_> {
                 w!(self, "(");
                 self.indented(|this| {
                     for field in fields.clone() {
-                        let Field { visibility, name, type_ref, ast_id: _ } = &this.tree[field];
+                        let Field { visibility, name, type_ref, ast_id } = &this.tree[field];
+                        this.print_ast_id(match ast_id {
+                            FieldAstId::Record(it) => it.erase(),
+                            FieldAstId::Tuple(it) => it.erase(),
+                        });
                         this.print_attrs_of(field, "\n");
                         this.print_visibility(*visibility);
                         w!(this, "{}: ", name.display(self.db.upcast()));
@@ -198,14 +210,16 @@ impl Printer<'_> {
 
         match item {
             ModItem::Use(it) => {
-                let Use { visibility, use_tree, ast_id: _ } = &self.tree[it];
+                let Use { visibility, use_tree, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "use ");
                 self.print_use_tree(use_tree);
                 wln!(self, ";");
             }
             ModItem::ExternCrate(it) => {
-                let ExternCrate { name, alias, visibility, ast_id: _ } = &self.tree[it];
+                let ExternCrate { name, alias, visibility, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "extern crate {}", name.display(self.db.upcast()));
                 if let Some(alias) = alias {
@@ -214,7 +228,8 @@ impl Printer<'_> {
                 wln!(self, ";");
             }
             ModItem::ExternBlock(it) => {
-                let ExternBlock { abi, ast_id: _, children } = &self.tree[it];
+                let ExternBlock { abi, ast_id, children } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 w!(self, "extern ");
                 if let Some(abi) = abi {
                     w!(self, "\"{}\" ", abi);
@@ -235,9 +250,10 @@ impl Printer<'_> {
                     abi,
                     params,
                     ret_type,
-                    ast_id: _,
+                    ast_id,
                     flags,
                 } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 if flags.contains(FnFlags::HAS_DEFAULT_KW) {
                     w!(self, "default ");
@@ -261,7 +277,12 @@ impl Printer<'_> {
                     self.indented(|this| {
                         for param in params.clone() {
                             this.print_attrs_of(param, "\n");
-                            match &this.tree[param].type_ref {
+                            let Param { type_ref, ast_id } = &this.tree[param];
+                            this.print_ast_id(match ast_id {
+                                ParamAstId::Param(it) => it.erase(),
+                                ParamAstId::SelfParam(it) => it.erase(),
+                            });
+                            match type_ref {
                                 Some(ty) => {
                                     if flags.contains(FnFlags::HAS_SELF_PARAM) {
                                         w!(this, "self: ");
@@ -286,7 +307,8 @@ impl Printer<'_> {
                 }
             }
             ModItem::Struct(it) => {
-                let Struct { visibility, name, fields, generic_params, ast_id: _ } = &self.tree[it];
+                let Struct { visibility, name, fields, generic_params, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "struct {}", name.display(self.db.upcast()));
                 self.print_generic_params(generic_params);
@@ -298,7 +320,8 @@ impl Printer<'_> {
                 }
             }
             ModItem::Union(it) => {
-                let Union { name, visibility, fields, generic_params, ast_id: _ } = &self.tree[it];
+                let Union { name, visibility, fields, generic_params, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "union {}", name.display(self.db.upcast()));
                 self.print_generic_params(generic_params);
@@ -310,14 +333,16 @@ impl Printer<'_> {
                 }
             }
             ModItem::Enum(it) => {
-                let Enum { name, visibility, variants, generic_params, ast_id: _ } = &self.tree[it];
+                let Enum { name, visibility, variants, generic_params, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "enum {}", name.display(self.db.upcast()));
                 self.print_generic_params(generic_params);
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
-                    for variant in variants.clone() {
-                        let Variant { name, fields, ast_id: _ } = &this.tree[variant];
+                    for variant in FileItemTreeId::range_iter(variants.clone()) {
+                        let Variant { name, fields, ast_id } = &this.tree[variant];
+                        this.print_ast_id(ast_id.erase());
                         this.print_attrs_of(variant, "\n");
                         w!(this, "{}", name.display(self.db.upcast()));
                         this.print_fields(fields);
@@ -327,7 +352,8 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::Const(it) => {
-                let Const { name, visibility, type_ref, ast_id: _ } = &self.tree[it];
+                let Const { name, visibility, type_ref, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "const ");
                 match name {
@@ -339,7 +365,8 @@ impl Printer<'_> {
                 wln!(self, " = _;");
             }
             ModItem::Static(it) => {
-                let Static { name, visibility, mutable, type_ref, ast_id: _ } = &self.tree[it];
+                let Static { name, visibility, mutable, type_ref, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "static ");
                 if *mutable {
@@ -351,15 +378,9 @@ impl Printer<'_> {
                 wln!(self);
             }
             ModItem::Trait(it) => {
-                let Trait {
-                    name,
-                    visibility,
-                    is_auto,
-                    is_unsafe,
-                    items,
-                    generic_params,
-                    ast_id: _,
-                } = &self.tree[it];
+                let Trait { name, visibility, is_auto, is_unsafe, items, generic_params, ast_id } =
+                    &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 if *is_unsafe {
                     w!(self, "unsafe ");
@@ -378,7 +399,8 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::TraitAlias(it) => {
-                let TraitAlias { name, visibility, generic_params, ast_id: _ } = &self.tree[it];
+                let TraitAlias { name, visibility, generic_params, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "trait {}", name.display(self.db.upcast()));
                 self.print_generic_params(generic_params);
@@ -395,8 +417,9 @@ impl Printer<'_> {
                     is_unsafe,
                     items,
                     generic_params,
-                    ast_id: _,
+                    ast_id,
                 } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 if *is_unsafe {
                     w!(self, "unsafe");
                 }
@@ -420,8 +443,9 @@ impl Printer<'_> {
                 wln!(self, "}}");
             }
             ModItem::TypeAlias(it) => {
-                let TypeAlias { name, visibility, bounds, type_ref, generic_params, ast_id: _ } =
+                let TypeAlias { name, visibility, bounds, type_ref, generic_params, ast_id } =
                     &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name.display(self.db.upcast()));
                 self.print_generic_params(generic_params);
@@ -438,7 +462,8 @@ impl Printer<'_> {
                 wln!(self);
             }
             ModItem::Mod(it) => {
-                let Mod { name, visibility, kind, ast_id: _ } = &self.tree[it];
+                let Mod { name, visibility, kind, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 w!(self, "mod {}", name.display(self.db.upcast()));
                 match kind {
@@ -457,15 +482,24 @@ impl Printer<'_> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id: _, expand_to: _, call_site: _ } = &self.tree[it];
+                let MacroCall { path, ast_id, expand_to, call_site } = &self.tree[it];
+                let _ = writeln!(
+                    self,
+                    "// AstId: {:?}, Span: {}, ExpandTo: {:?}",
+                    ast_id.erase().into_raw(),
+                    call_site,
+                    expand_to
+                );
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
             }
             ModItem::MacroRules(it) => {
-                let MacroRules { name, ast_id: _ } = &self.tree[it];
+                let MacroRules { name, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 wln!(self, "macro_rules! {} {{ ... }}", name.display(self.db.upcast()));
             }
-            ModItem::MacroDef(it) => {
-                let MacroDef { name, visibility, ast_id: _ } = &self.tree[it];
+            ModItem::Macro2(it) => {
+                let Macro2 { name, visibility, ast_id } = &self.tree[it];
+                self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
                 wln!(self, "macro {} {{ ... }}", name.display(self.db.upcast()));
             }
@@ -580,6 +614,10 @@ impl Printer<'_> {
             }
         });
         true
+    }
+
+    fn print_ast_id(&mut self, ast_id: ErasedFileAstId) {
+        wln!(self, "// AstId: {:?}", ast_id.into_raw());
     }
 }
 

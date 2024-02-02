@@ -1,11 +1,11 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
+use rustc_errors::{codes::*, AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(lint_overruled_attribute, code = "E0453")]
+#[diag(lint_overruled_attribute, code = E0453)]
 pub struct OverruledAttribute<'a> {
     #[primary_span]
     pub span: Span,
@@ -31,7 +31,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(fluent::lint_default_source);
-                diag.set_arg("id", id);
+                diag.arg("id", id);
             }
             OverruledAttributeSub::NodeSource { span, reason } => {
                 diag.span_label(span, fluent::lint_node_source);
@@ -48,7 +48,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_malformed_attribute, code = "E0452")]
+#[diag(lint_malformed_attribute, code = E0452)]
 pub struct MalformedAttribute {
     #[primary_span]
     pub span: Span,
@@ -67,7 +67,7 @@ pub enum MalformedAttributeSub {
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_unknown_tool_in_scoped_lint, code = "E0710")]
+#[diag(lint_unknown_tool_in_scoped_lint, code = E0710)]
 pub struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
@@ -78,7 +78,7 @@ pub struct UnknownToolInScopedLint {
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
+#[diag(lint_builtin_ellipsis_inclusive_range_patterns, code = E0783)]
 pub struct BuiltinEllipsisInclusiveRangePatterns {
     #[primary_span]
     pub span: Span,
@@ -95,13 +95,13 @@ pub struct RequestedLevel<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_unsupported_group, code = "E0602")]
+#[diag(lint_unsupported_group, code = E0602)]
 pub struct UnsupportedGroup {
     pub lint_group: String,
 }
 
 #[derive(Diagnostic)]
-#[diag(lint_check_name_unknown_tool, code = "E0602")]
+#[diag(lint_check_name_unknown_tool, code = E0602)]
 pub struct CheckNameUnknownTool<'a> {
     pub tool_name: Symbol,
     #[subdiagnostic]

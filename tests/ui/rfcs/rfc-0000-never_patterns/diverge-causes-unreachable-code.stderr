@@ -1,0 +1,49 @@
+error: unreachable statement
+  --> $DIR/diverge-causes-unreachable-code.rs:11:5
+   |
+LL | fn never_arg(!: Void) -> u32 {
+   |              - any code following a never pattern is unreachable
+LL |     println!();
+   |     ^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/diverge-causes-unreachable-code.rs:4:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/diverge-causes-unreachable-code.rs:16:5
+   |
+LL | fn ref_never_arg(&!: &Void) -> u32 {
+   |                  -- any code following a never pattern is unreachable
+LL |     println!();
+   |     ^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/diverge-causes-unreachable-code.rs:25:5
+   |
+LL |         let ! = *ptr;
+   |             - any code following a never pattern is unreachable
+LL |     }
+LL |     println!();
+   |     ^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable statement
+  --> $DIR/diverge-causes-unreachable-code.rs:34:5
+   |
+LL |         match *ptr { ! };
+   |         ---------------- any code following this `match` expression is unreachable, as all arms diverge
+LL |     }
+LL |     println!();
+   |     ^^^^^^^^^^ unreachable statement
+   |
+   = note: this error originates in the macro `$crate::print` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

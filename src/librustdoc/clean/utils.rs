@@ -16,9 +16,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
-use rustc_middle::ty::{TypeVisitable, TypeVisitableExt};
 use rustc_span::symbol::{kw, sym, Symbol};
+use std::assert_matches::debug_assert_matches;
 use std::fmt::Write as _;
 use std::mem;
 use std::sync::LazyLock as Lazy;
@@ -75,80 +76,83 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn ty_args_to_args<'tcx>(
+pub(crate) fn clean_middle_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    ty_args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
-    has_self: bool,
+    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    mut has_self: bool,
     owner: DefId,
 ) -> Vec<GenericArg> {
-    if ty_args.skip_binder().is_empty() {
+    let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
+    if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
         return Vec::new();
     }
 
-    let params = &cx.tcx.generics_of(owner).params;
+    // If the container is a trait object type, the arguments won't contain the self type but the
+    // generics of the corresponding trait will. In such a case, prepend a dummy self type in order
+    // to align the arguments and parameters for the iteration below and to enable us to correctly
+    // instantiate the generic parameter default later.
+    let generics = cx.tcx.generics_of(owner);
+    let args = if !has_self && generics.parent.is_none() && generics.has_self {
+        has_self = true;
+        [cx.tcx.types.trait_object_dummy_self.into()]
+            .into_iter()
+            .chain(args.iter().copied())
+            .collect::<Vec<_>>()
+            .into()
+    } else {
+        std::borrow::Cow::from(args)
+    };
+
     let mut elision_has_failed_once_before = false;
-
-    let offset = if has_self { 1 } else { 0 };
-    let mut args = Vec::with_capacity(ty_args.skip_binder().len().saturating_sub(offset));
-
-    let ty_arg_to_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
-        GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+    let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
+        // Elide the self type.
+        if has_self && index == 0 {
+            return None;
         }
-        GenericArgKind::Type(_) if has_self && index == 0 => None,
-        GenericArgKind::Type(ty) => {
-            if !elision_has_failed_once_before
-                && let Some(default) = params[index].default_value(cx.tcx)
-            {
-                let default =
-                    ty_args.map_bound(|args| default.instantiate(cx.tcx, args).expect_ty());
 
-                if can_elide_generic_arg(ty_args.rebind(ty), default) {
-                    return None;
-                }
+        // Elide internal host effect args.
+        let param = generics.param_at(index, cx.tcx);
+        if param.is_host_effect() {
+            return None;
+        }
 
-                elision_has_failed_once_before = true;
+        let arg = ty::Binder::bind_with_vars(arg, bound_vars);
+
+        // Elide arguments that coincide with their default.
+        if !elision_has_failed_once_before && let Some(default) = param.default_value(cx.tcx) {
+            let default = default.instantiate(cx.tcx, args.as_ref());
+            if can_elide_generic_arg(arg, arg.rebind(default)) {
+                return None;
             }
+            elision_has_failed_once_before = true;
+        }
 
-            Some(GenericArg::Type(clean_middle_ty(
-                ty_args.rebind(ty),
+        match arg.skip_binder().unpack() {
+            GenericArgKind::Lifetime(lt) => {
+                Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+            }
+            GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(
+                arg.rebind(ty),
                 cx,
                 None,
                 Some(crate::clean::ContainerTy::Regular {
                     ty: owner,
-                    args: ty_args,
-                    has_self,
+                    args: arg.rebind(args.as_ref()),
                     arg: index,
                 }),
-            )))
-        }
-        GenericArgKind::Const(ct) => {
-            if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } = params[index].kind
-            {
-                return None;
+            ))),
+            GenericArgKind::Const(ct) => {
+                Some(GenericArg::Const(Box::new(clean_middle_const(arg.rebind(ct), cx))))
             }
-
-            if !elision_has_failed_once_before
-                && let Some(default) = params[index].default_value(cx.tcx)
-            {
-                let default =
-                    ty_args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
-
-                if can_elide_generic_arg(ty_args.rebind(ct), default) {
-                    return None;
-                }
-
-                elision_has_failed_once_before = true;
-            }
-
-            Some(GenericArg::Const(Box::new(clean_middle_const(ty_args.rebind(ct), cx))))
         }
     };
 
-    args.extend(ty_args.skip_binder().iter().enumerate().rev().filter_map(ty_arg_to_arg));
-    args.reverse();
-    args
+    let offset = if has_self { 1 } else { 0 };
+    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
+    clean_args.reverse();
+    clean_args
 }
 
 /// Check if the generic argument `actual` coincides with the `default` and can therefore be elided.
@@ -156,13 +160,17 @@ pub(crate) fn ty_args_to_args<'tcx>(
 /// This uses a very conservative approach for performance and correctness reasons, meaning for
 /// several classes of terms it claims that they cannot be elided even if they theoretically could.
 /// This is absolutely fine since it mostly concerns edge cases.
-fn can_elide_generic_arg<'tcx, Term>(
-    actual: ty::Binder<'tcx, Term>,
-    default: ty::Binder<'tcx, Term>,
-) -> bool
-where
-    Term: Eq + TypeVisitable<TyCtxt<'tcx>>,
-{
+fn can_elide_generic_arg<'tcx>(
+    actual: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
+    default: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
+) -> bool {
+    debug_assert_matches!(
+        (actual.skip_binder().unpack(), default.skip_binder().unpack()),
+        (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_))
+            | (ty::GenericArgKind::Type(_), ty::GenericArgKind::Type(_))
+            | (ty::GenericArgKind::Const(_), ty::GenericArgKind::Const(_))
+    );
+
     // In practice, we shouldn't have any inference variables at this point.
     // However to be safe, we bail out if we do happen to stumble upon them.
     if actual.has_infer() || default.has_infer() {
@@ -192,14 +200,14 @@ where
     actual.skip_binder() == default.skip_binder()
 }
 
-fn external_generic_args<'tcx>(
+fn clean_middle_generic_args_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
     ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = ty_args_to_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
+    let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
 
     if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
         let ty = ty_args
@@ -225,7 +233,7 @@ fn external_generic_args<'tcx>(
     }
 }
 
-pub(super) fn external_path<'tcx>(
+pub(super) fn clean_middle_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
@@ -238,7 +246,7 @@ pub(super) fn external_path<'tcx>(
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
             name,
-            args: external_generic_args(cx, did, has_self, bindings, args),
+            args: clean_middle_generic_args_with_bindings(cx, did, has_self, bindings, args),
         }],
     }
 }
@@ -304,7 +312,9 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match p.kind {
         // FIXME(never_patterns): does this make sense?
-        PatKind::Wild | PatKind::Never | PatKind::Struct(..) => return kw::Underscore,
+        PatKind::Wild | PatKind::Err(_) | PatKind::Never | PatKind::Struct(..) => {
+            return kw::Underscore;
+        }
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Or(pats) => {

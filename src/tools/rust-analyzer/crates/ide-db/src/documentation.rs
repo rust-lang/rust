@@ -138,15 +138,13 @@ pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
     for doc in docs {
         // str::lines doesn't yield anything for the empty string
         if !doc.is_empty() {
-            buf.extend(Itertools::intersperse(
-                doc.lines().map(|line| {
-                    line.char_indices()
-                        .nth(indent)
-                        .map_or(line, |(offset, _)| &line[offset..])
-                        .trim_end()
-                }),
-                "\n",
-            ));
+            // We don't trim trailing whitespace from doc comments as multiple trailing spaces
+            // indicates a hard line break in Markdown.
+            let lines = doc.lines().map(|line| {
+                line.char_indices().nth(indent).map_or(line, |(offset, _)| &line[offset..])
+            });
+
+            buf.extend(Itertools::intersperse(lines, "\n"));
         }
         buf.push('\n');
     }

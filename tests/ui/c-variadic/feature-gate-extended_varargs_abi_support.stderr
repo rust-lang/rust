@@ -6,6 +6,7 @@ LL | fn efiapi(f: extern "efiapi" fn(usize, ...)) {
    |
    = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:1:14
@@ -21,6 +22,7 @@ LL | fn sysv(f: extern "sysv64" fn(usize, ...)) {
    |
    = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:6:12
@@ -36,6 +38,7 @@ LL | fn win(f: extern "win64" fn(usize, ...)) {
    |
    = note: see issue #100189 <https://github.com/rust-lang/rust/issues/100189> for more information
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:11:11

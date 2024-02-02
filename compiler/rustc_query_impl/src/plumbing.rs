@@ -69,7 +69,7 @@ impl QueryContext for QueryCtxt<'_> {
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
             NonZeroU64::new(
-                self.query_system.jobs.fetch_add(1, rustc_data_structures::sync::Ordering::Relaxed),
+                self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             )
             .unwrap(),
         )
@@ -342,9 +342,9 @@ pub(crate) fn create_query_frame<
             hasher.finish::<Hash64>()
         })
     };
-    let ty_adt_id = key.ty_adt_id();
+    let ty_def_id = key.ty_def_id();
 
-    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_adt_id, hash)
+    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_def_id, hash)
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(

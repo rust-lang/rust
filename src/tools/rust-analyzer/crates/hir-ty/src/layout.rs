@@ -9,13 +9,12 @@ use hir_def::{
         Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
         StructKind, TargetDataLayout, WrappingRange,
     },
-    LocalEnumVariantId, LocalFieldId, StructId,
+    LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
-use rustc_dependencies::{
-    abi::AddressSpace,
-    index::{IndexSlice, IndexVec},
-};
+use rustc_abi::AddressSpace;
+use rustc_index::{IndexSlice, IndexVec};
+
 use stdx::never;
 use triomphe::Arc;
 
@@ -33,15 +32,15 @@ mod adt;
 mod target;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
+pub struct RustcEnumVariantIdx(pub usize);
 
-impl rustc_dependencies::index::Idx for RustcEnumVariantIdx {
+impl rustc_index::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
-        RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
+        RustcEnumVariantIdx(idx)
     }
 
     fn index(self) -> usize {
-        u32::from(self.0.into_raw()) as usize
+        self.0
     }
 }
 
@@ -54,7 +53,7 @@ impl RustcFieldIdx {
     }
 }
 
-impl rustc_dependencies::index::Idx for RustcFieldIdx {
+impl rustc_index::Idx for RustcFieldIdx {
     fn new(idx: usize) -> Self {
         RustcFieldIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }
@@ -164,7 +163,7 @@ fn layout_of_simd_ty(
     };
 
     // Compute the ABI of the element type:
-    let e_ly = db.layout_of_ty(e_ty, env.clone())?;
+    let e_ly = db.layout_of_ty(e_ty, env)?;
     let Abi::Scalar(e_abi) = e_ly.abi else {
         return Err(LayoutError::Unknown);
     };
@@ -203,18 +202,18 @@ pub fn layout_of_ty_query(
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
     let cx = LayoutCx { target: &target };
-    let dl = &*cx.current_data_layout();
-    let ty = normalize(db, trait_env.clone(), ty.clone());
+    let dl = cx.current_data_layout();
+    let ty = normalize(db, trait_env.clone(), ty);
     let result = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => {
             if let hir_def::AdtId::StructId(s) = def {
                 let data = db.struct_data(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
-                    return layout_of_simd_ty(db, *s, subst, trait_env.clone(), &target);
+                    return layout_of_simd_ty(db, *s, subst, trait_env, &target);
                 }
             };
-            return db.layout_of_adt(*def, subst.clone(), trait_env.clone());
+            return db.layout_of_adt(*def, subst.clone(), trait_env);
         }
         TyKind::Scalar(s) => match s {
             chalk_ir::Scalar::Bool => Layout::scalar(
@@ -279,8 +278,8 @@ pub fn layout_of_ty_query(
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::HasErrorConst)? as u64;
-            let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
+            let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
+            let element = db.layout_of_ty(element.clone(), trait_env)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 
             let abi = if count != 0 && matches!(element.abi, Abi::Uninhabited) {
@@ -303,7 +302,7 @@ pub fn layout_of_ty_query(
             }
         }
         TyKind::Slice(element) => {
-            let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
+            let element = db.layout_of_ty(element.clone(), trait_env)?;
             Layout {
                 variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
@@ -345,7 +344,7 @@ pub fn layout_of_ty_query(
                 }))
                 .intern(Interner);
             }
-            unsized_part = normalize(db, trait_env.clone(), unsized_part);
+            unsized_part = normalize(db, trait_env, unsized_part);
             let metadata = match unsized_part.kind(Interner) {
                 TyKind::Slice(_) | TyKind::Str => {
                     scalar_unit(dl, Primitive::Int(dl.ptr_sized_integer(), false))
@@ -384,7 +383,7 @@ pub fn layout_of_ty_query(
             match impl_trait_id {
                 crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                     let infer = db.infer(func.into());
-                    return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env.clone());
+                    return db.layout_of_ty(infer.type_of_rpit[idx].clone(), trait_env);
                 }
                 crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                     return Err(LayoutError::NotImplemented)
@@ -409,7 +408,7 @@ pub fn layout_of_ty_query(
             cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
                 .ok_or(LayoutError::Unknown)?
         }
-        TyKind::Generator(_, _) | TyKind::GeneratorWitness(_, _) => {
+        TyKind::Coroutine(_, _) | TyKind::CoroutineWitness(_, _) => {
             return Err(LayoutError::NotImplemented)
         }
         TyKind::Error => return Err(LayoutError::HasErrorType),

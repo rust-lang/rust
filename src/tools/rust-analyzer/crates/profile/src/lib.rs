@@ -2,11 +2,11 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod stop_watch;
-mod memory_usage;
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
 mod hprof;
+mod memory_usage;
+mod stop_watch;
 mod tree;
 
 use std::cell::RefCell;

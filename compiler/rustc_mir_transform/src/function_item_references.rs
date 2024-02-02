@@ -4,6 +4,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
+use rustc_span::source_map::Spanned;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
 
@@ -43,7 +44,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             if let ty::FnDef(def_id, args_ref) = *func_ty.kind() {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
-                    let arg_ty = args[0].ty(self.body, self.tcx);
+                    let arg_ty = args[0].node.ty(self.body, self.tcx);
                     for inner_ty in arg_ty.walk().filter_map(|arg| arg.as_type()) {
                         if let Some((fn_id, fn_args)) = FunctionItemRefChecker::is_fn_ref(inner_ty)
                         {
@@ -67,7 +68,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         &self,
         def_id: DefId,
         args_ref: GenericArgsRef<'tcx>,
-        args: &[Operand<'tcx>],
+        args: &[Spanned<Operand<'tcx>>],
         source_info: SourceInfo,
     ) {
         let param_env = self.tcx.param_env(def_id);
@@ -134,8 +135,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .unwrap_or(None)
     }
 
-    fn nth_arg_span(&self, args: &[Operand<'tcx>], n: usize) -> Span {
-        match &args[n] {
+    fn nth_arg_span(&self, args: &[Spanned<Operand<'tcx>>], n: usize) -> Span {
+        match &args[n].node {
             Operand::Copy(place) | Operand::Move(place) => {
                 self.body.local_decls[place.local].source_info.span
             }
@@ -184,7 +185,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             ret,
         );
 
-        self.tcx.emit_spanned_lint(
+        self.tcx.emit_node_span_lint(
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,

@@ -1,10 +1,10 @@
 //! Defines `Body`: a lowered representation of bodies of functions, statics and
 //! consts.
 mod lower;
+mod pretty;
+pub mod scope;
 #[cfg(test)]
 mod tests;
-pub mod scope;
-mod pretty;
 
 use std::ops::Index;
 
@@ -26,7 +26,7 @@ use crate::{
     },
     nameres::DefMap,
     path::{ModPath, Path},
-    src::{HasChildSource, HasSource},
+    src::HasSource,
     BlockId, DefWithBodyId, HasModule, Lookup,
 };
 
@@ -37,7 +37,7 @@ pub struct Body {
     pub pats: Arena<Pat>,
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
-    /// Id of the closure/generator that owns the corresponding binding. If a binding is owned by the
+    /// Id of the closure/coroutine that owns the corresponding binding. If a binding is owned by the
     /// top level expression, it will not be listed in here.
     pub binding_owners: FxHashMap<BindingId, ExprId>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -160,8 +160,9 @@ impl Body {
                     src.map(|it| it.body())
                 }
                 DefWithBodyId::VariantId(v) => {
-                    let src = v.parent.child_source(db);
-                    src.map(|it| it[v.local_id].expr())
+                    let s = v.lookup(db);
+                    let src = s.source(db);
+                    src.map(|it| it.expr())
                 }
                 DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
             }
@@ -257,12 +258,12 @@ impl Body {
                 }
             }
             Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-                args.iter().copied().for_each(|p| f(p));
+                args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),
             Pat::Slice { prefix, slice, suffix } => {
                 let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-                total_iter.copied().for_each(|p| f(p));
+                total_iter.copied().for_each(f);
             }
             Pat::Record { args, .. } => {
                 args.iter().for_each(|RecordFieldPat { pat, .. }| f(*pat));
@@ -368,7 +369,7 @@ impl BodySourceMap {
     }
 
     pub fn label_syntax(&self, label: LabelId) -> LabelSource {
-        self.label_map_back[label].clone()
+        self.label_map_back[label]
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
@@ -377,11 +378,11 @@ impl BodySourceMap {
     }
 
     pub fn field_syntax(&self, expr: ExprId) -> FieldSource {
-        self.field_map_back[&expr].clone()
+        self.field_map_back[&expr]
     }
 
     pub fn pat_field_syntax(&self, pat: PatId) -> PatFieldSource {
-        self.pat_field_map_back[&pat].clone()
+        self.pat_field_map_back[&pat]
     }
 
     pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroExpr>) -> Option<ExprId> {

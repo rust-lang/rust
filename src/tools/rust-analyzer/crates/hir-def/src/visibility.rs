@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir_expand::{span::SpanMapRef, InFile};
+use hir_expand::{span_map::SpanMapRef, InFile};
 use la_arena::ArenaMap;
 use syntax::ast;
 use triomphe::Arc;
@@ -20,14 +20,14 @@ use crate::{
 pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
-    Module(ModPath),
+    Module(ModPath, VisibilityExplicity),
     /// `pub`.
     Public,
 }
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
-        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)))
+        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit)
     }
 
     pub(crate) fn from_ast(
@@ -42,17 +42,8 @@ impl RawVisibility {
         node: Option<ast::Visibility>,
         span_map: SpanMapRef<'_>,
     ) -> RawVisibility {
-        Self::from_ast_with_span_map_and_default(db, node, RawVisibility::private(), span_map)
-    }
-
-    pub(crate) fn from_ast_with_span_map_and_default(
-        db: &dyn DefDatabase,
-        node: Option<ast::Visibility>,
-        default: RawVisibility,
-        span_map: SpanMapRef<'_>,
-    ) -> RawVisibility {
         let node = match node {
-            None => return default,
+            None => return RawVisibility::private(),
             Some(node) => node,
         };
         match node.kind() {
@@ -62,19 +53,19 @@ impl RawVisibility {
                     None => return RawVisibility::private(),
                     Some(path) => path,
                 };
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubCrate => {
                 let path = ModPath::from_kind(PathKind::Crate);
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubSuper => {
                 let path = ModPath::from_kind(PathKind::Super(1));
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubSelf => {
                 let path = ModPath::from_kind(PathKind::Super(0));
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,
         }
@@ -94,7 +85,7 @@ impl RawVisibility {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
-    Module(ModuleId),
+    Module(ModuleId, VisibilityExplicity),
     /// Visibility is unrestricted.
     Public,
 }
@@ -102,7 +93,7 @@ pub enum Visibility {
 impl Visibility {
     pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
-            Visibility::Module(m) => m,
+            Visibility::Module(m, _) => m,
             Visibility::Public => return true,
         };
         // if they're not in the same crate, it can't be visible
@@ -124,7 +115,7 @@ impl Visibility {
         mut from_module: LocalModuleId,
     ) -> bool {
         let mut to_module = match self {
-            Visibility::Module(m) => m,
+            Visibility::Module(m, _) => m,
             Visibility::Public => return true,
         };
 
@@ -181,9 +172,9 @@ impl Visibility {
     /// visible in unrelated modules).
     pub(crate) fn max(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
-            (Visibility::Module(_) | Visibility::Public, Visibility::Public)
-            | (Visibility::Public, Visibility::Module(_)) => Some(Visibility::Public),
-            (Visibility::Module(mod_a), Visibility::Module(mod_b)) => {
+            (Visibility::Module(_, _) | Visibility::Public, Visibility::Public)
+            | (Visibility::Public, Visibility::Module(_, _)) => Some(Visibility::Public),
+            (Visibility::Module(mod_a, vis_a), Visibility::Module(mod_b, vis_b)) => {
                 if mod_a.krate != mod_b.krate {
                     return None;
                 }
@@ -199,12 +190,12 @@ impl Visibility {
 
                 if a_ancestors.any(|m| m == mod_b.local_id) {
                     // B is above A
-                    return Some(Visibility::Module(mod_b));
+                    return Some(Visibility::Module(mod_b, vis_b));
                 }
 
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
-                    return Some(Visibility::Module(mod_a));
+                    return Some(Visibility::Module(mod_a, vis_a));
                 }
 
                 None
@@ -213,18 +204,25 @@ impl Visibility {
     }
 }
 
+/// Whether the item was imported through `pub(crate) use` or just `use`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum VisibilityExplicity {
+    Explicit,
+    Implicit,
+}
+
+impl VisibilityExplicity {
+    pub fn is_explicit(&self) -> bool {
+        matches!(self, Self::Explicit)
+    }
+}
+
 /// Resolve visibility of all specific fields of a struct or union variant.
 pub(crate) fn field_visibilities_query(
     db: &dyn DefDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let var_data = match variant_id {
-        VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-        VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-        VariantId::EnumVariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
-        }
-    };
+    let var_data = variant_id.variant_data(db);
     let resolver = variant_id.module(db).resolver(db);
     let mut res = ArenaMap::default();
     for (field_id, field_data) in var_data.fields().iter() {

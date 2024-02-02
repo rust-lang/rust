@@ -143,8 +143,6 @@ language_item_table! {
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
-    /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
-    StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait,          GenericRequirement::None;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
@@ -208,13 +206,20 @@ language_item_table! {
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 
+    AsyncFn,                 sym::async_fn,            async_fn_trait,             Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnMut,              sym::async_fn_mut,        async_fn_mut_trait,         Target::Trait,          GenericRequirement::Exact(1);
+    AsyncFnOnce,             sym::async_fn_once,       async_fn_once_trait,        Target::Trait,          GenericRequirement::Exact(1);
+
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     AsyncIterator,           sym::async_iterator,      async_iterator_trait,       Target::Trait,          GenericRequirement::Exact(0);
+
     CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
     Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
+    CoroutineResume,         sym::coroutine_resume,    coroutine_resume,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
@@ -354,6 +359,33 @@ pub static OPERATORS: &'static [LangItem] = &[
     LangItem::Rem,
     LangItem::Neg,
     LangItem::Not,
+    LangItem::BitXor,
+    LangItem::BitAnd,
+    LangItem::BitOr,
+    LangItem::Shl,
+    LangItem::Shr,
+    LangItem::AddAssign,
+    LangItem::SubAssign,
+    LangItem::MulAssign,
+    LangItem::DivAssign,
+    LangItem::RemAssign,
+    LangItem::BitXorAssign,
+    LangItem::BitAndAssign,
+    LangItem::BitOrAssign,
+    LangItem::ShlAssign,
+    LangItem::ShrAssign,
+    LangItem::Index,
+    LangItem::IndexMut,
+    LangItem::PartialEq,
+    LangItem::PartialOrd,
+];
+
+pub static BINARY_OPERATORS: &'static [LangItem] = &[
+    LangItem::Add,
+    LangItem::Sub,
+    LangItem::Mul,
+    LangItem::Div,
+    LangItem::Rem,
     LangItem::BitXor,
     LangItem::BitAnd,
     LangItem::BitOr,

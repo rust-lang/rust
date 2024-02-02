@@ -6,13 +6,12 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
-/// eligible for structural-match: namely, if it implements both
-/// `StructuralPartialEq` and `StructuralEq` (which are respectively injected by
-/// `#[derive(PartialEq)]` and `#[derive(Eq)]`).
+/// eligible for structural-match: namely, if it implements
+/// `StructuralPartialEq` (which is injected by `#[derive(PartialEq)]`).
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
-/// implements the traits.
-fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
+/// implements the trait.
+fn has_structural_eq_impl<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     let infcx = &tcx.infer_ctxt().build();
     let cause = ObligationCause::dummy();
 
@@ -21,11 +20,6 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     let structural_peq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
     ocx.register_bound(cause.clone(), ty::ParamEnv::empty(), adt_ty, structural_peq_def_id);
-    // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
-    // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
-    let structural_teq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.span));
-    ocx.register_bound(cause, ty::ParamEnv::empty(), adt_ty, structural_teq_def_id);
 
     // We deliberately skip *reporting* fulfillment errors (via
     // `report_fulfillment_errors`), for two reasons:
@@ -40,5 +34,5 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.has_structural_eq_impls = has_structural_eq_impls;
+    providers.has_structural_eq_impl = has_structural_eq_impl;
 }

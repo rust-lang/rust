@@ -11,3 +11,6 @@ rust-version.workspace = true
 [features]
 tracking = []
 default = ["tracking"]
+
+[lints]
+workspace = true

@@ -5,11 +5,11 @@
 mod block;
 
 use rowan::Direction;
-use rustc_dependencies::lexer::unescape::{self, unescape_literal, Mode};
+use rustc_lexer::unescape::{self, unescape_mixed, unescape_unicode, Mode};
 
 use crate::{
     algo,
-    ast::{self, HasAttrs, HasVisibility, IsString},
+    ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
@@ -106,6 +106,9 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
         EE::NonAsciiCharInByte  => {
             "Byte literals must not contain non-ASCII characters"
         }
+        EE::NulInCStr  => {
+            "C strings literals must not contain null characters"
+        }
         EE::UnskippedWhitespaceWarning => "Whitespace after this escape is not skipped",
         EE::MultipleSkippedLinesWarning => "Multiple lines are skipped by this escape",
 
@@ -137,7 +140,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_literal(without_quotes, Mode::Str, &mut |range, char| {
+                    unescape_unicode(without_quotes, Mode::Str, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -148,7 +151,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_unicode(without_quotes, Mode::ByteStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -159,7 +162,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_mixed(without_quotes, Mode::CStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -169,7 +172,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unescape_literal(without_quotes, Mode::Char, &mut |range, char| {
+                unescape_unicode(without_quotes, Mode::Char, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(1, range.start, err);
                     }
@@ -178,7 +181,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unescape_literal(without_quotes, Mode::Byte, &mut |range, char| {
+                unescape_unicode(without_quotes, Mode::Byte, &mut |range, char| {
                     if let Err(err) = char {
                         push_err(2, range.start, err);
                     }

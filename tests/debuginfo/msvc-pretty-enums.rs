@@ -46,12 +46,12 @@
 // cdb-check:    [+0x000] __0              : 0x2a [Type: unsigned int]
 
 // cdb-command: dx niche128_some
-// cdb-check: niche128_some    : Some [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
+// cdb-check: niche128_some    : Some [Type: enum2$<core::option::Option<core::num::nonzero::NonZero<i128> > >]
 // Note: we can't actually read the value of the field because CDB cannot handle 128 bit integers.
-// cdb-check:    [+0x000] __0 [...] [Type: core::num::nonzero::NonZeroI128]
+// cdb-check:    [+0x000] __0 [...] [Type: core::num::nonzero::NonZero<i128>]
 
 // cdb-command: dx niche128_none
-// cdb-check: niche128_none    : None [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
+// cdb-check: niche128_none    : None [Type: enum2$<core::option::Option<core::num::nonzero::NonZero<i128> > >]
 
 // cdb-command: dx wrapping_niche128_untagged
 // cdb-check: wrapping_niche128_untagged : X [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
@@ -84,7 +84,7 @@
 
 // cdb-command: dx niche_w_fields_2_some,d
 // cdb-check: niche_w_fields_2_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
-// cdb-check:     [+0x[...]] __0              : 800 [Type: core::num::nonzero::NonZeroU32]
+// cdb-check:     [+0x[...]] __0              : 800 [Type: core::num::nonzero::NonZero<u32>]
 // cdb-check:     [+0x[...]] __1              : 900 [Type: unsigned __int64]
 
 // cdb-command: dx niche_w_fields_2_none,d

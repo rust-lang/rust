@@ -8,6 +8,7 @@ LL |     let _: Vec<u8, _> = vec![];
    |
    = note: see issue #32838 <https://github.com/rust-lang/rust/issues/32838> for more information
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'allocator_api'
   --> $DIR/suggest-vec-allocator-api.rs:6:9
@@ -17,6 +18,7 @@ LL |         _> = vec![];
    |
    = note: see issue #32838 <https://github.com/rust-lang/rust/issues/32838> for more information
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider wrapping the inner types in tuple
    |
 LL ~     let _: Vec<(
@@ -32,6 +34,7 @@ LL |     let _boxed: Box<u32, _> = Box::new(10);
    |
    = note: see issue #32838 <https://github.com/rust-lang/rust/issues/32838> for more information
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'allocator_api'
   --> $DIR/suggest-vec-allocator-api.rs:7:24
@@ -43,6 +46,7 @@ LL |     let _ = Vec::<u16, _>::new();
    |
    = note: see issue #32838 <https://github.com/rust-lang/rust/issues/32838> for more information
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 4 previous errors
 

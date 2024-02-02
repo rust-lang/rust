@@ -274,7 +274,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Defaults::FutureCompatDisallowed
                         if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
-                        tcx.struct_span_lint_hir(
+                        tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,
@@ -315,7 +315,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             if is_host_effect {
                 if let Some(idx) = host_effect_index {
-                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                    tcx.dcx().span_delayed_bug(
+                        param.span,
+                        format!("parent also has host effect param? index: {idx}, def: {def_id:?}"),
+                    );
                 }
 
                 host_effect_index = Some(index as usize);

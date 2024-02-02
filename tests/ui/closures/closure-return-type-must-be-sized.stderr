@@ -2,9 +2,9 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
   --> $DIR/closure-return-type-must-be-sized.rs:54:5
    |
 LL |     a::foo::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
@@ -13,7 +13,7 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
 LL |     a::bar::<fn() -> dyn A, _>();
    |              ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 note: required by a bound in `a::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:14:19
@@ -25,18 +25,18 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
   --> $DIR/closure-return-type-must-be-sized.rs:56:5
    |
 LL |     a::baz::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:61:5
    |
 LL |     b::foo::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
@@ -45,7 +45,7 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
 LL |     b::bar::<fn() -> dyn A, _>();
    |              ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: Fn()`
    = note: required because it appears within the type `fn() -> dyn A`
 note: required by a bound in `b::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:28:19
@@ -57,18 +57,18 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
   --> $DIR/closure-return-type-must-be-sized.rs:63:5
    |
 LL |     b::baz::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:68:5
    |
 LL |     c::foo::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
@@ -77,7 +77,7 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
 LL |     c::bar::<fn() -> dyn A, _>();
    |              ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnMut()`
    = note: required because it appears within the type `fn() -> dyn A`
 note: required by a bound in `c::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:42:19
@@ -89,9 +89,9 @@ error[E0277]: the size for values of type `dyn A` cannot be known at compilation
   --> $DIR/closure-return-type-must-be-sized.rs:70:5
    |
 LL |     c::baz::<fn() -> dyn A>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`
+   = help: within `fn() -> dyn A`, the trait `Sized` is not implemented for `dyn A`, which is required by `fn() -> dyn A: FnOnce()`
    = note: required because it appears within the type `fn() -> dyn A`
 
 error: aborting due to 9 previous errors

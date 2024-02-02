@@ -17,7 +17,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    AstNode, SmolStr, SyntaxNode, TextRange,
+    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -76,7 +76,7 @@ pub(crate) trait ToNav {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget>;
 }
 
-pub(crate) trait TryToNav {
+pub trait TryToNav {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>>;
 }
 
@@ -237,7 +237,7 @@ impl TryToNav for Definition {
             Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::ExternCrateDecl(it) => Some(it.try_to_nav(db)?),
-            Definition::BuiltinType(_) => None,
+            Definition::BuiltinType(_) | Definition::TupleField(_) => None,
             Definition::ToolModule(_) => None,
             Definition::BuiltinAttr(_) => None,
             // FIXME: The focus range should be set to the helper declaration
@@ -457,7 +457,7 @@ impl TryToNav for hir::Field {
                 |(FileRange { file_id, range: full_range }, focus_range)| {
                     NavigationTarget::from_syntax(
                         file_id,
-                        format!("{}", self.index()).into(),
+                        format_smolstr!("{}", self.index()),
                         focus_range,
                         full_range,
                         SymbolKind::Field,
@@ -689,7 +689,7 @@ impl<T> UpmappingResult<T> {
     }
 
     pub fn collect<FI: FromIterator<T>>(self) -> FI {
-        FI::from_iter(self.into_iter())
+        FI::from_iter(self)
     }
 }
 
@@ -724,11 +724,8 @@ fn orig_range_with_focus(
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     let Some(name) = name else { return orig_range(db, hir_file, value) };
 
-    let call_range = || {
-        db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
-            .kind
-            .original_call_range(db)
-    };
+    let call_kind =
+        || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
 
     let def_range = || {
         db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
@@ -755,7 +752,22 @@ fn orig_range_with_focus(
                             }
                             // name lies outside the node, so instead point to the macro call which
                             // *should* contain the name
-                            _ => call_range(),
+                            _ => {
+                                let kind = call_kind();
+                                let range = kind.clone().original_call_range_with_body(db);
+                                //If the focus range is in the attribute/derive body, we
+                                // need to point the call site to the entire body, if not, fall back
+                                // to the name range of the attribute/derive call
+                                // FIXME: Do this differently, this is very inflexible the caller
+                                // should choose this behavior
+                                if range.file_id == focus_range.file_id
+                                    && range.range.contains_range(focus_range.range)
+                                {
+                                    range
+                                } else {
+                                    kind.original_call_range(db)
+                                }
+                            }
                         },
                         Some(focus_range),
                     ),
@@ -784,7 +796,7 @@ fn orig_range_with_focus(
                     // node is in macro def, just show the focus
                     _ => (
                         // show the macro call
-                        (call_range(), None),
+                        (call_kind().original_call_range(db), None),
                         Some((focus_range, Some(focus_range))),
                     ),
                 }
@@ -848,7 +860,7 @@ fn foo() { enum FooInner { } }
 "#,
         );
 
-        let navs = analysis.symbol_search(Query::new("FooInner".to_string())).unwrap();
+        let navs = analysis.symbol_search(Query::new("FooInner".to_string()), !0).unwrap();
         expect![[r#"
             [
                 NavigationTarget {
@@ -886,7 +898,7 @@ struct Foo;
 "#,
         );
 
-        let navs = analysis.symbol_search(Query::new("foo".to_string())).unwrap();
+        let navs = analysis.symbol_search(Query::new("foo".to_string()), !0).unwrap();
         assert_eq!(navs.len(), 2)
     }
 }

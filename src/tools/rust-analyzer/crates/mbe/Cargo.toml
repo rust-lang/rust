@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 
@@ -22,6 +22,13 @@ syntax.workspace = true
 parser.workspace = true
 tt.workspace = true
 stdx.workspace = true
+span.workspace = true
 
 [dev-dependencies]
 test-utils.workspace = true
+
+[features]
+in-rust-tree = ["parser/in-rust-tree", "syntax/in-rust-tree"]
+
+[lints]
+workspace = true

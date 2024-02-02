@@ -148,7 +148,7 @@ impl MirLowerCtx<'_> {
                         let temp: Place = self.temp(ref_ty, current, expr_id.into())?.into();
                         self.push_assignment(
                             current,
-                            temp.clone(),
+                            temp,
                             Operand::Static(s).into(),
                             expr_id.into(),
                         );
@@ -160,57 +160,53 @@ impl MirLowerCtx<'_> {
                     _ => try_rvalue(self),
                 }
             }
-            Expr::UnaryOp { expr, op } => match op {
-                hir_def::hir::UnaryOp::Deref => {
-                    let is_builtin = match self.expr_ty_without_adjust(*expr).kind(Interner) {
-                        TyKind::Ref(..) | TyKind::Raw(..) => true,
-                        TyKind::Adt(id, _) => {
-                            if let Some(lang_item) = self.db.lang_attr(id.0.into()) {
-                                lang_item == LangItem::OwnedBox
-                            } else {
-                                false
-                            }
+            Expr::UnaryOp { expr, op: hir_def::hir::UnaryOp::Deref } => {
+                let is_builtin = match self.expr_ty_without_adjust(*expr).kind(Interner) {
+                    TyKind::Ref(..) | TyKind::Raw(..) => true,
+                    TyKind::Adt(id, _) => {
+                        if let Some(lang_item) = self.db.lang_attr(id.0.into()) {
+                            lang_item == LangItem::OwnedBox
+                        } else {
+                            false
                         }
-                        _ => false,
-                    };
-                    if !is_builtin {
-                        let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)?
-                        else {
-                            return Ok(None);
-                        };
-                        return self.lower_overloaded_deref(
-                            current,
-                            p,
-                            self.expr_ty_after_adjustments(*expr),
-                            self.expr_ty_without_adjust(expr_id),
-                            expr_id.into(),
-                            'b: {
-                                if let Some((f, _)) = self.infer.method_resolution(expr_id) {
-                                    if let Some(deref_trait) =
-                                        self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
-                                    {
-                                        if let Some(deref_fn) = self
-                                            .db
-                                            .trait_data(deref_trait)
-                                            .method_by_name(&name![deref_mut])
-                                        {
-                                            break 'b deref_fn == f;
-                                        }
-                                    }
-                                }
-                                false
-                            },
-                        );
                     }
-                    let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)?
-                    else {
+                    _ => false,
+                };
+                if !is_builtin {
+                    let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                         return Ok(None);
                     };
-                    r = r.project(ProjectionElem::Deref, &mut self.result.projection_store);
-                    Ok(Some((r, current)))
+                    return self.lower_overloaded_deref(
+                        current,
+                        p,
+                        self.expr_ty_after_adjustments(*expr),
+                        self.expr_ty_without_adjust(expr_id),
+                        expr_id.into(),
+                        'b: {
+                            if let Some((f, _)) = self.infer.method_resolution(expr_id) {
+                                if let Some(deref_trait) =
+                                    self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
+                                {
+                                    if let Some(deref_fn) = self
+                                        .db
+                                        .trait_data(deref_trait)
+                                        .method_by_name(&name![deref_mut])
+                                    {
+                                        break 'b deref_fn == f;
+                                    }
+                                }
+                            }
+                            false
+                        },
+                    );
                 }
-                _ => try_rvalue(self),
-            },
+                let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)? else {
+                    return Ok(None);
+                };
+                r = r.project(ProjectionElem::Deref, &mut self.result.projection_store);
+                Ok(Some((r, current)))
+            }
+            Expr::UnaryOp { .. } => try_rvalue(self),
             Expr::Field { expr, .. } => {
                 let Some((mut r, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                     return Ok(None);
@@ -218,7 +214,7 @@ impl MirLowerCtx<'_> {
                 self.push_field_projection(&mut r, expr_id)?;
                 Ok(Some((r, current)))
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr: _ } => {
                 let base_ty = self.expr_ty_after_adjustments(*base);
                 let index_ty = self.expr_ty_after_adjustments(*index);
                 if index_ty != TyBuilder::usize()
@@ -304,7 +300,7 @@ impl MirLowerCtx<'_> {
         let Some(current) = self.lower_call(
             index_fn_op,
             Box::new([Operand::Copy(place), index_operand]),
-            result.clone(),
+            result,
             current,
             false,
             span,
@@ -338,7 +334,7 @@ impl MirLowerCtx<'_> {
         let ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), source_ty.clone()).intern(Interner);
         let target_ty_ref = TyKind::Ref(chalk_mut, static_lifetime(), target_ty).intern(Interner);
         let ref_place: Place = self.temp(ty_ref, current, span)?.into();
-        self.push_assignment(current, ref_place.clone(), Rvalue::Ref(borrow_kind, place), span);
+        self.push_assignment(current, ref_place, Rvalue::Ref(borrow_kind, place), span);
         let deref_trait = self
             .resolve_lang_item(trait_lang_item)?
             .as_trait()
@@ -359,7 +355,7 @@ impl MirLowerCtx<'_> {
         let Some(current) = self.lower_call(
             deref_fn_op,
             Box::new([Operand::Copy(ref_place)]),
-            result.clone(),
+            result,
             current,
             false,
             span,

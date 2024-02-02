@@ -1,14 +1,15 @@
 use std::num::NonZeroU32;
 
-use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
-    error_code, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
+    codes::*, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_macros::Diagnostic;
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
+
+use crate::parse::ParseSess;
 
 pub struct FeatureGateError {
     pub span: MultiSpan,
@@ -18,10 +19,7 @@ pub struct FeatureGateError {
 impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, self.explain);
-        diag.set_span(self.span);
-        diag.code(error_code!(E0658));
-        diag
+        DiagnosticBuilder::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
 
@@ -29,6 +27,24 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
 #[note(session_feature_diagnostic_for_issue)]
 pub struct FeatureDiagnosticForIssue {
     pub n: NonZeroU32,
+}
+
+#[derive(Subdiagnostic)]
+#[note(session_feature_suggest_upgrade_compiler)]
+pub struct SuggestUpgradeCompiler {
+    date: &'static str,
+}
+
+impl SuggestUpgradeCompiler {
+    pub fn ui_testing() -> Self {
+        Self { date: "YYYY-MM-DD" }
+    }
+
+    pub fn new() -> Option<Self> {
+        let date = option_env!("CFG_VER_DATE")?;
+
+        Some(Self { date })
+    }
 }
 
 #[derive(Subdiagnostic)]
@@ -328,13 +344,6 @@ pub(crate) struct BinaryFloatLiteralNotSupported {
     pub span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(session_nul_in_c_str)]
-pub(crate) struct NulInCStr {
-    #[primary_span]
-    pub span: Span,
-}
-
 pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: Span) {
     // Checks if `s` looks like i32 or u1234 etc.
     fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
@@ -413,12 +422,6 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 _ => format!("{max}"),
             };
             dcx.emit_err(IntLiteralTooLarge { span, limit });
-        }
-        LitError::NulInCStr(range) => {
-            let lo = BytePos(span.lo().0 + range.start as u32 + 2);
-            let hi = BytePos(span.lo().0 + range.end as u32 + 2);
-            let span = span.with_lo(lo).with_hi(hi);
-            dcx.emit_err(NulInCStr { span });
         }
     }
 }

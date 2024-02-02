@@ -96,7 +96,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 let args = args.as_coroutine();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);

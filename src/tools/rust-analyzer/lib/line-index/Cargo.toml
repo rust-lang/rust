@@ -9,3 +9,6 @@ edition = "2021"
 [dependencies]
 text-size = "1.1.1"
 nohash-hasher = "0.2.0"
+
+[lints]
+workspace = true

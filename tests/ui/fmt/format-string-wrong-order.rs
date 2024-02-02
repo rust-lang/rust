@@ -12,4 +12,10 @@ fn main() {
     //~^ ERROR invalid format string: expected `'}'`, found `'?'`
     format!("{?:#?}", bar);
     //~^ ERROR invalid format string: expected format parameter to occur after `:`
+    format!("Hello {<5:}!", "x");
+    //~^ ERROR invalid format string: expected format parameter to occur after `:`
+    format!("Hello {^5:}!", "x");
+    //~^ ERROR invalid format string: expected format parameter to occur after `:`
+    format!("Hello {>5:}!", "x");
+    //~^ ERROR invalid format string: expected format parameter to occur after `:`
 }

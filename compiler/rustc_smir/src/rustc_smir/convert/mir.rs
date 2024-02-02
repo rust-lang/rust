@@ -13,7 +13,7 @@ use crate::rustc_smir::{alloc, Stable, Tables};
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         stable_mir::mir::Body::new(
             self.basic_blocks
                 .iter()
@@ -44,7 +44,7 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
     type T = stable_mir::mir::VarDebugInfo;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         stable_mir::mir::VarDebugInfo {
             name: self.name.to_string(),
             source_info: self.source_info.stable(tables),
@@ -57,21 +57,21 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         Statement { kind: self.kind.stable(tables), span: self.source_info.span.stable(tables) }
     }
 }
 
 impl<'tcx> Stable<'tcx> for mir::SourceInfo {
     type T = stable_mir::mir::SourceInfo;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         stable_mir::mir::SourceInfo { span: self.span.stable(tables), scope: self.scope.into() }
     }
 }
 
 impl<'tcx> Stable<'tcx> for mir::VarDebugInfoFragment<'tcx> {
     type T = stable_mir::mir::VarDebugInfoFragment;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         VarDebugInfoFragment {
             ty: self.ty.stable(tables),
             projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
@@ -81,7 +81,7 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfoFragment<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::VarDebugInfoContents<'tcx> {
     type T = stable_mir::mir::VarDebugInfoContents;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             mir::VarDebugInfoContents::Place(place) => {
                 stable_mir::mir::VarDebugInfoContents::Place(place.stable(tables))
@@ -100,7 +100,7 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfoContents<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
     type T = stable_mir::mir::StatementKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             mir::StatementKind::Assign(assign) => stable_mir::mir::StatementKind::Assign(
                 assign.0.stable(tables),
@@ -158,7 +158,7 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
     type T = stable_mir::mir::Rvalue;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::Rvalue::*;
         match self {
             Use(op) => stable_mir::mir::Rvalue::Use(op.stable(tables)),
@@ -214,7 +214,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Mutability {
     type T = stable_mir::mir::Mutability;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_hir::Mutability::*;
         match *self {
             Not => stable_mir::mir::Mutability::Not,
@@ -225,7 +225,7 @@ impl<'tcx> Stable<'tcx> for mir::Mutability {
 
 impl<'tcx> Stable<'tcx> for mir::BorrowKind {
     type T = stable_mir::mir::BorrowKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
@@ -237,7 +237,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
 
 impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
     type T = stable_mir::mir::MutBorrowKind;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::MutBorrowKind::*;
         match *self {
             Default => stable_mir::mir::MutBorrowKind::Default,
@@ -249,7 +249,7 @@ impl<'tcx> Stable<'tcx> for mir::MutBorrowKind {
 
 impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
     type T = stable_mir::mir::NullOp;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NullOp::*;
         match self {
             SizeOf => stable_mir::mir::NullOp::SizeOf,
@@ -263,7 +263,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::CastKind {
     type T = stable_mir::mir::CastKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::CastKind::*;
         match self {
             PointerExposeAddress => stable_mir::mir::CastKind::PointerExposeAddress,
@@ -283,7 +283,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
 
 impl<'tcx> Stable<'tcx> for mir::FakeReadCause {
     type T = stable_mir::mir::FakeReadCause;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::FakeReadCause::*;
         match self {
             ForMatchGuard => stable_mir::mir::FakeReadCause::ForMatchGuard,
@@ -299,7 +299,7 @@ impl<'tcx> Stable<'tcx> for mir::FakeReadCause {
 
 impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
     type T = stable_mir::mir::Operand;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::Operand::*;
         match self {
             Copy(place) => stable_mir::mir::Operand::Copy(place.stable(tables)),
@@ -312,7 +312,7 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
     type T = stable_mir::mir::Constant;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         stable_mir::mir::Constant {
             span: self.span.stable(tables),
             user_ty: self.user_ty.map(|u| u.as_usize()).or(None),
@@ -323,7 +323,7 @@ impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     type T = stable_mir::mir::Place;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         stable_mir::mir::Place {
             local: self.local.as_usize(),
             projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
@@ -333,7 +333,7 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
     type T = stable_mir::mir::ProjectionElem;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::ProjectionElem::*;
         match self {
             Deref => stable_mir::mir::ProjectionElem::Deref,
@@ -368,21 +368,21 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
     type T = stable_mir::mir::UserTypeProjection;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         UserTypeProjection { base: self.base.as_usize(), projection: opaque(&self.projs) }
     }
 }
 
 impl<'tcx> Stable<'tcx> for mir::Local {
     type T = stable_mir::mir::Local;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         self.as_usize()
     }
 }
 
 impl<'tcx> Stable<'tcx> for mir::RetagKind {
     type T = stable_mir::mir::RetagKind;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::RetagKind;
         match self {
             RetagKind::FnEntry => stable_mir::mir::RetagKind::FnEntry,
@@ -395,7 +395,7 @@ impl<'tcx> Stable<'tcx> for mir::RetagKind {
 
 impl<'tcx> Stable<'tcx> for mir::UnwindAction {
     type T = stable_mir::mir::UnwindAction;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::UnwindAction;
         match self {
             UnwindAction::Continue => stable_mir::mir::UnwindAction::Continue,
@@ -409,7 +409,7 @@ impl<'tcx> Stable<'tcx> for mir::UnwindAction {
 impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
     type T = stable_mir::mir::NonDivergingIntrinsic;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::NonDivergingIntrinsic;
         use stable_mir::mir::CopyNonOverlapping;
         match self {
@@ -429,7 +429,7 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
     type T = stable_mir::mir::AssertMessage;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::AssertKind;
         match self {
             AssertKind::BoundsCheck { len, index } => stable_mir::mir::AssertMessage::BoundsCheck {
@@ -468,7 +468,7 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::BinOp {
     type T = stable_mir::mir::BinOp;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::BinOp;
         match self {
             BinOp::Add => stable_mir::mir::BinOp::Add,
@@ -499,7 +499,7 @@ impl<'tcx> Stable<'tcx> for mir::BinOp {
 
 impl<'tcx> Stable<'tcx> for mir::UnOp {
     type T = stable_mir::mir::UnOp;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::UnOp;
         match self {
             UnOp::Not => stable_mir::mir::UnOp::Not,
@@ -510,7 +510,7 @@ impl<'tcx> Stable<'tcx> for mir::UnOp {
 
 impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
     type T = stable_mir::mir::AggregateKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             mir::AggregateKind::Array(ty) => {
                 stable_mir::mir::AggregateKind::Array(ty.stable(tables))
@@ -531,11 +531,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     generic_arg.stable(tables),
                 )
             }
-            mir::AggregateKind::Coroutine(def_id, generic_arg, movability) => {
+            mir::AggregateKind::Coroutine(def_id, generic_arg) => {
                 stable_mir::mir::AggregateKind::Coroutine(
                     tables.coroutine_def(*def_id),
                     generic_arg.stable(tables),
-                    movability.stable(tables),
+                    tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
         }
@@ -544,7 +544,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
     type T = stable_mir::mir::InlineAsmOperand;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::InlineAsmOperand;
 
         let (in_value, out_place) = match self {
@@ -564,7 +564,7 @@ impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
     type T = stable_mir::mir::Terminator;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::mir::Terminator;
         Terminator { kind: self.kind.stable(tables), span: self.source_info.span.stable(tables) }
     }
@@ -572,7 +572,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
     type T = stable_mir::mir::TerminatorKind;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::mir::TerminatorKind;
         match self {
             mir::TerminatorKind::Goto { target } => {
@@ -609,7 +609,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 fn_span: _,
             } => TerminatorKind::Call {
                 func: func.stable(tables),
-                args: args.iter().map(|arg| arg.stable(tables)).collect(),
+                args: args.iter().map(|arg| arg.node.stable(tables)).collect(),
                 destination: destination.stable(tables),
                 target: target.map(|t| t.as_usize()),
                 unwind: unwind.stable(tables),
@@ -649,7 +649,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::interpret::ConstAllocation<'tcx> {
     type T = Allocation;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         self.inner().stable(tables)
     }
 }
@@ -657,7 +657,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::ConstAllocation<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         alloc::allocation_filter(
             self,
             alloc_range(rustc_target::abi::Size::ZERO, self.size()),
@@ -668,7 +668,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
 
 impl<'tcx> Stable<'tcx> for mir::interpret::AllocId {
     type T = stable_mir::mir::alloc::AllocId;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         tables.create_alloc_id(*self)
     }
 }
@@ -676,7 +676,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::AllocId {
 impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
     type T = GlobalAlloc;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             mir::interpret::GlobalAlloc::Function(instance) => {
                 GlobalAlloc::Function(instance.stable(tables))
@@ -695,7 +695,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
 impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
     type T = stable_mir::ty::Const;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match *self {
             mir::Const::Ty(c) => c.stable(tables),
             mir::Const::Unevaluated(unev_const, ty) => {
@@ -706,18 +706,20 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                         promoted: unev_const.promoted.map(|u| u.as_u32()),
                     });
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(*self);
+                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
                 Const::new(kind, ty, id)
             }
             mir::Const::Val(mir::ConstValue::ZeroSized, ty) => {
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(*self);
+                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
                 Const::new(ConstantKind::ZeroSized, ty, id)
             }
             mir::Const::Val(val, ty) => {
+                let ty = tables.tcx.lift(ty).unwrap();
+                let val = tables.tcx.lift(val).unwrap();
                 let kind = ConstantKind::Allocated(alloc::new_allocation(ty, val, tables));
                 let ty = ty.stable(tables);
-                let id = tables.intern_const(*self);
+                let id = tables.intern_const(tables.tcx.lift(*self).unwrap());
                 Const::new(kind, ty, id)
             }
         }
@@ -727,7 +729,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::interpret::ErrorHandled {
     type T = Error;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         Error::new(format!("{self:?}"))
     }
 }
@@ -735,7 +737,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::ErrorHandled {
 impl<'tcx> Stable<'tcx> for MonoItem<'tcx> {
     type T = stable_mir::mir::mono::MonoItem;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use stable_mir::mir::mono::MonoItem as StableMonoItem;
         match self {
             MonoItem::Fn(instance) => StableMonoItem::Fn(instance.stable(tables)),

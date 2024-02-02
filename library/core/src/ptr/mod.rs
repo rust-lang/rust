@@ -649,7 +649,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// address makes sense in the address space that this pointer will be used with.
 ///
 /// Using this function means that code is *not* following [Strict
-/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
+/// Provenance][self#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -660,7 +660,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed Provenance][self#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]
@@ -689,7 +689,7 @@ where
 /// address makes sense in the address space that this pointer will be used with.
 ///
 /// Using this function means that code is *not* following [Strict
-/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
+/// Provenance][self#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -700,7 +700,7 @@ where
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed Provenance][self#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]

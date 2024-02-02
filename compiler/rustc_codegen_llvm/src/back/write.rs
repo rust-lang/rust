@@ -245,12 +245,12 @@ pub fn target_machine_factory(
     match sess.opts.debuginfo_compression {
         rustc_session::config::DebugInfoCompression::Zlib => {
             if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
-                sess.dcx().emit_warning(UnknownCompression { algorithm: "zlib" });
+                sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
             }
         }
         rustc_session::config::DebugInfoCompression::Zstd => {
             if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
-                sess.dcx().emit_warning(UnknownCompression { algorithm: "zstd" });
+                sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
             }
         }
         rustc_session::config::DebugInfoCompression::None => {}
@@ -416,8 +416,8 @@ fn report_inline_asm(
         cookie = 0;
     }
     let level = match level {
-        llvm::DiagnosticLevel::Error => Level::Error { lint: false },
-        llvm::DiagnosticLevel::Warning => Level::Warning(None),
+        llvm::DiagnosticLevel::Error => Level::Error,
+        llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
@@ -457,7 +457,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            dcx.emit_warning(FromLlvmDiag { message });
+            dcx.emit_warn(FromLlvmDiag { message });
         }
         llvm::diagnostic::Unsupported(diagnostic_ref) => {
             let message = llvm::build_string(|s| {
@@ -569,6 +569,7 @@ pub(crate) unsafe fn llvm_optimize(
         unroll_loops,
         config.vectorize_slp,
         config.vectorize_loop,
+        config.no_builtins,
         config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -677,6 +678,7 @@ pub(crate) unsafe fn codegen(
         unsafe fn with_codegen<'ll, F, R>(
             tm: &'ll llvm::TargetMachine,
             llmod: &'ll llvm::Module,
+            no_builtins: bool,
             f: F,
         ) -> R
         where
@@ -684,7 +686,7 @@ pub(crate) unsafe fn codegen(
         {
             let cpm = llvm::LLVMCreatePassManager();
             llvm::LLVMAddAnalysisPasses(tm, cpm);
-            llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+            llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
             f(cpm)
         }
 
@@ -785,7 +787,7 @@ pub(crate) unsafe fn codegen(
             } else {
                 llmod
             };
-            with_codegen(tm, llmod, |cpm| {
+            with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(
                     dcx,
                     tm,
@@ -820,7 +822,7 @@ pub(crate) unsafe fn codegen(
                     (_, SplitDwarfKind::Split) => Some(dwo_out.as_path()),
                 };
 
-                with_codegen(tm, llmod, |cpm| {
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
                     write_output_file(
                         dcx,
                         tm,

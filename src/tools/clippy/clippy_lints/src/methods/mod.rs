@@ -38,6 +38,7 @@ mod into_iter_on_ref;
 mod is_digit_ascii_radix;
 mod iter_cloned_collect;
 mod iter_count;
+mod iter_filter;
 mod iter_kv_map;
 mod iter_next_slice;
 mod iter_nth;
@@ -50,6 +51,7 @@ mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
+mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
@@ -69,6 +71,7 @@ mod no_effect_replace;
 mod obfuscated_if_else;
 mod ok_expect;
 mod open_options;
+mod option_as_ref_cloned;
 mod option_as_ref_deref;
 mod option_map_or_err_ok;
 mod option_map_or_none;
@@ -92,6 +95,7 @@ mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod stable_sort_primitive;
+mod str_split;
 mod str_splitn;
 mod string_extend_chars;
 mod string_lit_chars_any;
@@ -1175,7 +1179,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for indirect collection of populated `Option`
+    /// Checks for iterators of `Option`s using `.filter(Option::is_some).map(Option::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
     ///
     /// ### Why is this bad?
     /// `Option` is like a collection of 0-1 things, so `flatten`
@@ -2587,11 +2592,11 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `x.get(0)` instead of
-    /// `x.first()`.
+    /// `x.first()` or `x.front()`.
     ///
     /// ### Why is this bad?
-    /// Using `x.first()` is easier to read and has the same
-    /// result.
+    /// Using `x.first()` for `Vec`s and slices or `x.front()`
+    /// for `VecDeque`s is easier to read and has the same result.
     ///
     /// ### Example
     /// ```no_run
@@ -2607,7 +2612,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.63.0"]
     pub GET_FIRST,
     style,
-    "Using `x.get(0)` when `x.first()` is simpler"
+    "Using `x.get(0)` when `x.first()` or `x.front()` is simpler"
 }
 
 declare_clippy_lint! {
@@ -2820,6 +2825,44 @@ declare_clippy_lint! {
     pub NONSENSICAL_OPEN_OPTIONS,
     correctness,
     "nonsensical combination of options for opening a file"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the suspicious use of `OpenOptions::create()`
+    /// without an explicit `OpenOptions::truncate()`.
+    ///
+    /// ### Why is this bad?
+    /// `create()` alone will either create a new file or open an
+    /// existing file. If the file already exists, it will be
+    /// overwritten when written to, but the file will not be
+    /// truncated by default.
+    /// If less data is written to the file
+    /// than it already contains, the remainder of the file will
+    /// remain unchanged, and the end of the file will contain old
+    /// data.
+    /// In most cases, one should either use `create_new` to ensure
+    /// the file is created from scratch, or ensure `truncate` is
+    /// called so that the truncation behaviour is explicit. `truncate(true)`
+    /// will ensure the file is entirely overwritten with new data, whereas
+    /// `truncate(false)` will explicitely keep the default behavior.
+    ///
+    /// ### Example
+    /// ```rust,no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().create(true);
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// OpenOptions::new().create(true).truncate(true);
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub SUSPICIOUS_OPEN_OPTIONS,
+    suspicious,
+    "suspicious combination of options for opening a file"
 }
 
 declare_clippy_lint! {
@@ -3752,6 +3795,162 @@ declare_clippy_lint! {
     "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
+    ///
+    /// ### Why is this bad?
+    /// `Result` implements `IntoIterator<Item = T>`. This means that `Result` can be flattened
+    /// automatically without suspicious-looking `unwrap` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().filter(Result::is_ok).map(Result::unwrap);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub RESULT_FILTER_MAP,
+    complexity,
+    "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    ///
+    /// ### Why is this bad?
+    /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
+    /// results in more readable and succinct code without the need for manual unwrapping.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // example code where clippy issues a warning
+    /// vec![Some(1)].into_iter().filter(Option::is_some);
+    ///
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// // example code which does not raise clippy warning
+    /// vec![Some(1)].into_iter().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub ITER_FILTER_IS_SOME,
+    pedantic,
+    "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    ///
+    /// ### Why is this bad?
+    /// This pattern is often followed by manual unwrapping of `Result`. The simplification
+    /// results in more readable and succinct code without the need for manual unwrapping.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // example code where clippy issues a warning
+    /// vec![Ok::<i32, String>(1)].into_iter().filter(Result::is_ok);
+    ///
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// // example code which does not raise clippy warning
+    /// vec![Ok::<i32, String>(1)].into_iter().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub ITER_FILTER_IS_OK,
+    pedantic,
+    "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
+}
+
+declare_clippy_lint! {
+    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
+    ///
+    /// ### Why is this bad?
+    /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.map(|a| a > 10).unwrap_or_default();
+    /// result.map(|a| a > 10).unwrap_or_default();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.is_some_and(|a| a > 10);
+    /// result.is_ok_and(|a| a > 10);
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub MANUAL_IS_VARIANT_AND,
+    pedantic,
+    "using `.map(f).unwrap_or_default()`, which is more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for usages of `str.trim().split("\n")` and `str.trim().split("\r\n")`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Hard-coding the line endings makes the code less compatible. `str.lines` should be used instead.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "some\ntext\nwith\nnewlines\n".trim().split('\n');
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "some\ntext\nwith\nnewlines\n".lines();
+    /// ```
+    ///
+    /// ### Known Problems
+    ///
+    /// This lint cannot detect if the split is intentionally restricted to a single type of newline (`"\n"` or
+    /// `"\r\n"`), for example during the parsing of a specific file format in which precisely one newline type is
+    /// valid.
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub STR_SPLIT_AT_NEWLINE,
+    pedantic,
+    "splitting a trimmed string at hard-coded newlines"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.as_ref().cloned()` and `.as_mut().cloned()` on `Option`s
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by cloning the `Option` directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.as_ref().cloned()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.clone()
+    /// }
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub OPTION_AS_REF_CLONED,
+    pedantic,
+    "cloning an `Option` via `as_ref().cloned()`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3872,6 +4071,7 @@ impl_lint_pass!(Methods => [
     MAP_ERR_IGNORE,
     MUT_MUTEX_LOCK,
     NONSENSICAL_OPEN_OPTIONS,
+    SUSPICIOUS_OPEN_OPTIONS,
     PATH_BUF_PUSH_OVERWRITE,
     RANGE_ZIP_WITH_LEN,
     REPEAT_ONCE,
@@ -3903,6 +4103,12 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
     OPTION_MAP_OR_ERR_OK,
+    RESULT_FILTER_MAP,
+    ITER_FILTER_IS_SOME,
+    ITER_FILTER_IS_OK,
+    MANUAL_IS_VARIANT_AND,
+    STR_SPLIT_AT_NEWLINE,
+    OPTION_AS_REF_CLONED,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4106,7 +4312,7 @@ impl Methods {
                             expr,
                             recv,
                             recv2,
-                            iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                            iter_overeager_cloned::Op::NeedlessMove(arg),
                             false,
                         );
                     }
@@ -4124,7 +4330,7 @@ impl Methods {
                         expr,
                         recv,
                         recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                        iter_overeager_cloned::Op::NeedlessMove(arg),
                         false,
                     ),
                     Some(("chars", recv, _, _, _))
@@ -4150,7 +4356,10 @@ impl Methods {
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
-                ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv),
+                ("cloned", []) => {
+                    cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv);
+                    option_as_ref_cloned::check(cx, recv, span);
+                },
                 ("collect", []) if is_trait_method(cx, expr, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
                     match method_call(recv) {
@@ -4232,7 +4441,24 @@ impl Methods {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
                 },
-                (name @ ("filter" | "find"), [arg]) => {
+                ("filter", [arg]) => {
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        // if `arg` has side-effect, the semantic will change
+                        iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::FixClosure(name, arg),
+                            false,
+                        );
+                    }
+                    if self.msrv.meets(msrvs::ITER_FLATTEN) {
+                        // use the sourcemap to get the span of the closure
+                        iter_filter::check(cx, expr, arg, span);
+                    }
+                },
+                ("find", [arg]) => {
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         // if `arg` has side-effect, the semantic will change
                         iter_overeager_cloned::check(
@@ -4282,7 +4508,7 @@ impl Methods {
                         expr,
                         recv,
                         recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                        iter_overeager_cloned::Op::NeedlessMove(arg),
                         false,
                     ),
                     _ => {},
@@ -4336,7 +4562,7 @@ impl Methods {
                                 expr,
                                 recv,
                                 recv2,
-                                iter_overeager_cloned::Op::NeedlessMove(name, m_arg),
+                                iter_overeager_cloned::Op::NeedlessMove(m_arg),
                                 false,
                             ),
                             _ => {},
@@ -4472,6 +4698,9 @@ impl Methods {
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
+                ("split", [arg]) => {
+                    str_split::check(cx, expr, recv, arg);
+                },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
@@ -4567,7 +4796,13 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or_default" | "unwrap_unchecked" | "unwrap_err_unchecked", []) => {
+                ("unwrap_or_default", []) => {
+                    if let Some(("map", m_recv, [arg], span, _)) = method_call(recv) {
+                        manual_is_variant_and::check(cx, expr, m_recv, arg, span, &self.msrv);
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                },
+                ("unwrap_unchecked" | "unwrap_err_unchecked", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_else", [u_arg]) => {

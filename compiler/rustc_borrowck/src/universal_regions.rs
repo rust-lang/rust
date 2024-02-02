@@ -14,7 +14,6 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
@@ -77,6 +76,8 @@ pub struct UniversalRegions<'tcx> {
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     pub yield_ty: Option<Ty<'tcx>>,
+
+    pub resume_ty: Option<Ty<'tcx>>,
 }
 
 /// The "defining type" for this MIR. The key feature of the "defining
@@ -94,7 +95,7 @@ pub enum DefiningTy<'tcx> {
     /// The MIR is a coroutine. The signature is that coroutines take
     /// no parameters and return the result of
     /// `ClosureArgs::coroutine_return_ty`.
-    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Coroutine(DefId, GenericArgsRef<'tcx>),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
@@ -118,7 +119,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
-            DefiningTy::Coroutine(_, args, _) => args.as_coroutine().upvar_tys(),
+            DefiningTy::Coroutine(_, args) => args.as_coroutine().upvar_tys(),
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 ty::List::empty()
             }
@@ -354,7 +355,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
-            DefiningTy::Coroutine(def_id, args, _) => {
+            DefiningTy::Coroutine(def_id, args) => {
                 let v = with_no_trimmed_paths!(
                     args[tcx.generics_of(def_id).parent_count..]
                         .iter()
@@ -526,9 +527,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: extern regions = {}..{}", first_extern_index, first_local_index);
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
-        let yield_ty = match defining_ty {
-            DefiningTy::Coroutine(_, args, _) => Some(args.as_coroutine().yield_ty()),
-            _ => None,
+        let (resume_ty, yield_ty) = match defining_ty {
+            DefiningTy::Coroutine(_, args) => {
+                let tys = args.as_coroutine();
+                (Some(tys.resume_ty()), Some(tys.yield_ty()))
+            }
+            _ => (None, None),
         };
 
         UniversalRegions {
@@ -542,6 +546,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             unnormalized_output_ty: *unnormalized_output_ty,
             unnormalized_input_tys,
             yield_ty,
+            resume_ty,
         }
     }
 
@@ -562,9 +567,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
-                    ty::Coroutine(def_id, args, movability) => {
-                        DefiningTy::Coroutine(def_id, args, movability)
-                    }
+                    ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
                     ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
                     _ => span_bug!(
                         tcx.def_span(self.mir_def),
@@ -620,7 +623,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let fr_args = match defining_ty {
             DefiningTy::Closure(_, args)
-            | DefiningTy::Coroutine(_, args, _)
+            | DefiningTy::Coroutine(_, args)
             | DefiningTy::InlineConst(_, args) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureArgs are
@@ -665,7 +668,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     kind: ty::BrEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-                let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_closure(tcx, def_id, args),
+                    args.as_closure().kind(),
+                    env_region,
+                );
 
                 // The "inputs" of the closure in the
                 // signature appear as a tuple. The MIR side
@@ -685,11 +692,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 )
             }
 
-            DefiningTy::Coroutine(def_id, args, movability) => {
+            DefiningTy::Coroutine(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let resume_ty = args.as_coroutine().resume_ty();
                 let output = args.as_coroutine().return_ty();
-                let coroutine_ty = Ty::new_coroutine(tcx, def_id, args, movability);
+                let coroutine_ty = Ty::new_coroutine(tcx, def_id, args);
                 let inputs_and_output =
                     self.infcx.tcx.mk_type_list(&[coroutine_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)

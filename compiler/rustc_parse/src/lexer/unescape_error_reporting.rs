@@ -262,16 +262,19 @@ pub(crate) fn emit_unescape_error(
         EscapeError::LoneSlash => {
             dcx.emit_err(UnescapeError::LoneSlash(err_span));
         }
+        EscapeError::NulInCStr => {
+            dcx.emit_err(UnescapeError::NulInCStr { span: err_span });
+        }
         EscapeError::UnskippedWhitespaceWarning => {
             let (c, char_span) = last_char();
-            dcx.emit_warning(UnescapeError::UnskippedWhitespace {
+            dcx.emit_warn(UnescapeError::UnskippedWhitespace {
                 span: err_span,
                 ch: escaped_char(c),
                 char_span,
             });
         }
         EscapeError::MultipleSkippedLinesWarning => {
-            dcx.emit_warning(UnescapeError::MultipleSkippedLinesWarning(err_span));
+            dcx.emit_warn(UnescapeError::MultipleSkippedLinesWarning(err_span));
         }
     }
 }

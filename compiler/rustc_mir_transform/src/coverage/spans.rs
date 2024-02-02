@@ -1,56 +1,75 @@
-use std::cell::OnceCell;
-
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
+use super::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
+#[derive(Clone, Copy, Debug)]
+pub(super) enum BcbMappingKind {
+    /// Associates an ordinary executable code span with its corresponding BCB.
+    Code(BasicCoverageBlock),
+}
+
+#[derive(Debug)]
+pub(super) struct BcbMapping {
+    pub(super) kind: BcbMappingKind,
+    pub(super) span: Span,
+}
+
 pub(super) struct CoverageSpans {
-    /// Map from BCBs to their list of coverage spans.
-    bcb_to_spans: IndexVec<BasicCoverageBlock, Vec<Span>>,
+    bcb_has_mappings: BitSet<BasicCoverageBlock>,
+    mappings: Vec<BcbMapping>,
 }
 
 impl CoverageSpans {
-    /// Extracts coverage-relevant spans from MIR, and associates them with
-    /// their corresponding BCBs.
-    ///
-    /// Returns `None` if no coverage-relevant spans could be extracted.
-    pub(super) fn generate_coverage_spans(
-        mir_body: &mir::Body<'_>,
-        hir_info: &ExtractedHirInfo,
-        basic_coverage_blocks: &CoverageGraph,
-    ) -> Option<Self> {
-        let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-
-        if coverage_spans.is_empty() {
-            return None;
-        }
-
-        // Group the coverage spans by BCB, with the BCBs in sorted order.
-        let mut bcb_to_spans = IndexVec::from_elem_n(Vec::new(), basic_coverage_blocks.num_nodes());
-        for CoverageSpan { bcb, span, .. } in coverage_spans {
-            bcb_to_spans[bcb].push(span);
-        }
-
-        Some(Self { bcb_to_spans })
-    }
-
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        !self.bcb_to_spans[bcb].is_empty()
+        self.bcb_has_mappings.contains(bcb)
     }
 
-    pub(super) fn spans_for_bcb(&self, bcb: BasicCoverageBlock) -> &[Span] {
-        &self.bcb_to_spans[bcb]
+    pub(super) fn all_bcb_mappings(&self) -> impl Iterator<Item = &BcbMapping> {
+        self.mappings.iter()
     }
+}
+
+/// Extracts coverage-relevant spans from MIR, and associates them with
+/// their corresponding BCBs.
+///
+/// Returns `None` if no coverage-relevant spans could be extracted.
+pub(super) fn generate_coverage_spans(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    basic_coverage_blocks: &CoverageGraph,
+) -> Option<CoverageSpans> {
+    let mut mappings = vec![];
+
+    let sorted_spans =
+        from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
+    let coverage_spans = SpansRefiner::refine_sorted_spans(basic_coverage_blocks, sorted_spans);
+    mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
+        // Each span produced by the generator represents an ordinary code region.
+        BcbMapping { kind: BcbMappingKind::Code(bcb), span }
+    }));
+
+    if mappings.is_empty() {
+        return None;
+    }
+
+    // Identify which BCBs have one or more mappings.
+    let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+    let mut insert = |bcb| {
+        bcb_has_mappings.insert(bcb);
+    };
+    for &BcbMapping { kind, span: _ } in &mappings {
+        match kind {
+            BcbMappingKind::Code(bcb) => insert(bcb),
+        }
+    }
+
+    Some(CoverageSpans { bcb_has_mappings, mappings })
 }
 
 /// A BCB is deconstructed into one or more `Span`s. Each `Span` maps to a `CoverageSpan` that
@@ -65,35 +84,17 @@ impl CoverageSpans {
 /// `dominates()` the `BasicBlock`s in this `CoverageSpan`.
 #[derive(Debug, Clone)]
 struct CoverageSpan {
-    pub span: Span,
-    pub expn_span: Span,
-    pub current_macro_or_none: OnceCell<Option<Symbol>>,
-    pub bcb: BasicCoverageBlock,
+    span: Span,
+    bcb: BasicCoverageBlock,
     /// List of all the original spans from MIR that have been merged into this
     /// span. Mainly used to precisely skip over gaps when truncating a span.
-    pub merged_spans: Vec<Span>,
-    pub is_closure: bool,
+    merged_spans: Vec<Span>,
+    is_closure: bool,
 }
 
 impl CoverageSpan {
-    pub fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self::new(fn_sig_span, fn_sig_span, START_BCB, false)
-    }
-
-    pub(super) fn new(
-        span: Span,
-        expn_span: Span,
-        bcb: BasicCoverageBlock,
-        is_closure: bool,
-    ) -> Self {
-        Self {
-            span,
-            expn_span,
-            current_macro_or_none: Default::default(),
-            bcb,
-            merged_spans: vec![span],
-            is_closure,
-        }
+    fn new(span: Span, bcb: BasicCoverageBlock, is_closure: bool) -> Self {
+        Self { span, bcb, merged_spans: vec![span], is_closure }
     }
 
     pub fn merge_from(&mut self, other: &Self) {
@@ -118,37 +119,6 @@ impl CoverageSpan {
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
         self.bcb == other.bcb
     }
-
-    /// If the span is part of a macro, returns the macro name symbol.
-    pub fn current_macro(&self) -> Option<Symbol> {
-        self.current_macro_or_none
-            .get_or_init(|| {
-                if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
-                    self.expn_span.ctxt().outer_expn_data().kind
-                {
-                    return Some(current_macro);
-                }
-                None
-            })
-            .map(|symbol| symbol)
-    }
-
-    /// If the span is part of a macro, and the macro is visible (expands directly to the given
-    /// body_span), returns the macro name symbol.
-    pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        let current_macro = self.current_macro()?;
-        let parent_callsite = self.expn_span.parent_callsite()?;
-
-        // In addition to matching the context of the body span, the parent callsite
-        // must also be the source callsite, i.e. the parent must have no parent.
-        let is_visible_macro =
-            parent_callsite.parent_callsite().is_none() && parent_callsite.eq_ctxt(body_span);
-        is_visible_macro.then_some(current_macro)
-    }
-
-    pub fn is_macro_expansion(&self) -> bool {
-        self.current_macro().is_some()
-    }
 }
 
 /// Converts the initial set of `CoverageSpan`s (one per MIR `Statement` or `Terminator`) into a
@@ -158,11 +128,7 @@ impl CoverageSpan {
 ///  * Merge spans that represent continuous (both in source code and control flow), non-branching
 ///    execution
 ///  * Carve out (leave uncovered) any span that will be counted by another MIR (notably, closures)
-struct CoverageSpansGenerator<'a> {
-    /// A `Span` covering the function body of the MIR (typically from left curly brace to right
-    /// curly brace).
-    body_span: Span,
-
+struct SpansRefiner<'a> {
     /// The BasicCoverageBlock Control Flow Graph (BCB CFG).
     basic_coverage_blocks: &'a CoverageGraph,
 
@@ -205,41 +171,15 @@ struct CoverageSpansGenerator<'a> {
     refined_spans: Vec<CoverageSpan>,
 }
 
-impl<'a> CoverageSpansGenerator<'a> {
-    /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
-    /// counted.
-    ///
-    /// The basic steps are:
-    ///
-    /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
-    ///    `BasicCoverageBlockData`.
-    /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
-    ///    are sorted with longer spans before shorter spans; and equal spans are sorted
-    ///    (deterministically) based on "dominator" relationship (if any).
-    /// 3. Traverse the spans in sorted order to identify spans that can be dropped (for instance,
-    ///    if another span or spans are already counting the same code region), or should be merged
-    ///    into a broader combined span (because it represents a contiguous, non-branching, and
-    ///    uninterrupted region of source code).
-    ///
-    ///    Closures are exposed in their enclosing functions as `Assign` `Rvalue`s, and since
-    ///    closures have their own MIR, their `Span` in their enclosing function should be left
-    ///    "uncovered".
-    ///
-    /// Note the resulting vector of `CoverageSpan`s may not be fully sorted (and does not need
-    /// to be).
-    pub(super) fn generate_coverage_spans(
-        mir_body: &mir::Body<'_>,
-        hir_info: &ExtractedHirInfo,
+impl<'a> SpansRefiner<'a> {
+    /// Takes the initial list of (sorted) spans extracted from MIR, and "refines"
+    /// them by merging compatible adjacent spans, removing redundant spans,
+    /// and carving holes in spans when they overlap in unwanted ways.
+    fn refine_sorted_spans(
         basic_coverage_blocks: &'a CoverageGraph,
+        sorted_spans: Vec<CoverageSpan>,
     ) -> Vec<CoverageSpan> {
-        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
-            mir_body,
-            hir_info,
-            basic_coverage_blocks,
-        );
-
-        let coverage_spans = Self {
-            body_span: hir_info.body_span,
+        let this = Self {
             basic_coverage_blocks,
             sorted_spans_iter: sorted_spans.into_iter(),
             some_curr: None,
@@ -250,7 +190,7 @@ impl<'a> CoverageSpansGenerator<'a> {
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
         };
 
-        coverage_spans.to_refined_spans()
+        this.to_refined_spans()
     }
 
     /// Iterate through the sorted `CoverageSpan`s, and return the refined list of merged and
@@ -261,7 +201,6 @@ impl<'a> CoverageSpansGenerator<'a> {
             // span-processing steps don't make sense yet.
             if self.some_prev.is_none() {
                 debug!("  initial span");
-                self.maybe_push_macro_name_span();
                 continue;
             }
 
@@ -273,7 +212,6 @@ impl<'a> CoverageSpansGenerator<'a> {
                 debug!("  same bcb (and neither is a closure), merge with prev={prev:?}");
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(&prev);
-                self.maybe_push_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
             } else if prev.span.hi() <= curr.span.lo() {
                 debug!(
@@ -281,7 +219,6 @@ impl<'a> CoverageSpansGenerator<'a> {
                 );
                 let prev = self.take_prev();
                 self.refined_spans.push(prev);
-                self.maybe_push_macro_name_span();
             } else if prev.is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
@@ -292,35 +229,11 @@ impl<'a> CoverageSpansGenerator<'a> {
             } else if curr.is_closure {
                 self.carve_out_span_for_closure();
             } else if self.prev_original_span == curr.span {
-                // Note that this compares the new (`curr`) span to `prev_original_span`.
-                // In this branch, the actual span byte range of `prev_original_span` is not
-                // important. What is important is knowing whether the new `curr` span was
-                // **originally** the same as the original span of `prev()`. The original spans
-                // reflect their original sort order, and for equal spans, conveys a partial
-                // ordering based on CFG dominator priority.
-                if prev.is_macro_expansion() && curr.is_macro_expansion() {
-                    // Macros that expand to include branching (such as
-                    // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
-                    // `trace!()`) typically generate callee spans with identical
-                    // ranges (typically the full span of the macro) for all
-                    // `BasicBlocks`. This makes it impossible to distinguish
-                    // the condition (`if val1 != val2`) from the optional
-                    // branched statements (such as the call to `panic!()` on
-                    // assert failure). In this case it is better (or less
-                    // worse) to drop the optional branch bcbs and keep the
-                    // non-conditional statements, to count when reached.
-                    debug!(
-                        "  curr and prev are part of a macro expansion, and curr has the same span \
-                        as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
-                        prev={prev:?}",
-                    );
-                    self.take_curr(); // Discards curr.
-                } else {
-                    self.update_pending_dups();
-                }
+                // `prev` and `curr` have the same span, or would have had the
+                // same span before `prev` was modified by other spans.
+                self.update_pending_dups();
             } else {
                 self.cutoff_prev_at_overlapping_curr();
-                self.maybe_push_macro_name_span();
             }
         }
 
@@ -353,41 +266,6 @@ impl<'a> CoverageSpansGenerator<'a> {
         // (injected separately, from the closure's own MIR).
         self.refined_spans.retain(|covspan| !covspan.is_closure);
         self.refined_spans
-    }
-
-    /// If `curr` is part of a new macro expansion, carve out and push a separate
-    /// span that ends just after the macro name and its subsequent `!`.
-    fn maybe_push_macro_name_span(&mut self) {
-        let curr = self.curr();
-
-        let Some(visible_macro) = curr.visible_macro(self.body_span) else { return };
-        if let Some(prev) = &self.some_prev
-            && prev.expn_span.eq_ctxt(curr.expn_span)
-        {
-            return;
-        }
-
-        // The split point is relative to `curr_original_span`,
-        // because `curr.span` may have been merged with preceding spans.
-        let split_point_after_macro_bang = self.curr_original_span.lo()
-            + BytePos(visible_macro.as_str().len() as u32)
-            + BytePos(1); // add 1 for the `!`
-        debug_assert!(split_point_after_macro_bang <= curr.span.hi());
-        if split_point_after_macro_bang > curr.span.hi() {
-            // Something is wrong with the macro name span;
-            // return now to avoid emitting malformed mappings (e.g. #117788).
-            return;
-        }
-
-        let mut macro_name_cov = curr.clone();
-        macro_name_cov.span = macro_name_cov.span.with_hi(split_point_after_macro_bang);
-        self.curr_mut().span = curr.span.with_lo(split_point_after_macro_bang);
-
-        debug!(
-            "  and curr starts a new macro expansion, so add a new span just for \
-            the macro `{visible_macro}!`, new span={macro_name_cov:?}",
-        );
-        self.refined_spans.push(macro_name_cov);
     }
 
     #[track_caller]

@@ -8,33 +8,11 @@ pub mod place;
 
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{ErrorGuaranteed, ExpnId, DUMMY_SP};
-
-/// Top-level HIR node for current owner. This only contains the node for which
-/// `HirId::local_id == 0`, and excludes bodies.
-///
-/// This struct exists to encapsulate all access to the hir_owner query in this module, and to
-/// implement HashStable without hashing bodies.
-#[derive(Copy, Clone, Debug)]
-pub struct Owner<'tcx> {
-    node: OwnerNode<'tcx>,
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        // Perform a shallow hash instead using the deep hash saved in `OwnerNodes`. This lets us
-        // differentiate queries that depend on the full HIR tree from those that only depend on
-        // the item signature.
-        hcx.without_hir_bodies(|hcx| self.node.hash_stable(hcx, hasher));
-    }
-}
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -149,11 +127,6 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.hir_owner = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
-        let node = owner.node();
-        Some(Owner { node })
-    };
     providers.opt_local_def_id_to_hir_id = |tcx, id| {
         let owner = tcx.hir_crate(()).owners[id].map(|_| ());
         Some(match owner {
@@ -162,7 +135,8 @@ pub fn provide(providers: &mut Providers) {
             MaybeOwner::NonOwner(hir_id) => hir_id,
         })
     };
-    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id.def_id].map(|i| &i.nodes);
+    providers.opt_hir_owner_nodes =
+        |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {

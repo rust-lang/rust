@@ -26,7 +26,6 @@ declare_lint_pass! {
         BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
-        COINDUCTIVE_OVERLAP_IN_COHERENCE,
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
@@ -89,6 +88,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        STATIC_MUT_REF,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -125,7 +125,6 @@ declare_lint_pass! {
         UNUSED_MACROS,
         UNUSED_MUT,
         UNUSED_QUALIFICATIONS,
-        UNUSED_TUPLE_STRUCT_FIELDS,
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
@@ -697,8 +696,13 @@ declare_lint! {
     /// Dead code may signal a mistake or unfinished code. To silence the
     /// warning for individual items, prefix the name with an underscore such
     /// as `_foo`. If it was intended to expose the item outside of the crate,
-    /// consider adding a visibility modifier like `pub`. Otherwise consider
-    /// removing the unused code.
+    /// consider adding a visibility modifier like `pub`.
+    ///
+    /// To preserve the numbering of tuple structs with unused fields,
+    /// change the unused fields to have unit type or use
+    /// `PhantomData`.
+    ///
+    /// Otherwise consider removing the unused code.
     pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
@@ -730,32 +734,6 @@ declare_lint! {
     pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
-}
-
-declare_lint! {
-    /// The `unused_tuple_struct_fields` lint detects fields of tuple structs
-    /// that are never read.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[warn(unused_tuple_struct_fields)]
-    /// struct S(i32, i32, i32);
-    /// let s = S(1, 2, 3);
-    /// let _ = (s.0, s.2);
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Tuple struct fields that are never read anywhere may indicate a
-    /// mistake or unfinished code. To silence this warning, consider
-    /// removing the unused field(s) or, to preserve the numbering of the
-    /// remaining fields, change the unused field(s) to have unit type.
-    pub UNUSED_TUPLE_STRUCT_FIELDS,
-    Allow,
-    "detects tuple struct fields that are never read"
 }
 
 declare_lint! {
@@ -1790,6 +1768,57 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `static_mut_ref` lint checks for shared or mutable references
+    /// of mutable static inside `unsafe` blocks and `unsafe` functions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021
+    /// fn main() {
+    ///     static mut X: i32 = 23;
+    ///     static mut Y: i32 = 24;
+    ///
+    ///     unsafe {
+    ///         let y = &X;
+    ///         let ref x = X;
+    ///         let (x, y) = (&X, &Y);
+    ///         foo(&X);
+    ///     }
+    /// }
+    ///
+    /// unsafe fn _foo() {
+    ///     static mut X: i32 = 23;
+    ///     static mut Y: i32 = 24;
+    ///
+    ///     let y = &X;
+    ///     let ref x = X;
+    ///     let (x, y) = (&X, &Y);
+    ///     foo(&X);
+    /// }
+    ///
+    /// fn foo<'a>(_x: &'a i32) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Shared or mutable references of mutable static are almost always a mistake and
+    /// can lead to undefined behavior and various other problems in your code.
+    ///
+    /// This lint is "warn" by default on editions up to 2021, from 2024 there is
+    /// a hard error instead.
+    pub STATIC_MUT_REF,
+    Warn,
+    "shared references or mutable references of mutable static is discouraged",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #114447 <https://github.com/rust-lang/rust/issues/114447>",
+        explain_reason: false,
+    };
+}
+
+declare_lint! {
     /// The `absolute_paths_not_starting_with_crate` lint detects fully
     /// qualified paths that start with a module name instead of `crate`,
     /// `self`, or an extern crate name
@@ -2726,6 +2755,11 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "issue #71668 <https://github.com/rust-lang/rust/issues/71668>",
+        explain_reason: false
+    };
     @edition Edition2024 => Warn;
 }
 
@@ -2817,8 +2851,8 @@ declare_lint! {
     /// [`ptr::from_exposed_addr`].
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/ptr/fn.with_addr
-    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr
+    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.with_addr
+    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr.html
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",
@@ -2863,8 +2897,8 @@ declare_lint! {
     /// about the semantics.
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::addr`]: https://doc.rust-lang.org/core/ptr/fn.addr
-    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/ptr/fn.expose_addr
+    /// [`ptr::addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.addr
+    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_addr
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",
@@ -4390,45 +4424,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `coinductive_overlap_in_coherence` lint detects impls which are currently
-    /// considered not overlapping, but may be considered to overlap if support for
-    /// coinduction is added to the trait solver.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(coinductive_overlap_in_coherence)]
-    ///
-    /// trait CyclicTrait {}
-    /// impl<T: CyclicTrait> CyclicTrait for T {}
-    ///
-    /// trait Trait {}
-    /// impl<T: CyclicTrait> Trait for T {}
-    /// // conflicting impl with the above
-    /// impl Trait for u8 {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// We have two choices for impl which satisfy `u8: Trait`: the blanket impl
-    /// for generic `T`, and the direct impl for `u8`. These two impls nominally
-    /// overlap, since we can infer `T = u8` in the former impl, but since the where
-    /// clause `u8: CyclicTrait` would end up resulting in a cycle (since it depends
-    /// on itself), the blanket impl is not considered to hold for `u8`. This will
-    /// change in a future release.
-    pub COINDUCTIVE_OVERLAP_IN_COHERENCE,
-    Deny,
-    "impls that are not considered to overlap may be considered to \
-    overlap in the future",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #114040 <https://github.com/rust-lang/rust/issues/114040>",
-    };
-}
-
-declare_lint! {
     /// The `unknown_or_malformed_diagnostic_attributes` lint detects unrecognized or otherwise malformed
     /// diagnostic attributes.
     ///
@@ -4612,5 +4607,52 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
+    };
+}
+
+declare_lint! {
+    /// The `private_macro_use` lint detects private macros that are imported
+    /// with `#[macro_use]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs extern crate)
+    /// // extern_macro.rs
+    /// macro_rules! foo_ { () => {}; }
+    /// use foo_ as foo;
+    ///
+    /// // code.rs
+    ///
+    /// #![deny(private_macro_use)]
+    ///
+    /// #[macro_use]
+    /// extern crate extern_macro;
+    ///
+    /// fn main() {
+    ///     foo!();
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: cannot find macro `foo` in this scope
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint arises from overlooking visibility checks for macros
+    /// in an external crate.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub PRIVATE_MACRO_USE,
+    Warn,
+    "detects certain macro bindings that should not be re-exported",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #120192 <https://github.com/rust-lang/rust/issues/120192>",
     };
 }

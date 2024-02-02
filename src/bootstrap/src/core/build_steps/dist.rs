@@ -1110,9 +1110,7 @@ impl Step for Rls {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rls = builder
-            .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
-            .expect("rls expected to build");
+        let rls = builder.ensure(tool::Rls { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::RLS);
@@ -1154,9 +1152,7 @@ impl Step for RustAnalyzer {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rust_analyzer = builder
-            .ensure(tool::RustAnalyzer { compiler, target })
-            .expect("rust-analyzer always builds");
+        let rust_analyzer = builder.ensure(tool::RustAnalyzer { compiler, target });
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
@@ -1201,12 +1197,9 @@ impl Step for Clippy {
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder
-            .ensure(tool::Clippy { compiler, target, extra_features: Vec::new() })
-            .expect("clippy expected to build - essential tool");
-        let cargoclippy = builder
-            .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
-            .expect("clippy expected to build - essential tool");
+        let clippy = builder.ensure(tool::Clippy { compiler, target, extra_features: Vec::new() });
+        let cargoclippy =
+            builder.ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1255,9 +1248,9 @@ impl Step for Miri {
         let compiler = self.compiler;
         let target = self.target;
 
-        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() })?;
+        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() });
         let cargomiri =
-            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })?;
+            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
@@ -1396,12 +1389,10 @@ impl Step for Rustfmt {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rustfmt = builder
-            .ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() })
-            .expect("rustfmt expected to build - essential tool");
-        let cargofmt = builder
-            .ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() })
-            .expect("cargo fmt expected to build - essential tool");
+        let rustfmt =
+            builder.ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() });
+        let cargofmt =
+            builder.ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() });
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
@@ -1455,9 +1446,8 @@ impl Step for RustDemangler {
             return None;
         }
 
-        let rust_demangler = builder
-            .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
-            .expect("rust-demangler expected to build - in-tree tool");
+        let rust_demangler =
+            builder.ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() });
 
         // Prepare the image directory
         let mut tarball = Tarball::new(builder, "rust-demangler", &target.triple);
@@ -2042,23 +2032,24 @@ fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
 ///
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
-    if let Some(config) = builder.config.target_config.get(&target) {
-        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
-            // If the LLVM was externally provided, then we don't currently copy
-            // artifacts into the sysroot. This is not necessarily the right
-            // choice (in particular, it will require the LLVM dylib to be in
-            // the linker's load path at runtime), but the common use case for
-            // external LLVMs is distribution provided LLVMs, and in that case
-            // they're usually in the standard search path (e.g., /usr/lib) and
-            // copying them here is going to cause problems as we may end up
-            // with the wrong files and isn't what distributions want.
-            //
-            // This behavior may be revisited in the future though.
-            //
-            // If the LLVM is coming from ourselves (just from CI) though, we
-            // still want to install it, as it otherwise won't be available.
-            return false;
-        }
+    // If the LLVM was externally provided, then we don't currently copy
+    // artifacts into the sysroot. This is not necessarily the right
+    // choice (in particular, it will require the LLVM dylib to be in
+    // the linker's load path at runtime), but the common use case for
+    // external LLVMs is distribution provided LLVMs, and in that case
+    // they're usually in the standard search path (e.g., /usr/lib) and
+    // copying them here is going to cause problems as we may end up
+    // with the wrong files and isn't what distributions want.
+    //
+    // This behavior may be revisited in the future though.
+    //
+    // NOTE: this intentionally doesn't use `is_rust_llvm`; whether this is patched or not doesn't matter,
+    // we only care if the shared object itself is managed by bootstrap.
+    //
+    // If the LLVM is coming from ourselves (just from CI) though, we
+    // still want to install it, as it otherwise won't be available.
+    if builder.is_system_llvm(target) {
+        return false;
     }
 
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
@@ -2157,12 +2148,14 @@ impl Step for LlvmTools {
         tarball.set_overlay(OverlayKind::LLVM);
         tarball.is_preview(true);
 
-        // Prepare the image directory
-        let src_bindir = builder.llvm_out(target).join("bin");
-        let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
-        for tool in LLVM_TOOLS {
-            let exe = src_bindir.join(exe(tool, target));
-            tarball.add_file(&exe, &dst_bindir, 0o755);
+        if builder.config.llvm_tools_enabled {
+            // Prepare the image directory
+            let src_bindir = builder.llvm_out(target).join("bin");
+            let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
+            for tool in LLVM_TOOLS {
+                let exe = src_bindir.join(exe(tool, target));
+                tarball.add_file(&exe, &dst_bindir, 0o755);
+            }
         }
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like

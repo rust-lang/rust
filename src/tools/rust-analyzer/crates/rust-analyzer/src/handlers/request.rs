@@ -103,7 +103,6 @@ pub(crate) fn handle_analyzer_status(
                 .collect::<Vec<&AbsPath>>()
         );
     }
-    format_to!(buf, "\nVfs memory usage: {}\n", profile::Bytes::new(snap.vfs_memory_usage() as _));
     buf.push_str("\nAnalysis:\n");
     buf.push_str(
         &snap
@@ -453,12 +452,11 @@ pub(crate) fn handle_document_symbol(
 pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
     params: WorkspaceSymbolParams,
-) -> anyhow::Result<Option<Vec<SymbolInformation>>> {
+) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = profile::span("handle_workspace_symbol");
 
     let config = snap.config.workspace_symbol();
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
-    let limit = config.search_limit;
 
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
@@ -469,17 +467,14 @@ pub(crate) fn handle_workspace_symbol(
         if libs {
             q.libs();
         }
-        q.limit(limit);
         q
     };
-    let mut res = exec_query(&snap, query)?;
+    let mut res = exec_query(&snap, query, config.search_limit)?;
     if res.is_empty() && !all_symbols {
-        let mut query = Query::new(params.query);
-        query.limit(limit);
-        res = exec_query(&snap, query)?;
+        res = exec_query(&snap, Query::new(params.query), config.search_limit)?;
     }
 
-    return Ok(Some(res));
+    return Ok(Some(lsp_types::WorkspaceSymbolResponse::Nested(res)));
 
     fn decide_search_scope_and_kind(
         params: &WorkspaceSymbolParams,
@@ -519,13 +514,13 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(
         snap: &GlobalStateSnapshot,
         query: Query,
-    ) -> anyhow::Result<Vec<SymbolInformation>> {
+        limit: usize,
+    ) -> anyhow::Result<Vec<lsp_types::WorkspaceSymbol>> {
         let mut res = Vec::new();
-        for nav in snap.analysis.symbol_search(query)? {
+        for nav in snap.analysis.symbol_search(query, limit)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
 
-            #[allow(deprecated)]
-            let info = SymbolInformation {
+            let info = lsp_types::WorkspaceSymbol {
                 name: match &nav.alias {
                     Some(alias) => format!("{} (alias for {})", alias, nav.name),
                     None => format!("{}", nav.name),
@@ -534,10 +529,11 @@ pub(crate) fn handle_workspace_symbol(
                     .kind
                     .map(to_proto::symbol_kind)
                     .unwrap_or(lsp_types::SymbolKind::VARIABLE),
+                // FIXME: Set deprecation
                 tags: None,
-                location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
-                deprecated: None,
+                location: lsp_types::OneOf::Left(to_proto::location_from_nav(snap, nav)?),
+                data: None,
             };
             res.push(info);
         }
@@ -801,7 +797,7 @@ pub(crate) fn handle_runnables(
             }
         }
         None => {
-            if !snap.config.linked_projects().is_empty() {
+            if !snap.config.linked_or_discovered_projects().is_empty() {
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_string(),
                     location: None,
@@ -923,7 +919,7 @@ pub(crate) fn handle_completion_resolve(
     }
 
     if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits.into_iter())
+        original_additional_edits.extend(additional_edits)
     } else {
         original_completion.additional_text_edits = Some(additional_edits);
     }
@@ -1021,8 +1017,10 @@ pub(crate) fn handle_rename(
     let _p = profile::span("handle_rename");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    let mut change =
-        snap.analysis.rename(position, &params.new_name)?.map_err(to_proto::rename_error)?;
+    let mut change = snap
+        .analysis
+        .rename(position, &params.new_name, snap.config.rename())?
+        .map_err(to_proto::rename_error)?;
 
     // this is kind of a hack to prevent double edits from happening when moving files
     // When a module gets renamed by renaming the mod declaration this causes the file to move
@@ -1041,11 +1039,7 @@ pub(crate) fn handle_rename(
     {
         for op in ops {
             if let lsp_types::DocumentChangeOperation::Op(doc_change_op) = op {
-                if let Err(err) =
-                    resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))
-                {
-                    return Err(err);
-                }
+                resource_ops_supported(&snap.config, resolve_resource_op(doc_change_op))?
             }
         }
     }
@@ -1162,11 +1156,7 @@ pub(crate) fn handle_code_action(
         if let Some(changes) = changes {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) =
-                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
-                    {
-                        return Err(err);
-                    }
+                    resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
                 }
             }
         }
@@ -1258,11 +1248,7 @@ pub(crate) fn handle_code_action_resolve(
         if let Some(changes) = edit.document_changes.as_ref() {
             for change in changes {
                 if let lsp_ext::SnippetDocumentChangeOperation::Op(res_op) = change {
-                    if let Err(err) =
-                        resource_ops_supported(&snap.config, resolve_resource_op(res_op))
-                    {
-                        return Err(err);
-                    }
+                    resource_ops_supported(&snap.config, resolve_resource_op(res_op))?
                 }
             }
         }
@@ -1333,6 +1319,9 @@ pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
+    if code_lens.data.is_none() {
+        return Ok(code_lens);
+    }
     let Some(annotation) = from_proto::annotation(&snap, code_lens.clone())? else {
         return Ok(code_lens);
     };
@@ -1341,13 +1330,14 @@ pub(crate) fn handle_code_lens_resolve(
     let mut acc = Vec::new();
     to_proto::code_lens(&mut acc, &snap, annotation)?;
 
-    let res = match acc.pop() {
+    let mut res = match acc.pop() {
         Some(it) if acc.is_empty() => it,
         _ => {
             never!();
             code_lens
         }
     };
+    res.data = None;
 
     Ok(res)
 }
@@ -1986,20 +1976,19 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = PathBuf::from(&command);
-            let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
+            let workspace = CargoTargetSpec::for_file(snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {
                     // approach: if the command name contains a path separator, join it with the workspace root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
-                    let cmd_path =
-                        if cfg!(windows) && command.contains(&[std::path::MAIN_SEPARATOR, '/']) {
-                            spec.workspace_root.join(cmd).into()
-                        } else if command.contains(std::path::MAIN_SEPARATOR) {
-                            spec.workspace_root.join(cmd).into()
-                        } else {
-                            cmd
-                        };
+                    let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
+                        || (cfg!(windows) && command.contains('/'))
+                    {
+                        spec.workspace_root.join(cmd).into()
+                    } else {
+                        cmd
+                    };
                     process::Command::new(cmd_path)
                 }
                 None => process::Command::new(cmd),

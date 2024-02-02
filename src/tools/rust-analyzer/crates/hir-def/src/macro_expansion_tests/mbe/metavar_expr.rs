@@ -77,13 +77,13 @@ fn test_metavar_exprs() {
     check(
         r#"
 macro_rules! m {
-    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
+    ( $( $t:tt )* ) => ( $( ${ignore($t)} -${index()} )-* );
 }
 const _: i32 = m!(a b c);
     "#,
         expect![[r#"
 macro_rules! m {
-    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
+    ( $( $t:tt )* ) => ( $( ${ignore($t)} -${index()} )-* );
 }
 const _: i32 = -0--1--2;
     "#]],
@@ -96,7 +96,7 @@ fn count_basic() {
         r#"
 macro_rules! m {
     ($($t:ident),*) => {
-        ${count(t)}
+        ${count($t)}
     }
 }
 
@@ -109,7 +109,7 @@ fn test() {
         expect![[r#"
 macro_rules! m {
     ($($t:ident),*) => {
-        ${count(t)}
+        ${count($t)}
     }
 }
 
@@ -130,9 +130,9 @@ macro_rules! foo {
     ($( $( $($t:ident)* ),* );*) => {
         $(
             {
-                let depth_none = ${count(t)};
-                let depth_zero = ${count(t, 0)};
-                let depth_one = ${count(t, 1)};
+                let depth_none = ${count($t)};
+                let depth_zero = ${count($t, 0)};
+                let depth_one = ${count($t, 1)};
             }
         )*
     }
@@ -150,9 +150,9 @@ macro_rules! foo {
     ($( $( $($t:ident)* ),* );*) => {
         $(
             {
-                let depth_none = ${count(t)};
-                let depth_zero = ${count(t, 0)};
-                let depth_one = ${count(t, 1)};
+                let depth_none = ${count($t)};
+                let depth_zero = ${count($t, 0)};
+                let depth_one = ${count($t, 1)};
             }
         )*
     }
@@ -160,11 +160,11 @@ macro_rules! foo {
 
 fn bar() {
      {
-        let depth_none = 6;
+        let depth_none = 3;
         let depth_zero = 3;
         let depth_one = 6;
     } {
-        let depth_none = 3;
+        let depth_none = 1;
         let depth_zero = 1;
         let depth_one = 3;
     }
@@ -178,12 +178,12 @@ fn count_depth_out_of_bounds() {
     check(
         r#"
 macro_rules! foo {
-    ($($t:ident)*) => { ${count(t, 1)} };
-    ($( $( $l:literal )* );*) => { $(${count(l, 1)};)* }
+    ($($t:ident)*) => { ${count($t, 1)} };
+    ($( $( $l:literal )* );*) => { $(${count($l, 1)};)* }
 }
 macro_rules! bar {
-    ($($t:ident)*) => { ${count(t, 1024)} };
-    ($( $( $l:literal )* );*) => { $(${count(l, 8192)};)* }
+    ($($t:ident)*) => { ${count($t, 1024)} };
+    ($( $( $l:literal )* );*) => { $(${count($l, 8192)};)* }
 }
 
 fn test() {
@@ -195,19 +195,21 @@ fn test() {
 "#,
         expect![[r#"
 macro_rules! foo {
-    ($($t:ident)*) => { ${count(t, 1)} };
-    ($( $( $l:literal )* );*) => { $(${count(l, 1)};)* }
+    ($($t:ident)*) => { ${count($t, 1)} };
+    ($( $( $l:literal )* );*) => { $(${count($l, 1)};)* }
 }
 macro_rules! bar {
-    ($($t:ident)*) => { ${count(t, 1024)} };
-    ($( $( $l:literal )* );*) => { $(${count(l, 8192)};)* }
+    ($($t:ident)*) => { ${count($t, 1024)} };
+    ($( $( $l:literal )* );*) => { $(${count($l, 8192)};)* }
 }
 
 fn test() {
-    /* error: ${count} out of bounds */;
-    /* error: ${count} out of bounds */;
-    /* error: ${count} out of bounds */;
-    /* error: ${count} out of bounds */;
+    2;
+    2;
+    1;;
+    2;
+    2;
+    1;;
 }
 "#]],
     );
@@ -218,8 +220,8 @@ fn misplaced_count() {
     check(
         r#"
 macro_rules! foo {
-    ($($t:ident)*) => { $(${count(t)})* };
-    ($l:literal) => { ${count(l)} }
+    ($($t:ident)*) => { $(${count($t)})* };
+    ($l:literal) => { ${count($l)} }
 }
 
 fn test() {
@@ -229,13 +231,13 @@ fn test() {
 "#,
         expect![[r#"
 macro_rules! foo {
-    ($($t:ident)*) => { $(${count(t)})* };
-    ($l:literal) => { ${count(l)} }
+    ($($t:ident)*) => { $(${count($t)})* };
+    ($l:literal) => { ${count($l)} }
 }
 
 fn test() {
-    /* error: ${count} misplaced */;
-    /* error: ${count} misplaced */;
+    1 1 1;
+    1;
 }
 "#]],
     );
@@ -246,13 +248,13 @@ fn malformed_count() {
     check(
         r#"
 macro_rules! too_many_args {
-    ($($t:ident)*) => { ${count(t, 1, leftover)} }
+    ($($t:ident)*) => { ${count($t, 1, leftover)} }
 }
 macro_rules! depth_suffixed {
-    ($($t:ident)*) => { ${count(t, 0usize)} }
+    ($($t:ident)*) => { ${count($t, 0usize)} }
 }
 macro_rules! depth_too_large {
-    ($($t:ident)*) => { ${count(t, 18446744073709551616)} }
+    ($($t:ident)*) => { ${count($t, 18446744073709551616)} }
 }
 
 fn test() {
@@ -263,13 +265,13 @@ fn test() {
 "#,
         expect![[r#"
 macro_rules! too_many_args {
-    ($($t:ident)*) => { ${count(t, 1, leftover)} }
+    ($($t:ident)*) => { ${count($t, 1, leftover)} }
 }
 macro_rules! depth_suffixed {
-    ($($t:ident)*) => { ${count(t, 0usize)} }
+    ($($t:ident)*) => { ${count($t, 0usize)} }
 }
 macro_rules! depth_too_large {
-    ($($t:ident)*) => { ${count(t, 18446744073709551616)} }
+    ($($t:ident)*) => { ${count($t, 18446744073709551616)} }
 }
 
 fn test() {
@@ -288,7 +290,7 @@ fn count_interaction_with_empty_binding() {
         r#"
 macro_rules! m {
     ($($t:ident),*) => {
-        ${count(t, 100)}
+        ${count($t, 100)}
     }
 }
 
@@ -299,7 +301,7 @@ fn test() {
         expect![[r#"
 macro_rules! m {
     ($($t:ident),*) => {
-        ${count(t, 100)}
+        ${count($t, 100)}
     }
 }
 

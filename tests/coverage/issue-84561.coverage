@@ -1,8 +1,10 @@
    LL|       |// This demonstrated Issue #84561: function-like macros produce unintuitive coverage results.
    LL|       |
    LL|       |// failure-status: 101
-   LL|     21|#[derive(PartialEq, Eq)]
+   LL|       |#[derive(PartialEq, Eq)]
    LL|       |struct Foo(u32);
+   LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn test3() {
    LL|      1|    let is_true = std::env::args().len() == 1;
    LL|      1|    let bar = Foo(1);

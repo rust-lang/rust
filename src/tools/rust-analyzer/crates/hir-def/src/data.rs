@@ -16,10 +16,10 @@ use crate::{
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
-    macro_call_as_call_id, macro_id_to_def_id,
+    macro_call_as_call_id,
     nameres::{
         attr_resolution::ResolvedAttr,
-        diagnostics::DefDiagnostic,
+        diagnostics::{DefDiagnostic, DefDiagnostics},
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
         DefMap, MacroSubNs,
     },
@@ -233,6 +233,7 @@ pub struct TraitData {
 }
 
 impl TraitData {
+    #[inline]
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
         db.trait_data_with_diagnostics(tr).0
     }
@@ -240,13 +241,10 @@ impl TraitData {
     pub(crate) fn trait_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         tr: TraitId,
-    ) -> (Arc<TraitData>, Arc<[DefDiagnostic]>) {
-        let tr_loc @ ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
+    ) -> (Arc<TraitData>, DefDiagnostics) {
+        let ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
-        let _cx = stdx::panic_context::enter(format!(
-            "trait_data_query({tr:?} -> {tr_loc:?} -> {tr_def:?})"
-        ));
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
         let is_unsafe = tr_def.is_unsafe;
@@ -274,7 +272,7 @@ impl TraitData {
                 rustc_has_incoherent_inherent_impls,
                 fundamental,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 
@@ -333,6 +331,7 @@ pub struct ImplData {
 }
 
 impl ImplData {
+    #[inline]
     pub(crate) fn impl_data_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplData> {
         db.impl_data_with_diagnostics(id).0
     }
@@ -340,7 +339,7 @@ impl ImplData {
     pub(crate) fn impl_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: ImplId,
-    ) -> (Arc<ImplData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<ImplData>, DefDiagnostics) {
         let _p = profile::span("impl_data_with_diagnostics_query");
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
@@ -367,7 +366,7 @@ impl ImplData {
                 is_unsafe,
                 attribute_calls,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 
@@ -720,7 +719,7 @@ impl<'a> AssocItemCollector<'a> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| macro_id_to_def_id(self.db, it))
+                        .map(|it| self.db.macro_def(it))
                 };
                 match macro_call_as_call_id(
                     self.db.upcast(),

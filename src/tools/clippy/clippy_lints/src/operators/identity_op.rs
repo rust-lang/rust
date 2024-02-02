@@ -18,82 +18,118 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if !is_allowed(cx, op, left, right) {
-        match op {
-            BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                check_op(
-                    cx,
-                    left,
-                    0,
-                    expr.span,
-                    peel_hir_expr_refs(right).0.span,
-                    needs_parenthesis(cx, expr, right),
-                );
-                check_op(
-                    cx,
-                    right,
-                    0,
-                    expr.span,
-                    peel_hir_expr_refs(left).0.span,
-                    Parens::Unneeded,
-                );
-            },
-            BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-                check_op(
-                    cx,
-                    right,
-                    0,
-                    expr.span,
-                    peel_hir_expr_refs(left).0.span,
-                    Parens::Unneeded,
-                );
-            },
-            BinOpKind::Mul => {
-                check_op(
-                    cx,
-                    left,
-                    1,
-                    expr.span,
-                    peel_hir_expr_refs(right).0.span,
-                    needs_parenthesis(cx, expr, right),
-                );
-                check_op(
-                    cx,
-                    right,
-                    1,
-                    expr.span,
-                    peel_hir_expr_refs(left).0.span,
-                    Parens::Unneeded,
-                );
-            },
-            BinOpKind::Div => check_op(
+        return;
+    }
+
+    // we need to know whether a ref is coerced to a value
+    // if a ref is coerced, then the suggested lint must deref it
+    // e.g. `let _: i32 = x+0` with `x: &i32` should be replaced with `let _: i32 = *x`.
+    // we do this by checking the _kind_ of the type of the expression
+    // if it's a ref, we then check whether it is erased, and that's it.
+    let (peeled_left_span, left_is_coerced_to_value) = {
+        let expr = peel_hir_expr_refs(left).0;
+        let span = expr.span;
+        let is_coerced = expr_is_erased_ref(cx, expr);
+        (span, is_coerced)
+    };
+
+    let (peeled_right_span, right_is_coerced_to_value) = {
+        let expr = peel_hir_expr_refs(right).0;
+        let span = expr.span;
+        let is_coerced = expr_is_erased_ref(cx, expr);
+        (span, is_coerced)
+    };
+
+    match op {
+        BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
+            check_op(
+                cx,
+                left,
+                0,
+                expr.span,
+                peeled_right_span,
+                needs_parenthesis(cx, expr, right),
+                right_is_coerced_to_value,
+            );
+            check_op(
+                cx,
+                right,
+                0,
+                expr.span,
+                peeled_left_span,
+                Parens::Unneeded,
+                left_is_coerced_to_value,
+            );
+        },
+        BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
+            check_op(
+                cx,
+                right,
+                0,
+                expr.span,
+                peeled_left_span,
+                Parens::Unneeded,
+                left_is_coerced_to_value,
+            );
+        },
+        BinOpKind::Mul => {
+            check_op(
+                cx,
+                left,
+                1,
+                expr.span,
+                peeled_right_span,
+                needs_parenthesis(cx, expr, right),
+                right_is_coerced_to_value,
+            );
+            check_op(
                 cx,
                 right,
                 1,
                 expr.span,
-                peel_hir_expr_refs(left).0.span,
+                peeled_left_span,
                 Parens::Unneeded,
-            ),
-            BinOpKind::BitAnd => {
-                check_op(
-                    cx,
-                    left,
-                    -1,
-                    expr.span,
-                    peel_hir_expr_refs(right).0.span,
-                    needs_parenthesis(cx, expr, right),
-                );
-                check_op(
-                    cx,
-                    right,
-                    -1,
-                    expr.span,
-                    peel_hir_expr_refs(left).0.span,
-                    Parens::Unneeded,
-                );
-            },
-            BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
-            _ => (),
-        }
+                left_is_coerced_to_value,
+            );
+        },
+        BinOpKind::Div => check_op(
+            cx,
+            right,
+            1,
+            expr.span,
+            peeled_left_span,
+            Parens::Unneeded,
+            left_is_coerced_to_value,
+        ),
+        BinOpKind::BitAnd => {
+            check_op(
+                cx,
+                left,
+                -1,
+                expr.span,
+                peeled_right_span,
+                needs_parenthesis(cx, expr, right),
+                right_is_coerced_to_value,
+            );
+            check_op(
+                cx,
+                right,
+                -1,
+                expr.span,
+                peeled_left_span,
+                Parens::Unneeded,
+                left_is_coerced_to_value,
+            );
+        },
+        BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
+        _ => (),
+    }
+}
+
+fn expr_is_erased_ref(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match cx.typeck_results().expr_ty(expr).kind() {
+        ty::Ref(r, ..) => r.is_erased(),
+        _ => false,
     }
 }
 
@@ -144,11 +180,11 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, right: &Expr<'_>) 
 }
 
 fn is_allowed(cx: &LateContext<'_>, cmp: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-    // This lint applies to integers
-    !cx.typeck_results().expr_ty(left).peel_refs().is_integral()
-        || !cx.typeck_results().expr_ty(right).peel_refs().is_integral()
+    // This lint applies to integers and their references
+    cx.typeck_results().expr_ty(left).peel_refs().is_integral()
+        && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
-        || (cmp == BinOpKind::Shl
+        && !(cmp == BinOpKind::Shl
             && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
             && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
 }
@@ -161,11 +197,11 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
     } {
-        span_ineffective_operation(cx, span, arg, Parens::Unneeded);
+        span_ineffective_operation(cx, span, arg, Parens::Unneeded, false);
     }
 }
 
-fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens) {
+fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, parens: Parens, is_erased: bool) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
@@ -178,18 +214,28 @@ fn check_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span, pa
             1 => v == 1,
             _ => unreachable!(),
         } {
-            span_ineffective_operation(cx, span, arg, parens);
+            span_ineffective_operation(cx, span, arg, parens, is_erased);
         }
     }
 }
 
-fn span_ineffective_operation(cx: &LateContext<'_>, span: Span, arg: Span, parens: Parens) {
+fn span_ineffective_operation(
+    cx: &LateContext<'_>,
+    span: Span,
+    arg: Span,
+    parens: Parens,
+    is_ref_coerced_to_val: bool,
+) {
     let mut applicability = Applicability::MachineApplicable;
     let expr_snippet = snippet_with_applicability(cx, arg, "..", &mut applicability);
-
+    let expr_snippet = if is_ref_coerced_to_val {
+        format!("*{expr_snippet}")
+    } else {
+        expr_snippet.into_owned()
+    };
     let suggestion = match parens {
         Parens::Needed => format!("({expr_snippet})"),
-        Parens::Unneeded => expr_snippet.into_owned(),
+        Parens::Unneeded => expr_snippet,
     };
 
     span_lint_and_sugg(

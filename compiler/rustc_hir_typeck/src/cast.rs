@@ -33,7 +33,7 @@ use super::FnCtxt;
 use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{codes::*, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -269,7 +269,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::NeedViaInt => {
                 make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
-                    .help("cast through an integer first")
+                    .with_help("cast through an integer first")
                     .emit();
             }
             CastError::IllegalCast => {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::DifferingKinds => {
                 make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
-                    .note("vtable kinds may not match")
+                    .with_note("vtable kinds may not match")
                     .emit();
             }
             CastError::CastToBool => {
@@ -512,7 +512,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
+                .with_note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
             }
         }
@@ -587,7 +587,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint,
             self.expr.hir_id,
             self.span,
@@ -900,7 +900,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
             let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
 
-            fcx.tcx.emit_spanned_lint(
+            fcx.tcx.emit_node_span_lint(
                 lint::builtin::CENUM_IMPL_DROP_CAST,
                 self.expr.hir_id,
                 self.span,
@@ -934,7 +934,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
 
         let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint::builtin::LOSSY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
@@ -950,7 +950,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
         let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint::builtin::FUZZY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,

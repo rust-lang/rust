@@ -524,7 +524,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         self.visit_operand(func, location);
                         for arg in args {
-                            self.visit_operand(arg, location);
+                            self.visit_operand(&$($mutability)? arg.node, location);
                         }
                         self.visit_place(
                             destination,
@@ -736,7 +736,6 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Coroutine(
                                 _,
                                 coroutine_args,
-                                _movability,
                             ) => {
                                 self.visit_args(coroutine_args, location);
                             }
@@ -997,6 +996,12 @@ macro_rules! super_body {
                     TyContext::YieldTy(SourceInfo::outermost(span))
                 );
             }
+            if let Some(resume_ty) = $(& $mutability)? gen.resume_ty {
+                $self.visit_ty(
+                    resume_ty,
+                    TyContext::ResumeTy(SourceInfo::outermost(span))
+                );
+            }
         }
 
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
@@ -1244,6 +1249,8 @@ pub enum TyContext {
     ReturnTy(SourceInfo),
 
     YieldTy(SourceInfo),
+
+    ResumeTy(SourceInfo),
 
     /// A type found at some location.
     Location(Location),

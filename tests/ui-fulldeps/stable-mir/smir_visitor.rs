@@ -11,7 +11,6 @@
 #![feature(assert_matches)]
 #![feature(control_flow_enum)]
 
-extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
@@ -19,7 +18,6 @@ extern crate rustc_interface;
 extern crate stable_mir;
 
 use std::collections::HashSet;
-use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::*;
 use stable_mir::mir::MirVisitor;
@@ -28,7 +26,7 @@ use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
-fn test_visitor(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_visitor() -> ControlFlow<()> {
     let main_fn = stable_mir::entry_fn();
     let main_body = main_fn.unwrap().body();
     let main_visitor = TestVisitor::collect(&main_body);
@@ -116,7 +114,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, tcx, test_visitor(tcx)).unwrap();
+    run!(args, test_visitor).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

@@ -15,9 +15,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
-#![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]
@@ -37,7 +35,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrCode};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -55,6 +53,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -213,7 +212,7 @@ enum ResolutionError<'a> {
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
-        last_segment: Option<Symbol>,
+        segment: Option<Symbol>,
         label: String,
         suggestion: Option<Suggestion>,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -257,7 +256,7 @@ enum ResolutionError<'a> {
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
-        code: rustc_errors::DiagnosticId,
+        code: ErrCode,
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
@@ -265,6 +264,8 @@ enum ResolutionError<'a> {
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
     LowercaseSelf,
+    /// A never pattern has a binding.
+    BindingInNeverPattern,
 }
 
 enum VisResolutionError<'a> {
@@ -396,12 +397,14 @@ enum PathResult<'a> {
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
+        /// The segment name of target
+        segment_name: Symbol,
     },
 }
 
 impl<'a> PathResult<'a> {
     fn failed(
-        span: Span,
+        ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -409,7 +412,14 @@ impl<'a> PathResult<'a> {
     ) -> PathResult<'a> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
-        PathResult::Failed { span, label, suggestion, is_error_from_last_segment, module }
+        PathResult::Failed {
+            span: ident.span,
+            segment_name: ident.name,
+            label,
+            suggestion,
+            is_error_from_last_segment,
+            module,
+        }
     }
 }
 
@@ -1101,6 +1111,8 @@ pub struct Resolver<'a, 'tcx> {
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+    /// Amount of parameters for each function in the crate.
+    fn_parameter_counts: LocalDefIdMap<usize>,
 
     main_def: Option<MainDefinition>,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1439,6 +1451,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
+            fn_parameter_counts: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1542,6 +1555,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
+            has_self: self.has_self,
+            fn_parameter_counts: self.fn_parameter_counts,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
@@ -1783,6 +1798,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
         if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
+            if let ImportKind::MacroUse { warn_private: true } = import.kind {
+                let msg = format!("macro `{ident}` is private");
+                self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
+            }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
@@ -2053,7 +2072,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a as usize),
+                        LitKind::Int(a, _) => ret.push(a.get() as usize),
                         _ => panic!("invalid arg index"),
                     }
                 }

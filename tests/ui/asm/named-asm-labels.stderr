@@ -245,7 +245,88 @@ LL |             ab: nop // ab: does foo
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:124:14
+  --> $DIR/named-asm-labels.rs:132:19
+   |
+LL |             asm!("test_{}: nop", in(reg) 10);
+   |                   ^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:134:15
+   |
+LL |         asm!("test_{}: nop", const 10);
+   |               ^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:135:15
+   |
+LL |         asm!("test_{}: nop", sym main);
+   |               ^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:136:15
+   |
+LL |         asm!("{}_test: nop", const 10);
+   |               ^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:137:15
+   |
+LL |         asm!("test_{}_test: nop", const 10);
+   |               ^^^^^^^^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:138:15
+   |
+LL |         asm!("{}: nop", const 10);
+   |               ^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:140:15
+   |
+LL |         asm!("{uwu}: nop", uwu = const 10);
+   |               ^^^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:141:15
+   |
+LL |         asm!("{0}: nop", const 10);
+   |               ^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:142:15
+   |
+LL |         asm!("{1}: nop", "/* {0} */", const 10, const 20);
+   |               ^^^
+   |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+
+error: avoid using named labels in inline assembly
+  --> $DIR/named-asm-labels.rs:145:14
    |
 LL |         asm!(include_str!("named-asm-labels.s"));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -254,7 +335,7 @@ LL |         asm!(include_str!("named-asm-labels.s"));
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 warning: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:134:19
+  --> $DIR/named-asm-labels.rs:155:19
    |
 LL |             asm!("warned: nop");
    |                   ^^^^^^
@@ -262,13 +343,13 @@ LL |             asm!("warned: nop");
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 note: the lint level is defined here
-  --> $DIR/named-asm-labels.rs:132:16
+  --> $DIR/named-asm-labels.rs:153:16
    |
 LL |         #[warn(named_asm_labels)]
    |                ^^^^^^^^^^^^^^^^
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:143:20
+  --> $DIR/named-asm-labels.rs:164:20
    |
 LL |     unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
    |                    ^^^^^
@@ -277,7 +358,7 @@ LL |     unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noret
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:149:20
+  --> $DIR/named-asm-labels.rs:170:20
    |
 LL |     unsafe { asm!(".Lbar: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
    |                    ^^^^^
@@ -286,7 +367,7 @@ LL |     unsafe { asm!(".Lbar: mov rax, {}; ret;", "nop", const 1, options(noret
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:157:20
+  --> $DIR/named-asm-labels.rs:178:20
    |
 LL |     unsafe { asm!(".Laaa: nop; ret;", options(noreturn)) }
    |                    ^^^^^
@@ -295,7 +376,7 @@ LL |     unsafe { asm!(".Laaa: nop; ret;", options(noreturn)) }
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:167:24
+  --> $DIR/named-asm-labels.rs:188:24
    |
 LL |         unsafe { asm!(".Lbbb: nop; ret;", options(noreturn)) }
    |                        ^^^^^
@@ -304,7 +385,7 @@ LL |         unsafe { asm!(".Lbbb: nop; ret;", options(noreturn)) }
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:176:15
+  --> $DIR/named-asm-labels.rs:197:15
    |
 LL |         asm!("closure1: nop");
    |               ^^^^^^^^
@@ -313,7 +394,7 @@ LL |         asm!("closure1: nop");
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:180:15
+  --> $DIR/named-asm-labels.rs:201:15
    |
 LL |         asm!("closure2: nop");
    |               ^^^^^^^^
@@ -322,7 +403,7 @@ LL |         asm!("closure2: nop");
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:190:19
+  --> $DIR/named-asm-labels.rs:211:19
    |
 LL |             asm!("closure3: nop");
    |                   ^^^^^^^^
@@ -330,5 +411,5 @@ LL |             asm!("closure3: nop");
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
-error: aborting due to 35 previous errors; 1 warning emitted
+error: aborting due to 44 previous errors; 1 warning emitted
 

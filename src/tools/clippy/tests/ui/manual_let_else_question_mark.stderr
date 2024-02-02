@@ -53,5 +53,13 @@ error: this could be rewritten as `let...else`
 LL |         let v = if let Some(v_some) = g() { v_some } else { return None };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return None };`
 
-error: aborting due to 6 previous errors
+error: this `let...else` may be rewritten with the `?` operator
+  --> $DIR/manual_let_else_question_mark.rs:71:5
+   |
+LL | /     let Some(x) = y else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = y?;`
+
+error: aborting due to 7 previous errors
 

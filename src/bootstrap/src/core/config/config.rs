@@ -3,10 +3,6 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-#[cfg(test)]
-#[path = "../../tests/config.rs"]
-mod tests;
-
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -178,6 +174,8 @@ pub struct Config {
     pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: Stage0Metadata,
     pub android_ndk: Option<PathBuf>,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -305,7 +303,7 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool,
+    pub missing_tools: bool, // FIXME: Deprecated field. Remove it at 2024.
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -848,6 +846,7 @@ define_config! {
         // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -1200,7 +1199,7 @@ impl Config {
         Self::parse_inner(args, get_toml)
     }
 
-    fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
@@ -1396,6 +1395,7 @@ impl Config {
             // This field is only used by bootstrap.py
             metrics: _,
             android_ndk,
+            optimized_compiler_builtins,
         } = toml.build.unwrap_or_default();
 
         if let Some(file_build) = build {
@@ -1630,7 +1630,7 @@ impl Config {
                 );
             }
 
-            set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
@@ -1772,7 +1772,6 @@ impl Config {
                 check_ci_llvm!(static_libstdcpp);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
-                check_ci_llvm!(link_jobs);
                 check_ci_llvm!(clang_cl);
                 check_ci_llvm!(version_suffix);
                 check_ci_llvm!(cflags);
@@ -1810,7 +1809,14 @@ impl Config {
                     }
                     target.llvm_config = Some(config.src.join(s));
                 }
-                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
+                if let Some(patches) = cfg.llvm_has_rust_patches {
+                    assert_eq!(
+                        config.submodules,
+                        Some(false),
+                        "cannot set `llvm-has-rust-patches` for a managed submodule (set `build.submodules = false` if you want to apply patches)"
+                    );
+                    target.llvm_has_rust_patches = Some(patches);
+                }
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
@@ -1909,6 +1915,8 @@ impl Config {
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
+        config.optimized_compiler_builtins =
+            optimized_compiler_builtins.unwrap_or(config.channel != "dev");
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
@@ -2180,8 +2188,15 @@ impl Config {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }
 
-    pub fn any_sanitizers_enabled(&self) -> bool {
-        self.target_config.values().any(|t| t.sanitizers == Some(true)) || self.sanitizers
+    pub fn needs_sanitizer_runtime_built(&self, target: TargetSelection) -> bool {
+        // MSVC uses the Microsoft-provided sanitizer runtime, but all other runtimes we build.
+        !target.is_msvc() && self.sanitizers_enabled(target)
+    }
+
+    pub fn any_sanitizers_to_build(&self) -> bool {
+        self.target_config
+            .iter()
+            .any(|(ts, t)| !ts.is_msvc() && t.sanitizers.unwrap_or(self.sanitizers))
     }
 
     pub fn profiler_path(&self, target: TargetSelection) -> Option<&str> {

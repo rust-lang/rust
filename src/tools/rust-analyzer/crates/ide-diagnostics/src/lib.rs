@@ -44,29 +44,30 @@ mod handlers {
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod replace_filter_map_next_with_find_map;
-    pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_incorrect_safety;
     pub(crate) mod trait_impl_missing_assoc_item;
+    pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_redundant_assoc_item;
-    pub(crate) mod typed_hole;
     pub(crate) mod type_mismatch;
+    pub(crate) mod typed_hole;
+    pub(crate) mod undeclared_label;
     pub(crate) mod unimplemented_builtin_macro;
+    pub(crate) mod unreachable_label;
+    pub(crate) mod unresolved_assoc_item;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_field;
-    pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_import;
     pub(crate) mod unresolved_macro_call;
+    pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_module;
     pub(crate) mod unresolved_proc_macro;
-    pub(crate) mod undeclared_label;
-    pub(crate) mod unreachable_label;
     pub(crate) mod unused_variables;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
-    pub(crate) mod useless_braces;
-    pub(crate) mod unlinked_file;
     pub(crate) mod json_is_not_rust;
+    pub(crate) mod unlinked_file;
+    pub(crate) mod useless_braces;
 }
 
 #[cfg(test)]
@@ -173,7 +174,7 @@ impl Diagnostic {
         node: InFile<SyntaxNodePtr>,
     ) -> Diagnostic {
         let file_id = node.file_id;
-        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node.clone()))
+        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node))
             .with_main_node(node.map(|x| x.to_node(&ctx.sema.parse_or_expand(file_id))))
     }
 
@@ -280,7 +281,7 @@ impl DiagnosticsContext<'_> {
                 }
             }
         })()
-        .unwrap_or_else(|| sema.diagnostics_display_range(node.clone()))
+        .unwrap_or_else(|| sema.diagnostics_display_range(*node))
     }
 }
 
@@ -371,7 +372,8 @@ pub fn diagnostics(
             AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
             AnyDiagnostic::UndeclaredLabel(d) => handlers::undeclared_label::undeclared_label(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => handlers::unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
-            AnyDiagnostic::UnreachableLabel(d) => handlers::unreachable_label:: unreachable_label(&ctx, &d),
+            AnyDiagnostic::UnreachableLabel(d) => handlers::unreachable_label::unreachable_label(&ctx, &d),
+            AnyDiagnostic::UnresolvedAssocItem(d) => handlers::unresolved_assoc_item::unresolved_assoc_item(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => handlers::unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedField(d) => handlers::unresolved_field::unresolved_field(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => handlers::unresolved_import::unresolved_import(&ctx, &d),
@@ -446,8 +448,8 @@ fn handle_lint_attributes(
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
     let file_id = sema.hir_file_for(root);
-    let mut preorder = root.preorder();
-    while let Some(ev) = preorder.next() {
+    let preorder = root.preorder();
+    for ev in preorder {
         match ev {
             syntax::WalkEvent::Enter(node) => {
                 for attr in node.children().filter_map(ast::Attr::cast) {

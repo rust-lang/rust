@@ -20,13 +20,13 @@ use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{error_code, DelayDm, Diagnostic};
+use rustc_errors::{codes::*, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
 
 use super::util;
 use super::SelectionContext;
@@ -142,10 +142,30 @@ pub fn translate_args_with_cause<'tcx>(
 pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId, DefId)) -> bool {
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
+    // If specialization is enabled for this crate then no extra checks are needed.
+    // If it's not, and either of the `impl`s is local to this crate, then this definitely
+    // isn't specializing - unless specialization is enabled for the `impl` span,
+    // e.g. if it comes from an `allow_internal_unstable` macro
     let features = tcx.features();
     let specialization_enabled = features.specialization || features.min_specialization;
-    if !specialization_enabled && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
-        return false;
+    if !specialization_enabled {
+        if impl1_def_id.is_local() {
+            let span = tcx.def_span(impl1_def_id);
+            if !span.allows_unstable(sym::specialization)
+                && !span.allows_unstable(sym::min_specialization)
+            {
+                return false;
+            }
+        }
+
+        if impl2_def_id.is_local() {
+            let span = tcx.def_span(impl2_def_id);
+            if !span.allows_unstable(sym::specialization)
+                && !span.allows_unstable(sym::min_specialization)
+            {
+                return false;
+            }
+        }
     }
 
     // We determine whether there's a subset relationship by:
@@ -258,7 +278,7 @@ fn fulfill_implication<'tcx>(
 pub(super) fn specialization_graph_provider(
     tcx: TyCtxt<'_>,
     trait_id: DefId,
-) -> specialization_graph::Graph {
+) -> Result<&'_ specialization_graph::Graph, ErrorGuaranteed> {
     let mut sg = specialization_graph::Graph::new();
     let overlap_mode = specialization_graph::OverlapMode::get(tcx, trait_id);
 
@@ -270,6 +290,8 @@ pub(super) fn specialization_graph_provider(
     // by a flattened version of the `DefIndex`.
     trait_impls
         .sort_unstable_by_key(|def_id| (-(def_id.krate.as_u32() as i64), def_id.index.index()));
+
+    let mut errored = Ok(());
 
     for impl_def_id in trait_impls {
         if let Some(impl_def_id) = impl_def_id.as_local() {
@@ -283,15 +305,21 @@ pub(super) fn specialization_graph_provider(
             };
 
             if let Some(overlap) = overlap {
-                report_overlap_conflict(tcx, overlap, impl_def_id, used_to_be_allowed, &mut sg);
+                errored = errored.and(report_overlap_conflict(
+                    tcx,
+                    overlap,
+                    impl_def_id,
+                    used_to_be_allowed,
+                ));
             }
         } else {
             let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);
             sg.record_impl_from_cstore(tcx, parent, impl_def_id)
         }
     }
+    errored?;
 
-    sg
+    Ok(tcx.arena.alloc(sg))
 }
 
 // This function is only used when
@@ -304,36 +332,31 @@ fn report_overlap_conflict<'tcx>(
     overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
-    sg: &mut specialization_graph::Graph,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let impl_polarity = tcx.impl_polarity(impl_def_id.to_def_id());
     let other_polarity = tcx.impl_polarity(overlap.with_impl);
     match (impl_polarity, other_polarity) {
         (ty::ImplPolarity::Negative, ty::ImplPolarity::Positive) => {
-            report_negative_positive_conflict(
+            Err(report_negative_positive_conflict(
                 tcx,
                 &overlap,
                 impl_def_id,
                 impl_def_id.to_def_id(),
                 overlap.with_impl,
-                sg,
-            );
+            ))
         }
 
         (ty::ImplPolarity::Positive, ty::ImplPolarity::Negative) => {
-            report_negative_positive_conflict(
+            Err(report_negative_positive_conflict(
                 tcx,
                 &overlap,
                 impl_def_id,
                 overlap.with_impl,
                 impl_def_id.to_def_id(),
-                sg,
-            );
+            ))
         }
 
-        _ => {
-            report_conflicting_impls(tcx, overlap, impl_def_id, used_to_be_allowed, sg);
-        }
+        _ => report_conflicting_impls(tcx, overlap, impl_def_id, used_to_be_allowed),
     }
 }
 
@@ -343,16 +366,16 @@ fn report_negative_positive_conflict<'tcx>(
     local_impl_def_id: LocalDefId,
     negative_impl_def_id: DefId,
     positive_impl_def_id: DefId,
-    sg: &mut specialization_graph::Graph,
-) {
-    let mut err = tcx.dcx().create_err(NegativePositiveConflict {
-        impl_span: tcx.def_span(local_impl_def_id),
-        trait_desc: overlap.trait_ref,
-        self_ty: overlap.self_ty,
-        negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
-        positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
-    });
-    sg.has_errored = Some(err.emit());
+) -> ErrorGuaranteed {
+    tcx.dcx()
+        .create_err(NegativePositiveConflict {
+            impl_span: tcx.def_span(local_impl_def_id),
+            trait_desc: overlap.trait_ref,
+            self_ty: overlap.self_ty,
+            negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
+            positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
+        })
+        .emit()
 }
 
 fn report_conflicting_impls<'tcx>(
@@ -360,12 +383,11 @@ fn report_conflicting_impls<'tcx>(
     overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
-    sg: &mut specialization_graph::Graph,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let impl_span = tcx.def_span(impl_def_id);
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
-    // now because the struct_lint methods don't return back the DiagnosticBuilder
+    // now because the lint emit methods don't return back the DiagnosticBuilder
     // that's passed in.
     fn decorate<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -427,23 +449,20 @@ fn report_conflicting_impls<'tcx>(
                 || tcx.orphan_check_impl(impl_def_id).is_ok()
             {
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg);
-                err.code(error_code!(E0119));
+                err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
-                Some(err.emit())
+                err.emit()
             } else {
-                Some(
-                    tcx.dcx()
-                        .span_delayed_bug(impl_span, "impl should have failed the orphan check"),
-                )
+                tcx.dcx().span_delayed_bug(impl_span, "impl should have failed the orphan check")
             };
-            sg.has_errored = reported;
+            Err(reported)
         }
         Some(kind) => {
             let lint = match kind {
                 FutureCompatOverlapErrorKind::Issue33140 => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 lint,
                 tcx.local_def_id_to_hir_id(impl_def_id),
                 impl_span,
@@ -452,8 +471,9 @@ fn report_conflicting_impls<'tcx>(
                     decorate(tcx, &overlap, impl_span, err);
                 },
             );
+            Ok(())
         }
-    };
+    }
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

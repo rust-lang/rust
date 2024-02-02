@@ -60,8 +60,8 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -117,9 +117,9 @@ fn escape_literal(s: &str) -> String {
 /// field is only populated during an in-progress typeck.
 /// Get an instance by calling `InferCtxt::err_ctxt` or `FnCtxt::err_ctxt`.
 ///
-/// You must only create this if you intend to actually emit an error.
-/// This provides a lot of utility methods which should not be used
-/// during the happy path.
+/// You must only create this if you intend to actually emit an error (or
+/// perhaps a warning, though preferably not.) It provides a lot of utility
+/// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
@@ -133,9 +133,10 @@ pub struct TypeErrCtxt<'a, 'tcx> {
 
 impl Drop for TypeErrCtxt<'_, '_> {
     fn drop(&mut self) {
-        if let Some(_) = self.dcx().has_errors_or_span_delayed_bugs() {
-            // ok, emitted an error.
+        if self.dcx().has_errors().is_some() {
+            // Ok, emitted an error.
         } else {
+            // Didn't emit an error; maybe it was created but not yet emitted.
             self.infcx
                 .tcx
                 .sess
@@ -361,7 +362,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             );
         }
         ty::ReError(_) => {
-            err.delay_as_bug();
+            err.downgrade_to_delayed_bug();
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one
@@ -517,6 +518,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
+
+                    RegionResolutionError::CannotNormalize(ty, origin) => {
+                        self.tcx
+                            .dcx()
+                            .struct_span_err(origin.span(), format!("cannot normalize `{ty}`"))
+                            .emit();
+                    }
                 }
             }
         }
@@ -558,7 +566,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             RegionResolutionError::GenericBoundFailure(..) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
-            | RegionResolutionError::UpperBoundUniverseConflict(..) => false,
+            | RegionResolutionError::UpperBoundUniverseConflict(..)
+            | RegionResolutionError::CannotNormalize(..) => false,
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
@@ -573,6 +582,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
             RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
+            RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),
         });
         errors
     }
@@ -2348,23 +2358,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
             GenericKind::Placeholder(ref p) => format!("the placeholder type `{p:?}`"),
             GenericKind::Alias(ref p) => match p.kind(self.tcx) {
-                ty::AliasKind::Projection | ty::AliasKind::Inherent => {
+                ty::Projection | ty::Inherent => {
                     format!("the associated type `{p}`")
                 }
-                ty::AliasKind::Weak => format!("the type alias `{p}`"),
-                ty::AliasKind::Opaque => format!("the opaque type `{p}`"),
+                ty::Weak => format!("the type alias `{p}`"),
+                ty::Opaque => format!("the opaque type `{p}`"),
             },
         };
 
-        let mut err = self.tcx.dcx().struct_span_err_with_code(
-            span,
-            format!("{labeled_user_string} may not live long enough"),
-            match sub.kind() {
-                ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-                ty::ReStatic => error_code!(E0310),
-                _ => error_code!(E0311),
-            },
-        );
+        let mut err = self
+            .tcx
+            .dcx()
+            .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
+        err.code(match sub.kind() {
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => E0309,
+            ty::ReStatic => E0310,
+            _ => E0311,
+        });
 
         '_explain: {
             let (description, span) = match sub.kind() {
@@ -2545,7 +2555,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             add_lt_suggs,
             new_lt: &new_lt,
         };
-        match self.tcx.hir().expect_owner(lifetime_scope) {
+        match self.tcx.expect_hir_owner_node(lifetime_scope) {
             hir::OwnerNode::Item(i) => visitor.visit_item(i),
             hir::OwnerNode::ForeignItem(i) => visitor.visit_foreign_item(i),
             hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),
@@ -2780,7 +2790,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };
 
-        struct_span_err!(
+        struct_span_code_err!(
             self.tcx.dcx(),
             var_origin.span(),
             E0495,
@@ -2913,7 +2923,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         use crate::traits::ObligationCauseCode::*;
         let kind = match self.0.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",

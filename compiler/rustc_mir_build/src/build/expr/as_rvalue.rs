@@ -2,6 +2,7 @@
 
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::util::IntTypeExt;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{Abi, FieldIdx, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
@@ -15,7 +16,7 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current
@@ -156,7 +157,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     synth_info,
                     TerminatorKind::Call {
                         func: exchange_malloc,
-                        args: vec![Operand::Move(size), Operand::Move(align)],
+                        args: vec![
+                            Spanned { node: Operand::Move(size), span: DUMMY_SP },
+                            Spanned { node: Operand::Move(align), span: DUMMY_SP },
+                        ],
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,
@@ -387,8 +391,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_id,
                 args,
                 ref upvars,
-                movability,
                 ref fake_reads,
+                movability: _,
             }) => {
                 // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
                 // and push the fake reads.
@@ -474,10 +478,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let result = match args {
                     UpvarArgs::Coroutine(args) => {
-                        // We implicitly set the discriminant to 0. See
-                        // librustc_mir/transform/deaggregator.rs for details.
-                        let movability = movability.unwrap();
-                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args, movability))
+                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args))
                     }
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
@@ -736,7 +737,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[value_operand]);
+            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }

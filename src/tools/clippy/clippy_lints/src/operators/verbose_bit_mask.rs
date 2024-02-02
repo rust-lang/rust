@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
 use rustc_ast::ast::LitKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -19,9 +20,9 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Binary(op1, left1, right1) = &left.kind
         && BinOpKind::BitAnd == op1.node
         && let ExprKind::Lit(lit) = &right1.kind
-        && let LitKind::Int(n, _) = lit.node
+        && let LitKind::Int(Pu128(n), _) = lit.node
         && let ExprKind::Lit(lit1) = &right.kind
-        && let LitKind::Int(0, _) = lit1.node
+        && let LitKind::Int(Pu128(0), _) = lit1.node
         && n.leading_zeros() == n.count_zeros()
         && n > u128::from(threshold)
     {

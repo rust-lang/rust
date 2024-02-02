@@ -4,17 +4,18 @@
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
     CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError,
+    SuggestUpgradeCompiler,
 };
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
+use crate::Session;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
-    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    MultiSpan, StashKey,
+    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -75,11 +76,12 @@ impl SymbolGallery {
     }
 }
 
+// todo: this function now accepts `Session` instead of `ParseSess` and should be relocated
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbols`.
 #[track_caller]
 pub fn feature_err(
-    sess: &ParseSess,
+    sess: &Session,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagnosticMessage>,
@@ -93,7 +95,7 @@ pub fn feature_err(
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
 #[track_caller]
 pub fn feature_err_issue(
-    sess: &ParseSess,
+    sess: &Session,
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
@@ -103,12 +105,14 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.dcx.steal_diagnostic(span, StashKey::EarlySyntaxWarning) {
+        if let Some(err) = sess.parse_sess.dcx.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
+        {
             err.cancel()
         }
     }
 
-    let mut err = sess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
+    let mut err =
+        sess.parse_sess.dcx.create_err(FeatureGateError { span, explain: explain.into() });
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
     err
 }
@@ -117,7 +121,7 @@ pub fn feature_err_issue(
 ///
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
 #[track_caller]
-pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'static str) {
+pub fn feature_warn(sess: &Session, feature: Symbol, span: Span, explain: &'static str) {
     feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
 }
 
@@ -131,23 +135,19 @@ pub fn feature_warn(sess: &ParseSess, feature: Symbol, span: Span, explain: &'st
 #[allow(rustc::untranslatable_diagnostic)]
 #[track_caller]
 pub fn feature_warn_issue(
-    sess: &ParseSess,
+    sess: &Session,
     feature: Symbol,
     span: Span,
     issue: GateIssue,
     explain: &'static str,
 ) {
-    let mut err = sess.dcx.struct_span_warn(span, explain);
+    let mut err = sess.parse_sess.dcx.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
 
-    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
+    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
-    err.code(DiagnosticId::Lint {
-        name: lint.name_lower(),
-        has_future_breakage: false,
-        is_force_warn: false,
-    });
+    err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
     err.warn(lint.desc);
     err.note(format!("for more information, see {}", future_incompatible.reference));
 
@@ -156,7 +156,7 @@ pub fn feature_warn_issue(
 }
 
 /// Adds the diagnostics for a feature to an existing error.
-pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &ParseSess, feature: Symbol) {
+pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &Session, feature: Symbol) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false);
 }
 
@@ -167,7 +167,7 @@ pub fn add_feature_diagnostics(err: &mut Diagnostic, sess: &ParseSess, feature: 
 /// `add_feature_diagnostics`.
 pub fn add_feature_diagnostics_for_issue(
     err: &mut Diagnostic,
-    sess: &ParseSess,
+    sess: &Session,
     feature: Symbol,
     issue: GateIssue,
     feature_from_cli: bool,
@@ -177,11 +177,17 @@ pub fn add_feature_diagnostics_for_issue(
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
-    if sess.unstable_features.is_nightly_build() {
+    if sess.parse_sess.unstable_features.is_nightly_build() {
         if feature_from_cli {
             err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
         } else {
             err.subdiagnostic(FeatureDiagnosticHelp { feature });
+        }
+
+        if sess.opts.unstable_opts.ui_testing {
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
+            err.subdiagnostic(suggestion);
         }
     }
 }

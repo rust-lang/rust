@@ -4,10 +4,11 @@
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableCompare, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -101,6 +102,7 @@ symbols! {
         Gen:                "gen",
         MacroRules:         "macro_rules",
         Raw:                "raw",
+        Reuse:              "reuse",
         Union:              "union",
         Yeet:               "yeet",
     }
@@ -244,17 +246,7 @@ symbols! {
         MutexGuard,
         N,
         NonNull,
-        NonZeroI128,
-        NonZeroI16,
-        NonZeroI32,
-        NonZeroI64,
-        NonZeroI8,
-        NonZeroU128,
-        NonZeroU16,
-        NonZeroU32,
-        NonZeroU64,
-        NonZeroU8,
-        NonZeroUsize,
+        NonZero,
         None,
         Normal,
         Ok,
@@ -308,7 +300,6 @@ symbols! {
         Some,
         SpanCtxt,
         String,
-        StructuralEq,
         StructuralPartialEq,
         SubdiagnosticMessage,
         Sync,
@@ -423,8 +414,14 @@ symbols! {
         assume,
         assume_init,
         async_await,
+        async_call,
+        async_call_mut,
+        async_call_once,
         async_closure,
+        async_fn,
         async_fn_in_trait,
+        async_fn_mut,
+        async_fn_once,
         async_fn_track_caller,
         async_for_loop,
         async_iterator,
@@ -602,6 +599,7 @@ symbols! {
         core_panic_macro,
         coroutine,
         coroutine_clone,
+        coroutine_resume,
         coroutine_state,
         coroutines,
         cosf128,
@@ -757,6 +755,7 @@ symbols! {
         extern_in_paths,
         extern_prelude,
         extern_types,
+        external,
         external_doc,
         f,
         f128,
@@ -926,6 +925,7 @@ symbols! {
         io_stderr,
         io_stdout,
         irrefutable_let_patterns,
+        is_val_statically_known,
         isa_attribute,
         isize,
         issue,
@@ -1047,6 +1047,7 @@ symbols! {
         min_const_fn,
         min_const_generics,
         min_const_unsafe_fn,
+        min_exhaustive_patterns,
         min_specialization,
         min_type_alias_impl_trait,
         minnumf128,
@@ -1054,6 +1055,7 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
+        mir_assume,
         mir_basic_block,
         mir_call,
         mir_cast_transmute,
@@ -1071,6 +1073,7 @@ symbols! {
         mir_offset,
         mir_retag,
         mir_return,
+        mir_return_to,
         mir_set_discriminant,
         mir_static,
         mir_static_mut,
@@ -1181,6 +1184,7 @@ symbols! {
         offset,
         offset_of,
         offset_of_enum,
+        offset_of_nested,
         ok_or_else,
         omit_gdb_pretty_printer_section,
         on,
@@ -1657,7 +1661,6 @@ symbols! {
         struct_variant,
         structural_match,
         structural_peq,
-        structural_teq,
         sub,
         sub_assign,
         sub_with_overflow,
@@ -1856,6 +1859,7 @@ symbols! {
         xmm_reg,
         yeet_desugar_details,
         yeet_expr,
+        yes,
         yield_expr,
         ymm_reg,
         zmm_reg,
@@ -2123,19 +2127,6 @@ impl ToString for Symbol {
     }
 }
 
-impl<S: Encoder> Encodable<S> for Symbol {
-    default fn encode(&self, s: &mut S) {
-        s.emit_str(self.as_str());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for Symbol {
-    #[inline]
-    default fn decode(d: &mut D) -> Symbol {
-        Symbol::intern(d.read_str())
-    }
-}
-
 impl<CTX> HashStable<CTX> for Symbol {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
@@ -2148,6 +2139,14 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
     #[inline]
     fn to_stable_hash_key(&self, _: &CTX) -> String {
         self.as_str().to_string()
+    }
+}
+
+impl StableCompare for Symbol {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_str().cmp(other.as_str())
     }
 }
 

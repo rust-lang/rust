@@ -21,7 +21,7 @@ mod no_generics {
 }
 
 mod type_and_type {
-    struct Ty<A, B>;
+    struct Ty<A, B>(A, B);
 
     type A = Ty;
     //~^ ERROR missing generics for struct `type_and_type::Ty`
@@ -43,7 +43,7 @@ mod type_and_type {
 }
 
 mod lifetime_and_type {
-    struct Ty<'a, T>;
+    struct Ty<'a, T>(&'a T);
 
     type A = Ty;
     //~^ ERROR missing generics for struct
@@ -75,7 +75,7 @@ mod lifetime_and_type {
 }
 
 mod type_and_type_and_type {
-    struct Ty<A, B, C = &'static str>;
+    struct Ty<A, B, C = &'static str>(A, B, C);
 
     type A = Ty;
     //~^ ERROR missing generics for struct `type_and_type_and_type::Ty`

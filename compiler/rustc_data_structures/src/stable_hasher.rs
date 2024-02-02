@@ -245,6 +245,32 @@ unsafe impl<T: StableOrd> StableOrd for &T {
     const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
 }
 
+/// This is a companion trait to `StableOrd`. Some types like `Symbol` can be
+/// compared in a cross-session stable way, but their `Ord` implementation is
+/// not stable. In such cases, a `StableOrd` implementation can be provided
+/// to offer a lightweight way for stable sorting. (The more heavyweight option
+/// is to sort via `ToStableHashKey`, but then sorting needs to have access to
+/// a stable hashing context and `ToStableHashKey` can also be expensive as in
+/// the case of `Symbol` where it has to allocate a `String`.)
+///
+/// See the documentation of [StableOrd] for how stable sort order is defined.
+/// The same definition applies here. Be careful when implementing this trait.
+pub trait StableCompare {
+    const CAN_USE_UNSTABLE_SORT: bool;
+
+    fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering;
+}
+
+/// `StableOrd` denotes that the type's `Ord` implementation is stable, so
+/// we can implement `StableCompare` by just delegating to `Ord`.
+impl<T: StableOrd> StableCompare for T {
+    const CAN_USE_UNSTABLE_SORT: bool = T::CAN_USE_UNSTABLE_SORT;
+
+    fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cmp(other)
+    }
+}
+
 /// Implement HashStable by just calling `Hash::hash()`. Also implement `StableOrd` for the type since
 /// that has the same requirements.
 ///
@@ -288,7 +314,19 @@ impl_stable_traits_for_trivial_type!(char);
 impl_stable_traits_for_trivial_type!(());
 
 impl_stable_traits_for_trivial_type!(Hash64);
-impl_stable_traits_for_trivial_type!(Hash128);
+
+// We need a custom impl as the default hash function will only hash half the bits. For stable
+// hashing we want to hash the full 128-bit hash.
+impl<CTX> HashStable<CTX> for Hash128 {
+    #[inline]
+    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+        self.as_u128().hash(hasher);
+    }
+}
+
+unsafe impl StableOrd for Hash128 {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {

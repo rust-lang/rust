@@ -642,7 +642,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
+                  wrapping this in an `assert!()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
@@ -921,14 +921,14 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => panic("called `Option::unwrap()` on a `None` value"),
+            None => unwrap_failed(),
         }
     }
 
@@ -1970,6 +1970,14 @@ impl<T, E> Option<Result<T, E>> {
     }
 }
 
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cold]
+#[track_caller]
+const fn unwrap_failed() -> ! {
+    panic("called `Option::unwrap()` on a `None` value")
+}
+
 // This is a separate function to reduce the code size of .expect() itself.
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
@@ -2147,6 +2155,7 @@ impl<T: PartialEq> PartialEq for Option<T> {
 ///
 /// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
 /// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
+/// The comment regarding this trait on the `newtype_index` macro should be removed if this is done.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {

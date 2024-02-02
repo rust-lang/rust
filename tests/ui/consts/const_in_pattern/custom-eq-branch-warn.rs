@@ -27,9 +27,9 @@ const BAR_BAZ: Foo = if 42 == 42 {
 fn main() {
     match Foo::Qux(CustomEq) {
         BAR_BAZ => panic!(),
-        //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ WARN must be annotated with `#[derive(PartialEq)]`
         //~| NOTE the traits must be derived
-        //~| NOTE StructuralEq.html for details
+        //~| NOTE StructuralPartialEq.html for details
         //~| WARN this was previously accepted
         //~| NOTE see issue #73448
         //~| NOTE `#[warn(nontrivial_structural_match)]` on by default

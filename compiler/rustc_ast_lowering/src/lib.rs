@@ -33,10 +33,8 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
-#![feature(if_let_guard)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -66,7 +64,6 @@ use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
 
@@ -78,6 +75,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod delegation;
 mod errors;
 mod expr;
 mod format;
@@ -305,8 +303,6 @@ enum ImplTraitPosition {
     ClosureParam,
     PointerParam,
     FnTraitParam,
-    TraitParam,
-    ImplParam,
     ExternFnReturn,
     ClosureReturn,
     PointerReturn,
@@ -325,29 +321,27 @@ impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             ImplTraitPosition::Path => "paths",
-            ImplTraitPosition::Variable => "variable bindings",
+            ImplTraitPosition::Variable => "the type of variable bindings",
             ImplTraitPosition::Trait => "traits",
             ImplTraitPosition::AsyncBlock => "async blocks",
             ImplTraitPosition::Bound => "bounds",
             ImplTraitPosition::Generic => "generics",
-            ImplTraitPosition::ExternFnParam => "`extern fn` params",
-            ImplTraitPosition::ClosureParam => "closure params",
-            ImplTraitPosition::PointerParam => "`fn` pointer params",
-            ImplTraitPosition::FnTraitParam => "`Fn` trait params",
-            ImplTraitPosition::TraitParam => "trait method params",
-            ImplTraitPosition::ImplParam => "`impl` method params",
+            ImplTraitPosition::ExternFnParam => "`extern fn` parameters",
+            ImplTraitPosition::ClosureParam => "closure parameters",
+            ImplTraitPosition::PointerParam => "`fn` pointer parameters",
+            ImplTraitPosition::FnTraitParam => "the parameters of `Fn` trait bounds",
             ImplTraitPosition::ExternFnReturn => "`extern fn` return types",
             ImplTraitPosition::ClosureReturn => "closure return types",
             ImplTraitPosition::PointerReturn => "`fn` pointer return types",
-            ImplTraitPosition::FnTraitReturn => "`Fn` trait return types",
+            ImplTraitPosition::FnTraitReturn => "the return type of `Fn` trait bounds",
             ImplTraitPosition::GenericDefault => "generic parameter defaults",
             ImplTraitPosition::ConstTy => "const types",
             ImplTraitPosition::StaticTy => "static types",
             ImplTraitPosition::AssocTy => "associated types",
             ImplTraitPosition::FieldTy => "field types",
-            ImplTraitPosition::Cast => "cast types",
+            ImplTraitPosition::Cast => "cast expression types",
             ImplTraitPosition::ImplSelf => "impl headers",
-            ImplTraitPosition::OffsetOf => "`offset_of!` params",
+            ImplTraitPosition::OffsetOf => "`offset_of!` parameters",
         };
 
         write!(f, "{name}")
@@ -363,19 +357,6 @@ enum FnDeclKind {
     Pointer,
     Trait,
     Impl,
-}
-
-impl FnDeclKind {
-    fn param_impl_trait_allowed(&self) -> bool {
-        matches!(self, FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait)
-    }
-
-    fn return_impl_trait_allowed(&self) -> bool {
-        match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -679,9 +660,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (opt_hash_including_bodies, attrs_hash) = if self.tcx.needs_crate_hash() {
             self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
-                hcx.with_hir_bodies(node.def_id(), &bodies, |hcx| {
-                    node.hash_stable(hcx, &mut stable_hasher)
-                });
+                node.hash_stable(&mut hcx, &mut stable_hasher);
+                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+                bodies.hash_stable(&mut hcx, &mut stable_hasher);
                 let h1 = stable_hasher.finish();
 
                 let mut stable_hasher = StableHasher::new();
@@ -884,27 +865,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = generic_params
-            .iter()
-            .map(|param| {
-                let param = match param.kind {
-                    GenericParamKind::Type { ref default } if let Some(ty) = default => {
-                        // Default type is not permitted in non-lifetime binders.
-                        // So we emit an error and default to `None` to prevent
-                        // potential ice.
-                        self.dcx().emit_err(errors::UnexpectedDefaultParameterInBinder {
-                            span: ty.span(),
-                        });
-                        let param = GenericParam {
-                            kind: GenericParamKind::Type { default: None },
-                            ..param.clone()
-                        };
-                        Cow::Owned(param)
-                    }
-                    _ => Cow::Borrowed(param),
-                };
-                self.lower_generic_param(param.as_ref(), hir::GenericParamSource::Binder)
-            })
+        let mut generic_params: Vec<_> = self
+            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
             .collect();
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
@@ -1079,7 +1041,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         {
                             add_feature_diagnostics(
                                 &mut err,
-                                &self.tcx.sess.parse_sess,
+                                &self.tcx.sess,
                                 sym::return_type_notation,
                             );
                         }
@@ -1454,19 +1416,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
-                            GenericBound::Trait(
-                                ty,
-                                TraitBoundModifiers {
-                                    polarity: BoundPolarity::Positive | BoundPolarity::Negative(_),
-                                    constness,
-                                },
-                            ) => Some(this.lower_poly_trait_ref(ty, itctx, *constness)),
-                            // We can safely ignore constness here, since AST validation
-                            // will take care of invalid modifier combinations.
-                            GenericBound::Trait(
-                                _,
-                                TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
-                            ) => None,
+                            // We can safely ignore constness here since AST validation
+                            // takes care of rejecting invalid modifier combinations and
+                            // const trait bounds in trait object types.
+                            GenericBound::Trait(ty, modifiers) => match modifiers.polarity {
+                                BoundPolarity::Positive | BoundPolarity::Negative(_) => {
+                                    Some(this.lower_poly_trait_ref(
+                                        ty,
+                                        itctx,
+                                        // Still, don't pass along the constness here; we don't want to
+                                        // synthesize any host effect args, it'd only cause problems.
+                                        ast::BoundConstness::Never,
+                                    ))
+                                }
+                                BoundPolarity::Maybe(_) => None,
+                            },
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
                                     lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -1860,19 +1824,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
-            let itctx = if kind.param_impl_trait_allowed() {
-                ImplTraitContext::Universal
-            } else {
-                ImplTraitContext::Disallowed(match kind {
-                    FnDeclKind::Fn | FnDeclKind::Inherent => {
-                        unreachable!("fn should allow APIT")
-                    }
-                    FnDeclKind::ExternFn => ImplTraitPosition::ExternFnParam,
-                    FnDeclKind::Closure => ImplTraitPosition::ClosureParam,
-                    FnDeclKind::Pointer => ImplTraitPosition::PointerParam,
-                    FnDeclKind::Trait => ImplTraitPosition::TraitParam,
-                    FnDeclKind::Impl => ImplTraitPosition::ImplParam,
-                })
+            let itctx = match kind {
+                FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
+                    ImplTraitContext::Universal
+                }
+                FnDeclKind::ExternFn => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnParam)
+                }
+                FnDeclKind::Closure => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::ClosureParam)
+                }
+                FnDeclKind::Pointer => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::PointerParam)
+                }
             };
             self.lower_ty_direct(&param.ty, &itctx)
         }));
@@ -1884,26 +1848,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             None => match &decl.output {
                 FnRetTy::Ty(ty) => {
-                    let context = if kind.return_impl_trait_allowed() {
-                        let fn_def_id = self.local_def_id(fn_node_id);
-                        ImplTraitContext::ReturnPositionOpaqueTy {
-                            origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                    let itctx = match kind {
+                        FnDeclKind::Fn
+                        | FnDeclKind::Inherent
+                        | FnDeclKind::Trait
+                        | FnDeclKind::Impl => ImplTraitContext::ReturnPositionOpaqueTy {
+                            origin: hir::OpaqueTyOrigin::FnReturn(self.local_def_id(fn_node_id)),
                             fn_kind: kind,
+                        },
+                        FnDeclKind::ExternFn => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnReturn)
                         }
-                    } else {
-                        ImplTraitContext::Disallowed(match kind {
-                            FnDeclKind::Fn
-                            | FnDeclKind::Inherent
-                            | FnDeclKind::Trait
-                            | FnDeclKind::Impl => {
-                                unreachable!("fn should allow return-position impl trait in traits")
-                            }
-                            FnDeclKind::ExternFn => ImplTraitPosition::ExternFnReturn,
-                            FnDeclKind::Closure => ImplTraitPosition::ClosureReturn,
-                            FnDeclKind::Pointer => ImplTraitPosition::PointerReturn,
-                        })
+                        FnDeclKind::Closure => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ClosureReturn)
+                        }
+                        FnDeclKind::Pointer => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::PointerReturn)
+                        }
                     };
-                    hir::FnRetTy::Return(self.lower_ty(ty, &context))
+                    hir::FnRetTy::Return(self.lower_ty(ty, &itctx))
                 }
                 FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(self.lower_span(*span)),
             },
@@ -2136,7 +2099,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(param);
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2155,6 +2118,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_param_kind(
         &mut self,
         param: &GenericParam,
+        source: hir::GenericParamSource,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2173,22 +2137,51 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (param_name, kind)
             }
             GenericParamKind::Type { default, .. } => {
-                let kind = hir::GenericParamKind::Type {
-                    default: default.as_ref().map(|x| {
+                // Not only do we deny type param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| {
                         self.lower_ty(
-                            x,
+                            def,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
                         )
-                    }),
-                    synthetic: false,
-                };
+                    });
+
+                let kind = hir::GenericParamKind::Type { default, synthetic: false };
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
                 let ty = self
                     .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
-                let default = default.as_ref().map(|def| self.lower_anon_const(def));
+
+                // Not only do we deny const param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| self.lower_anon_const(def));
+
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
                     hir::GenericParamKind::Const { ty, default, is_host_effect: false },
@@ -2312,10 +2305,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer {
-                    hir::ArrayLen::Infer(self.lower_node_id(c.id), self.lower_span(c.value.span))
+                    hir::ArrayLen::Infer(hir::InferArg {
+                        hir_id: self.lower_node_id(c.id),
+                        span: self.lower_span(c.value.span),
+                    })
                 } else {
                     feature_err(
-                        &self.tcx.sess.parse_sess,
+                        &self.tcx.sess,
                         sym::generic_arg_infer,
                         c.value.span,
                         "using `_` for array lengths is unstable",

@@ -329,11 +329,13 @@ impl Waker {
         Waker { waker }
     }
 
-    /// Creates a new `Waker` that does nothing when `wake` is called.
+    /// Returns a reference to a `Waker` that does nothing when used.
     ///
     /// This is mostly useful for writing tests that need a [`Context`] to poll
     /// some futures, but are not expecting those futures to wake the waker or
     /// do not need to do anything specific if it happens.
+    ///
+    /// If an owned `Waker` is needed, `clone()` this one.
     ///
     /// # Examples
     ///
@@ -343,8 +345,7 @@ impl Waker {
     /// use std::future::Future;
     /// use std::task;
     ///
-    /// let waker = task::Waker::noop();
-    /// let mut cx = task::Context::from_waker(&waker);
+    /// let mut cx = task::Context::from_waker(task::Waker::noop());
     ///
     /// let mut future = Box::pin(async { 10 });
     /// assert_eq!(future.as_mut().poll(&mut cx), task::Poll::Ready(10));
@@ -352,7 +353,12 @@ impl Waker {
     #[inline]
     #[must_use]
     #[unstable(feature = "noop_waker", issue = "98286")]
-    pub const fn noop() -> Waker {
+    pub const fn noop() -> &'static Waker {
+        // Ideally all this data would be explicitly `static` because it is used by reference and
+        // only ever needs one copy. But `const fn`s (and `const` items) cannot refer to statics,
+        // even though their values can be promoted to static. (That might change; see #119618.)
+        // An alternative would be a `pub static NOOP: &Waker`, but associated static items are not
+        // currently allowed either, and making it non-associated would be unergonomic.
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
             |_| RAW,
@@ -364,8 +370,9 @@ impl Waker {
             |_| {},
         );
         const RAW: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
+        const WAKER_REF: &Waker = &Waker { waker: RAW };
 
-        Waker { waker: RAW }
+        WAKER_REF
     }
 
     /// Get a reference to the underlying [`RawWaker`].

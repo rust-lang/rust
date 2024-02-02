@@ -40,18 +40,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "stat" | "stat64" | "stat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_stat(path, buf)?;
+                let result = this.macos_fbsd_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat64" | "lstat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_lstat(path, buf)?;
+                let result = this.macos_fbsd_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat64" | "fstat$INODE64" => {
                 let [fd, buf] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_fstat(fd, buf)?;
+                let result = this.macos_fbsd_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
@@ -62,14 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "readdir_r" | "readdir_r$INODE64" => {
                 let [dirp, entry, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_readdir_r(dirp, entry, result)?;
-                this.write_scalar(result, dest)?;
-            }
-            "lseek" => {
-                let [fd, offset, whence] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // macOS is 64bit-only, so this is lseek64
-                let result = this.lseek64(fd, offset, whence)?;
+                let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
             "realpath$DARWIN_EXTSN" => {

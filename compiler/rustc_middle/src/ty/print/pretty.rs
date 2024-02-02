@@ -12,10 +12,9 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
-use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -365,26 +364,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
-        if with_forced_trimmed_paths() {
-            let trimmed = self.force_print_trimmed_def_path(def_id)?;
-            if trimmed {
-                return Ok(true);
-            }
+        if with_forced_trimmed_paths() && self.force_print_trimmed_def_path(def_id)? {
+            return Ok(true);
         }
-        if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
-            || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
-            || with_no_trimmed_paths()
-            || with_crate_prefix()
+        if self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
+            && self.tcx().sess.opts.trimmed_def_paths
+            && !with_no_trimmed_paths()
+            && !with_crate_prefix()
+            && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
         {
-            return Ok(false);
-        }
-
-        match self.tcx().trimmed_def_paths(()).get(&def_id) {
-            None => Ok(false),
-            Some(symbol) => {
-                write!(self, "{}", Ident::with_dummy_span(*symbol))?;
-                Ok(true)
-            }
+            write!(self, "{}", Ident::with_dummy_span(*symbol))?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -783,14 +775,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::Str => p!("str"),
-            ty::Coroutine(did, args, movability) => {
+            ty::Coroutine(did, args) => {
                 p!(write("{{"));
                 let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
                 let should_print_movability = self.should_print_verbose()
                     || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
 
                 if should_print_movability {
-                    match movability {
+                    match coroutine_kind.movability() {
                         hir::Movability::Movable => {}
                         hir::Movability::Static => p!("static "),
                     }
@@ -812,17 +804,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 } else {
                     p!(print_def_path(did, args));
-                    p!(" upvar_tys=(");
-                    if !args.as_coroutine().is_valid() {
-                        p!("unavailable");
-                    } else {
-                        self.comma_sep(args.as_coroutine().upvar_tys().iter())?;
-                    }
-                    p!(")");
-
-                    if args.as_coroutine().is_valid() {
-                        p!(" ", print(args.as_coroutine().witness()));
-                    }
+                    p!(
+                        " upvar_tys=",
+                        print(args.as_coroutine().tupled_upvars_ty()),
+                        " witness=",
+                        print(args.as_coroutine().witness())
+                    );
                 }
 
                 p!("}}")
@@ -876,19 +863,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 } else {
                     p!(print_def_path(did, args));
-                    if !args.as_closure().is_valid() {
-                        p!(" closure_args=(unavailable)");
-                        p!(write(" args={}", args.print_as_list()));
-                    } else {
-                        p!(" closure_kind_ty=", print(args.as_closure().kind_ty()));
-                        p!(
-                            " closure_sig_as_fn_ptr_ty=",
-                            print(args.as_closure().sig_as_fn_ptr_ty())
-                        );
-                        p!(" upvar_tys=(");
-                        self.comma_sep(args.as_closure().upvar_tys().iter())?;
-                        p!(")");
-                    }
+                    p!(
+                        " closure_kind_ty=",
+                        print(args.as_closure().kind_ty()),
+                        " closure_sig_as_fn_ptr_ty=",
+                        print(args.as_closure().sig_as_fn_ptr_ty()),
+                        " upvar_tys=",
+                        print(args.as_closure().tupled_upvars_ty())
+                    );
                 }
                 p!("}}");
             }
@@ -912,7 +894,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
-        let mut is_sized = false;
+        let mut has_sized_bound = false;
+        let mut has_negative_sized_bound = false;
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
         for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
@@ -922,13 +905,24 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::ClauseKind::Trait(pred) => {
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
-                    // Don't print + Sized, but rather + ?Sized if absent.
+                    // Don't print `+ Sized`, but rather `+ ?Sized` if absent.
                     if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
-                        is_sized = true;
-                        continue;
+                        match pred.polarity {
+                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {
+                                has_sized_bound = true;
+                                continue;
+                            }
+                            ty::ImplPolarity::Negative => has_negative_sized_bound = true,
+                        }
                     }
 
-                    self.insert_trait_and_projection(trait_ref, None, &mut traits, &mut fn_traits);
+                    self.insert_trait_and_projection(
+                        trait_ref,
+                        pred.polarity,
+                        None,
+                        &mut traits,
+                        &mut fn_traits,
+                    );
                 }
                 ty::ClauseKind::Projection(pred) => {
                     let proj_ref = bound_predicate.rebind(pred);
@@ -939,6 +933,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                     self.insert_trait_and_projection(
                         trait_ref,
+                        ty::ImplPolarity::Positive,
                         Some(proj_ty),
                         &mut traits,
                         &mut fn_traits,
@@ -955,7 +950,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
-        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !is_sized;
+        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
         for (fn_once_trait_ref, entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
@@ -1002,18 +997,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     // trait_refs we collected in the OpaqueFnEntry as normal trait refs.
                     _ => {
                         if entry.has_fn_once {
-                            traits.entry(fn_once_trait_ref).or_default().extend(
-                                // Group the return ty with its def id, if we had one.
-                                entry
-                                    .return_ty
-                                    .map(|ty| (tcx.require_lang_item(LangItem::FnOnce, None), ty)),
-                            );
+                            traits
+                                .entry((fn_once_trait_ref, ty::ImplPolarity::Positive))
+                                .or_default()
+                                .extend(
+                                    // Group the return ty with its def id, if we had one.
+                                    entry.return_ty.map(|ty| {
+                                        (tcx.require_lang_item(LangItem::FnOnceOutput, None), ty)
+                                    }),
+                                );
                         }
                         if let Some(trait_ref) = entry.fn_mut_trait_ref {
-                            traits.entry(trait_ref).or_default();
+                            traits.entry((trait_ref, ty::ImplPolarity::Positive)).or_default();
                         }
                         if let Some(trait_ref) = entry.fn_trait_ref {
-                            traits.entry(trait_ref).or_default();
+                            traits.entry((trait_ref, ty::ImplPolarity::Positive)).or_default();
                         }
                     }
                 }
@@ -1023,11 +1021,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // Print the rest of the trait types (that aren't Fn* family of traits)
-        for (trait_ref, assoc_items) in traits {
+        for ((trait_ref, polarity), assoc_items) in traits {
             write!(self, "{}", if first { "" } else { " + " })?;
 
             self.wrap_binder(&trait_ref, |trait_ref, cx| {
                 define_scoped_cx!(cx);
+
+                if polarity == ty::ImplPolarity::Negative {
+                    p!("!");
+                }
                 p!(print(trait_ref.print_only_trait_name()));
 
                 let generics = tcx.generics_of(trait_ref.def_id);
@@ -1055,7 +1057,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
-                            if let ty::Coroutine(_, args, _) = args.type_at(0).kind() {
+                            if let ty::Coroutine(_, args) = args.type_at(0).kind() {
                                 let return_ty = args.as_coroutine().return_ty();
                                 if !return_ty.is_ty_var() {
                                     return_ty.into()
@@ -1094,9 +1096,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             })?;
         }
 
-        if !is_sized {
-            write!(self, "{}?Sized", if first { "" } else { " + " })?;
-        } else if first {
+        let add_sized = has_sized_bound && (first || has_negative_sized_bound);
+        let add_maybe_sized = !has_sized_bound && !has_negative_sized_bound;
+        if add_sized || add_maybe_sized {
+            if !first {
+                write!(self, " + ")?;
+            }
+            if add_maybe_sized {
+                write!(self, "?")?;
+            }
             write!(self, "Sized")?;
         }
 
@@ -1128,9 +1136,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn insert_trait_and_projection(
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        polarity: ty::ImplPolarity,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
         traits: &mut FxIndexMap<
-            ty::PolyTraitRef<'tcx>,
+            (ty::PolyTraitRef<'tcx>, ty::ImplPolarity),
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
         fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
@@ -1139,7 +1148,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         // If our trait_ref is FnOnce or any of its children, project it onto the parent FnOnce
         // super-trait ref and record it there.
-        if let Some(fn_once_trait) = self.tcx().lang_items().fn_once_trait() {
+        // We skip negative Fn* bounds since they can't use parenthetical notation anyway.
+        if polarity == ty::ImplPolarity::Positive
+            && let Some(fn_once_trait) = self.tcx().lang_items().fn_once_trait()
+        {
             // If we have a FnOnce, then insert it into
             if trait_def_id == fn_once_trait {
                 let entry = fn_traits.entry(trait_ref).or_default();
@@ -1167,7 +1179,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // Otherwise, just group our traits and projection types.
-        traits.entry(trait_ref).or_default().extend(proj_ty);
+        traits.entry((trait_ref, polarity)).or_default().extend(proj_ty);
     }
 
     fn pretty_print_inherent_projection(
@@ -1703,6 +1715,25 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
             Ok(())
         })
+    }
+
+    fn pretty_print_bound_constness(
+        &mut self,
+        trait_ref: ty::TraitRef<'tcx>,
+    ) -> Result<(), PrintError> {
+        define_scoped_cx!(self);
+
+        let Some(idx) = self.tcx().generics_of(trait_ref.def_id).host_effect_index else {
+            return Ok(());
+        };
+        let arg = trait_ref.args.const_at(idx);
+
+        if arg == self.tcx().consts.false_ {
+            p!("const ");
+        } else if arg != self.tcx().consts.true_ && !arg.has_infer() {
+            p!("~const ");
+        }
+        Ok(())
     }
 
     fn should_print_verbose(&self) -> bool {
@@ -2609,7 +2640,7 @@ where
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintOnlyTraitPath<'tcx> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -2626,7 +2657,7 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 pub struct TraitRefPrintSugared<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> rustc_errors::IntoDiagnosticArg for TraitRefPrintSugared<'tcx> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -2874,13 +2905,7 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
-        {
-            let arg = self.0.trait_ref.args.const_at(idx);
-            if arg != cx.tcx().consts.true_ && !arg.has_infer() {
-                p!("~const ");
-            }
-        }
+        p!(pretty_print_bound_constness(self.0.trait_ref));
         if let ty::ImplPolarity::Negative = self.0.polarity {
             p!("!")
         }
@@ -2913,11 +2938,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let Some(idx) = cx.tcx().generics_of(self.trait_ref.def_id).host_effect_index {
-            if self.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
-                p!("~const ");
-            }
-        }
+        p!(pretty_print_bound_constness(self.trait_ref));
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }
@@ -3048,19 +3069,18 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 ///
 /// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths!`].
 // this is pub to be able to intra-doc-link it
-pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
-    let mut map: FxHashMap<DefId, Symbol> = FxHashMap::default();
+pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
+    // Trimming paths is expensive and not optimized, since we expect it to only be used for error
+    // reporting.
+    //
+    // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
+    // wrapper can be used to suppress this query, in exchange for full paths being formatted.
+    tcx.sess.good_path_delayed_bug(
+        "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
+    );
 
-    if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
-        // Trimming paths is expensive and not optimized, since we expect it to only be used for error reporting.
-        //
-        // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
-        // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-        tcx.sess.good_path_delayed_bug(
-            "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
-        );
-    }
-
+    // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
+    // non-unique pairs will have a `None` entry.
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
         &mut FxHashMap::default();
 
@@ -3090,6 +3110,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
         }
     });
 
+    // Put the symbol from all the unique namespace+symbol pairs into `map`.
+    let mut map: DefIdMap<Symbol> = Default::default();
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 

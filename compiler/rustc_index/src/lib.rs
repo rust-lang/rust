@@ -2,16 +2,9 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![cfg_attr(
     feature = "nightly",
-    feature(
-        allow_internal_unstable,
-        extend_one,
-        min_specialization,
-        new_uninit,
-        step_trait,
-        stmt_expr_attributes,
-        test
-    )
+    feature(extend_one, min_specialization, new_uninit, step_trait, test)
 )]
+#![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 pub mod bit_set;

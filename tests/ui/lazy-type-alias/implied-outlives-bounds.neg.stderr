@@ -1,0 +1,34 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:21:12
+   |
+LL | fn env0<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     let _: TypeOutlives<'static, &'any ()>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:26:12
+   |
+LL | fn env1<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     let _: RegionOutlives<'static, 'any>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:31:12
+   |
+LL | fn env2<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     let _: Outer0<'static, &'any ()>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/implied-outlives-bounds.rs:36:12
+   |
+LL | fn env3<'any>() {
+   |         ---- lifetime `'any` defined here
+LL |     let _: Outer1<'static, &'any ()>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'any` must outlive `'static`
+
+error: aborting due to 4 previous errors
+

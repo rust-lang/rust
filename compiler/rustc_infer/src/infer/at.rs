@@ -84,12 +84,13 @@ impl<'tcx> InferCtxt<'tcx> {
             selection_cache: self.selection_cache.clone(),
             evaluation_cache: self.evaluation_cache.clone(),
             reported_trait_errors: self.reported_trait_errors.clone(),
-            reported_closure_mismatch: self.reported_closure_mismatch.clone(),
+            reported_signature_mismatch: self.reported_signature_mismatch.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             err_count_on_creation: self.err_count_on_creation,
             universe: self.universe.clone(),
             intercrate,
             next_trait_solver: self.next_trait_solver,
+            obligation_inspector: self.obligation_inspector.clone(),
         }
     }
 }

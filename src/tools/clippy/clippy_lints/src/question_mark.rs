@@ -8,7 +8,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item,
     is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt,
+    peel_blocks_with_stmt, span_contains_comment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -75,13 +75,7 @@ enum IfBlockType<'hir> {
     /// An `if x.is_xxx() { a } else { b } ` expression.
     ///
     /// Contains: caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)
-    IfIs(
-        &'hir Expr<'hir>,
-        Ty<'hir>,
-        Symbol,
-        &'hir Expr<'hir>,
-        Option<&'hir Expr<'hir>>,
-    ),
+    IfIs(&'hir Expr<'hir>, Ty<'hir>, Symbol, &'hir Expr<'hir>),
     /// An `if let Xxx(a) = b { c } else { d }` expression.
     ///
     /// Contains: let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
@@ -96,6 +90,24 @@ enum IfBlockType<'hir> {
     ),
 }
 
+fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir Expr<'hir>> {
+    if let Block {
+        stmts: &[],
+        expr: Some(els),
+        ..
+    } = block
+    {
+        Some(els)
+    } else if let [stmt] = block.stmts
+        && let StmtKind::Semi(expr) = stmt.kind
+        && let ExprKind::Ret(..) = expr.kind
+    {
+        Some(expr)
+    } else {
+        None
+    }
+}
+
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Local(Local {
         pat,
@@ -103,12 +115,9 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         els: Some(els),
         ..
     }) = stmt.kind
-        && let Block {
-            stmts: &[],
-            expr: Some(els),
-            ..
-        } = els
-        && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
+        && let Some(ret) = find_let_else_ret_expression(els)
+        && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
+        && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);
@@ -128,7 +137,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
 
 fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_>) -> bool {
     match *if_block {
-        IfBlockType::IfIs(caller, caller_ty, call_sym, if_then, _) => {
+        IfBlockType::IfIs(caller, caller_ty, call_sym, if_then) => {
             // If the block could be identified as `if x.is_none()/is_err()`,
             // we then only need to check the if_then return to see if it is none/err.
             is_type_diagnostic_item(cx, caller_ty, smbl)
@@ -220,7 +229,7 @@ impl QuestionMark {
             && !is_else_clause(cx.tcx, expr)
             && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
             && let caller_ty = cx.typeck_results().expr_ty(caller)
-            && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then, r#else)
+            && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
             && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
         {
             let mut applicability = Applicability::MachineApplicable;
@@ -256,6 +265,7 @@ impl QuestionMark {
                 let_expr,
                 if_then,
                 if_else,
+                ..
             }) = higher::IfLet::hir(cx, expr)
             && !is_else_clause(cx.tcx, expr)
             && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind

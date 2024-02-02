@@ -19,7 +19,8 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                 debug slice => _5;
                 let mut _7: *mut u32;
                 let mut _8: *mut u32;
-                let mut _14: &[&str];
+                let mut _14: *mut [u32];
+                let mut _15: &[&str];
                 scope 4 {
                     let _6: usize;
                     scope 5 {
@@ -41,7 +42,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                                 debug self => _8;
                             }
                             scope 15 (inlined std::ptr::from_raw_parts_mut::<[u32]>) {
-                                debug data_address => _9;
+                                debug data_pointer => _9;
                                 debug metadata => _6;
                                 let mut _10: *const ();
                                 let mut _11: std::ptr::metadata::PtrComponents<[u32]>;
@@ -53,16 +54,16 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
                     }
                 }
                 scope 6 (inlined std::ptr::mut_ptr::<impl *mut [u32]>::len) {
-                    debug self => _5;
-                    let mut _15: *const [u32];
+                    debug self => _14;
+                    let mut _16: *const [u32];
                     scope 7 (inlined std::ptr::metadata::<[u32]>) {
-                        debug ptr => _15;
+                        debug ptr => _16;
                         scope 8 {
                         }
                     }
                 }
                 scope 9 (inlined Arguments::<'_>::new_const) {
-                    debug pieces => _14;
+                    debug pieces => _15;
                 }
             }
         }
@@ -74,8 +75,9 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_5);
         _5 = &raw mut (*_1);
         StorageLive(_14);
-        StorageLive(_6);
         StorageLive(_15);
+        StorageLive(_6);
+        StorageLive(_16);
         _6 = SubUnchecked(_4, _3);
         StorageLive(_8);
         StorageLive(_7);
@@ -88,7 +90,7 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageLive(_11);
         StorageLive(_10);
         _10 = _9 as *const () (PointerCoercion(MutToConstPointer));
-        _11 = std::ptr::metadata::PtrComponents::<[u32]> { data_address: move _10, metadata: _6 };
+        _11 = std::ptr::metadata::PtrComponents::<[u32]> { data_pointer: move _10, metadata: _6 };
         StorageDead(_10);
         _12 = std::ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _11 };
         StorageDead(_11);
@@ -96,8 +98,9 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
         StorageDead(_12);
         StorageDead(_9);
         StorageDead(_8);
-        StorageDead(_15);
+        StorageDead(_16);
         StorageDead(_6);
+        StorageDead(_15);
         StorageDead(_14);
         StorageDead(_5);
         _0 = &mut (*_13);

@@ -6,6 +6,7 @@ use ide_db::{
     defs::Definition,
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
+    path_transform::PathTransform,
     search::FileReference,
     FxHashSet, RootDatabase,
 };
@@ -105,6 +106,16 @@ pub(crate) fn extract_struct_from_enum_variant(
                 .generic_param_list()
                 .and_then(|known_generics| extract_generic_params(&known_generics, &field_list));
             let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
+
+            // resolve GenericArg in field_list to actual type
+            let field_list = field_list.clone_for_update();
+            if let Some((target_scope, source_scope)) =
+                ctx.sema.scope(enum_ast.syntax()).zip(ctx.sema.scope(field_list.syntax()))
+            {
+                PathTransform::generic_transformation(&target_scope, &source_scope)
+                    .apply(field_list.syntax());
+            }
+
             let def =
                 create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
 
@@ -244,8 +255,6 @@ fn create_struct_def(
     // for fields without any existing visibility, use visibility of enum
     let field_list: ast::FieldList = match field_list {
         Either::Left(field_list) => {
-            let field_list = field_list.clone_for_update();
-
             if let Some(vis) = &enum_vis {
                 field_list
                     .fields()
@@ -254,11 +263,9 @@ fn create_struct_def(
                     .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
             }
 
-            field_list.into()
+            field_list.clone().into()
         }
         Either::Right(field_list) => {
-            let field_list = field_list.clone_for_update();
-
             if let Some(vis) = &enum_vis {
                 field_list
                     .fields()
@@ -267,7 +274,7 @@ fn create_struct_def(
                     .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
             }
 
-            field_list.into()
+            field_list.clone().into()
         }
     };
     field_list.reindent_to(IndentLevel::single());
@@ -405,6 +412,13 @@ fn reference_to_node(
 ) -> Option<(ast::PathSegment, SyntaxNode, hir::Module)> {
     let segment =
         reference.name.as_name_ref()?.syntax().parent().and_then(ast::PathSegment::cast)?;
+
+    // filter out the reference in marco
+    let segment_range = segment.syntax().text_range();
+    if segment_range != reference.range {
+        return None;
+    }
+
     let parent = segment.parent_path().syntax().parent()?;
     let expr_or_pat = match_ast! {
         match parent {
@@ -424,6 +438,98 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
+
+    #[test]
+    fn test_with_marco() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+macro_rules! foo {
+    ($x:expr) => {
+        $x
+    };
+}
+
+enum TheEnum {
+    TheVariant$0 { the_field: u8 },
+}
+
+fn main() {
+    foo![TheEnum::TheVariant { the_field: 42 }];
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($x:expr) => {
+        $x
+    };
+}
+
+struct TheVariant{ the_field: u8 }
+
+enum TheEnum {
+    TheVariant(TheVariant),
+}
+
+fn main() {
+    foo![TheEnum::TheVariant { the_field: 42 }];
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn issue_16197() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Bar $0{ node: Box<Self> },
+    Nil,
+}
+"#,
+            r#"
+struct Bar{ node: Box<Foo> }
+
+enum Foo {
+    Bar(Bar),
+    Nil,
+}
+"#,
+        );
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Bar $0{ node: Box<Self>, a: Arc<Box<Self>> },
+    Nil,
+}
+"#,
+            r#"
+struct Bar{ node: Box<Foo>, a: Arc<Box<Foo>> }
+
+enum Foo {
+    Bar(Bar),
+    Nil,
+}
+"#,
+        );
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Nil(Box$0<Self>, Arc<Box<Self>>),
+}
+"#,
+            r#"
+struct Nil(Box<Foo>, Arc<Box<Foo>>);
+
+enum Foo {
+    Nil(Nil),
+}
+"#,
+        );
+    }
 
     #[test]
     fn test_extract_struct_several_fields_tuple() {

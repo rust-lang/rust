@@ -337,7 +337,7 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
 ];
 
 pub(super) fn check_for_substitution(
-    reader: &StringReader<'_>,
+    reader: &StringReader<'_, '_>,
     pos: BytePos,
     ch: char,
     count: usize,

@@ -26,7 +26,6 @@ fn abi_can_unwind(abi: Abi) -> bool {
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
-        | AmdGpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
@@ -112,7 +111,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             let span = terminator.source_info.span;
 
             let foreign = fn_def_id.is_some();
-            tcx.emit_spanned_lint(
+            tcx.emit_node_span_lint(
                 FFI_UNWIND_CALLS,
                 lint_root,
                 span,

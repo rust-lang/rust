@@ -4,11 +4,6 @@ error[E0391]: cycle detected when simplifying constant for the type system `Alph
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Alpha::V3::{constant#0}`...
-  --> $DIR/self-in-enum-definition.rs:5:10
-   |
-LL |     V3 = Self::V1 {} as u8 + 2,
-   |          ^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Alpha::V3::{constant#0}`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
@@ -40,11 +35,6 @@ note: ...which requires const checking `Alpha::V3::{constant#0}`...
 LL |     V3 = Self::V1 {} as u8 + 2,
    |          ^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires preparing `Alpha::V3::{constant#0}` for borrow checking...
-  --> $DIR/self-in-enum-definition.rs:5:10
-   |
-LL |     V3 = Self::V1 {} as u8 + 2,
-   |          ^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `Alpha::V3::{constant#0}`...
   --> $DIR/self-in-enum-definition.rs:5:10
    |
 LL |     V3 = Self::V1 {} as u8 + 2,

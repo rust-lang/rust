@@ -117,7 +117,7 @@ impl std::fmt::Debug for ConstInt {
 impl IntoDiagnosticArg for ConstInt {
     // FIXME this simply uses the Debug impl, but we could probably do better by converting both
     // to an inherent method that returns `Cow`.
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         DiagnosticArgValue::Str(format!("{self:?}").into())
     }
 }

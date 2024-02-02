@@ -196,15 +196,16 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         let mut functions = FxHashMap::default();
         let builtins = [
-            "__builtin_unreachable", "abort", "__builtin_expect", "__builtin_add_overflow", "__builtin_mul_overflow",
-            "__builtin_saddll_overflow", /*"__builtin_sadd_overflow",*/ "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
+            "__builtin_unreachable", "abort", "__builtin_expect", /*"__builtin_expect_with_probability",*/
+            "__builtin_constant_p", "__builtin_add_overflow", "__builtin_mul_overflow", "__builtin_saddll_overflow",
+            /*"__builtin_sadd_overflow",*/ "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
             "__builtin_ssubll_overflow", /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow", "__builtin_uaddll_overflow",
             "__builtin_uadd_overflow", "__builtin_umulll_overflow", "__builtin_umul_overflow", "__builtin_usubll_overflow",
             "__builtin_usub_overflow", "sqrtf", "sqrt", "__builtin_powif", "__builtin_powi", "sinf", "sin", "cosf", "cos",
             "powf", "pow", "expf", "exp", "exp2f", "exp2", "logf", "log", "log10f", "log10", "log2f", "log2", "fmaf",
             "fma", "fabsf", "fabs", "fminf", "fmin", "fmaxf", "fmax", "copysignf", "copysign", "floorf", "floor", "ceilf",
             "ceil", "truncf", "trunc", "rintf", "rint", "nearbyintf", "nearbyint", "roundf", "round",
-            "__builtin_expect_with_probability",
+           
         ];
 
         for builtin in builtins.iter() {

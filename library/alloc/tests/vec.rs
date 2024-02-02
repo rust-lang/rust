@@ -1,7 +1,7 @@
 use core::alloc::{Allocator, Layout};
-use core::{assert_eq, assert_ne};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
+use core::{assert_eq, assert_ne};
 use std::alloc::System;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
@@ -547,7 +547,7 @@ fn test_cmp() {
 #[test]
 fn test_vec_truncate_drop() {
     static mut DROPS: u32 = 0;
-    struct Elem(i32);
+    struct Elem(#[allow(dead_code)] i32);
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
@@ -958,23 +958,35 @@ fn test_append() {
 #[test]
 fn test_split_off() {
     let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(4);
+
+    let split_off = vec.split_off(4);
     assert_eq!(vec, [1, 2, 3, 4]);
-    assert_eq!(vec2, [5, 6]);
+    assert_eq!(split_off, [5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
+    assert_eq!(vec.as_ptr(), orig_ptr);
 }
 
 #[test]
 fn test_split_off_take_all() {
-    let mut vec = vec![1, 2, 3, 4, 5, 6];
+    // Allocate enough capacity that we can tell whether the split-off vector's
+    // capacity is based on its size, or (incorrectly) on the original capacity.
+    let mut vec = Vec::with_capacity(1000);
+    vec.extend([1, 2, 3, 4, 5, 6]);
     let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(0);
+
+    let split_off = vec.split_off(0);
     assert_eq!(vec, []);
-    assert_eq!(vec2, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(split_off, [1, 2, 3, 4, 5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
-    assert_eq!(vec2.as_ptr(), orig_ptr);
+    assert_eq!(vec.as_ptr(), orig_ptr);
+
+    // The split-off vector should be newly-allocated, and should not have
+    // stolen the original vector's allocation.
+    assert!(split_off.capacity() < orig_capacity);
+    assert_ne!(split_off.as_ptr(), orig_ptr);
 }
 
 #[test]
@@ -1089,7 +1101,7 @@ fn test_into_iter_advance_by() {
 
 #[test]
 fn test_into_iter_drop_allocator() {
-    struct ReferenceCountedAllocator<'a>(DropCounter<'a>);
+    struct ReferenceCountedAllocator<'a>(#[allow(dead_code)] DropCounter<'a>);
 
     unsafe impl Allocator for ReferenceCountedAllocator<'_> {
         fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
@@ -1166,10 +1178,14 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 #[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
-    let src: Vec<usize> = vec![0usize; 256];
+    let owned: Vec<usize> = vec![0usize; 256];
+    let refd: Vec<&usize> = owned.iter().collect();
+    let src: Vec<&&usize> = refd.iter().collect();
     let srcptr = src.as_ptr();
     let iter = src
         .into_iter()
+        .copied()
+        .cloned()
         .enumerate()
         .map(|i| i.0 + i.1)
         .zip(std::iter::repeat(1usize))
@@ -1180,7 +1196,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr as *const usize);
+    assert_eq!(srcptr as *const usize, sinkptr as *const usize);
 }
 
 #[test]
@@ -1212,7 +1228,7 @@ fn test_in_place_specialization_step_up_down() {
     assert_eq!(sink.len(), 2);
 
     let mut src: Vec<[u8; 3]> = Vec::with_capacity(17);
-    src.resize( 8, [0; 3]);
+    src.resize(8, [0; 3]);
     let iter = src.into_iter().map(|[a, b, _]| [a, b]);
     assert_in_place_trait(&iter);
     let sink: Vec<[u8; 2]> = iter.collect();
@@ -1221,11 +1237,7 @@ fn test_in_place_specialization_step_up_down() {
 
     let src = vec![[0u8; 4]; 256];
     let srcptr = src.as_ptr();
-    let iter = src
-        .into_iter()
-        .flat_map(|a| {
-            a.into_iter().map(|b| b.wrapping_add(1))
-        });
+    let iter = src.into_iter().flat_map(|a| a.into_iter().map(|b| b.wrapping_add(1)));
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Vec<_>>();
     assert_eq!(srcptr as *const u8, sink.as_ptr());
@@ -2407,7 +2419,7 @@ fn test_vec_dedup_multiple_ident() {
 #[test]
 fn test_vec_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {

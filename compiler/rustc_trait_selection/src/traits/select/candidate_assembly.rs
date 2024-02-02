@@ -9,10 +9,13 @@
 use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_hir as hir;
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
+use crate::traits;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
 use super::BuiltinImplConditions;
@@ -263,7 +266,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args, _) = *self_ty.kind() {
+        if let ty::Coroutine(did, args) = *self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
@@ -486,7 +489,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
                 | ty::Closure(_, _)
-                | ty::Coroutine(_, _, _)
+                | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -529,7 +532,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().trait_is_auto(def_id) {
-            match self_ty.kind() {
+            match *self_ty.kind() {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -564,10 +567,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
-                ty::Coroutine(_, _, movability)
+                ty::Coroutine(coroutine_def_id, _)
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
-                    match movability {
+                    match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {
                             // Immovable coroutines are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
@@ -723,6 +726,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Temporary migration for #89190
+    fn need_migrate_deref_output_trait_object(
+        &mut self,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
+        let tcx = self.tcx();
+        if tcx.features().trait_upcasting {
+            return None;
+        }
+
+        // <ty as Deref>
+        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
+
+        let obligation =
+            traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
+        if !self.infcx.predicate_may_hold(&obligation) {
+            return None;
+        }
+
+        self.infcx.probe(|_| {
+            let ty = traits::normalize_projection_type(
+                self,
+                param_env,
+                ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
+                cause.clone(),
+                0,
+                // We're *intentionally* throwing these away,
+                // since we don't actually use them.
+                &mut vec![],
+            )
+            .ty()
+            .unwrap();
+
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+        })
+    }
+
     /// Searches for unsizing that might apply to `obligation`.
     fn assemble_candidates_for_unsizing(
         &mut self,
@@ -780,6 +822,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = a_data.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
+                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                            source,
+                            obligation.param_env,
+                            &obligation.cause,
+                        ) {
+                            if deref_trait_ref.def_id() == target_trait_did {
+                                return;
+                            }
+                        }
 
                         for (idx, upcast_trait_ref) in
                             util::supertraits(self.tcx(), source_trait_ref).enumerate()
@@ -969,7 +1020,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     self.tcx().def_span(impl_def_id),
                                     "multiple drop impls found",
                                 )
-                                .span_note(self.tcx().def_span(old_impl_def_id), "other impl here")
+                                .with_span_note(
+                                    self.tcx().def_span(old_impl_def_id),
+                                    "other impl here",
+                                )
                                 .delay_as_bug();
                         }
 
@@ -1023,7 +1077,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Alias(..)

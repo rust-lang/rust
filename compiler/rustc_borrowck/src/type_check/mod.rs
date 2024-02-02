@@ -35,7 +35,9 @@ use rustc_middle::ty::{
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_middle::ty::{GenericArgsRef, UserArgs};
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
@@ -58,9 +60,7 @@ use crate::{
     location::LocationTable,
     member_constraints::MemberConstraintSet,
     path_utils,
-    region_infer::values::{
-        LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
-    },
+    region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices},
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
@@ -133,7 +133,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    elements: &Rc<RegionValueElements>,
+    elements: &Rc<DenseLocationMap>,
     upvars: &[&ty::CapturedPlace<'tcx>],
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
@@ -141,7 +141,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::new(elements.clone()),
+        liveness_constraints: LivenessValues::with_specific_points(elements.clone()),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
@@ -152,9 +152,14 @@ pub(crate) fn type_check<'mir, 'tcx>(
         universal_region_relations,
         region_bound_pairs,
         normalized_inputs_and_output,
+        known_type_outlives_obligations,
     } = free_region_relations::create(
         infcx,
         param_env,
+        // FIXME(-Znext-solver): These are unnormalized. Normalize them.
+        infcx.tcx.arena.alloc_from_iter(
+            param_env.caller_bounds().iter().filter_map(|clause| clause.as_type_outlives_clause()),
+        ),
         implicit_region_bound,
         universal_regions,
         &mut constraints,
@@ -176,6 +181,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         body,
         param_env,
         &region_bound_pairs,
+        known_type_outlives_obligations,
         implicit_region_bound,
         &mut borrowck_context,
     );
@@ -406,6 +412,16 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     instantiated_predicates,
                     locations,
                 );
+
+                assert!(!matches!(
+                    tcx.impl_of_method(def_id).map(|imp| tcx.def_kind(imp)),
+                    Some(DefKind::Impl { of_trait: true })
+                ));
+                self.cx.prove_predicates(
+                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    locations,
+                    ConstraintCategory::Boring,
+                );
             }
         }
     }
@@ -545,7 +561,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut liveness_constraints =
-            LivenessValues::new(Rc::new(RegionValueElements::new(promoted_body)));
+            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
@@ -584,17 +600,19 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
         }
-        for region in liveness_constraints.regions() {
-            // If the region is live at at least one location in the promoted MIR,
-            // then add a liveness constraint to the main MIR for this region
-            // at the location provided as an argument to this method
-            if liveness_constraints.is_live_anywhere(region) {
-                self.cx
-                    .borrowck_context
-                    .constraints
-                    .liveness_constraints
-                    .add_location(region, location);
-            }
+        // If the region is live at at least one location in the promoted MIR,
+        // then add a liveness constraint to the main MIR for this region
+        // at the location provided as an argument to this method
+        //
+        // add_location doesn't care about ordering so not a problem for the live regions to be
+        // unordered.
+        #[allow(rustc::potential_query_instability)]
+        for region in liveness_constraints.live_regions_unordered() {
+            self.cx
+                .borrowck_context
+                .constraints
+                .liveness_constraints
+                .add_location(region, location);
         }
     }
 
@@ -762,7 +780,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let (variant, args) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
                 ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
-                ty::Coroutine(def_id, args, _) => {
+                ty::Coroutine(def_id, args) => {
                     let mut variants = args.as_coroutine().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
                         bug!(
@@ -790,7 +808,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
-                ty::Coroutine(_, args, _) => {
+                ty::Coroutine(_, args) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
                     return match args.as_coroutine().prefix_tys().get(field.index()) {
@@ -838,6 +856,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -988,6 +1007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     ) -> Self {
@@ -998,6 +1018,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_type_annotations: &body.user_type_annotations,
             param_env,
             region_bound_pairs,
+            known_type_outlives_obligations,
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
@@ -1087,10 +1108,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
         debug!(?self.user_type_annotations);
+        let tcx = self.tcx();
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
-            self.ascribe_user_type(inferred_ty, annotation, span);
+            if let ty::UserType::TypeOf(def, args) = annotation
+                && let DefKind::InlineConst = tcx.def_kind(def)
+            {
+                self.check_inline_const(inferred_ty, def.expect_local(), args, span);
+            } else {
+                self.ascribe_user_type(inferred_ty, annotation, span);
+            }
         }
     }
 
@@ -1108,7 +1136,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.borrowck_context.universal_regions,
             self.region_bound_pairs,
             self.implicit_region_bound,
-            self.param_env,
+            self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
             category,
@@ -1181,6 +1209,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;
 
         Ok(())
+    }
+
+    fn check_inline_const(
+        &mut self,
+        inferred_ty: Ty<'tcx>,
+        def_id: LocalDefId,
+        args: UserArgs<'tcx>,
+        span: Span,
+    ) {
+        assert!(args.user_self_ty.is_none());
+        let tcx = self.tcx();
+        let const_ty = tcx.type_of(def_id).instantiate(tcx, args.args);
+        if let Err(terr) =
+            self.eq_types(const_ty, inferred_ty, Locations::All(span), ConstraintCategory::Boring)
+        {
+            span_bug!(
+                span,
+                "bad inline const pattern: ({:?} = {:?}) {:?}",
+                const_ty,
+                inferred_ty,
+                terr
+            );
+        }
+        let args = self.infcx.resolve_vars_if_possible(args.args);
+        let predicates = self.prove_closure_bounds(tcx, def_id, args, Locations::All(span));
+        self.normalize_and_prove_instantiated_predicates(
+            def_id.to_def_id(),
+            predicates,
+            Locations::All(span),
+        );
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -1359,7 +1417,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Call { func, args, destination, call_source, target, .. } => {
                 self.check_operand(func, term_location);
                 for arg in args {
-                    self.check_operand(arg, term_location);
+                    self.check_operand(&arg.node, term_location);
                 }
 
                 let func_ty = func.ty(body, tcx);
@@ -1450,13 +1508,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Yield { value, .. } => {
+            TerminatorKind::Yield { value, resume_arg, .. } => {
                 self.check_operand(value, term_location);
 
-                let value_ty = value.ty(body, tcx);
                 match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
+                        let value_ty = value.ty(body, tcx);
                         if let Err(terr) = self.sub_types(
                             value_ty,
                             ty,
@@ -1468,6 +1526,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 term,
                                 "type of yield value is {:?}, but the yield type is {:?}: {:?}",
                                 value_ty,
+                                ty,
+                                terr
+                            );
+                        }
+                    }
+                }
+
+                match body.resume_ty() {
+                    None => span_mirbug!(self, term, "yield in non-coroutine"),
+                    Some(ty) => {
+                        let resume_ty = resume_arg.ty(body, tcx);
+                        if let Err(terr) = self.sub_types(
+                            ty,
+                            resume_ty.ty,
+                            term_location.to_locations(),
+                            ConstraintCategory::Yield,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                term,
+                                "type of resume place is {:?}, but the resume type is {:?}: {:?}",
+                                resume_ty,
                                 ty,
                                 terr
                             );
@@ -1558,7 +1638,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term: &Terminator<'tcx>,
         func: &Operand<'tcx>,
         sig: &ty::FnSig<'tcx>,
-        args: &[Operand<'tcx>],
+        args: &[Spanned<Operand<'tcx>>],
         term_location: Location,
         call_source: CallSource,
     ) {
@@ -1571,7 +1651,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if self.tcx().is_intrinsic(def_id) {
                 match self.tcx().item_name(def_id) {
                     sym::simd_shuffle => {
-                        if !matches!(args[2], Operand::Constant(_)) {
+                        if !matches!(args[2], Spanned { node: Operand::Constant(_), .. }) {
                             self.tcx()
                                 .dcx()
                                 .emit_err(SimdShuffleLastConst { span: term.source_info.span });
@@ -1584,7 +1664,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
-            let op_arg_ty = op_arg.ty(body, self.tcx());
+            let op_arg_ty = op_arg.node.ty(body, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
@@ -1784,7 +1864,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }),
                 }
             }
-            AggregateKind::Coroutine(_, args, _) => {
+            AggregateKind::Coroutine(_, args) => {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
@@ -1817,7 +1897,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
+                        let predicates = self.prove_closure_bounds(
+                            tcx,
+                            def_id,
+                            uv.args,
+                            location.to_locations(),
+                        );
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -2392,7 +2477,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Array(_) => None,
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
-                AggregateKind::Coroutine(_, _, _) => None,
+                AggregateKind::Coroutine(_, _) => None,
             },
         }
     }
@@ -2620,9 +2705,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args, _) => {
-                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
-            }
+            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => (
+                def_id,
+                self.prove_closure_bounds(
+                    tcx,
+                    def_id.expect_local(),
+                    args,
+                    location.to_locations(),
+                ),
+            ),
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
                 (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
@@ -2641,7 +2732,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
-        location: Location,
+        locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
@@ -2649,8 +2740,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.borrowck_context.universal_regions,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
-                self.param_env,
-                location.to_locations(),
+                self.known_type_outlives_obligations,
+                locations,
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
@@ -2676,7 +2767,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) = self.eq_args(
             typeck_root_args,
             parent_args,
-            location.to_locations(),
+            locations,
             ConstraintCategory::BoringNoLocation,
         ) {
             span_mirbug!(

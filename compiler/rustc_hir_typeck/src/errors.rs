@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg, MultiSpan,
-    SubdiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg,
+    MultiSpan, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -15,7 +15,7 @@ use rustc_span::{
 };
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_field_multiply_specified_in_initializer, code = "E0062")]
+#[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
     #[label]
@@ -26,7 +26,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_return_stmt_outside_of_fn_body, code = "E0572")]
+#[diag(hir_typeck_return_stmt_outside_of_fn_body, code = E0572)]
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
@@ -43,7 +43,7 @@ pub enum ReturnLikeStatementKind {
 }
 
 impl IntoDiagnosticArg for ReturnLikeStatementKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",
@@ -62,14 +62,14 @@ pub struct RustCallIncorrectArgs {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_yield_expr_outside_of_coroutine, code = "E0627")]
+#[diag(hir_typeck_yield_expr_outside_of_coroutine, code = E0627)]
 pub struct YieldExprOutsideOfCoroutine {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_struct_expr_non_exhaustive, code = "E0639")]
+#[diag(hir_typeck_struct_expr_non_exhaustive, code = E0639)]
 pub struct StructExprNonExhaustive {
     #[primary_span]
     pub span: Span,
@@ -77,29 +77,21 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = "E0699")]
+#[diag(hir_typeck_method_call_on_unknown_raw_pointee, code = E0699)]
 pub struct MethodCallOnUnknownRawPointee {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_missing_fn_lang_items)]
-#[help]
-pub struct MissingFnLangItems {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_typeck_functional_record_update_on_non_struct, code = "E0436")]
+#[diag(hir_typeck_functional_record_update_on_non_struct, code = E0436)]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_address_of_temporary_taken, code = "E0745")]
+#[diag(hir_typeck_address_of_temporary_taken, code = E0745)]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
     #[label]
@@ -145,7 +137,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_explicit_destructor, code = "E0040")]
+#[diag(hir_typeck_explicit_destructor, code = E0040)]
 pub struct ExplicitDestructorCall {
     #[primary_span]
     #[label]
@@ -168,7 +160,7 @@ pub enum ExplicitDestructorCallSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_missing_parentheses_in_range, code = "E0689")]
+#[diag(hir_typeck_missing_parentheses_in_range, code = E0689)]
 pub struct MissingParenthesesInRange {
     #[primary_span]
     #[label(hir_typeck_missing_parentheses_in_range)]
@@ -193,14 +185,6 @@ pub struct AddMissingParenthesesInRange {
     pub right: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(hir_typeck_op_trait_generic_params)]
-pub struct OpMethodGenericParams {
-    #[primary_span]
-    pub span: Span,
-    pub method_name: String,
-}
-
 pub struct TypeMismatchFruTypo {
     /// Span of the LHS of the range
     pub expr_span: Span,
@@ -215,7 +199,7 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("expr", self.expr.as_deref().unwrap_or("NONE"));
+        diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
         if self.expr_span.between(self.fru_span).is_empty() {
@@ -321,7 +305,7 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_invalid_callee, code = "E0618")]
+#[diag(hir_typeck_invalid_callee, code = E0618)]
 pub struct InvalidCallee {
     #[primary_span]
     pub span: Span,
@@ -329,7 +313,7 @@ pub struct InvalidCallee {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_int_to_fat, code = "E0606")]
+#[diag(hir_typeck_int_to_fat, code = E0606)]
 pub struct IntToWide<'tcx> {
     #[primary_span]
     #[label(hir_typeck_int_to_fat_label)]
@@ -510,7 +494,7 @@ pub struct TrivialCast<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_no_associated_item, code = "E0599")]
+#[diag(hir_typeck_no_associated_item, code = E0599)]
 pub struct NoAssociatedItem {
     #[primary_span]
     pub span: Span,
@@ -532,7 +516,7 @@ pub struct CandidateTraitNote {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cannot_cast_to_bool, code = "E0054")]
+#[diag(hir_typeck_cannot_cast_to_bool, code = E0054)]
 pub struct CannotCastToBool<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -549,7 +533,7 @@ pub struct CastEnumDrop<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_cast_unknown_pointer, code = "E0641")]
+#[diag(hir_typeck_cast_unknown_pointer, code = E0641)]
 pub struct CastUnknownPointer {
     #[primary_span]
     pub span: Span,
@@ -600,7 +584,7 @@ pub enum CannotCastToBoolHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_typeck_ctor_is_private, code = "E0603")]
+#[diag(hir_typeck_ctor_is_private, code = E0603)]
 pub struct CtorIsPrivate {
     #[primary_span]
     pub span: Span,

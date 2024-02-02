@@ -15,7 +15,9 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::thir::{self, *};
+use rustc_middle::ty;
 
 use std::mem;
 
@@ -149,7 +151,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
-                // Apply the type ascription to the value at `match_pair.place`, which is the
+                // Apply the type ascription to the value at `match_pair.place`
                 if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
@@ -205,7 +207,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::InlineConstant { subpattern: ref pattern, def: _ } => {
+            PatKind::InlineConstant { subpattern: ref pattern, def } => {
+                // Apply a type ascription for the inline constant to the value at `match_pair.place`
+                if let Some(source) = match_pair.place.try_to_place(self) {
+                    let span = match_pair.pattern.span;
+                    let parent_id = self.tcx.typeck_root_def_id(self.def_id.to_def_id());
+                    let args = ty::InlineConstArgs::new(
+                        self.tcx,
+                        ty::InlineConstArgsParts {
+                            parent_args: ty::GenericArgs::identity_for_item(self.tcx, parent_id),
+                            ty: self.infcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            }),
+                        },
+                    )
+                    .args;
+                    let user_ty =
+                        self.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
+                            def.to_def_id(),
+                            ty::UserArgs { args, user_self_ty: None },
+                        ));
+                    let annotation = ty::CanonicalUserTypeAnnotation {
+                        inferred_ty: pattern.ty,
+                        span,
+                        user_ty: Box::new(user_ty),
+                    };
+                    candidate.ascriptions.push(Ascription {
+                        annotation,
+                        source,
+                        variance: ty::Contravariant,
+                    });
+                }
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
 
                 Ok(())

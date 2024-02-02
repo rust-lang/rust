@@ -147,15 +147,38 @@ will match these queries:
 * `Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Error, Vec>`
 * `Read -> Result<Vec<u8>>`
+* `Read -> u8`
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
-Function signature searches also support arrays and slices. The explicit name
-`primitive:slice<u8>` and `primitive:array<u8>` can be used to match a slice
-or array of bytes, while square brackets `[u8]` will match either one. Empty
-square brackets, `[]`, will match any slice or array regardless of what
-it contains, while a slice with a type parameter, like `[T]`, will only match
-functions that actually operate on generic slices.
+### Primitives with Special Syntax
+
+| Shorthand | Explicit names                                   |
+| --------- | ------------------------------------------------ |
+| `[]`      | `primitive:slice` and/or `primitive:array`       |
+| `[T]`     | `primitive:slice<T>` and/or `primitive:array<T>` |
+| `()`      | `primitive:unit` and/or `primitive:tuple`        |
+| `(T)`     | `T`                                              |
+| `(T,)`    | `primitive:tuple<T>`                             |
+| `!`       | `primitive:never`                                |
+
+When searching for `[]`, Rustdoc will return search results with either slices
+or arrays. If you know which one you want, you can force it to return results
+for `primitive:slice` or `primitive:array` using the explicit name syntax.
+Empty square brackets, `[]`, will match any slice or array regardless of what
+it contains, or an item type can be provided, such as `[u8]` or `[T]`, to
+explicitly find functions that operate on byte slices or generic slices,
+respectively.
+
+A single type expression wrapped in parens is the same as that type expression,
+since parens act as the grouping operator. If they're empty, though, they will
+match both `unit` and `tuple`, and if there's more than one type (or a trailing
+or leading comma) it is the same as `primitive:tuple<...>`.
+
+However, since items can be left out of the query, `(T)` will still return
+results for types that match tuples, even though it also matches the type on
+its own. That is, `(u32)` matches `(u32,)` for the exact same reason that it
+also matches `Result<u32, Error>`.
 
 ### Limitations and quirks of type-based search
 
@@ -188,11 +211,10 @@ Most of these limitations should be addressed in future version of Rustdoc.
     that you don't want a type parameter, you can force it to match
     something else by giving it a different prefix like `struct:T`.
 
-  * It's impossible to search for references, pointers, or tuples. The
+  * It's impossible to search for references or pointers. The
     wrapped types can be searched for, so a function that takes `&File` can
     be found with `File`, but you'll get a parse error when typing an `&`
-    into the search field. Similarly, `Option<(T, U)>` can be matched with
-    `Option<T, U>`, but `(` will give a parse error.
+    into the search field.
 
   * Searching for lifetimes is not supported.
 
@@ -216,8 +238,9 @@ Item filters can be used in both name-based and type signature-based searches.
 ```text
 ident = *(ALPHA / DIGIT / "_")
 path = ident *(DOUBLE-COLON ident) [!]
-slice = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
-arg = [type-filter *WS COLON *WS] (path [generics] / slice / [!])
+slice-like = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
+tuple-like = OPEN-PAREN [ nonempty-arg-list ] CLOSE-PAREN
+arg = [type-filter *WS COLON *WS] (path [generics] / slice-like / tuple-like / [!])
 type-sep = COMMA/WS *(COMMA/WS)
 nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
 generic-arg-list = *(type-sep) arg [ EQUAL arg ] *(type-sep arg [ EQUAL arg ]) *(type-sep)
@@ -263,6 +286,8 @@ OPEN-ANGLE-BRACKET = "<"
 CLOSE-ANGLE-BRACKET = ">"
 OPEN-SQUARE-BRACKET = "["
 CLOSE-SQUARE-BRACKET = "]"
+OPEN-PAREN = "("
+CLOSE-PAREN = ")"
 COLON = ":"
 DOUBLE-COLON = "::"
 QUOTE = %x22

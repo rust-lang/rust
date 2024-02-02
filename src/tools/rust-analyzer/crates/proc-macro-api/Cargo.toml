@@ -33,7 +33,11 @@ tt.workspace = true
 stdx.workspace = true
 profile.workspace = true
 text-size.workspace = true
+span.workspace = true
 # Ideally this crate would not depend on salsa things, but we need span information here which wraps
 # InternIds for the syntax context
 base-db.workspace = true
 la-arena.workspace = true
+
+[lints]
+workspace = true

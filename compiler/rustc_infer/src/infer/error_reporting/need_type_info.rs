@@ -5,7 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
+use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -13,7 +13,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
+};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, InferConst};
@@ -41,12 +43,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> rustc_errors::DiagnosticId {
+impl Into<ErrCode> for TypeAnnotationNeeded {
+    fn into(self) -> ErrCode {
         match self {
-            Self::E0282 => rustc_errors::error_code!(E0282),
-            Self::E0283 => rustc_errors::error_code!(E0283),
-            Self::E0284 => rustc_errors::error_code!(E0284),
+            Self::E0282 => E0282,
+            Self::E0283 => E0283,
+            Self::E0284 => E0284,
         }
     }
 }
@@ -132,7 +134,7 @@ impl InferenceDiagnosticsParentData {
 }
 
 impl IntoDiagnosticArg for UnderspecifiedArgKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
@@ -178,16 +180,22 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    let const_getter = move |ct_vid| {
-        if infcx.probe_const_var(ct_vid).is_ok() {
+    let const_getter = move |ct_vid| match infcx
+        .inner
+        .borrow_mut()
+        .const_unification_table()
+        .probe_value(ct_vid)
+    {
+        ConstVariableValue::Known { value: _ } => {
             warn!("resolved const var in error message");
-        }
-        if let ConstVariableOriginKind::ConstParameterDefinition(name, _) =
-            infcx.inner.borrow_mut().const_unification_table().probe_value(ct_vid).origin.kind
-        {
-            return Some(name);
-        } else {
             None
+        }
+        ConstVariableValue::Unknown { origin, universe: _ } => {
+            if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
+                return Some(name);
+            } else {
+                None
+            }
         }
     };
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
@@ -303,7 +311,12 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
+                        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+                            ConstVariableValue::Known { value } => {
+                                bug!("resolved infer var: {vid:?} {value}")
+                            }
+                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                        };
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {

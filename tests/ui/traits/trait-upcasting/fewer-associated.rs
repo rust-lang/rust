@@ -3,6 +3,8 @@
 // revisions: current next
 //[next] compile-flags: -Znext-solver
 
+#![feature(trait_upcasting)]
+
 trait A: B {
     type Assoc;
 }

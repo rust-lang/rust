@@ -263,6 +263,10 @@ hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
+hir_analysis_not_supported_delegation =
+    {$descr} is not supported yet
+    .label = callee defined here
+
 hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
@@ -345,6 +349,20 @@ hir_analysis_start_not_target_feature = `#[start]` function is not allowed to ha
 
 hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
     .label = `#[start]` function is not allowed to be `#[track_caller]`
+
+hir_analysis_static_mut_ref = reference of mutable static is disallowed
+    .label = reference of mutable static
+    .note = mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+    .suggestion = shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
+
+hir_analysis_static_mut_ref_lint = {$shared}reference of mutable static is discouraged
+    .label = shared reference of mutable static
+    .label_mut = mutable reference of mutable static
+    .suggestion = shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
+    .note = reference of mutable static is a hard error from 2024 edition
+    .why_note = mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 

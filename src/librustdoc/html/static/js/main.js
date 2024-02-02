@@ -1523,6 +1523,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         sidebarButton.addEventListener("click", e => {
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
+            if (document.querySelector(".rustdoc.src")) {
+                window.rustdocToggleSrcSidebar();
+            }
             e.preventDefault();
         });
     }
@@ -1647,7 +1650,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             return;
         }
         e.preventDefault();
-        const pos = e.clientX - sidebar.offsetLeft - 3;
+        const pos = e.clientX - 3;
         if (pos < SIDEBAR_VANISH_THRESHOLD) {
             hideSidebar();
         } else if (pos >= SIDEBAR_MIN) {
@@ -1718,6 +1721,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             }
             currentPointerId = e.pointerId;
         }
+        window.hideAllModals(false);
         e.preventDefault();
         window.addEventListener("pointermove", resize, false);
         window.addEventListener("pointercancel", stopResize, false);

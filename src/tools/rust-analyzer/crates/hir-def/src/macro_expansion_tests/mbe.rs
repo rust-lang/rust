@@ -1,11 +1,11 @@
 //! Tests specific to declarative macros, aka macros by example. This covers
 //! both stable `macro_rules!` macros as well as unstable `macro` macros.
 
-mod tt_conversion;
 mod matching;
 mod meta_syntax;
 mod metavar_expr;
 mod regression;
+mod tt_conversion;
 
 use expect_test::expect;
 
@@ -35,9 +35,9 @@ macro_rules! f {
     };
 }
 
-struct#FileId(0):1@58..64\2# MyTraitMap2#FileId(0):2@31..42\0# {#FileId(0):1@72..73\2#
-    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@89..90\2#::#FileId(0):1@91..92\2#std#FileId(0):1@93..96\2#::#FileId(0):1@96..97\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@109..110\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
-}#FileId(0):1@132..133\2#
+struct#0:1@58..64#2# MyTraitMap2#0:2@31..42#0# {#0:1@72..73#2#
+    map#0:1@86..89#2#:#0:1@89..90#2# #0:1@89..90#2#::#0:1@91..92#2#std#0:1@93..96#2#::#0:1@96..97#2#collections#0:1@98..109#2#::#0:1@109..110#2#HashSet#0:1@111..118#2#<#0:1@118..119#2#(#0:1@119..120#2#)#0:1@120..121#2#>#0:1@121..122#2#,#0:1@122..123#2#
+}#0:1@132..133#2#
 "#]],
     );
 }
@@ -75,12 +75,12 @@ macro_rules! f {
     };
 }
 
-fn#FileId(0):2@30..32\0# main#FileId(0):2@33..37\0#(#FileId(0):2@37..38\0#)#FileId(0):2@38..39\0# {#FileId(0):2@40..41\0#
-    1#FileId(0):2@50..51\0#;#FileId(0):2@51..52\0#
-    1.0#FileId(0):2@61..64\0#;#FileId(0):2@64..65\0#
-    (#FileId(0):2@74..75\0#(#FileId(0):2@75..76\0#1#FileId(0):2@76..77\0#,#FileId(0):2@77..78\0# )#FileId(0):2@78..79\0#,#FileId(0):2@79..80\0# )#FileId(0):2@80..81\0#.#FileId(0):2@81..82\0#0#FileId(0):2@82..85\0#.#FileId(0):2@82..85\0#0#FileId(0):2@82..85\0#;#FileId(0):2@85..86\0#
-    let#FileId(0):2@95..98\0# x#FileId(0):2@99..100\0# =#FileId(0):2@101..102\0# 1#FileId(0):2@103..104\0#;#FileId(0):2@104..105\0#
-}#FileId(0):2@110..111\0#
+fn#0:2@30..32#0# main#0:2@33..37#0#(#0:2@37..38#0#)#0:2@38..39#0# {#0:2@40..41#0#
+    1#0:2@50..51#0#;#0:2@51..52#0#
+    1.0#0:2@61..64#0#;#0:2@64..65#0#
+    (#0:2@74..75#0#(#0:2@75..76#0#1#0:2@76..77#0#,#0:2@77..78#0# )#0:2@78..79#0#,#0:2@79..80#0# )#0:2@80..81#0#.#0:2@81..82#0#0#0:2@82..85#0#.#0:2@82..85#0#0#0:2@82..85#0#;#0:2@85..86#0#
+    let#0:2@95..98#0# x#0:2@99..100#0# =#0:2@101..102#0# 1#0:2@103..104#0#;#0:2@104..105#0#
+}#0:2@110..111#0#
 
 
 "#]],
@@ -171,7 +171,7 @@ fn main(foo: ()) {
     }
 
     fn main(foo: ()) {
-        /* error: unresolved macro unresolved */"helloworld!"#FileId(0):3@207..323\6#;
+        /* error: unresolved macro unresolved */"helloworld!"#0:3@207..323#6#;
     }
 }
 
@@ -197,7 +197,7 @@ macro_rules! mk_struct {
 #[macro_use]
 mod foo;
 
-struct#FileId(1):1@59..65\2# Foo#FileId(0):2@32..35\0#(#FileId(1):1@70..71\2#u32#FileId(0):2@41..44\0#)#FileId(1):1@74..75\2#;#FileId(1):1@75..76\2#
+struct#1:1@59..65#2# Foo#0:2@32..35#0#(#1:1@70..71#2#u32#0:2@41..44#0#)#1:1@74..75#2#;#1:1@75..76#2#
 "#]],
     );
 }
@@ -1218,8 +1218,10 @@ m! {
 macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " Single Line Doc 1"]
-#[doc = "\n        MultiLines Doc\n    "] fn bar() {}
+#[doc = r" Single Line Doc 1"]
+#[doc = r"
+        MultiLines Doc
+    "] fn bar() {}
 "##]],
     );
 }
@@ -1260,8 +1262,10 @@ m! {
 macro_rules! m {
     ($(#[$ m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " 錦瑟無端五十弦，一弦一柱思華年。"]
-#[doc = "\n        莊生曉夢迷蝴蝶，望帝春心託杜鵑。\n    "] fn bar() {}
+#[doc = r" 錦瑟無端五十弦，一弦一柱思華年。"]
+#[doc = r"
+        莊生曉夢迷蝴蝶，望帝春心託杜鵑。
+    "] fn bar() {}
 "##]],
     );
 }
@@ -1281,7 +1285,7 @@ m! {
 macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
-#[doc = " \\ \" \'"] fn bar() {}
+#[doc = r#" \ " '"#] fn bar() {}
 "##]],
     );
 }

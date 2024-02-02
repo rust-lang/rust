@@ -17,13 +17,13 @@ cov-mark = "2.0.0-pre.1"
 either.workspace = true
 itertools.workspace = true
 rowan = "0.15.15"
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 once_cell = "1.17.0"
 indexmap.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
 
-rustc-dependencies.workspace = true
+ra-ap-rustc_lexer.workspace = true
 
 parser.workspace = true
 profile.workspace = true
@@ -41,4 +41,7 @@ test-utils.workspace = true
 sourcegen.workspace = true
 
 [features]
-in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+in-rust-tree = []
+
+[lints]
+workspace = true

@@ -214,7 +214,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
                             ty::Adt(..) if mir_structural_match_violation => {
-                                self.tcx().emit_spanned_lint(
+                                self.tcx().emit_node_span_lint(
                                     lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                     self.id,
                                     self.span,
@@ -233,7 +233,7 @@ impl<'tcx> ConstToPat<'tcx> {
             } else if !have_valtree && !self.saw_const_match_lint.get() {
                 // The only way valtree construction can fail without the structural match
                 // checker finding a violation is if there is a pointer somewhere.
-                self.tcx().emit_spanned_lint(
+                self.tcx().emit_node_span_lint(
                     lint::builtin::POINTER_STRUCTURAL_MATCH,
                     self.id,
                     self.span,
@@ -244,7 +244,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
             // any errors.) This ensures it shows up in cargo's future-compat reports as well.
             if !self.type_has_partial_eq_impl(cv.ty()) {
-                self.tcx().emit_spanned_lint(
+                self.tcx().emit_node_span_lint(
                     lint::builtin::CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
                     self.id,
                     self.span,
@@ -319,7 +319,7 @@ impl<'tcx> ConstToPat<'tcx> {
         let kind = match ty.kind() {
             ty::Float(_) => {
                 self.saw_const_match_lint.set(true);
-                tcx.emit_spanned_lint(
+                tcx.emit_node_span_lint(
                     lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
                     span,
@@ -339,7 +339,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Adt(..) if !self.type_marked_structural(ty) && self.behind_reference.get() => {
                 if self.saw_const_match_error.get().is_none() && !self.saw_const_match_lint.get() {
                     self.saw_const_match_lint.set(true);
-                    tcx.emit_spanned_lint(
+                    tcx.emit_node_span_lint(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         id,
                         span,
@@ -435,7 +435,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             && !self.saw_const_match_lint.get()
                         {
                             self.saw_const_match_lint.set(true);
-                            tcx.emit_spanned_lint(
+                            tcx.emit_node_span_lint(
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 span,
@@ -516,7 +516,7 @@ impl<'tcx> ConstToPat<'tcx> {
             && let Some(non_sm_ty) = traits::search_for_structural_match_violation(span, tcx, ty)
         {
             self.saw_const_match_lint.set(true);
-            tcx.emit_spanned_lint(
+            tcx.emit_node_span_lint(
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
                 id,
                 span,

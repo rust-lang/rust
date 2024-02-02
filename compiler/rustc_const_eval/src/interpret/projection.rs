@@ -153,11 +153,7 @@ where
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
-            if base.layout().is_sized() {
-                // An unsized field of a sized type? Sure...
-                // But const-prop actually feeds us such nonsense MIR! (see test `const_prop/issue-86351.rs`)
-                throw_inval!(ConstPropNonsense);
-            }
+            assert!(!base.layout().is_sized());
             let base_meta = base.meta();
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
@@ -205,29 +201,9 @@ where
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
         // So we just "offset" by 0.
         let layout = base.layout().for_variant(self, variant);
-        if layout.abi.is_uninhabited() {
-            // `read_discriminant` should have excluded uninhabited variants... but ConstProp calls
-            // us on dead code.
-            // In the future we might want to allow this to permit code like this:
-            // (this is a Rust/MIR pseudocode mix)
-            // ```
-            // enum Option2 {
-            //   Some(i32, !),
-            //   None,
-            // }
-            //
-            // fn panic() -> ! { panic!() }
-            //
-            // let x: Option2;
-            // x.Some.0 = 42;
-            // x.Some.1 = panic();
-            // SetDiscriminant(x, Some);
-            // ```
-            // However, for now we don't generate such MIR, and this check here *has* found real
-            // bugs (see https://github.com/rust-lang/rust/issues/115145), so we will keep rejecting
-            // it.
-            throw_inval!(ConstPropNonsense)
-        }
+        // This variant may in fact be uninhabited.
+        // See <https://github.com/rust-lang/rust/issues/120337>.
+
         // This cannot be `transmute` as variants *can* have a smaller size than the entire enum.
         base.offset(Size::ZERO, layout, self)
     }

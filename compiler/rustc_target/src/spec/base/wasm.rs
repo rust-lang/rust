@@ -38,9 +38,6 @@ pub fn options() -> TargetOptions {
                 // supposed to be imported and have all other symbols generate errors if
                 // they remain undefined.
                 concat!($prefix, "--allow-undefined"),
-                // Rust code should never have warnings, and warnings are often
-                // indicative of bugs, let's prevent them.
-                concat!($prefix, "--fatal-warnings"),
                 // LLD only implements C++-like demangling, which doesn't match our own
                 // mangling scheme. Tell LLD to not demangle anything and leave it up to
                 // us to demangle these symbols later. Currently rustc does not perform

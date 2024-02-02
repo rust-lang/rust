@@ -356,7 +356,7 @@ impl Definition {
         if let Some(Visibility::Public) = vis {
             return SearchScope::reverse_dependencies(db, module.krate());
         }
-        if let Some(Visibility::Module(module)) = vis {
+        if let Some(Visibility::Module(module, _)) = vis {
             return SearchScope::module_and_children(db, module.into());
         }
 
@@ -536,14 +536,12 @@ impl<'a> FindUsages<'a> {
 
             // Search for occurrences of the items name
             for offset in match_indices(&text, finder, search_range) {
-                tree.token_at_offset(offset).into_iter().for_each(|token| {
+                tree.token_at_offset(offset).for_each(|token| {
                     let Some(str_token) = ast::String::cast(token.clone()) else { return };
                     if let Some((range, nameres)) =
-                        sema.check_for_format_args_template(token.clone(), offset)
+                        sema.check_for_format_args_template(token, offset)
                     {
-                        if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {
-                            return;
-                        }
+                        if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
                     }
                 });
 

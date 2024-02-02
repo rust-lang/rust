@@ -6,6 +6,7 @@ LL | #[diagnostic::non_existing_attribute]
    |
    = note: see issue #111996 <https://github.com/rust-lang/rust/issues/111996> for more information
    = help: add `#![feature(diagnostic_namespace)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[diagnostic]` attribute name space is experimental
   --> $DIR/feature-gate-diagnostic_namespace.rs:7:3
@@ -15,6 +16,7 @@ LL | #[diagnostic::non_existing_attribute(with_option = "foo")]
    |
    = note: see issue #111996 <https://github.com/rust-lang/rust/issues/111996> for more information
    = help: add `#![feature(diagnostic_namespace)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: unknown diagnostic attribute
   --> $DIR/feature-gate-diagnostic_namespace.rs:1:15

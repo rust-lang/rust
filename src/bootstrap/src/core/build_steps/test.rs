@@ -385,7 +385,7 @@ impl Step for RustAnalyzer {
             "test",
             crate_path,
             SourceType::InTree,
-            &["sysroot-abi".to_owned()],
+            &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
@@ -427,9 +427,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -476,9 +474,11 @@ impl Step for RustDemangler {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let rust_demangler = builder
-            .ensure(tool::RustDemangler { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let rust_demangler = builder.ensure(tool::RustDemangler {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -609,12 +609,13 @@ impl Step for Miri {
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
-        let _cargo_miri = builder
-            .ensure(tool::CargoMiri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let miri =
+            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
+        let _cargo_miri = builder.ensure(tool::CargoMiri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         // The stdlib we need might be at a different stage. And just asking for the
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
@@ -788,9 +789,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1597,8 +1596,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            compiler = builder.compiler(compiler.stage - 1, target);
-            format!("stage{}-{}", compiler.stage + 1, target)
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
+            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
+            // to `build.build` in the configuration.
+            let build = builder.build.build;
+
+            compiler = builder.compiler(compiler.stage - 1, build);
+            format!("stage{}-{}", compiler.stage + 1, build)
         } else {
             format!("stage{}-{}", compiler.stage, target)
         };
@@ -1612,7 +1616,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+        } else {
+            builder.ensure(compile::Std::new(compiler, target));
+        }
+
         // ensure that `libproc_macro` is available on the host.
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
@@ -1620,7 +1629,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(TestHelpers { target: compiler.host });
 
         // As well as the target, except for plain wasm32, which can't build it
-        if !target.contains("wasm") || target.contains("emscripten") {
+        if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
             builder.ensure(TestHelpers { target });
         }
 
@@ -1668,13 +1677,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == "coverage-run" {
             // The demangler doesn't need the current compiler, so we can avoid
             // unnecessary rebuilds by using the bootstrap compiler instead.
-            let rust_demangler = builder
-                .ensure(tool::RustDemangler {
-                    compiler: compiler.with_stage(0),
-                    target: compiler.host,
-                    extra_features: Vec::new(),
-                })
-                .expect("in-tree tool");
+            let rust_demangler = builder.ensure(tool::RustDemangler {
+                compiler: compiler.with_stage(0),
+                target: compiler.host,
+                extra_features: Vec::new(),
+            });
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
@@ -1848,6 +1855,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
+                // FIXME: missing Rust patches is not the same as being system llvm; we should rename the flag at some point.
+                // Inspecting the tests with `// no-system-llvm` in src/test *looks* like this is doing the right thing, though.
                 cmd.arg("--system-llvm");
             }
 
@@ -1940,6 +1949,29 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
 
+        // Special setup to enable running with sanitizers on MSVC.
+        if !builder.config.dry_run()
+            && target.contains("msvc")
+            && builder.config.sanitizers_enabled(target)
+        {
+            // Ignore interception failures: not all dlls in the process will have been built with
+            // address sanitizer enabled (e.g., ntdll.dll).
+            cmd.env("ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE", "1");
+            // Add the address sanitizer runtime to the PATH - it is located next to cl.exe.
+            let asan_runtime_path =
+                builder.cc.borrow()[&target].path().parent().unwrap().to_path_buf();
+            let old_path = cmd
+                .get_envs()
+                .find_map(|(k, v)| (k == "PATH").then_some(v))
+                .flatten()
+                .map_or_else(|| env::var_os("PATH").unwrap_or_default(), |v| v.to_owned());
+            let new_path = env::join_paths(
+                env::split_paths(&old_path).chain(std::iter::once(asan_runtime_path)),
+            )
+            .expect("Could not add ASAN runtime path to PATH");
+            cmd.env("PATH", new_path);
+        }
+
         // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it exists.
         // To make the tests work that rely on it not being set, make sure it is not set.
         cmd.env_remove("CARGO");
@@ -1956,7 +1988,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if builder.config.profiler_enabled(target) {
-            cmd.env("RUSTC_PROFILER_SUPPORT", "1");
+            cmd.arg("--profiler-support");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());

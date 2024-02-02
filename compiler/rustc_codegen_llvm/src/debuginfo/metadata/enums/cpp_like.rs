@@ -679,7 +679,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     };
 
     let (coroutine_def_id, coroutine_args) = match coroutine_type_and_layout.ty.kind() {
-        &ty::Coroutine(def_id, args, _) => (def_id, args.as_coroutine()),
+        &ty::Coroutine(def_id, args) => (def_id, args.as_coroutine()),
         _ => unreachable!(),
     };
 

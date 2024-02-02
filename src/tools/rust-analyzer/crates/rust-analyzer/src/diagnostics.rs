@@ -133,7 +133,7 @@ pub(crate) fn fetch_native_diagnostics(
 
     let convert_diagnostic =
         |line_index: &crate::line_index::LineIndex, d: ide::Diagnostic| lsp_types::Diagnostic {
-            range: lsp::to_proto::range(&line_index, d.range.range),
+            range: lsp::to_proto::range(line_index, d.range.range),
             severity: Some(lsp::to_proto::diagnostic_severity(d.severity)),
             code: Some(lsp_types::NumberOrString::String(d.code.as_str().to_string())),
             code_description: Some(lsp_types::CodeDescription {

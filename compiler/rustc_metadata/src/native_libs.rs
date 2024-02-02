@@ -82,7 +82,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
         None => true,
     }
 }
@@ -163,7 +163,7 @@ impl<'tcx> Collector<'tcx> {
                             "link-arg" => {
                                 if !features.link_arg_attribute {
                                     feature_err(
-                                        &sess.parse_sess,
+                                        sess,
                                         sym::link_arg_attribute,
                                         span,
                                         "link kind `link-arg` is unstable",
@@ -206,13 +206,8 @@ impl<'tcx> Collector<'tcx> {
                             continue;
                         };
                         if !features.link_cfg {
-                            feature_err(
-                                &sess.parse_sess,
-                                sym::link_cfg,
-                                item.span(),
-                                "link cfg is unstable",
-                            )
-                            .emit();
+                            feature_err(sess, sym::link_cfg, item.span(), "link cfg is unstable")
+                                .emit();
                         }
                         cfg = Some(link_cfg.clone());
                     }
@@ -277,7 +272,7 @@ impl<'tcx> Collector<'tcx> {
                     macro report_unstable_modifier($feature: ident) {
                         if !features.$feature {
                             feature_err(
-                                &sess.parse_sess,
+                                sess,
                                 sym::$feature,
                                 span,
                                 format!("linking modifier `{modifier}` is unstable"),
@@ -520,11 +515,23 @@ impl<'tcx> Collector<'tcx> {
     ) -> DllImport {
         let span = self.tcx.def_span(item);
 
+        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
-                Abi::Stdcall { .. } | Abi::System { .. } => {
-                    DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                Abi::Stdcall { .. } => DllCallingConvention::Stdcall(self.i686_arg_list_size(item)),
+                // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
+                // `__stdcall` only applies on x86 and on non-variadic functions:
+                // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
+                Abi::System { .. } => {
+                    let c_variadic =
+                        self.tcx.type_of(item).instantiate_identity().fn_sig(self.tcx).c_variadic();
+
+                    if c_variadic {
+                        DllCallingConvention::C
+                    } else {
+                        DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                    }
                 }
                 Abi::Fastcall { .. } => {
                     DllCallingConvention::Fastcall(self.i686_arg_list_size(item))

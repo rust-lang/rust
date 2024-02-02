@@ -107,11 +107,11 @@ impl TypeOrConstParamData {
 impl_from!(TypeParamData, ConstParamData for TypeOrConstParamData);
 
 /// Data about the generic parameters of a function, struct, impl, etc.
-#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParams {
     pub type_or_consts: Arena<TypeOrConstParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
-    pub where_predicates: Vec<WherePredicate>,
+    pub where_predicates: Box<[WherePredicate]>,
 }
 
 /// A single predicate from a where clause, i.e. `where Type: Trait`. Combined
@@ -142,109 +142,14 @@ pub enum WherePredicateTypeTarget {
     TypeOrConstParam(LocalTypeOrConstParamId),
 }
 
-impl GenericParams {
-    /// Iterator of type_or_consts field
-    pub fn iter(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
-        self.type_or_consts.iter()
-    }
+#[derive(Clone, Default)]
+pub(crate) struct GenericParamsCollector {
+    pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
+    lifetimes: Arena<LifetimeParamData>,
+    where_predicates: Vec<WherePredicate>,
+}
 
-    pub(crate) fn generic_params_query(
-        db: &dyn DefDatabase,
-        def: GenericDefId,
-    ) -> Interned<GenericParams> {
-        let _p = profile::span("generic_params_query");
-
-        let krate = def.module(db).krate;
-        let cfg_options = db.crate_graph();
-        let cfg_options = &cfg_options[krate].cfg_options;
-
-        // Returns the generic parameters that are enabled under the current `#[cfg]` options
-        let enabled_params = |params: &Interned<GenericParams>, item_tree: &ItemTree| {
-            let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
-
-            // In the common case, no parameters will by disabled by `#[cfg]` attributes.
-            // Therefore, make a first pass to check if all parameters are enabled and, if so,
-            // clone the `Interned<GenericParams>` instead of recreating an identical copy.
-            let all_type_or_consts_enabled =
-                params.type_or_consts.iter().all(|(idx, _)| enabled(idx.into()));
-            let all_lifetimes_enabled = params.lifetimes.iter().all(|(idx, _)| enabled(idx.into()));
-
-            if all_type_or_consts_enabled && all_lifetimes_enabled {
-                params.clone()
-            } else {
-                Interned::new(GenericParams {
-                    type_or_consts: all_type_or_consts_enabled
-                        .then(|| params.type_or_consts.clone())
-                        .unwrap_or_else(|| {
-                            params
-                                .type_or_consts
-                                .iter()
-                                .filter_map(|(idx, param)| {
-                                    enabled(idx.into()).then(|| param.clone())
-                                })
-                                .collect()
-                        }),
-                    lifetimes: all_lifetimes_enabled
-                        .then(|| params.lifetimes.clone())
-                        .unwrap_or_else(|| {
-                            params
-                                .lifetimes
-                                .iter()
-                                .filter_map(|(idx, param)| {
-                                    enabled(idx.into()).then(|| param.clone())
-                                })
-                                .collect()
-                        }),
-                    where_predicates: params.where_predicates.clone(),
-                })
-            }
-        };
-        macro_rules! id_to_generics {
-            ($id:ident) => {{
-                let id = $id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                enabled_params(&item.generic_params, &tree)
-            }};
-        }
-
-        match def {
-            GenericDefId::FunctionId(id) => {
-                let loc = id.lookup(db);
-                let tree = loc.id.item_tree(db);
-                let item = &tree[loc.id.value];
-
-                let enabled_params = enabled_params(&item.explicit_generic_params, &tree);
-                let mut generic_params = GenericParams::clone(&enabled_params);
-
-                let module = loc.container.module(db);
-                let func_data = db.function_data(id);
-
-                // Don't create an `Expander` if not needed since this
-                // could cause a reparse after the `ItemTree` has been created due to the spanmap.
-                let mut expander =
-                    Lazy::new(|| (module.def_map(db), Expander::new(db, loc.id.file_id(), module)));
-                for param in func_data.params.iter() {
-                    generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
-                }
-
-                Interned::new(generic_params)
-            }
-            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
-            GenericDefId::TraitId(id) => id_to_generics!(id),
-            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
-            GenericDefId::TypeAliasId(id) => id_to_generics!(id),
-            GenericDefId::ImplId(id) => id_to_generics!(id),
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
-                Interned::new(GenericParams::default())
-            }
-        }
-    }
-
+impl GenericParamsCollector {
     pub(crate) fn fill(
         &mut self,
         lower_ctx: &LowerCtx<'_>,
@@ -444,11 +349,129 @@ impl GenericParams {
         });
     }
 
-    pub(crate) fn shrink_to_fit(&mut self) {
-        let Self { lifetimes, type_or_consts: types, where_predicates } = self;
+    pub(crate) fn finish(self) -> GenericParams {
+        let Self { mut lifetimes, mut type_or_consts, where_predicates } = self;
         lifetimes.shrink_to_fit();
-        types.shrink_to_fit();
-        where_predicates.shrink_to_fit();
+        type_or_consts.shrink_to_fit();
+        GenericParams {
+            type_or_consts,
+            lifetimes,
+            where_predicates: where_predicates.into_boxed_slice(),
+        }
+    }
+}
+
+impl GenericParams {
+    /// Iterator of type_or_consts field
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
+        self.type_or_consts.iter()
+    }
+
+    pub(crate) fn generic_params_query(
+        db: &dyn DefDatabase,
+        def: GenericDefId,
+    ) -> Interned<GenericParams> {
+        let _p = profile::span("generic_params_query");
+
+        let krate = def.module(db).krate;
+        let cfg_options = db.crate_graph();
+        let cfg_options = &cfg_options[krate].cfg_options;
+
+        // Returns the generic parameters that are enabled under the current `#[cfg]` options
+        let enabled_params = |params: &Interned<GenericParams>, item_tree: &ItemTree| {
+            let enabled = |param| item_tree.attrs(db, krate, param).is_cfg_enabled(cfg_options);
+
+            // In the common case, no parameters will by disabled by `#[cfg]` attributes.
+            // Therefore, make a first pass to check if all parameters are enabled and, if so,
+            // clone the `Interned<GenericParams>` instead of recreating an identical copy.
+            let all_type_or_consts_enabled =
+                params.type_or_consts.iter().all(|(idx, _)| enabled(idx.into()));
+            let all_lifetimes_enabled = params.lifetimes.iter().all(|(idx, _)| enabled(idx.into()));
+
+            if all_type_or_consts_enabled && all_lifetimes_enabled {
+                params.clone()
+            } else {
+                Interned::new(GenericParams {
+                    type_or_consts: all_type_or_consts_enabled
+                        .then(|| params.type_or_consts.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .type_or_consts
+                                .iter()
+                                .filter(|(idx, _)| enabled((*idx).into()))
+                                .map(|(_, param)| param.clone())
+                                .collect()
+                        }),
+                    lifetimes: all_lifetimes_enabled
+                        .then(|| params.lifetimes.clone())
+                        .unwrap_or_else(|| {
+                            params
+                                .lifetimes
+                                .iter()
+                                .filter(|(idx, _)| enabled((*idx).into()))
+                                .map(|(_, param)| param.clone())
+                                .collect()
+                        }),
+                    where_predicates: params.where_predicates.clone(),
+                })
+            }
+        };
+        macro_rules! id_to_generics {
+            ($id:ident) => {{
+                let id = $id.lookup(db).id;
+                let tree = id.item_tree(db);
+                let item = &tree[id.value];
+                enabled_params(&item.generic_params, &tree)
+            }};
+        }
+
+        match def {
+            GenericDefId::FunctionId(id) => {
+                let loc = id.lookup(db);
+                let tree = loc.id.item_tree(db);
+                let item = &tree[loc.id.value];
+
+                let enabled_params = enabled_params(&item.explicit_generic_params, &tree);
+
+                let module = loc.container.module(db);
+                let func_data = db.function_data(id);
+                if func_data.params.is_empty() {
+                    enabled_params
+                } else {
+                    let mut generic_params = GenericParamsCollector {
+                        type_or_consts: enabled_params.type_or_consts.clone(),
+                        lifetimes: enabled_params.lifetimes.clone(),
+                        where_predicates: enabled_params.where_predicates.clone().into(),
+                    };
+
+                    // Don't create an `Expander` if not needed since this
+                    // could cause a reparse after the `ItemTree` has been created due to the spanmap.
+                    let mut expander = Lazy::new(|| {
+                        (module.def_map(db), Expander::new(db, loc.id.file_id(), module))
+                    });
+                    for param in func_data.params.iter() {
+                        generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
+                    }
+                    Interned::new(generic_params.finish())
+                }
+            }
+            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
+            GenericDefId::TraitId(id) => id_to_generics!(id),
+            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
+            GenericDefId::TypeAliasId(id) => id_to_generics!(id),
+            GenericDefId::ImplId(id) => id_to_generics!(id),
+            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
+                Interned::new(GenericParams {
+                    type_or_consts: Default::default(),
+                    lifetimes: Default::default(),
+                    where_predicates: Default::default(),
+                })
+            }
+        }
     }
 
     pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {

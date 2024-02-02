@@ -13,3 +13,6 @@ doctest = false
 
 [dependencies]
 home = "0.5.4"
+
+[lints]
+workspace = true

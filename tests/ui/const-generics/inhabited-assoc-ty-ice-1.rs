@@ -9,7 +9,7 @@ trait Foo {
     const ASSOC: usize = 1;
 }
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct Iced<T: Foo>(T, [(); T::ASSOC])
 where
     [(); T::ASSOC]: ;

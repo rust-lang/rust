@@ -19,7 +19,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::cstore::CrateStore;
+use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::{kw, Symbol};
@@ -236,7 +236,14 @@ provide! { tcx, def_id, other, cdata,
     impl_polarity => { table_direct }
     defaultness => { table_direct }
     constness => { table_direct }
-    coerce_unsized_info => { table }
+    coerce_unsized_info => {
+        Ok(cdata
+            .root
+            .tables
+            .coerce_unsized_info
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
     rendered_const => { table }
     asyncness => { table_direct }
@@ -283,20 +290,14 @@ provide! { tcx, def_id, other, cdata,
         tcx.arena.alloc_from_iter(cdata.get_associated_item_or_field_def_ids(def_id.index))
     }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
-    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
+    inherent_impls => { Ok(cdata.get_inherent_implementations_for_type(tcx, def_id.index)) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
     cross_crate_inlinable => { cdata.cross_crate_inlinable(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
-    is_private_dep => {
-        // Parallel compiler needs to synchronize type checking and linting (which use this flag)
-        // so that they happen strictly crate loading. Otherwise, the full list of available
-        // impls aren't loaded yet.
-        use std::sync::atomic::Ordering;
-        cdata.private_dep.load(Ordering::Acquire)
-    }
+    is_private_dep => { cdata.private_dep }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -305,10 +306,7 @@ provide! { tcx, def_id, other, cdata,
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
     panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }
-    extern_crate => {
-        let r = *cdata.extern_crate.lock();
-        r.map(|c| &*tcx.arena.alloc(c))
-    }
+    extern_crate => { cdata.extern_crate.map(|c| &*tcx.arena.alloc(c)) }
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
     reachable_non_generics => {
@@ -337,12 +335,9 @@ provide! { tcx, def_id, other, cdata,
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
-    crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
+    crate_incoherent_impls => { Ok(cdata.get_incoherent_impls(tcx, other)) }
 
-    dep_kind => {
-        let r = *cdata.dep_kind.lock();
-        r
-    }
+    dep_kind => { cdata.dep_kind }
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
@@ -357,8 +352,7 @@ provide! { tcx, def_id, other, cdata,
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
-        let r = matches!(*cdata.extern_crate.borrow(), Some(extern_crate) if !extern_crate.is_direct());
-        r
+        matches!(cdata.extern_crate, Some(extern_crate) if !extern_crate.is_direct())
     }
 
     used_crate_source => { Lrc::clone(&cdata.source) }
@@ -580,6 +574,19 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
+    }
+
+    pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
+        let cmeta = self.get_crate_data_mut(cnum);
+        if cmeta.update_extern_crate(extern_crate) {
+            // Propagate the extern crate info to dependencies if it was updated.
+            let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
+            let dependencies = std::mem::take(&mut cmeta.dependencies);
+            for &dep_cnum in &dependencies {
+                self.update_extern_crate(dep_cnum, extern_crate);
+            }
+            self.get_crate_data_mut(cnum).dependencies = dependencies;
+        }
     }
 }
 

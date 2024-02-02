@@ -260,6 +260,18 @@ function initSearch(rawSearchIndex) {
      * Special type name IDs for searching by both array and slice (`[]` syntax).
      */
     let typeNameIdOfArrayOrSlice;
+    /**
+     * Special type name IDs for searching by tuple.
+     */
+    let typeNameIdOfTuple;
+    /**
+     * Special type name IDs for searching by unit.
+     */
+    let typeNameIdOfUnit;
+    /**
+     * Special type name IDs for searching by both tuple and unit (`()` syntax).
+     */
+    let typeNameIdOfTupleOrUnit;
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -295,11 +307,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function isEndCharacter(c) {
-        return "=,>-]".indexOf(c) !== -1;
-    }
-
-    function isErrorCharacter(c) {
-        return "()".indexOf(c) !== -1;
+        return "=,>-])".indexOf(c) !== -1;
     }
 
     function itemTypeFromName(typename) {
@@ -585,8 +593,6 @@ function initSearch(rawSearchIndex) {
                         throw ["Unexpected ", "!", ": it can only be at the end of an ident"];
                     }
                     foundExclamation = parserState.pos;
-                } else if (isErrorCharacter(c)) {
-                    throw ["Unexpected ", c];
                 } else if (isPathSeparator(c)) {
                     if (c === ":") {
                         if (!isPathStart(parserState)) {
@@ -616,11 +622,14 @@ function initSearch(rawSearchIndex) {
                     }
                 } else if (
                     c === "[" ||
+                    c === "(" ||
                     isEndCharacter(c) ||
                     isSpecialStartCharacter(c) ||
                     isSeparatorCharacter(c)
                 ) {
                     break;
+                } else if (parserState.pos > 0) {
+                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 } else {
                     throw ["Unexpected ", c];
                 }
@@ -661,15 +670,24 @@ function initSearch(rawSearchIndex) {
         skipWhitespace(parserState);
         let start = parserState.pos;
         let end;
-        if (parserState.userQuery[parserState.pos] === "[") {
+        if ("[(".indexOf(parserState.userQuery[parserState.pos]) !== -1) {
+let endChar = ")";
+let name = "()";
+let friendlyName = "tuple";
+
+if (parserState.userQuery[parserState.pos] === "[") {
+    endChar = "]";
+    name = "[]";
+    friendlyName = "slice";
+}
             parserState.pos += 1;
-            getItemsBefore(query, parserState, generics, "]");
+            const { foundSeparator } = getItemsBefore(query, parserState, generics, endChar);
             const typeFilter = parserState.typeFilter;
             const isInBinding = parserState.isInBinding;
             if (typeFilter !== null && typeFilter !== "primitive") {
                 throw [
                     "Invalid search type: primitive ",
-                    "[]",
+                    name,
                     " and ",
                     typeFilter,
                     " both specified",
@@ -677,27 +695,31 @@ function initSearch(rawSearchIndex) {
             }
             parserState.typeFilter = null;
             parserState.isInBinding = null;
-            parserState.totalElems += 1;
-            if (isInGenerics) {
-                parserState.genericsElems += 1;
-            }
             for (const gen of generics) {
                 if (gen.bindingName !== null) {
-                    throw ["Type parameter ", "=", " cannot be within slice ", "[]"];
+                    throw ["Type parameter ", "=", ` cannot be within ${friendlyName} `, name];
                 }
             }
-            elems.push({
-                name: "[]",
-                id: null,
-                fullPath: ["[]"],
-                pathWithoutLast: [],
-                pathLast: "[]",
-                normalizedPathLast: "[]",
-                generics,
-                typeFilter: "primitive",
-                bindingName: isInBinding,
-                bindings: new Map(),
-            });
+            if (name === "()" && !foundSeparator && generics.length === 1 && typeFilter === null) {
+                elems.push(generics[0]);
+            } else {
+                parserState.totalElems += 1;
+                if (isInGenerics) {
+                    parserState.genericsElems += 1;
+                }
+                elems.push({
+                    name: name,
+                    id: null,
+                    fullPath: [name],
+                    pathWithoutLast: [],
+                    pathLast: name,
+                    normalizedPathLast: name,
+                    generics,
+                    bindings: new Map(),
+                    typeFilter: "primitive",
+                    bindingName: isInBinding,
+                });
+            }
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.
@@ -770,9 +792,11 @@ function initSearch(rawSearchIndex) {
      * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
      * @param {string} endChar            - This function will stop when it'll encounter this
      *                                      character.
+     * @returns {{foundSeparator: bool}}
      */
     function getItemsBefore(query, parserState, elems, endChar) {
         let foundStopChar = true;
+        let foundSeparator = false;
         let start = parserState.pos;
 
         // If this is a generic, keep the outer item's type filter around.
@@ -786,6 +810,8 @@ function initSearch(rawSearchIndex) {
             extra = "<";
         } else if (endChar === "]") {
             extra = "[";
+        } else if (endChar === ")") {
+            extra = "(";
         } else if (endChar === "") {
             extra = "->";
         } else {
@@ -802,6 +828,7 @@ function initSearch(rawSearchIndex) {
             } else if (isSeparatorCharacter(c)) {
                 parserState.pos += 1;
                 foundStopChar = true;
+                foundSeparator = true;
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
@@ -879,6 +906,8 @@ function initSearch(rawSearchIndex) {
 
         parserState.typeFilter = oldTypeFilter;
         parserState.isInBinding = oldIsInBinding;
+
+        return { foundSeparator };
     }
 
     /**
@@ -926,6 +955,8 @@ function initSearch(rawSearchIndex) {
                         break;
                     }
                     throw ["Unexpected ", c, " (did you mean ", "->", "?)"];
+                } else if (parserState.pos > 0) {
+                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 }
                 throw ["Unexpected ", c];
             } else if (c === ":" && !isPathStart(parserState)) {
@@ -1599,6 +1630,11 @@ function initSearch(rawSearchIndex) {
                 ) {
                     // [] matches primitive:array or primitive:slice
                     // if it matches, then we're fine, and this is an appropriate match candidate
+                } else if (queryElem.id === typeNameIdOfTupleOrUnit &&
+                    (fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit)
+                ) {
+                    // () matches primitive:tuple or primitive:unit
+                    // if it matches, then we're fine, and this is an appropriate match candidate
                 } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
                 }
@@ -1792,7 +1828,7 @@ function initSearch(rawSearchIndex) {
                 if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                     typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
                     // special case
-                    elem.id !== typeNameIdOfArrayOrSlice
+                    elem.id !== typeNameIdOfArrayOrSlice && elem.id !== typeNameIdOfTupleOrUnit
                 ) {
                     return row.id === elem.id || checkIfInList(
                         row.generics,
@@ -1805,11 +1841,20 @@ function initSearch(rawSearchIndex) {
             return unifyFunctionTypes([row], [elem], whereClause, mgens);
         }
 
-        function checkPath(contains, ty, maxEditDistance) {
+        /**
+         * Compute an "edit distance" that ignores missing path elements.
+         * @param {string[]} contains search query path
+         * @param {Row} ty indexed item
+         * @returns {null|number} edit distance
+         */
+        function checkPath(contains, ty) {
             if (contains.length === 0) {
                 return 0;
             }
-            let ret_dist = maxEditDistance + 1;
+            const maxPathEditDistance = Math.floor(
+                contains.reduce((acc, next) => acc + next.length, 0) / 3
+            );
+            let ret_dist = maxPathEditDistance + 1;
             const path = ty.path.split("::");
 
             if (ty.parent && ty.parent.name) {
@@ -1821,15 +1866,23 @@ function initSearch(rawSearchIndex) {
             pathiter: for (let i = length - clength; i >= 0; i -= 1) {
                 let dist_total = 0;
                 for (let x = 0; x < clength; ++x) {
-                    const dist = editDistance(path[i + x], contains[x], maxEditDistance);
-                    if (dist > maxEditDistance) {
-                        continue pathiter;
+                    const [p, c] = [path[i + x], contains[x]];
+                    if (Math.floor((p.length - c.length) / 3) <= maxPathEditDistance &&
+                        p.indexOf(c) !== -1
+                    ) {
+                        // discount distance on substring match
+                        dist_total += Math.floor((p.length - c.length) / 3);
+                    } else {
+                        const dist = editDistance(p, c, maxPathEditDistance);
+                        if (dist > maxPathEditDistance) {
+                            continue pathiter;
+                        }
+                        dist_total += dist;
                     }
-                    dist_total += dist;
                 }
                 ret_dist = Math.min(ret_dist, Math.round(dist_total / clength));
             }
-            return ret_dist;
+            return ret_dist > maxPathEditDistance ? null : ret_dist;
         }
 
         function typePassesFilter(filter, type) {
@@ -2030,8 +2083,8 @@ function initSearch(rawSearchIndex) {
             }
 
             if (elem.fullPath.length > 1) {
-                path_dist = checkPath(elem.pathWithoutLast, row, maxEditDistance);
-                if (path_dist > maxEditDistance) {
+                path_dist = checkPath(elem.pathWithoutLast, row);
+                if (path_dist === null) {
                     return;
                 }
             }
@@ -2045,7 +2098,7 @@ function initSearch(rawSearchIndex) {
 
             const dist = editDistance(row.normalizedName, elem.normalizedPathLast, maxEditDistance);
 
-            if (index === -1 && dist + path_dist > maxEditDistance) {
+            if (index === -1 && dist > maxEditDistance) {
                 return;
             }
 
@@ -2100,13 +2153,9 @@ function initSearch(rawSearchIndex) {
         }
 
         function innerRunQuery() {
-            let queryLen = 0;
-            for (const elem of parsedQuery.elems) {
-                queryLen += elem.name.length;
-            }
-            for (const elem of parsedQuery.returned) {
-                queryLen += elem.name.length;
-            }
+            const queryLen =
+                parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
+                parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
             const maxEditDistance = Math.floor(queryLen / 3);
 
             /**
@@ -2668,8 +2717,32 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @return {Array<FunctionSearchType>}
      */
     function buildItemSearchTypeAll(types, lowercasePaths) {
-        return types.map(type => buildItemSearchType(type, lowercasePaths));
+        return types.length > 0 ?
+            types.map(type => buildItemSearchType(type, lowercasePaths)) :
+            EMPTY_GENERICS_ARRAY;
     }
+
+    /**
+     * Empty, immutable map used in item search types with no bindings.
+     *
+     * @type {Map<number, Array<FunctionType>>}
+     */
+    const EMPTY_BINDINGS_MAP = new Map();
+
+    /**
+     * Empty, immutable map used in item search types with no bindings.
+     *
+     * @type {Array<FunctionType>}
+     */
+    const EMPTY_GENERICS_ARRAY = [];
+
+    /**
+     * Object pool for function types with no bindings or generics.
+     * This is reset after loading the index.
+     *
+     * @type {Map<number|null, FunctionType>}
+     */
+    let TYPES_POOL = new Map();
 
     /**
      * Converts a single type.
@@ -2683,15 +2756,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         let pathIndex, generics, bindings;
         if (typeof type === "number") {
             pathIndex = type;
-            generics = [];
-            bindings = new Map();
+            generics = EMPTY_GENERICS_ARRAY;
+            bindings = EMPTY_BINDINGS_MAP;
         } else {
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
                 lowercasePaths
             );
-            if (type.length > BINDINGS_DATA) {
+            if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
                 bindings = new Map(type[BINDINGS_DATA].map(binding => {
                     const [assocType, constraints] = binding;
                     // Associated type constructors are represented sloppily in rustdoc's
@@ -2710,38 +2783,83 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     ];
                 }));
             } else {
-                bindings = new Map();
+                bindings = EMPTY_BINDINGS_MAP;
             }
         }
+        /**
+         * @type {FunctionType}
+         */
+        let result;
         if (pathIndex < 0) {
             // types less than 0 are generic parameters
             // the actual names of generic parameters aren't stored, since they aren't API
-            return {
+            result = {
                 id: pathIndex,
                 ty: TY_GENERIC,
                 path: null,
                 generics,
                 bindings,
             };
-        }
-        if (pathIndex === 0) {
+        } else if (pathIndex === 0) {
             // `0` is used as a sentinel because it's fewer bytes than `null`
-            return {
+            result = {
                 id: null,
                 ty: null,
                 path: null,
                 generics,
                 bindings,
             };
+        } else {
+            const item = lowercasePaths[pathIndex - 1];
+            result = {
+                id: buildTypeMapIndex(item.name, isAssocType),
+                ty: item.ty,
+                path: item.path,
+                generics,
+                bindings,
+            };
         }
-        const item = lowercasePaths[pathIndex - 1];
-        return {
-            id: buildTypeMapIndex(item.name, isAssocType),
-            ty: item.ty,
-            path: item.path,
-            generics,
-            bindings,
-        };
+        const cr = TYPES_POOL.get(result.id);
+        if (cr) {
+            // Shallow equality check. Since this function is used
+            // to construct every type object, this should be mostly
+            // equivalent to a deep equality check, except if there's
+            // a conflict, we don't keep the old one around, so it's
+            // not a fully precise implementation of hashcons.
+            if (cr.generics.length === result.generics.length &&
+                cr.generics !== result.generics &&
+                cr.generics.every((x, i) => result.generics[i] === x)
+            ) {
+                result.generics = cr.generics;
+            }
+            if (cr.bindings.size === result.bindings.size && cr.bindings !== result.bindings) {
+                let ok = true;
+                for (const [k, v] of cr.bindings.entries()) {
+                    const v2 = result.bindings.get(v);
+                    if (!v2) {
+                        ok = false;
+                        break;
+                    }
+                    if (v !== v2 && v.length === v2.length && v.every((x, i) => v2[i] === x)) {
+                        result.bindings.set(k, v);
+                    } else if (v !== v2) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    result.bindings = cr.bindings;
+                }
+            }
+            if (cr.ty === result.ty && cr.path === result.path
+                && cr.bindings === result.bindings && cr.generics === result.generics
+                && cr.ty === result.ty
+            ) {
+                return cr;
+            }
+        }
+        TYPES_POOL.set(result.id, result);
+        return result;
     }
 
     /**
@@ -2752,21 +2870,67 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * object-based encoding so that the actual search code is more readable and easier to debug.
      *
      * The raw function search type format is generated using serde in
-     * librustdoc/html/render/mod.rs: impl Serialize for IndexItemFunctionType
+     * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
      *
-     * @param {RawFunctionSearchType} functionSearchType
+     * @param {{
+     *  string: string,
+     *  offset: number,
+     *  backrefQueue: FunctionSearchType[]
+     * }} itemFunctionDecoder
      * @param {Array<{name: string, ty: number}>} lowercasePaths
      * @param {Map<string, integer>}
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(functionSearchType, lowercasePaths) {
-        const INPUTS_DATA = 0;
-        const OUTPUT_DATA = 1;
-        // `0` is used as a sentinel because it's fewer bytes than `null`
-        if (functionSearchType === 0) {
+    function buildFunctionSearchType(itemFunctionDecoder, lowercasePaths) {
+        const c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+        itemFunctionDecoder.offset += 1;
+        const [zero, ua, la, ob, cb] = ["0", "@", "`", "{", "}"].map(c => c.charCodeAt(0));
+        // `` ` `` is used as a sentinel because it's fewer bytes than `null`, and decodes to zero
+        // `0` is a backref
+        if (c === la) {
             return null;
         }
+        // sixteen characters after "0" are backref
+        if (c >= zero && c < ua) {
+            return itemFunctionDecoder.backrefQueue[c - zero];
+        }
+        if (c !== ob) {
+            throw ["Unexpected ", c, " in function: expected ", "{", "; this is a bug"];
+        }
+        // call after consuming `{`
+        function decodeList() {
+            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            const ret = [];
+            while (c !== cb) {
+                ret.push(decode());
+                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            }
+            itemFunctionDecoder.offset += 1; // eat cb
+            return ret;
+        }
+        // consumes and returns a list or integer
+        function decode() {
+            let n = 0;
+            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            if (c === ob) {
+                itemFunctionDecoder.offset += 1;
+                return decodeList();
+            }
+            while (c < la) {
+                n = (n << 4) | (c & 0xF);
+                itemFunctionDecoder.offset += 1;
+                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            }
+            // last character >= la
+            n = (n << 4) | (c & 0xF);
+            const [sign, value] = [n & 1, n >> 1];
+            itemFunctionDecoder.offset += 1;
+            return sign ? -value : value;
+        }
+        const functionSearchType = decodeList();
+        const INPUTS_DATA = 0;
+        const OUTPUT_DATA = 1;
         let inputs, output;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
             inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
@@ -2795,9 +2959,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
                 : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
         }
-        return {
+        const ret = {
             inputs, output, where_clause,
         };
+        itemFunctionDecoder.backrefQueue.unshift(ret);
+        if (itemFunctionDecoder.backrefQueue.length > 16) {
+            itemFunctionDecoder.backrefQueue.pop();
+        }
+        return ret;
     }
 
     /**
@@ -2822,11 +2991,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildFunctionTypeFingerprint(type, output, fps) {
         let input = type.id;
-        // All forms of `[]` get collapsed down to one thing in the bloom filter.
+        // All forms of `[]`/`()` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
         // still done in the matching algorithm.
         if (input === typeNameIdOfArray || input === typeNameIdOfSlice) {
             input = typeNameIdOfArrayOrSlice;
+        }
+        if (input === typeNameIdOfTuple || input === typeNameIdOfUnit) {
+            input = typeNameIdOfTupleOrUnit;
         }
         // http://burtleburtle.net/bob/hash/integer.html
         // ~~ is toInt32. It's used before adding, so
@@ -2867,8 +3039,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         const fb = {
             id: null,
             ty: 0,
-            generics: [],
-            bindings: new Map(),
+            generics: EMPTY_GENERICS_ARRAY,
+            bindings: EMPTY_BINDINGS_MAP,
         };
         for (const [k, v] of type.bindings.entries()) {
             fb.id = k;
@@ -2911,6 +3083,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         return functionTypeFingerprint[(fullId * 4) + 3];
     }
 
+    /**
+     * Convert raw search index into in-memory search index.
+     *
+     * @param {[string, RawSearchIndexCrate][]} rawSearchIndex
+     */
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
         typeNameIdMap = new Map();
@@ -2922,7 +3099,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // that can be searched using `[]` syntax.
         typeNameIdOfArray = buildTypeMapIndex("array");
         typeNameIdOfSlice = buildTypeMapIndex("slice");
+        typeNameIdOfTuple = buildTypeMapIndex("tuple");
+        typeNameIdOfUnit = buildTypeMapIndex("unit");
         typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
+        typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
 
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.
@@ -2937,59 +3117,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // This loop actually generates the search item indexes, including
         // normalized names, type signature objects and fingerprints, and aliases.
         id = 0;
-        /**
-         * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
-         * are arrays with the same length. `q`, `a`, and `c` use a sparse
-         * representation for compactness.
-         *
-         * `n[i]` contains the name of an item.
-         *
-         * `t[i]` contains the type of that item
-         * (as a string of characters that represent an offset in `itemTypes`).
-         *
-         * `d[i]` contains the description of that item.
-         *
-         * `q` contains the full paths of the items. For compactness, it is a set of
-         * (index, path) pairs used to create a map. If a given index `i` is
-         * not present, this indicates "same as the last index present".
-         *
-         * `i[i]` contains an item's parent, usually a module. For compactness,
-         * it is a set of indexes into the `p` array.
-         *
-         * `f[i]` contains function signatures, or `0` if the item isn't a function.
-         * Functions are themselves encoded as arrays. The first item is a list of
-         * types representing the function's inputs, and the second list item is a list
-         * of types representing the function's output. Tuples are flattened.
-         * Types are also represented as arrays; the first item is an index into the `p`
-         * array, while the second is a list of types representing any generic parameters.
-         *
-         * b[i] contains an item's impl disambiguator. This is only present if an item
-         * is defined in an impl block and, the impl block's type has more than one associated
-         * item with the same name.
-         *
-         * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
-         * points into the n/t/d/q/i/f arrays.
-         *
-         * `doc` contains the description of the crate.
-         *
-         * `p` is a list of path/type pairs. It is used for parents and function parameters.
-         *
-         * `c` is an array of item indices that are deprecated.
-         *
-         * @type {{
-         *   doc: string,
-         *   a: Object,
-         *   n: Array<string>,
-         *   t: String,
-         *   d: Array<string>,
-         *   q: Array<[Number, string]>,
-         *   i: Array<Number>,
-         *   f: Array<RawFunctionSearchType>,
-         *   p: Array<Object>,
-         *   b: Array<[Number, String]>,
-         *   c: Array<Number>
-         * }}
-         */
+
         for (const [crate, crateCorpus] of rawSearchIndex) {
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
@@ -3026,8 +3154,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
-            // an array of (Object | null) the type of the function, if any
-            const itemFunctionSearchTypes = crateCorpus.f;
+            // a string representing the list of function types
+            const itemFunctionDecoder = {
+                string: crateCorpus.f,
+                offset: 0,
+                backrefQueue: [],
+            };
             // an array of (Number) indices for the deprecated items
             const deprecatedItems = new Set(crateCorpus.c);
             // an array of (Number) indices for the deprecated items
@@ -3075,12 +3207,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     word = itemNames[i].toLowerCase();
                 }
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
-                let type = null;
-                if (itemFunctionSearchTypes[i] !== 0) {
-                    type = buildFunctionSearchType(
-                        itemFunctionSearchTypes[i],
-                        lowercasePaths
-                    );
+                const type = buildFunctionSearchType(itemFunctionDecoder, lowercasePaths);
+                if (type !== null) {
                     if (type) {
                         const fp = functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
                         const fps = new Set();
@@ -3140,6 +3268,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
             currentIndex += itemTypes.length;
         }
+        // Drop the (rather large) hash table used for reusing function items
+        TYPES_POOL = new Map();
     }
 
     /**

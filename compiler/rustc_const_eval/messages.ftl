@@ -46,8 +46,8 @@ const_eval_dangling_int_pointer =
     {$bad_pointer_message}: {$pointer} is a dangling pointer (it has no provenance)
 const_eval_dangling_null_pointer =
     {$bad_pointer_message}: null pointer is a dangling pointer (it has no provenance)
-const_eval_dangling_ptr_in_final = encountered dangling pointer in final constant
 
+const_eval_dangling_ptr_in_final = encountered dangling pointer in final value of {const_eval_intern_kind}
 const_eval_dead_local =
     accessing a dead local variable
 const_eval_dealloc_immutable =
@@ -134,6 +134,14 @@ const_eval_interior_mutable_data_refer =
         This would make multiple uses of a constant to be able to see different values and allow circumventing
         the `Send` and `Sync` requirements for shared mutable data, which is unsound.
 
+const_eval_intern_kind = {$kind ->
+    [static] static
+    [static_mut] mutable static
+    [const] constant
+    [promoted] promoted
+    *[other] {""}
+}
+
 const_eval_invalid_align =
     align has to be a power of 2
 
@@ -204,6 +212,8 @@ const_eval_modified_global =
 
 const_eval_mut_deref =
     mutation through a reference is not allowed in {const_eval_const_context}s
+
+const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
 const_eval_non_const_fmt_macro_call =
     cannot call non-const formatting macro in {const_eval_const_context}s
@@ -327,7 +337,7 @@ const_eval_too_many_caller_args =
 
 const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
 
-const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {const_eval_const_context}s
+const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
 
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
@@ -341,21 +351,21 @@ const_eval_unallowed_heap_allocations =
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
-const_eval_unallowed_mutable_refs =
-    mutable references are not allowed in the final value of {const_eval_const_context}s
+const_eval_unallowed_mutable_raw =
+    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
     .teach_note =
+        References in statics and constants may only refer to immutable values.
+
+
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
         safety since holding multiple mutable references to shared data is not allowed.
 
 
         If you really want global mutable state, try using static mut or a global UnsafeCell.
 
-const_eval_unallowed_mutable_refs_raw =
-    raw mutable references are not allowed in the final value of {const_eval_const_context}s
+const_eval_unallowed_mutable_refs =
+    mutable references are not allowed in the final value of {const_eval_const_context}s
     .teach_note =
-        References in statics and constants may only refer to immutable values.
-
-
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
         safety since holding multiple mutable references to shared data is not allowed.
 
@@ -392,9 +402,6 @@ const_eval_unstable_in_stable =
     .unstable_sugg = if it is not part of the public API, make this function unstably const
     .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
 
-const_eval_unsupported_untyped_pointer = unsupported untyped pointer in constant
-    .note = memory only reachable via raw pointers is not supported
-
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation
 
@@ -406,7 +413,6 @@ const_eval_upcast_mismatch =
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
-const_eval_validation_box_to_mut = {$front_matter}: encountered a box pointing to mutable memory in a constant
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
@@ -441,7 +447,8 @@ const_eval_validation_invalid_fn_ptr = {$front_matter}: encountered {$value}, bu
 const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid reference metadata: total size is bigger than largest supported object
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
-const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in a `const`
+const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in a `const` or `static`
+const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_null_box = {$front_matter}: encountered a null box
 const_eval_validation_null_fn_ptr = {$front_matter}: encountered a null function pointer
@@ -451,7 +458,6 @@ const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but 
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
 const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
-const_eval_validation_ref_to_mut = {$front_matter}: encountered a reference pointing to mutable memory in a constant
 const_eval_validation_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
 const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
@@ -459,7 +465,7 @@ const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned 
 const_eval_validation_uninhabited_enum_variant = {$front_matter}: encountered an uninhabited enum variant
 const_eval_validation_uninhabited_val = {$front_matter}: encountered a value of uninhabited type `{$ty}`
 const_eval_validation_uninit = {$front_matter}: encountered uninitialized memory, but {$expected}
-const_eval_validation_unsafe_cell = {$front_matter}: encountered `UnsafeCell` in a `const`
+const_eval_validation_unsafe_cell = {$front_matter}: encountered `UnsafeCell` in read-only memory
 
 const_eval_write_through_immutable_pointer =
     writing through a pointer that was derived from a shared (immutable) reference

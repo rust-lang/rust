@@ -1,14 +1,14 @@
 //! `render` module provides utilities for rendering completion suggestions
 //! into code pieces that will be presented to user.
 
-pub(crate) mod macro_;
-pub(crate) mod function;
 pub(crate) mod const_;
+pub(crate) mod function;
+pub(crate) mod literal;
+pub(crate) mod macro_;
 pub(crate) mod pattern;
 pub(crate) mod type_alias;
-pub(crate) mod variant;
 pub(crate) mod union_literal;
-pub(crate) mod literal;
+pub(crate) mod variant;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
@@ -17,7 +17,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
+use syntax::{format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
@@ -202,7 +202,7 @@ fn field_with_receiver(
 ) -> SmolStr {
     receiver.map_or_else(
         || field_name.into(),
-        |receiver| format!("{}.{field_name}", receiver.display(db)).into(),
+        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db)),
     )
 }
 
@@ -295,15 +295,12 @@ fn render_resolution_pat(
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
-    match resolution {
-        ScopeDef::ModuleDef(Macro(mac)) => {
-            let ctx = ctx.import_to_add(import_to_add);
-            return render_macro_pat(ctx, pattern_ctx, local_name, mac);
-        }
-        _ => (),
+    if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
+        let ctx = ctx.import_to_add(import_to_add);
+        render_macro_pat(ctx, pattern_ctx, local_name, mac)
+    } else {
+        render_resolution_simple_(ctx, &local_name, import_to_add, resolution)
     }
-
-    render_resolution_simple_(ctx, &local_name, import_to_add, resolution)
 }
 
 fn render_resolution_path(
@@ -837,11 +834,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn main []
-                fn test []
+                fn main() []
+                fn test(…) []
                 md dep []
                 fn function (use dep::test_mod_a::function) [requires_import]
-                fn function (use dep::test_mod_b::function) [requires_import]
+                fn function(…) (use dep::test_mod_b::function) [requires_import]
             "#]],
         );
     }
@@ -1170,6 +1167,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -1196,6 +1194,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -1274,6 +1273,7 @@ fn foo() { A { the$0 } }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -2089,6 +2089,7 @@ fn foo() {
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
                             is_name_already_imported: false,
                             requires_import: false,
                             is_op_method: false,
@@ -2438,5 +2439,82 @@ impl S {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn notable_traits_method_relevance() {
+        check_kinds(
+            r#"
+#[doc(notable_trait)]
+trait Write {
+    fn write(&self);
+    fn flush(&self);
+}
+
+struct Writer;
+
+impl Write for Writer {
+    fn write(&self) {}
+    fn flush(&self) {}
+}
+
+fn main() {
+    Writer.$0
+}
+"#,
+            &[
+                CompletionItemKind::Method,
+                CompletionItemKind::SymbolKind(SymbolKind::Field),
+                CompletionItemKind::SymbolKind(SymbolKind::Function),
+            ],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "flush()",
+                        source_range: 193..193,
+                        delete: 193..193,
+                        insert: "flush()$0",
+                        kind: Method,
+                        lookup: "flush",
+                        detail: "fn(&self)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: true,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                    CompletionItem {
+                        label: "write()",
+                        source_range: 193..193,
+                        delete: 193..193,
+                        insert: "write()$0",
+                        kind: Method,
+                        lookup: "write",
+                        detail: "fn(&self)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: true,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                ]
+            "#]],
+        );
     }
 }

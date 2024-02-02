@@ -22,9 +22,10 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{span::SyntaxContextId, AnchoredPathBuf, FileId, FileRange};
+use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
 use hir::{FieldSource, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics};
+use span::SyntaxContextId;
 use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},
@@ -70,14 +71,17 @@ impl Definition {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
+        rename_external: bool,
     ) -> Result<SourceChange> {
         // self.krate() returns None if
         // self is a built-in attr, built-in type or tool module.
         // it is not allowed for these defs to be renamed.
         // cases where self.krate() is None is handled below.
         if let Some(krate) = self.krate(sema.db) {
-            if !krate.origin(sema.db).is_local() {
-                bail!("Cannot rename a non-local definition.")
+            // Can we not rename non-local items?
+            // Then bail if non-local
+            if !rename_external && !krate.origin(sema.db).is_local() {
+                bail!("Cannot rename a non-local definition as the config for it is disabled")
             }
         }
 
@@ -103,7 +107,7 @@ impl Definition {
     /// renamed and extern crate names will report its range, though a rename will introduce
     /// an alias instead.
     pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
-        let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then(|| range);
+        let syn_ctx_is_root = |(range, ctx): (_, SyntaxContextId)| ctx.is_root().then_some(range);
         let res = match self {
             Definition::Macro(mac) => {
                 let src = mac.source(sema.db)?;
@@ -197,6 +201,7 @@ impl Definition {
             Definition::SelfType(_) => return None,
             Definition::BuiltinAttr(_) => return None,
             Definition::ToolModule(_) => return None,
+            Definition::TupleField(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };
@@ -515,7 +520,7 @@ fn source_edit_from_def(
     if let Definition::Local(local) = def {
         let mut file_id = None;
         for source in local.sources(sema.db) {
-            let source = match source.source.clone().original_ast_node(sema.db) {
+            let source = match source.source.clone().original_ast_node_rooted(sema.db) {
                 Some(source) => source,
                 None => match source
                     .source
@@ -559,7 +564,7 @@ fn source_edit_from_def(
                         }
                     } else {
                         // Foo { ref mut field } -> Foo { field: ref mut new_name }
-                        //      ^ insert `field: `
+                        //   original_ast_node_rootedd: `
                         //               ^^^^^ replace this with `new_name`
                         edit.insert(
                             pat.syntax().text_range().start(),

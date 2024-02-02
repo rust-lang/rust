@@ -2,9 +2,11 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_errors::emitter::{DynEmitter, Emitter, EmitterWriter};
+use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter};
 use rustc_errors::translation::Translate;
-use rustc_errors::{ColorConfig, DiagCtxt, Diagnostic, Level as DiagnosticLevel};
+use rustc_errors::{
+    ColorConfig, DiagCtxt, Diagnostic, DiagnosticBuilder, Level as DiagnosticLevel,
+};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -139,7 +141,7 @@ fn default_dcx(
             rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
             false,
         );
-        Box::new(EmitterWriter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
+        Box::new(HumanEmitter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
     };
     DiagCtxt::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
@@ -283,9 +285,9 @@ impl ParseSess {
 
 // Methods that should be restricted within the parse module.
 impl ParseSess {
-    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diagnostic>) {
+    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<DiagnosticBuilder<'_>>) {
         for diagnostic in diagnostics {
-            self.parse_sess.dcx.emit_diagnostic(diagnostic);
+            diagnostic.emit();
         }
     }
 
@@ -446,7 +448,7 @@ mod tests {
                 Some(ignore_list),
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
-            let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning(None), Some(span));
+            let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
             emitter.emit_diagnostic(&non_fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 0);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), true);
@@ -470,7 +472,7 @@ mod tests {
                 None,
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
-            let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning(None), Some(span));
+            let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
             emitter.emit_diagnostic(&non_fatal_diagnostic);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
@@ -507,8 +509,8 @@ mod tests {
             );
             let bar_span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let foo_span = MultiSpan::from_span(mk_sp(BytePos(21), BytePos(22)));
-            let bar_diagnostic = build_diagnostic(DiagnosticLevel::Warning(None), Some(bar_span));
-            let foo_diagnostic = build_diagnostic(DiagnosticLevel::Warning(None), Some(foo_span));
+            let bar_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(bar_span));
+            let foo_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(foo_span));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, None);
             emitter.emit_diagnostic(&bar_diagnostic);
             emitter.emit_diagnostic(&foo_diagnostic);

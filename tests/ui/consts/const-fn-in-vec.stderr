@@ -2,7 +2,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/const-fn-in-vec.rs:1:47
    |
 LL | static _MAYBE_STRINGS: [Option<String>; 5] = [None; 5];
-   |                                               ^^^^ the trait `Copy` is not implemented for `String`
+   |                                               ^^^^ the trait `Copy` is not implemented for `String`, which is required by `Option<String>: Copy`
    |
    = note: required for `Option<String>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
@@ -31,7 +31,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/const-fn-in-vec.rs:9:48
    |
 LL |     let _maybe_strings: [Option<String>; 5] = [None; 5];
-   |                                                ^^^^ the trait `Copy` is not implemented for `String`
+   |                                                ^^^^ the trait `Copy` is not implemented for `String`, which is required by `Option<String>: Copy`
    |
    = note: required for `Option<String>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array

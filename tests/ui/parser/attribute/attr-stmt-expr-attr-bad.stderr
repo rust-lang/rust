@@ -365,11 +365,11 @@ LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
+error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:85:38
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] 10 => () } }
-   |                                      ^ expected one of `,`, `=>`, `if`, `|`, or `}`
+   |                                      ^ expected one of `=>`, `if`, or `|`
 
 error[E0586]: inclusive range with no end
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:35
@@ -379,11 +379,11 @@ LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
+error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:88:38
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] -10 => () } }
-   |                                      ^ expected one of `,`, `=>`, `if`, `|`, or `}`
+   |                                      ^ expected one of `=>`, `if`, or `|`
 
 error: unexpected token: `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:91:39
@@ -399,11 +399,11 @@ LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
-error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `#`
+error: expected one of `=>`, `if`, or `|`, found `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:93:38
    |
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
-   |                                      ^ expected one of `,`, `=>`, `if`, `|`, or `}`
+   |                                      ^ expected one of `=>`, `if`, or `|`
 
 error: unexpected token: `#`
   --> $DIR/attr-stmt-expr-attr-bad.rs:97:34

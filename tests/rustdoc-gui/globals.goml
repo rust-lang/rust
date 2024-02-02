@@ -18,7 +18,7 @@ assert-window-property: {"srcIndex": null}
 
 // source sidebar
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
-click: "#src-sidebar-toggle"
+click: "#sidebar-button"
 wait-for: "#src-sidebar details"
 assert-window-property-false: {"srcIndex": null}
 assert-window-property: {"searchIndex": null}

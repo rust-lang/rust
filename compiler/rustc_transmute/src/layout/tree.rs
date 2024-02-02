@@ -199,6 +199,7 @@ pub(crate) mod rustc {
             match err {
                 LayoutError::Unknown(..) | LayoutError::ReferencesError(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
+                LayoutError::Cycle(err) => Self::TypeError(*err),
                 err => unimplemented!("{:?}", err),
             }
         }

@@ -191,7 +191,7 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable, HashStable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),

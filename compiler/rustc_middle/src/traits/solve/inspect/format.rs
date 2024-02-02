@@ -77,6 +77,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             CanonicalGoalEvaluationKind::CycleInStack => {
                 writeln!(self.f, "CYCLE IN STACK: {:?}", eval.result)
             }
+            CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
+                writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
+            }
             CanonicalGoalEvaluationKind::Evaluation { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}")?;

@@ -6,7 +6,6 @@
 //! directory in each respective module.
 
 use std::io::Write;
-#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::process;
 use std::{
     env,
@@ -22,43 +21,35 @@ fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
 
-    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let mut build_lock;
-    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let _build_lock_guard;
 
     if !config.bypass_bootstrap_lock {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
-        #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
-        {
-            let path = config.out.join("lock");
-            let pid = match fs::read_to_string(&path) {
-                Ok(contents) => contents,
-                Err(_) => String::new(),
-            };
+        let lock_path = config.out.join("lock");
+        let pid = match fs::read_to_string(&lock_path) {
+            Ok(contents) => contents,
+            Err(_) => String::new(),
+        };
 
-            build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&path)));
-            _build_lock_guard = match build_lock.try_write() {
-                Ok(mut lock) => {
-                    t!(lock.write(&process::id().to_string().as_ref()));
-                    lock
-                }
-                err => {
-                    drop(err);
-                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
-                    let mut lock = t!(build_lock.write());
-                    t!(lock.write(&process::id().to_string().as_ref()));
-                    lock
-                }
-            };
-        }
-
-        #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
-        println!("WARNING: file locking not supported for target, not locking build directory");
+        build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&lock_path)));
+        _build_lock_guard = match build_lock.try_write() {
+            Ok(mut lock) => {
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
+            }
+            err => {
+                drop(err);
+                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                let mut lock = t!(build_lock.write());
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
+            }
+        };
     }
 
     // check_version warnings are not printed during setup
@@ -158,25 +149,27 @@ fn check_version(config: &Config) -> Option<String> {
 
         let changes = find_recent_config_change_ids(id);
 
-        if !changes.is_empty() {
-            msg.push_str("There have been changes to x.py since you last updated:\n");
+        if changes.is_empty() {
+            return None;
+        }
 
-            for change in changes {
-                msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
-                msg.push_str(&format!(
-                    "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
-                    change.change_id
-                ));
-            }
+        msg.push_str("There have been changes to x.py since you last updated:\n");
 
-            msg.push_str("NOTE: to silence this warning, ");
+        for change in changes {
+            msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
             msg.push_str(&format!(
-                "update `config.toml` to use `change-id = {latest_change_id}` instead"
+                "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
+                change.change_id
             ));
+        }
 
-            if io::stdout().is_terminal() && !config.dry_run() {
-                t!(fs::write(warned_id_path, latest_change_id.to_string()));
-            }
+        msg.push_str("NOTE: to silence this warning, ");
+        msg.push_str(&format!(
+            "update `config.toml` to use `change-id = {latest_change_id}` instead"
+        ));
+
+        if io::stdout().is_terminal() && !config.dry_run() {
+            t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");

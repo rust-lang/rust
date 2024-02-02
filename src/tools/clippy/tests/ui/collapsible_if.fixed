@@ -3,7 +3,8 @@
     clippy::equatable_if_let,
     clippy::needless_if,
     clippy::nonminimal_bool,
-    clippy::eq_op
+    clippy::eq_op,
+    clippy::redundant_pattern_matching
 )]
 
 #[rustfmt::skip]

@@ -8,10 +8,13 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(round_ties_even)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
+<<<<<<< HEAD
 #![cfg_attr(not(bootstrap), feature(f16))]
+=======
+#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
+>>>>>>> master
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -95,7 +98,6 @@ pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
-pub use crate::shims::EvalContextExt as _;
 
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,

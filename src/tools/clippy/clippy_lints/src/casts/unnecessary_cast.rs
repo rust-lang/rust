@@ -107,7 +107,7 @@ pub(super) fn check<'tcx>(
             && let Some(src) = snippet_opt(cx, cast_expr.span)
             && cast_to.is_floating_point()
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
-            && let from_nbits = 128 - n.leading_zeros()
+            && let from_nbits = 128 - n.get().leading_zeros()
             && let to_nbits = fp_ty_mantissa_nbits(cast_to)
             && from_nbits != 0
             && to_nbits != 0
@@ -145,7 +145,7 @@ pub(super) fn check<'tcx>(
     if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
         if let Some(id) = path_to_local(cast_expr)
             && let Some(span) = cx.tcx.hir().opt_span(id)
-            && span.ctxt() != cast_expr.span.ctxt()
+            && !span.eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

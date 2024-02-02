@@ -50,11 +50,11 @@ impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
         sess.mir_opt_level() >= 2 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // If execution did something, applying a simplification layer
         // helps later passes optimize the copy away.
         if separate_const_switch(body) > 0 {
-            super::simplify::simplify_cfg(tcx, body);
+            super::simplify::simplify_cfg(body);
         }
     }
 }

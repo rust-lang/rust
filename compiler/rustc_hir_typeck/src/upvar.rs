@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, args) = match *ty.kind() {
             ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
-            ty::Coroutine(def_id, args, _) => (def_id, UpvarArgs::Coroutine(args)),
+            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args)),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -754,7 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
             let closure_head_span = self.tcx.def_span(closure_def_id);
-            self.tcx.struct_span_lint_hir(
+            self.tcx.node_span_lint(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
                 closure_head_span,
@@ -912,7 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         drop_order: bool,
     ) -> MigrationWarningReason {
         MigrationWarningReason {
-            auto_traits: auto_trait_reasons.to_sorted_stable_ord(),
+            auto_traits: auto_trait_reasons.into_sorted_stable_ord(),
             drop_order,
         }
     }

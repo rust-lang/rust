@@ -3,8 +3,6 @@
 // edition:2018
 #![deny(must_not_suspend)]
 //~^ WARNING unknown lint: `must_not_suspend`
-//~| WARNING unknown lint: `must_not_suspend`
-//~| WARNING unknown lint: `must_not_suspend`
 
 async fn other() {}
 

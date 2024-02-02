@@ -40,7 +40,7 @@ body:
     id: version
     attributes:
       label: Rust Version
-      description: Please provide the `rustc` version, `rustc --version --verbose`
+      description: Please provide the `rustc` version, `rustc --version --verbose`. Make sure that you're using the latest version of the compiler, and not an outdated stable or nightly release!
       placeholder: |
         $ rustc --version --verbose
         rustc 1.XX.Y (SHORTHASH DATE)

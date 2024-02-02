@@ -2,10 +2,7 @@ error[E0599]: the method `clone` exists for struct `Bar<NotClone>`, but its trai
   --> $DIR/derive-assoc-type-not-impl.rs:18:30
    |
 LL | struct Bar<T: Foo> {
-   | ------------------
-   | |
-   | method `clone` not found for this struct
-   | doesn't satisfy `Bar<NotClone>: Clone`
+   | ------------------ method `clone` not found for this struct because it doesn't satisfy `Bar<NotClone>: Clone`
 ...
 LL | struct NotClone;
    | --------------- doesn't satisfy `NotClone: Clone`

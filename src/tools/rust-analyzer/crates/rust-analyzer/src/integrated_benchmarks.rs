@@ -10,7 +10,8 @@
 //! in release mode in VS Code. There's however "rust-analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
-use ide::{CallableSnippets, Change, CompletionConfig, FilePosition, TextSize};
+use hir::Change;
+use ide::{CallableSnippets, CompletionConfig, FilePosition, TextSize};
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,

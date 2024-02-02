@@ -47,6 +47,11 @@ source "$ci_dir/shared.sh"
 
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
+# suppress change-tracker warnings on CI
+if [ "$CI" != "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
+fi
+
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
   isCiBranch automation/bors/try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
@@ -80,6 +85,15 @@ fi
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 
+# Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available
+# (to avoid spending a lot of time cloning llvm)
+if [ "$EXTERNAL_LLVM" = "" ]; then
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
+elif [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
+    echo "error: dist builds should always use optimized compiler-rt!" >&2
+    exit 1
+fi
+
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
@@ -105,7 +119,8 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
 
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm}"
+  CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm}"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -130,11 +145,12 @@ else
   # tests as it will fail them.
   if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift,gcc"
+    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift,gcc}"
   else
     # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
+    CODEGEN_BACKENDS="${CODEGEN_BACKENDS:-llvm,cranelift}"
   fi
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh
@@ -151,10 +167,6 @@ else
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
-fi
-
-if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] || [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-missing-tools"
 fi
 
 # Unless we're using an older version of LLVM, check that all LLVM components
@@ -241,7 +253,7 @@ fi
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -f config.toml
-  $SRC/configure --set rust.parallel-compiler
+  $SRC/configure --set change-id=99999999 --set rust.parallel-compiler
 
   # Save the build metrics before we wipe the directory
   if [ "$HAS_METRICS" = 1 ]; then

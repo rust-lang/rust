@@ -6,6 +6,7 @@ LL |     concat_idents!(a, b);
    |
    = note: see issue #29599 <https://github.com/rust-lang/rust/issues/29599> for more information
    = help: add `#![feature(concat_idents)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0425]: cannot find value `ab` in this scope
   --> $DIR/feature-gate-concat_idents2.rs:2:5

@@ -13,10 +13,11 @@ use crate::ty::{self, List, Ty};
 use crate::ty::{Region, UserTypeAnnotationIndex};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::packed::Pu128;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir};
 use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use rustc_ast::Mutability;
@@ -674,7 +675,9 @@ pub enum TerminatorKind<'tcx> {
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Vec<Operand<'tcx>>,
+        /// The span for each arg is also included
+        /// (e.g. `a` and `b` in `x.foo(a, b)`).
+        args: Vec<Spanned<Operand<'tcx>>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -827,7 +830,7 @@ impl TerminatorKind<'_> {
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
-    pub(super) values: SmallVec<[u128; 1]>,
+    pub(super) values: SmallVec<[Pu128; 1]>,
 
     /// Possible branch sites. The last element of this vector is used
     /// for the otherwise branch, so targets.len() == values.len() + 1
@@ -1071,6 +1074,8 @@ pub enum ProjectionElem<V, T> {
     /// "Downcast" to a variant of an enum or a coroutine.
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
+    ///
+    /// This operation itself is never UB, all it does is change the type of the place.
     Downcast(Option<Symbol>, VariantIdx),
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
@@ -1344,7 +1349,7 @@ pub enum AggregateKind<'tcx> {
     Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
     Closure(DefId, GenericArgsRef<'tcx>),
-    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Coroutine(DefId, GenericArgsRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

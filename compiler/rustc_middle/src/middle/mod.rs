@@ -4,7 +4,7 @@ pub mod dependency_format;
 pub mod exported_symbols;
 pub mod lang_items;
 pub mod lib_features {
-    use rustc_data_structures::fx::FxHashMap;
+    use rustc_data_structures::unord::UnordMap;
     use rustc_span::{symbol::Symbol, Span};
 
     #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -16,15 +16,16 @@ pub mod lib_features {
 
     #[derive(HashStable, Debug, Default)]
     pub struct LibFeatures {
-        pub stability: FxHashMap<Symbol, (FeatureStability, Span)>,
+        pub stability: UnordMap<Symbol, (FeatureStability, Span)>,
     }
 
     impl LibFeatures {
-        pub fn to_vec(&self) -> Vec<(Symbol, FeatureStability)> {
-            let mut all_features: Vec<_> =
-                self.stability.iter().map(|(&sym, &(stab, _))| (sym, stab)).collect();
-            all_features.sort_unstable_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
-            all_features
+        pub fn to_sorted_vec(&self) -> Vec<(Symbol, FeatureStability)> {
+            self.stability
+                .to_sorted_stable_ord()
+                .iter()
+                .map(|(&sym, &(stab, _))| (sym, stab))
+                .collect()
         }
     }
 }

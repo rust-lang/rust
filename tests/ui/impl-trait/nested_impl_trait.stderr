@@ -34,17 +34,19 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                  |         nested `impl Trait` here
    |                                  outer `impl Trait`
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer return types
+error[E0562]: `impl Trait` is not allowed in `fn` pointer return types
   --> $DIR/nested_impl_trait.rs:10:32
    |
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfied
   --> $DIR/nested_impl_trait.rs:6:46
    |
 LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
-   |                                              ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
+   |                                              ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`, which is required by `impl Into<u32>: Into<impl Debug>`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
@@ -53,7 +55,7 @@ error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfie
   --> $DIR/nested_impl_trait.rs:19:34
    |
 LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
-   |                                  ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
+   |                                  ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`, which is required by `impl Into<u32>: Into<impl Debug>`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`

@@ -6,6 +6,7 @@ use std::time::Duration;
 use log::trace;
 
 use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::Float;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_index::IndexVec;
@@ -24,7 +25,7 @@ use rand::RngCore;
 use crate::*;
 
 // This mapping should match `decode_error_kind` in
-// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>.
+// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/unix/mod.rs>.
 const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
     &[
@@ -117,6 +118,50 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
     }
 }
 
+/// Convert a softfloat type to its corresponding hostfloat type.
+pub trait ToHost {
+    type HostFloat;
+    fn to_host(self) -> Self::HostFloat;
+}
+
+/// Convert a hostfloat type to its corresponding softfloat type.
+pub trait ToSoft {
+    type SoftFloat;
+    fn to_soft(self) -> Self::SoftFloat;
+}
+
+impl ToHost for rustc_apfloat::ieee::Double {
+    type HostFloat = f64;
+
+    fn to_host(self) -> Self::HostFloat {
+        f64::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f64 {
+    type SoftFloat = rustc_apfloat::ieee::Double;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Single {
+    type HostFloat = f32;
+
+    fn to_host(self) -> Self::HostFloat {
+        f32::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f32 {
+    type SoftFloat = rustc_apfloat::ieee::Single;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Checks if the given crate/module exists.
@@ -172,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&self, module: &str, name: &str) -> Scalar<Provenance> {
-        self.eval_context_ref().eval_path_scalar(&["std", "sys", "windows", module, name])
+        self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal", "windows", module, name])
     }
 
     /// Helper function to get a `windows` constant as a `u32`.
@@ -204,7 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn windows_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
         let ty = this
-            .resolve_path(&["std", "sys", "windows", "c", name], Namespace::TypeNS)
+            .resolve_path(&["std", "sys", "pal", "windows", "c", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty).unwrap()
     }
@@ -223,6 +268,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
         bug!("No field named {} in type {}", name, base.layout().ty);
+    }
+
+    /// Search if `base` (which must be a struct or union type) contains the `name` field.
+    fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        name: &str,
+    ) -> bool {
+        let adt = base.layout().ty.ty_adt_def().unwrap();
+        for field in adt.non_enum_variant().fields.iter() {
+            if field.name.as_str() == name {
+                return true;
+            }
+        }
+        false
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -1187,12 +1247,4 @@ pub(crate) fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<
         -1 => true,
         _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
     })
-}
-
-// This looks like something that would be nice to have in the standard library...
-pub(crate) fn round_to_next_multiple_of(x: u64, divisor: u64) -> u64 {
-    assert_ne!(divisor, 0);
-    // divisor is nonzero; multiplication cannot overflow since we just divided
-    #[allow(clippy::arithmetic_side_effects)]
-    return (x.checked_add(divisor - 1).unwrap() / divisor) * divisor;
 }
