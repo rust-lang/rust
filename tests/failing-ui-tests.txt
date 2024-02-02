@@ -70,3 +70,4 @@ tests/ui/async-await/deep-futures-are-freeze.rs
 tests/ui/closures/capture-unsized-by-ref.rs
 tests/ui/coroutine/resume-after-return.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs
+tests/ui/intrinsics/intrinsics-integer.rs
