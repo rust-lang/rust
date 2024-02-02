@@ -436,7 +436,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub(crate) fn cat_rvalue(
         &self,
         hir_id: hir::HirId,
-        span: Span,
+        // FIXME: remove
+        _span: Span,
         expr_ty: Ty<'tcx>,
     ) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new())
