@@ -247,10 +247,8 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
         triple.to_string()
     };
 
-    // API 19 is the earliest API level supported by NDK r25b but AArch64 and x86_64 support
-    // begins at API level 21.
-    let api_level =
-        if triple.contains("aarch64") || triple.contains("x86_64") { "21" } else { "19" };
+    // The earliest API supported by NDK r26d is 21.
+    let api_level = "21";
     let compiler = format!("{}{}-{}", triple_translated, api_level, compiler.clang());
     let host_tag = if cfg!(target_os = "macos") {
         // The NDK uses universal binaries, so this is correct even on ARM.
@@ -258,7 +256,7 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
     } else if cfg!(target_os = "windows") {
         "windows-x86_64"
     } else {
-        // NDK r25b only has official releases for macOS, Windows and Linux.
+        // NDK r26d only has official releases for macOS, Windows and Linux.
         // Try the Linux directory everywhere else, on the assumption that the OS has an
         // emulation layer that can cope (e.g. BSDs).
         "linux-x86_64"
