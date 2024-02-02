@@ -34,6 +34,7 @@ impl FunctionKind {
         if parent_unwrap_call.is_none() {
             return Applicability::Unspecified;
         }
+
         match &self {
             FunctionKind::TryFromFunction(None) | FunctionKind::TryIntoFunction(None) => Applicability::Unspecified,
             _ => Applicability::MachineApplicable,
@@ -41,30 +42,36 @@ impl FunctionKind {
     }
 
     fn default_sugg(&self, primary_span: Span) -> Vec<(Span, String)> {
-        match *self {
-            FunctionKind::TryFromFunction(_) => vec![(primary_span, String::from("From::from"))],
-            FunctionKind::TryIntoFunction(_) => vec![(primary_span, String::from("Into::into"))],
-            FunctionKind::TryIntoMethod => vec![(primary_span, String::from("into"))],
-        }
+        let replacement = match *self {
+            FunctionKind::TryFromFunction(_) => "From::from",
+            FunctionKind::TryIntoFunction(_) => "Into::into",
+            FunctionKind::TryIntoMethod => "into",
+        };
+
+        vec![(primary_span, String::from(replacement))]
     }
 
     fn machine_applicable_sugg(&self, primary_span: Span, unwrap_span: Span) -> Vec<(Span, String)> {
+        use FunctionKind::*;
+        use SpansKind::*;
+
+        let (trait_name, fn_name) = {
+            let (a, b) = match self {
+                TryFromFunction(_) => ("From", "from"),
+                TryIntoFunction(_) | TryIntoMethod => ("Into", "into"),
+            };
+            (a.to_string(), b.to_string())
+        };
+
         let mut sugg = match *self {
-            FunctionKind::TryFromFunction(Some(spans)) => match spans {
-                SpansKind::TraitFn { trait_span, fn_span } => {
-                    vec![(trait_span, String::from("From")), (fn_span, String::from("from"))]
-                },
-                SpansKind::Fn { fn_span } => vec![(fn_span, String::from("from"))],
+            TryFromFunction(Some(spans)) | TryIntoFunction(Some(spans)) => match spans {
+                TraitFn { trait_span, fn_span } => vec![(trait_span, trait_name), (fn_span, fn_name)],
+                Fn { fn_span } => vec![(fn_span, fn_name)],
             },
-            FunctionKind::TryIntoFunction(Some(spans)) => match spans {
-                SpansKind::TraitFn { trait_span, fn_span } => {
-                    vec![(trait_span, String::from("Into")), (fn_span, String::from("into"))]
-                },
-                SpansKind::Fn { fn_span } => vec![(fn_span, String::from("into"))],
-            },
-            FunctionKind::TryIntoMethod => vec![(primary_span, String::from("into"))],
+            TryIntoMethod => vec![(primary_span, fn_name)],
             _ => unreachable!(),
         };
+
         sugg.push((unwrap_span, String::new()));
         sugg
     }
