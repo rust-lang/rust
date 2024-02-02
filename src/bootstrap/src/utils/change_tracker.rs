@@ -210,4 +210,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "the `wasm-component-ld` tool is now built as part of `build.extended` and can be a member of `build.tools`",
     },
+    ChangeInfo {
+        change_id: 120593,
+        severity: ChangeSeverity::Info,
+        summary: "Removed android-ndk r25b support in favor of android-ndk r26d.",
+    },
 ];
