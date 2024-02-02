@@ -248,7 +248,7 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
     } else if cfg!(target_os = "windows") {
         "windows-x86_64"
     } else {
-        // NDK r25b only has official releases for macOS, Windows and Linux.
+        // NDK r26b only has official releases for macOS, Windows and Linux.
         // Try the Linux directory everywhere else, on the assumption that the OS has an
         // emulation layer that can cope (e.g. BSDs).
         "linux-x86_64"

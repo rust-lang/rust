@@ -392,7 +392,7 @@
 #metrics = false
 
 # Specify the location of the Android NDK. Used when targeting Android.
-#android-ndk = "/path/to/android-ndk-r25b"
+#android-ndk = "/path/to/android-ndk-r26b"
 
 # =============================================================================
 # General install configuration options

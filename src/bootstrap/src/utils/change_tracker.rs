@@ -170,4 +170,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`rust.split-debuginfo` has been moved to `target.<triple>.split-debuginfo` and its default value is determined for each target individually.",
     },
+    ChangeInfo {
+        change_id: 120593,
+        severity: ChangeSeverity::Info,
+        summary: "Removed android-ndk r25b support in favor of android-ndk r26b.",
+    },
 ];
