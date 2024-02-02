@@ -268,7 +268,7 @@ pub fn new_lint_store(internal_lints: bool) -> LintStore {
 /// `rustc_session::lint::builtin`).
 fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
-        ($name:expr, $($lint:ident),*) => (
+        ($name:expr, $($lint:ident),* $(,)?) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
@@ -283,7 +283,7 @@ fn register_builtins(store: &mut LintStore) {
         "nonstandard_style",
         NON_CAMEL_CASE_TYPES,
         NON_SNAKE_CASE,
-        NON_UPPER_CASE_GLOBALS
+        NON_UPPER_CASE_GLOBALS,
     );
 
     add_lint_group!(
@@ -309,7 +309,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_PARENS,
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
-        MAP_UNIT_FN
+        MAP_UNIT_FN,
     );
 
     add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
@@ -320,13 +320,13 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_EXTERN_CRATES,
         ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
         ELIDED_LIFETIMES_IN_PATHS,
-        EXPLICIT_OUTLIVES_REQUIREMENTS // FIXME(#52665, #47816) not always applicable and not all
-                                       // macros are ready for this yet.
-                                       // UNREACHABLE_PUB,
-
-                                       // FIXME macro crates are not up for this yet, too much
-                                       // breakage is seen if we try to encourage this lint.
-                                       // MACRO_USE_EXTERN_CRATE
+        EXPLICIT_OUTLIVES_REQUIREMENTS,
+        // FIXME(#52665, #47816) not always applicable and not all
+        // macros are ready for this yet.
+        // UNREACHABLE_PUB,
+        // FIXME macro crates are not up for this yet, too much
+        // breakage is seen if we try to encourage this lint.
+        // MACRO_USE_EXTERN_CRATE
     );
 
     add_lint_group!("keyword_idents", KEYWORD_IDENTS_2018, KEYWORD_IDENTS_2024);
