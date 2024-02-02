@@ -1038,10 +1038,6 @@ impl DiagCtxt {
         }
     }
 
-    pub fn take_future_breakage_diagnostics(&self) -> Vec<Diagnostic> {
-        std::mem::take(&mut self.inner.borrow_mut().future_breakage_diagnostics)
-    }
-
     pub fn abort_if_errors(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.emit_stashed_diagnostics();
@@ -1149,8 +1145,12 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
     }
 
-    pub fn emit_future_breakage_report(&self, diags: Vec<Diagnostic>) {
-        self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
+    pub fn emit_future_breakage_report(&self) {
+        let mut inner = self.inner.borrow_mut();
+        let diags = std::mem::take(&mut inner.future_breakage_diagnostics);
+        if !diags.is_empty() {
+            inner.emitter.emit_future_breakage_report(diags);
+        }
     }
 
     pub fn emit_unused_externs(
