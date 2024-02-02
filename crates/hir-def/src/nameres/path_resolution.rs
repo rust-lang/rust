@@ -87,7 +87,7 @@ impl DefMap {
         within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
-            RawVisibility::Module(path, explicity) => {
+            RawVisibility::Module(path, explicitness) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
@@ -95,7 +95,7 @@ impl DefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicity),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicitness),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;

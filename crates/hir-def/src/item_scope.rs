@@ -17,7 +17,7 @@ use syntax::ast;
 use crate::{
     db::DefDatabase,
     per_ns::PerNs,
-    visibility::{Visibility, VisibilityExplicity},
+    visibility::{Visibility, VisibilityExplicitness},
     AdtId, BuiltinType, ConstId, ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId,
     ModuleDefId, ModuleId, TraitId, UseId,
 };
@@ -653,14 +653,16 @@ impl ItemScope {
             .map(|(_, vis, _)| vis)
             .chain(self.values.values_mut().map(|(_, vis, _)| vis))
             .chain(self.unnamed_trait_imports.values_mut().map(|(vis, _)| vis))
-            .for_each(|vis| *vis = Visibility::Module(this_module, VisibilityExplicity::Implicit));
+            .for_each(|vis| {
+                *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
+            });
 
         for (mac, vis, import) in self.macros.values_mut() {
             if matches!(mac, MacroId::ProcMacroId(_) if import.is_none()) {
                 continue;
             }
 
-            *vis = Visibility::Module(this_module, VisibilityExplicity::Implicit);
+            *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit);
         }
     }
 

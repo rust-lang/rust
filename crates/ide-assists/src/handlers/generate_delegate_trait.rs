@@ -295,7 +295,7 @@ fn generate_impl(
             // those in strukt.
             //
             // These generics parameters will also be used in `field_ty` and
-            // `where_clauses`, so we should substitude arguments in them as well.
+            // `where_clauses`, so we should substitute arguments in them as well.
             let strukt_params = resolve_name_conflicts(strukt_params, &old_impl_params);
             let (field_ty, ty_where_clause) = match &strukt_params {
                 Some(strukt_params) => {
