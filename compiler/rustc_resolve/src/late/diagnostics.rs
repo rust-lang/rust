@@ -699,7 +699,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             msg,
-                            "self.".to_string(),
+                            "self.",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -710,7 +710,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             format!("you might have meant to {}", candidate.action()),
-                            "Self::".to_string(),
+                            "Self::",
                             Applicability::MachineApplicable,
                         );
                     }

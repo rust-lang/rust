@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
             .with_span_suggestion_verbose(
                 mistyped_const_ident.span,
                 "use the `const` keyword",
-                kw::Const.as_str(),
+                kw::Const,
                 Applicability::MachineApplicable,
             )
             .emit();
