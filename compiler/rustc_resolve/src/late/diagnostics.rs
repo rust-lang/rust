@@ -444,6 +444,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         self.suggest_bare_struct_literal(&mut err);
+        self.suggest_changing_type_to_const_param(&mut err, res, source, span);
 
         if self.suggest_pattern_match_with_let(&mut err, source, span) {
             // Fallback label.
@@ -1135,6 +1136,55 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 ],
                 Applicability::HasPlaceholders,
             );
+        }
+    }
+
+    fn suggest_changing_type_to_const_param(
+        &mut self,
+        err: &mut Diagnostic,
+        res: Option<Res>,
+        source: PathSource<'_>,
+        span: Span,
+    ) {
+        let PathSource::Trait(_) = source else { return };
+
+        // We don't include `DefKind::Str` and `DefKind::AssocTy` as they can't be reached here anyway.
+        let applicability = match res {
+            Some(Res::PrimTy(PrimTy::Int(_) | PrimTy::Uint(_) | PrimTy::Bool | PrimTy::Char)) => {
+                Applicability::MachineApplicable
+            }
+            // FIXME(const_generics): Add `DefKind::TyParam` and `SelfTyParam` once we support generic
+            // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
+            // benefits of including them here outweighs the small number of false positives.
+            Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
+                if self.r.tcx.features().adt_const_params =>
+            {
+                Applicability::MaybeIncorrect
+            }
+            _ => return,
+        };
+
+        let Some(item) = self.diagnostic_metadata.current_item else { return };
+        let Some(generics) = item.kind.generics() else { return };
+
+        let param = generics.params.iter().find_map(|param| {
+            // Only consider type params with exactly one trait bound.
+            if let [bound] = &*param.bounds
+                && let ast::GenericBound::Trait(tref, ast::TraitBoundModifiers::NONE) = bound
+                && tref.span == span
+                && param.ident.span.eq_ctxt(span)
+            {
+                Some(param.ident.span)
+            } else {
+                None
+            }
+        });
+
+        if let Some(param) = param {
+            err.subdiagnostic(errors::UnexpectedResChangeTyToConstParamSugg {
+                span: param.shrink_to_lo(),
+                applicability,
+            });
         }
     }
 
