@@ -503,10 +503,10 @@ trait BAD_TRAIT {
 }
 
 impl BAD_TRAIT for () {
-    const bad_const: u8 = 1;
+    const bad_const: u8 = 0;
     type BAD_TYPE = ();
     fn BAD_FUNCTION(BAD_PARAM: u8) {
-        let BAD_VAR = 10;
+        let BAD_VAR = 0;
          // ^^^^^^^ 💡 warn: Variable `BAD_VAR` should have snake_case name, e.g. `bad_var`
     }
     fn BadFunction() {}
@@ -560,6 +560,14 @@ pub const some_const: u8 = 10;
 
 #[allow(non_upper_case_globals)]
 pub static SomeStatic: u8 = 10;
+
+#[allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+trait BAD_TRAIT {
+    const bad_const: u8;
+    type BAD_TYPE;
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    fn BadFunction();
+}
     "#,
         );
     }
@@ -619,6 +627,20 @@ pub const some_const: u8 = 10;
 #[deny(non_upper_case_globals)]
 pub static SomeStatic: u8 = 10;
          //^^^^^^^^^^ 💡 error: Static variable `SomeStatic` should have UPPER_SNAKE_CASE name, e.g. `SOME_STATIC`
+
+#[deny(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 error: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
+    type BAD_TYPE;
+      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    // ^^^^^^^^^^^^ 💡 error: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+                 // ^^^^^^^^^ 💡 error: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
+    fn BadFunction();
+    // ^^^^^^^^^^^ 💡 error: Function `BadFunction` should have snake_case name, e.g. `bad_function`
+}
     "#,
         );
     }
