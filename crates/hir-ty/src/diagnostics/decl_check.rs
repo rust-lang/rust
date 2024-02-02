@@ -328,8 +328,8 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_func(&mut self, func: FunctionId) {
-        let data = self.db.function_data(func);
-        if matches!(func.lookup(self.db.upcast()).container, ItemContainerId::ExternBlockId(_)) {
+        let container = func.lookup(self.db.upcast()).container;
+        if matches!(container, ItemContainerId::ExternBlockId(_)) {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }
@@ -339,23 +339,48 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        // Check the function name.
-        let function_name = data.name.display(self.db.upcast()).to_string();
-        let fn_name_replacement = to_lower_snake_case(&function_name).map(|new_name| Replacement {
-            current_name: data.name.clone(),
-            suggested_text: new_name,
-            expected_case: CaseType::LowerSnakeCase,
-        });
+        // Check whether function is an associated item of a trait implementation
+        let is_trait_impl_assoc_fn = self.is_trait_impl_container(container);
 
-        let body = self.db.body(func.into());
+        // Check the function name.
+        if !is_trait_impl_assoc_fn {
+            let data = self.db.function_data(func);
+            let function_name = data.name.display(self.db.upcast()).to_string();
+            let fn_name_replacement =
+                to_lower_snake_case(&function_name).map(|new_name| Replacement {
+                    current_name: data.name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::LowerSnakeCase,
+                });
+            // If there is at least one element to spawn a warning on,
+            // go to the source map and generate a warning.
+            if let Some(fn_name_replacement) = fn_name_replacement {
+                self.create_incorrect_case_diagnostic_for_func(func, fn_name_replacement);
+            }
+        } else {
+            cov_mark::hit!(trait_impl_assoc_func_name_incorrect_case_ignored);
+        }
 
         // Check the patterns inside the function body.
-        // This includes function parameters.
+        // This includes function parameters if it's not an associated function
+        // of a trait implementation.
+        let body = self.db.body(func.into());
         let pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
-                Pat::Bind { id, .. } => Some((pat_id, &body.bindings[*id].name)),
+                Pat::Bind { id, .. } => {
+                    // Filter out parameters if it's an associated function
+                    // of a trait implementation.
+                    if is_trait_impl_assoc_fn
+                        && body.params.iter().any(|param_id| *param_id == pat_id)
+                    {
+                        cov_mark::hit!(trait_impl_assoc_func_param_incorrect_case_ignored);
+                        None
+                    } else {
+                        Some((pat_id, &body.bindings[*id].name))
+                    }
+                }
                 _ => None,
             })
             .filter_map(|(id, bind_name)| {
@@ -371,12 +396,6 @@ impl<'a> DeclValidator<'a> {
                 ))
             })
             .collect();
-
-        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
-        if let Some(fn_name_replacement) = fn_name_replacement {
-            self.create_incorrect_case_diagnostic_for_func(func, fn_name_replacement);
-        }
-
         self.create_incorrect_case_diagnostic_for_variables(func, pats_replacements);
     }
 
@@ -732,6 +751,12 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_const(&mut self, const_id: ConstId) {
+        let container = const_id.lookup(self.db.upcast()).container;
+        if self.is_trait_impl_container(container) {
+            cov_mark::hit!(trait_impl_assoc_const_incorrect_case_ignored);
+            return;
+        }
+
         let data = self.db.const_data(const_id);
 
         if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
@@ -818,5 +843,14 @@ impl<'a> DeclValidator<'a> {
         };
 
         self.sink.push(diagnostic);
+    }
+
+    fn is_trait_impl_container(&self, container_id: ItemContainerId) -> bool {
+        if let ItemContainerId::ImplId(impl_id) = container_id {
+            if self.db.impl_trait(impl_id).is_some() {
+                return true;
+            }
+        }
+        false
     }
 }

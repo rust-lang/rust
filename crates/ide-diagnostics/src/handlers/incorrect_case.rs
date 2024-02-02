@@ -52,7 +52,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod change_case {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 
     #[test]
     fn test_rename_incorrect_case() {
@@ -476,6 +476,37 @@ trait BAD_TRAIT {
     // ^^^^^^^^^^^ 💡 warn: Function `BadFunction` should have snake_case name, e.g. `bad_function`
 }
     "#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostics_for_trait_impl_assoc_items_except_pats_in_body() {
+        cov_mark::check!(trait_impl_assoc_const_incorrect_case_ignored);
+        cov_mark::check_count!(trait_impl_assoc_func_name_incorrect_case_ignored, 2);
+        cov_mark::check!(trait_impl_assoc_func_param_incorrect_case_ignored);
+        check_diagnostics_with_disabled(
+            r#"
+trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+                 // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
+    fn BadFunction();
+    // ^^^^^^^^^^^ 💡 warn: Function `BadFunction` should have snake_case name, e.g. `bad_function`
+}
+
+impl BAD_TRAIT for () {
+    const bad_const: u8 = 1;
+    fn BAD_FUNCTION(BAD_PARAM: u8) {
+        let BAD_VAR = 10;
+         // ^^^^^^^ 💡 warn: Variable `BAD_VAR` should have snake_case name, e.g. `bad_var`
+    }
+    fn BadFunction() {}
+}
+    "#,
+            std::iter::once("unused_variables".to_string()),
         );
     }
 
