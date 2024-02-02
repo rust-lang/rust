@@ -12,15 +12,15 @@ use super::UNNECESSARY_FALLIBLE_CONVERSIONS;
 
 /// What function is being called and whether that call is written as a method call or a function
 /// call
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[expect(clippy::enum_variant_names)]
 enum FunctionKind {
     /// `T::try_from(U)`
-    TryFromFunction,
+    TryFromFunction(Option<Vec<Span>>),
     /// `t.try_into()`
     TryIntoMethod,
     /// `U::try_into(t)`
-    TryIntoFunction,
+    TryIntoFunction(Option<Vec<Span>>),
 }
 
 fn check<'tcx>(
@@ -29,15 +29,14 @@ fn check<'tcx>(
     node_args: ty::GenericArgsRef<'tcx>,
     kind: FunctionKind,
     primary_span: Span,
-    qpath: Option<&QPath<'_>>,
 ) {
     if let &[self_ty, other_ty] = node_args.as_slice()
         // useless_conversion already warns `T::try_from(T)`, so ignore it here
         && self_ty != other_ty
         && let Some(self_ty) = self_ty.as_type()
         && let Some(from_into_trait) = cx.tcx.get_diagnostic_item(match kind {
-            FunctionKind::TryFromFunction => sym::From,
-            FunctionKind::TryIntoMethod | FunctionKind::TryIntoFunction => sym::Into,
+            FunctionKind::TryFromFunction(_) => sym::From,
+            FunctionKind::TryIntoMethod | FunctionKind::TryIntoFunction(_) => sym::Into,
         })
         // If `T: TryFrom<U>` and `T: From<U>` both exist, then that means that the `TryFrom`
         // _must_ be from the blanket impl and cannot have been manually implemented
@@ -70,21 +69,12 @@ fn check<'tcx>(
             primary_span
         };
 
-        let qpath_spans = qpath.and_then(|qpath| match qpath {
-            QPath::Resolved(_, path) => {
-                let segments = path.segments.iter().map(|seg| seg.ident).collect::<Vec<_>>();
-                (segments.len() == 2).then(|| vec![segments[0].span, segments[1].span])
-            },
-            QPath::TypeRelative(_, seg) => Some(vec![seg.ident.span]),
-            QPath::LangItem(_, _) => unreachable!("`TryFrom` and `TryInto` are not lang items"),
-        });
-
-        let (source_ty, target_ty, sugg, applicability) = match (kind, &qpath_spans, parent_unwrap_call) {
-            (FunctionKind::TryIntoMethod, _, Some(unwrap_span)) => {
+        let (source_ty, target_ty, sugg, applicability) = match (kind, parent_unwrap_call) {
+            (FunctionKind::TryIntoMethod, Some(unwrap_span)) => {
                 let sugg = vec![(primary_span, String::from("into")), (unwrap_span, String::new())];
                 (self_ty, other_ty, sugg, Applicability::MachineApplicable)
             },
-            (FunctionKind::TryFromFunction, Some(spans), Some(unwrap_span)) => {
+            (FunctionKind::TryFromFunction(Some(spans)), Some(unwrap_span)) => {
                 let sugg = match spans.len() {
                     1 => vec![(spans[0], String::from("from")), (unwrap_span, String::new())],
                     2 => vec![
@@ -96,7 +86,7 @@ fn check<'tcx>(
                 };
                 (other_ty, self_ty, sugg, Applicability::MachineApplicable)
             },
-            (FunctionKind::TryIntoFunction, Some(spans), Some(unwrap_span)) => {
+            (FunctionKind::TryIntoFunction(Some(spans)), Some(unwrap_span)) => {
                 let sugg = match spans.len() {
                     1 => vec![(spans[0], String::from("into")), (unwrap_span, String::new())],
                     2 => vec![
@@ -108,15 +98,15 @@ fn check<'tcx>(
                 };
                 (self_ty, other_ty, sugg, Applicability::MachineApplicable)
             },
-            (FunctionKind::TryFromFunction, _, _) => {
+            (FunctionKind::TryFromFunction(_), _) => {
                 let sugg = vec![(primary_span, String::from("From::from"))];
                 (other_ty, self_ty, sugg, Applicability::Unspecified)
             },
-            (FunctionKind::TryIntoFunction, _, _) => {
+            (FunctionKind::TryIntoFunction(_), _) => {
                 let sugg = vec![(primary_span, String::from("Into::into"))];
                 (self_ty, other_ty, sugg, Applicability::Unspecified)
             },
-            (FunctionKind::TryIntoMethod, _, _) => {
+            (FunctionKind::TryIntoMethod, _) => {
                 let sugg = vec![(primary_span, String::from("into"))];
                 (self_ty, other_ty, sugg, Applicability::Unspecified)
             },
@@ -147,7 +137,6 @@ pub(super) fn check_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
             cx.typeck_results().node_args(expr.hir_id),
             FunctionKind::TryIntoMethod,
             path.ident.span,
-            None,
         );
     }
 }
@@ -160,17 +149,25 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Exp
         && let Some(item_def_id) = cx.qpath_res(qpath, callee.hir_id).opt_def_id()
         && let Some(trait_def_id) = cx.tcx.trait_of_item(item_def_id)
     {
+        let qpath_spans = match qpath {
+            QPath::Resolved(_, path) => {
+                let segments = path.segments.iter().map(|seg| seg.ident).collect::<Vec<_>>();
+                (segments.len() == 2).then(|| vec![segments[0].span, segments[1].span])
+            },
+            QPath::TypeRelative(_, seg) => Some(vec![seg.ident.span]),
+            QPath::LangItem(_, _) => unreachable!("`TryFrom` and `TryInto` are not lang items"),
+        };
+
         check(
             cx,
             expr,
             cx.typeck_results().node_args(callee.hir_id),
             match cx.tcx.get_diagnostic_name(trait_def_id) {
-                Some(sym::TryFrom) => FunctionKind::TryFromFunction,
-                Some(sym::TryInto) => FunctionKind::TryIntoFunction,
+                Some(sym::TryFrom) => FunctionKind::TryFromFunction(qpath_spans),
+                Some(sym::TryInto) => FunctionKind::TryIntoFunction(qpath_spans),
                 _ => return,
             },
             callee.span,
-            Some(qpath),
         );
     }
 }
