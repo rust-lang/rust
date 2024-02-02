@@ -90,7 +90,7 @@ jobs:
       - name: Switch to stable toolchain
         run: |
           rustup update --no-self-update stable
-          rustup component add --toolchain stable rust-src
+          rustup component add --toolchain stable rust-src clippy
           rustup default stable
 
       - name: Run analysis-stats on rust-analyzer
@@ -102,6 +102,10 @@ jobs:
         env:
           RUSTC_BOOTSTRAP: 1
         run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
+
+      - name: clippy
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo clippy --all-targets
 
   # Weird targets to catch non-portable code
   rust-cross:

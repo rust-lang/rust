@@ -122,7 +122,7 @@ impl Body {
         db: &dyn DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
-        let _p = profile::span("body_with_source_map_query");
+        let _p = tracing::span!(tracing::Level::INFO, "body_with_source_map_query").entered();
         let mut params = None;
 
         let mut is_async_fn = false;

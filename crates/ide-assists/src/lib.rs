@@ -183,6 +183,7 @@ mod handlers {
     mod move_guard;
     mod move_module_to_file;
     mod move_to_mod_rs;
+    mod normalize_import;
     mod number_representation;
     mod promote_local_to_const;
     mod pull_assignment_up;
@@ -300,6 +301,7 @@ mod handlers {
             move_module_to_file::move_module_to_file,
             move_to_mod_rs::move_to_mod_rs,
             move_from_mod_rs::move_from_mod_rs,
+            normalize_import::normalize_import,
             number_representation::reformat_number_literal,
             pull_assignment_up::pull_assignment_up,
             promote_local_to_const::promote_local_to_const,

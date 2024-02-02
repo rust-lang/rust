@@ -109,7 +109,8 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = profile::span("file_item_tree_query").detail(|| format!("{file_id:?}"));
+        let _p = tracing::span!(tracing::Level::INFO, "file_item_tree_query", ?file_id).entered();
+
         let syntax = db.parse_or_expand(file_id);
 
         let ctx = lower::Ctx::new(db, file_id);

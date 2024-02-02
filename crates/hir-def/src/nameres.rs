@@ -306,9 +306,10 @@ impl DefMap {
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
 
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-        let _p = profile::span("crate_def_map_query").detail(|| {
-            db.crate_graph()[krate].display_name.as_deref().unwrap_or_default().to_string()
-        });
+        let crate_graph = db.crate_graph();
+        let krate_name = crate_graph[krate].display_name.as_deref().unwrap_or_default();
+
+        let _p = tracing::span!(tracing::Level::INFO, "crate_def_map_query", ?krate_name).entered();
 
         let crate_graph = db.crate_graph();
 

@@ -65,7 +65,7 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = profile::span("parse_query").detail(|| format!("{file_id:?}"));
+    let _p = tracing::span!(tracing::Level::INFO, "parse_query", ?file_id).entered();
     let text = db.file_text(file_id);
     SourceFile::parse(&text)
 }
@@ -116,7 +116,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
-        let _p = profile::span("relevant_crates");
+        let _p = tracing::span!(tracing::Level::INFO, "relevant_crates").entered();
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
     }

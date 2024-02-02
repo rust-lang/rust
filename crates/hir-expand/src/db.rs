@@ -80,6 +80,9 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::invoke(SpanMap::new)]
     fn span_map(&self, file_id: HirFileId) -> SpanMap;
 
+    #[salsa::transparent]
+    #[salsa::invoke(crate::span_map::expansion_span_map)]
+    fn expansion_span_map(&self, file_id: MacroFileId) -> Arc<ExpansionSpanMap>;
     #[salsa::invoke(crate::span_map::real_span_map)]
     fn real_span_map(&self, file_id: FileId) -> Arc<RealSpanMap>;
 
@@ -280,7 +283,7 @@ fn parse_macro_expansion(
     db: &dyn ExpandDatabase,
     macro_file: MacroFileId,
 ) -> ExpandResult<(Parse<SyntaxNode>, Arc<ExpansionSpanMap>)> {
-    let _p = profile::span("parse_macro_expansion");
+    let _p = tracing::span!(tracing::Level::INFO, "parse_macro_expansion").entered();
     let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
     let expand_to = loc.expand_to();
     let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id, loc);
@@ -501,7 +504,7 @@ fn macro_expand(
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
 ) -> ExpandResult<CowArc<tt::Subtree>> {
-    let _p = profile::span("macro_expand");
+    let _p = tracing::span!(tracing::Level::INFO, "macro_expand").entered();
 
     let ExpandResult { value: tt, mut err } = match loc.def.kind {
         MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
