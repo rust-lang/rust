@@ -1105,13 +1105,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let container_id = assoc_item.container_id(tcx);
                 debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer => callee::check_legal_trait_for_method_call(
-                        tcx,
-                        path_span,
-                        None,
-                        span,
-                        container_id,
-                    ),
+                    ty::TraitContainer => {
+                        if let Err(e) = callee::check_legal_trait_for_method_call(
+                            tcx,
+                            path_span,
+                            None,
+                            span,
+                            container_id,
+                        ) {
+                            self.set_tainted_by_errors(e);
+                        }
+                    }
                     ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
