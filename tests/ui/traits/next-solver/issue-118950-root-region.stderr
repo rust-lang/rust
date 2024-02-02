@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/issue-118950-root-region.rs:18:55
+  --> $DIR/issue-118950-root-region.rs:19:55
    |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
    |                                                       ^^^^^^^ not found in this scope
@@ -22,7 +22,7 @@ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: 
 WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: Alias(Weak, AliasTy { args: [ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) })
 WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: Alias(Weak, AliasTy { args: [RePlaceholder(!1_BoundRegion { var: 0, kind: BrNamed(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) })
 error[E0119]: conflicting implementations of trait `Overlap<fn(_)>` for type `fn(_)`
-  --> $DIR/issue-118950-root-region.rs:18:1
+  --> $DIR/issue-118950-root-region.rs:19:1
    |
 LL | impl<T> Overlap<T> for T {}
    | ------------------------ first implementation here
@@ -30,7 +30,13 @@ LL |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `fn(_)`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: the type `<*const T as ToUnit<'a>>::Unit` is not well-formed
+  --> $DIR/issue-118950-root-region.rs:14:21
+   |
+LL | type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0119, E0412.
 For more information about an error, try `rustc --explain E0119`.
