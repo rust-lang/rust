@@ -2513,9 +2513,7 @@ extern "rust-intrinsic" {
 /// use std::hint::unreachable_unchecked;
 /// use std::intrinsics::is_val_statically_known;
 ///
-/// unsafe {
-///    if !is_val_statically_known(0) { unreachable_unchecked(); }
-/// }
+/// if !is_val_statically_known(0) { unsafe { unreachable_unchecked(); } }
 /// ```
 ///
 /// This also means that the following code's behavior is unspecified; it
@@ -2527,9 +2525,7 @@ extern "rust-intrinsic" {
 /// # #![allow(internal_features)]
 /// use std::intrinsics::is_val_statically_known;
 ///
-/// unsafe {
-///     assert_eq!(is_val_statically_known(0), is_val_statically_known(0));
-/// }
+/// assert_eq!(is_val_statically_known(0), is_val_statically_known(0));
 /// ```
 ///
 /// Unsafe code may not rely on `is_val_statically_known` returning any
@@ -2544,7 +2540,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
+pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
@@ -2564,7 +2560,7 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
-pub(crate) const unsafe fn debug_assertions() -> bool {
+pub(crate) const fn debug_assertions() -> bool {
     cfg!(debug_assertions)
 }
 

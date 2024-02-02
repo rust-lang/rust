@@ -37,7 +37,7 @@ fn main() {
     let mut saw_false = false;
 
     for _ in 0..50 {
-        if unsafe { intrinsics::is_val_statically_known(0) } {
+        if intrinsics::is_val_statically_known(0) {
             saw_true = true;
         } else {
             saw_false = true;

@@ -71,9 +71,13 @@ fn equate_intrinsic_type<'tcx>(
 
 /// Returns the unsafety of the given intrinsic.
 pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Unsafety {
-    let has_safe_attr = match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
-        true => hir::Unsafety::Normal,
-        false => hir::Unsafety::Unsafe,
+    let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
+        tcx.fn_sig(intrinsic_id).skip_binder().unsafety()
+    } else {
+        match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
+            true => hir::Unsafety::Normal,
+            false => hir::Unsafety::Unsafe,
+        }
     };
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
@@ -117,6 +121,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::forget
         | sym::black_box
         | sym::variant_count
+        | sym::is_val_statically_known
         | sym::ptr_mask
         | sym::debug_assertions => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
