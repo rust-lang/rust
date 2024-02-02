@@ -106,6 +106,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(clone_to_uninit)]
+#![feature(char_max_len)]
 #![feature(coerce_unsized)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]

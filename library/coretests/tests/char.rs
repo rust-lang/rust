@@ -1,3 +1,4 @@
+use std::char::MAX_LEN_UTF8;
 use std::str::FromStr;
 use std::{char, str};
 
@@ -259,7 +260,7 @@ fn test_escape_unicode() {
 #[test]
 fn test_encode_utf8() {
     fn check(input: char, expect: &[u8]) {
-        let mut buf = [0; 4];
+        let mut buf = [0; MAX_LEN_UTF8];
         let ptr = buf.as_ptr();
         let s = input.encode_utf8(&mut buf);
         assert_eq!(s.as_ptr() as usize, ptr as usize);

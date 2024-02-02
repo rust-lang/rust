@@ -18,7 +18,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::char::{encode_utf8_raw, encode_utf16_raw};
+use core::char::{encode_utf16_raw, encode_utf8_raw, MAX_LEN_UTF16, MAX_LEN_UTF8};
 use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
@@ -117,7 +117,7 @@ impl CodePoint {
 
     /// Returns a Unicode scalar value for the code point.
     ///
-    /// Returns `'\u{FFFD}'` (the replacement character “�”)
+    /// Returns `'\u{FFFD}'` (the replacement character “ ”)
     /// if the code point is a surrogate (from U+D800 to U+DFFF).
     #[inline]
     pub fn to_char_lossy(&self) -> char {
@@ -240,7 +240,7 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let mut bytes = [0; 4];
+        let mut bytes = [0; MAX_LEN_UTF8];
         let bytes = encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
@@ -438,7 +438,7 @@ impl Wtf8Buf {
     ///
     /// This does not copy the data (but may overwrite parts of it in place).
     ///
-    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”)
+    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “ ”)
     pub fn into_string_lossy(mut self) -> String {
         // Fast path: If we already have UTF-8, we can return it immediately.
         if self.is_known_utf8 {
@@ -668,7 +668,7 @@ impl Wtf8 {
     /// Lossily converts the string to UTF-8.
     /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
-    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
+    /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “ ”).
     ///
     /// This only copies the data if necessary (if it contains any surrogate).
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
@@ -1001,7 +1001,7 @@ impl<'a> Iterator for EncodeWide<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0; 2];
+        let mut buf = [0; MAX_LEN_UTF16];
         self.code_points.next().map(|code_point| {
             let n = encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {
