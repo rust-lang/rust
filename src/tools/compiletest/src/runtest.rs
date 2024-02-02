@@ -3773,14 +3773,8 @@ impl<'test> TestCx<'test> {
 
         let mut stage_std_path = PathBuf::new();
         stage_std_path.push(&build_root);
-        if stage == "stage0" {
-            stage_std_path.push("stage0-std");
-        } else {
-            // stage2 reuses stage1-std.
-            stage_std_path.push("stage1-std");
-        }
-        stage_std_path.push(&self.config.target);
-        stage_std_path.push("release/deps");
+        stage_std_path.push(&stage);
+        stage_std_path.push("lib");
 
         // Then, we need to build the recipe `rmake.rs` and link in the support library.
         let recipe_bin = tmpdir.join("rmake");
