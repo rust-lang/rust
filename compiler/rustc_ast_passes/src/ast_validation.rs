@@ -73,20 +73,17 @@ struct AstValidator<'a> {
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod: Option<&'a Item>,
 
-    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
-
     has_proc_macro_decls: bool,
 
+    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
     /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<Span>,
-
-    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
-
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
+    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -134,6 +131,25 @@ impl<'a> AstValidator<'a> {
         self.disallow_tilde_const = old;
     }
 
+    fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.outer_impl_trait, outer);
+        f(self);
+        self.outer_impl_trait = old;
+    }
+
+    fn in_new_context(&mut self, f: impl FnOnce(&mut Self)) {
+        let outer_trait_or_trait_impl = self.outer_trait_or_trait_impl.take();
+        let outer_impl_trait = self.outer_impl_trait.take();
+        let is_impl_trait_banned = mem::take(&mut self.is_impl_trait_banned);
+        let disallow_tilde_const =
+            mem::replace(&mut self.disallow_tilde_const, Some(DisallowTildeConstContext::Item));
+        f(self);
+        self.disallow_tilde_const = disallow_tilde_const;
+        self.is_impl_trait_banned = is_impl_trait_banned;
+        self.outer_impl_trait = outer_impl_trait;
+        self.outer_trait_or_trait_impl = outer_trait_or_trait_impl;
+    }
+
     fn check_type_alias_where_clause_location(
         &mut self,
         ty_alias: &TyAlias,
@@ -170,12 +186,6 @@ impl<'a> AstValidator<'a> {
                 right: ty_alias.where_clauses.1.1.shrink_to_hi(),
             },
         })
-    }
-
-    fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.outer_impl_trait, outer);
-        f(self);
-        self.outer_impl_trait = old;
     }
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
@@ -925,35 +935,38 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         only_trait: only_trait.then_some(()),
                     };
 
-                self.visibility_not_permitted(
-                    &item.vis,
-                    errors::VisibilityNotPermittedNote::IndividualImplItems,
-                );
-                if let &Unsafe::Yes(span) = unsafety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
+                self.with_in_trait_impl(None, |this| {
+                    this.visibility_not_permitted(
+                        &item.vis,
+                        errors::VisibilityNotPermittedNote::IndividualImplItems,
+                    );
+                    if let &Unsafe::Yes(span) = unsafety {
+                        this.dcx().emit_err(errors::InherentImplCannotUnsafe {
+                            span: self_ty.span,
+                            annotation_span: span,
+                            annotation: "unsafe",
+                            self_ty: self_ty.span,
+                        });
+                    }
+                    if let &ImplPolarity::Negative(span) = polarity {
+                        this.dcx().emit_err(error(span, "negative", false));
+                    }
+                    if let &Defaultness::Default(def_span) = defaultness {
+                        this.dcx().emit_err(error(def_span, "`default`", true));
+                    }
+                    if let &Const::Yes(span) = constness {
+                        this.dcx().emit_err(error(span, "`const`", true));
+                    }
 
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                self.with_tilde_const(Some(DisallowTildeConstContext::Impl(item.span)), |this| {
-                    this.visit_generics(generics)
+                    this.visit_vis(&item.vis);
+                    this.visit_ident(item.ident);
+                    this.with_tilde_const(
+                        Some(DisallowTildeConstContext::Impl(item.span)),
+                        |this| this.visit_generics(generics),
+                    );
+                    this.visit_ty(self_ty);
+                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl);
                 });
-                self.visit_ty(self_ty);
-                walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
@@ -1509,6 +1522,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
+                walk_list!(self, visit_attribute, &item.attrs);
                 let kind = FnKind::Fn(
                     FnCtxt::Assoc(ctxt),
                     item.ident,
@@ -1529,12 +1543,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                     None => DisallowTildeConstContext::InherentAssocTy(item.span),
                 });
-                self.with_tilde_const(disallowed, |this| {
-                    this.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt))
-                })
+                self.with_tilde_const(disallowed, |this| visit::walk_assoc_item(this, item, ctxt))
             }
-            _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
+            _ => visit::walk_assoc_item(self, item, ctxt),
         }
+    }
+
+    fn visit_anon_const(&mut self, c: &'a AnonConst) {
+        self.in_new_context(|this| visit::walk_anon_const(this, c))
     }
 }
 
