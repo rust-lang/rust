@@ -3773,7 +3773,12 @@ impl<'test> TestCx<'test> {
 
         let mut stage_std_path = PathBuf::new();
         stage_std_path.push(&build_root);
-        stage_std_path.push(format!("{}-std", stage));
+        if stage == "stage0" {
+            stage_std_path.push("stage0-std");
+        } else {
+            // stage2 reuses stage1-std.
+            stage_std_path.push("stage1-std");
+        }
         stage_std_path.push(&self.config.target);
         stage_std_path.push("release/deps");
 
