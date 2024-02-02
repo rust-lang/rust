@@ -13,7 +13,7 @@ use crate::{
     item_scope::ItemInNs,
     nameres::DefMap,
     path::{ModPath, PathKind},
-    visibility::{Visibility, VisibilityExplicity},
+    visibility::{Visibility, VisibilityExplicitness},
     CrateRootModuleId, ModuleDefId, ModuleId,
 };
 
@@ -544,11 +544,11 @@ fn find_local_import_locations(
         if let Some((name, vis, declared)) = data.scope.name_of(item) {
             if vis.is_visible_from(db, from) {
                 let is_pub_or_explicit = match vis {
-                    Visibility::Module(_, VisibilityExplicity::Explicit) => {
+                    Visibility::Module(_, VisibilityExplicitness::Explicit) => {
                         cov_mark::hit!(explicit_private_imports);
                         true
                     }
-                    Visibility::Module(_, VisibilityExplicity::Implicit) => {
+                    Visibility::Module(_, VisibilityExplicitness::Implicit) => {
                         cov_mark::hit!(discount_private_imports);
                         false
                     }

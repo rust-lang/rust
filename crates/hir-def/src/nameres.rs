@@ -79,7 +79,7 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
-    visibility::{Visibility, VisibilityExplicity},
+    visibility::{Visibility, VisibilityExplicitness},
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
     LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
@@ -336,7 +336,7 @@ impl DefMap {
         // this visibility for anything outside IDE, so that's probably OK.
         let visibility = Visibility::Module(
             ModuleId { krate, local_id, block: None },
-            VisibilityExplicity::Implicit,
+            VisibilityExplicitness::Implicit,
         );
         let module_data = ModuleData::new(
             ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },

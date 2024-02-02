@@ -97,7 +97,7 @@ pub enum MirLowerError {
     MutatingRvalue,
     UnresolvedLabel,
     UnresolvedUpvar(Place),
-    UnaccessableLocal,
+    InaccessibleLocal,
 
     // monomorphization errors:
     GenericArgNotProvided(TypeOrConstParamId, Substitution),
@@ -116,7 +116,7 @@ impl DropScopeToken {
         ctx.pop_drop_scope_internal(current, span)
     }
 
-    /// It is useful when we want a drop scope is syntaxically closed, but we don't want to execute any drop
+    /// It is useful when we want a drop scope is syntactically closed, but we don't want to execute any drop
     /// code. Either when the control flow is diverging (so drop code doesn't reached) or when drop is handled
     /// for us (for example a block that ended with a return statement. Return will drop everything, so the block shouldn't
     /// do anything)
@@ -186,7 +186,7 @@ impl MirLowerError {
             | MirLowerError::UnsizedTemporary(_)
             | MirLowerError::IncompleteExpr
             | MirLowerError::IncompletePattern
-            | MirLowerError::UnaccessableLocal
+            | MirLowerError::InaccessibleLocal
             | MirLowerError::TraitFunctionDefinition(_, _)
             | MirLowerError::UnresolvedName(_)
             | MirLowerError::RecordLiteralWithoutPath
@@ -1843,8 +1843,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
             None => {
                 // FIXME: It should never happens, but currently it will happen in `const_dependent_on_local` test, which
                 // is a hir lowering problem IMO.
-                // never!("Using unaccessable local for binding is always a bug");
-                Err(MirLowerError::UnaccessableLocal)
+                // never!("Using inaccessible local for binding is always a bug");
+                Err(MirLowerError::InaccessibleLocal)
             }
         }
     }
