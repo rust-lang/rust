@@ -34,7 +34,7 @@ extern crate self as rustc_errors;
 pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
-    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, StringPart, SubDiagnostic,
 };
 pub use diagnostic_builder::{
     BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,
