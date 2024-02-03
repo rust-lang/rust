@@ -16,5 +16,33 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | impl<T: ~const Default + ~const Sub> const A for T {
    |                ^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0015]: cannot call non-const fn `<() as A>::a` in constants
+  --> $DIR/const_trait_impl.rs:52:23
+   |
+LL | const _: () = assert!(<()>::a() == 42);
+   |                       ^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
 
+error[E0015]: cannot call non-const fn `<u8 as A>::a` in constants
+  --> $DIR/const_trait_impl.rs:53:23
+   |
+LL | const _: () = assert!(<u8>::a() == 3);
+   |                       ^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error[E0015]: cannot call non-const fn `<u16 as A>::a` in constants
+  --> $DIR/const_trait_impl.rs:54:23
+   |
+LL | const _: () = assert!(<u16>::a() == 2);
+   |                       ^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

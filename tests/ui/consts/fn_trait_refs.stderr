@@ -74,6 +74,100 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 11 previous errors
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/fn_trait_refs.rs:17:5
+   |
+LL |     f()
+   |     ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL |     T: ~const Fn<()> + ~const Destruct + ~const std::ops::Fn<()>,
+   |                                        +++++++++++++++++++++++++
 
-For more information about this error, try `rustc --explain E0635`.
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/fn_trait_refs.rs:13:23
+   |
+LL | const fn tester_fn<T>(f: T) -> T::Output
+   |                       ^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/fn_trait_refs.rs:24:5
+   |
+LL |     f()
+   |     ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct + ~const std::ops::FnMut<()>,
+   |                                           ++++++++++++++++++++++++++++
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/fn_trait_refs.rs:20:27
+   |
+LL | const fn tester_fn_mut<T>(mut f: T) -> T::Output
+   |                           ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/fn_trait_refs.rs:31:5
+   |
+LL |     f()
+   |     ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL |     T: ~const FnOnce<()> + ~const std::ops::FnOnce<()>,
+   |                          +++++++++++++++++++++++++++++
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/fn_trait_refs.rs:34:21
+   |
+LL | const fn test_fn<T>(mut f: T) -> (T::Output, T::Output, T::Output)
+   |                     ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/fn_trait_refs.rs:48:25
+   |
+LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
+   |                         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:72:17
+   |
+LL |         assert!(test_one == (1, 1, 1));
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:75:17
+   |
+LL |         assert!(test_two == (2, 2));
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0015, E0493, E0635.
+For more information about an error, try `rustc --explain E0015`.

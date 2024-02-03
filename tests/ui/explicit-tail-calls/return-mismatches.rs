@@ -13,7 +13,7 @@ fn _f1() {
     become _g1(); //~ error: mismatched types
 }
 
-fn _g1() -> ! {
+fn _g1() -> ! { //~ WARN: cannot return without recursing
     become _g1();
 }
 

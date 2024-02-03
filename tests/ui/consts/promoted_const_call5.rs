@@ -25,9 +25,9 @@ pub const fn new_manually_drop<T>(t: T) -> std::mem::ManuallyDrop<T>  {
 const C: () = {
     let _: &'static _ = &id(&new_string());
     //~^ ERROR destructor of `String` cannot be evaluated at compile-time
-    //~| ERROR: temporary value dropped while borrowed
-    //~| ERROR: temporary value dropped while borrowed
+};
 
+const _: () = {
     let _: &'static _ = &new_manually_drop(new_string());
     //~^ ERROR: temporary value dropped while borrowed
 };
