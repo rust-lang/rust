@@ -14,7 +14,6 @@ pub fn copy_any<T>(t: &T) -> T {
     //~| ERROR the trait bound `dyn Setup<From = T>: Setup` is not satisfied
     //~| ERROR mismatched types
     //~| ERROR the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
-    //~| ERROR the size for values of type `<dyn Setup<From = T> as Setup>::From` cannot be known at compilation time
 
     // FIXME(-Znext-solver): These error messages are horrible and some of them
     // are even simple fallout from previous error.
