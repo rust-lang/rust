@@ -85,7 +85,6 @@ mod tests;
 use core::any::Any;
 use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
-use helpers::exit_code::get_exit_code;
 use helpers::shuffle::{get_shuffle_seed, shuffle_tests};
 use options::RunStrategy;
 use test_result::*;
@@ -712,17 +711,7 @@ fn spawn_test_subprocess(
         formatters::write_stderr_delimiter(&mut test_output, &desc.name);
         test_output.extend_from_slice(&stderr);
 
-        let result = match (|| -> Result<TestResult, String> {
-            let exit_code = get_exit_code(status)?;
-            Ok(get_result_from_exit_code(&desc, exit_code, &time_opts, &exec_time))
-        })() {
-            Ok(r) => r,
-            Err(e) => {
-                write!(&mut test_output, "Unexpected error: {e}").unwrap();
-                TrFailed
-            }
-        };
-
+        let result = get_result_from_exit_code(&desc, status, &time_opts, &exec_time);
         (result, test_output, exec_time)
     })();
 
@@ -751,7 +740,7 @@ fn run_test_in_spawned_subprocess(desc: TestDesc, runnable_test: RunnableTest) -
         if let TrOk = test_result {
             process::exit(test_result::TR_OK);
         } else {
-            process::exit(test_result::TR_FAILED);
+            process::abort();
         }
     });
     let record_result2 = record_result.clone();
