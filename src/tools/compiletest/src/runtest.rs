@@ -2906,23 +2906,29 @@ impl<'test> TestCx<'test> {
     fn verify_with_filecheck(&self, output: &Path) -> ProcRes {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
+
         // It would be more appropriate to make most of the arguments configurable through
         // a comment-attribute similar to `compile-flags`. For example, --check-prefixes is a very
         // useful flag.
         //
         // For now, though…
-        let prefix_for_target =
-            if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        let prefixes = if let Some(rev) = self.revision {
-            format!("CHECK,{},{}", prefix_for_target, rev)
-        } else {
-            format!("CHECK,{}", prefix_for_target)
-        };
-        if self.config.llvm_version.unwrap_or(0) >= 130000 {
-            filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
-        } else {
-            filecheck.args(&["--check-prefixes", &prefixes]);
+
+        // Because we use custom prefixes, we also have to register the default prefix.
+        filecheck.arg("--check-prefix=CHECK");
+
+        // Some tests use the current revision name as a check prefix.
+        if let Some(rev) = self.revision {
+            filecheck.arg("--check-prefix").arg(rev);
         }
+
+        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
+        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
+        filecheck.arg("--check-prefix").arg(msvc_or_not);
+
+        // The filecheck tool normally fails if a prefix is defined but not used.
+        // However, we define several prefixes globally for all tests.
+        filecheck.arg("--allow-unused-prefixes");
+
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
         self.compose_and_run(filecheck, "", None, None)
