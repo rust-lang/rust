@@ -29,6 +29,7 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
+use rustc_middle::query::Key;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, IsSuggestable, ParamEnv, Ty,
     TyCtxt, TypeVisitableExt,
@@ -1373,6 +1374,57 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     )
                     .emit() // Already reported in an earlier stage.
                 } else {
+                    // suggest methods that look similar to the path
+                    // e.g. for `String::from::utf8`, suggest `String::from_utf8` (#109195)
+                    for (_, node) in tcx.hir().parent_iter(qself.hir_id) {
+                        if let hir::Node::Expr(hir::Expr {
+                            kind:
+                                hir::ExprKind::Path(hir::QPath::TypeRelative(
+                                    hir::Ty {
+                                        kind:
+                                            hir::TyKind::Path(hir::QPath::TypeRelative(
+                                                _,
+                                                hir::PathSegment { ident: ident2, .. },
+                                            )),
+                                        ..
+                                    },
+                                    hir::PathSegment { ident: ident3, .. },
+                                )),
+                            ..
+                        }) = node
+                        {
+                            let name = format!("{ident2}_{ident3}");
+                            if if let Some(ty_def_id) = qself_ty.ty_def_id()
+                                && let Ok([inherent_impl]) = tcx.inherent_impls(ty_def_id)
+                                && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
+                                    .associated_items(inherent_impl)
+                                    .filter_by_name_unhygienic(Symbol::intern(&name))
+                                    .next()
+                            {
+                                true
+                            } else {
+                                qself_ty.is_str()
+                                    && ["from_utf8", "from_utf8_mut"].contains(&name.as_str())
+                            } {
+                                let reported = struct_span_code_err!(
+                                    tcx.dcx(),
+                                    span,
+                                    E0223,
+                                    "ambiguous associated type"
+                                )
+                                .with_span_suggestion_verbose(
+                                    ident2.span.to(ident3.span),
+                                    format!("you might have meant to use `{name}`"),
+                                    name,
+                                    Applicability::MaybeIncorrect,
+                                )
+                                .emit();
+                                self.set_tainted_by_errors(reported);
+                                return Err(reported);
+                            }
+                        }
+                    }
+
                     let traits: Vec<_> =
                         self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
