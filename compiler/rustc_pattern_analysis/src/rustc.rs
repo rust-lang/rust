@@ -675,8 +675,9 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     cx.pattern_arena.alloc_from_iter(pats.into_iter().map(|p| self.lower_pat(p)))
             }
             PatKind::Never => {
-                // FIXME(never_patterns): handle `!` in exhaustiveness. This is a sane default
-                // in the meantime.
+                // A never pattern matches all the values of its type (namely none). Moreover it
+                // must be compatible with other constructors, since we can use `!` on a type like
+                // `Result<!, !>` which has other constructors. Hence we lower it as a wildcard.
                 ctor = Wildcard;
                 fields = &[];
             }
