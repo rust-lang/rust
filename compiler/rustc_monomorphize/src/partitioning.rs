@@ -156,7 +156,7 @@ where
         placed
     };
 
-    // Merge until we have at most `max_cgu_count` codegen units.
+    // Merge until we don't exceed the max CGU count.
     // `merge_codegen_units` is responsible for updating the CGU size
     // estimates.
     {
