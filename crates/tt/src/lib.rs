@@ -76,19 +76,6 @@ impl<S: Span> Subtree<S> {
     pub const fn empty(span: DelimSpan<S>) -> Self {
         Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: vec![] }
     }
-
-    pub fn visit_ids(&mut self, f: &mut impl FnMut(S) -> S) {
-        self.delimiter.open = f(self.delimiter.open);
-        self.delimiter.close = f(self.delimiter.close);
-        self.token_trees.iter_mut().for_each(|tt| match tt {
-            crate::TokenTree::Leaf(leaf) => match leaf {
-                crate::Leaf::Literal(it) => it.span = f(it.span),
-                crate::Leaf::Punct(it) => it.span = f(it.span),
-                crate::Leaf::Ident(it) => it.span = f(it.span),
-            },
-            crate::TokenTree::Subtree(s) => s.visit_ids(f),
-        })
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
