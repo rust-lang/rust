@@ -45,7 +45,6 @@ declare_lint_pass! {
         FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
-        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         INCOMPLETE_INCLUDE,
         INDIRECT_STRUCTURAL_MATCH,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
@@ -1871,55 +1870,6 @@ declare_lint! {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
         reference: "issue #53130 <https://github.com/rust-lang/rust/issues/53130>",
      };
-}
-
-declare_lint! {
-    /// The `illegal_floating_point_literal_pattern` lint detects
-    /// floating-point literals used in patterns.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let x = 42.0;
-    ///
-    /// match x {
-    ///     5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of the compiler accepted floating-point literals in
-    /// patterns, but it was later determined this was a mistake. The
-    /// semantics of comparing floating-point values may not be clear in a
-    /// pattern when contrasted with "structural equality". Typically you can
-    /// work around this by using a [match guard], such as:
-    ///
-    /// ```rust
-    /// # let x = 42.0;
-    ///
-    /// match x {
-    ///     y if y == 5.0 => {}
-    ///     _ => {}
-    /// }
-    /// ```
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard
-    /// error in the future. See [issue #41620] for more details.
-    ///
-    /// [issue #41620]: https://github.com/rust-lang/rust/issues/41620
-    /// [match guard]: https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-    Warn,
-    "floating-point literals cannot be used in patterns",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
-    };
 }
 
 declare_lint! {
