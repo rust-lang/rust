@@ -66,6 +66,7 @@ pub mod tt {
     pub type Delimiter = ::tt::Delimiter<Span>;
     pub type DelimSpan = ::tt::DelimSpan<Span>;
     pub type Subtree = ::tt::Subtree<Span>;
+    pub type SubtreeBuilder = ::tt::SubtreeBuilder<Span>;
     pub type Leaf = ::tt::Leaf<Span>;
     pub type Literal = ::tt::Literal<Span>;
     pub type Punct = ::tt::Punct<Span>;
@@ -760,7 +761,7 @@ impl ExpansionInfo {
             (
                 Arc::new(tt::Subtree {
                     delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                    token_trees: Vec::new(),
+                    token_trees: Box::new([]),
                 }),
                 SyntaxFixupUndoInfo::NONE,
             )

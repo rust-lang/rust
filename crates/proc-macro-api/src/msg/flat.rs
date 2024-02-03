@@ -370,7 +370,7 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for child in &subtree.token_trees {
+        for child in subtree.token_trees.iter() {
             let idx_tag = match child {
                 tt::TokenTree::Subtree(it) => {
                     let idx = self.enqueue(it);

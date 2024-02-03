@@ -2125,7 +2125,7 @@ impl ModCollector<'_, '_> {
 
         let is_export = export_attr.exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| &it.token_trees).any(|it| match it {
+            export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     ident.text.contains("local_inner_macros")
                 }
