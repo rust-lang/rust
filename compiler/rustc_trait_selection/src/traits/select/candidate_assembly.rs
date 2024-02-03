@@ -15,6 +15,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::traits;
+use crate::traits::project::normalize_with_depth_to;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
@@ -48,6 +49,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // performance by preventing assemble_candidates_from_impls from
             // matching every impl for this trait.
             return Ok(SelectionCandidateSet { vec: vec![], ambiguous: true });
+        }
+
+        // HACK:
+        if obligation.predicate.skip_binder().has_escaping_bound_vars()
+            && obligation.predicate.has_non_region_infer()
+        {
+            let ambiguity = self.infcx.probe(|_| {
+                let predicate =
+                    self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+                let normalized_predicate = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    ObligationCause::dummy(),
+                    obligation.recursion_depth,
+                    predicate,
+                    &mut vec![],
+                );
+
+                normalized_predicate != predicate
+            });
+
+            if ambiguity {
+                return Ok(SelectionCandidateSet { vec: vec![], ambiguous: true });
+            }
         }
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };

@@ -12,6 +12,10 @@ LL | trait X<'a>
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`
+help: consider further restricting the associated type
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) where for<'b> <T as X<'b>>::U: Clone {
+   |                                                  ++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

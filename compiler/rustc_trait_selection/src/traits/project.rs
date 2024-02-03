@@ -254,6 +254,29 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
             infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let new_universe = infcx.universe();
 
+        // HACK:
+        if placeholder_predicate.projection_ty.has_placeholders()
+            && placeholder_predicate.projection_ty.has_non_region_infer()
+        {
+            let ambiguity = infcx.probe(|_| {
+                let alias = placeholder_predicate.projection_ty;
+                let normalized_alias = normalize_with_depth_to(
+                    selcx,
+                    obligation.param_env,
+                    ObligationCause::dummy(),
+                    obligation.recursion_depth,
+                    alias,
+                    &mut vec![],
+                );
+
+                normalized_alias != alias
+            });
+
+            if ambiguity {
+                return Ok(ProjectAndUnifyResult::FailedNormalization);
+            }
+        }
+
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
         match project_and_unify_type(selcx, &placeholder_obligation) {
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),

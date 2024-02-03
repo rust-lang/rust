@@ -20,13 +20,13 @@ impl<'a> ATC<'a> for () {
 impl WithDefault for () {
     fn with_default<F: for<'a> Fn(<Self as ATC<'a>>::Type)>(f: F) {
         // Errors with a bogus type mismatch.
-        //f(());
+        f(());
         // Going through another generic function works fine.
         call(f, ());
-        //~^ expected a
+        //~^ ERROR type annotations needed
     }
 }
 
 fn main() {
-    // <()>::with_default(|_| {});
+    <()>::with_default(|_| {});
 }

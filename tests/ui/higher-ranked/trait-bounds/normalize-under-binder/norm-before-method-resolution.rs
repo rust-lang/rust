@@ -1,8 +1,4 @@
-// check-fail
-// known-bug: #89196
-
-// Should pass, but we normalize and check bounds before we resolve the generics
-// of the function (which we know because of the return type).
+// check-pass
 
 trait Trait<'a> {
     type Out;
