@@ -9,7 +9,7 @@
 //!
 //! [zulip thread]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/r-a.20support.20for.20rust-lang.2Frust.20via.20project-rust.2Ejson/near/412505824
 
-use serde_derive::{Deserialize, Serialize};
+use serde_derive::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::path::Path;
@@ -17,7 +17,7 @@ use std::path::Path;
 use crate::core::metadata::{project_metadata, workspace_members, Dependency};
 use crate::Config;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize)]
 /// FIXME(before-merge): doc-comment
 pub(crate) struct RustAnalyzerProject {
     crates: Vec<Crate>,
@@ -25,7 +25,7 @@ pub(crate) struct RustAnalyzerProject {
     sysroot_src: String,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Default, Serialize, PartialEq)]
 struct Crate {
     cfg: Vec<String>,
     deps: BTreeSet<Dep>,
@@ -39,7 +39,7 @@ struct Crate {
     root_module: String,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Default, Serialize, PartialEq, PartialOrd, Ord, Eq)]
 struct Dep {
     #[serde(rename = "crate")]
     crate_index: usize,
