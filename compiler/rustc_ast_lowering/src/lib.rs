@@ -99,7 +99,7 @@ struct LoweringContext<'a, 'hir> {
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
     /// Collect items that were created by lowering the current owner.
-    children: Vec<(LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>)>,
+    children: Vec<(LocalDefId, hir::MaybeOwner<'hir>)>,
 
     coroutine_kind: Option<hir::CoroutineKind>,
 
@@ -415,7 +415,7 @@ fn index_crate<'a>(
 /// This hash will then be part of the crate_hash which is stored in the metadata.
 fn compute_hir_hash(
     tcx: TyCtxt<'_>,
-    owners: &IndexSlice<LocalDefId, hir::MaybeOwner<&hir::OwnerInfo<'_>>>,
+    owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
 ) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = owners
         .iter_enumerated()

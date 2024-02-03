@@ -25,7 +25,7 @@ pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut ResolverAstLowering,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
+    pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<'hir>>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -64,10 +64,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         }
     }
 
-    pub(super) fn lower_node(
-        &mut self,
-        def_id: LocalDefId,
-    ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
+    pub(super) fn lower_node(&mut self, def_id: LocalDefId) -> hir::MaybeOwner<'hir> {
         let owner = self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         if let hir::MaybeOwner::Phantom = owner {
             let node = self.ast_index[def_id];
