@@ -373,7 +373,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let (Some(caller), Some(callee)) = (pointee_ty(caller.ty)?, pointee_ty(callee.ty)?) {
             // This is okay if they have the same metadata type.
             let meta_ty = |ty: Ty<'tcx>| {
-                let (meta, only_if_sized) = ty.ptr_metadata_ty(*self.tcx, |ty| ty);
+                // Even if `ty` is normalized, the search for the unsized tail will project
+                // to fields, which can yield non-normalized types. So we need to provide a
+                // normalization function.
+                let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
+                let (meta, only_if_sized) = ty.ptr_metadata_ty(*self.tcx, normalize);
                 assert!(
                     !only_if_sized,
                     "there should be no more 'maybe has that metadata' types during interpretation"
