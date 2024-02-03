@@ -2,6 +2,7 @@ use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::t;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::helpers::hex_encode;
+use crate::utils::ra_project::RustAnalyzerProject;
 use crate::Config;
 use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
@@ -622,5 +623,56 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
     } else {
         println!("\n{RUST_ANALYZER_SETTINGS}");
     }
+    Ok(should_create)
+}
+
+/// Sets up `rust-project.json`
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct RustProjectJson;
+
+impl Step for RustProjectJson {
+    type Output = ();
+    const DEFAULT: bool = true;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rust-project")
+    }
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "rust-project" {
+                run.builder.ensure(RustProjectJson);
+            }
+        }
+    }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+
+        while !t!(create_ra_project_json_maybe(&config)) {}
+    }
+}
+
+fn create_ra_project_json_maybe(config: &Config) -> io::Result<bool> {
+    println!("\nx.py can automatically generate `rust-project.json` file for rust-analyzer");
+
+    let should_create = match prompt_user("Would you like to create rust-project.json?: [y/N]")? {
+        Some(PromptResult::Yes) => true,
+        _ => {
+            println!("Ok, skipping rust-project.json!");
+            return Ok(true);
+        }
+    };
+
+    if should_create {
+        let ra_project = RustAnalyzerProject::collect_ra_project_data(&config);
+        ra_project.generate_file(&config.src.join("rust-project.json"))?;
+        println!("Created `rust-project.json`");
+    }
+
     Ok(should_create)
 }

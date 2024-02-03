@@ -5,7 +5,7 @@ use serde_derive::Deserialize;
 
 use crate::utils::cache::INTERNER;
 use crate::utils::helpers::output;
-use crate::{t, Build, Crate};
+use crate::{t, Build, Config, Crate};
 
 /// For more information, see the output of
 /// <https://doc.rust-lang.org/nightly/cargo/commands/cargo-metadata.html>
@@ -45,7 +45,7 @@ pub(crate) struct Target {
 /// Collects and stores package metadata of each workspace members into `build`,
 /// by executing `cargo metadata` commands.
 pub fn build(build: &mut Build) {
-    for package in workspace_members(build) {
+    for package in workspace_members(&build.config) {
         if package.source.is_none() {
             let name = INTERNER.intern_string(package.name);
             let mut path = PathBuf::from(package.manifest_path);
@@ -74,9 +74,9 @@ pub fn build(build: &mut Build) {
 ///
 /// Note that `src/tools/cargo` is no longer a workspace member but we still
 /// treat it as one here, by invoking an additional `cargo metadata` command.
-pub(crate) fn workspace_members(build: &Build) -> impl Iterator<Item = Package> {
+pub(crate) fn workspace_members(config: &Config) -> impl Iterator<Item = Package> {
     let collect_metadata = |manifest_path| {
-        let mut cargo = Command::new(&build.initial_cargo);
+        let mut cargo = Command::new(&config.initial_cargo);
         cargo
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.
@@ -86,7 +86,7 @@ pub(crate) fn workspace_members(build: &Build) -> impl Iterator<Item = Package> 
             .arg("1")
             .arg("--no-deps")
             .arg("--manifest-path")
-            .arg(build.src.join(manifest_path));
+            .arg(config.src.join(manifest_path));
         let metadata_output = output(&mut cargo);
         let Output { packages, .. } = t!(serde_json::from_str(&metadata_output));
         packages
@@ -105,9 +105,9 @@ pub(crate) fn workspace_members(build: &Build) -> impl Iterator<Item = Package> 
 }
 
 /// Invokes `cargo metadata` to get package metadata of whole workspace including the dependencies.
-pub(crate) fn project_metadata(build: &Build) -> impl Iterator<Item = Package> {
+pub(crate) fn project_metadata(config: &Config) -> impl Iterator<Item = Package> {
     let collect_metadata = |manifest_path| {
-        let mut cargo = Command::new(&build.initial_cargo);
+        let mut cargo = Command::new(&config.initial_cargo);
         cargo
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.
@@ -116,7 +116,7 @@ pub(crate) fn project_metadata(build: &Build) -> impl Iterator<Item = Package> {
             .arg("--format-version")
             .arg("1")
             .arg("--manifest-path")
-            .arg(build.src.join(manifest_path));
+            .arg(config.src.join(manifest_path));
         let metadata_output = output(&mut cargo);
         let Output { packages, .. } = t!(serde_json::from_str(&metadata_output));
         packages

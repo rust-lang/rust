@@ -15,11 +15,11 @@ use std::io;
 use std::path::Path;
 
 use crate::core::metadata::{project_metadata, workspace_members, Dependency};
-use crate::Build;
+use crate::Config;
 
 #[derive(Debug, Deserialize, Serialize)]
 /// FIXME(before-merge): doc-comment
-struct RustAnalyzerProject {
+pub(crate) struct RustAnalyzerProject {
     crates: Vec<Crate>,
     sysroot: String,
     sysroot_src: String,
@@ -33,6 +33,7 @@ struct Crate {
     edition: String,
     env: BTreeMap<String, String>,
     is_proc_macro: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     proc_macro_dylib_path: Option<String>,
     is_workspace_member: bool,
     root_module: String,
@@ -47,15 +48,15 @@ struct Dep {
 
 impl RustAnalyzerProject {
     #[allow(dead_code)] // FIXME(before-merge): remove this
-    pub(crate) fn collect_ra_project_data(build: &mut Build) -> Self {
+    pub(crate) fn collect_ra_project_data(config: &Config) -> Self {
         let mut ra_project = RustAnalyzerProject {
             crates: vec![],
-            sysroot: format!("{}", build.out.join("host").join("stage0").display()),
-            sysroot_src: format!("{}", build.src.join("library").display()),
+            sysroot: format!("{}", config.out.join("host").join("stage0").display()),
+            sysroot_src: format!("{}", config.src.join("library").display()),
         };
 
-        let packages: Vec<_> = project_metadata(build).collect();
-        let workspace_members: Vec<_> = workspace_members(build).collect();
+        let packages: Vec<_> = project_metadata(config).collect();
+        let workspace_members: Vec<_> = workspace_members(config).collect();
 
         for package in &packages {
             let is_not_indirect_dependency = packages
@@ -94,7 +95,7 @@ impl RustAnalyzerProject {
 
                 if target
                     .src_path
-                    .starts_with(&build.src.join("library").to_string_lossy().to_string())
+                    .starts_with(&config.src.join("library").to_string_lossy().to_string())
                 {
                     krate.cfg.push("bootstrap".into());
                 }

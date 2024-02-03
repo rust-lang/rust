@@ -880,7 +880,13 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
             ),
-            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
+            Kind::Setup => describe!(
+                setup::Profile,
+                setup::Hook,
+                setup::Link,
+                setup::Vscode,
+                setup::RustProjectJson
+            ),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
             Kind::Format | Kind::Suggest => vec![],
