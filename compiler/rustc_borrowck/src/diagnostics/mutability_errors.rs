@@ -924,7 +924,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_lo(),
                             "use a mutable iterator instead",
-                            "mut ".to_string(),
+                            "mut ",
                             Applicability::MachineApplicable,
                         );
                     }

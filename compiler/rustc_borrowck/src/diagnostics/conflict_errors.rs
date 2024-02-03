@@ -2440,7 +2440,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         "consider consuming the `{ty}` when turning it into an \
                                          `Iterator`",
                                     ),
-                                    "into_iter".to_string(),
+                                    "into_iter",
                                     Applicability::MaybeIncorrect,
                                 );
                             }
