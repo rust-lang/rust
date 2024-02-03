@@ -289,6 +289,9 @@ resolve_underscore_lifetime_name_cannot_be_used_here =
     `'_` cannot be used here
     .note = `'_` is a reserved lifetime name
 
+resolve_unexpected_res_change_ty_to_const_param_sugg =
+    you might have meant to write a const parameter here
+
 resolve_unreachable_label =
     use of unreachable label `{$name}`
     .label = unreachable label `{$name}`
