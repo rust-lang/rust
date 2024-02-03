@@ -1,6 +1,6 @@
 use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, DEFAULT_BUF_SIZE};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
@@ -666,5 +666,18 @@ fn read_buf_broken_read() {
         }
     }
 
-    BufReader::new(MalformedRead).read(&mut [0; 4]).unwrap();
+    let _ = BufReader::new(MalformedRead).fill_buf();
+}
+
+#[test]
+fn read_buf_full_read() {
+    struct FullRead;
+
+    impl Read for FullRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+    }
+
+    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
 }
