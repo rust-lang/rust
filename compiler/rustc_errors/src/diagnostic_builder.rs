@@ -255,13 +255,8 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
     /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
-    pub fn stash(self, span: Span, key: StashKey) {
-        self.dcx.stash_diagnostic(span, key, self.into_diagnostic());
-    }
-
-    /// Converts the builder to a `Diagnostic` for later emission.
-    pub fn into_diagnostic(mut self) -> Diagnostic {
-        self.take_diag()
+    pub fn stash(mut self, span: Span, key: StashKey) {
+        self.dcx.stash_diagnostic(span, key, self.take_diag());
     }
 
     /// Delay emission of this diagnostic as a bug.
