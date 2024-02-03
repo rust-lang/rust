@@ -578,8 +578,13 @@ where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
     let n = read(cursor.ensure_init().init_mut())?;
+    assert!(
+        n <= cursor.capacity(),
+        "read should not return more bytes than there is capacity for in the read buffer"
+    );
     unsafe {
-        // SAFETY: we initialised using `ensure_init` so there is no uninit data to advance to.
+        // SAFETY: we initialised using `ensure_init` so there is no uninit data to advance to
+        // and we have checked that the read amount is not over capacity (see #120603)
         cursor.advance(n);
     }
     Ok(())

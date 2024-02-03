@@ -652,3 +652,19 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
 }
+
+// Issue #120603
+#[test]
+#[should_panic = "read should not return more bytes than there is capacity for in the read buffer"]
+fn read_buf_broken_read() {
+    struct MalformedRead;
+
+    impl Read for MalformedRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            // broken length calculation
+            Ok(buf.len() + 1)
+        }
+    }
+
+    BufReader::new(MalformedRead).read(&mut [0; 4]).unwrap();
+}
