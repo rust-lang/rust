@@ -464,7 +464,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprKind::Field(ref lhs, ..) => {
-                self.handle_field_access(lhs, expr.hir_id);
+                if self.typeck_results().opt_field_index(expr.hir_id).is_some() {
+                    self.handle_field_access(lhs, expr.hir_id);
+                } else {
+                    self.tcx.dcx().span_delayed_bug(expr.span, "couldn't resolve index for field");
+                }
             }
             hir::ExprKind::Struct(qpath, fields, _) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
