@@ -586,18 +586,7 @@ fn generate_macro_def_id_path(
     let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
 
-    let fqp: Vec<Symbol> = tcx
-        .def_path(def_id)
-        .data
-        .into_iter()
-        .filter_map(|elem| {
-            // extern blocks (and a few others things) have an empty name.
-            match elem.data.get_opt_name() {
-                Some(s) if !s.is_empty() => Some(s),
-                _ => None,
-            }
-        })
-        .collect();
+    let fqp = clean::inline::item_relative_path(tcx, def_id);
     let mut relative = fqp.iter().copied();
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
@@ -680,18 +669,7 @@ fn generate_item_def_id_path(
             .unwrap_or(def_id);
     }
 
-    let relative: Vec<Symbol> = tcx
-        .def_path(def_id)
-        .data
-        .into_iter()
-        .filter_map(|elem| {
-            // extern blocks (and a few others things) have an empty name.
-            match elem.data.get_opt_name() {
-                Some(s) if !s.is_empty() => Some(s),
-                _ => None,
-            }
-        })
-        .collect();
+    let relative = clean::inline::item_relative_path(tcx, def_id);
     let fqp: Vec<Symbol> = once(crate_name).chain(relative).collect();
 
     let def_kind = tcx.def_kind(def_id);
