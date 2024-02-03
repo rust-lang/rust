@@ -494,81 +494,72 @@ impl<'a> DeclValidator<'a> {
             IdentType::Enum,
         );
 
-        // Check the field names.
-        let enum_variants_replacements = data
+        // Check the variant names.
+        self.validate_enum_variants(enum_id)
+    }
+
+    /// Check incorrect names for enum variants.
+    fn validate_enum_variants(&mut self, enum_id: EnumId) {
+        let data = self.db.enum_data(enum_id);
+        let mut enum_variants_replacements = data
             .variants
             .iter()
             .filter_map(|(_, name)| {
-                Some(Replacement {
+                to_camel_case(&name.to_smol_str()).map(|new_name| Replacement {
                     current_name: name.clone(),
-                    suggested_text: to_camel_case(&name.to_smol_str())?,
+                    suggested_text: new_name,
                     expected_case: CaseType::UpperCamelCase,
                 })
             })
-            .collect();
+            .peekable();
 
-        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
-        self.create_incorrect_case_diagnostic_for_enum_variants(enum_id, enum_variants_replacements)
-    }
-
-    /// Given the information about incorrect names for enum variants,
-    /// looks up into the source code for exact locations and adds diagnostics into the sink.
-    fn create_incorrect_case_diagnostic_for_enum_variants(
-        &mut self,
-        enum_id: EnumId,
-        enum_variants_replacements: Vec<Replacement>,
-    ) {
         // XXX: only look at sources if we do have incorrect names
-        if enum_variants_replacements.is_empty() {
+        if enum_variants_replacements.peek().is_none() {
             return;
         }
 
         let enum_loc = enum_id.lookup(self.db.upcast());
         let enum_src = enum_loc.source(self.db.upcast());
 
-        let enum_variants_list = match enum_src.value.variant_list() {
-            Some(variants) => variants,
-            _ => {
-                always!(
-                    enum_variants_replacements.is_empty(),
-                    "Replacements ({:?}) were generated for a enum variants which had no fields list: {:?}",
-                    enum_variants_replacements,
-                    enum_src
-                );
-                return;
-            }
+        let Some(enum_variants_list) = enum_src.value.variant_list() else {
+            always!(
+                enum_variants_replacements.peek().is_none(),
+                "Replacements ({:?}) were generated for enum variants \
+                which had no fields list: {:?}",
+                enum_variants_replacements,
+                enum_src
+            );
+            return;
         };
         let mut enum_variants_iter = enum_variants_list.variants();
-        for variant_to_rename in enum_variants_replacements {
+        for variant_replacement in enum_variants_replacements {
             // We assume that parameters in replacement are in the same order as in the
             // actual params list, but just some of them (ones that named correctly) are skipped.
-            let ast_ptr = loop {
-                match enum_variants_iter.next().and_then(|v| v.name()) {
-                    Some(variant_name) => {
-                        if variant_name.as_name() == variant_to_rename.current_name {
-                            break variant_name;
-                        }
+            let variant = loop {
+                if let Some(variant) = enum_variants_iter.next() {
+                    let Some(variant_name) = variant.name() else {
+                        continue;
+                    };
+                    if variant_name.as_name() == variant_replacement.current_name {
+                        break variant;
                     }
-                    None => {
-                        never!(
-                            "Replacement ({:?}) was generated for a enum variant which was not found: {:?}",
-                            variant_to_rename, enum_src
-                        );
-                        return;
-                    }
+                } else {
+                    never!(
+                        "Replacement ({:?}) was generated for an enum variant \
+                        which was not found: {:?}",
+                        variant_replacement,
+                        enum_src
+                    );
+                    return;
                 }
             };
 
-            let diagnostic = IncorrectCase {
-                file: enum_src.file_id,
-                ident_type: IdentType::Variant,
-                ident: AstPtr::new(&ast_ptr),
-                expected_case: variant_to_rename.expected_case,
-                ident_text: variant_to_rename.current_name.display(self.db.upcast()).to_string(),
-                suggested_text: variant_to_rename.suggested_text,
-            };
-
-            self.sink.push(diagnostic);
+            self.create_incorrect_case_diagnostic_for_ast_node(
+                variant_replacement,
+                enum_src.file_id,
+                &variant,
+                IdentType::Variant,
+            );
         }
     }
 
