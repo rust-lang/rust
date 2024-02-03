@@ -388,14 +388,11 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_struct(&mut self, struct_id: StructId) {
-        let data = self.db.struct_data(struct_id);
-
+        // Check the structure name.
         let non_camel_case_allowed =
             self.allowed(struct_id.into(), allow::NON_CAMEL_CASE_TYPES, false);
-        let non_snake_case_allowed = self.allowed(struct_id.into(), allow::NON_SNAKE_CASE, false);
-
-        // Check the structure name.
         if !non_camel_case_allowed {
+            let data = self.db.struct_data(struct_id);
             self.create_incorrect_case_diagnostic_for_item_name(
                 struct_id,
                 &data.name,
@@ -405,88 +402,79 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the field names.
-        let mut struct_fields_replacements = Vec::new();
-        if !non_snake_case_allowed {
-            if let VariantData::Record(fields) = data.variant_data.as_ref() {
-                for (_, field) in fields.iter() {
-                    let field_name = field.name.display(self.db.upcast()).to_string();
-                    if let Some(new_name) = to_lower_snake_case(&field_name) {
-                        let replacement = Replacement {
-                            current_name: field.name.clone(),
-                            suggested_text: new_name,
-                            expected_case: CaseType::LowerSnakeCase,
-                        };
-                        struct_fields_replacements.push(replacement);
-                    }
-                }
-            }
-        }
-
-        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
-        self.create_incorrect_case_diagnostic_for_struct_fields(
-            struct_id,
-            struct_fields_replacements,
-        );
+        self.validate_struct_fields(struct_id);
     }
 
-    /// Given the information about incorrect names for struct fields,
-    /// looks up into the source code for exact locations and adds diagnostics into the sink.
-    fn create_incorrect_case_diagnostic_for_struct_fields(
-        &mut self,
-        struct_id: StructId,
-        struct_fields_replacements: Vec<Replacement>,
-    ) {
+    /// Check incorrect names for struct fields.
+    fn validate_struct_fields(&mut self, struct_id: StructId) {
+        if self.allowed(struct_id.into(), allow::NON_SNAKE_CASE, false) {
+            return;
+        }
+
+        let data = self.db.struct_data(struct_id);
+        let VariantData::Record(fields) = data.variant_data.as_ref() else {
+            return;
+        };
+        let mut struct_fields_replacements = fields
+            .iter()
+            .filter_map(|(_, field)| {
+                to_lower_snake_case(&field.name.to_smol_str()).map(|new_name| Replacement {
+                    current_name: field.name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::LowerSnakeCase,
+                })
+            })
+            .peekable();
+
         // XXX: Only look at sources if we do have incorrect names.
-        if struct_fields_replacements.is_empty() {
+        if struct_fields_replacements.peek().is_none() {
             return;
         }
 
         let struct_loc = struct_id.lookup(self.db.upcast());
         let struct_src = struct_loc.source(self.db.upcast());
 
-        let struct_fields_list = match struct_src.value.field_list() {
-            Some(ast::FieldList::RecordFieldList(fields)) => fields,
-            _ => {
-                always!(
-                    struct_fields_replacements.is_empty(),
-                    "Replacements ({:?}) were generated for a structure fields which had no fields list: {:?}",
-                    struct_fields_replacements,
-                    struct_src
-                );
-                return;
-            }
+        let Some(ast::FieldList::RecordFieldList(struct_fields_list)) =
+            struct_src.value.field_list()
+        else {
+            always!(
+                struct_fields_replacements.peek().is_none(),
+                "Replacements ({:?}) were generated for a structure fields \
+                which had no fields list: {:?}",
+                struct_fields_replacements.collect::<Vec<_>>(),
+                struct_src
+            );
+            return;
         };
         let mut struct_fields_iter = struct_fields_list.fields();
-        for field_to_rename in struct_fields_replacements {
+        for field_replacement in struct_fields_replacements {
             // We assume that parameters in replacement are in the same order as in the
             // actual params list, but just some of them (ones that named correctly) are skipped.
-            let ast_ptr = loop {
-                match struct_fields_iter.next().and_then(|field| field.name()) {
-                    Some(field_name) => {
-                        if field_name.as_name() == field_to_rename.current_name {
-                            break field_name;
-                        }
+            let field = loop {
+                if let Some(field) = struct_fields_iter.next() {
+                    let Some(field_name) = field.name() else {
+                        continue;
+                    };
+                    if field_name.as_name() == field_replacement.current_name {
+                        break field;
                     }
-                    None => {
-                        never!(
-                            "Replacement ({:?}) was generated for a structure field which was not found: {:?}",
-                            field_to_rename, struct_src
-                        );
-                        return;
-                    }
+                } else {
+                    never!(
+                        "Replacement ({:?}) was generated for a structure field \
+                        which was not found: {:?}",
+                        field_replacement,
+                        struct_src
+                    );
+                    return;
                 }
             };
 
-            let diagnostic = IncorrectCase {
-                file: struct_src.file_id,
-                ident_type: IdentType::Field,
-                ident: AstPtr::new(&ast_ptr),
-                expected_case: field_to_rename.expected_case,
-                ident_text: field_to_rename.current_name.display(self.db.upcast()).to_string(),
-                suggested_text: field_to_rename.suggested_text,
-            };
-
-            self.sink.push(diagnostic);
+            self.create_incorrect_case_diagnostic_for_ast_node(
+                field_replacement,
+                struct_src.file_id,
+                &field,
+                IdentType::Field,
+            );
         }
     }
 
