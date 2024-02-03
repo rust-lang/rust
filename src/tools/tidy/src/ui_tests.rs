@@ -150,17 +150,17 @@ pub fn check(path: &Path, bad: &mut bool) {
             if ext == "rs" {
                 lazy_static! {
                     static ref ISSUE_NAME_REGEX: Regex =
-                        Regex::new(r"^issues?[-_]?\d{3,}").unwrap();
+                        Regex::new(r"^issues?[-_]?(\d{3,})").unwrap();
                 }
 
-                if ISSUE_NAME_REGEX.is_match(testname) {
+                if let Some(test_name) = ISSUE_NAME_REGEX.captures(testname) {
                     // these paths are always relative to the passed `path` and always UTF8
                     let stripped_path = file_path.strip_prefix(path).unwrap().to_str().unwrap();
                     if !allowed_issue_filenames.remove(stripped_path) {
                         tidy_error!(
                             bad,
-                            "UI test `{}` should use a name that describes the test and link the issue in a comment instead.",
-                            file_path.display(),
+                            "file `{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                            issue_n = &test_name[1],
                         );
                     }
                 }
