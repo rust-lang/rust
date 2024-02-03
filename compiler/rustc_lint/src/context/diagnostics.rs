@@ -188,6 +188,23 @@ pub(super) fn builtin(
             #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> =
                 sess.parse_sess.check_config.expecteds.keys().copied().collect();
+
+            let mut names_possibilities: Vec<_> = if value.is_none() {
+                // We later sort and display all the possibilities, so the order here does not matter.
+                #[allow(rustc::potential_query_instability)]
+                sess.parse_sess
+                    .check_config
+                    .expecteds
+                    .iter()
+                    .filter_map(|(k, v)| match v {
+                        ExpectedValues::Some(v) if v.contains(&Some(name)) => Some(k),
+                        _ => None,
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+
             let is_from_cargo = std::env::var_os("CARGO").is_some();
             let mut is_feature_cfg = name == sym::feature;
 
@@ -262,17 +279,30 @@ pub(super) fn builtin(
                 }
 
                 is_feature_cfg |= best_match == sym::feature;
-            } else if !possibilities.is_empty() {
-                let mut possibilities =
-                    possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
-                possibilities.sort();
-                let possibilities = possibilities.join("`, `");
+            } else {
+                if !names_possibilities.is_empty() && names_possibilities.len() <= 3 {
+                    names_possibilities.sort();
+                    for cfg_name in names_possibilities.iter() {
+                        db.span_suggestion(
+                            name_span,
+                            "found config with similar value",
+                            format!("{cfg_name} = \"{name}\""),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                if !possibilities.is_empty() {
+                    let mut possibilities =
+                        possibilities.iter().map(Symbol::as_str).collect::<Vec<_>>();
+                    possibilities.sort();
+                    let possibilities = possibilities.join("`, `");
 
-                // The list of expected names can be long (even by default) and
-                // so the diagnostic produced can take a lot of space. To avoid
-                // cloging the user output we only want to print that diagnostic
-                // once.
-                db.help_once(format!("expected names are: `{possibilities}`"));
+                    // The list of expected names can be long (even by default) and
+                    // so the diagnostic produced can take a lot of space. To avoid
+                    // cloging the user output we only want to print that diagnostic
+                    // once.
+                    db.help_once(format!("expected names are: `{possibilities}`"));
+                }
             }
 
             let inst = if let Some((value, _value_span)) = value {
