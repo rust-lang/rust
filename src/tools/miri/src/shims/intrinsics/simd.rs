@@ -773,6 +773,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let left = left.to_scalar();
         let right = right.to_scalar();
         Ok(match float_ty {
+            FloatTy::F16 => {
+                let left = left.to_f16()?;
+                let right = right.to_f16()?;
+                let res = match op {
+                    MinMax::Min => left.min(right),
+                    MinMax::Max => left.max(right),
+                };
+                let res = this.adjust_nan(res, &[left, right]);
+                Scalar::from_f16(res)
+            }
             FloatTy::F32 => {
                 let left = left.to_f32()?;
                 let right = right.to_f32()?;
@@ -793,6 +803,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[left, right]);
                 Scalar::from_f64(res)
             }
+            FloatTy::F128 => {
+                let left = left.to_f128()?;
+                let right = right.to_f128()?;
+                let res = match op {
+                    MinMax::Min => left.min(right),
+                    MinMax::Max => left.max(right),
+                };
+                let res = this.adjust_nan(res, &[left, right]);
+                Scalar::from_f128(res)
+            }
         })
     }
 }
@@ -804,36 +824,4 @@ fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
         #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
-}
-
-fn fmax_op<'tcx>(
-    left: &ImmTy<'tcx, Provenance>,
-    right: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
-    assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmax operand is not a float") };
-    let left = left.to_scalar();
-    let right = right.to_scalar();
-    Ok(match float_ty {
-        FloatTy::F16 => Scalar::from_f16(left.to_f16()?.max(right.to_f16()?)),
-        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.max(right.to_f32()?)),
-        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.max(right.to_f64()?)),
-        FloatTy::F128 => Scalar::from_f128(left.to_f128()?.max(right.to_f128()?)),
-    })
-}
-
-fn fmin_op<'tcx>(
-    left: &ImmTy<'tcx, Provenance>,
-    right: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
-    assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmin operand is not a float") };
-    let left = left.to_scalar();
-    let right = right.to_scalar();
-    Ok(match float_ty {
-        FloatTy::F16 => Scalar::from_f16(left.to_f16()?.min(right.to_f16()?)),
-        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.min(right.to_f32()?)),
-        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.min(right.to_f64()?)),
-        FloatTy::F128 => Scalar::from_f128(left.to_f128()?.min(right.to_f128()?)),
-    })
 }

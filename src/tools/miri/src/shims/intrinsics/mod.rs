@@ -8,10 +8,8 @@ use log::trace;
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{
-    mir,
-    ty::{self, FloatTy},
-};
+use rustc_middle::{mir, ty};
+use rustc_middle::ty::FloatTy;
 use rustc_target::abi::Size;
 
 use crate::*;
@@ -167,8 +165,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // This is a "bitwise" operation, so there's no NaN non-determinism.
                 this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
             }
-<<<<<<< HEAD
-
             #[rustfmt::skip]
             #[cfg(not(bootstrap))]
             | "sinf16"
@@ -206,8 +202,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
-
-=======
             "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -223,7 +217,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
->>>>>>> master
             #[rustfmt::skip]
             | "sinf32"
             | "cosf32"

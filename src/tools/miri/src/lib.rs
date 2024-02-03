@@ -10,11 +10,7 @@
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
-<<<<<<< HEAD
-#![cfg_attr(not(bootstrap), feature(f16))]
-=======
-#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
->>>>>>> master
+#![cfg_attr(not(bootstrap), feature(f16), feature(trait_upcasting))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
