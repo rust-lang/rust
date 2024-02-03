@@ -6,6 +6,7 @@
 // exec-env:RUST_BACKTRACE=0
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
+// ignore-android #120567
 // ignore-wasm no panic or subprocess support
 // ignore-emscripten no panic or subprocess support
 // ignore-sgx no subprocess support
