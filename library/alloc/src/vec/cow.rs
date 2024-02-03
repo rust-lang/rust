@@ -15,7 +15,7 @@ impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
     }
 }
 
-#[stable(feature = "cow_from_array_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cow_from_array_ref", since = "1.77.0")]
 impl<'a, T: Clone, const N: usize> From<&'a [T; N]> for Cow<'a, [T]> {
     /// Creates a [`Borrowed`] variant of [`Cow`]
     /// from a reference to an array.

@@ -356,7 +356,7 @@ declare_features! (
     /// Allows `#[track_caller]` on async functions.
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
     /// Allows `for await` loops.
-    (unstable, async_for_loop, "CURRENT_RUSTC_VERSION", Some(118898)),
+    (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680)),
     /// Treat `extern "C"` function as nounwind.
@@ -370,7 +370,7 @@ declare_features! (
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (unstable, cfg_sanitize, "1.41.0", Some(39699)),
     /// Allows `cfg(sanitizer_cfi_generalize_pointers)` and `cfg(sanitizer_cfi_normalize_integers)`.
-    (unstable, cfg_sanitizer_cfi, "CURRENT_RUSTC_VERSION", Some(89653)),
+    (unstable, cfg_sanitizer_cfi, "1.77.0", Some(89653)),
     /// Allows `cfg(target_abi = "...")`.
     (unstable, cfg_target_abi, "1.55.0", Some(80970)),
     /// Allows `cfg(target(abi = "..."))`.
@@ -514,7 +514,7 @@ declare_features! (
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
     /// unambiguously sound.
-    (incomplete, min_exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(119612)),
+    (incomplete, min_exhaustive_patterns, "1.77.0", Some(119612)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -550,7 +550,7 @@ declare_features! (
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using multiple nested field accesses in offset_of!
-    (unstable, offset_of_nested, "CURRENT_RUSTC_VERSION", Some(120140)),
+    (unstable, offset_of_nested, "1.77.0", Some(120140)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
