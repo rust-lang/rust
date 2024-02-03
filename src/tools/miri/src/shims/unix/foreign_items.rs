@@ -1,8 +1,6 @@
 use std::ffi::OsStr;
 use std::str;
 
-use log::trace;
-
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
