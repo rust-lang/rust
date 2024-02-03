@@ -16,12 +16,9 @@ mod case_conv;
 use std::fmt;
 
 use hir_def::{
-    data::adt::VariantData,
-    db::DefDatabase,
-    hir::{Pat, PatId},
-    src::HasSource,
-    AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
-    StaticId, StructId, TraitId, TypeAliasId,
+    data::adt::VariantData, db::DefDatabase, hir::Pat, src::HasSource, AdtId, AttrDefId, ConstId,
+    EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -298,11 +295,9 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        // Check whether function is an associated item of a trait implementation
-        let is_trait_impl_assoc_fn = self.is_trait_impl_container(container);
-
         // Check the function name.
-        if !is_trait_impl_assoc_fn {
+        // Skipped if function is an associated item of a trait implementation.
+        if !self.is_trait_impl_container(container) {
             let data = self.db.function_data(func);
             self.create_incorrect_case_diagnostic_for_item_name(
                 func,
@@ -315,91 +310,80 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the patterns inside the function body.
-        // This includes function parameters if it's not an associated function
-        // of a trait implementation.
+        self.validate_func_body(func);
+    }
+
+    /// Check incorrect names for patterns inside the function body.
+    /// This includes function parameters except for trait implementation associated functions.
+    fn validate_func_body(&mut self, func: FunctionId) {
+        // Check whether function is an associated item of a trait implementation
+        let container = func.lookup(self.db.upcast()).container;
+        let is_trait_impl_assoc_fn = self.is_trait_impl_container(container);
+
         let body = self.db.body(func.into());
-        let pats_replacements = body
+        let mut pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
-                    // Filter out parameters if it's an associated function
-                    // of a trait implementation.
+                    // Filter out parameters for trait implementation associated functions.
                     if is_trait_impl_assoc_fn
                         && body.params.iter().any(|param_id| *param_id == pat_id)
                     {
                         cov_mark::hit!(trait_impl_assoc_func_param_incorrect_case_ignored);
                         None
                     } else {
-                        Some((pat_id, &body.bindings[*id].name))
+                        let bind_name = &body.bindings[*id].name;
+                        let replacement = Replacement {
+                            current_name: bind_name.clone(),
+                            suggested_text: to_lower_snake_case(&bind_name.to_smol_str())?,
+                            expected_case: CaseType::LowerSnakeCase,
+                        };
+                        Some((pat_id, replacement))
                     }
                 }
                 _ => None,
             })
-            .filter_map(|(id, bind_name)| {
-                Some((
-                    id,
-                    Replacement {
-                        current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(
-                            &bind_name.display(self.db.upcast()).to_string(),
-                        )?,
-                        expected_case: CaseType::LowerSnakeCase,
-                    },
-                ))
-            })
-            .collect();
-        self.create_incorrect_case_diagnostic_for_func_variables(func, pats_replacements);
-    }
+            .peekable();
 
-    /// Given the information about incorrect variable names, looks up into the source code
-    /// for exact locations and adds diagnostics into the sink.
-    fn create_incorrect_case_diagnostic_for_func_variables(
-        &mut self,
-        func: FunctionId,
-        pats_replacements: Vec<(PatId, Replacement)>,
-    ) {
         // XXX: only look at source_map if we do have missing fields
-        if pats_replacements.is_empty() {
+        if pats_replacements.peek().is_none() {
             return;
         }
 
         let (_, source_map) = self.db.body_with_source_map(func.into());
-
         for (id, replacement) in pats_replacements {
-            if let Ok(source_ptr) = source_map.pat_syntax(id) {
-                if let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() {
-                    let root = source_ptr.file_syntax(self.db.upcast());
-                    let ident_pat = ptr.to_node(&root);
-                    let parent = match ident_pat.syntax().parent() {
-                        Some(parent) => parent,
-                        None => continue,
-                    };
+            let Ok(source_ptr) = source_map.pat_syntax(id) else {
+                continue;
+            };
+            let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() else {
+                continue;
+            };
+            let root = source_ptr.file_syntax(self.db.upcast());
+            let ident_pat = ptr.to_node(&root);
+            let Some(parent) = ident_pat.syntax().parent() else {
+                continue;
+            };
 
-                    let is_param = ast::Param::can_cast(parent.kind());
-
-                    // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
-                    // because e.g. match arms are patterns as well.
-                    // In other words, we check that it's a named variable binding.
-                    let is_binding = ast::LetStmt::can_cast(parent.kind())
-                        || (ast::MatchArm::can_cast(parent.kind())
-                            && ident_pat.at_token().is_some());
-                    if !(is_param || is_binding) {
-                        // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
-                        continue;
-                    }
-
-                    let ident_type =
-                        if is_param { IdentType::Parameter } else { IdentType::Variable };
-
-                    self.create_incorrect_case_diagnostic_for_ast_node(
-                        replacement,
-                        source_ptr.file_id,
-                        &ident_pat,
-                        ident_type,
-                    );
-                }
+            let is_param = ast::Param::can_cast(parent.kind());
+            // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
+            // because e.g. match arms are patterns as well.
+            // In other words, we check that it's a named variable binding.
+            let is_binding = ast::LetStmt::can_cast(parent.kind())
+                || (ast::MatchArm::can_cast(parent.kind()) && ident_pat.at_token().is_some());
+            if !(is_param || is_binding) {
+                // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
+                continue;
             }
+
+            let ident_type = if is_param { IdentType::Parameter } else { IdentType::Variable };
+
+            self.create_incorrect_case_diagnostic_for_ast_node(
+                replacement,
+                source_ptr.file_id,
+                &ident_pat,
+                ident_type,
+            );
         }
     }
 
