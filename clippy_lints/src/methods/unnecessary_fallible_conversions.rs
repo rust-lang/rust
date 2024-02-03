@@ -52,23 +52,18 @@ impl FunctionKind {
     }
 
     fn machine_applicable_sugg(&self, primary_span: Span, unwrap_span: Span) -> Vec<(Span, String)> {
-        use FunctionKind::*;
-        use SpansKind::*;
-
-        let (trait_name, fn_name) = {
-            let (a, b) = match self {
-                TryFromFunction(_) => ("From", "from"),
-                TryIntoFunction(_) | TryIntoMethod => ("Into", "into"),
-            };
-            (a.to_string(), b.to_string())
+        let (trait_name, fn_name) = match self {
+            FunctionKind::TryFromFunction(_) => ("From".to_owned(), "from".to_owned()),
+            FunctionKind::TryIntoFunction(_) | FunctionKind::TryIntoMethod => ("Into".to_owned(), "into".to_owned()),
         };
 
         let mut sugg = match *self {
-            TryFromFunction(Some(spans)) | TryIntoFunction(Some(spans)) => match spans {
-                TraitFn { trait_span, fn_span } => vec![(trait_span, trait_name), (fn_span, fn_name)],
-                Fn { fn_span } => vec![(fn_span, fn_name)],
+            FunctionKind::TryFromFunction(Some(spans)) | FunctionKind::TryIntoFunction(Some(spans)) => match spans {
+                SpansKind::TraitFn { trait_span, fn_span } => vec![(trait_span, trait_name), (fn_span, fn_name)],
+                SpansKind::Fn { fn_span } => vec![(fn_span, fn_name)],
             },
-            TryIntoMethod => vec![(primary_span, fn_name)],
+            FunctionKind::TryIntoMethod => vec![(primary_span, fn_name)],
+            // Or the suggestion is not machine-applicable
             _ => unreachable!(),
         };
 
