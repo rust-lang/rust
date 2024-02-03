@@ -726,7 +726,7 @@ impl<T> Bound<T> {
     /// assert_eq!(unbounded_string.map(|s| s.len()), Unbounded);
     /// ```
     #[inline]
-    #[stable(feature = "bound_map", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "bound_map", since = "1.77.0")]
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Bound<U> {
         match self {
             Unbounded => Unbounded,
