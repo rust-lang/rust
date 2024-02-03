@@ -15,6 +15,12 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:66:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@issue-30786.rs:131:30}>`, but its trait bounds were not satisfied
   --> $DIR/issue-30786.rs:132:24
@@ -33,6 +39,12 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `countx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:66:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
