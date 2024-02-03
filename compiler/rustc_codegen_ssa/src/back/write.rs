@@ -39,7 +39,6 @@ use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
 use crate::errors::ErrorCreatingRemarkDir;
 use std::any::Any;
-use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
@@ -1812,12 +1811,12 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let args: FxHashMap<Cow<'_, str>, DiagnosticArgValue> =
+        let args: FxHashMap<DiagnosticArgName, DiagnosticArgValue> =
             diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msgs: diag.messages.clone(),
             args: args.clone(),
-            code: diag.code.clone(),
+            code: diag.code,
             lvl: diag.level(),
         })));
         for child in &diag.children {

@@ -34,7 +34,7 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
 
         fn add_args(
             self: Box<Self>,
-            _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue),
+            _: &mut dyn FnMut(rustc_errors::DiagnosticArgName, rustc_errors::DiagnosticArgValue),
         ) {}
     }
     throw_machine_stop!(Zst)

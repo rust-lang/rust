@@ -33,7 +33,10 @@ pub type DiagnosticArgName = Cow<'static, str>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticArgValue {
     Str(Cow<'static, str>),
-    Number(i128),
+    // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
+    // safely fits in an `f64`. Any integers bigger than that will be converted
+    // to strings in `into_diagnostic_arg` and stored using the `Str` variant.
+    Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 
@@ -113,7 +116,7 @@ pub struct Diagnostic {
 
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
-    pub emitted_at: DiagnosticLocation,
+    pub(crate) emitted_at: DiagnosticLocation,
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -162,10 +165,10 @@ impl DiagnosticStyledString {
         DiagnosticStyledString(vec![])
     }
     pub fn push_normal<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Normal(t.into()));
+        self.0.push(StringPart::normal(t));
     }
     pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
-        self.0.push(StringPart::Highlighted(t.into()));
+        self.0.push(StringPart::highlighted(t));
     }
     pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
         if highlight {
@@ -175,35 +178,34 @@ impl DiagnosticStyledString {
         }
     }
     pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Normal(t.into())])
+        DiagnosticStyledString(vec![StringPart::normal(t)])
     }
 
     pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
+        DiagnosticStyledString(vec![StringPart::highlighted(t)])
     }
 
     pub fn content(&self) -> String {
-        self.0.iter().map(|x| x.content()).collect::<String>()
+        self.0.iter().map(|x| x.content.as_str()).collect::<String>()
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum StringPart {
-    Normal(String),
-    Highlighted(String),
+pub struct StringPart {
+    content: String,
+    style: Style,
 }
 
 impl StringPart {
-    pub fn content(&self) -> &str {
-        match self {
-            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
-        }
+    pub fn normal<S: Into<String>>(content: S) -> StringPart {
+        StringPart { content: content.into(), style: Style::NoStyle }
+    }
+
+    pub fn highlighted<S: Into<String>>(content: S) -> StringPart {
+        StringPart { content: content.into(), style: Style::Highlight }
     }
 }
 
-// Note: most of these methods are setters that return `&mut Self`. The small
-// number of simple getter functions all have `get_` prefixes to distinguish
-// them from the setters.
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
@@ -389,19 +391,16 @@ impl Diagnostic {
         } else {
             (0, found_label.len() - expected_label.len())
         };
-        let mut msg: Vec<_> =
-            vec![(format!("{}{} `", " ".repeat(expected_padding), expected_label), Style::NoStyle)];
-        msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-        }));
-        msg.push((format!("`{expected_extra}\n"), Style::NoStyle));
-        msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
-        msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-        }));
-        msg.push((format!("`{found_extra}"), Style::NoStyle));
+        let mut msg = vec![StringPart::normal(format!(
+            "{}{} `",
+            " ".repeat(expected_padding),
+            expected_label
+        ))];
+        msg.extend(expected.0.into_iter());
+        msg.push(StringPart::normal(format!("`{expected_extra}\n")));
+        msg.push(StringPart::normal(format!("{}{} `", " ".repeat(found_padding), found_label)));
+        msg.extend(found.0.into_iter());
+        msg.push(StringPart::normal(format!("`{found_extra}")));
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
@@ -410,9 +409,9 @@ impl Diagnostic {
 
     pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
-            (format!("`{name}` from trait: `"), Style::NoStyle),
-            (signature, Style::Highlight),
-            ("`".to_string(), Style::NoStyle),
+            StringPart::normal(format!("`{name}` from trait: `")),
+            StringPart::highlighted(signature),
+            StringPart::normal("`"),
         ]);
         self
     }
@@ -424,10 +423,7 @@ impl Diagnostic {
         self
     }
 
-    fn highlighted_note<M: Into<SubdiagnosticMessage>>(
-        &mut self,
-        msg: Vec<(M, Style)>,
-    ) -> &mut Self {
+    fn highlighted_note(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }
@@ -496,7 +492,7 @@ impl Diagnostic {
     }
 
     /// Add a help message attached to this diagnostic with a customizable highlighted message.
-    pub fn highlighted_help(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
+    pub fn highlighted_help(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Help, msg, MultiSpan::new());
         self
     }
@@ -890,15 +886,6 @@ impl Diagnostic {
         self
     }
 
-    pub fn clear_code(&mut self) -> &mut Self {
-        self.code = None;
-        self
-    }
-
-    pub fn get_code(&self) -> Option<ErrCode> {
-        self.code
-    }
-
     pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
@@ -913,7 +900,7 @@ impl Diagnostic {
 
     pub fn arg(
         &mut self,
-        name: impl Into<Cow<'static, str>>,
+        name: impl Into<DiagnosticArgName>,
         arg: impl IntoDiagnosticArg,
     ) -> &mut Self {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
@@ -922,10 +909,6 @@ impl Diagnostic {
 
     pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
-    }
-
-    pub fn messages(&self) -> &[(DiagnosticMessage, Style)] {
-        &self.messages
     }
 
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
@@ -958,15 +941,10 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
-    fn sub_with_highlights<M: Into<SubdiagnosticMessage>>(
-        &mut self,
-        level: Level,
-        messages: Vec<(M, Style)>,
-        span: MultiSpan,
-    ) {
+    fn sub_with_highlights(&mut self, level: Level, messages: Vec<StringPart>, span: MultiSpan) {
         let messages = messages
             .into_iter()
-            .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.0), m.1))
+            .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.content), m.style))
             .collect();
         let sub = SubDiagnostic { level, messages, span };
         self.children.push(sub);

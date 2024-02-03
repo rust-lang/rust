@@ -34,7 +34,7 @@ extern crate self as rustc_errors;
 pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
-    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, StringPart, SubDiagnostic,
 };
 pub use diagnostic_builder::{
     BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,
@@ -102,7 +102,6 @@ pub type PResult<'a, T> = Result<T, PErr<'a>>;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -1039,10 +1038,6 @@ impl DiagCtxt {
         }
     }
 
-    pub fn take_future_breakage_diagnostics(&self) -> Vec<Diagnostic> {
-        std::mem::take(&mut self.inner.borrow_mut().future_breakage_diagnostics)
-    }
-
     pub fn abort_if_errors(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.emit_stashed_diagnostics();
@@ -1150,8 +1145,12 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter.emit_artifact_notification(path, artifact_type);
     }
 
-    pub fn emit_future_breakage_report(&self, diags: Vec<Diagnostic>) {
-        self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
+    pub fn emit_future_breakage_report(&self) {
+        let mut inner = self.inner.borrow_mut();
+        let diags = std::mem::take(&mut inner.future_breakage_diagnostics);
+        if !diags.is_empty() {
+            inner.emitter.emit_future_breakage_report(diags);
+        }
     }
 
     pub fn emit_unused_externs(
@@ -1224,9 +1223,8 @@ impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let has_errors = self.has_errors();
-        let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
         let mut reported = None;
-        for diag in diags {
+        for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
                 if diag.is_lint.is_some() {
@@ -1254,7 +1252,7 @@ impl DiagCtxtInner {
         // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
         // a stable one by the `LintLevelsBuilder`.
         if let Some(LintExpectationId::Unstable { .. }) = diagnostic.level.get_expectation_id() {
-            self.unstable_expect_diagnostics.push(diagnostic.clone());
+            self.unstable_expect_diagnostics.push(diagnostic);
             return None;
         }
 
@@ -1269,16 +1267,14 @@ impl DiagCtxtInner {
             DelayedBug(DelayedBugKind::Normal) => {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.span_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
-
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
                 #[allow(deprecated)]
                 return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             }
             DelayedBug(DelayedBugKind::GoodPath) => {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.good_path_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
-
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
                 return None;
             }
             _ => {}
@@ -1424,7 +1420,7 @@ impl DiagCtxtInner {
                     &mut out,
                     "delayed span bug: {}\n{}\n",
                     bug.inner
-                        .messages()
+                        .messages
                         .iter()
                         .filter_map(|(msg, _)| msg.as_str())
                         .collect::<String>(),

@@ -19,6 +19,6 @@ use rustc_errors::{Applicability, MultiSpan};
 extern crate rustc_session;
 
 #[derive(Diagnostic)]
-#[diag(compiletest_example, code = 0123)]
+#[diag(compiletest_example, code = E0123)]
 //~^ ERROR diagnostic slug and crate name do not match
 struct Hello {}
