@@ -197,6 +197,8 @@ pub struct TestProps {
     /// Extra flags to pass to `llvm-cov` when producing coverage reports.
     /// Only used by the "coverage-run" test mode.
     pub llvm_cov_flags: Vec<String>,
+    /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
+    pub filecheck_flags: Vec<String>,
 }
 
 mod directives {
@@ -236,6 +238,7 @@ mod directives {
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
+    pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -286,6 +289,7 @@ impl TestProps {
             mir_unit_test: None,
             remap_src_base: false,
             llvm_cov_flags: vec![],
+            filecheck_flags: vec![],
         }
     }
 
@@ -541,6 +545,10 @@ impl TestProps {
 
                     if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
                         self.llvm_cov_flags.extend(split_flags(&flags));
+                    }
+
+                    if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
+                        self.filecheck_flags.extend(split_flags(&flags));
                     }
                 },
             );

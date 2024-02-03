@@ -2907,11 +2907,8 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // It would be more appropriate to make most of the arguments configurable through
-        // a comment-attribute similar to `compile-flags`. For example, --check-prefixes is a very
-        // useful flag.
-        //
-        // For now, though…
+        // FIXME: Consider making some of these prefix flags opt-in per test,
+        // via `filecheck-flags` or by adding new header directives.
 
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
@@ -2931,6 +2928,10 @@ impl<'test> TestCx<'test> {
 
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
+
+        // Add custom flags supplied by the `filecheck-flags:` test header.
+        filecheck.args(&self.props.filecheck_flags);
+
         self.compose_and_run(filecheck, "", None, None)
     }
 
