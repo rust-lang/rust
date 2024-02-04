@@ -3,7 +3,7 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
+use hir::{db::HirDatabase, known, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
@@ -600,6 +600,7 @@ pub(crate) fn add_method_to_adt(
 pub(crate) struct ReferenceConversion {
     conversion: ReferenceConversionType,
     ty: hir::Type,
+    impls_deref: bool,
 }
 
 #[derive(Debug)]
@@ -656,7 +657,13 @@ impl ReferenceConversion {
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
-            | ReferenceConversionType::Result => format!("self.{field_name}.as_ref()"),
+            | ReferenceConversionType::Result => {
+                if self.impls_deref {
+                    format!("&self.{field_name}")
+                } else {
+                    format!("self.{field_name}.as_ref()")
+                }
+            }
         }
     }
 }
@@ -675,54 +682,88 @@ pub(crate) fn convert_reference_type(
         .or_else(|| handle_dereferenced(&ty, db, famous_defs))
         .or_else(|| handle_option_as_ref(&ty, db, famous_defs))
         .or_else(|| handle_result_as_ref(&ty, db, famous_defs))
-        .map(|conversion| ReferenceConversion { ty, conversion })
+        .map(|(conversion, impls_deref)| ReferenceConversion { ty, conversion, impls_deref })
 }
 
-fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversionType> {
-    ty.is_copy(db).then_some(ReferenceConversionType::Copy)
+fn impls_deref_for_target(
+    ty: &hir::Type,
+    target: hir::Type,
+    db: &dyn HirDatabase,
+    famous_defs: &FamousDefs<'_, '_>,
+) -> bool {
+    if let Some(deref_trait) = famous_defs.core_ops_Deref() {
+        if ty.impls_trait(db, deref_trait, &[]) {
+            let assoc_type_item = deref_trait.items(db).into_iter().find_map(|item| match item {
+                hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Target => Some(alias),
+                _ => None,
+            });
+            if let Some(assoc_type_item) = assoc_type_item {
+                matches!(
+                    ty.normalize_trait_assoc_type(db, &[], assoc_type_item),
+                    Some(ty) if ty.could_coerce_to(db, &target),
+                )
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<(ReferenceConversionType, bool)> {
+    ty.is_copy(db).then_some((ReferenceConversionType::Copy, true))
 }
 
 fn handle_as_ref_str(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
-        .then_some(ReferenceConversionType::AsRefStr)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()]).then_some((
+        ReferenceConversionType::AsRefStr,
+        impls_deref_for_target(ty, str_type, db, famous_defs),
+    ))
 }
 
 fn handle_as_ref_slice(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
-        .then_some(ReferenceConversionType::AsRefSlice)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type.clone()]).then_some((
+        ReferenceConversionType::AsRefSlice,
+        impls_deref_for_target(ty, slice_type, db, famous_defs),
+    ))
 }
 
 fn handle_dereferenced(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument])
-        .then_some(ReferenceConversionType::Dereferenced)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument.clone()]).then_some((
+        ReferenceConversionType::Dereferenced,
+        impls_deref_for_target(ty, type_argument, db, famous_defs),
+    ))
 }
 
 fn handle_option_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     if ty.as_adt() == famous_defs.core_option_Option()?.ty(db).as_adt() {
-        Some(ReferenceConversionType::Option)
+        Some((ReferenceConversionType::Option, false))
     } else {
         None
     }
@@ -732,9 +773,9 @@ fn handle_result_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     if ty.as_adt() == famous_defs.core_result_Result()?.ty(db).as_adt() {
-        Some(ReferenceConversionType::Result)
+        Some((ReferenceConversionType::Result, false))
     } else {
         None
     }
