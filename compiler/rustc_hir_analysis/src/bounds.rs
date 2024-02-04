@@ -68,13 +68,12 @@ impl<'tcx> Bounds<'tcx> {
             let assoc = tcx.associated_type_for_effects(trait_ref.def_id()).unwrap();
             let self_ty = Ty::new_projection(tcx, assoc, trait_ref.skip_binder().args);
             // make `<T as Tr>::Effects: Compat<runtime>`
-            let new_trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::EffectsCompat, Some(span)), [ty::GenericArg::from(self_ty), compat_val.into()]);
-            self.clauses.push((
-                trait_ref
-                    .rebind(new_trait_ref)
-                    .to_predicate(tcx),
-                span,
-            ));
+            let new_trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::EffectsCompat, Some(span)),
+                [ty::GenericArg::from(self_ty), compat_val.into()],
+            );
+            self.clauses.push((trait_ref.rebind(new_trait_ref).to_predicate(tcx), span));
         }
     }
 

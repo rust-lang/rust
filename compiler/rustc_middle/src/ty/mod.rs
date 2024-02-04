@@ -1598,7 +1598,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// If the `def_id`` is an associated type that was desugared from a
+    /// If the `def_id` is an associated type that was desugared from a
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {

@@ -602,9 +602,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::Constness::NotConst => Const::No,
                 }
             }
-            hir::ItemKind::Trait(_, _, _, _, _) => {
-                parent_hir.attrs.get(parent_item.hir_id().local_id).iter().find(|attr| attr.has_name(sym::const_trait)).map_or(Const::No, |attr| Const::Yes(attr.span))
-            },
+            hir::ItemKind::Trait(_, _, _, _, _) => parent_hir
+                .attrs
+                .get(parent_item.hir_id().local_id)
+                .iter()
+                .find(|attr| attr.has_name(sym::const_trait))
+                .map_or(Const::No, |attr| Const::Yes(attr.span)),
             kind => {
                 span_bug!(item.span, "assoc item has unexpected kind of parent: {}", kind.descr())
             }
@@ -742,7 +745,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_trait_item(&mut self, i: &AssocItem, trait_constness: Const) -> &'hir hir::TraitItem<'hir> {
+    fn lower_trait_item(
+        &mut self,
+        i: &AssocItem,
+        trait_constness: Const,
+    ) -> &'hir hir::TraitItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
@@ -868,7 +875,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Err(guar))
     }
 
-    fn lower_impl_item(&mut self, i: &AssocItem, impl_constness: Const) -> &'hir hir::ImplItem<'hir> {
+    fn lower_impl_item(
+        &mut self,
+        i: &AssocItem,
+        impl_constness: Const,
+    ) -> &'hir hir::ImplItem<'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
@@ -1321,7 +1332,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header);
         // Don't pass along the user-provided constness of trait associated functions; we don't want to
         // synthesize a host effect param for them. We reject `const` on them during AST validation.
-        let constness = if kind == FnDeclKind::Inherent { sig.header.constness } else { parent_constness };
+        let constness =
+            if kind == FnDeclKind::Inherent { sig.header.constness } else { parent_constness };
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, constness, id, itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
