@@ -7,7 +7,7 @@
 
 // EMIT_MIR remove_storage_markers.main.RemoveStorageMarkers.diff
 fn main() {
-    // CHECK-LABLE: fn main(
+    // CHECK-LABEL: fn main(
 
     // CHECK-NOT: StorageDead
     // CHECK-NOT: StorageLive
