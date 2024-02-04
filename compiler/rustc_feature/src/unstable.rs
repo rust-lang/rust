@@ -496,7 +496,7 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (unstable, inline_const, "1.49.0", Some(76001)),
     /// Allow anonymous constants from an inline `const` block in pattern position
-    (incomplete, inline_const_pat, "1.58.0", Some(76001)),
+    (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     // Allows setting the threshold for the `large_assignments` lint.

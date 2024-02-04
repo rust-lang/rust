@@ -7,7 +7,7 @@ LL |     // suggest a where-clause, if needed
 LL |     mem::size_of::<U>();
    |                    ^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
@@ -29,7 +29,7 @@ note: required because it appears within the type `Misc<U>`
    |
 LL | struct Misc<T:?Sized>(T);
    |        ^^^^
-note: required by a bound in `std::mem::size_of`
+note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
@@ -72,7 +72,7 @@ LL |     mem::size_of::<[T]>();
    |                    ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[T]`
-note: required by a bound in `std::mem::size_of`
+note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
@@ -82,7 +82,7 @@ LL |     mem::size_of::<[&U]>();
    |                    ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[&U]`
-note: required by a bound in `std::mem::size_of`
+note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 7 previous errors

@@ -434,6 +434,17 @@ hir_analysis_unused_associated_type_bounds =
     .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
     .suggestion = remove this bound
 
+hir_analysis_unused_generic_parameter =
+    {$param_def_kind} `{$param_name}` is never used
+    .label = unused {$param_def_kind}
+    .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+hir_analysis_unused_generic_parameter_adt_help =
+    consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`
+hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =
+    consider removing `{$param_name}` or referring to it in a field
+hir_analysis_unused_generic_parameter_ty_alias_help =
+    consider removing `{$param_name}` or referring to it in the body of the type alias
+
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified
     .label = re-bound here
