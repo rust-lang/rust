@@ -61,7 +61,7 @@ use hir_def::{
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
-    consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
+    consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -70,9 +70,9 @@ use hir_ty::{
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
-    GenericArgData, InferenceDiagnostic, Interner, ParamKind, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
-    ValueTyDefId, WhereClause,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, ValueTyDefId,
+    WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -131,8 +131,10 @@ pub use {
         MacroFileIdExt,
     },
     hir_ty::{
+        consteval::ConstEvalError,
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
+        mir::{MirEvalError, MirLowerError},
         PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
@@ -233,8 +235,8 @@ impl Crate {
         db: &dyn DefDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
-        let _p = profile::span("query_external_importables");
-        import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| {
+        let _p = tracing::span!(tracing::Level::INFO, "query_external_importables");
+        import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
             match ItemInNs::from(item) {
                 ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
                 ItemInNs::Macros(mac_id) => Either::Right(mac_id),
@@ -537,13 +539,8 @@ impl Module {
 
     /// Fills `acc` with the module's diagnostics.
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
-        let _p = profile::span("Module::diagnostics").detail(|| {
-            format!(
-                "{:?}",
-                self.name(db)
-                    .map_or("<unknown>".into(), |name| name.display(db.upcast()).to_string())
-            )
-        });
+        let name = self.name(db);
+        let _p = tracing::span!(tracing::Level::INFO, "Module::diagnostics", ?name);
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -906,7 +903,7 @@ fn emit_def_diagnostic_(
         }
         DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
             let node = ast.to_node(db.upcast());
-            let derive = node.attrs().nth(*id as usize);
+            let derive = node.attrs().nth(*id);
             match derive {
                 Some(derive) => {
                     acc.push(
@@ -921,7 +918,7 @@ fn emit_def_diagnostic_(
         }
         DefDiagnosticKind::MalformedDerive { ast, id } => {
             let node = ast.to_node(db.upcast());
-            let derive = node.attrs().nth(*id as usize);
+            let derive = node.attrs().nth(*id);
             match derive {
                 Some(derive) => {
                     acc.push(
@@ -1626,116 +1623,8 @@ impl DefWithBody {
         }
 
         let infer = db.infer(self.into());
-        let expr_syntax = |expr| source_map.expr_syntax(expr).expect("unexpected synthetic");
-        let pat_syntax = |pat| source_map.pat_syntax(pat).expect("unexpected synthetic");
         for d in &infer.diagnostics {
-            acc.push(match d {
-                &InferenceDiagnostic::NoSuchField { field: expr, private } => {
-                    let expr_or_pat = match expr {
-                        ExprOrPatId::ExprId(expr) => {
-                            source_map.field_syntax(expr).map(AstPtr::wrap_left)
-                        }
-                        ExprOrPatId::PatId(pat) => {
-                            source_map.pat_field_syntax(pat).map(AstPtr::wrap_right)
-                        }
-                    };
-                    NoSuchField { field: expr_or_pat, private }.into()
-                }
-                &InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    MismatchedArgCount { call_expr: expr_syntax(call_expr), expected, found }.into()
-                }
-                &InferenceDiagnostic::PrivateField { expr, field } => {
-                    let expr = expr_syntax(expr);
-                    let field = field.into();
-                    PrivateField { expr, field }.into()
-                }
-                &InferenceDiagnostic::PrivateAssocItem { id, item } => {
-                    let expr_or_pat = match id {
-                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
-                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
-                    };
-                    let item = item.into();
-                    PrivateAssocItem { expr_or_pat, item }.into()
-                }
-                InferenceDiagnostic::ExpectedFunction { call_expr, found } => {
-                    let call_expr = expr_syntax(*call_expr);
-                    ExpectedFunction {
-                        call: call_expr,
-                        found: Type::new(db, DefWithBodyId::from(self), found.clone()),
-                    }
-                    .into()
-                }
-                InferenceDiagnostic::UnresolvedField {
-                    expr,
-                    receiver,
-                    name,
-                    method_with_same_name_exists,
-                } => {
-                    let expr = expr_syntax(*expr);
-                    UnresolvedField {
-                        expr,
-                        name: name.clone(),
-                        receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
-                        method_with_same_name_exists: *method_with_same_name_exists,
-                    }
-                    .into()
-                }
-                InferenceDiagnostic::UnresolvedMethodCall {
-                    expr,
-                    receiver,
-                    name,
-                    field_with_same_name,
-                    assoc_func_with_same_name,
-                } => {
-                    let expr = expr_syntax(*expr);
-                    UnresolvedMethodCall {
-                        expr,
-                        name: name.clone(),
-                        receiver: Type::new(db, DefWithBodyId::from(self), receiver.clone()),
-                        field_with_same_name: field_with_same_name
-                            .clone()
-                            .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
-                        assoc_func_with_same_name: *assoc_func_with_same_name,
-                    }
-                    .into()
-                }
-                &InferenceDiagnostic::UnresolvedAssocItem { id } => {
-                    let expr_or_pat = match id {
-                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
-                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
-                    };
-                    UnresolvedAssocItem { expr_or_pat }.into()
-                }
-                &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
-                    let expr = expr_syntax(expr);
-                    BreakOutsideOfLoop { expr, is_break, bad_value_break }.into()
-                }
-                InferenceDiagnostic::TypedHole { expr, expected } => {
-                    let expr = expr_syntax(*expr);
-
-                    TypedHole {
-                        expr,
-                        expected: Type::new(db, DefWithBodyId::from(self), expected.clone()),
-                    }
-                    .into()
-                }
-                &InferenceDiagnostic::MismatchedTupleStructPatArgCount { pat, expected, found } => {
-                    let expr_or_pat = match pat {
-                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
-                        ExprOrPatId::PatId(pat) => {
-                            let InFile { file_id, value } =
-                                source_map.pat_syntax(pat).expect("unexpected synthetic");
-
-                            // cast from Either<Pat, SelfParam> -> Either<_, Pat>
-                            let Some(ptr) = AstPtr::try_from_raw(value.syntax_node_ptr()) else {
-                                continue;
-                            };
-                            InFile { file_id, value: ptr }
-                        }
-                    };
-                    MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into()
-                }
-            });
+            acc.extend(AnyDiagnostic::inference_diagnostic(db, self.into(), d, &source_map));
         }
         for (pat_or_expr, mismatch) in infer.type_mismatches() {
             let expr_or_pat = match pat_or_expr {
@@ -1857,109 +1746,7 @@ impl DefWithBody {
         }
 
         for diagnostic in BodyValidationDiagnostic::collect(db, self.into()) {
-            match diagnostic {
-                BodyValidationDiagnostic::RecordMissingFields {
-                    record,
-                    variant,
-                    missed_fields,
-                } => {
-                    let variant_data = variant.variant_data(db.upcast());
-                    let missed_fields = missed_fields
-                        .into_iter()
-                        .map(|idx| variant_data.fields()[idx].name.clone())
-                        .collect();
-
-                    match record {
-                        Either::Left(record_expr) => match source_map.expr_syntax(record_expr) {
-                            Ok(source_ptr) => {
-                                let root = source_ptr.file_syntax(db.upcast());
-                                if let ast::Expr::RecordExpr(record_expr) =
-                                    source_ptr.value.to_node(&root)
-                                {
-                                    if record_expr.record_expr_field_list().is_some() {
-                                        let field_list_parent_path =
-                                            record_expr.path().map(|path| AstPtr::new(&path));
-                                        acc.push(
-                                            MissingFields {
-                                                file: source_ptr.file_id,
-                                                field_list_parent: AstPtr::new(&Either::Left(
-                                                    record_expr,
-                                                )),
-                                                field_list_parent_path,
-                                                missed_fields,
-                                            }
-                                            .into(),
-                                        )
-                                    }
-                                }
-                            }
-                            Err(SyntheticSyntax) => (),
-                        },
-                        Either::Right(record_pat) => match source_map.pat_syntax(record_pat) {
-                            Ok(source_ptr) => {
-                                if let Some(ptr) = source_ptr.value.cast::<ast::RecordPat>() {
-                                    let root = source_ptr.file_syntax(db.upcast());
-                                    let record_pat = ptr.to_node(&root);
-                                    if record_pat.record_pat_field_list().is_some() {
-                                        let field_list_parent_path =
-                                            record_pat.path().map(|path| AstPtr::new(&path));
-                                        acc.push(
-                                            MissingFields {
-                                                file: source_ptr.file_id,
-                                                field_list_parent: AstPtr::new(&Either::Right(
-                                                    record_pat,
-                                                )),
-                                                field_list_parent_path,
-                                                missed_fields,
-                                            }
-                                            .into(),
-                                        )
-                                    }
-                                }
-                            }
-                            Err(SyntheticSyntax) => (),
-                        },
-                    }
-                }
-                BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap { method_call_expr } => {
-                    if let Ok(next_source_ptr) = source_map.expr_syntax(method_call_expr) {
-                        acc.push(
-                            ReplaceFilterMapNextWithFindMap {
-                                file: next_source_ptr.file_id,
-                                next_expr: next_source_ptr.value,
-                            }
-                            .into(),
-                        );
-                    }
-                }
-                BodyValidationDiagnostic::MissingMatchArms { match_expr, uncovered_patterns } => {
-                    match source_map.expr_syntax(match_expr) {
-                        Ok(source_ptr) => {
-                            let root = source_ptr.file_syntax(db.upcast());
-                            if let ast::Expr::MatchExpr(match_expr) =
-                                &source_ptr.value.to_node(&root)
-                            {
-                                match match_expr.expr() {
-                                    Some(scrut_expr) if match_expr.match_arm_list().is_some() => {
-                                        acc.push(
-                                            MissingMatchArms {
-                                                scrutinee_expr: InFile::new(
-                                                    source_ptr.file_id,
-                                                    AstPtr::new(&scrut_expr),
-                                                ),
-                                                uncovered_patterns,
-                                            }
-                                            .into(),
-                                        );
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                        Err(SyntheticSyntax) => (),
-                    }
-                }
-            }
+            acc.extend(AnyDiagnostic::body_validation_diagnostic(db, diagnostic, &source_map));
         }
 
         let def: ModuleDef = match self {
@@ -1975,7 +1762,6 @@ impl DefWithBody {
         }
     }
 }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
     pub(crate) id: FunctionId,
@@ -4266,7 +4052,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        let _p = profile::span("iterate_method_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_method_candidates");
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
@@ -4345,7 +4131,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        let _p = profile::span("iterate_path_candidates");
+        let _p = tracing::span!(tracing::Level::INFO, "iterate_path_candidates");
         let mut slot = None;
         self.iterate_path_candidates_dyn(
             db,
@@ -4411,7 +4197,7 @@ impl Type {
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
-        let _p = profile::span("applicable_inherent_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "applicable_inherent_traits");
         self.autoderef_(db)
             .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
@@ -4419,7 +4205,7 @@ impl Type {
     }
 
     pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
-        let _p = profile::span("env_traits");
+        let _p = tracing::span!(tracing::Level::INFO, "env_traits");
         self.autoderef_(db)
             .filter(|ty| matches!(ty.kind(Interner), TyKind::Placeholder(_)))
             .flat_map(|ty| {

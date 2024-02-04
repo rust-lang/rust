@@ -9,10 +9,11 @@
 //! API should require to assemble every node piecewise. The trick of
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
+
 use itertools::Itertools;
 use parser::T;
 use rowan::NodeOrToken;
-use stdx::{format_to, never};
+use stdx::{format_to, format_to_acc, never};
 
 use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
@@ -759,15 +760,12 @@ pub fn match_arm_with_guard(
 }
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-    let arms_str = arms
-        .into_iter()
-        .map(|arm| {
-            let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
-            let comma = if needs_comma { "," } else { "" };
-            let arm = arm.syntax();
-            format!("    {arm}{comma}\n")
-        })
-        .collect::<String>();
+    let arms_str = arms.into_iter().fold(String::new(), |mut acc, arm| {
+        let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
+        let comma = if needs_comma { "," } else { "" };
+        let arm = arm.syntax();
+        format_to_acc!(acc, "    {arm}{comma}\n")
+    });
     return from_text(&arms_str);
 
     fn from_text(text: &str) -> ast::MatchArmList {

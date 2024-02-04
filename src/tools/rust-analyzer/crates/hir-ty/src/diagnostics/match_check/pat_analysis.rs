@@ -237,7 +237,7 @@ impl<'p> MatchCheckCtx<'p> {
                 ctor = Or;
                 // Collect here because `Arena::alloc_extend` panics on reentrancy.
                 let subpats: SmallVec<[_; 2]> =
-                    pats.into_iter().map(|pat| self.lower_pat(pat)).collect();
+                    pats.iter().map(|pat| self.lower_pat(pat)).collect();
                 fields = self.pattern_arena.alloc_extend(subpats);
             }
         }
@@ -460,7 +460,8 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         _f: &mut fmt::Formatter<'_>,
         _pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
-        unimplemented!()
+        // FIXME: implement this, as using `unimplemented!()` causes panics in `tracing`.
+        Ok(())
     }
 
     fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {

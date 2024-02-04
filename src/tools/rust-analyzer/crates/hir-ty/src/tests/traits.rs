@@ -3424,7 +3424,7 @@ fn bin_op_with_rhs_is_self_for_assoc_bound() {
         fn repro<T>(t: T) -> bool
 where
     T: Request,
-    T::Output: Convertable,
+    T::Output: Convertible,
 {
     let a = execute(&t).convert();
     let b = execute(&t).convert();
@@ -3439,7 +3439,7 @@ where
 {
     <T as Request>::output()
 }
-trait Convertable {
+trait Convertible {
     type TraitSelf: PartialEq<Self::TraitSelf>;
     type AssocAsDefaultSelf: PartialEq;
     fn convert(self) -> Self::AssocAsDefaultSelf;

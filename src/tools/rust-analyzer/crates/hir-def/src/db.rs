@@ -1,9 +1,10 @@
 //! Defines database & queries for name resolution.
-use base_db::{salsa, CrateId, SourceDatabase, Upcast};
+use base_db::{salsa, CrateId, FileId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
 use intern::Interned;
 use la_arena::ArenaMap;
+use span::MacroCallId;
 use syntax::{ast, AstPtr};
 use triomphe::Arc;
 
@@ -234,10 +235,26 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn crate_notable_traits(&self, krate: CrateId) -> Option<Arc<[TraitId]>>;
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
+
+    fn include_macro_invoc(&self, crate_id: CrateId) -> Vec<(MacroCallId, FileId)>;
+}
+
+// return: macro call id and include file id
+fn include_macro_invoc(db: &dyn DefDatabase, krate: CrateId) -> Vec<(MacroCallId, FileId)> {
+    db.crate_def_map(krate)
+        .modules
+        .values()
+        .flat_map(|m| m.scope.iter_macro_invoc())
+        .filter_map(|invoc| {
+            db.lookup_intern_macro_call(*invoc.1)
+                .include_file_id(db.upcast(), *invoc.1)
+                .map(|x| (*invoc.1, x))
+        })
+        .collect()
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
-    let _p = profile::span("crate_def_map:wait");
+    let _p = tracing::span!(tracing::Level::INFO, "crate_def_map:wait").entered();
     db.crate_def_map_query(krate)
 }
 

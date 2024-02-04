@@ -163,7 +163,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         block
                     } else {
                         // `expr_replace` is a descendant of `to_wrap`, so both steps need to be
-                        // handled seperately, otherwise we wrap the wrong expression
+                        // handled separately, otherwise we wrap the wrong expression
                         let to_wrap = edit.make_mut(to_wrap);
 
                         // Replace the target expr first so that we don't need to find where

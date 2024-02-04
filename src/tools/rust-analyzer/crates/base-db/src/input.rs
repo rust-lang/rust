@@ -494,7 +494,7 @@ impl CrateGraph {
         from: CrateId,
         dep: Dependency,
     ) -> Result<(), CyclicDependenciesError> {
-        let _p = profile::span("add_dep");
+        let _p = tracing::span!(tracing::Level::INFO, "add_dep").entered();
 
         self.check_cycle_after_dependency(from, dep.crate_id)?;
 

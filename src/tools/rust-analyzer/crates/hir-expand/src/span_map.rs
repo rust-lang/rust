@@ -1,5 +1,5 @@
 //! Span maps for real files and macro expansions.
-use span::{FileId, HirFileId, HirFileIdRepr, Span};
+use span::{FileId, HirFileId, HirFileIdRepr, MacroFileId, Span};
 use syntax::{AstNode, TextRange};
 use triomphe::Arc;
 
@@ -93,4 +93,11 @@ pub(crate) fn real_span_map(db: &dyn ExpandDatabase, file_id: FileId) -> Arc<Rea
         pairs.into_boxed_slice(),
         tree.syntax().text_range().end(),
     ))
+}
+
+pub(crate) fn expansion_span_map(
+    db: &dyn ExpandDatabase,
+    file_id: MacroFileId,
+) -> Arc<ExpansionSpanMap> {
+    db.parse_macro_expansion(file_id).value.1
 }

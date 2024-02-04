@@ -292,7 +292,7 @@ fn expand_subtree<S: Span>(
                     Err(e) => {
                         // XXX: It *might* make sense to emit a dummy integer value like `0` here.
                         // That would type inference a bit more robust in cases like
-                        // `v[${count(t)}]` where index doesn't matter, but also coult also lead to
+                        // `v[${count(t)}]` where index doesn't matter, but also could lead to
                         // wrong infefrence for cases like `tup.${count(t)}` where index itself
                         // does matter.
                         if err.is_none() {

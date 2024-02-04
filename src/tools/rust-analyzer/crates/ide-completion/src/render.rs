@@ -292,7 +292,7 @@ fn render_resolution_pat(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
     use hir::ModuleDef::*;
 
     if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
@@ -310,7 +310,7 @@ fn render_resolution_path(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
     use hir::ModuleDef::*;
 
     match resolution {
@@ -418,7 +418,7 @@ fn render_resolution_simple_(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
 
     let db = ctx.db();
     let ctx = ctx.import_to_add(import_to_add);
