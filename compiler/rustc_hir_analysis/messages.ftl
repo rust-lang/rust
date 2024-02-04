@@ -33,10 +33,6 @@ hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the as
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
 
-hir_analysis_async_trait_impl_should_be_async =
-    method `{$method_name}` should be async because the method from the trait is async
-    .trait_item_label = required because the trait method is async
-
 hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
@@ -209,6 +205,9 @@ hir_analysis_manual_implementation =
     manual implementations of `{$trait_name}` are experimental
     .label = manual implementations of `{$trait_name}` are experimental
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+hir_analysis_method_should_return_future = method should be `async` or return a future, but it is synchronous
+    .note = this method is `async` so it expects a future to be returned
 
 hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
     .label = missing one of `{$missing_items_msg}` in implementation
