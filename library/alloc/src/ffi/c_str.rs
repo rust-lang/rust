@@ -1024,6 +1024,8 @@ impl ToOwned for CStr {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl From<&CStr> for CString {
+    /// Converts a <code>&[CStr]</code> into a [`CString`]
+    /// by copying the contents into a new allocation.
     fn from(s: &CStr) -> CString {
         s.to_owned()
     }
