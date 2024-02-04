@@ -108,11 +108,8 @@ assume the right toolchain is pinned via `rustup override set nightly` or
 
 Now you can run your project in Miri:
 
-1. Run `cargo clean` to eliminate any cached dependencies. Miri needs your
-   dependencies to be compiled the right way, that would not happen if they have
-   previously already been compiled.
-2. To run all tests in your project through Miri, use `cargo miri test`.
-3. If you have a binary project, you can run it through Miri using `cargo miri run`.
+- To run all tests in your project through Miri, use `cargo miri test`.
+- If you have a binary project, you can run it through Miri using `cargo miri run`.
 
 The first time you run Miri, it will perform some extra setup and install some
 dependencies. It will ask you for confirmation before installing anything.
