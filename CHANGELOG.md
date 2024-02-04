@@ -6,11 +6,65 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[09ac14c9...master](https://github.com/rust-lang/rust-clippy/compare/09ac14c9...master)
+[a859e5cc...master](https://github.com/rust-lang/rust-clippy/compare/a859e5cc...master)
+
+## Rust 1.76
+
+Current stable, released 2023-02-08
+
+[View all 85 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-11-02T20%3A23%3A40Z..2023-12-16T13%3A11%3A08Z+base%3Amaster)
+
+### New Lints
+
+- [`infinite_loop`]
+  [#11829](https://github.com/rust-lang/rust-clippy/pull/11829)
+- [`ineffective_open_options`]
+  [#11902](https://github.com/rust-lang/rust-clippy/pull/11902)
+- [`uninhabited_references`]
+  [#11878](https://github.com/rust-lang/rust-clippy/pull/11878)
+- [`repeat_vec_with_capacity`]
+  [#11597](https://github.com/rust-lang/rust-clippy/pull/11597)
+- [`test_attr_in_doctest`]
+  [#11872](https://github.com/rust-lang/rust-clippy/pull/11872)
+- [`option_map_or_err_ok`]
+  [#11864](https://github.com/rust-lang/rust-clippy/pull/11864)
+- [`join_absolute_paths`]
+  [#11453](https://github.com/rust-lang/rust-clippy/pull/11453)
+- [`impl_hash_borrow_with_str_and_bytes`]
+  [#11781](https://github.com/rust-lang/rust-clippy/pull/11781)
+- [`iter_over_hash_type`]
+  [#11791](https://github.com/rust-lang/rust-clippy/pull/11791)
+
+### Moves and Deprecations
+
+- Renamed `blocks_in_if_conditions` to [`blocks_in_conditions`]
+  [#11853](https://github.com/rust-lang/rust-clippy/pull/11853)
+- Moved [`implied_bounds_in_impls`] to `complexity` (Now warn-by-default)
+  [#11867](https://github.com/rust-lang/rust-clippy/pull/11867)
+- Moved [`if_same_then_else`] to `style` (Now warn-by-default)
+  [#11809](https://github.com/rust-lang/rust-clippy/pull/11809)
+
+### Enhancements
+
+- [`missing_safety_doc`], [`unnecessary_safety_doc`], [`missing_panics_doc`], [`missing_errors_doc`]:
+  Added the [`check-private-items`] configuration to enable lints on private items
+  [#11842](https://github.com/rust-lang/rust-clippy/pull/11842)
+
+### ICE Fixes
+
+- [`impl_trait_in_params`]: No longer crashes when a function has generics but no function parameters
+  [#11804](https://github.com/rust-lang/rust-clippy/pull/11804)
+- [`unused_enumerate_index`]: No longer crashes on empty tuples
+  [#11756](https://github.com/rust-lang/rust-clippy/pull/11756)
+
+### Others
+
+- Clippy now respects the `CARGO` environment value
+  [#11944](https://github.com/rust-lang/rust-clippy/pull/11944)
 
 ## Rust 1.75
 
-Current stable, released 2023-12-28
+Released 2023-12-28
 
 [View all 69 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-09-25T11%3A47%3A47Z..2023-11-02T16%3A41%3A59Z+base%3Amaster)
 
