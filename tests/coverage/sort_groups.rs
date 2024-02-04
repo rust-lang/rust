@@ -1,4 +1,4 @@
-// compile-flags: --edition=2021
+// edition: 2021
 
 // Demonstrate that `sort_subviews.py` can sort instantiation groups into a
 // predictable order, while preserving their heterogeneous contents.

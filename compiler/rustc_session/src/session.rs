@@ -288,19 +288,9 @@ impl Session {
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
         self.dcx().print_error_count(registry);
-        self.emit_future_breakage();
-    }
-
-    fn emit_future_breakage(&self) {
-        if !self.opts.json_future_incompat {
-            return;
+        if self.opts.json_future_incompat {
+            self.dcx().emit_future_breakage_report();
         }
-
-        let diags = self.dcx().take_future_breakage_diagnostics();
-        if diags.is_empty() {
-            return;
-        }
-        self.dcx().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.

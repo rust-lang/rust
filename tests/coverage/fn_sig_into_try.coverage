@@ -1,5 +1,5 @@
    LL|       |#![feature(coverage_attribute)]
-   LL|       |// compile-flags: --edition=2021
+   LL|       |// edition: 2021
    LL|       |
    LL|       |// Regression test for inconsistent handling of function signature spans that
    LL|       |// are followed by code using the `?` operator.

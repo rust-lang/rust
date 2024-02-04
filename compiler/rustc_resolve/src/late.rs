@@ -594,9 +594,9 @@ struct DiagnosticMetadata<'ast> {
     /// The current trait (used to suggest).
     current_item: Option<&'ast Item>,
 
-    /// When processing generics and encountering a type not found, suggest introducing a type
-    /// param.
-    currently_processing_generics: bool,
+    /// When processing generic arguments and encountering an unresolved ident not found,
+    /// suggest introducing a type or const param depending on the context.
+    currently_processing_generic_args: bool,
 
     /// The current enclosing (non-closure) function (used for better errors).
     current_function: Option<(FnKind<'ast>, Span)>,
@@ -1069,7 +1069,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 
     fn visit_generic_arg(&mut self, arg: &'ast GenericArg) {
         debug!("visit_generic_arg({:?})", arg);
-        let prev = replace(&mut self.diagnostic_metadata.currently_processing_generics, true);
+        let prev = replace(&mut self.diagnostic_metadata.currently_processing_generic_args, true);
         match arg {
             GenericArg::Type(ref ty) => {
                 // We parse const arguments as path types as we cannot distinguish them during
@@ -1100,7 +1100,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                 },
                             );
 
-                            self.diagnostic_metadata.currently_processing_generics = prev;
+                            self.diagnostic_metadata.currently_processing_generic_args = prev;
                             return;
                         }
                     }
@@ -1113,7 +1113,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
             }
         }
-        self.diagnostic_metadata.currently_processing_generics = prev;
+        self.diagnostic_metadata.currently_processing_generic_args = prev;
     }
 
     fn visit_assoc_constraint(&mut self, constraint: &'ast AssocConstraint) {

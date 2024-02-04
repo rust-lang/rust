@@ -894,34 +894,23 @@ impl<'tcx> OwnerInfo<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum MaybeOwner<T> {
-    Owner(T),
+pub enum MaybeOwner<'tcx> {
+    Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),
     /// Used as a placeholder for unused LocalDefId.
     Phantom,
 }
 
-impl<T> MaybeOwner<T> {
-    pub fn as_owner(self) -> Option<T> {
+impl<'tcx> MaybeOwner<'tcx> {
+    pub fn as_owner(self) -> Option<&'tcx OwnerInfo<'tcx>> {
         match self {
             MaybeOwner::Owner(i) => Some(i),
             MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
         }
     }
 
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> MaybeOwner<U> {
-        match self {
-            MaybeOwner::Owner(i) => MaybeOwner::Owner(f(i)),
-            MaybeOwner::NonOwner(hir_id) => MaybeOwner::NonOwner(hir_id),
-            MaybeOwner::Phantom => MaybeOwner::Phantom,
-        }
-    }
-
-    pub fn unwrap(self) -> T {
-        match self {
-            MaybeOwner::Owner(i) => i,
-            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => panic!("Not a HIR owner"),
-        }
+    pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
+        self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
 }
 
@@ -933,7 +922,7 @@ impl<T> MaybeOwner<T> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
+    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }

@@ -3288,7 +3288,7 @@ impl<'a> Parser<'a> {
                         } else {
                             Applicability::MaybeIncorrect
                         };
-                        err.span_suggestion_verbose(sugg_sp, msg, "=> ".to_string(), applicability);
+                        err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
                     }
                 }
                 err

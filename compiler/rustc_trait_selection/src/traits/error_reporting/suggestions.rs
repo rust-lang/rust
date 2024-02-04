@@ -1288,7 +1288,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             err.span_suggestion_verbose(
                 obligation.cause.span.shrink_to_hi(),
                 "consider using clone here",
-                ".clone()".to_string(),
+                ".clone()",
                 Applicability::MaybeIncorrect,
             );
             return true;
@@ -2717,7 +2717,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let (trait_name, trait_verb) =
                 if name == sym::Send { ("`Send`", "sent") } else { ("`Sync`", "shared") };
 
-            err.clear_code();
+            err.code = None;
             err.primary_message(format!(
                 "{future_or_coroutine} cannot be {trait_verb} between threads safely"
             ));
@@ -3245,7 +3245,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.span_suggestion_verbose(
                                 span,
                                 "you can use `impl Trait` as the argument type",
-                                "impl ".to_string(),
+                                "impl ",
                                 Applicability::MaybeIncorrect,
                             );
                             let sugg = if !needs_parens {
@@ -5203,7 +5203,7 @@ fn point_at_assoc_type_restriction(
                     err.span_suggestion_verbose(
                         path.span,
                         "replace the associated type with the type specified in this `impl`",
-                        tcx.type_of(new.def_id).skip_binder().to_string(),
+                        tcx.type_of(new.def_id).skip_binder(),
                         Applicability::MachineApplicable,
                     );
                 }

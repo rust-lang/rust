@@ -1,6 +1,8 @@
 use std::mem;
 
-use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg};
+use rustc_errors::{
+    DiagnosticArgName, DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg,
+};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -32,10 +34,7 @@ impl MachineStopType for ConstEvalErrKind {
             AssertFailure(x) => x.diagnostic_message(),
         }
     }
-    fn add_args(
-        self: Box<Self>,
-        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue),
-    ) {
+    fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagnosticArgName, DiagnosticArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
             ConstAccessesStatic | ModifiedGlobal => {}

@@ -130,7 +130,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         noun_old: &str,
         old_opt_via: &str,
         previous_end_span: Option<Span>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             new_loan_span,
@@ -162,7 +162,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_opt_via: &str,
         previous_end_span: Option<Span>,
         second_borrow_desc: &str,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_code_err!(
             self.dcx(),
             new_loan_span,
@@ -194,7 +194,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         kind_old: &str,
         msg_old: &str,
         old_load_end_span: Option<Span>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
         let mut err = struct_span_code_err!(
             self.dcx(),
@@ -235,7 +235,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         borrow_span: Span,
         desc: &str,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         struct_span_code_err!(
             self.dcx(),
             span,
@@ -252,7 +252,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         desc: &str,
         is_arg: bool,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
         struct_span_code_err!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
     }
@@ -265,7 +265,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         move_from_span: Span,
         move_from_desc: &str,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         struct_span_code_err!(
             self.dcx(),
             move_from_span,
@@ -283,7 +283,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         ty: Ty<'_>,
         is_index: Option<bool>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let type_name = match (&ty.kind(), is_index) {
             (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
             (&ty::Slice(_), _) => "slice",
@@ -304,7 +304,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         move_from_span: Span,
         container_ty: Ty<'_>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         struct_span_code_err!(
             self.dcx(),
             move_from_span,

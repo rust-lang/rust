@@ -20,7 +20,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan, StashKey, Style,
+    ErrorGuaranteed, MultiSpan, StashKey, StringPart,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -2059,11 +2059,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
                     });
                 err.highlighted_help(vec![
-                    (format!("the trait `{}` ", cand.print_trait_sugared()), Style::NoStyle),
-                    ("is".to_string(), Style::Highlight),
-                    (" implemented for `".to_string(), Style::NoStyle),
-                    (cand.self_ty().to_string(), Style::Highlight),
-                    ("`".to_string(), Style::NoStyle),
+                    StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
+                    StringPart::highlighted("is"),
+                    StringPart::normal(" implemented for `"),
+                    StringPart::highlighted(cand.self_ty().to_string()),
+                    StringPart::normal("`"),
                 ]);
 
                 if let [TypeError::Sorts(exp_found)] = &terrs[..] {
@@ -2095,12 +2095,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         _ => (" implemented for `", ""),
                     };
                 err.highlighted_help(vec![
-                    (format!("the trait `{}` ", cand.print_trait_sugared()), Style::NoStyle),
-                    ("is".to_string(), Style::Highlight),
-                    (desc.to_string(), Style::NoStyle),
-                    (cand.self_ty().to_string(), Style::Highlight),
-                    ("`".to_string(), Style::NoStyle),
-                    (mention_castable.to_string(), Style::NoStyle),
+                    StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
+                    StringPart::highlighted("is"),
+                    StringPart::normal(desc),
+                    StringPart::highlighted(cand.self_ty().to_string()),
+                    StringPart::normal("`"),
+                    StringPart::normal(mention_castable),
                 ]);
                 return true;
             }
