@@ -97,6 +97,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION_INFO,
     crate::casts::PTR_AS_PTR_INFO,
     crate::casts::PTR_CAST_CONSTNESS_INFO,
+    crate::casts::REF_AS_PTR_INFO,
     crate::casts::UNNECESSARY_CAST_INFO,
     crate::casts::ZERO_PTR_INFO,
     crate::checked_conversions::CHECKED_CONVERSIONS_INFO,
