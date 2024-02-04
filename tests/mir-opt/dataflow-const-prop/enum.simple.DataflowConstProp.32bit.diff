@@ -14,10 +14,10 @@
               debug x => _2;
           }
           scope 3 {
-              debug x => _4;
+              debug x1 => _4;
           }
           scope 4 {
-              debug x => _5;
+              debug x2 => _5;
           }
       }
   
