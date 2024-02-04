@@ -7,6 +7,24 @@ LL | impl<T> MyTrait<T> for T {
 LL | impl MyTrait<MyType> for MyType {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyType`
 
-error: aborting due to 1 previous error
+error[E0053]: method `get` has an incompatible type for trait
+  --> $DIR/coherence-blanket-conflicts-with-specific-multidispatch.rs:24:22
+   |
+LL |     fn get(&self) -> usize { (*self).clone() }
+   |                      ^^^^^
+   |                      |
+   |                      expected `MyType`, found `usize`
+   |                      help: change the output type to match the trait: `MyType`
+   |
+note: type in trait
+  --> $DIR/coherence-blanket-conflicts-with-specific-multidispatch.rs:8:22
+   |
+LL |     fn get(&self) -> T;
+   |                      ^
+   = note: expected signature `fn(&MyType) -> MyType`
+              found signature `fn(&MyType) -> usize`
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0053, E0119.
+For more information about an error, try `rustc --explain E0053`.

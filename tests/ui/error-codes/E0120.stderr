@@ -4,6 +4,29 @@ error[E0120]: the `Drop` trait may only be implemented for local structs, enums,
 LL | impl Drop for dyn MyTrait {
    |               ^^^^^^^^^^^ must be a struct, enum, or union in the current crate
 
-error: aborting due to 1 previous error
+error[E0038]: the trait `MyTrait` cannot be made into an object
+  --> $DIR/E0120.rs:5:18
+   |
+LL |     fn drop(&mut self) {}
+   |                  ^^^^ `MyTrait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/E0120.rs:1:20
+   |
+LL | trait MyTrait { fn foo() {} }
+   |       -------      ^^^ ...because associated function `foo` has no `self` parameter
+   |       |
+   |       this trait cannot be made into an object...
+help: consider turning `foo` into a method by giving it a `&self` argument
+   |
+LL | trait MyTrait { fn foo(&self) {} }
+   |                        +++++
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
+   |
+LL | trait MyTrait { fn foo() where Self: Sized {} }
+   |                          +++++++++++++++++
 
-For more information about this error, try `rustc --explain E0120`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0120.
+For more information about an error, try `rustc --explain E0038`.

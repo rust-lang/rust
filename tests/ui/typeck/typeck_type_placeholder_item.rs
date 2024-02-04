@@ -198,6 +198,7 @@ trait Qux {
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
 }
 impl Qux for Struct {
+    //~^ ERROR not all trait items implemented, missing: `F`
     type A = _;
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
     type B = _;

@@ -169,11 +169,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.sess.time("coherence_checking", || {
         // Check impls constrain their parameters
-        let mut res =
+        let res =
             tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            res = res.and(tcx.ensure().coherent_trait(trait_def_id));
+            let _ = tcx.ensure().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
         res.and(tcx.ensure().crate_inherent_impls(()))
