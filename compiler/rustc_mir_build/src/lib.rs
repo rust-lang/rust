@@ -8,6 +8,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
+#![cfg_attr(not(bootstrap), feature(f16))]
 
 #[macro_use]
 extern crate tracing;

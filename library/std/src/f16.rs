@@ -105,7 +105,7 @@ impl f16 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
-    #[unstable(feature = "round_ties_even", issue = "none")]
+    #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round_ties_even(self) -> f16 {
         unsafe { intrinsics::rintf16(self) }
@@ -490,7 +490,7 @@ impl f16 {
     #[unstable(feature = "f16_math", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f16 {
-        crate::sys::log2f16(self)
+        unsafe { intrinsics::log2f16(self) }
     }
 
     /// Returns the base 10 logarithm of the number.
