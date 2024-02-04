@@ -17,7 +17,7 @@ use hir_def::{
 use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
 use intern::Interned;
 use la_arena::ArenaMap;
-use ra_ap_rustc_abi::TargetDataLayout;
+use rustc_abi::TargetDataLayout;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
