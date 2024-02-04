@@ -1493,6 +1493,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/derive.html
     #[unstable(feature = "autodiff", issue = "none")]
+    #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
     #[cfg(not(bootstrap))]
     pub macro autodiff($item:item) {
