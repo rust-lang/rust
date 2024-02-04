@@ -395,6 +395,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];
 
+        // TODO there is something wrong here because now methods for binops may get `const host: bool`
+
         // Instantiate late-bound regions and instantiate the trait
         // parameters into the method type to get the actual method type.
         //
