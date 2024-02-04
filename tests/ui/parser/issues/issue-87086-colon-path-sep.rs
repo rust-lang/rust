@@ -37,9 +37,10 @@ fn g1() {
         //~| HELP: maybe write a path separator here
         _ => {}
     }
-    if let Foo:Bar = f() {
+    if let Foo:Bar = f() { //~ WARN: irrefutable `if let` pattern
     //~^ ERROR: expected one of
     //~| HELP: maybe write a path separator here
+    //~| HELP: consider replacing the `if let` with a `let`
     }
 }
 

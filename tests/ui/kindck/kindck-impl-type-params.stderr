@@ -75,7 +75,7 @@ LL | fn g<T: std::marker::Copy>(val: T) {
    |       +++++++++++++++++++
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:35:13
+  --> $DIR/kindck-impl-type-params.rs:36:13
    |
 LL |     let a = t as Box<dyn Gettable<String>>;
    |             ^ the trait `Copy` is not implemented for `String`, which is required by `S<String>: Gettable<String>`
@@ -91,7 +91,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    = note: required for the cast from `Box<S<String>>` to `Box<dyn Gettable<String>>`
 
 error[E0277]: the trait bound `Foo: Copy` is not satisfied
-  --> $DIR/kindck-impl-type-params.rs:43:37
+  --> $DIR/kindck-impl-type-params.rs:44:37
    |
 LL |     let a: Box<dyn Gettable<Foo>> = t;
    |                                     ^ the trait `Copy` is not implemented for `Foo`, which is required by `S<Foo>: Gettable<Foo>`
@@ -111,6 +111,15 @@ LL +     #[derive(Copy)]
 LL |     struct Foo; // does not impl Copy
    |
 
-error: aborting due to 6 previous errors
+error: lifetime may not live long enough
+  --> $DIR/kindck-impl-type-params.rs:30:13
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     let t: S<&'a isize> = S(marker::PhantomData);
+LL |     let a = &t as &dyn Gettable<&'a isize>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

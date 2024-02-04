@@ -31,6 +31,28 @@ help: consider using one of the available lifetimes here
 LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &'lifetime X<'lifetime>);
    |                                         +++++++++  +++++++++++
 
-error: aborting due to 2 previous errors
+error: lifetime may not live long enough
+  --> $DIR/missing-lt-for-hrtb.rs:10:9
+   |
+LL |     let x = S(&|x| {
+   |                 -- return type of closure is &'2 X<'_>
+   |                 |
+   |                 has type `&'1 X<'_>`
+LL |         println!("hi");
+LL |         x
+   |         ^ returning this value requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/missing-lt-for-hrtb.rs:10:9
+   |
+LL |     let x = S(&|x| {
+   |                 -- return type of closure is &X<'4>
+   |                 |
+   |                 has type `&X<'3>`
+LL |         println!("hi");
+LL |         x
+   |         ^ returning this value requires that `'3` must outlive `'4`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0106`.

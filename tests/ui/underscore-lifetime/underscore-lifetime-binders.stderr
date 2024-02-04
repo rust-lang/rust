@@ -45,7 +45,15 @@ help: consider introducing a named lifetime parameter
 LL | fn foo2<'a>(_: &'a u8, y: &'a u8) -> &'a u8 { y }
    |        ++++     ~~         ~~         ~~
 
-error: aborting due to 5 previous errors
+error: lifetime may not live long enough
+  --> $DIR/underscore-lifetime-binders.rs:16:43
+   |
+LL | fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y }
+   |                       -                   ^ returning this value requires that `'1` must outlive `'static`
+   |                       |
+   |                       let's call the lifetime of this reference `'1`
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0106, E0637.
 For more information about an error, try `rustc --explain E0106`.

@@ -163,10 +163,6 @@ impl Lifetime {
             (LifetimeSuggestionPosition::Normal, self.ident.span)
         }
     }
-
-    pub fn is_static(&self) -> bool {
-        self.res == LifetimeName::Static
-    }
 }
 
 /// A `Path` is essentially Rust's notion of a name; for instance,

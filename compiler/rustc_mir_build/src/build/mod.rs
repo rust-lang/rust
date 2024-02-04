@@ -675,8 +675,12 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                         ))),
                     )
                 }
-                _ => {
-                    span_bug!(span, "expected type of closure body to be a closure or coroutine");
+                ty::Error(_) => (vec![closure_ty, closure_ty], closure_ty, None),
+                kind => {
+                    span_bug!(
+                        span,
+                        "expected type of closure body to be a closure or coroutine, got {kind:?}"
+                    );
                 }
             }
         }
