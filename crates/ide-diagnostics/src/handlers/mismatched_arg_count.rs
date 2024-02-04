@@ -103,7 +103,7 @@ fn invalid_args_range(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled};
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn simple_free_fn_zero() {
@@ -197,16 +197,15 @@ fn f() {
     fn method_unknown_receiver() {
         // note: this is incorrect code, so there might be errors on this in the
         // future, but we shouldn't emit an argument count diagnostic here
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
-trait Foo { fn method(&self, arg: usize) {} }
+trait Foo { fn method(&self, _arg: usize) {} }
 
 fn f() {
     let x;
     x.method();
 }
 "#,
-            std::iter::once("unused_variables".to_string()),
         );
     }
 
