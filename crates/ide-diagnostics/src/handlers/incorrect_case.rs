@@ -486,7 +486,6 @@ trait BAD_TRAIT {
         cov_mark::check!(trait_impl_assoc_const_incorrect_case_ignored);
         cov_mark::check!(trait_impl_assoc_type_incorrect_case_ignored);
         cov_mark::check_count!(trait_impl_assoc_func_name_incorrect_case_ignored, 2);
-        cov_mark::check!(trait_impl_assoc_func_param_incorrect_case_ignored);
         check_diagnostics_with_disabled(
             r#"
 trait BAD_TRAIT {
@@ -506,6 +505,7 @@ impl BAD_TRAIT for () {
     const bad_const: u8 = 0;
     type BAD_TYPE = ();
     fn BAD_FUNCTION(BAD_PARAM: u8) {
+                 // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
         let BAD_VAR = 0;
          // ^^^^^^^ 💡 warn: Variable `BAD_VAR` should have snake_case name, e.g. `bad_var`
     }

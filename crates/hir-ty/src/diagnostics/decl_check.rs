@@ -316,31 +316,19 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for patterns inside the function body.
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
-        // Check whether function is an associated item of a trait implementation
-        let container = func.lookup(self.db.upcast()).container;
-        let is_trait_impl_assoc_fn = self.is_trait_impl_container(container);
-
         let body = self.db.body(func.into());
         let mut pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
-                    // Filter out parameters for trait implementation associated functions.
-                    if is_trait_impl_assoc_fn
-                        && body.params.iter().any(|param_id| *param_id == pat_id)
-                    {
-                        cov_mark::hit!(trait_impl_assoc_func_param_incorrect_case_ignored);
-                        None
-                    } else {
-                        let bind_name = &body.bindings[*id].name;
-                        let replacement = Replacement {
-                            current_name: bind_name.clone(),
-                            suggested_text: to_lower_snake_case(&bind_name.to_smol_str())?,
-                            expected_case: CaseType::LowerSnakeCase,
-                        };
-                        Some((pat_id, replacement))
-                    }
+                    let bind_name = &body.bindings[*id].name;
+                    let replacement = Replacement {
+                        current_name: bind_name.clone(),
+                        suggested_text: to_lower_snake_case(&bind_name.to_smol_str())?,
+                        expected_case: CaseType::LowerSnakeCase,
+                    };
+                    Some((pat_id, replacement))
                 }
                 _ => None,
             })
