@@ -1293,7 +1293,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
-        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some() || self.root.tables.is_effects_desugaring.get(self, id) {
+        let name = if self.root.tables.opt_rpitit_info.get(self, id).is_some()
+            || self.root.tables.is_effects_desugaring.get(self, id)
+        {
             kw::Empty
         } else {
             self.item_name(id)

@@ -674,7 +674,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             trait_segment.infer_args,
             Some(self_ty),
-            constness,
+            // TODO: remove this!!!
+            ty::BoundConstness::NotConst,
         );
 
         let tcx = self.tcx();
@@ -687,7 +688,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         debug!(?poly_trait_ref);
-        bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+        bounds.push_trait_bound(tcx, self.item_def_id(), poly_trait_ref, span, polarity, constness);
 
         let mut dup_bindings = FxIndexMap::default();
         for binding in args.bindings {

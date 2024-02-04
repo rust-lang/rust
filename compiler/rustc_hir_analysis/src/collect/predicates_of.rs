@@ -116,8 +116,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         let parent = tcx.local_parent(def_id);
 
         let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-        predicates
-            .extend(tcx.explicit_predicates_of(parent).instantiate_own(tcx, identity_args));
+        predicates.extend(tcx.explicit_predicates_of(parent).instantiate_own(tcx, identity_args));
         return ty::GenericPredicates {
             parent: Some(parent.to_def_id()),
             predicates: tcx.arena.alloc_from_iter(predicates),
