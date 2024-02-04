@@ -278,6 +278,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare ARMv7-A, hardfloat
+[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare ARMv8-R, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
