@@ -108,6 +108,22 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
+    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
+        let mut predicates = Vec::new();
+
+        // Inherit predicates of parent (impl or trait)
+        // TODO do we need to distinguish impl or trait?
+        let parent = tcx.local_parent(def_id);
+
+        let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+        predicates
+            .extend(tcx.explicit_predicates_of(parent).instantiate_own(tcx, identity_args));
+        return ty::GenericPredicates {
+            parent: Some(parent.to_def_id()),
+            predicates: tcx.arena.alloc_from_iter(predicates),
+        };
+    }
+
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 

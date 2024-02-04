@@ -3173,6 +3173,7 @@ pub enum ItemKind<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Impl<'hir> {
+    pub constness: Constness,
     pub unsafety: Unsafety,
     pub polarity: ImplPolarity,
     pub defaultness: Defaultness,

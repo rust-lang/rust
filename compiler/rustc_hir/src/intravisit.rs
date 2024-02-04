@@ -533,6 +533,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_enum_def(enum_definition, item.hir_id()));
         }
         ItemKind::Impl(Impl {
+            constness: _,
             unsafety: _,
             defaultness: _,
             polarity: _,

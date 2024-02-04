@@ -1006,3 +1006,27 @@ pub trait FnPtr: Copy + Clone {
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
 }
+
+#[doc(hidden)]
+#[unstable(
+    feature = "effect_types",
+    issue = "none",
+    reason = "internal module for implementing effects"
+)]
+#[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
+#[cfg(not(bootstrap))]
+pub mod effects {
+    #[lang = "EffectsNoRuntime"]
+    pub struct NoRuntime;
+    #[lang = "EffectsMaybe"]
+    pub struct Maybe;
+    #[lang = "EffectsRuntime"]
+    pub struct Runtime;
+
+    #[lang = "EffectsCompat"]
+    pub trait Compat<const RUNTIME: bool> {}
+
+    impl Compat<false> for NoRuntime {}
+    impl Compat<true> for Runtime {}
+    impl<const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+}

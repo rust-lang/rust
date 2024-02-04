@@ -339,13 +339,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal;
+                // TODO we need to rip apart this infrastructure
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.lower_generics(ast_generics, *constness, id, itctx, |this| {
+                    self.lower_generics(ast_generics, Const::No, id, itctx, |this| {
                         let modifiers = TraitBoundModifiers {
-                            constness: match *constness {
-                                Const::Yes(span) => BoundConstness::Maybe(span),
-                                Const::No => BoundConstness::Never,
-                            },
+                            constness: BoundConstness::Never,
                             asyncness: BoundAsyncness::Normal,
                             // we don't use this in bound lowering
                             polarity: BoundPolarity::Positive,
@@ -380,6 +378,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(*s)),
                 };
                 hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
+                    constness: self.lower_constness(*constness),
                     unsafety: self.lower_unsafety(*unsafety),
                     polarity,
                     defaultness,
@@ -391,15 +390,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }))
             }
             ItemKind::Trait(box Trait { is_auto, unsafety, generics, bounds, items }) => {
-                // FIXME(const_trait_impl, effects, fee1-dead) this should be simplified if possible
-                let constness = attrs
-                    .unwrap_or(&[])
-                    .iter()
-                    .find(|x| x.has_name(sym::const_trait))
-                    .map_or(Const::No, |x| Const::Yes(x.span));
                 let (generics, (unsafety, items, bounds)) = self.lower_generics(
                     generics,
-                    constness,
+                    Const::No,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {

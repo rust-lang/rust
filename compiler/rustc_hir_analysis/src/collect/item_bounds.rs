@@ -104,6 +104,11 @@ pub(super) fn explicit_item_bounds(
         None => {}
     }
 
+    // effects desugared associated types have no bounds.
+    if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) {
+        return ty::EarlyBinder::bind(&[]);
+    }
+
     let bounds = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
