@@ -77,6 +77,17 @@ impl<S: Span> Subtree<S> {
         Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: Box::new([]) }
     }
 
+    /// This is slow, and should be avoided, as it will always reallocate!
+    pub fn push(&mut self, subtree: TokenTree<S>) {
+        let mut mutable_trees = std::mem::take(&mut self.token_trees).into_vec();
+
+        // Reserve exactly space for one element, to avoid `into_boxed_slice` having to reallocate again.
+        mutable_trees.reserve_exact(1);
+        mutable_trees.push(subtree);
+
+        self.token_trees = mutable_trees.into_boxed_slice();
+    }
+
     pub fn visit_ids(&mut self, f: &mut impl FnMut(S) -> S) {
         self.delimiter.open = f(self.delimiter.open);
         self.delimiter.close = f(self.delimiter.close);

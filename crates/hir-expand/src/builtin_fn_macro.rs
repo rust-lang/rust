@@ -361,9 +361,7 @@ fn panic_expand(
     };
 
     // FIXME(slow): quote! have a way to expand to builder to make this a vec!
-    let mut mutable_trees = std::mem::take(&mut call.token_trees).into_vec();
-    mutable_trees.push(tt::TokenTree::Subtree(subtree));
-    call.token_trees = mutable_trees.into_boxed_slice();
+    call.push(tt::TokenTree::Subtree(subtree));
 
     ExpandResult::ok(call)
 }
@@ -395,9 +393,7 @@ fn unreachable_expand(
     };
 
     // FIXME(slow): quote! have a way to expand to builder to make this a vec!
-    let mut mutable_trees = std::mem::take(&mut call.token_trees).into_vec();
-    mutable_trees.push(tt::TokenTree::Subtree(subtree));
-    call.token_trees = mutable_trees.into_boxed_slice();
+    call.push(tt::TokenTree::Subtree(subtree));
 
     ExpandResult::ok(call)
 }
