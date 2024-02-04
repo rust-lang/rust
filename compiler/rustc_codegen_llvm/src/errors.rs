@@ -253,3 +253,9 @@ pub struct MismatchedDataLayout<'a> {
     pub llvm_target: &'a str,
     pub llvm_layout: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_invalid_target_feature_prefix)]
+pub(crate) struct InvalidTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
+}
