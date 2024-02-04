@@ -225,11 +225,11 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                return self.unify_const_variable(vid, b, relation.param_env());
+                return self.unify_const_variable(vid, b);
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                return self.unify_const_variable(vid, a, relation.param_env());
+                return self.unify_const_variable(vid, a);
             }
 
             (ty::ConstKind::Infer(InferConst::EffectVar(vid)), _) => {
@@ -310,7 +310,6 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         target_vid: ty::ConstVid,
         ct: ty::Const<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
             ConstVariableValue::Known { value } => {
