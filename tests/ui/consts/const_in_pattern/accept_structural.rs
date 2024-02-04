@@ -63,4 +63,18 @@ fn main() {
 
     const ADDR_OF: &OND = &None;
     match &None { ADDR_OF => dbg!(ADDR_OF),  _ => panic!("whoops"), };
+
+    // These ones are more subtle: the final value is fine, but statically analyzing the expression
+    // that computes the value would likely (incorrectly) have us conclude that this may match on
+    // values that do not have structural equality.
+    const INDEX: Option<NoDerive> = [None, Some(NoDerive(10))][0];
+    match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
+
+    const fn build() -> Option<NoDerive> { None }
+    const CALL: Option<NoDerive> = build();
+    match None { Some(_) => panic!("whoops"), CALL => dbg!(CALL), };
+
+    impl NoDerive { const fn none() -> Option<NoDerive> { None } }
+    const METHOD_CALL: Option<NoDerive> = NoDerive::none();
+    match None { Some(_) => panic!("whoops"), METHOD_CALL => dbg!(METHOD_CALL), };
 }
