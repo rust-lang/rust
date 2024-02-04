@@ -1,7 +1,7 @@
 #![feature(coerce_unsized)]
 use std::ops::CoerceUnsized;
 
-struct Foo<T: ?Sized> {
+struct Foo<T: ?Sized> { //~ ERROR `T` is never used
     a: i32,
 }
 

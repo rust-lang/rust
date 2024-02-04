@@ -1006,6 +1006,10 @@ fn check_associated_item(
     enter_wf_checking_ctxt(tcx, span, item_id, |wfcx| {
         let item = tcx.associated_item(item_id);
 
+        // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+        // other `Foo` impls are incoherent.
+        tcx.ensure().coherent_trait(tcx.local_parent(item_id))?;
+
         let self_ty = match item.container {
             ty::TraitContainer => tcx.types.self_param,
             ty::ImplContainer => tcx.type_of(item.container_id(tcx)).instantiate_identity(),
@@ -1292,6 +1296,9 @@ fn check_impl<'tcx>(
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
+                // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+                // other `Foo` impls are incoherent.
+                tcx.ensure().coherent_trait(trait_ref.def_id)?;
                 let trait_ref = wfcx.normalize(
                     ast_trait_ref.path.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
