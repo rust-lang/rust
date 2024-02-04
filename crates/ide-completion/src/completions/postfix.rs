@@ -85,6 +85,13 @@ pub(crate) fn complete_postfix(
                 .add_to(acc, ctx.db);
 
                 postfix_snippet(
+                    "lete",
+                    "let Ok else {}",
+                    &format!("let Ok($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
+                )
+                .add_to(acc, ctx.db);
+
+                postfix_snippet(
                     "while",
                     "while let Ok {}",
                     &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
@@ -96,6 +103,13 @@ pub(crate) fn complete_postfix(
                     "ifl",
                     "if let Some {}",
                     &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
+                )
+                .add_to(acc, ctx.db);
+
+                postfix_snippet(
+                    "lete",
+                    "let Some else {}",
+                    &format!("let Some($1) = {receiver_text} else {{\n    $2\n}};\n$0"),
                 )
                 .add_to(acc, ctx.db);
 
@@ -464,6 +478,29 @@ fn main() {
     if let Some($1) = bar {
     $0
 }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn option_letelse() {
+        check_edit(
+            "lete",
+            r#"
+//- minicore: option
+fn main() {
+    let bar = Some(true);
+    bar.$0
+}
+"#,
+            r#"
+fn main() {
+    let bar = Some(true);
+    let Some($1) = bar else {
+    $2
+};
+$0
 }
 "#,
         );

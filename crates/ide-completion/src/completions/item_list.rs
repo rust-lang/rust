@@ -28,7 +28,7 @@ pub(crate) fn complete_item_list(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     kind: &ItemListKind,
 ) {
-    let _p = profile::span("complete_item_list");
+    let _p = tracing::span!(tracing::Level::INFO, "complete_item_list").entered();
     if path_ctx.is_trivial_path() {
         add_keywords(acc, ctx, Some(kind));
     }

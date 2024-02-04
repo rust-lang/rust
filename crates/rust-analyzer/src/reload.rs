@@ -70,7 +70,8 @@ impl GlobalState {
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
-        let _p = profile::span("GlobalState::update_configuration");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "GlobalState::update_configuration").entered();
         let old_config = mem::replace(&mut self.config, Arc::new(config));
         if self.config.lru_parse_query_capacity() != old_config.lru_parse_query_capacity() {
             self.analysis_host.update_lru_capacity(self.config.lru_parse_query_capacity());
@@ -355,7 +356,7 @@ impl GlobalState {
     }
 
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
-        let _p = profile::span("GlobalState::switch_workspaces");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
         let Some((workspaces, force_reload_crate_graph)) =
@@ -502,7 +503,7 @@ impl GlobalState {
             let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let mut load = |path: &AbsPath| {
-                let _p = profile::span("switch_workspaces::load");
+                let _p = tracing::span!(tracing::Level::INFO, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
                 match vfs.file_id(&vfs_path) {
@@ -585,7 +586,7 @@ impl GlobalState {
     }
 
     fn reload_flycheck(&mut self) {
-        let _p = profile::span("GlobalState::reload_flycheck");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::reload_flycheck").entered();
         let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {

@@ -13,11 +13,6 @@
 
 pub mod cli;
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 mod caps;
 mod cargo_target_spec;
 mod diagnostics;
@@ -35,6 +30,12 @@ mod version;
 mod handlers {
     pub(crate) mod notification;
     pub(crate) mod request;
+}
+
+pub mod tracing {
+    pub mod config;
+    pub use config::Config;
+    pub mod hprof;
 }
 
 pub mod config;

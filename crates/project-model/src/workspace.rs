@@ -60,7 +60,7 @@ pub enum ProjectWorkspace {
         cargo: CargoWorkspace,
         build_scripts: WorkspaceBuildScripts,
         sysroot: Result<Sysroot, Option<String>>,
-        rustc: Result<(CargoWorkspace, WorkspaceBuildScripts), Option<String>>,
+        rustc: Result<Box<(CargoWorkspace, WorkspaceBuildScripts)>, Option<String>>,
         /// Holds cfg flags for the current target. We get those by running
         /// `rustc --print cfg`.
         ///
@@ -119,7 +119,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("sysroot", &sysroot.is_ok())
                 .field(
                     "n_rustc_compiler_crates",
-                    &rustc.as_ref().map_or(0, |(rc, _)| rc.packages().len()),
+                    &rustc.as_ref().map(|a| a.as_ref()).map_or(0, |(rc, _)| rc.packages().len()),
                 )
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
@@ -265,7 +265,7 @@ impl ProjectWorkspace {
                                 cargo_toml.parent(),
                                 &config.extra_env,
                             );
-                            Ok((workspace, buildscripts))
+                            Ok(Box::new((workspace, buildscripts)))
                         }
                         Err(e) => {
                             tracing::error!(
@@ -603,7 +603,7 @@ impl ProjectWorkspace {
                         PackageRoot { is_local, include, exclude }
                     })
                     .chain(mk_sysroot(sysroot.as_ref(), Some(cargo.workspace_root())))
-                    .chain(rustc.iter().flat_map(|(rustc, _)| {
+                    .chain(rustc.iter().map(|a| a.as_ref()).flat_map(|(rustc, _)| {
                         rustc.packages().map(move |krate| PackageRoot {
                             is_local: false,
                             include: vec![rustc[krate].manifest.parent().to_path_buf()],
@@ -631,7 +631,8 @@ impl ProjectWorkspace {
                 sysroot_package_len + project.n_crates()
             }
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, .. } => {
-                let rustc_package_len = rustc.as_ref().map_or(0, |(it, _)| it.packages().len());
+                let rustc_package_len =
+                    rustc.as_ref().map(|a| a.as_ref()).map_or(0, |(it, _)| it.packages().len());
                 let sysroot_package_len = sysroot.as_ref().map_or(0, |it| it.num_packages());
                 cargo.packages().len() + sysroot_package_len + rustc_package_len
             }
@@ -647,7 +648,7 @@ impl ProjectWorkspace {
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
         extra_env: &FxHashMap<String, String>,
     ) -> (CrateGraph, ProcMacroPaths) {
-        let _p = profile::span("ProjectWorkspace::to_crate_graph");
+        let _p = tracing::span!(tracing::Level::INFO, "ProjectWorkspace::to_crate_graph").entered();
 
         let (mut crate_graph, proc_macros) = match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg, toolchain } => {
@@ -672,7 +673,7 @@ impl ProjectWorkspace {
                 target_layout,
             } => cargo_to_crate_graph(
                 load,
-                rustc.as_ref().ok(),
+                rustc.as_ref().map(|a| a.as_ref()).ok(),
                 cargo,
                 sysroot.as_ref().ok(),
                 rustc_cfg.clone(),
@@ -891,7 +892,7 @@ fn cargo_to_crate_graph(
     target_layout: TargetLayoutLoadResult,
     toolchain: Option<&Version>,
 ) -> (CrateGraph, ProcMacroPaths) {
-    let _p = profile::span("cargo_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "cargo_to_crate_graph").entered();
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let crate_graph = &mut res.0;
     let proc_macros = &mut res.1;
@@ -1088,7 +1089,7 @@ fn detached_files_to_crate_graph(
     sysroot: Option<&Sysroot>,
     target_layout: TargetLayoutLoadResult,
 ) -> (CrateGraph, ProcMacroPaths) {
-    let _p = profile::span("detached_files_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "detached_files_to_crate_graph").entered();
     let mut crate_graph = CrateGraph::default();
     let (public_deps, _libproc_macro) = match sysroot {
         Some(sysroot) => sysroot_to_crate_graph(
@@ -1384,7 +1385,7 @@ fn sysroot_to_crate_graph(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     toolchain: Option<&Version>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
-    let _p = profile::span("sysroot_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "sysroot_to_crate_graph").entered();
     match sysroot.mode() {
         SysrootMode::Workspace(cargo) => {
             let (mut cg, mut pm) = cargo_to_crate_graph(

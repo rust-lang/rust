@@ -69,7 +69,7 @@ use crate::{
     generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
-    visibility::{RawVisibility, VisibilityExplicity},
+    visibility::{RawVisibility, VisibilityExplicitness},
     BlockId, Lookup,
 };
 
@@ -109,7 +109,8 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = profile::span("file_item_tree_query").detail(|| format!("{file_id:?}"));
+        let _p = tracing::span!(tracing::Level::INFO, "file_item_tree_query", ?file_id).entered();
+
         let syntax = db.parse_or_expand(file_id);
 
         let ctx = lower::Ctx::new(db, file_id);
@@ -252,10 +253,10 @@ impl ItemVisibilities {
             RawVisibility::Public => RawVisibilityId::PUB,
             RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
                 match (&path.kind, explicitiy) {
-                    (PathKind::Super(0), VisibilityExplicity::Explicit) => {
+                    (PathKind::Super(0), VisibilityExplicitness::Explicit) => {
                         RawVisibilityId::PRIV_EXPLICIT
                     }
-                    (PathKind::Super(0), VisibilityExplicity::Implicit) => {
+                    (PathKind::Super(0), VisibilityExplicitness::Implicit) => {
                         RawVisibilityId::PRIV_IMPLICIT
                     }
                     (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
@@ -269,11 +270,11 @@ impl ItemVisibilities {
 
 static VIS_PUB: RawVisibility = RawVisibility::Public;
 static VIS_PRIV_IMPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit);
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Implicit);
 static VIS_PRIV_EXPLICIT: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Explicit);
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicitness::Explicit);
 static VIS_PUB_CRATE: RawVisibility =
-    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicity::Explicit);
+    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicitness::Explicit);
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {

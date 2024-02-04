@@ -75,7 +75,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
-        let _p = profile::span("fields_attrs_query");
+        let _p = tracing::span!(tracing::Level::INFO, "fields_attrs_query").entered();
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
 
@@ -322,7 +322,7 @@ impl AttrsWithOwner {
     }
 
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
-        let _p = profile::span("attrs_query");
+        let _p = tracing::span!(tracing::Level::INFO, "attrs_query").entered();
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
         let raw_attrs = match def {
             AttrDefId::ModuleId(module) => {

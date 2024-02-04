@@ -60,6 +60,17 @@ enum Event {
     Flycheck(flycheck::Message),
 }
 
+impl fmt::Display for Event {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Event::Lsp(_) => write!(f, "Event::Lsp"),
+            Event::Task(_) => write!(f, "Event::Task"),
+            Event::Vfs(_) => write!(f, "Event::Vfs"),
+            Event::Flycheck(_) => write!(f, "Event::Flycheck"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
@@ -196,7 +207,8 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile::span("GlobalState::handle_event");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event", event = %event)
+            .entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);
@@ -215,7 +227,8 @@ impl GlobalState {
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::Task(task) => {
-                let _p = profile::span("GlobalState::handle_event/task");
+                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
+                    .entered();
                 let mut prime_caches_progress = Vec::new();
 
                 self.handle_task(&mut prime_caches_progress, task);
@@ -269,7 +282,8 @@ impl GlobalState {
                 }
             }
             Event::Vfs(message) => {
-                let _p = profile::span("GlobalState::handle_event/vfs");
+                let _p =
+                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/vfs").entered();
                 self.handle_vfs_msg(message);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
@@ -277,7 +291,8 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = profile::span("GlobalState::handle_event/flycheck");
+                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/flycheck")
+                    .entered();
                 self.handle_flycheck_msg(message);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
