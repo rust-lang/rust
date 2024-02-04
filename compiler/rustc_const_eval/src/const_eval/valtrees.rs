@@ -98,7 +98,11 @@ fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
 
-        ty::Pat(..) => const_to_valtree_inner(ecx, &ecx.project_field(place, 0).unwrap(), num_nodes),
+        ty::Pat(base, ..) => {
+            let mut place = place.clone();
+            place.layout = ecx.layout_of(*base).unwrap();
+            const_to_valtree_inner(ecx, &place, num_nodes)
+        },
 
 
         ty::RawPtr(_, _) => {

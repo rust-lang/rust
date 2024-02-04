@@ -631,7 +631,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Nothing to check.
                 Ok(true)
             }
-            ty::Pat(..) => unimplemented!(),
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)
@@ -641,6 +640,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::Pat(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.
