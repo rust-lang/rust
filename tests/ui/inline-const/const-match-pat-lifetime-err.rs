@@ -1,4 +1,3 @@
-#![allow(incomplete_features)]
 #![feature(const_mut_refs)]
 #![feature(inline_const_pat)]
 
