@@ -669,7 +669,7 @@ fn create_ra_project_json_maybe(builder: &Builder<'_>) -> io::Result<bool> {
 
     if should_create {
         let ra_project = RustAnalyzerProject::collect_ra_project_data(builder);
-        ra_project.generate_file(&builder.config.src.join("rust-project.json"))?;
+        ra_project.generate_json_file(&builder.config.src.join("rust-project.json"))?;
         println!("Created `rust-project.json`");
     }
 

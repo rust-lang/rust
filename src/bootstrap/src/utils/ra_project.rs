@@ -20,13 +20,14 @@ use crate::core::builder::Builder;
 use crate::core::metadata::{project_metadata, workspace_members, Dependency};
 
 #[derive(Debug, Serialize)]
-/// FIXME(before-merge): doc-comment
+/// Represents the root object in `rust-project.json`
 pub(crate) struct RustAnalyzerProject {
     crates: Vec<Crate>,
     sysroot: String,
     sysroot_src: String,
 }
 
+/// Represents the crate object in `rust-project.json`
 #[derive(Debug, Default, Serialize, PartialEq)]
 struct Crate {
     cfg: Vec<String>,
@@ -42,6 +43,7 @@ struct Crate {
 }
 
 #[derive(Debug, Default, Serialize, PartialEq, PartialOrd, Ord, Eq)]
+/// Represents the dependency object in `rust-project.json`
 struct Dep {
     #[serde(rename = "crate")]
     crate_index: usize,
@@ -49,6 +51,10 @@ struct Dep {
 }
 
 impl RustAnalyzerProject {
+    /// Gathers data for `rust-project.json` from `cargo metadata`.
+    ///
+    /// Skips the indirect dependency crates since we don't need to
+    /// run LSP on them.
     pub(crate) fn collect_ra_project_data(builder: &Builder<'_>) -> Self {
         let config = &builder.config;
 
@@ -61,6 +67,7 @@ impl RustAnalyzerProject {
         let packages: Vec<_> = project_metadata(config).collect();
         let workspace_members: Vec<_> = workspace_members(config).collect();
 
+        // Handle crates in the workspace
         for package in &packages {
             let is_not_indirect_dependency = packages
                 .iter()
@@ -105,25 +112,40 @@ impl RustAnalyzerProject {
         ra_project.crates.sort_by_key(|c| c.display_name.clone());
         ra_project.crates.dedup_by_key(|c| c.display_name.clone());
 
-        // Find and fill dependencies of crates.
+        let mut info_is_printed = false;
+
+        // Handle dependencies and proc-macro dylibs
         for package in packages {
             if let Some(index) =
                 ra_project.crates.iter().position(|c| c.display_name == package.name)
             {
-                assert!(
-                    !package.manifest_path.is_empty(),
-                    "manifest_path must be valid for proc-macro crates."
-                );
-
-                let mut cargo = Command::new(&builder.initial_cargo);
-                cargo
-                    .env("RUSTC_BOOTSTRAP", "1")
-                    .arg("build")
-                    .arg("--manifest-path")
-                    .arg(package.manifest_path);
-
                 if ra_project.crates[index].is_proc_macro {
-                    // FIXME(before-merge): use `CARGO_TARGET_DIR` to place shared libraries in the build output directory.
+                    let date = &builder.config.stage0_metadata.compiler.date;
+
+                    let cargo_target_dir = builder
+                        .out
+                        .join("cache")
+                        .join("proc-macro-artifacts-for-ra")
+                        // Although it's rare (when the stage0 compiler changes while proc-macro artifacts under
+                        // `proc-macro-artifacts-for-ra` directory exist), there is a chance of ABI mismatch between
+                        // the stage0 compiler and dynamic libraries. Therefore, we want to trigger compilations
+                        // when the stage0 compiler changes.
+                        .join(format!("{date}_{}", package.name));
+
+                    let mut cargo = Command::new(&builder.initial_cargo);
+                    cargo
+                        .env("RUSTC_BOOTSTRAP", "1")
+                        .env("CARGO_TARGET_DIR", cargo_target_dir)
+                        .arg("build")
+                        .arg("--manifest-path")
+                        .arg(package.manifest_path);
+
+                    if !info_is_printed {
+                        builder.info("Building proc-macro artifacts to be used for rust-analyzer");
+                    }
+
+                    info_is_printed = true;
+
                     let ok = stream_cargo(builder, cargo.into(), vec![], &mut |msg| {
                         let filenames = match msg {
                             CargoMessage::CompilerArtifact { filenames, .. } => filenames,
@@ -131,16 +153,15 @@ impl RustAnalyzerProject {
                         };
 
                         for filename in filenames {
+                            let kebab_case = &ra_project.crates[index].display_name;
                             let snake_case_name = ra_project.crates[index]
                                 .display_name
                                 .replace('-', "_")
                                 .to_lowercase();
 
                             if filename.ends_with(".so")
-                                && (filename.contains(&format!(
-                                    "lib{}",
-                                    ra_project.crates[index].display_name
-                                )) || filename.contains(&format!("lib{}", snake_case_name)))
+                                && (filename.contains(&format!("lib{}", kebab_case))
+                                    || filename.contains(&format!("lib{}", snake_case_name)))
                             {
                                 ra_project.crates[index].proc_macro_dylib_path =
                                     Some(filename.to_string());
@@ -173,7 +194,8 @@ impl RustAnalyzerProject {
         ra_project
     }
 
-    pub(crate) fn generate_file(&self, path: &Path) -> io::Result<()> {
+    /// Generates a json file on the given path.
+    pub(crate) fn generate_json_file(&self, path: &Path) -> io::Result<()> {
         if path.exists() {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
