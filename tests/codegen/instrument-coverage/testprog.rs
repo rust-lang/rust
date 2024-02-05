@@ -1,7 +1,6 @@
 //@ edition: 2021
 //@ needs-profiler-support
 //@ compile-flags: -Cinstrument-coverage -Copt-level=0
-//@ filecheck-flags: '-DDEFINE_INTERNAL=define internal'
 //@ revisions: LINUX DARWIN WINDOWS
 
 //@ [LINUX] only-linux
@@ -104,9 +103,9 @@ fn main() {
 // CHECK-SAME:   @__llvm_prf_nm
 // CHECK-SAME:   section "llvm.metadata"
 
-// CHECK:        [[DEFINE_INTERNAL]] { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}} {
+// CHECK:        define internal { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}} {
 // CHECK-NEXT:   start:
-// CHECK-NOT:    [[DEFINE_INTERNAL]]
+// CHECK-NOT:    define internal
 // CHECK:        atomicrmw add ptr
 // CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
 
