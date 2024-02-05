@@ -1,5 +1,8 @@
 //! See [RequestDispatcher].
-use std::{fmt, panic, thread};
+use std::{
+    fmt::{self, Debug},
+    panic, thread,
+};
 
 use ide::Cancelled;
 use lsp_server::ExtractError;
@@ -49,6 +52,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
+        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        tracing::debug!(?params);
         let result = {
             let _pctx = stdx::panic_context::enter(panic_context);
             f(self.global_state, params)
@@ -74,6 +79,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
+        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        tracing::debug!(?params);
         let global_state_snapshot = self.global_state.snapshot();
 
         let result = panic::catch_unwind(move || {
@@ -192,6 +199,8 @@ impl RequestDispatcher<'_> {
             Some(it) => it,
             None => return self,
         };
+        let _guard = tracing::span!(tracing::Level::INFO, "request", method = ?req.method, "request_id" = ?req.id).entered();
+        tracing::debug!(?params);
 
         let world = self.global_state.snapshot();
         if MAIN_POOL {
@@ -313,12 +322,16 @@ impl NotificationDispatcher<'_> {
     ) -> anyhow::Result<&mut Self>
     where
         N: lsp_types::notification::Notification,
-        N::Params: DeserializeOwned + Send,
+        N::Params: DeserializeOwned + Send + Debug,
     {
         let not = match self.not.take() {
             Some(it) => it,
             None => return Ok(self),
         };
+
+        let _guard =
+            tracing::span!(tracing::Level::INFO, "notification", method = ?not.method).entered();
+
         let params = match not.extract::<N::Params>(N::METHOD) {
             Ok(it) => it,
             Err(ExtractError::JsonError { method, error }) => {
@@ -329,6 +342,9 @@ impl NotificationDispatcher<'_> {
                 return Ok(self);
             }
         };
+
+        tracing::debug!(?params);
+
         let _pctx = stdx::panic_context::enter(format!(
             "\nversion: {}\nnotification: {}",
             version(),

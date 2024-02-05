@@ -124,7 +124,7 @@ pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatab
 }
 
 fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Arc<SymbolIndex> {
-    let _p = profile::span("library_symbols");
+    let _p = tracing::span!(tracing::Level::INFO, "library_symbols").entered();
 
     let mut symbol_collector = SymbolCollector::new(db.upcast());
 
@@ -142,14 +142,14 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
-    let _p = profile::span("module_symbols");
+    let _p = tracing::span!(tracing::Level::INFO, "module_symbols").entered();
 
     let symbols = SymbolCollector::collect_module(db.upcast(), module);
     Arc::new(SymbolIndex::new(symbols))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
-    let _p = profile::span("crate_symbols");
+    let _p = tracing::span!(tracing::Level::INFO, "crate_symbols").entered();
     krate.modules(db.upcast()).into_iter().map(|module| db.module_symbols(module)).collect()
 }
 
@@ -200,7 +200,7 @@ impl<DB> std::ops::Deref for Snap<DB> {
 // | VS Code | kbd:[Ctrl+T]
 // |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
-    let _p = profile::span("world_symbols").detail(|| query.query.clone());
+    let _p = tracing::span!(tracing::Level::INFO, "world_symbols", query = ?query.query).entered();
 
     let indices: Vec<_> = if query.libs {
         db.library_roots()
@@ -320,7 +320,7 @@ impl Query {
         indices: &'sym [Arc<SymbolIndex>],
         cb: impl FnMut(&'sym FileSymbol),
     ) {
-        let _p = profile::span("symbol_index::Query::search");
+        let _p = tracing::span!(tracing::Level::INFO, "symbol_index::Query::search").entered();
         let mut op = fst::map::OpBuilder::new();
         match self.mode {
             SearchMode::Exact => {

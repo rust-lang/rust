@@ -49,9 +49,7 @@ impl MachineStopType for ConstEvalErrKind {
     }
 }
 
-// The errors become `MachineStop` with plain strings when being raised.
-// `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
-// handle these.
+/// The errors become [`InterpError::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
         err_machine_stop!(self).into()

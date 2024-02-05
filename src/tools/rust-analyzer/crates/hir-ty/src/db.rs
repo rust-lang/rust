@@ -118,7 +118,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;
+    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
     fn lookup_impl_method(
@@ -281,7 +281,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 }
 
 fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
-    let _p = profile::span("infer:wait").detail(|| match def {
+    let detail = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::StaticId(it) => {
             db.static_data(it).name.clone().display(db.upcast()).to_string()
@@ -297,7 +297,8 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
             db.enum_variant_data(it).name.display(db.upcast()).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
-    });
+    };
+    let _p = tracing::span!(tracing::Level::INFO, "infer:wait", ?detail).entered();
     db.infer_query(def)
 }
 
@@ -307,7 +308,7 @@ fn trait_solve_wait(
     block: Option<BlockId>,
     goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
 ) -> Option<crate::Solution> {
-    let _p = profile::span("trait_solve::wait");
+    let _p = tracing::span!(tracing::Level::INFO, "trait_solve::wait").entered();
     db.trait_solve_query(krate, block, goal)
 }
 

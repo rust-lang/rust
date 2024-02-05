@@ -58,12 +58,14 @@ impl flags::AnalysisStats {
             Rand32::new(seed)
         };
 
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = match self.no_sysroot {
-            true => None,
-            false => Some(RustLibSource::Discover),
+        let cargo_config = CargoConfig {
+            sysroot: match self.no_sysroot {
+                true => None,
+                false => Some(RustLibSource::Discover),
+            },
+            sysroot_query_metadata: self.query_sysroot_metadata,
+            ..Default::default()
         };
-        cargo_config.sysroot_query_metadata = self.query_sysroot_metadata;
         let no_progress = &|_| ();
 
         let mut db_load_sw = self.stop_watch();
@@ -302,13 +304,13 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &c in consts {
             all += 1;
-            let Err(e) = c.render_eval(db) else {
+            let Err(error) = c.render_eval(db) else {
                 continue;
             };
             if verbosity.is_spammy() {
                 let full_name =
                     full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
-                println!("Const eval for {full_name} failed due {e:?}");
+                println!("Const eval for {full_name} failed due {error:?}");
             }
             fail += 1;
         }

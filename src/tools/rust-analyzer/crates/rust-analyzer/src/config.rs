@@ -32,6 +32,7 @@ use project_model::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
+use stdx::format_to_acc;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
@@ -493,6 +494,9 @@ config_data! {
 
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = "false",
+
+        /// Exclude tests from find-all-references.
+        references_excludeTests: bool = "false",
 
         /// Allow renaming of items not belonging to the loaded workspaces.
         rename_allowExternalItems: bool = "false",
@@ -1545,6 +1549,10 @@ impl Config {
         self.data.references_excludeImports
     }
 
+    pub fn find_all_refs_exclude_tests(&self) -> bool {
+        self.data.references_excludeTests
+    }
+
     pub fn snippet_cap(&self) -> bool {
         self.experimental("snippetTextEdit")
     }
@@ -1737,7 +1745,7 @@ impl Config {
     }
 
     pub fn main_loop_num_threads(&self) -> usize {
-        self.data.numThreads.unwrap_or(num_cpus::get_physical().try_into().unwrap_or(1))
+        self.data.numThreads.unwrap_or(num_cpus::get_physical())
     }
 
     pub fn typing_autoclose_angle(&self) -> bool {
@@ -2556,14 +2564,13 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
 
 #[cfg(test)]
 fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
-    fields
-        .iter()
-        .map(|(field, _ty, doc, default)| {
-            let name = format!("rust-analyzer.{}", field.replace('_', "."));
-            let doc = doc_comment_to_string(doc);
-            if default.contains('\n') {
-                format!(
-                    r#"[[{name}]]{name}::
+    fields.iter().fold(String::new(), |mut acc, (field, _ty, doc, default)| {
+        let name = format!("rust-analyzer.{}", field.replace('_', "."));
+        let doc = doc_comment_to_string(doc);
+        if default.contains('\n') {
+            format_to_acc!(
+                acc,
+                r#"[[{name}]]{name}::
 +
 --
 Default:
@@ -2573,16 +2580,17 @@ Default:
 {doc}
 --
 "#
-                )
-            } else {
-                format!("[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
-            }
-        })
-        .collect::<String>()
+            )
+        } else {
+            format_to_acc!(acc, "[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
+        }
+    })
 }
 
 fn doc_comment_to_string(doc: &[&str]) -> String {
-    doc.iter().map(|it| it.strip_prefix(' ').unwrap_or(it)).map(|it| format!("{it}\n")).collect()
+    doc.iter()
+        .map(|it| it.strip_prefix(' ').unwrap_or(it))
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
 
 #[cfg(test)]

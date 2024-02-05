@@ -454,7 +454,7 @@ pub(crate) fn inlay_hints(
     range_limit: Option<RangeLimit>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
-    let _p = profile::span("inlay_hints");
+    let _p = tracing::span!(tracing::Level::INFO, "inlay_hints").entered();
     let sema = Semantics::new(db);
     let file = sema.parse(file_id);
     let file = file.syntax();

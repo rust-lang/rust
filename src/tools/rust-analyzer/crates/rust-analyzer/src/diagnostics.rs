@@ -128,7 +128,7 @@ pub(crate) fn fetch_native_diagnostics(
     snapshot: GlobalStateSnapshot,
     subscriptions: Vec<FileId>,
 ) -> Vec<(FileId, Vec<lsp_types::Diagnostic>)> {
-    let _p = profile::span("fetch_native_diagnostics");
+    let _p = tracing::span!(tracing::Level::INFO, "fetch_native_diagnostics").entered();
     let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
 
     let convert_diagnostic =

@@ -605,8 +605,11 @@ fn render_const_scalar(
                     write!(f, "{}", f.db.union_data(u).name.display(f.db.upcast()))
                 }
                 hir_def::AdtId::EnumId(e) => {
+                    let Ok(target_data_layout) = f.db.target_data_layout(trait_env.krate) else {
+                        return f.write_str("<target-layout-not-available>");
+                    };
                     let Some((var_id, var_layout)) =
-                        detect_variant_from_bytes(&layout, f.db, trait_env, b, e)
+                        detect_variant_from_bytes(&layout, f.db, &target_data_layout, b, e)
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };

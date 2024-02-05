@@ -622,7 +622,7 @@ where
 
 struct Converter<SpanMap, S> {
     current: Option<SyntaxToken>,
-    current_leafs: Vec<tt::Leaf<S>>,
+    current_leaves: Vec<tt::Leaf<S>>,
     preorder: PreorderWithTokens,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
@@ -650,7 +650,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
             append,
             remove,
             call_site,
-            current_leafs: vec![],
+            current_leaves: vec![],
         };
         let first = this.next_token();
         this.current = first;
@@ -665,7 +665,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
                     self.preorder.skip_subtree();
                     if let Some(mut v) = self.append.remove(&n.into()) {
                         v.reverse();
-                        self.current_leafs.extend(v);
+                        self.current_leaves.extend(v);
                         return None;
                     }
                 }
@@ -673,7 +673,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
                 WalkEvent::Leave(ele) => {
                     if let Some(mut v) = self.append.remove(&ele) {
                         v.reverse();
-                        self.current_leafs.extend(v);
+                        self.current_leaves.extend(v);
                         return None;
                     }
                 }
@@ -758,8 +758,8 @@ where
             }
         }
 
-        if let Some(leaf) = self.current_leafs.pop() {
-            if self.current_leafs.is_empty() {
+        if let Some(leaf) = self.current_leaves.pop() {
+            if self.current_leaves.is_empty() {
                 self.current = self.next_token();
             }
             return Some((SynToken::Leaf(leaf), TextRange::empty(TextSize::new(0))));

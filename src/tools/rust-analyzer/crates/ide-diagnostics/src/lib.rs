@@ -89,7 +89,6 @@ use ide_db::{
 use once_cell::sync::Lazy;
 use stdx::never;
 use syntax::{
-    algo::find_node_at_range,
     ast::{self, AstNode},
     AstPtr, SyntaxNode, SyntaxNodePtr, TextRange,
 };
@@ -293,7 +292,7 @@ pub fn diagnostics(
     resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
-    let _p = profile::span("diagnostics");
+    let _p = tracing::span!(tracing::Level::INFO, "diagnostics").entered();
     let sema = Semantics::new(db);
     let parse = db.parse(file_id);
     let mut res = Vec::new();
@@ -571,24 +570,6 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 }
 
 fn adjusted_display_range<N: AstNode>(
-    ctx: &DiagnosticsContext<'_>,
-    diag_ptr: InFile<SyntaxNodePtr>,
-    adj: &dyn Fn(N) -> Option<TextRange>,
-) -> FileRange {
-    let FileRange { file_id, range } = ctx.sema.diagnostics_display_range(diag_ptr);
-
-    let source_file = ctx.sema.db.parse(file_id);
-    FileRange {
-        file_id,
-        range: find_node_at_range::<N>(&source_file.syntax_node(), range)
-            .filter(|it| it.syntax().text_range() == range)
-            .and_then(adj)
-            .unwrap_or(range),
-    }
-}
-
-// FIXME Replace the one above with this one?
-fn adjusted_display_range_new<N: AstNode>(
     ctx: &DiagnosticsContext<'_>,
     diag_ptr: InFile<AstPtr<N>>,
     adj: &dyn Fn(N) -> Option<TextRange>,

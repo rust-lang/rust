@@ -232,7 +232,7 @@ fn convert_path(
         ast::PathSegmentKind::SuperKw => {
             let mut deg = 1;
             let mut next_segment = None;
-            while let Some(segment) = segments.next() {
+            for segment in segments.by_ref() {
                 match segment.kind()? {
                     ast::PathSegmentKind::SuperKw => deg += 1,
                     ast::PathSegmentKind::Name(name) => {
@@ -284,13 +284,13 @@ fn convert_path(
 }
 
 fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
-    let mut leafs = tt.iter().filter_map(|tt| match tt {
+    let mut leaves = tt.iter().filter_map(|tt| match tt {
         tt::TokenTree::Leaf(leaf) => Some(leaf),
         tt::TokenTree::Subtree(_) => None,
     });
     let mut segments = smallvec::smallvec![];
-    let kind = match leafs.next()? {
-        tt::Leaf::Punct(tt::Punct { char: ':', .. }) => match leafs.next()? {
+    let kind = match leaves.next()? {
+        tt::Leaf::Punct(tt::Punct { char: ':', .. }) => match leaves.next()? {
             tt::Leaf::Punct(tt::Punct { char: ':', .. }) => PathKind::Abs,
             _ => return None,
         },
@@ -300,7 +300,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
         tt::Leaf::Ident(tt::Ident { text, .. }) if text == "self" => PathKind::Super(0),
         tt::Leaf::Ident(tt::Ident { text, .. }) if text == "super" => {
             let mut deg = 1;
-            while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leafs.next() {
+            while let Some(tt::Leaf::Ident(tt::Ident { text, .. })) = leaves.next() {
                 if text != "super" {
                     segments.push(Name::new_text_dont_use(text.clone()));
                     break;
@@ -316,7 +316,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
         }
         _ => return None,
     };
-    segments.extend(leafs.filter_map(|leaf| match leaf {
+    segments.extend(leaves.filter_map(|leaf| match leaf {
         ::tt::Leaf::Ident(ident) => Some(Name::new_text_dont_use(ident.text.clone())),
         _ => None,
     }));

@@ -645,7 +645,8 @@ impl DiagCtxt {
     }
 
     // This is here to not allow mutation of flags;
-    // as of this writing it's only used in tests in librustc_middle.
+    // as of this writing it's used in Session::consider_optimizing and
+    // in tests in rustc_interface.
     pub fn can_emit_warnings(&self) -> bool {
         self.inner.borrow_mut().flags.can_emit_warnings
     }
