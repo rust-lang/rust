@@ -1,6 +1,7 @@
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 
+#[derive(Copy, Clone)]
 enum Void {}
 
 fn main() {

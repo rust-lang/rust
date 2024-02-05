@@ -7,6 +7,12 @@ LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self
 LL |     fn from_iter<I: for<'x> LendingIterator<Item<'x> = A>>(mut iter: I) -> Self {
    |                                             ^^^^^^^^^^^^ impl has extra requirement `I: 'x`
 
-error: aborting due to 1 previous error
+error: `Self` does not live long enough
+  --> $DIR/lending_iterator.rs:34:9
+   |
+LL |         <B as FromLendingIterator<A>>::from_iter(self)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0276`.

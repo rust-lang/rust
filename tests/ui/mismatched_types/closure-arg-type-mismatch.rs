@@ -8,4 +8,7 @@ fn main() {
 fn baz<F: Fn(*mut &u32)>(_: F) {}
 fn _test<'a>(f: fn(*mut &'a u32)) {
     baz(f);
+    //~^ ERROR: mismatched types
+    //~| ERROR: borrowed data escapes
+    //~| ERROR: not general enough
 }

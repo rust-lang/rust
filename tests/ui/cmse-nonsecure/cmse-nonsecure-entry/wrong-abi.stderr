@@ -1,5 +1,5 @@
 error[E0776]: `#[cmse_nonsecure_entry]` requires C ABI
-  --> $DIR/wrong-abi.rs:9:1
+  --> $DIR/wrong-abi.rs:12:1
    |
 LL | #[cmse_nonsecure_entry]
    | ^^^^^^^^^^^^^^^^^^^^^^^

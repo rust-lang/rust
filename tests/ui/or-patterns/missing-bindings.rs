@@ -17,8 +17,10 @@ fn check_handling_of_paths() {
 
     use bar::foo::{alpha, charlie};
     let (alpha | beta | charlie) = alpha; //~  ERROR variable `beta` is not bound in all patterns
-    match Some(alpha) {
+    //~^ ERROR: `beta` is named the same as one of the variants
+    match Some(alpha) { //~ ERROR `None` not covered
         Some(alpha | beta) => {} //~ ERROR variable `beta` is not bound in all patterns
+        //~^ ERROR: `beta` is named the same as one of the variants
     }
 }
 
