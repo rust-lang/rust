@@ -318,34 +318,27 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
     self_ty: Ty<'tcx>,
     goal_kind: ty::ClosureKind,
     env_region: ty::Region<'tcx>,
-) -> Result<
-    (ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>, Option<ty::Predicate<'tcx>>),
-    NoSolution,
-> {
+) -> Result<(ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>, Vec<ty::Predicate<'tcx>>), NoSolution>
+{
     match *self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             let args = args.as_coroutine_closure();
             let kind_ty = args.kind_ty();
-
-            if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+            let sig = args.coroutine_closure_sig().skip_binder();
+            let mut nested = vec![];
+            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
                 if !closure_kind.extends(goal_kind) {
                     return Err(NoSolution);
                 }
-                Ok((
-                    args.coroutine_closure_sig().map_bound(|sig| {
-                        let coroutine_ty = sig.to_coroutine_given_kind_and_upvars(
-                            tcx,
-                            args.parent_args(),
-                            tcx.coroutine_for_closure(def_id),
-                            goal_kind,
-                            env_region,
-                            args.tupled_upvars_ty(),
-                            args.coroutine_captures_by_ref_ty(),
-                        );
-                        (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
-                    }),
-                    None,
-                ))
+                sig.to_coroutine_given_kind_and_upvars(
+                    tcx,
+                    args.parent_args(),
+                    tcx.coroutine_for_closure(def_id),
+                    goal_kind,
+                    env_region,
+                    args.tupled_upvars_ty(),
+                    args.coroutine_captures_by_ref_ty(),
+                )
             } else {
                 let async_fn_kind_trait_def_id =
                     tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
@@ -362,39 +355,43 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
                 // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
                 // will project to the right upvars for the generator, appending the inputs and
                 // coroutine upvars respecting the closure kind.
-                Ok((
-                    args.coroutine_closure_sig().map_bound(|sig| {
-                        let tupled_upvars_ty = Ty::new_projection(
-                            tcx,
-                            upvars_projection_def_id,
-                            [
-                                ty::GenericArg::from(kind_ty),
-                                Ty::from_closure_kind(tcx, goal_kind).into(),
-                                env_region.into(),
-                                sig.tupled_inputs_ty.into(),
-                                args.tupled_upvars_ty().into(),
-                                args.coroutine_captures_by_ref_ty().into(),
-                            ],
-                        );
-                        let coroutine_ty = sig.to_coroutine(
-                            tcx,
-                            args.parent_args(),
-                            Ty::from_closure_kind(tcx, goal_kind),
-                            tcx.coroutine_for_closure(def_id),
-                            tupled_upvars_ty,
-                        );
-                        (sig.tupled_inputs_ty, sig.return_ty, coroutine_ty)
-                    }),
-                    Some(
-                        ty::TraitRef::new(
-                            tcx,
-                            async_fn_kind_trait_def_id,
-                            [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
-                        )
-                        .to_predicate(tcx),
-                    ),
-                ))
-            }
+                nested.push(
+                    ty::TraitRef::new(
+                        tcx,
+                        async_fn_kind_trait_def_id,
+                        [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
+                    )
+                    .to_predicate(tcx),
+                );
+                let tupled_upvars_ty = Ty::new_projection(
+                    tcx,
+                    upvars_projection_def_id,
+                    [
+                        ty::GenericArg::from(kind_ty),
+                        Ty::from_closure_kind(tcx, goal_kind).into(),
+                        env_region.into(),
+                        sig.tupled_inputs_ty.into(),
+                        args.tupled_upvars_ty().into(),
+                        args.coroutine_captures_by_ref_ty().into(),
+                    ],
+                );
+                sig.to_coroutine(
+                    tcx,
+                    args.parent_args(),
+                    Ty::from_closure_kind(tcx, goal_kind),
+                    tcx.coroutine_for_closure(def_id),
+                    tupled_upvars_ty,
+                )
+            };
+
+            Ok((
+                args.coroutine_closure_sig().rebind((
+                    sig.tupled_inputs_ty,
+                    sig.return_ty,
+                    coroutine_ty,
+                )),
+                nested,
+            ))
         }
 
         ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..) => Err(NoSolution),
