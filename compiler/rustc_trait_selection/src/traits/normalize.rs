@@ -31,7 +31,7 @@ impl<'tcx> At<'_, 'tcx> {
 
     /// Deeply normalizes `value`, replacing all aliases which can by normalized in
     /// the current environment. In the new solver this errors in case normalization
-    /// fails or is ambiguous. This only normalizes opaque types with `Reveal::All`.
+    /// fails or is ambiguous.
     ///
     /// In the old solver this simply uses `normalizes` and adds the nested obligations
     /// to the `fulfill_cx`. This is necessary as we otherwise end up recomputing the
