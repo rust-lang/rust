@@ -6,6 +6,7 @@ LL | global_asm!("{}", const S);
    |
    = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
    = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
    = help: to fix this, the value can be extracted to a `const` and then used.
 
@@ -17,6 +18,7 @@ LL | global_asm!("{}", const const_foo(S));
    |
    = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
    = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
    = help: to fix this, the value can be extracted to a `const` and then used.
 
@@ -28,6 +30,7 @@ LL | global_asm!("{}", const const_bar(S));
    |
    = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
    = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
    = help: to fix this, the value can be extracted to a `const` and then used.
 
