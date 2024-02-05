@@ -516,6 +516,10 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see PR #118649 \
          <https://github.com/rust-lang/rust/pull/118649> for more information",
     );
+    store.register_removed(
+        "illegal_floating_point_literal_pattern",
+        "no longer a warning, float patterns behave the same as `==`",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
