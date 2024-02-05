@@ -8,7 +8,6 @@ use self::SelectionCandidate::*;
 use super::coherence::{self, Conflict};
 use super::const_evaluatable;
 use super::project;
-use super::project::normalize_with_depth_to;
 use super::project::ProjectionTyObligation;
 use super::util;
 use super::util::closure_trait_ref_and_return_type;
@@ -22,6 +21,8 @@ use super::{
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::normalize::normalize_with_depth;
+use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -1661,7 +1662,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let Normalized { value: trait_bound, obligations: _ } = ensure_sufficient_stack(|| {
-            project::normalize_with_depth(
+            normalize_with_depth(
                 self,
                 obligation.param_env,
                 obligation.cause.clone(),
@@ -1717,7 +1718,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
         let infer_projection = if potentially_unnormalized_candidates {
             ensure_sufficient_stack(|| {
-                project::normalize_with_depth_to(
+                normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
@@ -2382,7 +2383,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 let placeholder_ty = self.infcx.enter_forall_and_leak_universe(ty);
                 let Normalized { value: normalized_ty, mut obligations } =
                     ensure_sufficient_stack(|| {
-                        project::normalize_with_depth(
+                        normalize_with_depth(
                             self,
                             param_env,
                             cause.clone(),
@@ -2479,7 +2480,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
             ensure_sufficient_stack(|| {
-                project::normalize_with_depth(
+                normalize_with_depth(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),

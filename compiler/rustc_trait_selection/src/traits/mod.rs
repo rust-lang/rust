@@ -9,6 +9,7 @@ mod engine;
 pub mod error_reporting;
 mod fulfill;
 pub mod misc;
+pub mod normalize;
 mod object_safety;
 pub mod outlives_bounds;
 pub mod project;
@@ -40,17 +41,15 @@ use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
-pub(crate) use self::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
-
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
+pub use self::normalize::NormalizeExt;
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::object_safety_violations_for_assoc_item;
 pub use self::object_safety::ObjectSafetyViolation;
-pub use self::project::NormalizeExt;
 pub use self::project::{normalize_inherent_projection, normalize_projection_type};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
@@ -68,6 +67,7 @@ pub use self::util::{
 };
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{get_vtable_index_of_object_method, impl_item_is_final, upcast_choices};
+pub use self::util::{with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer};
 
 pub use rustc_infer::traits::*;
 
