@@ -278,6 +278,24 @@ fn resolve_associated_item<'tcx>(
                         def: ty::InstanceDef::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
                         args: rcvr_args,
                     }),
+                    ty::CoroutineClosure(coroutine_closure_def_id, args) => {
+                        // When a coroutine-closure implements the `Fn` traits, then it
+                        // always dispatches to the `FnOnce` implementation. This is to
+                        // ensure that the `closure_kind` of the resulting closure is in
+                        // sync with the built-in trait implementations (since all of the
+                        // implementations return `FnOnce::Output`).
+                        if ty::ClosureKind::FnOnce == args.as_coroutine_closure().kind() {
+                            Some(Instance::new(coroutine_closure_def_id, args))
+                        } else {
+                            Some(Instance {
+                                def: ty::InstanceDef::ConstructCoroutineInClosureShim {
+                                    coroutine_closure_def_id,
+                                    target_kind: ty::ClosureKind::FnOnce,
+                                },
+                                args,
+                            })
+                        }
+                    }
                     _ => bug!(
                         "no built-in definition for `{trait_ref}::{}` for non-fn type",
                         tcx.item_name(trait_item_id)

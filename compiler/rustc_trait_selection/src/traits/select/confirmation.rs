@@ -865,17 +865,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Closure(closure_def_id, args) = *self_ty.kind() else {
-            bug!("closure candidate for non-closure {:?}", obligation);
+        let trait_ref = match *self_ty.kind() {
+            ty::Closure(_, args) => {
+                self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_)
+            }
+            ty::CoroutineClosure(_, args) => {
+                args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.tupled_inputs_ty],
+                    )
+                })
+            }
+            _ => {
+                bug!("closure candidate for non-closure {:?}", obligation);
+            }
         };
 
-        let trait_ref =
-            self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_);
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
-
-        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
-
-        Ok(nested)
+        self.confirm_poly_trait_refs(obligation, trait_ref)
     }
 
     #[instrument(skip(self), level = "debug")]
