@@ -758,10 +758,12 @@ impl<Cx: TypeCx> Constructor<Cx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(crate) fn is_covered_by(&self, cx: &Cx, other: &Self) -> bool {
-        match (self, other) {
+    pub(crate) fn is_covered_by(&self, cx: &Cx, other: &Self) -> Result<bool, Cx::Error> {
+        Ok(match (self, other) {
             (Wildcard, _) => {
-                cx.bug(format_args!("Constructor splitting should not have returned `Wildcard`"))
+                return Err(cx.bug(format_args!(
+                    "Constructor splitting should not have returned `Wildcard`"
+                )));
             }
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -803,10 +805,12 @@ impl<Cx: TypeCx> Constructor<Cx> {
             (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
-            _ => cx.bug(format_args!(
-                "trying to compare incompatible constructors {self:?} and {other:?}"
-            )),
-        }
+            _ => {
+                return Err(cx.bug(format_args!(
+                    "trying to compare incompatible constructors {self:?} and {other:?}"
+                )));
+            }
+        })
     }
 }
 

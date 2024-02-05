@@ -901,7 +901,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         Ok(())
     }
 
-    fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
+    fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         span_bug!(self.scrut_span, "{}", fmt)
     }
 
