@@ -980,9 +980,13 @@ impl DiagCtxt {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => inner
-                .emitter
-                .emit_diagnostic(&Diagnostic::new(Warning, DiagnosticMessage::Str(warnings))),
+            (0, _) => {
+                // Use `inner.emitter` directly, otherwise the warning might not be emitted, e.g.
+                // with a configuration like `--cap-lints allow --force-warn bare_trait_objects`.
+                inner
+                    .emitter
+                    .emit_diagnostic(Diagnostic::new(Warning, DiagnosticMessage::Str(warnings)));
+            }
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
@@ -1046,7 +1050,7 @@ impl DiagCtxt {
     }
 
     pub fn force_print_diagnostic(&self, db: Diagnostic) {
-        self.inner.borrow_mut().emitter.emit_diagnostic(&db);
+        self.inner.borrow_mut().emitter.emit_diagnostic(db);
     }
 
     pub fn emit_diagnostic(&self, diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
@@ -1314,11 +1318,15 @@ impl DiagCtxtInner {
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
+            let is_error = diagnostic.is_error();
+            let is_lint = diagnostic.is_lint.is_some();
+
             // Only emit the diagnostic if we've been asked to deduplicate or
             // haven't already emitted an equivalent diagnostic.
             if !(self.flags.deduplicate_diagnostics && already_emitted) {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
+
                 let already_emitted_sub = |sub: &mut SubDiagnostic| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
@@ -1330,7 +1338,6 @@ impl DiagCtxtInner {
                     debug!(?diagnostic_hash);
                     !self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-
                 diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
                 if already_emitted {
                     diagnostic.note(
@@ -1338,16 +1345,17 @@ impl DiagCtxtInner {
                     );
                 }
 
-                self.emitter.emit_diagnostic(&diagnostic);
-                if diagnostic.is_error() {
+                if is_error {
                     self.deduplicated_err_count += 1;
                 } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
                 self.has_printed = true;
+
+                self.emitter.emit_diagnostic(diagnostic);
             }
-            if diagnostic.is_error() {
-                if diagnostic.is_lint.is_some() {
+            if is_error {
+                if is_lint {
                     self.lint_err_count += 1;
                 } else {
                     self.err_count += 1;
