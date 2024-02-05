@@ -108,6 +108,22 @@ impl IndexRange {
         self.end = mid;
         suffix
     }
+
+    /// # Safety
+    ///
+    /// `start` must be `<= end`.
+    #[inline]
+    pub unsafe fn set_start_unchecked(&mut self, start: usize) {
+        self.start = start;
+    }
+
+    /// # Safety
+    ///
+    /// `end` must be ``>= start`.
+    #[inline]
+    pub unsafe fn set_end_unchecked(&mut self, end: usize) {
+        self.end = end;
+    }
 }
 
 impl Iterator for IndexRange {

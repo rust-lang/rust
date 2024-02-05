@@ -1,8 +1,10 @@
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::adapters::SourceIter;
+use crate::iter::traits::SpecIndexedAccess;
 use crate::iter::{
     FusedIterator, TrustedFused, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    UncheckedIndexedIterator,
 };
 use crate::ops::Try;
 
@@ -121,6 +123,34 @@ where
             None => unsafe { intrinsics::unreachable() },
         }
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        match self.iter {
+            // SAFETY: the caller must uphold the contract for
+            // `Iterator::__iterator_get_unchecked`.
+            Some(ref mut iter) => unsafe { iter.index_from_end_unchecked_inner(idx) },
+            // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
+            None => unsafe { intrinsics::unreachable() },
+        }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        match self.iter {
+            // SAFETY: the caller must uphold the contract for
+            // `Iterator::__iterator_get_unchecked`.
+            Some(ref mut iter) => unsafe { iter.index_from_start_unchecked_inner(idx) },
+            // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
+            None => unsafe { intrinsics::unreachable() },
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -225,6 +255,37 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<I> UncheckedIndexedIterator for Fuse<I>
+where
+    I: UncheckedIndexedIterator,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+    const CLEANUP_ON_DROP: bool = I::CLEANUP_ON_DROP;
+
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: FIXME: is this unwrap ok?
+        unsafe {
+            self.iter
+                .as_mut()
+                .unwrap_unchecked()
+                .set_front_index_from_end_unchecked(new_len, old_len)
+        }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: FIXME: is this unwrap ok?
+        unsafe {
+            self.iter
+                .as_mut()
+                .unwrap_unchecked()
+                .set_end_index_from_start_unchecked(new_len, old_len)
+        }
+    }
 }
 
 /// Fuse specialization trait

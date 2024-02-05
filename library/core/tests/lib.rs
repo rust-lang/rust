@@ -107,6 +107,7 @@
 #![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(trusted_random_access)]
+#![feature(trusted_indexed_access)]
 #![feature(unsize)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]

@@ -3,6 +3,7 @@
 #![feature(flt2dec)]
 #![feature(test)]
 #![feature(trusted_random_access)]
+#![feature(trusted_indexed_access)]
 #![feature(iter_array_chunks)]
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]

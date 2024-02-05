@@ -57,6 +57,14 @@ pub fn vec_iterator_cast_unwrap(vec: Vec<Wrapper<u8>>) -> Vec<u8> {
     vec.into_iter().map(|e| e.0).collect()
 }
 
+// CHECK-LABEL: @vec_iterator_cast_unwrap_droppable
+#[no_mangle]
+pub fn vec_iterator_cast_unwrap_droppable(vec: Vec<Wrapper<String>>) -> Vec<String> {
+    // CHECK-NOT: loop
+    // CHECK-NOT: call
+    vec.into_iter().map(|e| e.0).collect()
+}
+
 // CHECK-LABEL: @vec_iterator_cast_aggregate
 #[no_mangle]
 pub fn vec_iterator_cast_aggregate(vec: Vec<[u64; 4]>) -> Vec<Foo> {

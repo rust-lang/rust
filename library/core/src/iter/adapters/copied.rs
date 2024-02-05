@@ -1,7 +1,8 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::traits::SpecIndexedAccess;
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIndexedIterator};
 use crate::mem::MaybeUninit;
 use crate::mem::SizedTypeProperties;
 use crate::num::NonZero;
@@ -102,6 +103,24 @@ where
         // `Iterator::__iterator_get_unchecked`.
         *unsafe { try_get_unchecked(&mut self.it, idx) }
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        *unsafe { self.it.index_from_end_unchecked_inner(idx) }
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        *unsafe { self.it.index_from_start_unchecked_inner(idx) }
+    }
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -157,6 +176,27 @@ where
     I: FusedIterator<Item = &'a T>,
     T: Copy,
 {
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<I> UncheckedIndexedIterator for Copied<I>
+where
+    I: UncheckedIndexedIterator,
+{
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.set_front_index_from_end_unchecked(new_len, old_len) }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.set_end_index_from_start_unchecked(new_len, old_len) }
+    }
+
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+    const CLEANUP_ON_DROP: bool = I::CLEANUP_ON_DROP;
 }
 
 #[doc(hidden)]

@@ -1,7 +1,10 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIterator};
+use crate::iter::traits::SpecIndexedAccess as _;
+use crate::iter::{
+    FusedIterator, InPlaceIterable, TrustedLen, UncheckedIndexedIterator, UncheckedIterator,
+};
 use crate::ops::Try;
 use core::num::NonZero;
 
@@ -69,6 +72,24 @@ where
         // `Iterator::__iterator_get_unchecked`.
         unsafe { try_get_unchecked(&mut self.it, idx).clone() }
     }
+
+    #[inline]
+    unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.index_from_end_unchecked_inner(idx) }.clone()
+    }
+
+    #[inline]
+    unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: UncheckedIndexedIterator,
+    {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.index_from_start_unchecked_inner(idx) }.clone()
+    }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -132,6 +153,27 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = true;
+}
+
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+impl<I> UncheckedIndexedIterator for Cloned<I>
+where
+    I: UncheckedIndexedIterator,
+{
+    #[inline]
+    unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.set_front_index_from_end_unchecked(new_len, old_len) }
+    }
+
+    #[inline]
+    unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, old_len: usize) {
+        // SAFETY: forwarding to unsafe function with the same preconditions
+        unsafe { self.it.set_end_index_from_start_unchecked(new_len, old_len) }
+    }
+
+    const MAY_HAVE_SIDE_EFFECT: bool = true;
+    const CLEANUP_ON_DROP: bool = I::CLEANUP_ON_DROP;
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]

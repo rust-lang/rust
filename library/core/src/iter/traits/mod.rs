@@ -23,4 +23,8 @@ pub use self::marker::TrustedFused;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
 
+#[unstable(feature = "trusted_indexed_access", issue = "none")]
+pub use self::unchecked_iterator::UncheckedIndexedIterator;
 pub(crate) use self::unchecked_iterator::UncheckedIterator;
+
+pub(in crate::iter) use self::unchecked_iterator::SpecIndexedAccess;

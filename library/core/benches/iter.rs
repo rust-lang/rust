@@ -457,11 +457,12 @@ fn bench_trusted_random_access_adapters(b: &mut Bencher) {
             .map(|(a, b)| a.wrapping_add(b))
             .fuse();
         let mut acc: usize = 0;
-        let size = iter.size();
+        let size = iter.size_hint().0;
         for i in 0..size {
             // SAFETY: TRA requirements are satisfied by 0..size iteration and then dropping the
             // iterator.
-            acc = acc.wrapping_add(unsafe { iter.__iterator_get_unchecked(i) });
+            // The iterator is not owning, so we skip cleanup.
+            acc = acc.wrapping_add(unsafe { iter.index_from_start_unchecked(i) });
         }
         acc
     })

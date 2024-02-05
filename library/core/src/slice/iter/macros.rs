@@ -383,7 +383,61 @@ macro_rules! iterator {
                 unsafe { & $( $mut_ )? * self.ptr.as_ptr().add(idx) }
             }
 
+            #[inline]
+            unsafe fn index_from_end_unchecked(&mut self, idx: usize) -> Self::Item {
+                if T::IS_ZST {
+                    // SAFETY: for ZSTs we can always conjure references
+                    unsafe { NonNull::dangling().$into_ref() }
+                } else {
+                    // SAFETY: for non-ZSTs it's the field's invariant that it must be non-null
+                    let end = unsafe { *ptr::addr_of!(self.end_or_len).cast::<NonNull<T>>() };
+                    // SAFETY: the caller promises that the index is in bounds
+                    unsafe { & $( $mut_ )? *end.sub(idx).as_ptr() }
+                }
+            }
+
+            #[inline]
+            unsafe fn index_from_start_unchecked(&mut self, idx: usize) -> Self::Item {
+                if T::IS_ZST {
+                    // SAFETY: for ZSTs we can always conjure references
+                    unsafe { NonNull::dangling().$into_ref() }
+                } else {
+                    // SAFETY: the caller promises that the index is in bounds
+                    unsafe { & $( $mut_ )? *self.ptr.add(idx).as_ptr() }
+                }
+            }
+
             $($extra)*
+        }
+
+        #[unstable(feature = "trusted_indexed_access", issue = "none")]
+        impl<'a, T> UncheckedIndexedIterator for $name<'a, T> {
+            const MAY_HAVE_SIDE_EFFECT: bool = false;
+            const CLEANUP_ON_DROP: bool = false;
+
+            #[inline]
+            unsafe fn set_front_index_from_end_unchecked(&mut self, new_len: usize, _old_len: usize) {
+                if T::IS_ZST {
+                    self.end_or_len = ptr::without_provenance_mut(new_len);
+                } else {
+                    // SAFETY: for non-ZSTs it's the field's invariant that it must be non-null
+                    let end = unsafe { *ptr::addr_of!(self.end_or_len).cast::<NonNull<T>>() };
+                    // SAFETY: the caller promises that the index is in bounds or one-past-the-end
+                    self.ptr = unsafe { end.sub(new_len) };
+                }
+            }
+
+            #[inline]
+            unsafe fn set_end_index_from_start_unchecked(&mut self, new_len: usize, _old_len: usize) {
+                if T::IS_ZST {
+                    self.end_or_len = ptr::without_provenance_mut(new_len);
+                } else {
+                    // SAFETY: for non-ZSTs it's the field's invariant that it must be non-null
+                    let end = unsafe { &mut *ptr::addr_of_mut!(self.end_or_len).cast::<NonNull<T>>() };
+                    // SAFETY: the caller promises that the index is in bounds or one-past-the-end
+                    *end = unsafe { self.ptr.add(new_len) };
+                }
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
