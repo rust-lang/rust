@@ -79,10 +79,10 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.33.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.33.0", default-features = false }
-ra-ap-rustc_index = { version = "0.33.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.33.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.35.0", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.35.0", default-features = false }
+ra-ap-rustc_index = { version = "0.35.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.35.0", default-features = false }
 ra-ap-rustc_pattern_analysis = { version = "0.33.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
@@ -113,7 +113,7 @@ itertools = "0.12.0"
 libc = "0.2.150"
 nohash-hasher = "0.2.0"
 rayon = "1.8.0"
-rust-analyzer-salsa = "0.17.0-pre.5"
+rust-analyzer-salsa = "0.17.0-pre.6"
 rustc-hash = "1.1.0"
 semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
@@ -128,9 +128,9 @@ text-size = "1.1.1"
 tracing = "0.1.40"
 tracing-tree = "0.3.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = [
-    "registry",
-    "fmt",
-    "tracing-log",
+  "registry",
+  "fmt",
+  "tracing-log",
 ] }
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
 xshell = "0.2.5"
@@ -167,29 +167,14 @@ new_ret_no_self = "allow"
 
 ## Following lints should be tackled at some point
 borrowed_box = "allow"
-borrow_deref_ref = "allow"
-derivable_impls = "allow"
 derived_hash_with_manual_eq = "allow"
-field_reassign_with_default = "allow"
 forget_non_drop = "allow"
-format_collect = "allow"
-large_enum_variant = "allow"
 needless_doctest_main = "allow"
-new_without_default = "allow"
 non_canonical_clone_impl = "allow"
 non_canonical_partial_ord_impl = "allow"
 self_named_constructors = "allow"
-skip_while_next = "allow"
 too_many_arguments = "allow"
-toplevel_ref_arg = "allow"
 type_complexity = "allow"
-unnecessary_cast = "allow"
-unnecessary_filter_map = "allow"
-unnecessary_lazy_evaluations = "allow"
-unnecessary_mut_passed = "allow"
-useless_conversion = "allow"
-useless_format = "allow"
-wildcard_in_or_patterns = "allow"
 wrong_self_convention = "allow"
 
 ## warn at following lints

@@ -295,7 +295,7 @@ fn generate_impl(
             // those in strukt.
             //
             // These generics parameters will also be used in `field_ty` and
-            // `where_clauses`, so we should substitude arguments in them as well.
+            // `where_clauses`, so we should substitute arguments in them as well.
             let strukt_params = resolve_name_conflicts(strukt_params, &old_impl_params);
             let (field_ty, ty_where_clause) = match &strukt_params {
                 Some(strukt_params) => {
@@ -491,7 +491,7 @@ fn remove_useless_where_clauses(trait_ty: &ast::Type, self_ty: &ast::Type, wc: a
 
 // Generate generic args that should be apply to current impl.
 //
-// For exmaple, say we have implementation `impl<A, B, C> Trait for B<A>`,
+// For example, say we have implementation `impl<A, B, C> Trait for B<A>`,
 // and `b: B<T>` in struct `S<T>`. Then the `A` should be instantiated to `T`.
 // While the last two generic args `B` and `C` doesn't change, it remains
 // `<B, C>`. So we apply `<T, B, C>` as generic arguments to impl.
@@ -637,7 +637,7 @@ fn const_assoc_item(item: syntax::ast::Const, qual_path_ty: ast::Path) -> Option
     let path_expr_segment = make::path_from_text(item.name()?.to_string().as_str());
 
     // We want rhs of the const assignment to be a qualified path
-    // The general case for const assigment can be found [here](`https://doc.rust-lang.org/reference/items/constant-items.html`)
+    // The general case for const assignment can be found [here](`https://doc.rust-lang.org/reference/items/constant-items.html`)
     // The qualified will have the following generic syntax :
     // <Base as Trait<GenArgs>>::ConstName;
     // FIXME : We can't rely on `make::path_qualified` for now but it would be nice to replace the following with it.
@@ -779,7 +779,7 @@ impl Trait for Base {}
 
     #[test]
     fn test_self_ty() {
-        // trait whith `Self` type cannot be delegated
+        // trait with `Self` type cannot be delegated
         //
         // See the function `fn f() -> Self`.
         // It should be `fn f() -> Base` in `Base`, and `fn f() -> S` in `S`

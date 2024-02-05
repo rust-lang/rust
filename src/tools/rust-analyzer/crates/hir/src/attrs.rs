@@ -239,10 +239,9 @@ fn resolve_impl_trait_item(
 ) -> Option<DocLinkDef> {
     let canonical = ty.canonical();
     let krate = ty.krate(db);
-    let environment = resolver.generic_def().map_or_else(
-        || crate::TraitEnvironment::empty(krate.id).into(),
-        |d| db.trait_environment(d),
-    );
+    let environment = resolver
+        .generic_def()
+        .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
     let traits_in_scope = resolver.traits_in_scope(db.upcast());
 
     let mut result = None;
@@ -297,7 +296,7 @@ fn as_module_def_if_namespace_matches(
         AssocItem::TypeAlias(it) => (ModuleDef::TypeAlias(it), Namespace::Types),
     };
 
-    (ns.unwrap_or(expected_ns) == expected_ns).then(|| DocLinkDef::ModuleDef(def))
+    (ns.unwrap_or(expected_ns) == expected_ns).then_some(DocLinkDef::ModuleDef(def))
 }
 
 fn modpath_from_str(link: &str) -> Option<ModPath> {
@@ -311,7 +310,7 @@ fn modpath_from_str(link: &str) -> Option<ModPath> {
             "self" => PathKind::Super(0),
             "super" => {
                 let mut deg = 1;
-                while let Some(segment) = parts.next() {
+                for segment in parts.by_ref() {
                     if segment == "super" {
                         deg += 1;
                     } else {

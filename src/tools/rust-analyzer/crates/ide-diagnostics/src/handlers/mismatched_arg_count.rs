@@ -6,7 +6,7 @@ use syntax::{
     AstNode, AstPtr,
 };
 
-use crate::{adjusted_display_range_new, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: mismatched-tuple-struct-pat-arg-count
 //
@@ -50,7 +50,7 @@ fn invalid_args_range(
     expected: usize,
     found: usize,
 ) -> FileRange {
-    adjusted_display_range_new(ctx, source, &|expr| {
+    adjusted_display_range(ctx, source, &|expr| {
         let (text_range, r_paren_token, expected_arg) = match expr {
             Either::Left(ast::Expr::CallExpr(call)) => {
                 let arg_list = call.arg_list()?;

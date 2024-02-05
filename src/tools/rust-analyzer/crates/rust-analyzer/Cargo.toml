@@ -23,7 +23,7 @@ anyhow.workspace = true
 crossbeam-channel = "0.5.5"
 dissimilar.workspace = true
 itertools.workspace = true
-scip = "0.3.1"
+scip = "0.3.3"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
@@ -37,11 +37,10 @@ mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-tracing-log = "0.2.0"
 tracing-tree.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
-always-assert = "0.1.2"
+always-assert = "0.2.0"
 walkdir = "2.3.2"
 
 cfg.workspace = true

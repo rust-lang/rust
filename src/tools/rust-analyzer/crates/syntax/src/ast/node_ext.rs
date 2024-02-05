@@ -384,7 +384,7 @@ impl ast::UseTreeList {
         // the below remove the innermost {}, got `use crate::{{{A}}}`
         remove_brace_in_use_tree_list(&self);
 
-        // the below remove othe unnecessary {}, got `use crate::A`
+        // the below remove other unnecessary {}, got `use crate::A`
         while let Some(parent_use_tree_list) = self.parent_use_tree().parent_use_tree_list() {
             remove_brace_in_use_tree_list(&parent_use_tree_list);
             self = parent_use_tree_list;

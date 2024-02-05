@@ -87,7 +87,7 @@ impl DefMap {
         within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
-            RawVisibility::Module(path, explicity) => {
+            RawVisibility::Module(path, explicitness) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
@@ -95,7 +95,7 @@ impl DefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicity),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicitness),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;
@@ -269,7 +269,7 @@ impl DefMap {
                 stdx::never!(module.is_block_module());
 
                 if self.block != def_map.block {
-                    // If we have a different `DefMap` from `self` (the orignal `DefMap` we started
+                    // If we have a different `DefMap` from `self` (the original `DefMap` we started
                     // with), resolve the remaining path segments in that `DefMap`.
                     let path =
                         ModPath::from_segments(PathKind::Super(0), path.segments().iter().cloned());
@@ -475,7 +475,7 @@ impl DefMap {
         let macro_use_prelude = || {
             self.macro_use_prelude.get(name).map_or(PerNs::none(), |&(it, _extern_crate)| {
                 PerNs::macros(
-                    it.into(),
+                    it,
                     Visibility::Public,
                     // FIXME?
                     None, // extern_crate.map(ImportOrExternCrate::ExternCrate),
@@ -540,7 +540,7 @@ impl DefMap {
     }
 }
 
-/// Given a block module, returns its nearest non-block module and the `DefMap` it blongs to.
+/// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
 fn adjust_to_nearest_non_block_module(
     db: &dyn DefDatabase,
     def_map: &DefMap,
