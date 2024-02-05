@@ -394,7 +394,9 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 struct ExtractedHirInfo {
     function_source_hash: u64,
     is_async_fn: bool,
-    fn_sig_span: Span,
+    /// The span of the function's signature, extended to the start of `body_span`.
+    /// Must have the same context and filename as the body span.
+    fn_sig_span_extended: Option<Span>,
     body_span: Span,
 }
 
@@ -407,13 +409,25 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
 
-    let is_async_fn = hir_node.fn_sig().is_some_and(|fn_sig| fn_sig.header.is_async());
-    let body_span = get_body_span(tcx, hir_body, def_id);
+    let maybe_fn_sig = hir_node.fn_sig();
+    let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());
+
+    let mut body_span = hir_body.value.span;
+
+    use rustc_hir::{Closure, Expr, ExprKind, Node};
+    // Unexpand a closure's body span back to the context of its declaration.
+    // This helps with closure bodies that consist of just a single bang-macro,
+    // and also with closure bodies produced by async desugaring.
+    if let Node::Expr(&Expr { kind: ExprKind::Closure(&Closure { fn_decl_span, .. }), .. }) =
+        hir_node
+    {
+        body_span = body_span.find_ancestor_in_same_ctxt(fn_decl_span).unwrap_or(body_span);
+    }
 
     // The actual signature span is only used if it has the same context and
     // filename as the body, and precedes the body.
-    let maybe_fn_sig_span = hir_node.fn_sig().map(|fn_sig| fn_sig.span);
-    let fn_sig_span = maybe_fn_sig_span
+    let fn_sig_span_extended = maybe_fn_sig
+        .map(|fn_sig| fn_sig.span)
         .filter(|&fn_sig_span| {
             let source_map = tcx.sess.source_map();
             let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
@@ -423,30 +437,11 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
                 && file_idx(fn_sig_span) == file_idx(body_span)
         })
         // If so, extend it to the start of the body span.
-        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()))
-        // Otherwise, create a dummy signature span at the start of the body.
-        .unwrap_or_else(|| body_span.shrink_to_lo());
+        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()));
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
-    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span }
-}
-
-fn get_body_span<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_body: &rustc_hir::Body<'tcx>,
-    def_id: LocalDefId,
-) -> Span {
-    let mut body_span = hir_body.value.span;
-
-    if tcx.is_closure_or_coroutine(def_id.to_def_id()) {
-        // If the current function is a closure, and its "body" span was created
-        // by macro expansion or compiler desugaring, try to walk backwards to
-        // the pre-expansion call site or body.
-        body_span = body_span.source_callsite();
-    }
-
-    body_span
+    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span_extended, body_span }
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
