@@ -88,6 +88,7 @@ impl<'a, 'db> Autoderef<'a, 'db> {
 impl Iterator for Autoderef<'_, '_> {
     type Item = (Ty, usize);
 
+    #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.at_start {
             self.at_start = false;

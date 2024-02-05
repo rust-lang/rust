@@ -94,6 +94,7 @@ pub enum Visibility {
 }
 
 impl Visibility {
+    #[tracing::instrument(skip_all)]
     pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
             Visibility::Module(m, _) => m,

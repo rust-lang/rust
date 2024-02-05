@@ -4101,6 +4101,14 @@ impl Type {
         name: Option<&Name>,
         callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
     ) {
+        let _p = tracing::span!(
+            tracing::Level::INFO,
+            "iterate_method_candidates_dyn",
+            with_local_impls = traits_in_scope.len(),
+            traits_in_scope = traits_in_scope.len(),
+            ?name,
+        )
+        .entered();
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
@@ -4122,6 +4130,7 @@ impl Type {
         );
     }
 
+    #[tracing::instrument(skip_all, fields(name = ?name))]
     pub fn iterate_path_candidates<T>(
         &self,
         db: &dyn HirDatabase,
@@ -4150,6 +4159,7 @@ impl Type {
         slot
     }
 
+    #[tracing::instrument(skip_all, fields(name = ?name))]
     fn iterate_path_candidates_dyn(
         &self,
         db: &dyn HirDatabase,
