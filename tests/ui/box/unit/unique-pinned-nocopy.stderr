@@ -10,9 +10,6 @@ LL |     let _j = i.clone();
    = note: the following trait bounds were not satisfied:
            `R: Clone`
            which is required by `Box<R>: Clone`
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `clone`, perhaps you need to implement it:
-           candidate #1: `Clone`
 help: consider annotating `R` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
