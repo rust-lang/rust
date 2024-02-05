@@ -598,7 +598,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
                 };
                 token_trees.push(tt);
             }
-            Subtree { delimiter: input.delimiter, token_trees }
+            Subtree { delimiter: input.delimiter, token_trees: token_trees.into_boxed_slice() }
         }
         Ok(traverse(input))
     }

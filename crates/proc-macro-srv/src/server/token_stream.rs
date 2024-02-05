@@ -15,14 +15,14 @@ impl<S> Default for TokenStream<S> {
 
 impl<S> TokenStream<S> {
     pub(crate) fn new() -> Self {
-        TokenStream { token_trees: vec![] }
+        TokenStream::default()
     }
 
     pub(crate) fn with_subtree(subtree: tt::Subtree<S>) -> Self {
         if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
             TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
         } else {
-            TokenStream { token_trees: subtree.token_trees }
+            TokenStream { token_trees: subtree.token_trees.into_vec() }
         }
     }
 
@@ -36,7 +36,7 @@ impl<S> TokenStream<S> {
                 close: call_site,
                 kind: tt::DelimiterKind::Invisible,
             },
-            token_trees: self.token_trees,
+            token_trees: self.token_trees.into_boxed_slice(),
         }
     }
 
@@ -83,7 +83,7 @@ impl<S> Extend<TokenStream<S>> for TokenStream<S> {
                     tt::TokenTree::Subtree(subtree)
                         if subtree.delimiter.kind == tt::DelimiterKind::Invisible =>
                     {
-                        self.token_trees.extend(subtree.token_trees);
+                        self.token_trees.extend(subtree.token_trees.into_vec().into_iter());
                     }
                     _ => {
                         self.token_trees.push(tkn);

@@ -155,10 +155,10 @@ fn line_expand(
     // not incremental
     ExpandResult::ok(tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
-        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+        token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: "0u32".into(),
             span,
-        }))],
+        }))]),
     })
 }
 
@@ -208,11 +208,11 @@ fn assert_expand(
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(call_site_span),
-                token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
                     span: call_site_span,
-                }))],
+                }))]),
             };
             let cond = cond.clone();
             let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
@@ -359,7 +359,10 @@ fn panic_expand(
         close: call_site_span,
         kind: tt::DelimiterKind::Parenthesis,
     };
-    call.token_trees.push(tt::TokenTree::Subtree(subtree));
+
+    // FIXME(slow): quote! have a way to expand to builder to make this a vec!
+    call.push(tt::TokenTree::Subtree(subtree));
+
     ExpandResult::ok(call)
 }
 
@@ -388,7 +391,10 @@ fn unreachable_expand(
         close: call_site_span,
         kind: tt::DelimiterKind::Parenthesis,
     };
-    call.token_trees.push(tt::TokenTree::Subtree(subtree));
+
+    // FIXME(slow): quote! have a way to expand to builder to make this a vec!
+    call.push(tt::TokenTree::Subtree(subtree));
+
     ExpandResult::ok(call)
 }
 
@@ -675,10 +681,10 @@ fn include_bytes_expand(
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
-        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+        token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: r#"b"""#.into(),
             span,
-        }))],
+        }))]),
     };
     ExpandResult::ok(res)
 }
