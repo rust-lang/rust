@@ -5,26 +5,29 @@ use crate::back::profiling::{
 };
 use crate::base;
 use crate::common;
-use crate::DiffTypeTree;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
-use crate::llvm::{LLVMReplaceAllUsesWith, LLVMVerifyFunction, Value, LLVMRustGetEnumAttributeAtIndex, LLVMRustAddEnumAttributeAtIndex, LLVMRustRemoveEnumAttributeAtIndex,
-    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, BasicBlock, CreateEnzymeLogic,
-    CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
+use crate::llvm::{
+    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, AttributeKind, BasicBlock,
+    CreateEnzymeLogic, CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
     LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
-    LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext, LLVMDeleteFunction,
-    LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetModuleContext,
-    LLVMGetParams, LLVMGetReturnType, LLVMPositionBuilderAtEnd, LLVMSetValueName2, LLVMTypeOf,
-    LLVMVoidTypeInContext, LLVMGlobalGetValueType, LLVMGetStringAttributeAtIndex,
-    LLVMIsStringAttribute, LLVMRemoveStringAttributeAtIndex, AttributeKind,
-    LLVMGetFirstFunction, LLVMGetNextFunction, LLVMIsEnumAttribute,
-    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMDumpModule};
+    LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext,
+    LLVMCreateStringAttribute, LLVMDeleteFunction, LLVMDisposeBuilder, LLVMDumpModule,
+    LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetFirstFunction, LLVMGetModuleContext,
+    LLVMGetNextFunction, LLVMGetParams, LLVMGetReturnType, LLVMGetStringAttributeAtIndex,
+    LLVMGlobalGetValueType, LLVMIsEnumAttribute, LLVMIsStringAttribute, LLVMPositionBuilderAtEnd,
+    LLVMRemoveStringAttributeAtIndex, LLVMReplaceAllUsesWith, LLVMRustAddEnumAttributeAtIndex,
+    LLVMRustAddFunctionAttributes, LLVMRustGetEnumAttributeAtIndex,
+    LLVMRustRemoveEnumAttributeAtIndex, LLVMSetValueName2, LLVMTypeOf, LLVMVerifyFunction,
+    LLVMVoidTypeInContext, Value,
+};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::typetree::to_enzyme_typetree;
+use crate::DiffTypeTree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use llvm::{
@@ -38,9 +41,9 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DiagCtxt, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
@@ -714,22 +717,28 @@ pub(crate) unsafe fn enzyme_ad(
     let src_fnc = match src_fnc_opt {
         Some(x) => x,
         None => {
-            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
-                src: rust_name.to_owned(),
-                target: rust_name2.to_owned(),
-                error: "could not find src function".to_owned(),
-            }));
+            return Err(llvm_err(
+                diag_handler,
+                LlvmError::PrepareAutoDiff {
+                    src: rust_name.to_owned(),
+                    target: rust_name2.to_owned(),
+                    error: "could not find src function".to_owned(),
+                },
+            ));
         }
     };
     let target_fnc_opt = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
     let target_fnc = match target_fnc_opt {
         Some(x) => x,
         None => {
-            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
-                src: rust_name.to_owned(),
-                target: rust_name2.to_owned(),
-                error: "could not find target function".to_owned(),
-            }));
+            return Err(llvm_err(
+                diag_handler,
+                LlvmError::PrepareAutoDiff {
+                    src: rust_name.to_owned(),
+                    target: rust_name2.to_owned(),
+                    error: "could not find target function".to_owned(),
+                },
+            ));
         }
     };
     let src_num_args = llvm::LLVMCountParams(src_fnc);
@@ -756,13 +765,13 @@ pub(crate) unsafe fn enzyme_ad(
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
     if std::env::var("ENZYME_PRINT_TA").is_ok() {
-      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
     }
     if std::env::var("ENZYME_PRINT_AA").is_ok() {
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
     }
     if std::env::var("ENZYME_PRINT_PERF").is_ok() {
-      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), 1);
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), 1);
     }
     if std::env::var("ENZYME_PRINT").is_ok() {
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
@@ -826,7 +835,9 @@ pub(crate) unsafe fn differentiate(
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
     if std::env::var("ENZYME_PRINT_MOD").is_ok() {
-        unsafe {LLVMDumpModule(llmod);}
+        unsafe {
+            LLVMDumpModule(llmod);
+        }
     }
     if std::env::var("ENZYME_TT_DEPTH").is_ok() {
         let depth = std::env::var("ENZYME_TT_DEPTH").unwrap();
@@ -849,22 +860,36 @@ pub(crate) unsafe fn differentiate(
     let mut f = LLVMGetFirstFunction(llmod);
     loop {
         if let Some(lf) = f {
-        f = LLVMGetNextFunction(lf);
-        let myhwattr = "enzyme_hw";
-        let attr = LLVMGetStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
-        if LLVMIsStringAttribute(attr) {
-            LLVMRemoveStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
-        } else {
-            LLVMRustRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
-        }
-
-
+            f = LLVMGetNextFunction(lf);
+            let myhwattr = "enzyme_hw";
+            let attr = LLVMGetStringAttributeAtIndex(
+                lf,
+                c_uint::MAX,
+                myhwattr.as_ptr() as *const c_char,
+                myhwattr.as_bytes().len() as c_uint,
+            );
+            if LLVMIsStringAttribute(attr) {
+                LLVMRemoveStringAttributeAtIndex(
+                    lf,
+                    c_uint::MAX,
+                    myhwattr.as_ptr() as *const c_char,
+                    myhwattr.as_bytes().len() as c_uint,
+                );
+            } else {
+                LLVMRustRemoveEnumAttributeAtIndex(
+                    lf,
+                    c_uint::MAX,
+                    AttributeKind::SanitizeHWAddress,
+                );
+            }
         } else {
             break;
         }
     }
     if std::env::var("ENZYME_PRINT_MOD_AFTER").is_ok() {
-        unsafe {LLVMDumpModule(llmod);}
+        unsafe {
+            LLVMDumpModule(llmod);
+        }
     }
 
     Ok(())
@@ -901,17 +926,31 @@ pub(crate) unsafe fn optimize(
         let mut f = LLVMGetFirstFunction(llmod);
         loop {
             if let Some(lf) = f {
-            f = LLVMGetNextFunction(lf);
-            let myhwattr = "enzyme_hw";
-            let myhwv = "";
-            let prevattr = LLVMRustGetEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
-            if LLVMIsEnumAttribute(prevattr) {
-                let attr = LLVMCreateStringAttribute(llcx, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint, myhwv.as_ptr() as *const c_char, myhwv.as_bytes().len() as c_uint);
-                LLVMRustAddFunctionAttributes(lf, c_uint::MAX, &attr, 1);
-            } else {
-                LLVMRustAddEnumAttributeAtIndex(llcx, lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
-            }
-
+                f = LLVMGetNextFunction(lf);
+                let myhwattr = "enzyme_hw";
+                let myhwv = "";
+                let prevattr = LLVMRustGetEnumAttributeAtIndex(
+                    lf,
+                    c_uint::MAX,
+                    AttributeKind::SanitizeHWAddress,
+                );
+                if LLVMIsEnumAttribute(prevattr) {
+                    let attr = LLVMCreateStringAttribute(
+                        llcx,
+                        myhwattr.as_ptr() as *const c_char,
+                        myhwattr.as_bytes().len() as c_uint,
+                        myhwv.as_ptr() as *const c_char,
+                        myhwv.as_bytes().len() as c_uint,
+                    );
+                    LLVMRustAddFunctionAttributes(lf, c_uint::MAX, &attr, 1);
+                } else {
+                    LLVMRustAddEnumAttributeAtIndex(
+                        llcx,
+                        lf,
+                        c_uint::MAX,
+                        AttributeKind::SanitizeHWAddress,
+                    );
+                }
             } else {
                 break;
             }

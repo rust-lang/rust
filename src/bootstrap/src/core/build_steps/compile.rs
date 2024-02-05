@@ -1638,8 +1638,7 @@ impl Step for Assemble {
         }
 
         // Build enzyme
-        let enzyme_install =
-            Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }));
+        let enzyme_install = Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }));
         //let enzyme_install = if builder.config.llvm_enzyme {
         //    Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }))
         //} else {

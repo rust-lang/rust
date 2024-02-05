@@ -860,7 +860,11 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
     for input in input_diffactivity {
         let act = cdiffe_from(input);
-        assert!(act == CDIFFE_TYPE::DFT_CONSTANT || act == CDIFFE_TYPE::DFT_DUP_ARG || act == CDIFFE_TYPE::DFT_DUP_NONEED);
+        assert!(
+            act == CDIFFE_TYPE::DFT_CONSTANT
+                || act == CDIFFE_TYPE::DFT_DUP_ARG
+                || act == CDIFFE_TYPE::DFT_DUP_NONEED
+        );
         input_activity.push(act);
     }
 
@@ -956,7 +960,6 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     assert!(num_fnc_args == input_activity.len() as u32);
     let kv_tmp = IntList { data: std::ptr::null_mut(), size: 0 };
 
-
     let mut known_values = vec![kv_tmp; input_tts.len()];
 
     let dummy_type = CFnTypeInfo {
@@ -980,7 +983,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         1,                                        // vector mode width
         1,                                        // free memory
         Option::None,
-        0, // do not force anonymous tape
+        0,          // do not force anonymous tape
         dummy_type, // additional_arg, type info (return + args)
         args_uncacheable.as_ptr(),
         args_uncacheable.len(), // uncacheable arguments
@@ -1178,16 +1181,30 @@ extern "C" {
         Value: *const c_char,
         ValueLen: c_uint,
     ) -> &Attribute;
-    pub fn LLVMRemoveStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint);
-    pub fn LLVMGetStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint) -> &Attribute;
-    pub fn LLVMAddAttributeAtIndex(F : &Value, Idx: c_uint, K: &Attribute);
-    pub fn LLVMRemoveEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute);
-    pub fn LLVMGetEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute) -> &Attribute;
-    pub fn LLVMIsEnumAttribute(A : &Attribute) -> bool;
-    pub fn LLVMIsStringAttribute(A : &Attribute) -> bool;
-    pub fn LLVMRustAddEnumAttributeAtIndex(C: &Context, V: &Value, index: c_uint, attr: AttributeKind);
+    pub fn LLVMRemoveStringAttributeAtIndex(F: &Value, Idx: c_uint, K: *const c_char, KLen: c_uint);
+    pub fn LLVMGetStringAttributeAtIndex(
+        F: &Value,
+        Idx: c_uint,
+        K: *const c_char,
+        KLen: c_uint,
+    ) -> &Attribute;
+    pub fn LLVMAddAttributeAtIndex(F: &Value, Idx: c_uint, K: &Attribute);
+    pub fn LLVMRemoveEnumAttributeAtIndex(F: &Value, Idx: c_uint, K: Attribute);
+    pub fn LLVMGetEnumAttributeAtIndex(F: &Value, Idx: c_uint, K: Attribute) -> &Attribute;
+    pub fn LLVMIsEnumAttribute(A: &Attribute) -> bool;
+    pub fn LLVMIsStringAttribute(A: &Attribute) -> bool;
+    pub fn LLVMRustAddEnumAttributeAtIndex(
+        C: &Context,
+        V: &Value,
+        index: c_uint,
+        attr: AttributeKind,
+    );
     pub fn LLVMRustRemoveEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind);
-    pub fn LLVMRustGetEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind) ->&Attribute;
+    pub fn LLVMRustGetEnumAttributeAtIndex(
+        V: &Value,
+        index: c_uint,
+        attr: AttributeKind,
+    ) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
@@ -2710,7 +2727,7 @@ extern "C" {
     fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
         _builderCtx: *const u8, // &'a Builder<'_>,
-        _callerCtx: *const u8,// &'a Value,
+        _callerCtx: *const u8,  // &'a Value,
         todiff: &'a Value,
         retType: CDIFFE_TYPE,
         constant_args: *const CDIFFE_TYPE,
@@ -2734,8 +2751,8 @@ extern "C" {
 extern "C" {
     fn EnzymeCreateForwardDiff<'a>(
         arg1: EnzymeLogicRef,
-        _builderCtx: *const u8,// &'a Builder<'_>,
-        _callerCtx: *const u8,// &'a Value,
+        _builderCtx: *const u8, // &'a Builder<'_>,
+        _callerCtx: *const u8,  // &'a Value,
         todiff: &'a Value,
         retType: CDIFFE_TYPE,
         constant_args: *const CDIFFE_TYPE,

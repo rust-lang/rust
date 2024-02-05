@@ -494,8 +494,12 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm),
-                typetrees: Default::default() })
+            Ok(ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm: ManuallyDrop::new(tm),
+                typetrees: Default::default(),
+            })
         }
     }
 

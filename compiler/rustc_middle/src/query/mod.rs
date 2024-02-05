@@ -54,8 +54,8 @@ use crate::ty::{
 use crate::ty::{GenericArg, GenericArgsRef};
 use rustc_arena::TypedArena;
 use rustc_ast as ast;
-use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem};
+use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};

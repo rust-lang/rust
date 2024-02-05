@@ -4,20 +4,20 @@
 //use crate::util::check_builtin_macro_attribute;
 //use crate::util::check_autodiff;
 
-use std::string::String;
 use crate::errors;
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::ptr::P;
-use rustc_ast::{BindingAnnotation, ByRef};
-use rustc_ast::{self as ast, FnHeader, FnSig, Generics, StmtKind, NestedMetaItem, MetaItemKind};
-use rustc_ast::{Fn, ItemKind, Stmt, TyKind, Unsafe, PatKind};
+use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::*;
+use rustc_ast::{self as ast, FnHeader, FnSig, Generics, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{BindingAnnotation, ByRef};
+use rustc_ast::{Fn, ItemKind, PatKind, Stmt, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
 use rustc_span::Symbol;
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
-use rustc_ast::token::{Token, TokenKind};
+use std::string::String;
+use thin_vec::{thin_vec, ThinVec};
 
 fn first_ident(x: &NestedMetaItem) -> rustc_span::symbol::Ident {
     let segments = &x.meta_item().unwrap().path.segments;
@@ -36,9 +36,7 @@ pub fn expand(
     let meta_item_vec: ThinVec<NestedMetaItem> = match meta_item.kind {
         ast::MetaItemKind::List(ref vec) => vec.clone(),
         _ => {
-            ecx.sess
-                .dcx()
-                .emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+            ecx.sess.dcx().emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
             return vec![item];
         }
     };
@@ -52,18 +50,19 @@ pub fn expand(
     {
         (item, sig.decl.output.has_ret(), sig, ecx.with_call_site_ctxt(sig.span))
     } else {
-        ecx.sess
-            .dcx()
-            .emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+        ecx.sess.dcx().emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
         return vec![item];
     };
     // create TokenStream from vec elemtents:
     // meta_item doesn't have a .tokens field
-    let ts: Vec<Token> = meta_item_vec.clone()[1..].iter().map(|x| {
-        let val = first_ident(x);
-        let t = Token::from_ast_ident(val);
-        t
-    }).collect();
+    let ts: Vec<Token> = meta_item_vec.clone()[1..]
+        .iter()
+        .map(|x| {
+            let val = first_ident(x);
+            let t = Token::from_ast_ident(val);
+            t
+        })
+        .collect();
     let comma: Token = Token::new(TokenKind::Comma, Span::default());
     let mut ts: Vec<TokenTree> = vec![];
     for t in meta_item_vec.clone()[1..].iter() {
@@ -80,7 +79,18 @@ pub fn expand(
 
     let (d_sig, old_names, new_args, idents) = gen_enzyme_decl(ecx, &sig, &x, span, sig_span);
     let new_decl_span = d_sig.span;
-    let d_body = gen_enzyme_body(ecx, primal, &old_names, &new_args, span, sig_span, new_decl_span, &sig, &d_sig, idents);
+    let d_body = gen_enzyme_body(
+        ecx,
+        primal,
+        &old_names,
+        &new_args,
+        span,
+        sig_span,
+        new_decl_span,
+        &sig,
+        &d_sig,
+        idents,
+    );
     let d_ident = meta_item_vec[0].meta_item().unwrap().path.segments[0].ident;
 
     // The first element of it is the name of the function to be generated
@@ -90,7 +100,8 @@ pub fn expand(
         generics: Generics::default(),
         body: Some(d_body),
     }));
-    let mut rustc_ad_attr = P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
+    let mut rustc_ad_attr =
+        P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
     let mut attr: ast::Attribute = ast::Attribute {
         kind: ast::AttrKind::Normal(rustc_ad_attr.clone()),
         id: ast::AttrId::from_u32(0),
@@ -136,27 +147,33 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
     ty
 }
 
-
 // The body of our generated functions will consist of three black_Box calls.
 // The first will call the primal function with the original arguments.
 // The second will just take the shadow arguments.
 // The third will (unsafely) call std::mem::zeroed(), to match the return type of the new function
 // (whatever that might be). This way we surpress rustc from optimizing anyt argument away.
-fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_names: &[String], span: Span, sig_span: Span, new_decl_span: Span, sig: &ast::FnSig, d_sig: &ast::FnSig, idents: Vec<Ident>) -> P<ast::Block> {
+fn gen_enzyme_body(
+    ecx: &ExtCtxt<'_>,
+    primal: Ident,
+    old_names: &[String],
+    new_names: &[String],
+    span: Span,
+    sig_span: Span,
+    new_decl_span: Span,
+    sig: &ast::FnSig,
+    d_sig: &ast::FnSig,
+    idents: Vec<Ident>,
+) -> P<ast::Block> {
     let blackbox_path = ecx.std_path(&[Symbol::intern("hint"), Symbol::intern("black_box")]);
     let zeroed_path = ecx.std_path(&[Symbol::intern("mem"), Symbol::intern("zeroed")]);
     let empty_loop_block = ecx.block(span, ThinVec::new());
     let loop_expr = ecx.expr_loop(span, empty_loop_block);
 
-
     let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
     let zeroed_call_expr = ecx.expr_path(ecx.path(span, zeroed_path));
 
-    let mem_zeroed_call: Stmt = ecx.stmt_expr(ecx.expr_call(
-        span,
-        zeroed_call_expr.clone(),
-        thin_vec![],
-    ));
+    let mem_zeroed_call: Stmt =
+        ecx.stmt_expr(ecx.expr_call(span, zeroed_call_expr.clone(), thin_vec![]));
     let unsafe_block_with_zeroed_call: P<ast::Expr> = ecx.expr_block(P(ast::Block {
         stmts: thin_vec![mem_zeroed_call],
         id: ast::DUMMY_NODE_ID,
@@ -167,19 +184,17 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
     }));
     let primal_call = gen_primal_call(ecx, span, primal, sig, idents);
     // create ::core::hint::black_box(array(arr));
-    let black_box0 = ecx.expr_call(
-        new_decl_span,
-        blackbox_call_expr.clone(),
-        thin_vec![primal_call.clone()],
-    );
+    let black_box0 =
+        ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![primal_call.clone()]);
 
     // create ::core::hint::black_box(grad_arr, tang_y));
     let black_box1 = ecx.expr_call(
         sig_span,
         blackbox_call_expr.clone(),
-        new_names.iter().map(|arg| {
-            ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg)))
-        }).collect(),
+        new_names
+            .iter()
+            .map(|arg| ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg))))
+            .collect(),
     );
 
     // create ::core::hint::black_box(unsafe { ::core::mem::zeroed() })
@@ -188,7 +203,6 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
         blackbox_call_expr.clone(),
         thin_vec![unsafe_block_with_zeroed_call.clone()],
     );
-
 
     let mut body = ecx.block(span, ThinVec::new());
     body.stmts.push(ecx.stmt_semi(primal_call));
@@ -199,16 +213,16 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
     body
 }
 
-fn gen_primal_call(ecx: &ExtCtxt<'_>, span: Span, primal: Ident, sig: &ast::FnSig, idents: Vec<Ident>) -> P<ast::Expr>{
+fn gen_primal_call(
+    ecx: &ExtCtxt<'_>,
+    span: Span,
+    primal: Ident,
+    sig: &ast::FnSig,
+    idents: Vec<Ident>,
+) -> P<ast::Expr> {
     let primal_call_expr = ecx.expr_path(ecx.path_ident(span, primal));
-    let args = idents.iter().map(|arg| {
-        ecx.expr_path(ecx.path_ident(span, *arg))
-    }).collect();
-    let primal_call = ecx.expr_call(
-        span,
-        primal_call_expr,
-        args,
-    );
+    let args = idents.iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
+    let primal_call = ecx.expr_call(span, primal_call_expr, args);
     primal_call
 }
 
@@ -218,8 +232,13 @@ fn gen_primal_call(ecx: &ExtCtxt<'_>, span: Span, primal: Ident, sig: &ast::FnSi
 // zero-initialized by Enzyme). Active arguments are not handled yet.
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
-fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span: Span, _sig_span: Span)
-        -> (ast::FnSig, Vec<String>, Vec<String>, Vec<Ident>) {
+fn gen_enzyme_decl(
+    _ecx: &ExtCtxt<'_>,
+    sig: &ast::FnSig,
+    x: &AutoDiffAttrs,
+    span: Span,
+    _sig_span: Span,
+) -> (ast::FnSig, Vec<String>, Vec<String>, Vec<Ident>) {
     assert!(sig.decl.inputs.len() == x.input_activity.len());
     assert!(sig.decl.output.has_ret() == x.has_ret_activity());
     let mut d_decl = sig.decl.clone();
@@ -253,17 +272,16 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span
                 shadow_arg.pat = P(ast::Pat {
                     // TODO: Check id
                     id: ast::DUMMY_NODE_ID,
-                    kind: PatKind::Ident(BindingAnnotation::NONE,
-                        ident,
-                        None,
-                    ),
+                    kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
                     span: shadow_arg.pat.span,
                     tokens: shadow_arg.pat.tokens.clone(),
                 });
                 //idents.push(ident);
                 d_inputs.push(shadow_arg);
             }
-            _ => {dbg!(&activity);},
+            _ => {
+                dbg!(&activity);
+            }
         }
     }
 
@@ -285,10 +303,7 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span
                     ty: ty.clone(),
                     pat: P(ast::Pat {
                         id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingAnnotation::NONE,
-                            ident,
-                            None,
-                        ),
+                        kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
                         span: ty.span,
                         tokens: None,
                     }),
@@ -302,10 +317,6 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span
         }
     }
     d_decl.inputs = d_inputs.into();
-    let d_sig = FnSig {
-        header: sig.header.clone(),
-        decl: d_decl,
-        span,
-    };
+    let d_sig = FnSig { header: sig.header.clone(), decl: d_decl, span };
     (d_sig, old_names, new_inputs, idents)
 }

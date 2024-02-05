@@ -1,6 +1,6 @@
 use crate::expand::typetree::TypeTree;
-use thin_vec::ThinVec;
 use std::str::FromStr;
+use thin_vec::ThinVec;
 
 use crate::NestedMetaItem;
 
@@ -28,7 +28,8 @@ pub enum DiffActivity {
 impl FromStr for DiffMode {
     type Err = ();
 
-    fn from_str(s: &str) -> Result<DiffMode, ()> { match s {
+    fn from_str(s: &str) -> Result<DiffMode, ()> {
+        match s {
             "Inactive" => Ok(DiffMode::Inactive),
             "Source" => Ok(DiffMode::Source),
             "Forward" => Ok(DiffMode::Forward),
@@ -40,7 +41,8 @@ impl FromStr for DiffMode {
 impl FromStr for DiffActivity {
     type Err = ();
 
-    fn from_str(s: &str) -> Result<DiffActivity, ()> { match s {
+    fn from_str(s: &str) -> Result<DiffActivity, ()> {
+        match s {
             "None" => Ok(DiffActivity::None),
             "Active" => Ok(DiffActivity::Active),
             "Const" => Ok(DiffActivity::Const),
@@ -70,7 +72,7 @@ fn name(x: &NestedMetaItem) -> String {
     first_ident(x).name.to_string()
 }
 
-impl AutoDiffAttrs{
+impl AutoDiffAttrs {
     pub fn has_ret_activity(&self) -> bool {
         match self.ret_activity {
             DiffActivity::None => false,
@@ -80,10 +82,13 @@ impl AutoDiffAttrs{
     pub fn from_ast(meta_item: &ThinVec<NestedMetaItem>, has_ret: bool) -> Self {
         let mode = name(&meta_item[1]);
         let mode = DiffMode::from_str(&mode).unwrap();
-        let activities: Vec<DiffActivity> = meta_item[2..].iter().map(|x| {
-            let activity_str = name(&x);
-            DiffActivity::from_str(&activity_str).unwrap()
-        }).collect();
+        let activities: Vec<DiffActivity> = meta_item[2..]
+            .iter()
+            .map(|x| {
+                let activity_str = name(&x);
+                DiffActivity::from_str(&activity_str).unwrap()
+            })
+            .collect();
 
         // If a return type exist, we need to split the last activity,
         // otherwise we return None as placeholder.
@@ -93,11 +98,7 @@ impl AutoDiffAttrs{
             (&DiffActivity::None, activities.as_slice())
         };
 
-        AutoDiffAttrs {
-            mode,
-            ret_activity: *ret_activity,
-            input_activity: input_activity.to_vec(),
-        }
+        AutoDiffAttrs { mode, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
     }
 }
 
@@ -123,7 +124,7 @@ impl AutoDiffAttrs {
             _ => {
                 dbg!(&self);
                 true
-            },
+            }
         }
     }
 
@@ -141,7 +142,7 @@ impl AutoDiffAttrs {
             _ => {
                 dbg!(&self);
                 true
-            },
+            }
         }
     }
 

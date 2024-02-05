@@ -255,7 +255,6 @@
 #![allow(unused_features)]
 //
 // Features:
-
 #![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
@@ -664,7 +663,6 @@ pub use core::{
     module_path, option_env, stringify, trace_macros,
 };
 
-
 // #[unstable(
 //     feature = "autodiff",
 //     issue = "87555",
@@ -672,8 +670,6 @@ pub use core::{
 // )]
 // #[cfg(not(bootstrap))]
 // pub use core::autodiff;
-
-
 
 #[unstable(
     feature = "concat_bytes",

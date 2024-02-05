@@ -92,15 +92,14 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
-
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::expand::typetree::{Kind, Type, TypeTree};
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::typetree::{Kind, Type, TypeTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def::DefKind;
@@ -114,7 +113,9 @@ use rustc_middle::mir::mono::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt, ParamEnv, ParamEnvAnd, Adt, Ty};
+use rustc_middle::ty::{
+    self, visit::TypeVisitableExt, Adt, InstanceDef, ParamEnv, ParamEnvAnd, Ty, TyCtxt,
+};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
@@ -255,9 +256,8 @@ where
         );
 
         //if visibility == Visibility::Hidden && can_be_internalized {
-        let autodiff_active = characteristic_def_id
-            .map(|x| cx.tcx.autodiff_attrs(x).is_active())
-            .unwrap_or(false);
+        let autodiff_active =
+            characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
         if autodiff_active {
             dbg!("place_mono_items: autodiff_active");
             dbg!(&mono_item);
@@ -1099,7 +1099,10 @@ where
     }
 }
 
-fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[AutoDiffItem], &[CodegenUnit<'_>]) {
+fn collect_and_partition_mono_items(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> (&DefIdSet, &[AutoDiffItem], &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
@@ -1158,7 +1161,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
         })
         .collect();
 
-        let autodiff_items = items
+    let autodiff_items = items
         .iter()
         .filter_map(|item| match *item {
             MonoItem::Fn(ref instance) => Some((item, instance)),
@@ -1170,43 +1173,21 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
             if !target_attrs.apply_autodiff() {
                 return None;
             }
-            //println!("target_id: {:?}", target_id);
 
             let target_symbol =
                 symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
-            //let range = usage_map.used_map.get(&item).unwrap();
-            //TODO: check if last and next line are correct after rebasing
 
-            println!("target_symbol: {:?}", target_symbol);
-            println!("target_attrs: {:?}", target_attrs);
-            println!("target_id: {:?}", target_id);
-            //print item
-            println!("item: {:?}", item);
-            let source = usage_map.used_map.get(&item).unwrap()
-                .into_iter()
-                .find_map(|item| match *item {
+            let source =
+                usage_map.used_map.get(&item).unwrap().into_iter().find_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {
                         let source_id = instance_s.def_id();
-                        println!("source_id_inner: {:?}", source_id);
-                        println!("instance_s: {:?}", instance_s);
-
                         if tcx.autodiff_attrs(source_id).is_active() {
-                            println!("source_id is active");
                             return Some(instance_s);
                         }
-                        //target_symbol: "_ZN14rosenbrock_rev12d_rosenbrock17h3352c4f00c3082daE"
-                        //target_attrs: AutoDiffAttrs { mode: Reverse, ret_activity: Active, input_activity: [Duplicated] }
-                        //target_id: DefId(0:8 ~ rosenbrock_rev[2708]::d_rosenbrock)
-                        //item: Fn(Instance { def: Item(DefId(0:8 ~ rosenbrock_rev[2708]::d_rosenbrock)), args: [] })
-                        //source_id_inner: DefId(0:4 ~ rosenbrock_rev[2708]::main)
-                        //instance_s: Instance { def: Item(DefId(0:4 ~ rosenbrock_rev[2708]::main)), args: [] }
-
-
                         None
                     }
                     _ => None,
                 });
-                //.next();
             println!("source: {:?}", source);
 
             source.map(|inst| {

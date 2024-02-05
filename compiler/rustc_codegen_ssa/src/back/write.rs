@@ -964,12 +964,18 @@ pub(crate) enum Message<B: WriteBackendMethods> {
 
     /// The backend has finished processing a work item for a codegen unit.
     /// Sent from a backend worker thread.
-    WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
+    WorkItem {
+        result: Result<WorkItemResult<B>, Option<WorkerFatalError>>,
+        worker_id: usize,
+    },
 
     /// The frontend has finished generating something (backend IR or a
     /// post-LTO artifact) for a codegen unit, and it should be passed to the
     /// backend. Sent from the main thread.
-    CodegenDone { llvm_work_item: WorkItem<B>, cost: u64 },
+    CodegenDone {
+        llvm_work_item: WorkItem<B>,
+        cost: u64,
+    },
 
     /// Similar to `CodegenDone`, but for reusing a pre-LTO artifact
     /// Sent from the main thread.
@@ -1514,7 +1520,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             let tt = B::typetrees(&mut module.module_llvm);
                             typetrees.extend(tt);
                         }
-                        _ => {},
+                        _ => {}
                     }
 
                     // We keep the queue sorted by estimated processing cost,
@@ -1542,7 +1548,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     dbg!("AddAutoDiffItems");
                     autodiff_items.append(&mut items);
                 }
-
 
                 Message::CodegenComplete => {
                     if codegen_state != Aborted {
