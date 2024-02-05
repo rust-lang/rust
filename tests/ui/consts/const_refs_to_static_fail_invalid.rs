@@ -38,6 +38,7 @@ fn mutable() {
     const C: &i32 = unsafe { &S_MUT };
     //~^ERROR: undefined behavior
     //~| encountered reference to mutable memory
+    //~| WARN shared reference of mutable static is discouraged
 
     // This *must not build*, the constant we are matching against
     // could change its value!
