@@ -56,13 +56,22 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
 fn if_expr_to_guarded_return(
     if_expr: ast::IfExpr,
     acc: &mut Assists,
-    _ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     if if_expr.else_branch().is_some() {
         return None;
     }
 
     let cond = if_expr.condition()?;
+
+    let if_token_range = if_expr.if_token()?.text_range();
+    let if_cond_range = cond.syntax().text_range();
+
+    let cursor_in_range =
+        if_token_range.cover(if_cond_range).contains_range(ctx.selection_trimmed());
+    if !cursor_in_range {
+        return None;
+    }
 
     // Check if there is an IfLet that we can handle.
     let (if_let_pat, cond_expr) = if is_pattern_cond(cond.clone()) {
@@ -171,6 +180,15 @@ fn let_stmt_to_guarded_return(
 ) -> Option<()> {
     let pat = let_stmt.pat()?;
     let expr = let_stmt.initializer()?;
+
+    let let_token_range = let_stmt.let_token()?.text_range();
+    let let_pattern_range = pat.syntax().text_range();
+    let cursor_in_range =
+        let_token_range.cover(let_pattern_range).contains_range(ctx.selection_trimmed());
+
+    if !cursor_in_range {
+        return None;
+    }
 
     let try_enum =
         ctx.sema.type_of_expr(&expr).and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))?;
@@ -712,6 +730,37 @@ fn main() {
             foo();
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_inside_if_stmt() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+fn main() {
+    if false {
+        foo()$0;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_inside_let_initializer() {
+        check_assist_not_applicable(
+            convert_to_guarded_return,
+            r#"
+//- minicore: option
+fn foo() -> Option<i32> {
+    None
+}
+
+fn main() {
+    let x = foo()$0;
 }
 "#,
         );
