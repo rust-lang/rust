@@ -262,7 +262,7 @@ cfg_if::cfg_if! {
 }
 
 // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-#[cfg_attr(not(bootstrap), allow(static_mut_ref))]
+#[allow(static_mut_ref)]
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store_seqcst;
 
@@ -325,7 +325,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 }
 
 // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-#[cfg_attr(not(bootstrap), allow(static_mut_ref))]
+#[allow(static_mut_ref)]
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
     // A null payload here means that we got here from the catch (...) of
     // __rust_try. This happens when a non-Rust foreign exception is caught.

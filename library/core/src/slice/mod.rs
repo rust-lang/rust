@@ -1951,10 +1951,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
-    #[rustc_const_stable(
-        feature = "const_slice_split_at_unchecked",
-        since = "1.77.0"
-    )]
+    #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
