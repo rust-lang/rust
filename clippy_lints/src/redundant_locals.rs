@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, ByRef, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
 use rustc_hir_typeck::expr_use_visitor::PlaceBase;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local is user-controlled
             && !in_external_macro(cx.sess(), local.span)
             && !is_from_proc_macro(cx, expr)
-            && !is_closure_capture(cx, local.hir_id, binding_id)
+            && !is_by_value_closure_capture(cx, local.hir_id, binding_id)
         {
             span_lint_and_help(
                 cx,
@@ -98,16 +98,14 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
 /// };
 /// assert_static(closure);
 /// ```
-fn is_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_variable: HirId) -> bool {
-    let body = cx.tcx.hir().enclosing_body_owner(redefinition);
-    if let DefKind::Closure = cx.tcx.def_kind(body) {
-        cx.tcx.closure_captures(body).iter().any(|c| {
+fn is_by_value_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_variable: HirId) -> bool {
+    let closure_def_id = cx.tcx.hir().enclosing_body_owner(redefinition);
+
+    cx.tcx.is_closure_or_coroutine(closure_def_id.to_def_id())
+        && cx.tcx.closure_captures(closure_def_id).iter().any(|c| {
             matches!(c.info.capture_kind, UpvarCapture::ByValue)
                 && matches!(c.place.base, PlaceBase::Upvar(upvar) if upvar.var_path.hir_id == root_variable)
         })
-    } else {
-        false
-    }
 }
 
 /// Find the annotation of a binding introduced by a pattern, or `None` if it's not introduced.
