@@ -20,7 +20,7 @@ use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
+use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -149,37 +149,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
         let return_loc = ccx.body.terminator_loc(return_block);
 
-        let custom_eq = match ccx.const_kind() {
-            // We don't care whether a `const fn` returns a value that is not structurally
-            // matchable. Functions calls are opaque and always use type-based qualification, so
-            // this value should never be used.
-            hir::ConstContext::ConstFn => true,
-
-            // If we know that all values of the return type are structurally matchable, there's no
-            // need to run dataflow.
-            // Opaque types do not participate in const generics or pattern matching, so we can safely count them out.
-            _ if ccx.body.return_ty().has_opaque_types()
-                || !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
-            {
-                false
-            }
-
-            hir::ConstContext::Const { .. } | hir::ConstContext::Static(_) => {
-                let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, ccx.body)
-                    .iterate_to_fixpoint()
-                    .into_results_cursor(ccx.body);
-
-                cursor.seek_after_primary_effect(return_loc);
-                cursor.get().contains(RETURN_PLACE)
-            }
-        };
-
         ConstQualifs {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
-            custom_eq,
             tainted_by_errors,
         }
     }
