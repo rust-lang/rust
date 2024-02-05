@@ -151,6 +151,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
+* [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 
 
 ## `cognitive-complexity-threshold`
