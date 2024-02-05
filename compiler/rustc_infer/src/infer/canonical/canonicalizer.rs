@@ -480,7 +480,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Infer(InferConst::EffectVar(vid)) => {
                 match self.infcx.unwrap().probe_effect_var(vid) {
-                    Some(value) => return self.fold_const(value.as_const(self.tcx)),
+                    Some(value) => return self.fold_const(value),
                     None => {
                         return self.canonicalize_const_var(
                             CanonicalVarInfo { kind: CanonicalVarKind::Effect },
