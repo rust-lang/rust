@@ -24,7 +24,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
-use ra_ap_rustc_abi::TargetDataLayout;
+use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
