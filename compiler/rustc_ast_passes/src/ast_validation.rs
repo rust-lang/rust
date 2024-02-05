@@ -428,10 +428,10 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
-        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
-            if param.is_self() {
-                self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
-            }
+        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs)
+            && param.is_self()
+        {
+            self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
         }
     }
 
@@ -560,16 +560,16 @@ impl<'a> AstValidator<'a> {
             return;
         }
 
-        if let Some(header) = fk.header() {
-            if let Const::Yes(const_span) = header.constness {
-                let mut spans = variadic_spans.clone();
-                spans.push(const_span);
-                self.dcx().emit_err(errors::ConstAndCVariadic {
-                    spans,
-                    const_span,
-                    variadic_spans: variadic_spans.clone(),
-                });
-            }
+        if let Some(header) = fk.header()
+            && let Const::Yes(const_span) = header.constness
+        {
+            let mut spans = variadic_spans.clone();
+            spans.push(const_span);
+            self.dcx().emit_err(errors::ConstAndCVariadic {
+                spans,
+                const_span,
+                variadic_spans: variadic_spans.clone(),
+            });
         }
 
         match (fk.ctxt(), fk.header()) {
@@ -795,48 +795,49 @@ fn validate_generic_param_order(
         };
     }
 
-    if !out_of_order.is_empty() {
-        let mut ordered_params = "<".to_string();
-        param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
-        let mut first = true;
-        for (kind, _, bounds, _, ident) in param_idents {
-            if !first {
-                ordered_params += ", ";
-            }
-            ordered_params += &ident;
+    if out_of_order.is_empty() {
+        return;
+    }
 
-            if !bounds.is_empty() {
-                ordered_params += ": ";
-                ordered_params += &pprust::bounds_to_string(bounds);
-            }
+    let mut ordered_params = "<".to_string();
+    param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
+    let mut first = true;
+    for (kind, _, bounds, _, ident) in param_idents {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &ident;
 
-            match kind {
-                GenericParamKind::Type { default: Some(default) } => {
-                    ordered_params += " = ";
-                    ordered_params += &pprust::ty_to_string(default);
-                }
-                GenericParamKind::Type { default: None } => (),
-                GenericParamKind::Lifetime => (),
-                GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
-                    ordered_params += " = ";
-                    ordered_params += &pprust::expr_to_string(&default.value);
-                }
-                GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
-            }
-            first = false;
+        if !bounds.is_empty() {
+            ordered_params += ": ";
+            ordered_params += &pprust::bounds_to_string(bounds);
         }
 
-        ordered_params += ">";
-
-        for (param_ord, (max_param, spans)) in &out_of_order {
-            dcx.emit_err(errors::OutOfOrderParams {
-                spans: spans.clone(),
-                sugg_span: span,
-                param_ord,
-                max_param,
-                ordered_params: &ordered_params,
-            });
+        match kind {
+            GenericParamKind::Type { default: Some(default) } => {
+                ordered_params += " = ";
+                ordered_params += &pprust::ty_to_string(default);
+            }
+            GenericParamKind::Type { default: None } => (),
+            GenericParamKind::Lifetime => (),
+            GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
+                ordered_params += " = ";
+                ordered_params += &pprust::expr_to_string(&default.value);
+            }
+            GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
         }
+        first = false;
+    }
+    ordered_params += ">";
+
+    for (param_ord, (max_param, spans)) in &out_of_order {
+        dcx.emit_err(errors::OutOfOrderParams {
+            spans: spans.clone(),
+            sugg_span: span,
+            param_ord,
+            max_param,
+            ordered_params: &ordered_params,
+        });
     }
 }
 
@@ -1569,85 +1570,82 @@ fn deny_equality_constraints(
         && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
     {
         for param in &generics.params {
-            if param.ident == *ident
-                && let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..]
-            {
-                // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
-                let mut assoc_path = full_path.clone();
-                // Remove `Bar` from `Foo::Bar`.
-                assoc_path.segments.pop();
-                let len = assoc_path.segments.len() - 1;
-                let gen_args = args.as_deref().cloned();
-                // Build `<Bar = RhsTy>`.
-                let arg = AngleBracketedArg::Constraint(AssocConstraint {
-                    id: rustc_ast::node_id::DUMMY_NODE_ID,
-                    ident: *ident,
-                    gen_args,
-                    kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
-                    span: ident.span,
-                });
-                // Add `<Bar = RhsTy>` to `Foo`.
-                match &mut assoc_path.segments[len].args {
-                    Some(args) => match args.deref_mut() {
-                        GenericArgs::Parenthesized(_) => continue,
-                        GenericArgs::AngleBracketed(args) => {
-                            args.args.push(arg);
-                        }
-                    },
-                    empty_args => {
-                        *empty_args = Some(
-                            AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into(),
-                        );
-                    }
-                }
-                err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate.span,
-                    ident: *ident,
-                    param: param.ident,
-                    path: pprust::path_to_string(&assoc_path),
-                })
+            if param.ident != *ident {
+                continue;
             }
+            let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..] else {
+                continue;
+            };
+
+            // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+            let mut assoc_path = full_path.clone();
+            // Remove `Bar` from `Foo::Bar`.
+            assoc_path.segments.pop();
+            let gen_args = args.as_deref().cloned();
+            // Build `<Bar = RhsTy>`.
+            let arg = AngleBracketedArg::Constraint(AssocConstraint {
+                id: rustc_ast::node_id::DUMMY_NODE_ID,
+                ident: *ident,
+                gen_args,
+                kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
+                span: ident.span,
+            });
+            // Add `<Bar = RhsTy>` to `Foo`.
+            match &mut assoc_path.segments.last_mut().unwrap().args {
+                Some(args) => match args.deref_mut() {
+                    GenericArgs::Parenthesized(_) => continue,
+                    GenericArgs::AngleBracketed(args) => {
+                        args.args.push(arg);
+                    }
+                },
+                empty_args => {
+                    *empty_args =
+                        Some(AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into());
+                }
+            }
+            err.assoc = Some(errors::AssociatedSuggestion {
+                span: predicate.span,
+                ident: *ident,
+                param: param.ident,
+                path: pprust::path_to_string(&assoc_path),
+            })
         }
     }
     // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
-        if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
-                if param.ident == potential_param.ident {
-                    for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
-                            bound
-                        {
-                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
-                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                    potential_assoc.ident,
-                                ));
-                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                                let (args, span) = match &trait_segment.args {
-                                    Some(args) => match args.deref() {
-                                        ast::GenericArgs::AngleBracketed(args) => {
-                                            let Some(arg) = args.args.last() else {
-                                                continue;
-                                            };
-                                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                                        }
-                                        _ => continue,
-                                    },
-                                    None => (
-                                        format!("<{assoc} = {ty}>"),
-                                        trait_segment.span().shrink_to_hi(),
-                                    ),
+    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind
+        && let [potential_param, potential_assoc] = &full_path.segments[..]
+    {
+        for param in &generics.params {
+            if param.ident != potential_param.ident {
+                continue;
+            };
+
+            for bound in &param.bounds {
+                if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) = bound
+                    && let [trait_segment] = &trait_ref.trait_ref.path.segments[..]
+                {
+                    let assoc =
+                        pprust::path_to_string(&ast::Path::from_ident(potential_assoc.ident));
+                    let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                    let (args, span) = match &trait_segment.args {
+                        Some(args) => match args.deref() {
+                            ast::GenericArgs::AngleBracketed(args) => {
+                                let Some(arg) = args.args.last() else {
+                                    continue;
                                 };
-                                err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                                    span,
-                                    args,
-                                    predicate: predicate.span,
-                                    trait_segment: trait_segment.ident,
-                                    potential_assoc: potential_assoc.ident,
-                                });
+                                (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
                             }
-                        }
-                    }
+                            _ => continue,
+                        },
+                        None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
+                    };
+                    err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                        span,
+                        args,
+                        predicate: predicate.span,
+                        trait_segment: trait_segment.ident,
+                        potential_assoc: potential_assoc.ident,
+                    });
                 }
             }
         }
