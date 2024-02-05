@@ -7,6 +7,7 @@
 //! * marks (see the eponymous module).
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stderr)]
 
 mod assert_linear;
 pub mod bench_fixture;
@@ -424,7 +425,7 @@ pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {
 ///
 /// A benchmark test looks like this:
 ///
-/// ```
+/// ```ignore
 /// #[test]
 /// fn benchmark_foo() {
 ///     if skip_slow_tests() { return; }

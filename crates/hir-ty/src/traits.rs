@@ -187,7 +187,7 @@ struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, Ch
 
 impl Drop for LoggingRustIrDatabaseLoggingOnDrop<'_> {
     fn drop(&mut self) {
-        eprintln!("chalk program:\n{}", self.0);
+        tracing::info!("chalk program:\n{}", self.0);
     }
 }
 

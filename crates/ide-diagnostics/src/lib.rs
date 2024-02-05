@@ -73,8 +73,6 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
-
 use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
@@ -413,18 +411,18 @@ pub fn diagnostics(
 
 // `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
 
-static RUSTC_LINT_GROUPS_DICT: Lazy<HashMap<&str, Vec<&str>>> =
+static RUSTC_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
     Lazy::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
 
-static CLIPPY_LINT_GROUPS_DICT: Lazy<HashMap<&str, Vec<&str>>> =
+static CLIPPY_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
     Lazy::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
 
 fn build_group_dict(
     lint_group: &'static [LintGroup],
     all_groups: &'static [&'static str],
     prefix: &'static str,
-) -> HashMap<&'static str, Vec<&'static str>> {
-    let mut r: HashMap<&str, Vec<&str>> = HashMap::new();
+) -> FxHashMap<&'static str, Vec<&'static str>> {
+    let mut r: FxHashMap<&str, Vec<&str>> = FxHashMap::default();
     for g in lint_group {
         for child in g.children {
             r.entry(child.strip_prefix(prefix).unwrap())

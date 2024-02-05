@@ -9,6 +9,7 @@
 //! be sure without a real client anyway.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::disallowed_types)]
 
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;

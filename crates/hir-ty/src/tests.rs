@@ -10,7 +10,7 @@ mod regression;
 mod simple;
 mod traits;
 
-use std::{collections::HashMap, env};
+use std::env;
 
 use base_db::{FileRange, SourceDatabaseExt};
 use expect_test::Expect;
@@ -25,6 +25,7 @@ use hir_def::{
 };
 use hir_expand::{db::ExpandDatabase, InFile};
 use once_cell::race::OnceBool;
+use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode, HasName},
@@ -90,9 +91,9 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
     let mut had_annotations = false;
-    let mut mismatches = HashMap::new();
-    let mut types = HashMap::new();
-    let mut adjustments = HashMap::<_, Vec<_>>::new();
+    let mut mismatches = FxHashMap::default();
+    let mut types = FxHashMap::default();
+    let mut adjustments = FxHashMap::<_, Vec<_>>::default();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };

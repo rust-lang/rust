@@ -3,14 +3,12 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `syntax::AstNode`.
 
-use std::{
-    collections::{BTreeSet, HashSet},
-    fmt::Write,
-};
+use std::{collections::BTreeSet, fmt::Write};
 
 use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
+use rustc_hash::FxHashSet;
 use ungrammar::{Grammar, Rule};
 
 use crate::tests::ast_src::{
@@ -278,7 +276,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
             }
         });
 
-    let defined_nodes: HashSet<_> = node_names.collect();
+    let defined_nodes: FxHashSet<_> = node_names.collect();
 
     for node in kinds
         .nodes

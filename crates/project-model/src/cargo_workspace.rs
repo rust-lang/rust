@@ -399,7 +399,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
 
-    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
+    pub fn packages(&self) -> impl ExactSizeIterator<Item = Package> + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 

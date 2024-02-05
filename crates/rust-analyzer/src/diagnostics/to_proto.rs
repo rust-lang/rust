@@ -1,9 +1,9 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
@@ -186,7 +186,7 @@ fn map_rust_child_diagnostic(
         return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
     }
 
-    let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
+    let mut edit_map: FxHashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = FxHashMap::default();
     let mut suggested_replacements = Vec::new();
     let mut is_preferred = true;
     for &span in &spans {

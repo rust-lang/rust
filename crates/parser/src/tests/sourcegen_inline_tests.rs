@@ -1,5 +1,6 @@
 //! This module greps parser's code for specially formatted comments and turns
 //! them into tests.
+#![allow(clippy::disallowed_types, clippy::print_stdout)]
 
 use std::{
     collections::HashMap,

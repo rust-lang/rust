@@ -546,9 +546,7 @@ impl AnyDiagnostic {
                             source_map.pat_syntax(pat).expect("unexpected synthetic");
 
                         // cast from Either<Pat, SelfParam> -> Either<_, Pat>
-                        let Some(ptr) = AstPtr::try_from_raw(value.syntax_node_ptr()) else {
-                            return None;
-                        };
+                        let ptr = AstPtr::try_from_raw(value.syntax_node_ptr())?;
                         InFile { file_id, value: ptr }
                     }
                 };
