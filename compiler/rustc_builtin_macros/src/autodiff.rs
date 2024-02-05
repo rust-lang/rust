@@ -5,6 +5,7 @@
 //use crate::util::check_autodiff;
 
 use crate::errors;
+use rustc_ast::FnRetTy;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Token, TokenKind};
@@ -41,7 +42,6 @@ pub fn expand(
         }
     };
     let mut orig_item: P<ast::Item> = item.clone().expect_item();
-    //dbg!(&orig_item.tokens);
     let primal = orig_item.ident.clone();
 
     // Allow using `#[autodiff(...)]` only on a Fn
@@ -77,7 +77,7 @@ pub fn expand(
     dbg!(&x);
     let span = ecx.with_def_site_ctxt(expand_span);
 
-    let (d_sig, old_names, new_args, idents) = gen_enzyme_decl(ecx, &sig, &x, span, sig_span);
+    let (d_sig, old_names, new_args, idents) = gen_enzyme_decl(&sig, &x, span);
     let new_decl_span = d_sig.span;
     let d_body = gen_enzyme_body(
         ecx,
@@ -147,11 +147,11 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
     ty
 }
 
-// The body of our generated functions will consist of three black_Box calls.
+// The body of our generated functions will consist of two black_Box calls.
 // The first will call the primal function with the original arguments.
-// The second will just take the shadow arguments.
-// The third will (unsafely) call std::mem::zeroed(), to match the return type of the new function
-// (whatever that might be). This way we surpress rustc from optimizing anyt argument away.
+// The second will just take a tuple containing the new arguments.
+// This way we surpress rustc from optimizing any argument away.
+// The last line will 'loop {}', to match the return type of the new function
 fn gen_enzyme_body(
     ecx: &ExtCtxt<'_>,
     primal: Ident,
@@ -184,31 +184,25 @@ fn gen_enzyme_body(
     }));
     let primal_call = gen_primal_call(ecx, span, primal, sig, idents);
     // create ::core::hint::black_box(array(arr));
-    let black_box0 =
+    let black_box_primal_call =
         ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![primal_call.clone()]);
 
-    // create ::core::hint::black_box(grad_arr, tang_y));
-    let black_box1 = ecx.expr_call(
-        sig_span,
-        blackbox_call_expr.clone(),
-        new_names
-            .iter()
-            .map(|arg| ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg))))
-            .collect(),
-    );
+    // create ::core::hint::black_box((grad_arr, tang_y));
+    let tup_args = new_names
+        .iter()
+        .map(|arg| ecx.expr_path(ecx.path_ident(span, Ident::from_str(arg))))
+        .collect();
 
-    // create ::core::hint::black_box(unsafe { ::core::mem::zeroed() })
-    let black_box2 = ecx.expr_call(
+    let black_box_remaining_args = ecx.expr_call(
         sig_span,
         blackbox_call_expr.clone(),
-        thin_vec![unsafe_block_with_zeroed_call.clone()],
+        thin_vec![ecx.expr_tuple(sig_span, tup_args)],
     );
 
     let mut body = ecx.block(span, ThinVec::new());
     body.stmts.push(ecx.stmt_semi(primal_call));
-    body.stmts.push(ecx.stmt_semi(black_box0));
-    body.stmts.push(ecx.stmt_semi(black_box1));
-    //body.stmts.push(ecx.stmt_semi(black_box2));
+    body.stmts.push(ecx.stmt_semi(black_box_primal_call));
+    body.stmts.push(ecx.stmt_semi(black_box_remaining_args));
     body.stmts.push(ecx.stmt_expr(loop_expr));
     body
 }
@@ -233,11 +227,9 @@ fn gen_primal_call(
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
 fn gen_enzyme_decl(
-    _ecx: &ExtCtxt<'_>,
     sig: &ast::FnSig,
     x: &AutoDiffAttrs,
     span: Span,
-    _sig_span: Span,
 ) -> (ast::FnSig, Vec<String>, Vec<String>, Vec<Ident>) {
     assert!(sig.decl.inputs.len() == x.input_activity.len());
     assert!(sig.decl.output.has_ret() == x.has_ret_activity());
@@ -246,15 +238,19 @@ fn gen_enzyme_decl(
     let mut new_inputs = Vec::new();
     let mut old_names = Vec::new();
     let mut idents = Vec::new();
+    let mut act_ret = ThinVec::new();
     for (arg, activity) in sig.decl.inputs.iter().zip(x.input_activity.iter()) {
         d_inputs.push(arg.clone());
         match activity {
+            DiffActivity::Active => {
+                assert!(x.mode == DiffMode::Reverse);
+                act_ret.push(arg.ty.clone());
+            }
             DiffActivity::Duplicated | DiffActivity::Dual => {
                 let mut shadow_arg = arg.clone();
                 shadow_arg.ty = P(assure_mut_ref(&arg.ty));
                 // adjust name depending on mode
-                let old_name = if let PatKind::Ident(_, ident, _) = shadow_arg.pat.kind {
-                    idents.push(ident.clone());
+                let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                     ident.name
                 } else {
                     dbg!(&shadow_arg.pat);
@@ -276,47 +272,72 @@ fn gen_enzyme_decl(
                     span: shadow_arg.pat.span,
                     tokens: shadow_arg.pat.tokens.clone(),
                 });
-                //idents.push(ident);
                 d_inputs.push(shadow_arg);
             }
             _ => {
                 dbg!(&activity);
             }
         }
+        if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+            idents.push(ident.clone());
+        } else {
+            panic!("not an ident?");
+        }
     }
 
     // If we return a scalar in the primal and the scalar is active,
     // then add it as last arg to the inputs.
-    if x.mode == DiffMode::Reverse {
-        match x.ret_activity {
-            DiffActivity::Active => {
-                let ty = match d_decl.output {
-                    rustc_ast::FnRetTy::Ty(ref ty) => ty.clone(),
-                    rustc_ast::FnRetTy::Default(span) => {
-                        panic!("Did not expect Default ret ty: {:?}", span);
-                    }
-                };
-                let name = "dret".to_string();
-                let ident = Ident::from_str_and_span(&name, ty.span);
-                let shadow_arg = ast::Param {
-                    attrs: ThinVec::new(),
-                    ty: ty.clone(),
-                    pat: P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
-                        span: ty.span,
-                        tokens: None,
-                    }),
+    if let DiffMode::Reverse = x.mode {
+        if let DiffActivity::Active = x.ret_activity {
+            let ty = match d_decl.output {
+                FnRetTy::Ty(ref ty) => ty.clone(),
+                FnRetTy::Default(span) => {
+                    panic!("Did not expect Default ret ty: {:?}", span);
+                }
+            };
+            let name = "dret".to_string();
+            let ident = Ident::from_str_and_span(&name, ty.span);
+            let shadow_arg = ast::Param {
+                attrs: ThinVec::new(),
+                ty: ty.clone(),
+                pat: P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
+                    kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
                     span: ty.span,
-                    is_placeholder: false,
-                };
-                d_inputs.push(shadow_arg);
-            }
-            _ => {}
+                    tokens: None,
+                }),
+                id: ast::DUMMY_NODE_ID,
+                span: ty.span,
+                is_placeholder: false,
+            };
+            d_inputs.push(shadow_arg);
+            new_inputs.push(name);
         }
     }
     d_decl.inputs = d_inputs.into();
+
+    // If we have an active input scalar, add it's gradient to the
+    // return type. This might require changing the return type to a
+    // tuple.
+    if act_ret.len() > 0 {
+        let mut ret_ty = match d_decl.output {
+            FnRetTy::Ty(ref ty) => {
+                act_ret.insert(0, ty.clone());
+                let kind = TyKind::Tup(act_ret);
+                P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None })
+            }
+            FnRetTy::Default(span) => {
+                if act_ret.len() == 1 {
+                    act_ret[0].clone()
+                } else {
+                    let kind = TyKind::Tup(act_ret.iter().map(|arg| arg.clone()).collect());
+                    P(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span, tokens: None })
+                }
+            }
+        };
+        d_decl.output = FnRetTy::Ty(ret_ty);
+    }
+
     let d_sig = FnSig { header: sig.header.clone(), decl: d_decl, span };
     (d_sig, old_names, new_inputs, idents)
 }
