@@ -138,7 +138,7 @@ pub(crate) fn rename(
                         return rename_to_self(&sema, local);
                     }
                 }
-                def.rename(&sema, new_name, rename_external)
+                def.rename(&sema, new_name)
             })
             .collect(),
     };
@@ -2695,7 +2695,8 @@ use qux as frob;
 //- /lib.rs crate:lib new_source_root:library
 pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
-use lib::S$0;
+use lib::S;
+fn main() { let _: S$0; }
 "#,
             "error: Cannot rename a non-local definition",
         );
