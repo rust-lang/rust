@@ -17,12 +17,13 @@ pub enum DiffMode {
 #[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum DiffActivity {
     None,
-    Active,
     Const,
+    Active,
+    ActiveOnly,
     Dual,
-    DualNoNeed,
+    DualOnly,
     Duplicated,
-    DuplicatedNoNeed,
+    DuplicatedOnly,
 }
 
 impl FromStr for DiffMode {
@@ -47,9 +48,9 @@ impl FromStr for DiffActivity {
             "Active" => Ok(DiffActivity::Active),
             "Const" => Ok(DiffActivity::Const),
             "Dual" => Ok(DiffActivity::Dual),
-            "DualNoNeed" => Ok(DiffActivity::DualNoNeed),
+            "DualOnly" => Ok(DiffActivity::DualOnly),
             "Duplicated" => Ok(DiffActivity::Duplicated),
-            "DuplicatedNoNeed" => Ok(DiffActivity::DuplicatedNoNeed),
+            "DuplicatedOnly" => Ok(DiffActivity::DuplicatedOnly),
             _ => Err(()),
         }
     }

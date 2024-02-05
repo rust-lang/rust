@@ -851,10 +851,10 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     fnc: &Value,
     input_diffactivity: Vec<DiffActivity>,
     ret_diffactivity: DiffActivity,
-    mut ret_primary_ret: bool,
     input_tts: Vec<TypeTree>,
     output_tt: TypeTree,
 ) -> &Value {
+    let mut ret_primary_ret = false;
     let ret_activity = cdiffe_from(ret_diffactivity);
     assert!(ret_activity != CDIFFE_TYPE::DFT_OUT_DIFF);
     let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
@@ -925,28 +925,21 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     fnc: &Value,
     input_activity: Vec<DiffActivity>,
     ret_activity: DiffActivity,
-    mut ret_primary_ret: bool,
-    diff_primary_ret: bool,
     input_tts: Vec<TypeTree>,
     output_tt: TypeTree,
 ) -> &Value {
-    let ret_activity = cdiffe_from(ret_activity);
-    assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
+    let (primary_ret, diff_ret, ret_activity) = match ret_activity {
+        DiffActivity::Const => (true, false, CDIFFE_TYPE::DFT_CONSTANT),
+        DiffActivity::Active => (true, true, CDIFFE_TYPE::DFT_DUP_ARG),
+        DiffActivity::ActiveOnly => (false, true, CDIFFE_TYPE::DFT_DUP_NONEED),
+        DiffActivity::None => (false, false, CDIFFE_TYPE::DFT_CONSTANT),
+        _ => panic!("Invalid return activity"),
+    };
+
+    //assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
     dbg!(&fnc);
-
-    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
-        if ret_primary_ret != true {
-            dbg!("overwriting ret_primary_ret!");
-        }
-        ret_primary_ret = true;
-    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
-        if ret_primary_ret != false {
-            dbg!("overwriting ret_primary_ret!");
-        }
-        ret_primary_ret = false;
-    }
 
     let mut args_tree = input_tts.iter().map(|x| x.inner).collect::<Vec<_>>();
 
@@ -977,8 +970,8 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         input_activity.as_ptr(),
         input_activity.len(), // constant arguments
         type_analysis,        // type analysis struct
-        ret_primary_ret as u8,
-        diff_primary_ret as u8,                   //0
+        primary_ret as u8,
+        diff_ret as u8,                   //0
         CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
         1,                                        // vector mode width
         1,                                        // free memory
@@ -2704,12 +2697,13 @@ pub enum CDIFFE_TYPE {
 fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
     return match act {
         DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
-        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
         DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
+        DiffActivity::ActiveOnly => CDIFFE_TYPE::DFT_OUT_DIFF,
         DiffActivity::Dual => CDIFFE_TYPE::DFT_DUP_ARG,
-        DiffActivity::DualNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
+        DiffActivity::DualOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
         DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
-        DiffActivity::DuplicatedNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
+        DiffActivity::DuplicatedOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
     };
 }
 

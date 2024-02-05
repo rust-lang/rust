@@ -839,7 +839,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
 
     if mode == DiffMode::Reverse {
         if ret_activity == DiffActivity::Duplicated
-            || ret_activity == DiffActivity::DuplicatedNoNeed
+            || ret_activity == DiffActivity::DuplicatedOnly
         {
             dbg!("ret_activity = {:?}", ret_activity);
             tcx.sess

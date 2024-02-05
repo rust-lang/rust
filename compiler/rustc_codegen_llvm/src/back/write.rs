@@ -756,8 +756,6 @@ pub(crate) unsafe fn enzyme_ad(
     let output_tt = to_enzyme_typetree(item.output, llvm_data_layout, llcx);
 
     let opt = 1;
-    let ret_primary_ret = false;
-    let diff_primary_ret = false;
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef =
         CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
@@ -784,7 +782,6 @@ pub(crate) unsafe fn enzyme_ad(
             src_fnc,
             args_activity,
             ret_activity,
-            ret_primary_ret,
             input_tts,
             output_tt,
         ),
@@ -794,8 +791,6 @@ pub(crate) unsafe fn enzyme_ad(
             src_fnc,
             args_activity,
             ret_activity,
-            ret_primary_ret,
-            diff_primary_ret,
             input_tts,
             output_tt,
         ),
