@@ -530,6 +530,9 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(
     generic_args::opt_generic_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
+    } else {
+        // emit an error when argument list is missing
+        p.error("expected argument list");
     }
     m.complete(p, METHOD_CALL_EXPR)
 }
