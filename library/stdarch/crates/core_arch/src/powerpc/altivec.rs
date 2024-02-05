@@ -75,6 +75,19 @@ extern "C" {
     #[link_name = "llvm.ppc.altivec.lvxl"]
     fn lvxl(p: *const i8) -> vector_unsigned_int;
 
+    #[link_name = "llvm.ppc.altivec.stvx"]
+    fn stvx(a: vector_signed_int, p: *const i8);
+
+    #[link_name = "llvm.ppc.altivec.stvebx"]
+    fn stvebx(a: vector_signed_char, p: *const i8);
+    #[link_name = "llvm.ppc.altivec.stvehx"]
+    fn stvehx(a: vector_signed_short, p: *const i8);
+    #[link_name = "llvm.ppc.altivec.stvewx"]
+    fn stvewx(a: vector_signed_int, p: *const i8);
+
+    #[link_name = "llvm.ppc.altivec.stvxl"]
+    fn stvxl(a: vector_signed_int, p: *const i8);
+
     #[link_name = "llvm.ppc.altivec.vperm"]
     fn vperm(
         a: vector_signed_int,
@@ -605,6 +618,98 @@ mod sealed {
     impl_vec_lde! { vec_lde_i32 lvewx i32 }
 
     impl_vec_lde! { vec_lde_f32 lvewx f32 }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSt {
+        type Target;
+        unsafe fn vec_st(self, off: isize, p: Self::Target);
+        unsafe fn vec_stl(self, off: isize, p: Self::Target);
+    }
+
+    macro_rules! impl_vec_st {
+        ($fun:ident $fun_lru:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr(stvx))]
+            pub unsafe fn $fun(a: t_t_l!($ty), off: isize, p: *const $ty) {
+                let addr = (p as *const i8).offset(off);
+                stvx(transmute(a), addr)
+            }
+
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr(stvxl))]
+            pub unsafe fn $fun_lru(a: t_t_l!($ty), off: isize, p: *const $ty) {
+                let addr = (p as *const i8).offset(off as isize);
+                stvxl(transmute(a), addr)
+            }
+
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorSt for t_t_l!($ty) {
+                type Target = *const $ty;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_st(self, off: isize, p: Self::Target) {
+                    $fun(self, off, p)
+                }
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_stl(self, off: isize, p: Self::Target) {
+                    $fun(self, off, p)
+                }
+            }
+        };
+    }
+
+    impl_vec_st! { vec_st_u8 vec_stl_u8 u8 }
+    impl_vec_st! { vec_st_i8 vec_stl_i8 i8 }
+
+    impl_vec_st! { vec_st_u16 vec_stl_u16 u16 }
+    impl_vec_st! { vec_st_i16 vec_stl_i16 i16 }
+
+    impl_vec_st! { vec_st_u32 vec_stl_u32 u32 }
+    impl_vec_st! { vec_st_i32 vec_stl_i32 i32 }
+
+    impl_vec_st! { vec_st_f32 vec_stl_f32 f32 }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSte {
+        type Target;
+        unsafe fn vec_ste(self, off: isize, p: Self::Target);
+    }
+
+    macro_rules! impl_vec_ste {
+        ($fun:ident $instr:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr($instr))]
+            pub unsafe fn $fun(a: t_t_l!($ty), off: isize, p: *const $ty) {
+                let addr = (p as *const i8).offset(off);
+                $instr(transmute(a), addr)
+            }
+
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorSte for t_t_l!($ty) {
+                type Target = *const $ty;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_ste(self, off: isize, p: Self::Target) {
+                    $fun(self, off, p)
+                }
+            }
+        };
+    }
+
+    impl_vec_ste! { vec_ste_u8 stvebx u8 }
+    impl_vec_ste! { vec_ste_i8 stvebx i8 }
+
+    impl_vec_ste! { vec_ste_u16 stvehx u16 }
+    impl_vec_ste! { vec_ste_i16 stvehx i16 }
+
+    impl_vec_ste! { vec_ste_u32 stvewx u32 }
+    impl_vec_ste! { vec_ste_i32 stvewx i32 }
+
+    impl_vec_ste! { vec_ste_f32 stvewx f32 }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorXl {
@@ -3268,6 +3373,76 @@ where
     T: sealed::VectorLde,
 {
     p.vec_lde(off)
+}
+
+/// Vector Store Indexed
+///
+/// ## Purpose
+/// Stores a 16-byte vector into memory at the address specified by a displacement and a
+/// pointer, ignoring the four low-order bits of the calculated address.
+///
+/// ## Operation
+/// A memory address is obtained by adding b and c, and masking off the four low-order
+/// bits of the result. The 16-byte vector in a is stored to the resultant memory address.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_st<T>(a: T, off: isize, c: <T as sealed::VectorSt>::Target)
+where
+    T: sealed::VectorSt,
+{
+    a.vec_st(off, c)
+}
+
+/// Vector Store Indexed Least Recently Used
+///
+/// ## Purpose
+/// Stores a 16-byte vector into memory at the address specified by a displacement and
+/// a pointer, ignoring the four low-order bits of the calculated address, and marking the cache
+/// line containing the address as least frequently used.
+///
+/// ## Operation
+/// A memory address is obtained by adding b and c, and masking off the four
+/// low-order bits of the result. The 16-byte vector in a is stored to the resultant memory
+/// address, and the containing cache line is marked as least frequently used.
+///
+/// ## Notes
+/// This intrinsic can be used to indicate the last access to a portion of memory, as a hint to the
+/// data cache controller that the associated cache line can be replaced without performance loss.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_stl<T>(a: T, off: isize, c: <T as sealed::VectorSt>::Target)
+where
+    T: sealed::VectorSt,
+{
+    a.vec_stl(off, c)
+}
+
+/// Vector Store Element Indexed
+///
+/// ## Purpose
+/// Stores a single element from a 16-byte vector into memory at the address specified by
+/// a displacement and a pointer, aligned to the element size.
+///
+/// ## Operation
+/// The integer value b is added to the pointer value c. The resulting address is
+/// rounded down to the nearest address that is a multiple of es, where es is 1 for char pointers,
+/// 2 for short pointers, and 4 for float or int pointers. An element offset eo is calculated by
+/// taking the resultant address modulo 16. The vector element of a at offset eo is stored to the
+/// resultant address.
+///
+/// ## Notes
+/// Be careful to note that the address (b+c) is aligned to an element boundary. Do not attempt
+/// to store unaligned data with this intrinsic.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_ste<T>(a: T, off: isize, c: <T as sealed::VectorSte>::Target)
+where
+    T: sealed::VectorSte,
+{
+    a.vec_ste(off, c)
 }
 
 /// VSX Unaligned Load
