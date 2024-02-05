@@ -428,10 +428,6 @@ pub mod primitive;
     deprecated_in_future
 )]
 #[allow(rustdoc::bare_urls)]
-// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
-// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
-#[allow(clashing_extern_declarations)]
-#[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
