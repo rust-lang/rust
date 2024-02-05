@@ -12,6 +12,9 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LocalDefId};

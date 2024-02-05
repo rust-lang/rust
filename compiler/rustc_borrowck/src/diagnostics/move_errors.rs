@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};

@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use hir::ExprKind;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;

@@ -10,7 +10,12 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
+)]
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]

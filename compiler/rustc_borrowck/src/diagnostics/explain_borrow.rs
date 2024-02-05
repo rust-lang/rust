@@ -1,5 +1,8 @@
 //! Print diagnostics to explain why values are borrowed.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;

@@ -1,5 +1,8 @@
 //! Analysis of patterns, notably match exhaustiveness checking.
 
+#![allow(rustc::untranslatable_diagnostic)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+
 pub mod constructor;
 #[cfg(feature = "rustc")]
 pub mod errors;

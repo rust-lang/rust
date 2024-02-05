@@ -17,8 +17,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-#![deny(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]

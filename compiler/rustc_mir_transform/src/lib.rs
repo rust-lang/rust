@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]

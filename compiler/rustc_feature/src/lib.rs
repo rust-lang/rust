@@ -15,8 +15,6 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(lazy_cell)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod accepted;
 mod builtin_attrs;
