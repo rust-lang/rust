@@ -1,4 +1,4 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{base, CodeModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -7,6 +7,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".into(),
         arch: "loongarch64".into(),
         options: TargetOptions {
+            code_model: Some(CodeModel::Medium),
             cpu: "generic".into(),
             features: "+f,+d".into(),
             llvm_abiname: "lp64d".into(),
