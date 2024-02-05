@@ -137,13 +137,24 @@ pub fn provide(providers: &mut Providers) {
     providers.opt_hir_owner_nodes =
         |tcx, id| tcx.hir_crate(()).owners.get(id)?.as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
-        // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
-        tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
-            let mut parent_hir_id = tcx.local_def_id_to_hir_id(parent);
-            parent_hir_id.local_id =
-                tcx.hir_crate(()).owners[parent_hir_id.owner.def_id].unwrap().parenting[&id.def_id];
-            parent_hir_id
-        })
+        if id.local_id == ItemLocalId::from_u32(0) {
+            tcx.opt_local_parent(id.owner.def_id).map_or(CRATE_HIR_ID, |parent| {
+                let mut parent_hir_id = tcx.local_def_id_to_hir_id(parent);
+                parent_hir_id.local_id = tcx.hir_crate(()).owners[parent_hir_id.owner.def_id]
+                    .unwrap()
+                    .parenting[&id.owner.def_id];
+                parent_hir_id
+            })
+        } else {
+            let owner = tcx.hir_owner_nodes(id.owner);
+            let Some(node) = owner.nodes[id.local_id].as_ref() else {
+                return HirId::make_owner(id.owner.def_id);
+            };
+            let hir_id = HirId { owner: id.owner, local_id: node.parent };
+            // HIR indexing should have checked that.
+            debug_assert_ne!(id.local_id, node.parent);
+            hir_id
+        }
     };
     providers.hir_attrs = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)

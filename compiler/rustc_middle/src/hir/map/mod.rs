@@ -229,16 +229,7 @@ impl<'hir> Map<'hir> {
     ///
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
-        if id.local_id == ItemLocalId::from_u32(0) {
-            Some(self.tcx.hir_owner_parent(id.owner))
-        } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner);
-            let node = owner.nodes[id.local_id].as_ref()?;
-            let hir_id = HirId { owner: id.owner, local_id: node.parent };
-            // HIR indexing should have checked that.
-            debug_assert_ne!(id.local_id, node.parent);
-            Some(hir_id)
-        }
+        Some(self.tcx.hir_owner_parent(id))
     }
 
     #[track_caller]
