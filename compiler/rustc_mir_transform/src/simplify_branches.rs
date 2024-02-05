@@ -17,7 +17,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running SimplifyConstCondition on {:?}", body.source);
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        let ssa = crate::ssa::SsaLocals::new(body);
         'blocks: for block in body.basic_blocks_mut() {
             for stmt in block.statements.iter_mut() {
                 if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind
@@ -35,28 +34,28 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
                 }
             }
 
+            // Whether to remove the last statement a nop - can't do this inside
+            // the match as we're borrowing the block
+            let mut remove_last = false;
             block.terminator_mut().kind = match block.terminator().kind {
                 TerminatorKind::SwitchInt { ref discr, ref targets, .. } => match discr {
-                    Operand::Move(place) if let Some(local) = place.as_local() => {
-                        if !ssa.is_ssa(local) {
-                            continue;
-                        }
-                        let Some(c) = block.statements.iter().find_map(|stmt| {
-                            if let StatementKind::Assign(box (
-                                assigned,
-                                Rvalue::Use(Operand::Constant(const_val)),
-                            )) = &stmt.kind
-                                && assigned == place
-                            {
-                                Some(const_val)
-                            } else {
-                                None
-                            }
-                        }) else {
-                            continue;
-                        };
-                        let constant = c.const_.try_eval_bits(tcx, param_env);
-                        if let Some(constant) = constant {
+                    Operand::Move(place) => {
+                        // Handle the case where we have
+                        // ```
+                        // _1 = const true
+                        // switchInt(move _1) -> [0; bb2, otherwise: bb3]
+                        // ...
+                        // ```
+                        // produced by `if <constant>`
+                        if let Some(stmt) = block.statements.last()
+                            && let StatementKind::Assign(box (
+                                ref assigned,
+                                Rvalue::Use(Operand::Constant(ref c)),
+                            )) = stmt.kind
+                            && assigned == place
+                            && let Some(constant) = c.const_.try_eval_bits(tcx, param_env)
+                        {
+                            remove_last = true;
                             let target = targets.target_for_value(constant);
                             TerminatorKind::Goto { target }
                         } else {
@@ -82,6 +81,9 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
                 },
                 _ => continue,
             };
+            if remove_last {
+                block.statements.pop();
+            }
         }
     }
 }
