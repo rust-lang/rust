@@ -2284,7 +2284,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl From<String> for Box<dyn Error + Send + Sync> {
+impl<'a> From<String> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
     /// # Examples
@@ -2299,7 +2299,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     #[inline]
-    fn from(err: String) -> Box<dyn Error + Send + Sync> {
+    fn from(err: String) -> Box<dyn Error + Send + Sync + 'a> {
         struct StringError(String);
 
         impl Error for StringError {
@@ -2328,7 +2328,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
-impl From<String> for Box<dyn Error> {
+impl<'a> From<String> for Box<dyn Error + 'a> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
     /// # Examples
@@ -2341,7 +2341,7 @@ impl From<String> for Box<dyn Error> {
     /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
-    fn from(str_err: String) -> Box<dyn Error> {
+    fn from(str_err: String) -> Box<dyn Error + 'a> {
         let err1: Box<dyn Error + Send + Sync> = From::from(str_err);
         let err2: Box<dyn Error> = err1;
         err2
@@ -2374,7 +2374,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
-impl From<&str> for Box<dyn Error> {
+impl<'a> From<&str> for Box<dyn Error + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
     /// [`str`]: prim@str
@@ -2389,7 +2389,7 @@ impl From<&str> for Box<dyn Error> {
     /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
-    fn from(err: &str) -> Box<dyn Error> {
+    fn from(err: &str) -> Box<dyn Error + 'a> {
         From::from(String::from(err))
     }
 }
@@ -2418,7 +2418,7 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_box_error", since = "1.22.0")]
-impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
+impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
     ///
     /// # Examples
@@ -2432,7 +2432,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
-    fn from(err: Cow<'a, str>) -> Box<dyn Error> {
+    fn from(err: Cow<'b, str>) -> Box<dyn Error + 'a> {
         From::from(String::from(err))
     }
 }
