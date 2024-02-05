@@ -243,6 +243,7 @@ trivial! {
     Option<usize>,
     Option<rustc_span::Symbol>,
     Result<(), rustc_errors::ErrorGuaranteed>,
+    Result<(), traits::util::HasImpossiblePredicates>,
     Result<(), rustc_middle::traits::query::NoSolution>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     rustc_ast::expand::allocator::AllocatorKind,

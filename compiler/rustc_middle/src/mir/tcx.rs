@@ -76,6 +76,10 @@ impl<'tcx> PlaceTy<'tcx> {
         if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
             bug!("cannot use non field projection on downcasted place")
         }
+        if self.ty.references_error() {
+            // Cannot do anything useful with error types
+            return PlaceTy::from_ty(self.ty);
+        }
         let answer = match *elem {
             ProjectionElem::Deref => {
                 let ty = self

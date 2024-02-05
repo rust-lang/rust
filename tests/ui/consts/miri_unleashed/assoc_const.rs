@@ -1,4 +1,3 @@
-//@ build-fail
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 
 // a test demonstrating why we do need to run static const qualification on associated constants

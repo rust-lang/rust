@@ -3,8 +3,6 @@
 //@[opt]compile-flags: -O
 //@[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
-//@ build-fail
-
 use std::thread;
 
 fn main() {

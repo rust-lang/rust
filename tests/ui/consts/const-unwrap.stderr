@@ -4,6 +4,37 @@ error[E0080]: evaluation of constant value failed
 LL | const BAR: i32 = Option::<i32>::None.unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'called `Option::unwrap()` on a `None` value', $DIR/const-unwrap.rs:7:38
 
+note: erroneous constant encountered
+  --> $DIR/const-unwrap.rs:12:20
+   |
+LL |     println!("{}", BAR);
+   |                    ^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-unwrap.rs:12:20
+   |
+LL |     println!("{}", BAR);
+   |                    ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-unwrap.rs:12:20
+   |
+LL |     println!("{}", BAR);
+   |                    ^^^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/const-unwrap.rs:12:20
+   |
+LL |     println!("{}", BAR);
+   |                    ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

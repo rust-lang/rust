@@ -7,6 +7,10 @@ LL | const X: i32 = 1 / 0;
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `X`
 #1 [eval_to_const_value_raw] simplifying constant for the type system `X`
-#2 [lint_mod] linting top-level module
-#3 [analysis] running analysis passes on this crate
+#2 [const_prop_lint_promoteds] running const prop lints for promoteds of `main`
+#3 [promoted_mir] optimizing promoted MIR for `main`
+#4 [eval_to_allocation_raw] const-evaluating + checking `main::promoted[1]`
+#5 [eval_to_const_value_raw] simplifying constant for the type system `main::promoted[1]`
+#6 [const_prop_lint] running const prop lints for `main`
+#7 [analysis] running analysis passes on this crate
 end of query stack

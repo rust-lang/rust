@@ -4,7 +4,11 @@
 // A regression test for #105787
 
 //@[old] known-bug: #105787
-//@[old] check-pass
+//@[old] failure-status: 101
+//@ normalize-stderr-test "note: .*\n\n" -> ""
+//@ normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+//@ normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
+//@ rustc-env:RUST_BACKTRACE=0
 #![feature(type_alias_impl_trait)]
 mod defining_scope {
     use super::*;

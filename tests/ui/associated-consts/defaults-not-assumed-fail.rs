@@ -1,5 +1,3 @@
-//@ build-fail
-
 trait Tr {
     const A: u8 = 255;
 

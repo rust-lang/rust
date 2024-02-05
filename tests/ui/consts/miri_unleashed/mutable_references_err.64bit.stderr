@@ -1,17 +1,11 @@
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:17:1
-   |
-LL | const MUH: Meh = Meh {
-   | ^^^^^^^^^^^^^^
-
-error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:28:1
+  --> $DIR/mutable_references_err.rs:16:1
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:33:1
+  --> $DIR/mutable_references_err.rs:21:1
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference in a `const` or `static`
@@ -22,13 +16,13 @@ LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
            }
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:36:1
+  --> $DIR/mutable_references_err.rs:24:1
    |
 LL | const BLUNT: &mut i32 = &mut 42;
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:41:1
+  --> $DIR/mutable_references_err.rs:29:1
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered mutable reference or box pointing to read-only memory
@@ -39,7 +33,7 @@ LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const 
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/mutable_references_err.rs:48:1
+  --> $DIR/mutable_references_err.rs:36:1
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -50,49 +44,49 @@ LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
            }
 
 note: erroneous constant encountered
-  --> $DIR/mutable_references_err.rs:50:34
+  --> $DIR/mutable_references_err.rs:38:34
    |
 LL | const READS_FROM_MUTABLE: i32 = *POINTS_TO_MUTABLE1;
    |                                  ^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/mutable_references_err.rs:52:43
+  --> $DIR/mutable_references_err.rs:40:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                           ^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:56:1
+  --> $DIR/mutable_references_err.rs:44:1
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:58:1
+  --> $DIR/mutable_references_err.rs:46:1
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:60:1
+  --> $DIR/mutable_references_err.rs:48:1
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:72:1
+  --> $DIR/mutable_references_err.rs:60:1
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:74:1
+  --> $DIR/mutable_references_err.rs:62:1
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: encountered mutable pointer in final value of constant
-  --> $DIR/mutable_references_err.rs:76:1
+  --> $DIR/mutable_references_err.rs:64:1
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -100,81 +94,76 @@ LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:19:8
-   |
-LL |     x: &UnsafeCell::new(42),
-   |        ^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:28:27
+  --> $DIR/mutable_references_err.rs:16:27
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:33:40
+  --> $DIR/mutable_references_err.rs:21:40
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                        ^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:33:35
+  --> $DIR/mutable_references_err.rs:21:35
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                   ^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:36:25
+  --> $DIR/mutable_references_err.rs:24:25
    |
 LL | const BLUNT: &mut i32 = &mut 42;
    |                         ^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:41:49
+  --> $DIR/mutable_references_err.rs:29:49
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_mut_refs` feature
-  --> $DIR/mutable_references_err.rs:41:49
+  --> $DIR/mutable_references_err.rs:29:49
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:48:44
+  --> $DIR/mutable_references_err.rs:36:44
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:52:45
+  --> $DIR/mutable_references_err.rs:40:45
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                             ^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:56:45
+  --> $DIR/mutable_references_err.rs:44:45
    |
 LL | const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
    |                                             ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:58:46
+  --> $DIR/mutable_references_err.rs:46:46
    |
 LL | const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
    |                                              ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:60:47
+  --> $DIR/mutable_references_err.rs:48:47
    |
 LL | const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                               ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:72:51
+  --> $DIR/mutable_references_err.rs:60:51
    |
 LL | const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
    |                                                   ^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:74:49
+  --> $DIR/mutable_references_err.rs:62:49
    |
 LL | const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
    |                                                 ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:76:51
+  --> $DIR/mutable_references_err.rs:64:51
    |
 LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                   ^^^^^^
 
-error: aborting due to 13 previous errors; 1 warning emitted
+error: aborting due to 12 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

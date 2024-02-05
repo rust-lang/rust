@@ -7,18 +7,6 @@ use std::sync::atomic::*;
 
 // this test ensures that our mutability story is sound
 
-struct Meh {
-    x: &'static UnsafeCell<i32>,
-}
-unsafe impl Sync for Meh {}
-
-// the following will never be ok! no interior mut behind consts, because
-// all allocs interned here will be marked immutable.
-const MUH: Meh = Meh {
-    //~^ ERROR encountered mutable pointer in final value of constant
-    x: &UnsafeCell::new(42),
-};
-
 struct Synced {
     x: UnsafeCell<i32>,
 }
@@ -76,8 +64,4 @@ const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
 const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value
 
-fn main() {
-    unsafe {
-        *MUH.x.get() = 99;
-    }
-}
+fn main() {}

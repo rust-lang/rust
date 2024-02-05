@@ -1,5 +1,3 @@
-//@ build-fail
-
 pub const unsafe fn fake_type<T>() -> T {
     hint_unreachable() //~ ERROR evaluation of `<i32 as Const>::CONSTANT` failed
 }

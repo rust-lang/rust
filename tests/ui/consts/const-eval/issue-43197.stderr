@@ -1,14 +1,76 @@
 error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-43197.rs:8:24
+   |
+LL |     const Y: u32 = foo(0 - 1);
+   |                        ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^
+
+error[E0080]: evaluation of constant value failed
   --> $DIR/issue-43197.rs:6:20
    |
 LL |     const X: u32 = 0 - 1;
    |                    ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-43197.rs:8:24
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:23
    |
-LL |     const Y: u32 = foo(0 - 1);
-   |                        ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
+LL |     println!("{} {}", X, Y);
+   |                       ^
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/issue-43197.rs:10:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

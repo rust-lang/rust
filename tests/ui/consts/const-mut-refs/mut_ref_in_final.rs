@@ -8,6 +8,7 @@ const A: *const i32 = &4;
 // but we do not want to allow this to compile,
 // as that would be an enormous footgun in oli-obk's opinion.
 const B: *mut i32 = &mut 4; //~ ERROR mutable references are not allowed
+//~^ ERROR mutable pointer in final value of constant
 
 // Ok, no actual mutable allocation exists
 const B2: Option<&mut i32> = None;

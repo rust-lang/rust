@@ -8,19 +8,19 @@ note: inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
 note: inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `<String as Bar<Vec<u32>, String>>::F`
-  --> $DIR/assoc_const.rs:12:31
+  --> $DIR/assoc_const.rs:11:31
    |
 LL |     const F: u32 = (U::X, 42).1;
    |                               ^
 
 note: erroneous constant encountered
-  --> $DIR/assoc_const.rs:29:13
+  --> $DIR/assoc_const.rs:28:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: erroneous constant encountered
-  --> $DIR/assoc_const.rs:29:13
+  --> $DIR/assoc_const.rs:28:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     let y = <String as Bar<Vec<u32>, String>>::F;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/assoc_const.rs:12:20
+  --> $DIR/assoc_const.rs:11:20
    |
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^

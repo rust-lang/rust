@@ -1,4 +1,3 @@
-//@ build-fail
 //@ compile-flags: -C debug-assertions
 
 // This function is checking that our automatic truncation does not

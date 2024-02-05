@@ -3,7 +3,7 @@ error[E0072]: recursive type `S` has infinite size
    |
 LL | struct S {
    | ^^^^^^^^
-LL |
+...
 LL |     element: Option<S>
    |                     - recursive without indirection
    |
@@ -12,6 +12,18 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
 LL |     element: Option<Box<S>>
    |                     ++++ +
 
-error: aborting due to 1 previous error
+error[E0391]: cycle detected when computing layout of `S`
+   |
+   = note: ...which requires computing layout of `core::option::Option<S>`...
+   = note: ...which again requires computing layout of `S`, completing the cycle
+note: cycle used when running const prop lints for `main`
+  --> $DIR/issue-3779.rs:7:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-For more information about this error, try `rustc --explain E0072`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0072, E0391.
+For more information about an error, try `rustc --explain E0072`.

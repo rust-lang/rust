@@ -4,11 +4,23 @@ error[E0080]: evaluation of constant value failed
 LL |      i8::MAX + 1,
    |      ^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:57:9
+   |
+LL |     foo(VALS_I8);
+   |         ^^^^^^^
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:18:6
    |
 LL |      i16::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `i16::MAX + 1_i16`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:58:9
+   |
+LL |     foo(VALS_I16);
+   |         ^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:24:6
@@ -16,11 +28,23 @@ error[E0080]: evaluation of constant value failed
 LL |      i32::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `i32::MAX + 1_i32`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:59:9
+   |
+LL |     foo(VALS_I32);
+   |         ^^^^^^^^
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:30:6
    |
 LL |      i64::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `i64::MAX + 1_i64`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:60:9
+   |
+LL |     foo(VALS_I64);
+   |         ^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:36:6
@@ -28,11 +52,23 @@ error[E0080]: evaluation of constant value failed
 LL |      u8::MAX + 1,
    |      ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:62:9
+   |
+LL |     foo(VALS_U8);
+   |         ^^^^^^^
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:41:6
    |
 LL |      u16::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `u16::MAX + 1_u16`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:63:9
+   |
+LL |     foo(VALS_U16);
+   |         ^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:46:6
@@ -40,11 +76,23 @@ error[E0080]: evaluation of constant value failed
 LL |      u32::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `u32::MAX + 1_u32`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:64:9
+   |
+LL |     foo(VALS_U32);
+   |         ^^^^^^^^
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-eval-overflow2b.rs:52:6
    |
 LL |      u64::MAX + 1,
    |      ^^^^^^^^^^^^ attempt to compute `u64::MAX + 1_u64`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-eval-overflow2b.rs:65:9
+   |
+LL |     foo(VALS_U64);
+   |         ^^^^^^^^
 
 error: aborting due to 8 previous errors
 

@@ -38,6 +38,7 @@ use rustc_middle::mir::{
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::query::Providers;
+use rustc_middle::traits::util::HasImpossiblePredicates;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
@@ -137,6 +138,8 @@ pub fn provide(providers: &mut Providers) {
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
+        const_prop_lint,
+        const_prop_lint_promoteds,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
@@ -393,6 +396,39 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     body
 }
 
+fn const_prop_lint(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), HasImpossiblePredicates> {
+    let (body, _) = tcx.mir_promoted(def);
+    let body = body.borrow();
+
+    let mir_borrowck = tcx.mir_borrowck(def);
+
+    check_impossible_predicates(tcx, def)?;
+    if mir_borrowck.tainted_by_errors.is_none() && body.tainted_by_errors.is_none() {
+        const_prop_lint::ConstPropLint.run_lint(tcx, &body);
+    }
+    Ok(())
+}
+
+fn const_prop_lint_promoteds(
+    tcx: TyCtxt<'_>,
+    def: LocalDefId,
+) -> Result<(), HasImpossiblePredicates> {
+    let (_, promoteds) = tcx.mir_promoted(def);
+    let promoteds = promoteds.borrow();
+
+    let mir_borrowck = tcx.mir_borrowck(def);
+
+    check_impossible_predicates(tcx, def)?;
+    if mir_borrowck.tainted_by_errors.is_none() {
+        for body in &*promoteds {
+            if body.tainted_by_errors.is_none() {
+                const_prop_lint::ConstPropLint.run_lint(tcx, &body);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
@@ -401,6 +437,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);
+    let impossible_predicates = tcx.const_prop_lint(def);
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -415,7 +452,30 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     if let Some(error_reported) = mir_borrowck.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
     }
+    if impossible_predicates.is_err() {
+        trace!("found unsatisfiable predicates for {:?}", body.source);
+        // Clear the body to only contain a single `unreachable` statement.
+        let bbs = body.basic_blocks.as_mut();
+        bbs.raw.truncate(1);
+        bbs[START_BLOCK].statements.clear();
+        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
+        body.var_debug_info.clear();
+        body.local_decls.raw.truncate(body.arg_count + 1);
+    }
 
+    run_analysis_to_runtime_passes(tcx, &mut body);
+
+    // Now that drop elaboration has been performed, we can check for
+    // unconditional drop recursion.
+    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
+
+    tcx.alloc_steal_mir(body)
+}
+
+fn check_impossible_predicates(
+    tcx: TyCtxt<'_>,
+    def: LocalDefId,
+) -> Result<(), HasImpossiblePredicates> {
     // Check if it's even possible to satisfy the 'where' clauses
     // for this item.
     //
@@ -445,28 +505,15 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     // the normalization code (leading to cycle errors), since
     // it's usually never invoked in this way.
     let predicates = tcx
-        .predicates_of(body.source.def_id())
+        .predicates_of(def)
         .predicates
         .iter()
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-        trace!("found unsatisfiable predicates for {:?}", body.source);
-        // Clear the body to only contain a single `unreachable` statement.
-        let bbs = body.basic_blocks.as_mut();
-        bbs.raw.truncate(1);
-        bbs[START_BLOCK].statements.clear();
-        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
-        body.var_debug_info.clear();
-        body.local_decls.raw.truncate(body.arg_count + 1);
+        Err(HasImpossiblePredicates)
+    } else {
+        Ok(())
     }
-
-    run_analysis_to_runtime_passes(tcx, &mut body);
-
-    // Now that drop elaboration has been performed, we can check for
-    // unconditional drop recursion.
-    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
-
-    tcx.alloc_steal_mir(body)
 }
 
 // Made public such that `mir_drops_elaborated_and_const_checked` can be overridden
@@ -533,7 +580,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,
         &add_retag::AddRetag,
-        &Lint(const_prop_lint::ConstPropLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
@@ -678,6 +724,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     tcx.ensure_with_value().mir_borrowck(def);
+    tcx.ensure().const_prop_lint_promoteds(def);
     let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {

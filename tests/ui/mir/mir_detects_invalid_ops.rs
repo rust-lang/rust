@@ -1,5 +1,3 @@
-//@ build-fail
-
 fn main() {
     divide_by_zero();
     mod_by_zero();

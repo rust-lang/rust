@@ -1,3 +1,6 @@
+//~ ERROR overflow
+//~^ ERROR overflow
+//~| ERROR overflow
 // Test that impl trait does not allow creating recursive types that are
 // otherwise forbidden.
 #![feature(coroutines)]

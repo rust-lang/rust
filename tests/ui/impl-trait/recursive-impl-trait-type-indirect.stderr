@@ -1,5 +1,5 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:6:22
+  --> $DIR/recursive-impl-trait-type-indirect.rs:9:22
    |
 LL | fn option(i: i32) -> impl Sized {
    |                      ^^^^^^^^^^ recursive opaque type
@@ -10,7 +10,7 @@ LL |     if i < 0 { None } else { Some((option(i - 1), i)) }
    |                returning here with type `Option<(impl Sized, i32)>`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:11:15
+  --> $DIR/recursive-impl-trait-type-indirect.rs:14:15
    |
 LL | fn tuple() -> impl Sized {
    |               ^^^^^^^^^^ recursive opaque type
@@ -19,7 +19,7 @@ LL |     (tuple(),)
    |     ---------- returning here with type `(impl Sized,)`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:16:15
+  --> $DIR/recursive-impl-trait-type-indirect.rs:19:15
    |
 LL | fn array() -> impl Sized {
    |               ^^^^^^^^^^ recursive opaque type
@@ -28,7 +28,7 @@ LL |     [array()]
    |     --------- returning here with type `[impl Sized; 1]`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:21:13
+  --> $DIR/recursive-impl-trait-type-indirect.rs:24:13
    |
 LL | fn ptr() -> impl Sized {
    |             ^^^^^^^^^^ recursive opaque type
@@ -37,7 +37,7 @@ LL |     &ptr() as *const _
    |     ------------------ returning here with type `*const impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:26:16
+  --> $DIR/recursive-impl-trait-type-indirect.rs:29:16
    |
 LL | fn fn_ptr() -> impl Sized {
    |                ^^^^^^^^^^ recursive opaque type
@@ -46,7 +46,7 @@ LL |     fn_ptr as fn() -> _
    |     ------------------- returning here with type `fn() -> impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:31:25
+  --> $DIR/recursive-impl-trait-type-indirect.rs:34:25
    |
 LL |   fn closure_capture() -> impl Sized {
    |                           ^^^^^^^^^^ recursive opaque type
@@ -55,10 +55,10 @@ LL | /     move || {
 LL | |         x;
    | |         - closure captures itself here
 LL | |     }
-   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:34:5: 34:12}`
+   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:37:5: 37:12}`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:39:29
+  --> $DIR/recursive-impl-trait-type-indirect.rs:42:29
    |
 LL |   fn closure_ref_capture() -> impl Sized {
    |                               ^^^^^^^^^^ recursive opaque type
@@ -67,28 +67,28 @@ LL | /     move || {
 LL | |         &x;
    | |          - closure captures itself here
 LL | |     }
-   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:42:5: 42:12}`
+   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:45:5: 45:12}`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:47:21
+  --> $DIR/recursive-impl-trait-type-indirect.rs:50:21
    |
 LL | fn closure_sig() -> impl Sized {
    |                     ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     || closure_sig()
-   |     ---------------- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:49:5: 49:7}`
+   |     ---------------- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:52:5: 52:7}`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:52:23
+  --> $DIR/recursive-impl-trait-type-indirect.rs:55:23
    |
 LL | fn coroutine_sig() -> impl Sized {
    |                       ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     || coroutine_sig()
-   |     ------------------ returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:54:5: 54:7}`
+   |     ------------------ returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:57:5: 57:7}`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:57:27
+  --> $DIR/recursive-impl-trait-type-indirect.rs:60:27
    |
 LL |   fn coroutine_capture() -> impl Sized {
    |                             ^^^^^^^^^^ recursive opaque type
@@ -98,10 +98,10 @@ LL | |         yield;
 LL | |         x;
    | |         - coroutine captures itself here
 LL | |     }
-   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:60:5: 60:12}`
+   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:63:5: 63:12}`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:66:35
+  --> $DIR/recursive-impl-trait-type-indirect.rs:69:35
    |
 LL | fn substs_change<T: 'static>() -> impl Sized {
    |                                   ^^^^^^^^^^ recursive opaque type
@@ -110,7 +110,7 @@ LL |     (substs_change::<&T>(),)
    |     ------------------------ returning here with type `(impl Sized,)`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:76:26
+  --> $DIR/recursive-impl-trait-type-indirect.rs:79:26
    |
 LL | fn mutual_recursion() -> impl Sync {
    |                          ^^^^^^^^^ recursive opaque type
@@ -122,7 +122,7 @@ LL | fn mutual_recursion_b() -> impl Sized {
    |                            ---------- returning this opaque type `impl Sized`
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:81:28
+  --> $DIR/recursive-impl-trait-type-indirect.rs:84:28
    |
 LL | fn mutual_recursion() -> impl Sync {
    |                          --------- returning this opaque type `impl Sync`
@@ -133,6 +133,21 @@ LL |
 LL |     mutual_recursion()
    |     ------------------ returning here with type `impl Sync`
 
-error: aborting due to 13 previous errors
+error[E0275]: overflow evaluating the requirement `impl Sized`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_impl_trait_type_indirect`)
 
-For more information about this error, try `rustc --explain E0720`.
+error[E0275]: overflow evaluating the requirement `impl Sized`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_impl_trait_type_indirect`)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0275]: overflow evaluating the requirement `impl Sized`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`recursive_impl_trait_type_indirect`)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 16 previous errors
+
+Some errors have detailed explanations: E0275, E0720.
+For more information about an error, try `rustc --explain E0275`.

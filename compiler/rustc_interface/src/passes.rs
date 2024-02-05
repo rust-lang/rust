@@ -734,6 +734,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure().check_unsafety(def_id);
+            tcx.ensure().const_prop_lint(def_id);
+            tcx.ensure().const_prop_lint_promoteds(def_id);
             tcx.ensure().mir_borrowck(def_id)
         });
     });

@@ -10,5 +10,5 @@ fn main() {
     let _c = C;
     let _d = D;
     let _e = E;
-    let _e = [6u8][1];
+    let _e = [6u8][1]; //~ ERROR: will panic at runtime
 }

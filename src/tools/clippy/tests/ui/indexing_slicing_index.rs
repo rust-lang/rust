@@ -45,8 +45,8 @@ fn main() {
     const { &ARR[idx()] };
     //~^ ERROR: indexing may panic
     // This should be linted, since `suppress-restriction-lint-in-const` default is false.
-    const { &ARR[idx4()] };
-    //~^ ERROR: indexing may panic
+    // FIXME can't include here for now, as the error on it causes all lints to get silenced
+    //const { &ARR[idx4()] };
 
     let y = &x;
     // Ok, referencing shouldn't affect this lint. See the issue 6021

@@ -261,6 +261,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
+        // Unsized constants are illegal and already errored in wfcheck
+        if !val.ty().is_sized(self.tcx, self.param_env) {
+            return None;
+        }
+
         self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), None))?
             .as_mplace_or_imm()
             .right()
@@ -471,6 +476,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let value_const = self.use_ecx(|this| this.ecx.read_scalar(value))?;
 
         if expected != value_const {
+            trace!("assertion failed");
             // Poison all places this operand references so that further code
             // doesn't use the invalid value
             if let Some(place) = cond.place() {

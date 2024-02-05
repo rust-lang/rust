@@ -13,5 +13,36 @@ LL | const X: u32 = call_foo();
    | ^^^^^^^^^^^^
    = note: `#[deny(long_running_const_eval)]` on by default
 
+note: erroneous constant encountered
+  --> $DIR/ctfe-fn-call.rs:35:16
+   |
+LL |     println!("{X}");
+   |                ^
+
+note: erroneous constant encountered
+  --> $DIR/ctfe-fn-call.rs:35:16
+   |
+LL |     println!("{X}");
+   |                ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/ctfe-fn-call.rs:35:15
+   |
+LL |     println!("{X}");
+   |               ^^^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/ctfe-fn-call.rs:35:15
+   |
+LL |     println!("{X}");
+   |               ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to 1 previous error
 

@@ -1,7 +1,6 @@
 // Check that constants with interior mutability inside unions are rejected
 // during validation.
 //
-//@ build-fail
 //@ stderr-per-bitwidth
 #![feature(const_mut_refs)]
 

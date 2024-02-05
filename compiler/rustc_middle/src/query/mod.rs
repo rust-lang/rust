@@ -40,6 +40,7 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
+use crate::traits::util::HasImpossiblePredicates;
 use crate::traits::{
     CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
     OverflowError, WellFormedLoc,
@@ -1013,6 +1014,18 @@ rustc_queries! {
     query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
+    }
+
+    /// Run the const prop lints on the `mir_promoted` of an item.
+    query const_prop_lint(key: LocalDefId) -> Result<(), HasImpossiblePredicates> {
+        desc { |tcx| "running const prop lints for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
+    }
+
+    /// Run the const prop lints on the promoted consts of an item.
+    query const_prop_lint_promoteds(key: LocalDefId) -> Result<(), HasImpossiblePredicates> {
+        desc { |tcx| "running const prop lints for promoteds of `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
     }
 
     /// Gets a complete map from all types to their inherent impls.

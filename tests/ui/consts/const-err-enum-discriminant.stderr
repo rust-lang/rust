@@ -4,6 +4,85 @@ error[E0080]: evaluation of constant value failed
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
    |                     ^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:16
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:5
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/const-err-enum-discriminant.rs:14:5
+   |
+LL |     assert_ne!(Bar::Boo as isize, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

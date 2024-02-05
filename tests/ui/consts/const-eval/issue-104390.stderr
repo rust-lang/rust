@@ -61,5 +61,89 @@ LL | fn f6() -> impl Sized { &'_ 2E }
    |                          annotated with lifetime here
    |                          help: remove the lifetime annotation
 
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:1:25
+   |
+LL | fn f1() -> impl Sized { & 2E }
+   |                         ^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:1:25
+   |
+LL | fn f1() -> impl Sized { & 2E }
+   |                         ^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:2:25
+   |
+LL | fn f2() -> impl Sized { && 2E }
+   |                         ^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:2:25
+   |
+LL | fn f2() -> impl Sized { && 2E }
+   |                         ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:3:25
+   |
+LL | fn f3() -> impl Sized { &'a 2E }
+   |                         ^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:3:25
+   |
+LL | fn f3() -> impl Sized { &'a 2E }
+   |                         ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:5:25
+   |
+LL | fn f4() -> impl Sized { &'static 2E }
+   |                         ^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:5:25
+   |
+LL | fn f4() -> impl Sized { &'static 2E }
+   |                         ^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:7:26
+   |
+LL | fn f5() -> impl Sized { *& 2E }
+   |                          ^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:7:26
+   |
+LL | fn f5() -> impl Sized { *& 2E }
+   |                          ^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:8:25
+   |
+LL | fn f6() -> impl Sized { &'_ 2E }
+   |                         ^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/issue-104390.rs:8:25
+   |
+LL | fn f6() -> impl Sized { &'_ 2E }
+   |                         ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 9 previous errors
 

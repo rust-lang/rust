@@ -78,7 +78,30 @@ error[E0161]: cannot move a value of type `dyn Debug + Sync`
 LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
    |                                      ^^^^^^^ the size of `dyn Debug + Sync` cannot be statically determined
 
-error: aborting due to 10 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-unsized.rs:20:48
+   |
+LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
+   |                                                ^^^^^^^^^ unsized locals are not supported
 
-Some errors have detailed explanations: E0161, E0277.
-For more information about an error, try `rustc --explain E0161`.
+note: erroneous constant encountered
+  --> $DIR/const-unsized.rs:20:47
+   |
+LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
+   |                                               ^^^^^^^^^^
+   |
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/const-unsized.rs:20:47
+   |
+LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
+   |                                               ^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0080, E0161, E0277.
+For more information about an error, try `rustc --explain E0080`.

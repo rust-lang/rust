@@ -14,6 +14,12 @@ help: consider restricting type parameter `U`
 LL | type Bug<T, U: std::convert::From<T>> = impl Fn(T) -> U + Copy;
    |              +++++++++++++++++++++++
 
+note: erroneous constant encountered
+  --> $DIR/issue-53092.rs:18:5
+   |
+LL |     CONST_BUG(0);
+   |     ^^^^^^^^^
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

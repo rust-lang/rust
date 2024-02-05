@@ -25,19 +25,15 @@ pub unsafe fn integer_transmutes() {
     // CHECK-LABEL: fn integer_transmutes(
     // CHECK-NOT: _i32 as u32 (Transmute);
     // CHECK: _i32 as u32 (IntToInt);
-    // CHECK: _i32 as i64 (Transmute);
     // CHECK-NOT: _u64 as i64 (Transmute);
     // CHECK: _u64 as i64 (IntToInt);
-    // CHECK: _u64 as u32 (Transmute);
     // CHECK-NOT: _isize as usize (Transmute);
     // CHECK: _isize as usize (IntToInt);
 
     mir! {
         {
             let A = CastTransmute::<i32, u32>(1); // Can be a cast
-            let B = CastTransmute::<i32, i64>(1); // UB
             let C = CastTransmute::<u64, i64>(1); // Can be a cast
-            let D = CastTransmute::<u64, u32>(1); // UB
             let E = CastTransmute::<isize, usize>(1); // Can be a cast
             Return()
         }

@@ -18,18 +18,6 @@ LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    = help: consider using `.get(n)` or `.get_mut(n)` instead
    = note: the suggestion might not be applicable in constant blocks
 
-error[E0080]: evaluation of `main::{constant#3}` failed
-  --> $DIR/indexing_slicing_index.rs:48:14
-   |
-LL |     const { &ARR[idx4()] };
-   |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
-
-note: erroneous constant encountered
-  --> $DIR/indexing_slicing_index.rs:48:5
-   |
-LL |     const { &ARR[idx4()] };
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:29:5
    |
@@ -58,15 +46,6 @@ error: indexing may panic
    |
 LL |     const { &ARR[idx()] };
    |              ^^^^^^^^^^
-   |
-   = help: consider using `.get(n)` or `.get_mut(n)` instead
-   = note: the suggestion might not be applicable in constant blocks
-
-error: indexing may panic
-  --> $DIR/indexing_slicing_index.rs:48:14
-   |
-LL |     const { &ARR[idx4()] };
-   |              ^^^^^^^^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
    = note: the suggestion might not be applicable in constant blocks
@@ -135,6 +114,6 @@ error[E0080]: evaluation of constant value failed
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-error: aborting due to 17 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

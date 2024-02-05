@@ -1,5 +1,3 @@
-//@ build-fail
-
 #![feature(repr_simd)]
 
 struct E;
