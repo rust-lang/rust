@@ -3,7 +3,7 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, known, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
+use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
     syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
@@ -685,32 +685,10 @@ pub(crate) fn convert_reference_type(
         .map(|(conversion, impls_deref)| ReferenceConversion { ty, conversion, impls_deref })
 }
 
-fn impls_deref_for_target(
-    ty: &hir::Type,
-    target: hir::Type,
-    db: &dyn HirDatabase,
-    famous_defs: &FamousDefs<'_, '_>,
-) -> bool {
-    if let Some(deref_trait) = famous_defs.core_ops_Deref() {
-        if ty.impls_trait(db, deref_trait, &[]) {
-            let assoc_type_item = deref_trait.items(db).into_iter().find_map(|item| match item {
-                hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Target => Some(alias),
-                _ => None,
-            });
-            if let Some(assoc_type_item) = assoc_type_item {
-                matches!(
-                    ty.normalize_trait_assoc_type(db, &[], assoc_type_item),
-                    Some(ty) if ty.could_coerce_to(db, &target),
-                )
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    } else {
-        false
-    }
+fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
+    let ty_ref = hir:Type::reference(ty, hir::Mutability::Shared);
+    let target_ref = hir:Type::reference(target, hir::Mutability::Shared);
+    ty_ref.could_coerece_to(db, &target_ref)
 }
 
 fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<(ReferenceConversionType, bool)> {
@@ -726,7 +704,7 @@ fn handle_as_ref_str(
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()]).then_some((
         ReferenceConversionType::AsRefStr,
-        impls_deref_for_target(ty, str_type, db, famous_defs),
+        could_deref_to_target(ty, &str_type, db),
     ))
 }
 
@@ -740,7 +718,7 @@ fn handle_as_ref_slice(
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type.clone()]).then_some((
         ReferenceConversionType::AsRefSlice,
-        impls_deref_for_target(ty, slice_type, db, famous_defs),
+        could_deref_to_target(ty, &slice_type, db),
     ))
 }
 
@@ -753,7 +731,7 @@ fn handle_dereferenced(
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument.clone()]).then_some((
         ReferenceConversionType::Dereferenced,
-        impls_deref_for_target(ty, type_argument, db, famous_defs),
+        could_deref_to_target(ty, &type_argument, db),
     ))
 }
 
