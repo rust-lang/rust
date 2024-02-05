@@ -702,10 +702,8 @@ fn handle_as_ref_str(
 ) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()]).then_some((
-        ReferenceConversionType::AsRefStr,
-        could_deref_to_target(ty, &str_type, db),
-    ))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()])
+        .then_some((ReferenceConversionType::AsRefStr, could_deref_to_target(ty, &str_type, db)))
 }
 
 fn handle_as_ref_slice(
