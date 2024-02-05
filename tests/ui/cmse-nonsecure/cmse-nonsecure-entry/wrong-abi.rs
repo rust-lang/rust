@@ -2,8 +2,11 @@
 // needs-llvm-components: arm
 #![feature(cmse_nonsecure_entry, no_core, lang_items)]
 #![no_core]
-#[lang="sized"]
-trait Sized { }
+#[lang = "sized"]
+trait Sized {}
+
+#[lang = "copy"]
+trait Copy {}
 
 #[no_mangle]
 #[cmse_nonsecure_entry]

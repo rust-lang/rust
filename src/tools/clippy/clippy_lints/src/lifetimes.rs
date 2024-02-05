@@ -176,7 +176,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if !bound.is_static() && !bound.is_elided() {
+                            if bound.res != LifetimeName::Static && !bound.is_elided() {
                                 return;
                             }
                         }

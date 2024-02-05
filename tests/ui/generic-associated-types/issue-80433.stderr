@@ -25,6 +25,43 @@ LL |     type Output<'a>;
    = note: this bound is currently required to ensure that impls have maximum flexibility
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: aborting due to 2 previous errors
+error[E0499]: cannot borrow `*dst` as mutable more than once at a time
+  --> $DIR/issue-80433.rs:25:10
+   |
+LL |         *dst.test_mut() = n.into();
+   |          ^^^-----------
+   |          |
+   |          `*dst` was mutably borrowed here in the previous iteration of the loop
+   |          argument requires that `*dst` is borrowed for `'static`
 
-For more information about this error, try `rustc --explain E0107`.
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/issue-80433.rs:25:10
+   |
+LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
+   |                 --  --- `dst` is a reference that is only valid in the function body
+   |                 |
+   |                 lifetime `'a` defined here
+...
+LL |         *dst.test_mut() = n.into();
+   |          ^^^^^^^^^^^^^^
+   |          |
+   |          `dst` escapes the function body here
+   |          argument requires that `'a` must outlive `'static`
+
+error[E0597]: `t1` does not live long enough
+  --> $DIR/issue-80433.rs:32:18
+   |
+LL |     let mut t1: E<f32> = Default::default();
+   |         ------ binding `t1` declared here
+LL |     test_simpler(&mut t1);
+   |     -------------^^^^^^^-
+   |     |            |
+   |     |            borrowed value does not live long enough
+   |     argument requires that `t1` is borrowed for `'static`
+LL | }
+   | - `t1` dropped here while still borrowed
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0499, E0521, E0597.
+For more information about an error, try `rustc --explain E0107`.
