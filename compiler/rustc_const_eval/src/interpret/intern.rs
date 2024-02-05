@@ -148,6 +148,13 @@ pub fn intern_const_alloc_recursive<
     // better errors. Maybe we should consider doing validation before interning in the future.
     while let Some(prov) = todo.pop() {
         let alloc_id = prov.alloc_id();
+        // Crucially, we check this *before* checking whether the `alloc_id`
+        // has already been interned. The point of this check is to ensure that when
+        // there are multiple pointers to the same allocation, they are *all* immutable.
+        // Therefore it would be bad if we only checked the first pointer to any given
+        // allocation.
+        // (It is likely not possible to actually have multiple pointers to the same allocation,
+        // so alternatively we could also check that and ICE if there are multiple such pointers.)
         if intern_kind != InternKind::Promoted
             && inner_mutability == Mutability::Not
             && !prov.immutable()
