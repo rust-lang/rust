@@ -306,6 +306,19 @@ fn resolve_associated_item<'tcx>(
                             Some(Instance::new(coroutine_closure_def_id, args))
                         }
                     }
+                    ty::Closure(closure_def_id, args) => {
+                        let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
+                        Some(Instance::resolve_closure(
+                            tcx,
+                            closure_def_id,
+                            args,
+                            trait_closure_kind,
+                        ))
+                    }
+                    ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
+                        def: ty::InstanceDef::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
+                        args: rcvr_args,
+                    }),
                     _ => bug!(
                         "no built-in definition for `{trait_ref}::{}` for non-lending-closure type",
                         tcx.item_name(trait_item_id)

@@ -361,8 +361,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::Infer(ty::TyVar(_)) => {
-                candidates.ambiguous = true;
+            // Closures and fn pointers implement `AsyncFn*` if their return types
+            // implement `Future`, which is checked later.
+            ty::Closure(_, args) => {
+                if let Some(closure_kind) = args.as_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::FnDef(..) | ty::FnPtr(..) => {
+                candidates.vec.push(AsyncClosureCandidate);
             }
             _ => {}
         }

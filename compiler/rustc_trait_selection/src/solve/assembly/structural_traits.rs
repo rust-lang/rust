@@ -394,7 +394,78 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<'tc
             ))
         }
 
-        ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..) => Err(NoSolution),
+        ty::FnDef(..) | ty::FnPtr(..) => {
+            let bound_sig = self_ty.fn_sig(tcx);
+            let sig = bound_sig.skip_binder();
+            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
+            // return type implements `Future`.
+            let nested = vec![
+                bound_sig
+                    .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
+                    .to_predicate(tcx),
+            ];
+            let future_output_def_id = tcx
+                .associated_items(future_trait_def_id)
+                .filter_by_name_unhygienic(sym::Output)
+                .next()
+                .unwrap()
+                .def_id;
+            let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
+            Ok((
+                bound_sig.rebind((Ty::new_tup(tcx, sig.inputs()), sig.output(), future_output_ty)),
+                nested,
+            ))
+        }
+        ty::Closure(_, args) => {
+            let args = args.as_closure();
+            let bound_sig = args.sig();
+            let sig = bound_sig.skip_binder();
+            let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+            // `Closure`s only implement `AsyncFn*` when their return type
+            // implements `Future`.
+            let mut nested = vec![
+                bound_sig
+                    .rebind(ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()]))
+                    .to_predicate(tcx),
+            ];
+
+            // Additionally, we need to check that the closure kind
+            // is still compatible.
+            let kind_ty = args.kind_ty();
+            if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+                if !closure_kind.extends(goal_kind) {
+                    return Err(NoSolution);
+                }
+            } else {
+                let async_fn_kind_trait_def_id =
+                    tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                // When we don't know the closure kind (and therefore also the closure's upvars,
+                // which are computed at the same time), we must delay the computation of the
+                // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
+                // goal functions similarly to the old `ClosureKind` predicate, and ensures that
+                // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
+                // will project to the right upvars for the generator, appending the inputs and
+                // coroutine upvars respecting the closure kind.
+                nested.push(
+                    ty::TraitRef::new(
+                        tcx,
+                        async_fn_kind_trait_def_id,
+                        [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
+                    )
+                    .to_predicate(tcx),
+                );
+            }
+
+            let future_output_def_id = tcx
+                .associated_items(future_trait_def_id)
+                .filter_by_name_unhygienic(sym::Output)
+                .next()
+                .unwrap()
+                .def_id;
+            let future_output_ty = Ty::new_projection(tcx, future_output_def_id, [sig.output()]);
+            Ok((bound_sig.rebind((sig.inputs()[0], sig.output(), future_output_ty)), nested))
+        }
 
         ty::Bool
         | ty::Char
