@@ -127,8 +127,10 @@ fn should_ignore(line: &str) -> bool {
     // Matches test annotations like `//~ ERROR text`.
     // This mirrors the regex in src/tools/compiletest/src/runtest.rs, please
     // update both if either are changed.
-    let re = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
-    re.is_match(line) || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+    lazy_static::lazy_static! {
+        static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
+    }
+    ANNOTATION_RE.is_match(line) || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
