@@ -1455,7 +1455,7 @@ fn sysroot_to_crate_graph(
             (SysrootPublicDeps { deps: pub_deps }, libproc_macro)
         }
         SysrootMode::Stitched(stitched) => {
-            let cfg_options = create_cfg_options(rustc_cfg.clone());
+            let cfg_options = create_cfg_options(rustc_cfg);
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
                 .crates()
                 .filter_map(|krate| {
