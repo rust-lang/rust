@@ -534,8 +534,8 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr(lvxl))]
-            pub unsafe fn $fun_lru(off: i32, p: *const $ty) -> t_t_l!($ty) {
-                let addr = (p as *const i8).offset(off as isize);
+            pub unsafe fn $fun_lru(off: isize, p: *const $ty) -> t_t_l!($ty) {
+                let addr = (p as *const i8).offset(off);
                 transmute(lvxl(addr))
             }
 
@@ -550,7 +550,7 @@ mod sealed {
                 #[inline]
                 #[target_feature(enable = "altivec")]
                 unsafe fn vec_ldl(self, off: isize) -> Self::Result {
-                    $fun(off, self)
+                    $fun_lru(off, self)
                 }
             }
         };
