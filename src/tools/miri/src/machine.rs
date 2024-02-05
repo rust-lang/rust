@@ -2,7 +2,7 @@
 //! `Machine` trait.
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::path::Path;
@@ -336,20 +336,11 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
-    /// An offset inside this allocation that was deemed aligned even for symbolic alignment checks.
-    /// Invariant: the promised alignment will never be less than the native alignment of this allocation.
-    pub symbolic_alignment: Cell<Option<(Size, Align)>>,
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra {
-            borrow_tracker,
-            data_race,
-            weak_memory,
-            backtrace: _,
-            symbolic_alignment: _,
-        } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -572,6 +563,14 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// that is fixed per stack frame; this lets us have sometimes different results for the
     /// same const while ensuring consistent results within a single call.
     const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx, Provenance>>>,
+
+    /// For each allocation, an offset inside that allocation that was deemed aligned even for
+    /// symbolic alignment checks. This cannot be stored in `AllocExtra` since it needs to be
+    /// tracked for vtables and function allocations as well as regular allocations.
+    ///
+    /// Invariant: the promised alignment will never be less than the native alignment of the
+    /// allocation.
+    pub(crate) symbolic_alignment: RefCell<FxHashMap<AllocId, (Size, Align)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -698,6 +697,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             collect_leak_backtraces: config.collect_leak_backtraces,
             allocation_spans: RefCell::new(FxHashMap::default()),
             const_cache: RefCell::new(FxHashMap::default()),
+            symbolic_alignment: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -810,6 +810,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             collect_leak_backtraces: _,
             allocation_spans: _,
             const_cache: _,
+            symbolic_alignment: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -893,9 +894,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             return None;
         }
         // Let's see which alignment we have been promised for this allocation.
-        let alloc_info = ecx.get_alloc_extra(alloc_id).unwrap(); // cannot fail since the allocation is live
-        let (promised_offset, promised_align) =
-            alloc_info.symbolic_alignment.get().unwrap_or((Size::ZERO, alloc_align));
+        let (promised_offset, promised_align) = ecx
+            .machine
+            .symbolic_alignment
+            .borrow()
+            .get(&alloc_id)
+            .copied()
+            .unwrap_or((Size::ZERO, alloc_align));
         if promised_align < align {
             // Definitely not enough.
             Some(Misalignment { has: promised_align, required: align })
@@ -1132,7 +1137,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
                 backtrace,
-                symbolic_alignment: Cell::new(None),
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
