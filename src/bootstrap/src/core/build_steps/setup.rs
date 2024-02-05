@@ -648,16 +648,15 @@ impl Step for RustProjectJson {
         }
     }
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let config = &builder.config;
-        if config.dry_run() {
+        if builder.config.dry_run() {
             return;
         }
 
-        while !t!(create_ra_project_json_maybe(&config)) {}
+        while !t!(create_ra_project_json_maybe(builder)) {}
     }
 }
 
-fn create_ra_project_json_maybe(config: &Config) -> io::Result<bool> {
+fn create_ra_project_json_maybe(builder: &Builder<'_>) -> io::Result<bool> {
     println!("\nx.py can automatically generate `rust-project.json` file for rust-analyzer");
 
     let should_create = match prompt_user("Would you like to create rust-project.json?: [y/N]")? {
@@ -669,8 +668,8 @@ fn create_ra_project_json_maybe(config: &Config) -> io::Result<bool> {
     };
 
     if should_create {
-        let ra_project = RustAnalyzerProject::collect_ra_project_data(&config);
-        ra_project.generate_file(&config.src.join("rust-project.json"))?;
+        let ra_project = RustAnalyzerProject::collect_ra_project_data(builder);
+        ra_project.generate_file(&builder.config.src.join("rust-project.json"))?;
         println!("Created `rust-project.json`");
     }
 

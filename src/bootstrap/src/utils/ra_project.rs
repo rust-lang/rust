@@ -13,9 +13,11 @@ use serde_derive::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io;
 use std::path::Path;
+use std::process::Command;
 
+use crate::core::build_steps::compile::{stream_cargo, CargoMessage};
+use crate::core::builder::Builder;
 use crate::core::metadata::{project_metadata, workspace_members, Dependency};
-use crate::Config;
 
 #[derive(Debug, Serialize)]
 /// FIXME(before-merge): doc-comment
@@ -47,8 +49,9 @@ struct Dep {
 }
 
 impl RustAnalyzerProject {
-    #[allow(dead_code)] // FIXME(before-merge): remove this
-    pub(crate) fn collect_ra_project_data(config: &Config) -> Self {
+    pub(crate) fn collect_ra_project_data(builder: &Builder<'_>) -> Self {
+        let config = &builder.config;
+
         let mut ra_project = RustAnalyzerProject {
             crates: vec![],
             sysroot: format!("{}", config.out.join("host").join("stage0").display()),
@@ -86,11 +89,6 @@ impl RustAnalyzerProject {
                 krate.is_workspace_member = workspace_members.iter().any(|p| p.name == target.name);
                 krate.is_proc_macro = target.crate_types.contains(&"proc-macro".to_string());
 
-                // FIXME(before-merge): We need to figure out how to find proc-macro dylibs.
-                // if krate.is_proc_macro {
-                //     krate.proc_macro_dylib_path =
-                // }
-
                 krate.env.insert("RUSTC_BOOTSTRAP".into(), "1".into());
 
                 if target
@@ -109,14 +107,51 @@ impl RustAnalyzerProject {
 
         // Find and fill dependencies of crates.
         for package in packages {
-            if package.dependencies.is_empty() {
-                continue;
-            }
+            if let Some(index) =
+                ra_project.crates.iter().position(|c| c.display_name == package.name)
+            {
+                assert!(
+                    !package.manifest_path.is_empty(),
+                    "manifest_path must be valid for proc-macro crates."
+                );
 
-            for dependency in package.dependencies {
-                if let Some(index) =
-                    ra_project.crates.iter().position(|c| c.display_name == package.name)
-                {
+                let mut cargo = Command::new(&builder.initial_cargo);
+                cargo
+                    .env("RUSTC_BOOTSTRAP", "1")
+                    .arg("build")
+                    .arg("--manifest-path")
+                    .arg(package.manifest_path);
+
+                if ra_project.crates[index].is_proc_macro {
+                    // FIXME(before-merge): use `CARGO_TARGET_DIR` to place shared libraries in the build output directory.
+                    let ok = stream_cargo(builder, cargo.into(), vec![], &mut |msg| {
+                        let filenames = match msg {
+                            CargoMessage::CompilerArtifact { filenames, .. } => filenames,
+                            _ => return,
+                        };
+
+                        for filename in filenames {
+                            let snake_case_name = ra_project.crates[index]
+                                .display_name
+                                .replace('-', "_")
+                                .to_lowercase();
+
+                            if filename.ends_with(".so")
+                                && (filename.contains(&format!(
+                                    "lib{}",
+                                    ra_project.crates[index].display_name
+                                )) || filename.contains(&format!("lib{}", snake_case_name)))
+                            {
+                                ra_project.crates[index].proc_macro_dylib_path =
+                                    Some(filename.to_string());
+                            }
+                        }
+                    });
+
+                    assert!(ok);
+                }
+
+                for dependency in package.dependencies {
                     if let Some(dependency_index) =
                         ra_project.crates.iter().position(|c| c.display_name == dependency.name)
                     {
@@ -138,7 +173,6 @@ impl RustAnalyzerProject {
         ra_project
     }
 
-    #[allow(dead_code)] // FIXME(before-merge): remove this
     pub(crate) fn generate_file(&self, path: &Path) -> io::Result<()> {
         if path.exists() {
             return Err(io::Error::new(
