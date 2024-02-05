@@ -1,0 +1,22 @@
+error: encountered mutable pointer in final value of constant
+  --> $DIR/mutable_pointer_in_const.rs:16:1
+   |
+LL | const MUH: Meh = Meh {
+   | ^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/mutable_pointer_in_const.rs:23:10
+   |
+LL |         *MUH.x.get() = 99;
+   |          ^^^
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_pointer_in_const.rs:18:8
+   |
+LL |     x: &UnsafeCell::new(42),
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

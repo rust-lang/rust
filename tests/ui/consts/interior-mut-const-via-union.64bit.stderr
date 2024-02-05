@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/interior-mut-const-via-union.rs:35:1
+  --> $DIR/interior-mut-const-via-union.rs:34:1
    |
 LL | fn main() {
    | ^^^^^^^^^ constructing invalid value at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in read-only memory
@@ -10,13 +10,13 @@ LL | fn main() {
            }
 
 note: erroneous constant encountered
-  --> $DIR/interior-mut-const-via-union.rs:37:25
+  --> $DIR/interior-mut-const-via-union.rs:36:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
 
 note: erroneous constant encountered
-  --> $DIR/interior-mut-const-via-union.rs:37:25
+  --> $DIR/interior-mut-const-via-union.rs:36:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^

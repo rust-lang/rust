@@ -142,6 +142,7 @@ pub fn provide(providers: &mut Providers) {
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
+        const_prop_lint,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
@@ -398,6 +399,27 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     body
 }
 
+fn const_prop_lint(tcx: TyCtxt<'_>, def: LocalDefId) {
+    let (body, _) = tcx.mir_promoted(def);
+    let body = body.borrow();
+
+    let mir_borrowck = tcx.mir_borrowck(def);
+
+    // If there are impossible bounds on the body being const prop linted,
+    // the const eval logic used in const prop may ICE unexpectedly.
+    let predicates = tcx
+        .predicates_of(body.source.def_id())
+        .predicates
+        .iter()
+        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+    if !traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect())
+        && mir_borrowck.tainted_by_errors.is_none()
+        && body.tainted_by_errors.is_none()
+    {
+        const_prop_lint::ConstPropLint.run_lint(tcx, &body);
+    }
+}
+
 /// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
@@ -406,6 +428,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);
+    tcx.ensure().const_prop_lint(def);
 
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
@@ -538,7 +561,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,
         &add_retag::AddRetag,
-        &Lint(const_prop_lint::ConstPropLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }

@@ -1,5 +1,3 @@
-// build-fail
-
 // Regression test for #66975
 #![feature(never_type)]
 

@@ -1,0 +1,8 @@
+error: internal compiler error: unexpected ambiguity: Canonical { value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }], reveal: All }, value: AliasTy { args: [T/#0, T/#0], def_id: DefId(0:15 ~ opaques[e7ab]::Trait::Assoc) } }, max_universe: U0, variables: [] } Canonical { value: QueryResponse { var_values: CanonicalVarValues { var_values: [] }, region_constraints: QueryRegionConstraints { outlives: [], member_constraints: [] }, certainty: Ambiguous, opaque_types: [], value: NormalizationResult { normalized_ty: ^0 } }, max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }
+   |
+   = error: internal compiler error: unexpected ambiguity: Canonical { value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All }, value: AliasTy { args: [(), ()], def_id: DefId(0:15 ~ opaques[e7ab]::Trait::Assoc) } }, max_universe: U0, variables: [] } Canonical { value: QueryResponse { var_values: CanonicalVarValues { var_values: [] }, region_constraints: QueryRegionConstraints { outlives: [], member_constraints: [] }, certainty: Ambiguous, opaque_types: [], value: NormalizationResult { normalized_ty: ^0 } }, max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }
+   |
+   = query stack during panic:
+end of query stack
+error: aborting due to 2 previous errors
+

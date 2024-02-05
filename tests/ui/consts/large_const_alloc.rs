@@ -9,7 +9,8 @@ const FOO: () = {
 
 static FOO2: () = {
     let x = [0_u8; (1 << 47) - 1];
-    //~^ ERROR could not evaluate static initializer
+    //^ if this errors again, remove `large_static_alloc.rs`
+    // error hidden by previous error.
 };
 
 fn main() {

@@ -5,19 +5,15 @@
       let mut _0: ();
       let mut _1: u32;
       let mut _2: i64;
-      let mut _3: i64;
-      let mut _4: u32;
-      let mut _5: usize;
+      let mut _3: usize;
   
       bb0: {
 -         _1 = const 1_i32 as u32 (Transmute);
+-         _2 = const 1_u64 as i64 (Transmute);
+-         _3 = const 1_isize as usize (Transmute);
 +         _1 = const 1_i32 as u32 (IntToInt);
-          _2 = const 1_i32 as i64 (Transmute);
--         _3 = const 1_u64 as i64 (Transmute);
-+         _3 = const 1_u64 as i64 (IntToInt);
-          _4 = const 1_u64 as u32 (Transmute);
--         _5 = const 1_isize as usize (Transmute);
-+         _5 = const 1_isize as usize (IntToInt);
++         _2 = const 1_u64 as i64 (IntToInt);
++         _3 = const 1_isize as usize (IntToInt);
           return;
       }
   }

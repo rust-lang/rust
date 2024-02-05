@@ -1018,6 +1018,12 @@ rustc_queries! {
         cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
 
+    /// Run the const prop lints on the `mir_promoted` of an item.
+    query const_prop_lint(key: LocalDefId) {
+        desc { |tcx| "checking const prop lints for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
+    }
+
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
