@@ -1,6 +1,8 @@
 //@compile-flags: -Zmiri-symbolic-alignment-check
 #![feature(strict_provenance)]
 
+use std::mem;
+
 fn test_align_to() {
     const N: usize = 4;
     let d = Box::new([0u32; N]);
@@ -68,7 +70,7 @@ fn test_u64_array() {
     #[repr(align(8))]
     struct AlignToU64<T>(T);
 
-    const BYTE_LEN: usize = std::mem::size_of::<[u64; 4]>();
+    const BYTE_LEN: usize = mem::size_of::<[u64; 4]>();
     type Data = AlignToU64<[u8; BYTE_LEN]>;
 
     fn example(data: &Data) {
@@ -101,10 +103,29 @@ fn huge_align() {
     let _ = std::ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
 }
 
+// This shows that we cannot store the promised alignment info in `AllocExtra`,
+// since vtables do not have an `AllocExtra`.
+fn vtable() {
+    #[cfg(target_pointer_width = "64")]
+    type TWOPTR = u128;
+    #[cfg(target_pointer_width = "32")]
+    type TWOPTR = u64;
+
+    let ptr: &dyn Send = &0;
+    let parts: (*const (), *const u8) = unsafe { mem::transmute(ptr) };
+    let vtable = parts.1 ;
+    let offset = vtable.align_offset(mem::align_of::<TWOPTR>());
+    let _vtable_aligned = vtable.wrapping_add(offset) as *const [TWOPTR; 0];
+    // FIXME: we can't actually do the access since vtable pointers act like zero-sized allocations.
+    // Enable the next line once https://github.com/rust-lang/rust/issues/117945 is implemented.
+    //let _place = unsafe { &*vtable_aligned };
+}
+
 fn main() {
     test_align_to();
     test_from_utf8();
     test_u64_array();
     test_cstr();
     huge_align();
+    vtable();
 }
