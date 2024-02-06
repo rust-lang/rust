@@ -18,7 +18,7 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::{errors, Captures, TypeCx};
+use crate::{errors, Captures, SkipField, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -208,12 +208,15 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> impl Iterator<Item = RevealedTy<'tcx>> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = (RevealedTy<'tcx>, SkipField)> + ExactSizeIterator + Captures<'a>
+    {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
-        ) -> &'a [RevealedTy<'tcx>] {
-            cx.dropless_arena.alloc_from_iter(iter.map(|ty| cx.reveal_opaque_ty(ty)))
+        ) -> &'a [(RevealedTy<'tcx>, SkipField)] {
+            cx.dropless_arena.alloc_from_iter(
+                iter.map(|ty| cx.reveal_opaque_ty(ty)).map(|ty| (ty, SkipField(false))),
+            )
         }
         let cx = self;
         let slice = match ctor {
@@ -229,8 +232,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         let tys = cx
                             .list_variant_nonhidden_fields(ty, variant)
-                            .filter(|(_, _, skip)| !skip)
-                            .map(|(_, ty, _)| ty);
+                            .map(|(_, ty, skip)| (ty, SkipField(skip)));
                         cx.dropless_arena.alloc_from_iter(tys)
                     }
                 }
@@ -872,7 +874,7 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         &'a self,
         ctor: &'a crate::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = (Self::Ty, SkipField)> + ExactSizeIterator + Captures<'a> {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(

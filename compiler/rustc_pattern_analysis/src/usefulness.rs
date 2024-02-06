@@ -716,7 +716,7 @@ use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
-use crate::{Captures, MatchArm, TypeCx};
+use crate::{Captures, MatchArm, SkipField, TypeCx};
 
 use self::ValidityConstraint::*;
 
@@ -833,7 +833,9 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
-        ctor_sub_tys.map(move |ty| PlaceInfo {
+        // Collect to keep the `ExactSizeIterator` bound. This is a temporary measure.
+        let tmp: Vec<_> = ctor_sub_tys.filter(|(_, SkipField(skip))| !skip).collect();
+        tmp.into_iter().map(move |(ty, _)| PlaceInfo {
             ty,
             validity: ctor_sub_validity,
             is_scrutinee: false,
