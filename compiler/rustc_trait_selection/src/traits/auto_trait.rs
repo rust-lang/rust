@@ -179,7 +179,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
 
         let outlives_env = OutlivesEnvironment::new(full_env);
-        let _ = infcx.process_registered_region_obligations::<!>(&outlives_env, |ty, _| Ok(ty));
+        let _ = infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty));
 
         let region_data =
             infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();

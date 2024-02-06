@@ -4,8 +4,8 @@ use super::region_constraints::RegionConstraintData;
 use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
-use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::traits::query::{NoSolution, OutlivesBound};
+use rustc_middle::ty;
 
 pub mod components;
 pub mod env;
@@ -49,12 +49,15 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn resolve_regions_with_normalize(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        deeply_normalize_ty: impl Fn(Ty<'tcx>, SubregionOrigin<'tcx>) -> Result<Ty<'tcx>, Ty<'tcx>>,
+        deeply_normalize_ty: impl Fn(
+            ty::PolyTypeOutlivesPredicate<'tcx>,
+            SubregionOrigin<'tcx>,
+        ) -> Result<ty::PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
     ) -> Vec<RegionResolutionError<'tcx>> {
         match self.process_registered_region_obligations(outlives_env, deeply_normalize_ty) {
             Ok(()) => {}
-            Err((ty, origin)) => {
-                return vec![RegionResolutionError::CannotNormalize(ty, origin)];
+            Err((clause, origin)) => {
+                return vec![RegionResolutionError::CannotNormalize(clause, origin)];
             }
         };
 
