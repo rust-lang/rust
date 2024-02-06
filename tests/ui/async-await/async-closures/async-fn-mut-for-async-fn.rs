@@ -5,17 +5,15 @@
 // FIXME(async_closures): When `fn_sig_for_fn_abi` is fixed, remove this.
 // ignore-pass (test emits codegen-time warnings)
 
-#![feature(async_closure, async_fn_traits)]
+#![feature(async_closure)]
 
 extern crate block_on;
-
-use std::ops::AsyncFnMut;
 
 fn main() {
     block_on::block_on(async {
         let x = async || {};
 
-        async fn needs_async_fn_mut(mut x: impl AsyncFnMut()) {
+        async fn needs_async_fn_mut(mut x: impl async FnMut()) {
             x().await;
         }
         needs_async_fn_mut(x).await;
