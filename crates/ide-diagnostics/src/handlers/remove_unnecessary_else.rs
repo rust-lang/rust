@@ -35,8 +35,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
     let if_expr = d.if_expr.value.to_node(&root);
     let if_expr = ctx.sema.original_ast_node(if_expr.clone())?;
 
-    let indent = IndentLevel::from_node(if_expr.syntax());
-    let replacement = match if_expr.else_branch()? {
+    let mut indent = IndentLevel::from_node(if_expr.syntax());
+    let has_parent_if_expr = if_expr.syntax().parent().and_then(ast::IfExpr::cast).is_some();
+    if has_parent_if_expr {
+        indent = indent + 1;
+    }
+    let else_replacement = match if_expr.else_branch()? {
         ast::ElseBranch::Block(ref block) => {
             block.statements().map(|stmt| format!("\n{indent}{stmt}")).join("")
         }
@@ -44,10 +48,30 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
             format!("\n{indent}{nested_if_expr}")
         }
     };
-    let range = TextRange::new(
-        if_expr.then_branch()?.syntax().text_range().end(),
-        if_expr.syntax().text_range().end(),
-    );
+    let (replacement, range) = if has_parent_if_expr {
+        let base_indent = IndentLevel::from_node(if_expr.syntax());
+        let then_indent = base_indent + 1;
+        let then_child_indent = then_indent + 1;
+
+        let condition = if_expr.condition()?;
+        let then_stmts = if_expr
+            .then_branch()?
+            .statements()
+            .map(|stmt| format!("\n{then_child_indent}{stmt}"))
+            .join("");
+        let then_replacement =
+            format!("\n{then_indent}if {condition} {{{then_stmts}\n{then_indent}}}",);
+        let replacement = format!("{{{then_replacement}{else_replacement}\n{base_indent}}}");
+        (replacement, if_expr.syntax().text_range())
+    } else {
+        (
+            else_replacement,
+            TextRange::new(
+                if_expr.then_branch()?.syntax().text_range().end(),
+                if_expr.syntax().text_range().end(),
+            ),
+        )
+    };
 
     let edit = TextEdit::replace(range, replacement);
     let source_change =
@@ -137,6 +161,49 @@ fn test() {
         do_something_else();
     } else {
         do_something_else2();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unnecessary_else_for_return_in_child_if_expr() {
+        check_diagnostics(
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else if qux {
+        return bar;
+    } else {
+    //^^^^ 💡 weak: remove unnecessary else block
+        do_something_else();
+    }
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else if qux {
+        return bar;
+    } else$0 {
+        do_something_else();
+    }
+}
+"#,
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else {
+        if qux {
+            return bar;
+        }
+        do_something_else();
     }
 }
 "#,
