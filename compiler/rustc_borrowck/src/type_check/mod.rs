@@ -156,10 +156,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
     } = free_region_relations::create(
         infcx,
         param_env,
-        // FIXME(-Znext-solver): These are unnormalized. Normalize them.
-        infcx.tcx.arena.alloc_from_iter(
-            param_env.caller_bounds().iter().filter_map(|clause| clause.as_type_outlives_clause()),
-        ),
         implicit_region_bound,
         universal_regions,
         &mut constraints,
@@ -1144,6 +1140,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.borrowck_context.universal_regions,
             self.region_bound_pairs,
             self.implicit_region_bound,
+            self.param_env,
             self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
@@ -2759,6 +2756,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.borrowck_context.universal_regions,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
+                self.param_env,
                 self.known_type_outlives_obligations,
                 locations,
                 DUMMY_SP,                   // irrelevant; will be overridden.
