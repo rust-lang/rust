@@ -5,6 +5,8 @@ LL | fn foo<T>() {
    |        - type parameter from outer item
 LL |     static a: Bar<T> = Bar::What;
    |                   ^ use of generic parameter from outer item
+   |
+   = note: a `static` is a separate item from the item that contains it
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/inner-static-type-parameter.rs:3:10
