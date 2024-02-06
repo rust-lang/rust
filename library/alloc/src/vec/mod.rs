@@ -2784,6 +2784,50 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     }
 }
 
+/// Collects an iterator into a Vec, commonly called via [`Iterator::collect()`]
+///
+/// # Allocation behavior
+///
+/// In general `Vec` does not guarantee any particular growth or allocation strategy.
+/// That also applies to this trait impl.
+///
+/// **Note:** This section covers implementation details and is therefore exempt from
+/// stability guarantees.
+///
+/// Vec may use any or none of the following strategies,
+/// depending on the supplied iterator:
+///
+/// * preallocate based on [`Iterator::size_hint()`]
+///   * and panic if the number of items is outside the provided lower/upper bounds
+/// * use an amortized growth strategy similar to `pushing` one item at a time
+/// * perform the iteration in-place on the original allocation backing the iterator
+///
+/// The last case warrants some attention. It is an optimization that in many cases reduces peak memory
+/// consumption and improves cache locality. But when big, short-lived allocations are created,
+/// only a small fraction of their items get collected, no further use is made of the spare capacity
+/// and the resulting `Vec` is moved into a longer-lived structure, then this can lead to the large
+/// allocations having their lifetimes unnecessarily extended which can result in increased memory
+/// footprint.
+///
+/// In cases where this is an issue, the excess capacity can be discarded with [`Vec::shrink_to()`],
+/// [`Vec::shrink_to_fit()`] or by collecting into [`Box<[T]>`][owned slice] instead, which additionally reduces
+/// the size of the long-lived struct.
+///
+/// [owned slice]: Box
+///
+/// ```rust
+/// # use std::sync::Mutex;
+/// static LONG_LIVED: Mutex<Vec<Vec<u16>>> = Mutex::new(Vec::new());
+///
+/// for i in 0..10 {
+///     let big_temporary: Vec<u16> = (0..1024).collect();
+///     // discard most items
+///     let mut result: Vec<_> = big_temporary.into_iter().filter(|i| i % 100 == 0).collect();
+///     // without this a lot of unused capacity might be moved into the global
+///     result.shrink_to_fit();
+///     LONG_LIVED.lock().unwrap().push(result);
+/// }
+/// ```
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {

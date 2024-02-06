@@ -3,11 +3,11 @@ pub(crate) mod tags;
 mod highlights;
 mod injector;
 
-mod highlight;
-mod format;
-mod macro_;
-mod inject;
 mod escape;
+mod format;
+mod highlight;
+mod inject;
+mod macro_;
 
 mod html;
 #[cfg(test)]
@@ -186,7 +186,7 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
-    let _p = profile::span("highlight");
+    let _p = tracing::span!(tracing::Level::INFO, "highlight").entered();
     let sema = Semantics::new(db);
 
     // Determine the root based on the given range.

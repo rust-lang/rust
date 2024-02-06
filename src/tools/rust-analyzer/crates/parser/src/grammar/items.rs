@@ -1,5 +1,5 @@
-mod consts;
 mod adt;
+mod consts;
 mod traits;
 mod use_item;
 

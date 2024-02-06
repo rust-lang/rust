@@ -7,14 +7,14 @@ LL |         let x: Option<Box<S>> = None;
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error[E0392]: parameter `S` is never used
+error[E0392]: type parameter `S` is never used
   --> $DIR/issue-67945-4.rs:8:12
    |
 LL | struct Bug<S> {
-   |            ^ unused parameter
+   |            ^ unused type parameter
    |
    = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `S` to be a const parameter, use `const S: usize` instead
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
 
 error: aborting due to 2 previous errors
 

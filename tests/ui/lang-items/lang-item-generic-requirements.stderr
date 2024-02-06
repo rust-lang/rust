@@ -50,23 +50,23 @@ LL |
 LL | fn start(_: *const u8, _: isize, _: *const *const u8) -> isize {
    |         - this function has 0 generic arguments
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/lang-item-generic-requirements.rs:24:22
    |
 LL | struct MyPhantomData<T, U>;
-   |                      ^ unused parameter
+   |                      ^ unused type parameter
    |
    = help: consider removing `T` or referring to it in a field
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error[E0392]: parameter `U` is never used
+error[E0392]: type parameter `U` is never used
   --> $DIR/lang-item-generic-requirements.rs:24:25
    |
 LL | struct MyPhantomData<T, U>;
-   |                         ^ unused parameter
+   |                         ^ unused type parameter
    |
    = help: consider removing `U` or referring to it in a field
-   = help: if you intended `U` to be a const parameter, use `const U: usize` instead
+   = help: if you intended `U` to be a const parameter, use `const U: /* Type */` instead
 
 error[E0369]: cannot add `{integer}` to `{integer}`
   --> $DIR/lang-item-generic-requirements.rs:44:7

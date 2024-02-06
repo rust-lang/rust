@@ -568,7 +568,8 @@ impl CompletionContext<'_> {
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into [`Completions::add_path_resolution`].
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
-        let _p = profile::span("CompletionContext::process_all_names");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
                 return;
@@ -579,7 +580,8 @@ impl CompletionContext<'_> {
     }
 
     pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let _p = profile::span("CompletionContext::process_all_names_raw");
+        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names_raw")
+            .entered();
         self.scope.process_all_names(f);
     }
 
@@ -637,7 +639,7 @@ impl<'a> CompletionContext<'a> {
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
-        let _p = profile::span("CompletionContext::new");
+        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
         let original_file = sema.parse(file_id);

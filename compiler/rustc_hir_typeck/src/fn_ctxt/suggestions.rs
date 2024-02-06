@@ -261,6 +261,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.kind
             && let Some(recv_ty) = self.typeck_results.borrow().expr_ty_opt(recv_expr)
             && self.can_coerce(recv_ty, expected)
+            && let name = method.name.as_str()
+            && (name.starts_with("to_") || name.starts_with("as_") || name == "into")
         {
             let span = if let Some(recv_span) = recv_expr.span.find_ancestor_inside(expr.span) {
                 expr.span.with_lo(recv_span.hi())

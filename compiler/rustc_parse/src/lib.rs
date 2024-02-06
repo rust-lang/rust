@@ -39,7 +39,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
+/// A variant of 'panictry!' that works on a `Vec<DiagnosticBuilder>` instead of a single
 /// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($e:expr) => {{

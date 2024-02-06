@@ -30,11 +30,6 @@ pub type ConstructorSet<'p, 'tcx> =
 pub type DeconstructedPat<'p, 'tcx> =
     crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub(crate) type PlaceCtxt<'a, 'p, 'tcx> =
-    crate::usefulness::PlaceCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub(crate) type SplitConstructorSet<'p, 'tcx> =
-    crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
@@ -680,8 +675,9 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     cx.pattern_arena.alloc_from_iter(pats.into_iter().map(|p| self.lower_pat(p)))
             }
             PatKind::Never => {
-                // FIXME(never_patterns): handle `!` in exhaustiveness. This is a sane default
-                // in the meantime.
+                // A never pattern matches all the values of its type (namely none). Moreover it
+                // must be compatible with other constructors, since we can use `!` on a type like
+                // `Result<!, !>` which has other constructors. Hence we lower it as a wildcard.
                 ctor = Wildcard;
                 fields = &[];
             }
@@ -905,7 +901,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         Ok(())
     }
 
-    fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
+    fn bug(&self, fmt: fmt::Arguments<'_>) -> Self::Error {
         span_bug!(self.scrut_span, "{}", fmt)
     }
 

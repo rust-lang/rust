@@ -1,3 +1,96 @@
+Version 1.76.0 (2024-02-08)
+==========================
+
+<a id="1.76.0-Language"></a>
+
+Language
+--------
+- [Document Rust ABI compatibility between various types](https://github.com/rust-lang/rust/pull/115476/)
+- [Also: guarantee that char and u32 are ABI-compatible](https://github.com/rust-lang/rust/pull/118032/)
+- [Warn against ambiguous wide pointer comparisons](https://github.com/rust-lang/rust/pull/117758/)
+
+<a id="1.76.0-Compiler"></a>
+
+Compiler
+--------
+- [Lint pinned `#[must_use]` pointers (in particular, `Box<T>` where `T` is `#[must_use]`) in `unused_must_use`.](https://github.com/rust-lang/rust/pull/118054/)
+- [Soundness fix: fix computing the offset of an unsized field in a packed struct](https://github.com/rust-lang/rust/pull/118540/)
+- [Soundness fix: fix dynamic size/align computation logic for packed types with dyn Trait tail](https://github.com/rust-lang/rust/pull/118538/)
+- [Add `$message_type` field to distinguish json diagnostic outputs](https://github.com/rust-lang/rust/pull/115691/)
+- [Enable Rust to use the EHCont security feature of Windows](https://github.com/rust-lang/rust/pull/118013/)
+- [Add tier 3 {x86_64,i686}-win7-windows-msvc targets](https://github.com/rust-lang/rust/pull/118150/)
+- [Add tier 3 aarch64-apple-watchos target](https://github.com/rust-lang/rust/pull/119074/)
+- [Add tier 3 arm64e-apple-ios & arm64e-apple-darwin targets](https://github.com/rust-lang/rust/pull/115526/)
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+<a id="1.76.0-Libraries"></a>
+
+Libraries
+---------
+- [Add a column number to `dbg!()`](https://github.com/rust-lang/rust/pull/114962/)
+- [Add `std::hash::{DefaultHasher, RandomState}` exports](https://github.com/rust-lang/rust/pull/115694/)
+- [Fix rounding issue with exponents in fmt](https://github.com/rust-lang/rust/pull/116301/)
+- [Add T: ?Sized to `RwLockReadGuard` and `RwLockWriteGuard`'s Debug impls.](https://github.com/rust-lang/rust/pull/117138/)
+- [Windows: Allow `File::create` to work on hidden files](https://github.com/rust-lang/rust/pull/116438/)
+
+<a id="1.76.0-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`Arc::unwrap_or_clone`](https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.unwrap_or_clone)
+- [`Rc::unwrap_or_clone`](https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.unwrap_or_clone)
+- [`Result::inspect`](https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.inspect)
+- [`Result::inspect_err`](https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.inspect_err)
+- [`Option::inspect`](https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.inspect)
+- [`type_name_of_val`](https://doc.rust-lang.org/stable/std/any/fn.type_name_of_val.html)
+- [`std::hash::{DefaultHasher, RandomState}`](https://doc.rust-lang.org/stable/std/hash/index.html#structs)
+  These were previously available only through `std::collections::hash_map`.
+- [`ptr::{from_ref, from_mut}`](https://doc.rust-lang.org/stable/std/ptr/fn.from_ref.html)
+- [`ptr::addr_eq`](https://doc.rust-lang.org/stable/std/ptr/fn.addr_eq.html)
+
+<a id="1.76.0-Cargo"></a>
+
+Cargo
+-----
+
+See [Cargo release notes](https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-176-2024-02-08).
+
+<a id="1.76.0-Rustdoc"></a>
+
+Rustdoc
+-------
+
+- [Don't merge cfg and doc(cfg) attributes for re-exports](https://github.com/rust-lang/rust/pull/113091/)
+- [rustdoc: allow resizing the sidebar / hiding the top bar](https://github.com/rust-lang/rust/pull/115660/)
+- [rustdoc-search: add support for traits and associated types](https://github.com/rust-lang/rust/pull/116085/)
+- [rustdoc: Add highlighting for comments in items declaration](https://github.com/rust-lang/rust/pull/117869/)
+
+<a id="1.76.0-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+- [Add allow-by-default lint for unit bindings](https://github.com/rust-lang/rust/pull/112380/)
+  This is expected to be upgraded to a warning by default in a future Rust
+  release. Some macros emit bindings with type `()` with user-provided spans,
+  which means that this lint will warn for user code.
+- [Remove x86_64-sun-solaris target.](https://github.com/rust-lang/rust/pull/118091/)
+- [Remove asmjs-unknown-emscripten target](https://github.com/rust-lang/rust/pull/117338/)
+- [Report errors in jobserver inherited through environment variables](https://github.com/rust-lang/rust/pull/113730/)
+  This [may warn](https://github.com/rust-lang/rust/issues/120515) on benign problems too.
+- [Update the minimum external LLVM to 16.](https://github.com/rust-lang/rust/pull/117947/)
+- [Improve `print_tts`](https://github.com/rust-lang/rust/pull/114571/)
+  This change can break some naive manual parsing of token trees in proc macro
+  code which expect a particular structure after `.to_string()`, rather than just arbitrary Rust code.
+- [Make `IMPLIED_BOUNDS_ENTAILMENT` into a hard error from a lint](https://github.com/rust-lang/rust/pull/117984/)
+- [Vec's allocation behavior was changed when collecting some iterators](https://github.com/rust-lang/rust/pull/110353)
+  Allocation behavior is currently not specified, nevertheless changes can be surprising.
+  See [`impl FromIterator for Vec`](https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#impl-FromIterator%3CT%3E-for-Vec%3CT%3E)
+  for more details.
+- [Properly reject `default` on free const items](https://github.com/rust-lang/rust/pull/117818/)
+
 Version 1.75.0 (2023-12-28)
 ==========================
 

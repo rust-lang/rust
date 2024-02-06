@@ -1453,7 +1453,7 @@ impl<'a> Parser<'a> {
                                 err.span_suggestion_verbose(
                                     prev_span,
                                     "perhaps you meant to use `struct` here",
-                                    "struct".to_string(),
+                                    "struct",
                                     Applicability::MaybeIncorrect,
                                 );
                             }

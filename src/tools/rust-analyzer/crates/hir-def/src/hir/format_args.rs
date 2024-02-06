@@ -166,6 +166,7 @@ enum PositionUsedAs {
 }
 use PositionUsedAs::*;
 
+#[allow(clippy::unnecessary_lazy_evaluations)]
 pub(crate) fn parse(
     s: &ast::String,
     fmt_snippet: Option<String>,
@@ -177,9 +178,9 @@ pub(crate) fn parse(
     let text = s.text_without_quotes();
     let str_style = match s.quote_offsets() {
         Some(offsets) => {
-            let raw = u32::from(offsets.quotes.0.len()) - 1;
+            let raw = usize::from(offsets.quotes.0.len()) - 1;
             // subtract 1 for the `r` prefix
-            (raw != 0).then(|| raw as usize - 1)
+            (raw != 0).then(|| raw - 1)
         }
         None => None,
     };
@@ -214,7 +215,7 @@ pub(crate) fn parse(
 
     let mut used = vec![false; args.explicit_args().len()];
     let mut invalid_refs = Vec::new();
-    let mut numeric_refences_to_named_arg = Vec::new();
+    let mut numeric_references_to_named_arg = Vec::new();
 
     enum ArgRef<'a> {
         Index(usize),
@@ -231,7 +232,7 @@ pub(crate) fn parse(
                     used[index] = true;
                     if arg.kind.ident().is_some() {
                         // This was a named argument, but it was used as a positional argument.
-                        numeric_refences_to_named_arg.push((index, span, used_as));
+                        numeric_references_to_named_arg.push((index, span, used_as));
                     }
                     Ok(index)
                 } else {
@@ -432,7 +433,7 @@ pub(crate) fn parse(
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FormatArgumentsCollector {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
@@ -451,7 +452,7 @@ impl FormatArgumentsCollector {
     }
 
     pub fn new() -> Self {
-        Self { arguments: vec![], names: vec![], num_unnamed_args: 0, num_explicit_args: 0 }
+        Default::default()
     }
 
     pub fn add(&mut self, arg: FormatArgument) -> usize {

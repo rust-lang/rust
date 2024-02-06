@@ -7,11 +7,11 @@ LL |         1.query::<dyn ToString>("")
    |           required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `dyn ToString`
-note: required by a bound in `Example::query`
+note: required by an implicit `Sized` bound in `Example::query`
   --> $DIR/issue-61525.rs:2:14
    |
 LL |     fn query<Q>(self, q: Q);
-   |              ^ required by this bound in `Example::query`
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Example::query`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL |     fn query<Q: ?Sized>(self, q: Q);

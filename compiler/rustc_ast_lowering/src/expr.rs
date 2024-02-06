@@ -100,6 +100,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParenthesizedGenericArgs::Err,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
+                        // Method calls can't have bound modifiers
+                        None,
                     ));
                     let receiver = self.lower_expr(receiver);
                     let args =

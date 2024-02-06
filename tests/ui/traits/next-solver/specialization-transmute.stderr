@@ -10,12 +10,19 @@ LL | #![feature(specialization)]
 
 error: cannot normalize `<T as Default>::Id`
 
+error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id == _`
+  --> $DIR/specialization-transmute.rs:16:23
+   |
+LL |     fn intu(&self) -> &Self::Id {
+   |                       ^^^^^^^^^ cannot satisfy `<T as Default>::Id == _`
+
 error[E0282]: type annotations needed
   --> $DIR/specialization-transmute.rs:14:23
    |
 LL |     default type Id = T;
    |                       ^ cannot infer type for associated type `<T as Default>::Id`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0282, E0284.
+For more information about an error, try `rustc --explain E0282`.

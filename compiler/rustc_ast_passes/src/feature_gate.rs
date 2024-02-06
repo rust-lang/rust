@@ -362,6 +362,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_generic_args(&mut self, args: &'a ast::GenericArgs) {
+        // This check needs to happen here because the never type can be returned from a function,
+        // but cannot be used in any other context. If this check was in `visit_fn_ret_ty`, it
+        // include both functions and generics like `impl Fn() -> !`.
+        if let ast::GenericArgs::Parenthesized(generic_args) = args
+            && let ast::FnRetTy::Ty(ref ty) = generic_args.output
+            && matches!(ty.kind, ast::TyKind::Never)
+        {
+            gate!(&self, never_type, ty.span, "the `!` type is experimental");
+        }
+        visit::walk_generic_args(self, args);
+    }
+
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::TryBlock(_) => {

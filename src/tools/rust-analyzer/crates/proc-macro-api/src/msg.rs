@@ -29,7 +29,7 @@ pub enum Request {
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: PathBuf },
     /// Since [`NO_VERSION_CHECK_VERSION`]
-    ExpandMacro(ExpandMacro),
+    ExpandMacro(Box<ExpandMacro>),
     /// Since [`VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]

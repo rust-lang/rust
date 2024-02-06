@@ -6,7 +6,7 @@ struct W<T: ?Sized>(Oops);
 
 unsafe fn test() {
     let j = W(());
-    let pointer = &j as *const _;
+    let pointer = &j as *const _; //~ ERROR type annotations needed
     core::arch::asm!(
         "nop",
         in("eax") pointer,

@@ -148,7 +148,7 @@ pub fn make_display(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl 
     Printer { f }
 }
 
-// See comments in src/librustc_middle/lib.rs
+// See comments in compiler/rustc_middle/src/tests.rs
 #[doc(hidden)]
 pub fn __noop_fix_for_27438() {}
 

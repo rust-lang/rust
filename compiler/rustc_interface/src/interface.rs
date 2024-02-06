@@ -45,20 +45,19 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let sess = ParseSess::with_silent_emitter(Some(format!(
+            let sess = ParseSess::with_silent_emitter(format!(
                 "this error occurred on the command line: `--cfg={s}`"
-            )));
+            ));
             let filename = FileName::cfg_spec_source_code(&s);
 
             macro_rules! error {
                 ($reason: expr) => {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
-                    dcx.struct_fatal(format!(
+                    dcx.fatal(format!(
                         concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
                         s
-                    ))
-                    .emit();
+                    ));
                 };
             }
 
@@ -108,20 +107,19 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let sess = ParseSess::with_silent_emitter(Some(format!(
+        let sess = ParseSess::with_silent_emitter(format!(
             "this error occurred on the command line: `--check-cfg={s}`"
-        )));
+        ));
         let filename = FileName::cfg_spec_source_code(&s);
 
         macro_rules! error {
             ($reason:expr) => {
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                dcx.struct_fatal(format!(
+                dcx.fatal(format!(
                     concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                     s
                 ))
-                .emit()
             };
         }
 

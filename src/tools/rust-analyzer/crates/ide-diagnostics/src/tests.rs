@@ -173,7 +173,7 @@ fn minicore_smoke_test() {
     fn check(minicore: MiniCore) {
         let source = minicore.source_code();
         let mut config = DiagnosticsConfig::test_sample();
-        // This should be ignored since we conditionaly remove code which creates single item use with braces
+        // This should be ignored since we conditionally remove code which creates single item use with braces
         config.disabled.insert("unused_braces".to_string());
         check_diagnostics_with_config(config, &source);
     }

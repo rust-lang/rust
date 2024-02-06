@@ -135,6 +135,7 @@
 #![feature(iter_next_chunk)]
 #![feature(iter_repeat_n)]
 #![feature(layout_for_ptr)]
+#![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_uninit_array_transpose)]
@@ -252,7 +253,7 @@ pub mod str;
 pub mod string;
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 pub mod sync;
-#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
+#[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync)))]
 pub mod task;
 #[cfg(test)]
 mod tests;

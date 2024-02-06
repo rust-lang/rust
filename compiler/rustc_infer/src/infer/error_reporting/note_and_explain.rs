@@ -195,7 +195,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }
                         diag.help("type parameters must be constrained to match other types");
-                        if tcx.sess.teach(diag.get_code().unwrap()) {
+                        if tcx.sess.teach(diag.code.unwrap()) {
                             diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
@@ -678,7 +678,7 @@ impl<T> Trait<T> for X {
                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
             );
         }
-        if tcx.sess.teach(diag.get_code().unwrap()) {
+        if tcx.sess.teach(diag.code.unwrap()) {
             diag.help(
                 "given an associated type `T` and a method `foo`:
 ```

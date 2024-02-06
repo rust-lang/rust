@@ -1,14 +1,14 @@
 //! `render` module provides utilities for rendering completion suggestions
 //! into code pieces that will be presented to user.
 
-pub(crate) mod macro_;
-pub(crate) mod function;
 pub(crate) mod const_;
+pub(crate) mod function;
+pub(crate) mod literal;
+pub(crate) mod macro_;
 pub(crate) mod pattern;
 pub(crate) mod type_alias;
-pub(crate) mod variant;
 pub(crate) mod union_literal;
-pub(crate) mod literal;
+pub(crate) mod variant;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
@@ -292,7 +292,7 @@ fn render_resolution_pat(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
     use hir::ModuleDef::*;
 
     if let ScopeDef::ModuleDef(Macro(mac)) = resolution {
@@ -310,7 +310,7 @@ fn render_resolution_path(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
     use hir::ModuleDef::*;
 
     match resolution {
@@ -418,7 +418,7 @@ fn render_resolution_simple_(
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
-    let _p = profile::span("render_resolution");
+    let _p = tracing::span!(tracing::Level::INFO, "render_resolution").entered();
 
     let db = ctx.db();
     let ctx = ctx.import_to_add(import_to_add);

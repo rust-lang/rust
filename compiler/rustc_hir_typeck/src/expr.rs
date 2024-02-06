@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.span_suggestion_verbose(
                 lhs.span.shrink_to_hi(),
                 "you might have meant to write a semicolon here",
-                ";".to_string(),
+                ";",
                 Applicability::MachineApplicable,
             );
             return true;

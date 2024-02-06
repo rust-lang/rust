@@ -226,6 +226,7 @@ mod tests {
             .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
             .sorted_by_key(cmp)
             .collect::<Vec<_>>();
+
         assert_eq!(expected, navs);
     }
 
@@ -234,6 +235,60 @@ mod tests {
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    #[test]
+    fn goto_def_in_included_file() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+include!("a.rs");
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_in_included_file_nested() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+macro_rules! passthrough {
+    ($($tt:tt)*) => { $($tt)* }
+}
+
+passthrough!(include!("a.rs"));
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
     }
 
     #[test]

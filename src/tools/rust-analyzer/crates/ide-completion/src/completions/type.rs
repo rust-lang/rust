@@ -15,7 +15,7 @@ pub(crate) fn complete_type_path(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     location: &TypeLocation,
 ) {
-    let _p = profile::span("complete_type_path");
+    let _p = tracing::span!(tracing::Level::INFO, "complete_type_path").entered();
 
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
