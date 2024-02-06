@@ -11,6 +11,12 @@ ast_lowering_argument = argument
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
 
+ast_lowering_async_bound_not_on_trait =
+    `async` bound modifier only allowed on trait, not `{$descr}`
+
+ast_lowering_async_bound_only_for_fn_traits =
+    `async` bound modifier only allowed on `Fn`/`FnMut`/`FnOnce` traits
+
 ast_lowering_async_coroutines_not_supported =
     `async` coroutines are not yet supported
 

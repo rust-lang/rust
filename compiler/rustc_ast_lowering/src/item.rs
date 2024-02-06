@@ -340,14 +340,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (trait_ref, lowered_ty)) =
                     self.lower_generics(ast_generics, *constness, id, &itctx, |this| {
-                        let constness = match *constness {
-                            Const::Yes(span) => BoundConstness::Maybe(span),
-                            Const::No => BoundConstness::Never,
+                        let modifiers = TraitBoundModifiers {
+                            constness: match *constness {
+                                Const::Yes(span) => BoundConstness::Maybe(span),
+                                Const::No => BoundConstness::Never,
+                            },
+                            asyncness: BoundAsyncness::Normal,
+                            // we don't use this in bound lowering
+                            polarity: BoundPolarity::Positive,
                         };
 
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
-                                constness,
+                                modifiers,
                                 trait_ref,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
                             )

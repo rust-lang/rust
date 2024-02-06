@@ -423,6 +423,7 @@ symbols! {
         async_fn_mut,
         async_fn_once,
         async_fn_track_caller,
+        async_fn_traits,
         async_for_loop,
         async_iterator,
         async_iterator_poll_next,
