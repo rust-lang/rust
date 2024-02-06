@@ -1319,7 +1319,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
     fn apply_constructor(
         &mut self,
         pcx: &PlaceCtxt<'_, Cx>,
-        missing_ctors: &[Constructor<Cx>],
+        mut missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
         report_individual_missing_ctors: bool,
     ) {
@@ -1329,32 +1329,27 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
         if matches!(ctor, Constructor::Missing) {
             // We got the special `Missing` constructor that stands for the constructors not present
             // in the match.
-            if missing_ctors.is_empty() {
-                // Nothing to report.
-                *self = Self::empty();
-            } else if !report_individual_missing_ctors {
+            if !missing_ctors.is_empty() && !report_individual_missing_ctors {
                 // Report `_` as missing.
-                let pat = pcx.wild_from_ctor(Constructor::Wildcard);
-                self.push_pattern(pat);
+                missing_ctors = &[Constructor::Wildcard];
             } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
                 // We need to report a `_` anyway, so listing other constructors would be redundant.
                 // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
                 // up by diagnostics to add a note about why `_` is required here.
-                let pat = pcx.wild_from_ctor(Constructor::NonExhaustive);
-                self.push_pattern(pat);
-            } else {
-                // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
-                // filled with wildcards.
-                let mut ret = Self::empty();
-                for ctor in missing_ctors {
-                    let pat = pcx.wild_from_ctor(ctor.clone());
-                    // Clone `self` and add `c(_, _, _)` to each of its witnesses.
-                    let mut wit_matrix = self.clone();
-                    wit_matrix.push_pattern(pat);
-                    ret.extend(wit_matrix);
-                }
-                *self = ret;
+                missing_ctors = &[Constructor::NonExhaustive];
             }
+
+            // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
+            // filled with wildcards.
+            let mut ret = Self::empty();
+            for ctor in missing_ctors {
+                let pat = pcx.wild_from_ctor(ctor.clone());
+                // Clone `self` and add `c(_, _, _)` to each of its witnesses.
+                let mut wit_matrix = self.clone();
+                wit_matrix.push_pattern(pat);
+                ret.extend(wit_matrix);
+            }
+            *self = ret;
         } else {
             // Any other constructor we unspecialize as expected.
             for witness in self.0.iter_mut() {
