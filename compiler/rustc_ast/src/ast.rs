@@ -1872,28 +1872,24 @@ impl LitKind {
         matches!(self, LitKind::Int(..) | LitKind::Float(..))
     }
 
-    /// Returns `true` if this literal has no suffix.
-    /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
-    pub fn is_unsuffixed(&self) -> bool {
-        !self.is_suffixed()
-    }
-
-    /// Returns `true` if this literal has a suffix.
-    pub fn is_suffixed(&self) -> bool {
+    pub fn suffix(&self) -> Option<Symbol> {
         match *self {
-            // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
-            | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
-            // unsuffixed variants
+            LitKind::Int(_, kind) => match kind {
+                LitIntType::Signed(ty) => Some(ty.name()),
+                LitIntType::Unsigned(ty) => Some(ty.name()),
+                LitIntType::Unsuffixed => None,
+            },
+            LitKind::Float(_, kind) => match kind {
+                LitFloatType::Suffixed(ty) => Some(ty.name()),
+                LitFloatType::Unsuffixed => None,
+            },
             LitKind::Str(..)
             | LitKind::ByteStr(..)
             | LitKind::CStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
-            | LitKind::Int(_, LitIntType::Unsuffixed)
-            | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err => false,
+            | LitKind::Err => None,
         }
     }
 }

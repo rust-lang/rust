@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
         let lit = self.parse_meta_item_lit()?;
         debug!("checking if {:?} is unsuffixed", lit);
 
-        if !lit.kind.is_unsuffixed() {
+        if lit.kind.suffix().is_some() {
             self.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
         }
 

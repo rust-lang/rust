@@ -2806,7 +2806,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         ));
         let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
-            if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
+            if let hir::ExprKind::Lit(lit) = &expr.kind {
+                lit.node.suffix().is_some()
+            } else {
+                false
+            }
         };
         let is_negative_int =
             |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Neg, ..));

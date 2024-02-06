@@ -197,7 +197,7 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                         },
                         LitKind::Int(..) | LitKind::Float(..) => {
                             // If the initialization value is a suffixed literal we lint
-                            if init_lit.node.is_suffixed() {
+                            if init_lit.node.suffix().is_some() {
                                 span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                             }
                         },
