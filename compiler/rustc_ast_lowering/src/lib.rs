@@ -64,7 +64,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
 
@@ -750,8 +750,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
-        self.resolver.get_import_res(id).present_items()
+    fn lower_import_res(&mut self, id: NodeId, span: Span) -> SmallVec<[Res; 3]> {
+        let res = self.resolver.get_import_res(id).present_items();
+        let res: SmallVec<_> = res.map(|res| self.lower_res(res)).collect();
+        if res.is_empty() {
+            self.dcx().span_delayed_bug(span, "no resolution for an import");
+            return smallvec![Res::Err];
+        }
+        res
     }
 
     fn make_lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
