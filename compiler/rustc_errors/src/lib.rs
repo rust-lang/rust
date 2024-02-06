@@ -439,7 +439,7 @@ struct DiagCtxtInner {
     has_printed: bool,
 
     emitter: Box<DynEmitter>,
-    span_delayed_bugs: Vec<DelayedDiagnostic>,
+    delayed_bugs: Vec<DelayedDiagnostic>,
     good_path_delayed_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
     /// This is used for the `good_path_delayed_bugs` check.
@@ -523,8 +523,7 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
 pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
-pub enum DelayedBugKind {
+enum DelayedBugKind {
     Normal,
     GoodPath,
 }
@@ -557,11 +556,6 @@ impl Drop for DiagCtxtInner {
             self.flush_delayed(DelayedBugKind::Normal)
         }
 
-        // FIXME(eddyb) this explains what `good_path_delayed_bugs` are!
-        // They're `span_delayed_bugs` but for "require some diagnostic happened"
-        // instead of "require some error happened". Sadly that isn't ideal, as
-        // lints can be `#[allow]`'d, potentially leading to this triggering.
-        // Also, "good path" should be replaced with a better naming.
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
             self.flush_delayed(DelayedBugKind::GoodPath);
         }
@@ -608,7 +602,7 @@ impl DiagCtxt {
                 deduplicated_warn_count: 0,
                 has_printed: false,
                 emitter,
-                span_delayed_bugs: Vec::new(),
+                delayed_bugs: Vec::new(),
                 good_path_delayed_bugs: Vec::new(),
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
@@ -665,7 +659,7 @@ impl DiagCtxt {
         inner.has_printed = false;
 
         // actually free the underlying memory (which `clear` would not do)
-        inner.span_delayed_bugs = Default::default();
+        inner.delayed_bugs = Default::default();
         inner.good_path_delayed_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
@@ -866,8 +860,7 @@ impl DiagCtxt {
     /// directly).
     #[track_caller]
     pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
-            .emit()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
     }
 
     /// Like `delayed_bug`, but takes an additional span.
@@ -880,15 +873,12 @@ impl DiagCtxt {
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
-            .with_span(sp)
-            .emit()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
     }
 
-    // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
-    // where the explanation of what "good path" is (also, it should be renamed).
+    /// Ensures that a diagnostic is printed. See `Level::GoodPathDelayedBug`.
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, DelayedBug(DelayedBugKind::GoodPath), msg).emit()
+        DiagnosticBuilder::<()>::new(self, GoodPathDelayedBug, msg).emit()
     }
 
     #[track_caller]
@@ -962,7 +952,7 @@ impl DiagCtxt {
     pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         let inner = self.inner.borrow();
         let result =
-            inner.has_errors() || inner.lint_err_count > 0 || !inner.span_delayed_bugs.is_empty();
+            inner.has_errors() || inner.lint_err_count > 0 || !inner.delayed_bugs.is_empty();
         result.then(|| {
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
@@ -991,9 +981,13 @@ impl DiagCtxt {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => inner
-                .emitter
-                .emit_diagnostic(&Diagnostic::new(Warning, DiagnosticMessage::Str(warnings))),
+            (0, _) => {
+                // Use `inner.emitter` directly, otherwise the warning might not be emitted, e.g.
+                // with a configuration like `--cap-lints allow --force-warn bare_trait_objects`.
+                inner
+                    .emitter
+                    .emit_diagnostic(Diagnostic::new(Warning, DiagnosticMessage::Str(warnings)));
+            }
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
@@ -1057,7 +1051,7 @@ impl DiagCtxt {
     }
 
     pub fn force_print_diagnostic(&self, db: Diagnostic) {
-        self.inner.borrow_mut().emitter.emit_diagnostic(&db);
+        self.inner.borrow_mut().emitter.emit_diagnostic(db);
     }
 
     pub fn emit_diagnostic(&self, diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
@@ -1248,43 +1242,19 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        // The `LintExpectationId` can be stable or unstable depending on when it was created.
-        // Diagnostics created before the definition of `HirId`s are unstable and can not yet
-        // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
-        // a stable one by the `LintLevelsBuilder`.
-        if let Some(LintExpectationId::Unstable { .. }) = diagnostic.level.get_expectation_id() {
-            self.unstable_expect_diagnostics.push(diagnostic);
-            return None;
-        }
+        assert!(diagnostic.level.can_be_top_or_sub().0);
 
-        // FIXME(eddyb) this should check for `has_errors` and stop pushing
-        // once *any* errors were emitted (and truncate `span_delayed_bugs`
-        // when an error is first emitted, also), but maybe there's a case
-        // in which that's not sound? otherwise this is really inefficient.
-        match diagnostic.level {
-            DelayedBug(_) if self.flags.eagerly_emit_delayed_bugs => {
-                diagnostic.level = Error;
-            }
-            DelayedBug(DelayedBugKind::Normal) => {
-                let backtrace = std::backtrace::Backtrace::capture();
-                self.span_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
-                #[allow(deprecated)]
-                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
-            }
-            DelayedBug(DelayedBugKind::GoodPath) => {
-                let backtrace = std::backtrace::Backtrace::capture();
-                self.good_path_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
+            // The `LintExpectationId` can be stable or unstable depending on when it was created.
+            // Diagnostics created before the definition of `HirId`s are unstable and can not yet
+            // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
+            // a stable one by the `LintLevelsBuilder`.
+            if let LintExpectationId::Unstable { .. } = expectation_id {
+                self.unstable_expect_diagnostics.push(diagnostic);
                 return None;
             }
-            _ => {}
-        }
-
-        // This must come after the possible promotion of `DelayedBug` to
-        // `Error` above.
-        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
-            diagnostic.level = Bug;
+            self.suppressed_expected_diag = true;
+            self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
         if diagnostic.has_future_breakage() {
@@ -1295,21 +1265,45 @@ impl DiagCtxtInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
-            self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expectation_id.normalize());
+        if matches!(diagnostic.level, DelayedBug | GoodPathDelayedBug)
+            && self.flags.eagerly_emit_delayed_bugs
+        {
+            diagnostic.level = Error;
         }
 
-        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
-            if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+        match diagnostic.level {
+            // This must come after the possible promotion of `DelayedBug`/`GoodPathDelayedBug` to
+            // `Error` above.
+            Fatal | Error if self.treat_next_err_as_bug() => {
+                diagnostic.level = Bug;
             }
-            return None;
-        }
-
-        if matches!(diagnostic.level, Expect(_) | Allow) {
-            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
-            return None;
+            DelayedBug => {
+                // FIXME(eddyb) this should check for `has_errors` and stop pushing
+                // once *any* errors were emitted (and truncate `delayed_bugs`
+                // when an error is first emitted, also), but maybe there's a case
+                // in which that's not sound? otherwise this is really inefficient.
+                let backtrace = std::backtrace::Backtrace::capture();
+                self.delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+                #[allow(deprecated)]
+                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+            }
+            GoodPathDelayedBug => {
+                let backtrace = std::backtrace::Backtrace::capture();
+                self.good_path_delayed_bugs
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+                return None;
+            }
+            Warning if !self.flags.can_emit_warnings => {
+                if diagnostic.has_future_breakage() {
+                    (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                }
+                return None;
+            }
+            Allow | Expect(_) => {
+                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                return None;
+            }
+            _ => {}
         }
 
         let mut guaranteed = None;
@@ -1325,11 +1319,15 @@ impl DiagCtxtInner {
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
+            let is_error = diagnostic.is_error();
+            let is_lint = diagnostic.is_lint.is_some();
+
             // Only emit the diagnostic if we've been asked to deduplicate or
             // haven't already emitted an equivalent diagnostic.
             if !(self.flags.deduplicate_diagnostics && already_emitted) {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
+
                 let already_emitted_sub = |sub: &mut SubDiagnostic| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
@@ -1341,7 +1339,6 @@ impl DiagCtxtInner {
                     debug!(?diagnostic_hash);
                     !self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-
                 diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
                 if already_emitted {
                     diagnostic.note(
@@ -1349,16 +1346,17 @@ impl DiagCtxtInner {
                     );
                 }
 
-                self.emitter.emit_diagnostic(&diagnostic);
-                if diagnostic.is_error() {
+                if is_error {
                     self.deduplicated_err_count += 1;
                 } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
                 self.has_printed = true;
+
+                self.emitter.emit_diagnostic(diagnostic);
             }
-            if diagnostic.is_error() {
-                if diagnostic.is_lint.is_some() {
+            if is_error {
+                if is_lint {
                     self.lint_err_count += 1;
                 } else {
                     self.err_count += 1;
@@ -1397,12 +1395,12 @@ impl DiagCtxtInner {
     fn flush_delayed(&mut self, kind: DelayedBugKind) {
         let (bugs, note1) = match kind {
             DelayedBugKind::Normal => (
-                std::mem::take(&mut self.span_delayed_bugs),
-                "no errors encountered even though `span_delayed_bug` issued",
+                std::mem::take(&mut self.delayed_bugs),
+                "no errors encountered even though delayed bugs were created",
             ),
             DelayedBugKind::GoodPath => (
                 std::mem::take(&mut self.good_path_delayed_bugs),
-                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
+                "no warnings or errors encountered even though good path delayed bugs were created",
             ),
         };
         let note2 = "those delayed bugs will now be shown as internal compiler errors";
@@ -1441,8 +1439,8 @@ impl DiagCtxtInner {
             let mut bug =
                 if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
-            // "Undelay" the `DelayedBug`s (into plain `Bug`s).
-            if !matches!(bug.level, DelayedBug(_)) {
+            // "Undelay" the delayed bugs (into plain `Bug`s).
+            if !matches!(bug.level, DelayedBug | GoodPathDelayedBug) {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
                 bug.subdiagnostic(InvalidFlushedDelayedDiagnosticLevel {
@@ -1508,34 +1506,58 @@ impl DelayedDiagnostic {
     }
 }
 
+/// Level              is_error  EmissionGuarantee         Top-level  Sub   Used in lints?
+/// -----              --------  -----------------         ---------  ---   --------------
+/// Bug                yes       BugAbort                  yes        -     -
+/// Fatal              yes       FatalAbort/FatalError(*)  yes        -     -
+/// Error              yes       ErrorGuaranteed           yes        -     yes
+/// DelayedBug         yes       ErrorGuaranteed           yes        -     -
+/// GoodPathDelayedBug -         ()                        yes        -     -
+/// ForceWarning       -         ()                        yes        -     lint-only
+/// Warning            -         ()                        yes        yes   yes
+/// Note               -         ()                        rare       yes   -
+/// OnceNote           -         ()                        -          yes   lint-only
+/// Help               -         ()                        rare       yes   -
+/// OnceHelp           -         ()                        -          yes   lint-only
+/// FailureNote        -         ()                        rare       -     -
+/// Allow              -         ()                        yes        -     lint-only
+/// Expect             -         ()                        yes        -     lint-only
+///
+/// (*) `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
+///     occasionally used.
+///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
     /// For bugs in the compiler. Manifests as an ICE (internal compiler error) panic.
-    ///
-    /// Its `EmissionGuarantee` is `BugAbort`.
     Bug,
+
+    /// An error that causes an immediate abort. Used for things like configuration errors,
+    /// internal overflows, some file operation errors.
+    Fatal,
+
+    /// An error in the code being compiled, which prevents compilation from finishing. This is the
+    /// most common case.
+    Error,
 
     /// This is a strange one: lets you register an error without emitting it. If compilation ends
     /// without any other errors occurring, this will be emitted as a bug. Otherwise, it will be
     /// silently dropped. I.e. "expect other errors are emitted" semantics. Useful on code paths
     /// that should only be reached when compiling erroneous code.
-    ///
-    /// Its `EmissionGuarantee` is `ErrorGuaranteed` for `Normal` delayed bugs, and `()` for
-    /// `GoodPath` delayed bugs.
-    DelayedBug(DelayedBugKind),
+    DelayedBug,
 
-    /// An error that causes an immediate abort. Used for things like configuration errors,
-    /// internal overflows, some file operation errors.
+    /// Like `DelayedBug`, but weaker: lets you register an error without emitting it. If
+    /// compilation ends without any other diagnostics being emitted (and without an expected lint
+    /// being suppressed), this will be emitted as a bug. Otherwise, it will be silently dropped.
+    /// I.e. "expect other diagnostics are emitted (or suppressed)" semantics. Useful on code paths
+    /// that should only be reached when emitting diagnostics, e.g. for expensive one-time
+    /// diagnostic formatting operations.
     ///
-    /// Its `EmissionGuarantee` is `FatalAbort`, except in the non-aborting "almost fatal" case
-    /// that is occasionally used, where it is `FatalError`.
-    Fatal,
-
-    /// An error in the code being compiled, which prevents compilation from finishing. This is the
-    /// most common case.
-    ///
-    /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
-    Error,
+    /// FIXME(nnethercote) good path delayed bugs are semantically strange: if printed they produce
+    /// an ICE, but they don't satisfy `is_error` and they don't guarantee an error is emitted.
+    /// Plus there's the extra complication with expected (suppressed) lints. They have limited
+    /// use, and are used in very few places, and "good path" isn't a good name. It would be good
+    /// to remove them.
+    GoodPathDelayedBug,
 
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
     /// from finishing.
@@ -1545,45 +1567,28 @@ pub enum Level {
     ForceWarning(Option<LintExpectationId>),
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
     Warning,
 
-    /// A message giving additional context. Rare, because notes are more commonly attached to other
-    /// diagnostics such as errors.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
+    /// A message giving additional context.
     Note,
 
-    /// A note that is only emitted once. Rare, mostly used in circumstances relating to lints.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
+    /// A note that is only emitted once.
     OnceNote,
 
-    /// A message suggesting how to fix something. Rare, because help messages are more commonly
-    /// attached to other diagnostics such as errors.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
+    /// A message suggesting how to fix something.
     Help,
 
-    /// A help that is only emitted once. Rare.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
+    /// A help that is only emitted once.
     OnceHelp,
 
-    /// Similar to `Note`, but used in cases where compilation has failed. Rare.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
+    /// Similar to `Note`, but used in cases where compilation has failed. When printed for human
+    /// consumption, it doesn't have any kind of `note:` label.
     FailureNote,
 
     /// Only used for lints.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
     Allow,
 
     /// Only used for lints.
-    ///
-    /// Its `EmissionGuarantee` is `()`.
     Expect(LintExpectationId),
 }
 
@@ -1597,7 +1602,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | DelayedBug(_) | Fatal | Error => {
+            Bug | Fatal | Error | DelayedBug | GoodPathDelayedBug => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             ForceWarning(_) | Warning => {
@@ -1617,7 +1622,7 @@ impl Level {
 
     pub fn to_str(self) -> &'static str {
         match self {
-            Bug | DelayedBug(_) => "error: internal compiler error",
+            Bug | DelayedBug | GoodPathDelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
             ForceWarning(_) | Warning => "warning",
             Note | OnceNote => "note",
@@ -1635,6 +1640,19 @@ impl Level {
         match self {
             Expect(id) | ForceWarning(Some(id)) => Some(*id),
             _ => None,
+        }
+    }
+
+    // Can this level be used in a top-level diagnostic message and/or a
+    // subdiagnostic message?
+    fn can_be_top_or_sub(&self) -> (bool, bool) {
+        match self {
+            Bug | DelayedBug | Fatal | Error | GoodPathDelayedBug | ForceWarning(_)
+            | FailureNote | Allow | Expect(_) => (true, false),
+
+            Warning | Note | Help => (true, true),
+
+            OnceNote | OnceHelp => (false, true),
         }
     }
 }

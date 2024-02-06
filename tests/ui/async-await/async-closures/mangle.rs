@@ -8,20 +8,19 @@
 // FIXME(async_closures): When `fn_sig_for_fn_abi` is fixed, remove this.
 // ignore-pass (test emits codegen-time warnings)
 
-#![feature(async_closure, noop_waker, async_fn_traits)]
+#![feature(async_closure, noop_waker)]
 
 extern crate block_on;
 
 use std::future::Future;
-use std::ops::{AsyncFnMut, AsyncFnOnce};
 use std::pin::pin;
 use std::task::*;
 
-async fn call_mut(f: &mut impl AsyncFnMut()) {
+async fn call_mut(f: &mut impl async FnMut()) {
     f().await;
 }
 
-async fn call_once(f: impl AsyncFnOnce()) {
+async fn call_once(f: impl async FnOnce()) {
     f().await;
 }
 

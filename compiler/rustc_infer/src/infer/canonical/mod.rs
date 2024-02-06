@@ -24,6 +24,7 @@
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_index::IndexVec;
+use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
@@ -152,7 +153,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
                 .into(),
             CanonicalVarKind::Effect => {
-                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
+                let vid = self
+                    .inner
+                    .borrow_mut()
+                    .effect_unification_table()
+                    .new_key(EffectVarValue::Unknown)
+                    .vid;
                 ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid), self.tcx.types.bool)
                     .into()
             }

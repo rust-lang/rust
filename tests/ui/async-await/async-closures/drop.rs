@@ -3,12 +3,10 @@
 // run-pass
 // check-run-results
 
-#![feature(async_closure, async_fn_traits)]
+#![feature(async_closure)]
 #![allow(unused)]
 
 extern crate block_on;
-
-use std::ops::AsyncFnOnce;
 
 struct DropMe(i32);
 
@@ -18,7 +16,7 @@ impl Drop for DropMe {
     }
 }
 
-async fn call_once(f: impl AsyncFnOnce()) {
+async fn call_once(f: impl async FnOnce()) {
     println!("before call");
     let fut = Box::pin(f());
     println!("after call");

@@ -8,6 +8,7 @@ pub use self::ValuePairs::*;
 pub use relate::combine::ObligationEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
 
 use self::opaque_types::OpaqueTypeStorage;
@@ -25,8 +26,8 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxt, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::{select, DefiningAnchor};
@@ -818,7 +819,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         (0..table.len())
             .map(|i| ty::EffectVid::from_usize(i))
-            .filter(|&vid| table.probe_value(vid).is_none())
+            .filter(|&vid| table.probe_value(vid).is_unknown())
             .map(|v| {
                 ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(v), self.tcx.types.bool)
             })
@@ -1236,7 +1237,8 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn var_for_effect(&self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
-        let effect_vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
+        let effect_vid =
+            self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue::Unknown).vid;
         let ty = self
             .tcx
             .type_of(param.def_id)
@@ -1416,8 +1418,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    pub fn probe_effect_var(&self, vid: EffectVid) -> Option<EffectVarValue<'tcx>> {
-        self.inner.borrow_mut().effect_unification_table().probe_value(vid)
+    pub fn probe_effect_var(&self, vid: EffectVid) -> Option<ty::Const<'tcx>> {
+        self.inner.borrow_mut().effect_unification_table().probe_value(vid).known()
     }
 
     /// Attempts to resolve all type/region/const variables in
@@ -1897,7 +1899,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
                 .borrow_mut()
                 .effect_unification_table()
                 .probe_value(vid)
-                .map_or(ct, |val| val.as_const(self.infcx.tcx)),
+                .known()
+                .unwrap_or(ct),
             _ => ct,
         }
     }

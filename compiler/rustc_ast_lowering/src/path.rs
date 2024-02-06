@@ -196,6 +196,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Path,
         param_mode: ParamMode,
     ) -> &'hir hir::UsePath<'hir> {
+        assert!((1..=3).contains(&res.len()));
         self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
