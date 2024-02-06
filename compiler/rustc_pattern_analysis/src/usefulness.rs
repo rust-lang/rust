@@ -1319,28 +1319,16 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
     fn apply_constructor(
         &mut self,
         pcx: &PlaceCtxt<'_, Cx>,
-        mut missing_ctors: &[Constructor<Cx>],
+        missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
-        report_individual_missing_ctors: bool,
     ) {
         if self.is_empty() {
             return;
         }
         if matches!(ctor, Constructor::Missing) {
             // We got the special `Missing` constructor that stands for the constructors not present
-            // in the match.
-            if !missing_ctors.is_empty() && !report_individual_missing_ctors {
-                // Report `_` as missing.
-                missing_ctors = &[Constructor::Wildcard];
-            } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
-                // We need to report a `_` anyway, so listing other constructors would be redundant.
-                // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
-                // up by diagnostics to add a note about why `_` is required here.
-                missing_ctors = &[Constructor::NonExhaustive];
-            }
-
-            // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
-            // filled with wildcards.
+            // in the match. For each missing constructor `c`, we add a `c(_, _, _)` witness
+            // appropriately filled with wildcards.
             let mut ret = Self::empty();
             for ctor in missing_ctors {
                 let pat = pcx.wild_from_ctor(ctor.clone());
@@ -1515,15 +1503,25 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         split_ctors.push(Constructor::Missing);
     }
 
-    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing". At the top
-    // level we prefer to list all constructors.
-    let report_individual_missing_ctors = place.is_scrutinee || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
     // split_ctors.contains(Missing)`. The converse usually holds except when
     // `!place_validity.is_known_valid()`.
     let mut missing_ctors = split_set.missing;
     if !can_omit_empty_arms {
         missing_ctors.append(&mut split_set.missing_empty);
+    }
+
+    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing". At the top
+    // level we prefer to list all constructors.
+    let report_individual_missing_ctors = place.is_scrutinee || !all_missing;
+    if !missing_ctors.is_empty() && !report_individual_missing_ctors {
+        // Report `_` as missing.
+        missing_ctors = vec![Constructor::Wildcard];
+    } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+        // We need to report a `_` anyway, so listing other constructors would be redundant.
+        // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
+        // up by diagnostics to add a note about why `_` is required here.
+        missing_ctors = vec![Constructor::NonExhaustive];
     }
 
     let mut ret = WitnessMatrix::empty();
@@ -1540,7 +1538,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
-        witnesses.apply_constructor(pcx, &missing_ctors, &ctor, report_individual_missing_ctors);
+        witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
         // Accumulate the found witnesses.
         ret.extend(witnesses);
 
