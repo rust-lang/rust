@@ -261,11 +261,4 @@ trait TRA3 {
     //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
 }
 
-type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
-//~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
-type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
-//~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
-type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
-//~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
-
 fn main() {}

@@ -1085,33 +1085,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocConstraintKind::Bound { bounds } => {
                 enum DesugarKind {
-                    ImplTrait,
-                    Error(ImplTraitPosition),
+                    Error,
                     Bound,
                 }
 
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let desugar_kind = match itctx {
-                    // in an argument, RPIT, or TAIT, if we are within a dyn type:
-                    //
-                    //     fn foo(x: dyn Iterator<Item: Debug>)
-                    //
-                    // then desugar to:
-                    //
-                    //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    //
-                    // This is because dyn traits must have all of their associated types specified.
-                    ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::TypeAliasesOpaqueTy { .. }
-                    | ImplTraitContext::Universal
-                        if self.is_in_dyn_type =>
-                    {
-                        DesugarKind::ImplTrait
-                    }
-
-                    ImplTraitContext::Disallowed(position) if self.is_in_dyn_type => {
-                        DesugarKind::Error(position)
-                    }
+                    _ if self.is_in_dyn_type => DesugarKind::Error,
 
                     // We are in the parameter position, but not within a dyn type:
                     //
@@ -1124,32 +1104,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
 
                 match desugar_kind {
-                    DesugarKind::ImplTrait => {
-                        // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
-                        // constructing the HIR for `impl bounds...` and then lowering that.
-
-                        let impl_trait_node_id = self.next_node_id();
-                        // Shift `impl Trait` lifetime captures from the associated type bound's
-                        // node id to the opaque node id, so that the opaque can actually use
-                        // these lifetime bounds.
-                        self.resolver
-                            .remap_extra_lifetime_params(constraint.id, impl_trait_node_id);
-
-                        self.with_dyn_type_scope(false, |this| {
-                            let node_id = this.next_node_id();
-                            let ty = this.lower_ty(
-                                &Ty {
-                                    id: node_id,
-                                    kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                    span: this.lower_span(constraint.span),
-                                    tokens: None,
-                                },
-                                itctx,
-                            );
-
-                            hir::TypeBindingKind::Equality { term: ty.into() }
-                        })
-                    }
                     DesugarKind::Bound => {
                         // Desugar `AssocTy: Bounds` into a type binding where the
                         // later desugars into a trait predicate.
@@ -1157,11 +1111,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         hir::TypeBindingKind::Constraint { bounds }
                     }
-                    DesugarKind::Error(position) => {
-                        let guar = self.dcx().emit_err(errors::MisplacedAssocTyBinding {
-                            span: constraint.span,
-                            position: DiagnosticArgFromDisplay(&position),
-                        });
+                    DesugarKind::Error => {
+                        let guar = self
+                            .dcx()
+                            .emit_err(errors::MisplacedAssocTyBinding { span: constraint.span });
                         let err_ty =
                             &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
                         hir::TypeBindingKind::Equality { term: err_ty.into() }
