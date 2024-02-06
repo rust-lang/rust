@@ -1,5 +1,6 @@
 use super::FnCtxt;
 
+use crate::coercion::CollectRetsVisitor;
 use crate::errors;
 use crate::fluent_generated as fluent;
 use crate::fn_ctxt::rustc_span::BytePos;
@@ -16,6 +17,7 @@ use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::intravisit::{Map, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
@@ -827,6 +829,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             hir::FnRetTy::Return(hir_ty) => {
                 if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
+                    // FIXME: account for RPITIT.
                     && let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty), ..
                     }) = self.tcx.hir_node(item_id.hir_id())
@@ -1038,33 +1041,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        if let hir::FnRetTy::Return(ty) = fn_decl.output {
-            let ty = self.astconv().ast_ty_to_ty(ty);
-            let bound_vars = self.tcx.late_bound_vars(fn_id);
-            let ty = self
-                .tcx
-                .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
-            let ty = match self.tcx.asyncness(fn_id.owner) {
-                ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
-                    span_bug!(fn_decl.output.span(), "failed to get output type of async function")
-                }),
-                ty::Asyncness::No => ty,
-            };
-            let ty = self.normalize(expr.span, ty);
-            if self.can_coerce(found, ty) {
-                if let Some(owner_node) = self.tcx.hir_node(fn_id).as_owner()
-                    && let Some(span) = expr.span.find_ancestor_inside(*owner_node.span())
-                {
-                    err.multipart_suggestion(
-                        "you might have meant to return this value",
-                        vec![
-                            (span.shrink_to_lo(), "return ".to_string()),
-                            (span.shrink_to_hi(), ";".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+        let in_closure = matches!(
+            self.tcx
+                .hir()
+                .parent_iter(id)
+                .filter(|(_, node)| {
+                    matches!(
+                        node,
+                        Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
+                            | Node::Item(_)
+                            | Node::TraitItem(_)
+                            | Node::ImplItem(_)
+                    )
+                })
+                .next(),
+            Some((_, Node::Expr(Expr { kind: ExprKind::Closure(..), .. })))
+        );
+
+        let can_return = match fn_decl.output {
+            hir::FnRetTy::Return(ty) => {
+                let ty = self.astconv().ast_ty_to_ty(ty);
+                let bound_vars = self.tcx.late_bound_vars(fn_id);
+                let ty = self
+                    .tcx
+                    .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
+                let ty = match self.tcx.asyncness(fn_id.owner) {
+                    ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                        span_bug!(
+                            fn_decl.output.span(),
+                            "failed to get output type of async function"
+                        )
+                    }),
+                    ty::Asyncness::No => ty,
+                };
+                let ty = self.normalize(expr.span, ty);
+                self.can_coerce(found, ty)
             }
+            hir::FnRetTy::DefaultReturn(_) if in_closure => {
+                let mut rets = vec![];
+                if let Some(ret_coercion) = self.ret_coercion.as_ref() {
+                    let ret_ty = ret_coercion.borrow().expected_ty();
+                    rets.push(ret_ty);
+                }
+                let mut visitor = CollectRetsVisitor { ret_exprs: vec![] };
+                if let Some(item) = self.tcx.hir().find(id)
+                    && let Node::Expr(expr) = item
+                {
+                    visitor.visit_expr(expr);
+                    for expr in visitor.ret_exprs {
+                        if let Some(ty) = self.typeck_results.borrow().node_type_opt(expr.hir_id) {
+                            rets.push(ty);
+                        }
+                    }
+                    if let hir::ExprKind::Block(hir::Block { expr: Some(expr), .. }, _) = expr.kind
+                    {
+                        if let Some(ty) = self.typeck_results.borrow().node_type_opt(expr.hir_id) {
+                            rets.push(ty);
+                        }
+                    }
+                }
+                rets.into_iter().all(|ty| self.can_coerce(found, ty))
+            }
+            _ => false,
+        };
+        if can_return
+            && let Some(owner_node) = self.tcx.hir_node(fn_id).as_owner()
+            && let Some(span) = expr.span.find_ancestor_inside(owner_node.span())
+        {
+            err.multipart_suggestion(
+                "you might have meant to return this value",
+                vec![
+                    (span.shrink_to_lo(), "return ".to_string()),
+                    (span.shrink_to_hi(), ";".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
