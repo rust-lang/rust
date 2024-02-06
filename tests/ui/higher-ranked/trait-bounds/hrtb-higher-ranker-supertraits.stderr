@@ -1,43 +1,61 @@
-error[E0277]: the trait bound `for<'tcx> F: Foo<'tcx>` is not satisfied
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:18:26
+error: lifetime may not live long enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:5
+   |
+LL | fn want_foo_for_some_tcx<'x, F: Foo<'x>>(f: &'x F) {
+   |                          -- lifetime `'x` defined here
+LL |     want_foo_for_some_tcx(f);
+LL |     want_foo_for_any_tcx(f);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ requires that `'x` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:19:28
+   |
+LL | fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:5
    |
 LL |     want_foo_for_any_tcx(f);
-   |     -------------------- ^ the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-note: required by a bound in `want_foo_for_any_tcx`
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:22:15
+   = note: expected trait `for<'tcx> Foo<'tcx>`
+              found trait `Foo<'_>`
+note: the lifetime requirement is introduced here
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:19:28
    |
-LL | fn want_foo_for_any_tcx<F>(f: &F)
-   |    -------------------- required by a bound in this function
-LL |     where F : for<'tcx> Foo<'tcx>
-   |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `want_foo_for_any_tcx`
-help: consider further restricting this bound
-   |
-LL |     where F : Foo<'x> + for<'tcx> Foo<'tcx>
-   |                       +++++++++++++++++++++
+LL | fn want_foo_for_any_tcx<F: for<'tcx> Foo<'tcx>>(f: &F) {
+   |                            ^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `for<'ccx> B: Bar<'ccx>` is not satisfied
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:35:26
+error: lifetime may not live long enough
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:5
+   |
+LL | fn want_bar_for_some_ccx<'x, B: Bar<'x>>(b: &B) {
+   |                          -- lifetime `'x` defined here
+...
+LL |     want_bar_for_any_ccx(b);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ requires that `'x` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:34:28
+   |
+LL | fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {
+   |                            ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:5
    |
 LL |     want_bar_for_any_ccx(b);
-   |     -------------------- ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-note: required by a bound in `want_bar_for_any_ccx`
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:39:15
+   = note: expected trait `for<'ccx> Bar<'ccx>`
+              found trait `Bar<'_>`
+note: the lifetime requirement is introduced here
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:34:28
    |
-LL | fn want_bar_for_any_ccx<B>(b: &B)
-   |    -------------------- required by a bound in this function
-LL |     where B : for<'ccx> Bar<'ccx>
-   |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `want_bar_for_any_ccx`
-help: consider further restricting this bound
-   |
-LL |     where B : Bar<'x> + for<'ccx> Bar<'ccx>
-   |                       +++++++++++++++++++++
+LL | fn want_bar_for_any_ccx<B: for<'ccx> Bar<'ccx>>(b: &B) {
+   |                            ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.
