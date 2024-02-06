@@ -1503,7 +1503,7 @@ declare_lint! {
     Warn,
     "distinct impls distinguished only by the leak-check code",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::Custom("the behavior may change in a future release"),
         reference: "issue #56105 <https://github.com/rust-lang/rust/issues/56105>",
     };
 }

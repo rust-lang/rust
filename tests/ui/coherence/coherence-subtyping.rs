@@ -13,8 +13,8 @@ trait TheTrait {
 impl TheTrait for for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {}
 
 impl TheTrait for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
-    //~^ WARNING conflicting implementation
-    //~^^ WARNING this was previously accepted by the compiler but is being phased out
+    //~^ WARN conflicting implementation
+    //~| WARN the behavior may change in a future release
 }
 
 fn main() {}
