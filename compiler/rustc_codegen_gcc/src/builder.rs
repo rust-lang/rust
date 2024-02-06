@@ -705,6 +705,31 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.frem(lhs, rhs)
     }
 
+    fn fadd_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs + rhs
+    }
+
+    fn fsub_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs - rhs
+    }
+
+    fn fmul_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs * rhs
+    }
+
+    fn fdiv_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs / rhs
+    }
+
+    fn frem_algebraic(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        self.frem(lhs, rhs)
+    }
+
     fn checked_binop(&mut self, oop: OverflowOp, typ: Ty<'_>, lhs: Self::Value, rhs: Self::Value) -> (Self::Value, Self::Value) {
         self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
