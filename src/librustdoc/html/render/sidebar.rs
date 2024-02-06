@@ -7,12 +7,13 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefIdSet;
 use rustc_middle::ty::{self, TyCtxt};
 
+use crate::{
+    clean,
+    formats::{item_type::ItemType, Impl},
+    html::{format::Buffer, markdown::IdMap, markdown::MarkdownWithToc},
+};
+
 use super::{item_ty_to_section, Context, ItemSection};
-use crate::clean;
-use crate::formats::item_type::ItemType;
-use crate::formats::Impl;
-use crate::html::format::Buffer;
-use crate::html::markdown::IdMap;
 
 #[derive(Template)]
 #[template(path = "sidebar.html")]
@@ -66,11 +67,13 @@ pub(crate) struct Link<'a> {
     name: Cow<'a, str>,
     /// The id of an anchor within the page (without a `#` prefix)
     href: Cow<'a, str>,
+    /// Nested list of links (used only in top-toc)
+    children: Vec<Link<'a>>,
 }
 
 impl<'a> Link<'a> {
     pub fn new(href: impl Into<Cow<'a, str>>, name: impl Into<Cow<'a, str>>) -> Self {
-        Self { href: href.into(), name: name.into() }
+        Self { href: href.into(), name: name.into(), children: vec![] }
     }
     pub fn empty() -> Link<'static> {
         Link::new("", "")
@@ -94,17 +97,19 @@ pub(crate) mod filters {
 }
 
 pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
-    let blocks: Vec<LinkBlock<'_>> = match *it.kind {
-        clean::StructItem(ref s) => sidebar_struct(cx, it, s),
-        clean::TraitItem(ref t) => sidebar_trait(cx, it, t),
-        clean::PrimitiveItem(_) => sidebar_primitive(cx, it),
-        clean::UnionItem(ref u) => sidebar_union(cx, it, u),
-        clean::EnumItem(ref e) => sidebar_enum(cx, it, e),
-        clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t),
-        clean::ModuleItem(ref m) => vec![sidebar_module(&m.items)],
-        clean::ForeignTypeItem => sidebar_foreign_type(cx, it),
-        _ => vec![],
-    };
+    let mut ids = IdMap::new();
+    let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
+    match *it.kind {
+        clean::StructItem(ref s) => sidebar_struct(cx, it, s, &mut blocks),
+        clean::TraitItem(ref t) => sidebar_trait(cx, it, t, &mut blocks),
+        clean::PrimitiveItem(_) => sidebar_primitive(cx, it, &mut blocks),
+        clean::UnionItem(ref u) => sidebar_union(cx, it, u, &mut blocks),
+        clean::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks),
+        clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t, &mut blocks),
+        clean::ModuleItem(ref m) => blocks.push(sidebar_module(&m.items, &mut ids)),
+        clean::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks),
+        _ => {}
+    }
     // The sidebar is designed to display sibling functions, modules and
     // other miscellaneous information. since there are lots of sibling
     // items (and that causes quadratic growth in large modules),
@@ -112,15 +117,9 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     // still, we don't move everything into JS because we want to preserve
     // as much HTML as possible in order to allow non-JS-enabled browsers
     // to navigate the documentation (though slightly inefficiently).
-    let (title_prefix, title) = if it.is_struct()
-        || it.is_trait()
-        || it.is_primitive()
-        || it.is_union()
-        || it.is_enum()
-        // crate title is displayed as part of logo lockup
-        || (it.is_mod() && !it.is_crate())
-        || it.is_type_alias()
-    {
+    //
+    // crate title is displayed as part of logo lockup
+    let (title_prefix, title) = if !blocks.is_empty() && !it.is_crate() {
         (
             match *it.kind {
                 clean::ModuleItem(..) => "Module ",
@@ -162,30 +161,75 @@ fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
     fields
 }
 
+fn docblock_toc<'a>(
+    cx: &'a Context<'_>,
+    it: &'a clean::Item,
+    ids: &mut IdMap,
+) -> Option<LinkBlock<'a>> {
+    let (toc, _) = MarkdownWithToc {
+        content: &it.doc_value(),
+        links: &it.links(cx),
+        ids,
+        error_codes: cx.shared.codes,
+        edition: cx.shared.edition(),
+        playground: &cx.shared.playground,
+        custom_code_classes_in_docs: cx.tcx().features().custom_code_classes_in_docs,
+    }
+    .into_parts();
+    let links: Vec<Link<'_>> = toc
+        .entries
+        .into_iter()
+        .map(|entry| {
+            Link {
+                name: entry.name.into(),
+                href: entry.id.into(),
+                children: entry
+                    .children
+                    .entries
+                    .into_iter()
+                    .map(|entry| Link {
+                        name: entry.name.into(),
+                        href: entry.id.into(),
+                        // Only a single level of nesting is shown here.
+                        // Going the full six could break the layout,
+                        // so we have to cut it off somewhere.
+                        children: vec![],
+                    })
+                    .collect(),
+            }
+        })
+        .collect();
+    if links.is_empty() {
+        None
+    } else {
+        Some(LinkBlock::new(Link::new("#", "Sections"), "top-toc", links))
+    }
+}
+
 fn sidebar_struct<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
     s: &'a clean::Struct,
-) -> Vec<LinkBlock<'a>> {
+    items: &mut Vec<LinkBlock<'a>>,
+) {
     let fields = get_struct_fields_name(&s.fields);
     let field_name = match s.ctor_kind {
         Some(CtorKind::Fn) => Some("Tuple Fields"),
         None => Some("Fields"),
         _ => None,
     };
-    let mut items = vec![];
     if let Some(name) = field_name {
         items.push(LinkBlock::new(Link::new("fields", name), "structfield", fields));
     }
-    sidebar_assoc_items(cx, it, &mut items);
-    items
+    sidebar_assoc_items(cx, it, items);
 }
 
 fn sidebar_trait<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
     t: &'a clean::Trait,
-) -> Vec<LinkBlock<'a>> {
+    blocks: &mut Vec<LinkBlock<'a>>,
+) {
     fn filter_items<'a>(
         items: &'a [clean::Item],
         filt: impl Fn(&clean::Item) -> bool,
@@ -222,19 +266,20 @@ fn sidebar_trait<'a>(
         foreign_impls.sort();
     }
 
-    let mut blocks: Vec<LinkBlock<'_>> = [
-        ("required-associated-types", "Required Associated Types", req_assoc),
-        ("provided-associated-types", "Provided Associated Types", prov_assoc),
-        ("required-associated-consts", "Required Associated Constants", req_assoc_const),
-        ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
-        ("required-methods", "Required Methods", req_method),
-        ("provided-methods", "Provided Methods", prov_method),
-        ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
-    ]
-    .into_iter()
-    .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items))
-    .collect();
-    sidebar_assoc_items(cx, it, &mut blocks);
+    blocks.extend(
+        [
+            ("required-associated-types", "Required Associated Types", req_assoc),
+            ("provided-associated-types", "Provided Associated Types", prov_assoc),
+            ("required-associated-consts", "Required Associated Constants", req_assoc_const),
+            ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
+            ("required-methods", "Required Methods", req_method),
+            ("provided-methods", "Provided Methods", prov_method),
+            ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
+        ]
+        .into_iter()
+        .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items)),
+    );
+    sidebar_assoc_items(cx, it, blocks);
 
     if !t.is_object_safe(cx.tcx()) {
         blocks.push(LinkBlock::forced(
@@ -250,20 +295,17 @@ fn sidebar_trait<'a>(
             "impl-auto",
         ));
     }
-    blocks
 }
 
-fn sidebar_primitive<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
+fn sidebar_primitive<'a>(cx: &'a Context<'_>, it: &'a clean::Item, items: &mut Vec<LinkBlock<'a>>) {
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
-        let mut items = vec![];
-        sidebar_assoc_items(cx, it, &mut items);
-        items
+        sidebar_assoc_items(cx, it, items);
     } else {
         let shared = Rc::clone(&cx.shared);
         let (concrete, synthetic, blanket_impl) =
             super::get_filtered_impls_for_reference(&shared, it);
 
-        sidebar_render_assoc_items(cx, &mut IdMap::new(), concrete, synthetic, blanket_impl).into()
+        sidebar_render_assoc_items(cx, &mut IdMap::new(), concrete, synthetic, blanket_impl, items);
     }
 }
 
@@ -271,8 +313,8 @@ fn sidebar_type_alias<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
     t: &'a clean::TypeAlias,
-) -> Vec<LinkBlock<'a>> {
-    let mut items = vec![];
+    items: &mut Vec<LinkBlock<'a>>,
+) {
     if let Some(inner_type) = &t.inner_type {
         items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type"), "type"));
         match inner_type {
@@ -294,19 +336,18 @@ fn sidebar_type_alias<'a>(
             }
         }
     }
-    sidebar_assoc_items(cx, it, &mut items);
-    items
+    sidebar_assoc_items(cx, it, items);
 }
 
 fn sidebar_union<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
     u: &'a clean::Union,
-) -> Vec<LinkBlock<'a>> {
+    items: &mut Vec<LinkBlock<'a>>,
+) {
     let fields = get_struct_fields_name(&u.fields);
-    let mut items = vec![LinkBlock::new(Link::new("fields", "Fields"), "structfield", fields)];
-    sidebar_assoc_items(cx, it, &mut items);
-    items
+    items.push(LinkBlock::new(Link::new("fields", "Fields"), "structfield", fields));
+    sidebar_assoc_items(cx, it, items);
 }
 
 /// Adds trait implementations into the blocks of links
@@ -345,33 +386,6 @@ fn sidebar_assoc_items<'a>(
             methods.sort();
         }
 
-        let mut deref_methods = Vec::new();
-        let [concrete, synthetic, blanket] = if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) =
-                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
-            {
-                let mut derefs = DefIdSet::default();
-                derefs.insert(did);
-                sidebar_deref_methods(
-                    cx,
-                    &mut deref_methods,
-                    impl_,
-                    v,
-                    &mut derefs,
-                    &mut used_links,
-                );
-            }
-
-            let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
-            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
-
-            sidebar_render_assoc_items(cx, &mut id_map, concrete, synthetic, blanket_impl)
-        } else {
-            std::array::from_fn(|_| LinkBlock::new(Link::empty(), "", vec![]))
-        };
-
         let mut blocks = vec![
             LinkBlock::new(
                 Link::new("implementations", "Associated Constants"),
@@ -380,8 +394,30 @@ fn sidebar_assoc_items<'a>(
             ),
             LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
         ];
-        blocks.append(&mut deref_methods);
-        blocks.extend([concrete, synthetic, blanket]);
+
+        if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
+            if let Some(impl_) =
+                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
+            {
+                let mut derefs = DefIdSet::default();
+                derefs.insert(did);
+                sidebar_deref_methods(cx, &mut blocks, impl_, v, &mut derefs, &mut used_links);
+            }
+
+            let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
+                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
+                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
+
+            sidebar_render_assoc_items(
+                cx,
+                &mut id_map,
+                concrete,
+                synthetic,
+                blanket_impl,
+                &mut blocks,
+            );
+        }
         links.append(&mut blocks);
     }
 }
@@ -471,7 +507,8 @@ fn sidebar_enum<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
     e: &'a clean::Enum,
-) -> Vec<LinkBlock<'a>> {
+    items: &mut Vec<LinkBlock<'a>>,
+) {
     let mut variants = e
         .variants()
         .filter_map(|v| v.name)
@@ -479,24 +516,24 @@ fn sidebar_enum<'a>(
         .collect::<Vec<_>>();
     variants.sort_unstable();
 
-    let mut items = vec![LinkBlock::new(Link::new("variants", "Variants"), "variant", variants)];
-    sidebar_assoc_items(cx, it, &mut items);
-    items
+    items.push(LinkBlock::new(Link::new("variants", "Variants"), "variant", variants));
+    sidebar_assoc_items(cx, it, items);
 }
 
 pub(crate) fn sidebar_module_like(
     item_sections_in_use: FxHashSet<ItemSection>,
+    ids: &mut IdMap,
 ) -> LinkBlock<'static> {
     let item_sections = ItemSection::ALL
         .iter()
         .copied()
         .filter(|sec| item_sections_in_use.contains(sec))
-        .map(|sec| Link::new(sec.id(), sec.name()))
+        .map(|sec| Link::new(ids.derive(sec.id()), sec.name()))
         .collect();
     LinkBlock::new(Link::empty(), "", item_sections)
 }
 
-fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
+fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> {
     let item_sections_in_use: FxHashSet<_> = items
         .iter()
         .filter(|it| {
@@ -517,13 +554,15 @@ fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
         .map(|it| item_ty_to_section(it.type_()))
         .collect();
 
-    sidebar_module_like(item_sections_in_use)
+    sidebar_module_like(item_sections_in_use, ids)
 }
 
-fn sidebar_foreign_type<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
-    let mut items = vec![];
-    sidebar_assoc_items(cx, it, &mut items);
-    items
+fn sidebar_foreign_type<'a>(
+    cx: &'a Context<'_>,
+    it: &'a clean::Item,
+    items: &mut Vec<LinkBlock<'a>>,
+) {
+    sidebar_assoc_items(cx, it, items);
 }
 
 /// Renders the trait implementations for this type
@@ -533,7 +572,8 @@ fn sidebar_render_assoc_items(
     concrete: Vec<&Impl>,
     synthetic: Vec<&Impl>,
     blanket_impl: Vec<&Impl>,
-) -> [LinkBlock<'static>; 3] {
+    items: &mut Vec<LinkBlock<'_>>,
+) {
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
         let mut links = FxHashSet::default();
 
@@ -558,7 +598,7 @@ fn sidebar_render_assoc_items(
     let concrete = format_impls(concrete, id_map);
     let synthetic = format_impls(synthetic, id_map);
     let blanket = format_impls(blanket_impl, id_map);
-    [
+    items.extend([
         LinkBlock::new(
             Link::new("trait-implementations", "Trait Implementations"),
             "trait-implementation",
@@ -574,7 +614,7 @@ fn sidebar_render_assoc_items(
             "blanket-implementation",
             blanket,
         ),
-    ]
+    ]);
 }
 
 fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {

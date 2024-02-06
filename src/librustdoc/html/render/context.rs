@@ -616,7 +616,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = Buffer::html();
 
-        let blocks = sidebar_module_like(all.item_sections());
+        // all.html is not customizable, so a blank id map is fine
+        let blocks = sidebar_module_like(all.item_sections(), &mut IdMap::new());
         let bar = Sidebar {
             title_prefix: "",
             title: "",
