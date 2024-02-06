@@ -2302,9 +2302,10 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         };
         let metadata_ty = self_ty.ptr_metadata_ty_or_tail(tcx, normalize).unwrap_or_else(|tail| {
             if tail == self_ty {
-                // This is the fallback case for type parameters, unnormalizable projections
-                // and opaque types.
-                // If the `self_ty` is `Sized`, then the metadata is `()`.
+                // This is the "fallback impl" for type parameters, unnormalizable projections
+                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                 let sized_predicate = ty::TraitRef::from_lang_item(
                     tcx,
                     LangItem::Sized,
