@@ -109,8 +109,7 @@ pub trait TypeCx: Sized + fmt::Debug {
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
 
-    /// The types of the fields for this constructor. The result must contain `ctor_arity()`-many
-    /// fields that are not skipped.
+    /// The types of the fields for this constructor. The result must contain `ctor_arity()` fields.
     fn ctor_sub_tys<'a>(
         &'a self,
         ctor: &'a Constructor<Self>,
