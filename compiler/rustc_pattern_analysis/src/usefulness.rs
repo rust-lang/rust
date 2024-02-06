@@ -848,7 +848,7 @@ impl<'p, Cx: TypeCx> Clone for PatStack<'p, Cx> {
 }
 
 impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
-    fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
+    fn from_pattern(pat: &'p DeconstructedPat<Cx>) -> Self {
         PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
     }
 
@@ -1575,7 +1575,7 @@ pub enum Usefulness<'p, Cx: TypeCx> {
     /// The arm is useful. This additionally carries a set of or-pattern branches that have been
     /// found to be redundant despite the overall arm being useful. Used only in the presence of
     /// or-patterns, otherwise it stays empty.
-    Useful(Vec<&'p DeconstructedPat<'p, Cx>>),
+    Useful(Vec<&'p DeconstructedPat<Cx>>),
     /// The arm is redundant and can be removed without changing the behavior of the match
     /// expression.
     Redundant,
