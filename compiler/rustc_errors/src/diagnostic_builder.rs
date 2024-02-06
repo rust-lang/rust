@@ -1,14 +1,8 @@
-use crate::diagnostic::IntoDiagnosticArg;
-use crate::{DiagCtxt, Level, MultiSpan, StashKey};
 use crate::{
-    Diagnostic, DiagnosticMessage, DiagnosticStyledString, ErrCode, ErrorGuaranteed, ExplicitBug,
-    SubdiagnosticMessage,
+    DiagCtxt, Diagnostic, DiagnosticMessage, ErrorGuaranteed, ExplicitBug, Level, StashKey,
 };
-use rustc_lint_defs::Applicability;
 use rustc_span::source_map::Spanned;
-
 use rustc_span::Span;
-use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -35,6 +29,11 @@ where
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
+/// Wraps a `Diagnostic`, adding some useful things.
+/// - The `dcx` field, allowing it to (a) emit itself, and (b) do a drop check
+///   that it has been emitted or cancelled.
+/// - The `EmissionGuarantee`, which determines the type returned from `emit`.
+///
 /// Each constructed `DiagnosticBuilder` must be consumed by a function such as
 /// `emit`, `cancel`, `delay_as_bug`, or `into_diagnostic`. A panic occurrs if a
 /// `DiagnosticBuilder` is dropped without being consumed by one of these
@@ -56,9 +55,11 @@ pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// often used as a return value, especially within the frequently-used
     /// `PResult` type. In theory, return value optimization (RVO) should avoid
     /// unnecessary copying. In practice, it does not (at the time of writing).
-    diag: Option<Box<Diagnostic>>,
+    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
+    pub(crate) diag: Option<Box<Diagnostic>>,
 
-    _marker: PhantomData<G>,
+    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
+    pub(crate) _marker: PhantomData<G>,
 }
 
 // Cloning a `DiagnosticBuilder` is a recipe for a diagnostic being emitted
@@ -88,18 +89,21 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Takes the diagnostic. For use by methods that consume the
     /// DiagnosticBuilder: `emit`, `cancel`, etc. Afterwards, `drop` is the
     /// only code that will be run on `self`.
-    fn take_diag(&mut self) -> Diagnostic {
+    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
+    pub(crate) fn take_diag(&mut self) -> Diagnostic {
         Box::into_inner(self.diag.take().unwrap())
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.
-    fn emit_producing_nothing(mut self) {
+    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
+    pub(crate) fn emit_producing_nothing(mut self) {
         let diag = self.take_diag();
         self.dcx.emit_diagnostic(diag);
     }
 
     /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
-    fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
+    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
+    pub(crate) fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
         let diag = self.take_diag();
 
         // The only error levels that produce `ErrorGuaranteed` are
@@ -166,40 +170,6 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
         db.emit_producing_nothing();
         rustc_span::fatal_error::FatalError
     }
-}
-
-/// `DiagnosticBuilder` impls `DerefMut`, which allows access to the fields and
-/// methods of the embedded `Diagnostic`. However, that doesn't allow method
-/// chaining at the `DiagnosticBuilder` level. Each use of this macro defines
-/// two builder methods at that level, both of which wrap the equivalent method
-/// in `Diagnostic`.
-/// - A `&mut self -> &mut Self` method, with the same name as the underlying
-///   `Diagnostic` method. It is mostly to modify existing diagnostics, either
-///   in a standalone fashion, e.g. `err.code(code)`, or in a chained fashion
-///   to make multiple modifications, e.g. `err.code(code).span(span)`.
-/// - A `self -> Self` method, which has a `with_` prefix added.
-///   It is mostly used in a chained fashion when producing a new diagnostic,
-///   e.g. `let err = struct_err(msg).with_code(code)`, or when emitting a new
-///   diagnostic , e.g. `struct_err(msg).with_code(code).emit()`.
-///
-/// Although the latter method can be used to modify an existing diagnostic,
-/// e.g. `err = err.with_code(code)`, this should be avoided because the former
-/// method gives shorter code, e.g. `err.code(code)`.
-macro_rules! forward {
-    (
-        ($f:ident, $with_f:ident)($($name:ident: $ty:ty),* $(,)?)
-    ) => {
-        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
-        pub fn $f(&mut self, $($name: $ty),*) -> &mut Self {
-            self.diag.as_mut().unwrap().$f($($name),*);
-            self
-        }
-        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
-        pub fn $with_f(mut self, $($name: $ty),*) -> Self {
-            self.diag.as_mut().unwrap().$f($($name),*);
-            self
-        }
-    };
 }
 
 impl<G: EmissionGuarantee> Deref for DiagnosticBuilder<'_, G> {
@@ -278,135 +248,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         self.downgrade_to_delayed_bug();
         self.emit()
     }
-
-    forward!((span_label, with_span_label)(
-        span: Span,
-        label: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((span_labels, with_span_labels)(
-        spans: impl IntoIterator<Item = Span>,
-        label: &str,
-    ));
-    forward!((note_expected_found, with_note_expected_found)(
-        expected_label: &dyn fmt::Display,
-        expected: DiagnosticStyledString,
-        found_label: &dyn fmt::Display,
-        found: DiagnosticStyledString,
-    ));
-    forward!((note_expected_found_extra, with_note_expected_found_extra)(
-        expected_label: &dyn fmt::Display,
-        expected: DiagnosticStyledString,
-        found_label: &dyn fmt::Display,
-        found: DiagnosticStyledString,
-        expected_extra: &dyn fmt::Display,
-        found_extra: &dyn fmt::Display,
-    ));
-    forward!((note, with_note)(
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((note_once, with_note_once)(
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((span_note, with_span_note)(
-        sp: impl Into<MultiSpan>,
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((span_note_once, with_span_note_once)(
-        sp: impl Into<MultiSpan>,
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((warn, with_warn)(
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((span_warn, with_span_warn)(
-        sp: impl Into<MultiSpan>,
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((help, with_help)(
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((help_once, with_help_once)(
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((span_help, with_span_help_once)(
-        sp: impl Into<MultiSpan>,
-        msg: impl Into<SubdiagnosticMessage>,
-    ));
-    forward!((multipart_suggestion, with_multipart_suggestion)(
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: Vec<(Span, String)>,
-        applicability: Applicability,
-    ));
-    forward!((multipart_suggestion_verbose, with_multipart_suggestion_verbose)(
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: Vec<(Span, String)>,
-        applicability: Applicability,
-    ));
-    forward!((tool_only_multipart_suggestion, with_tool_only_multipart_suggestion)(
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: Vec<(Span, String)>,
-        applicability: Applicability,
-    ));
-    forward!((span_suggestion, with_span_suggestion)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ));
-    forward!((span_suggestions, with_span_suggestions)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl IntoIterator<Item = String>,
-        applicability: Applicability,
-    ));
-    forward!((multipart_suggestions, with_multipart_suggestions)(
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
-        applicability: Applicability,
-    ));
-    forward!((span_suggestion_short, with_span_suggestion_short)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ));
-    forward!((span_suggestion_verbose, with_span_suggestion_verbose)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ));
-    forward!((span_suggestion_hidden, with_span_suggestion_hidden)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ));
-    forward!((tool_only_span_suggestion, with_tool_only_span_suggestion)(
-        sp: Span,
-        msg: impl Into<SubdiagnosticMessage>,
-        suggestion: impl ToString,
-        applicability: Applicability,
-    ));
-    forward!((primary_message, with_primary_message)(
-        msg: impl Into<DiagnosticMessage>,
-    ));
-    forward!((span, with_span)(
-        sp: impl Into<MultiSpan>,
-    ));
-    forward!((is_lint, with_is_lint)(
-        name: String, has_future_breakage: bool,
-    ));
-    forward!((code, with_code)(
-        code: ErrCode,
-    ));
-    forward!((arg, with_arg)(
-        name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
-    ));
-    forward!((subdiagnostic, with_subdiagnostic)(
-        dcx: &DiagCtxt,
-        subdiagnostic: impl crate::AddToDiagnostic,
-    ));
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {
