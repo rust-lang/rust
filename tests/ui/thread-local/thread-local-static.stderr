@@ -37,13 +37,17 @@ error[E0625]: thread-local statics cannot be accessed at compile-time
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                            ^^^^^^^^^^^^
 
-error[E0013]: constant functions cannot refer to statics
+error[E0658]: referencing statics in constant functions is unstable
   --> $DIR/thread-local-static.rs:10:28
    |
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                            ^^^^^^^^^^^^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/thread-local-static.rs:10:23
@@ -57,5 +61,5 @@ LL |     std::mem::swap(x, &mut STATIC_VAR_2)
 
 error: aborting due to 5 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0013, E0133, E0625, E0658.
-For more information about an error, try `rustc --explain E0013`.
+Some errors have detailed explanations: E0133, E0625, E0658.
+For more information about an error, try `rustc --explain E0133`.

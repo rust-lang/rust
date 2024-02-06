@@ -42,15 +42,15 @@ static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as 
 //~| pointing to read-only memory
 
 // Check for consts pointing to mutable memory.
-// Currently it's not even possible to create such a const.
+// These are fine as long as they are not being read.
 static mut MUTABLE: i32 = 42;
-const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
-//~^ ERROR: undefined behavior to use this value
-//~| pointing to a static
+const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE }; //~ERROR: undefined behavior
+//~| encountered reference to mutable memory
+const READS_FROM_MUTABLE: i32 = *POINTS_TO_MUTABLE1;
 static mut MUTABLE_REF: &mut i32 = &mut 42;
 const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
 //~^ ERROR: evaluation of constant value failed
-//~| accesses static
+//~| accesses mutable global memory
 
 const POINTS_TO_MUTABLE_INNER: *const i32 = &mut 42 as *mut _ as *const _;
 //~^ ERROR: mutable pointer in final value

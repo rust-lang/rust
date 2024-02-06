@@ -580,16 +580,21 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
             Status::Allowed
         } else {
-            Status::Forbidden
+            Status::Unstable(sym::const_refs_to_static)
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        ccx.dcx().create_err(errors::StaticAccessErr {
+        let mut err = feature_err(
+            &ccx.tcx.sess,
+            sym::const_refs_to_static,
             span,
-            kind: ccx.const_kind(),
-            teach: ccx.tcx.sess.teach(E0013).then_some(()),
-        })
+            format!("referencing statics in {}s is unstable", ccx.const_kind(),),
+        );
+        err
+            .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
+            .help("to fix this, the value can be extracted to a `const` and then used.");
+        err
     }
 }
 
@@ -598,7 +603,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
 pub struct ThreadLocalAccess;
 impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        ccx.dcx().create_err(errors::NonConstOpErr { span })
+        ccx.dcx().create_err(errors::ThreadLocalAccessErr { span })
     }
 }
 
