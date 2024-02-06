@@ -84,6 +84,8 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         match (&self.ctor, other_ctor) {
             // Return a wildcard for each field of `other_ctor`.
             (Wildcard, _) => wildcard_sub_tys(),
+            // Skip this column.
+            (_, Skip) => smallvec![],
             // The only non-trivial case: two slices of different arity. `other_slice` is
             // guaranteed to have a larger arity, so we fill the middle part with enough
             // wildcards to reach the length of the new, larger slice.
@@ -192,7 +194,7 @@ impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
                 }
                 Ok(())
             }
-            Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
+            Wildcard | Missing | NonExhaustive | Hidden | Skip => write!(f, "_ : {:?}", pat.ty()),
         }
     }
 }

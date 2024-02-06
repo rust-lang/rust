@@ -249,16 +249,8 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
-            Bool(..)
-            | IntRange(..)
-            | F32Range(..)
-            | F64Range(..)
-            | Str(..)
-            | Opaque(..)
-            | NonExhaustive
-            | Hidden
-            | Missing { .. }
-            | Wildcard => &[],
+            Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
+            | NonExhaustive | Hidden | Missing | Skip | Wildcard => &[],
             Or => {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
@@ -288,16 +280,8 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
             },
             Ref => 1,
             Slice(slice) => slice.arity(),
-            Bool(..)
-            | IntRange(..)
-            | F32Range(..)
-            | F64Range(..)
-            | Str(..)
-            | Opaque(..)
-            | NonExhaustive
-            | Hidden
-            | Missing { .. }
-            | Wildcard => 0,
+            Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
+            | NonExhaustive | Hidden | Missing | Skip | Wildcard => 0,
             Or => bug!("The `Or` constructor doesn't have a fixed arity"),
         }
     }
@@ -838,7 +822,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            Wildcard | NonExhaustive | Hidden => PatKind::Wild,
+            Wildcard | NonExhaustive | Hidden | Skip => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
