@@ -498,8 +498,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let res =
-                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
+                let res = self.lower_import_res(id, path.span);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
@@ -535,7 +534,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // for that we return the `{}` import (called the
                 // `ListStem`).
 
-                let prefix = Path { segments, span: prefix.span.to(path.span), tokens: None };
+                let span = prefix.span.to(path.span);
+                let prefix = Path { segments, span, tokens: None };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
@@ -569,9 +569,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let res =
-                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
-                let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
+                let path = if trees.is_empty() && !prefix.segments.is_empty() {
+                    // For empty lists we need to lower the prefix so it is checked for things
+                    // like stability later.
+                    let res = self.lower_import_res(id, span);
+                    self.lower_use_path(res, &prefix, ParamMode::Explicit)
+                } else {
+                    // For non-empty lists we can just drop all the data, the prefix is already
+                    // present in HIR as a part of nested imports.
+                    self.arena.alloc(hir::UsePath { res: smallvec![], segments: &[], span })
+                };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
