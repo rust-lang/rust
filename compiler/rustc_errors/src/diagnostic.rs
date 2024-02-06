@@ -1,8 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DelayedBugKind, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
-    ErrCode, Level, MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart,
-    SuggestionStyle,
+    CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrCode, Level,
+    MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -235,19 +234,16 @@ impl Diagnostic {
 
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug
-            | Level::DelayedBug(DelayedBugKind::Normal)
-            | Level::Fatal
-            | Level::Error
-            | Level::FailureNote => true,
+            Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
 
-            Level::ForceWarning(_)
+            Level::GoodPathDelayedBug
+            | Level::ForceWarning(_)
             | Level::Warning
-            | Level::DelayedBug(DelayedBugKind::GoodPath)
             | Level::Note
             | Level::OnceNote
             | Level::Help
             | Level::OnceHelp
+            | Level::FailureNote
             | Level::Allow
             | Level::Expect(_) => false,
         }
@@ -306,11 +302,11 @@ impl Diagnostic {
     #[track_caller]
     pub fn downgrade_to_delayed_bug(&mut self) {
         assert!(
-            self.is_error(),
+            matches!(self.level, Level::Error | Level::DelayedBug),
             "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
             self.level
         );
-        self.level = Level::DelayedBug(DelayedBugKind::Normal);
+        self.level = Level::DelayedBug;
     }
 
     /// Appends a labeled span to the diagnostic.
