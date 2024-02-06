@@ -92,8 +92,8 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 
-pub struct CollectRetsVisitor<'tcx> {
-    pub ret_exprs: Vec<&'tcx hir::Expr<'tcx>>,
+struct CollectRetsVisitor<'tcx> {
+    ret_exprs: Vec<&'tcx hir::Expr<'tcx>>,
 }
 
 impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {

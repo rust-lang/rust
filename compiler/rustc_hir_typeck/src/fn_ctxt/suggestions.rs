@@ -1,6 +1,5 @@
 use super::FnCtxt;
 
-use crate::coercion::CollectRetsVisitor;
 use crate::errors;
 use crate::fluent_generated as fluent;
 use crate::fn_ctxt::rustc_span::BytePos;
@@ -17,7 +16,6 @@ use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
-use rustc_hir::intravisit::{Map, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
@@ -1041,22 +1039,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let in_closure = matches!(
-            self.tcx
-                .hir()
-                .parent_iter(id)
-                .filter(|(_, node)| {
-                    matches!(
-                        node,
-                        Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
-                            | Node::Item(_)
-                            | Node::TraitItem(_)
-                            | Node::ImplItem(_)
-                    )
-                })
-                .next(),
-            Some((_, Node::Expr(Expr { kind: ExprKind::Closure(..), .. })))
-        );
+        let scope = self
+            .tcx
+            .hir()
+            .parent_iter(id)
+            .filter(|(_, node)| {
+                matches!(
+                    node,
+                    Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
+                        | Node::Item(_)
+                        | Node::TraitItem(_)
+                        | Node::ImplItem(_)
+                )
+            })
+            .next();
+        let in_closure =
+            matches!(scope, Some((_, Node::Expr(Expr { kind: ExprKind::Closure(..), .. }))));
 
         let can_return = match fn_decl.output {
             hir::FnRetTy::Return(ty) => {
@@ -1078,35 +1076,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.can_coerce(found, ty)
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
-                let mut rets = vec![];
-                if let Some(ret_coercion) = self.ret_coercion.as_ref() {
-                    let ret_ty = ret_coercion.borrow().expected_ty();
-                    rets.push(ret_ty);
-                }
-                let mut visitor = CollectRetsVisitor { ret_exprs: vec![] };
-                if let Some(item) = self.tcx.hir().find(id)
-                    && let Node::Expr(expr) = item
-                {
-                    visitor.visit_expr(expr);
-                    for expr in visitor.ret_exprs {
-                        if let Some(ty) = self.typeck_results.borrow().node_type_opt(expr.hir_id) {
-                            rets.push(ty);
-                        }
-                    }
-                    if let hir::ExprKind::Block(hir::Block { expr: Some(expr), .. }, _) = expr.kind
-                    {
-                        if let Some(ty) = self.typeck_results.borrow().node_type_opt(expr.hir_id) {
-                            rets.push(ty);
-                        }
-                    }
-                }
-                rets.into_iter().all(|ty| self.can_coerce(found, ty))
+                self.ret_coercion.as_ref().map_or(false, |ret| {
+                    let ret_ty = ret.borrow().expected_ty();
+                    self.can_coerce(found, ret_ty)
+                })
             }
             _ => false,
         };
         if can_return
             && let Some(owner_node) = self.tcx.hir_node(fn_id).as_owner()
-            && let Some(span) = expr.span.find_ancestor_inside(owner_node.span())
+            && let Some(span) = expr.span.find_ancestor_inside(*owner_node.span())
         {
             err.multipart_suggestion(
                 "you might have meant to return this value",
