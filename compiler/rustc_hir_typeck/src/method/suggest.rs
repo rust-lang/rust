@@ -555,6 +555,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
+        } else if !unsatisfied_predicates.is_empty() && matches!(rcvr_ty.kind(), ty::Param(_)) {
+            // We special case the situation where we are looking for `_` in
+            // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
+            // implementations that have unsatisfied trait bounds to suggest, leading us to claim
+            // things like "we're looking for a trait with method `cmp`, both `Iterator` and `Ord`
+            // have one, in order to implement `Ord` you need to restrict `TypeParam: FnPtr` so
+            // that `impl<T: FnPtr> Ord for T` can apply", which is not what we want. We have a type
+            // parameter, we want to directly say "`Ord::cmp` and `Iterator::cmp` exist, restrict
+            // `TypeParam: Ord` or `TypeParam: Iterator`"". That is done further down when calling
+            // `self.suggest_traits_to_import`, so we ignore the `unsatisfied_predicates`
+            // suggestions.
         } else if !unsatisfied_predicates.is_empty() {
             let mut type_params = FxIndexMap::default();
 
@@ -1326,7 +1337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
-        return Some(err);
+        Some(err)
     }
 
     fn note_candidates_on_method_error(
@@ -2919,19 +2930,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                unsatisfied_predicates.iter().all(|(p, _, _)| {
-                    match p.kind().skip_binder() {
-                        // Hide traits if they are present in predicates as they can be fixed without
-                        // having to implement them.
-                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
-                            t.def_id() == info.def_id
-                        }
-                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
-                            p.projection_ty.def_id == info.def_id
-                        }
-                        _ => false,
-                    }
-                }) && (type_is_local || info.def_id.is_local())
+                (type_is_local || info.def_id.is_local())
                     && !self.tcx.trait_is_auto(info.def_id)
                     && self
                         .associated_value(info.def_id, item_name)
@@ -2979,6 +2978,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item.visibility(self.tcx).is_public() || info.def_id.is_local()
                         })
                         .is_some()
+                    && (matches!(rcvr_ty.kind(), ty::Param(_))
+                        || unsatisfied_predicates.iter().all(|(p, _, _)| {
+                            match p.kind().skip_binder() {
+                                // Hide traits if they are present in predicates as they can be fixed without
+                                // having to implement them.
+                                ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
+                                    t.def_id() == info.def_id
+                                }
+                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
+                                    p.projection_ty.def_id == info.def_id
+                                }
+                                _ => false,
+                            }
+                        }))
             })
             .collect::<Vec<_>>();
         for span in &arbitrary_rcvr {
