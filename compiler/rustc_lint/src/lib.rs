@@ -520,6 +520,11 @@ fn register_builtins(store: &mut LintStore) {
         "illegal_floating_point_literal_pattern",
         "no longer a warning, float patterns behave the same as `==`",
     );
+    store.register_removed(
+        "nontrivial_structural_match",
+        "no longer needed, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

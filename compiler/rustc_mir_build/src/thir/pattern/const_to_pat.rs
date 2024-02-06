@@ -1,6 +1,5 @@
 use rustc_apfloat::Float;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -17,8 +16,8 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch,
-    NontrivialStructuralMatch, PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
+    IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch, PointerPattern,
+    TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
@@ -33,11 +32,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         cv: mir::Const<'tcx>,
         id: hir::HirId,
         span: Span,
-        check_body_for_struct_match_violation: Option<DefId>,
     ) -> Box<Pat<'tcx>> {
         let infcx = self.tcx.infer_ctxt().build();
         let mut convert = ConstToPat::new(self, id, span, infcx);
-        convert.to_pat(cv, check_body_for_struct_match_violation)
+        convert.to_pat(cv)
     }
 }
 
@@ -103,11 +101,7 @@ impl<'tcx> ConstToPat<'tcx> {
         ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
-    fn to_pat(
-        &mut self,
-        cv: mir::Const<'tcx>,
-        check_body_for_struct_match_violation: Option<DefId>,
-    ) -> Box<Pat<'tcx>> {
+    fn to_pat(&mut self, cv: mir::Const<'tcx>) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
@@ -115,14 +109,6 @@ impl<'tcx> ConstToPat<'tcx> {
         //
         // once indirect_structural_match is a full fledged error, this
         // level of indirection can be eliminated
-
-        let mir_structural_match_violation = check_body_for_struct_match_violation.map(|def_id| {
-            // `mir_const_qualif` must be called with the `DefId` of the item where the const is
-            // defined, not where it is declared. The difference is significant for associated
-            // constants.
-            self.tcx().mir_const_qualif(def_id).custom_eq
-        });
-        debug!(?check_body_for_struct_match_violation, ?mir_structural_match_violation);
 
         let have_valtree =
             matches!(cv, mir::Const::Ty(c) if matches!(c.kind(), ty::ConstKind::Value(_)));
@@ -137,15 +123,15 @@ impl<'tcx> ConstToPat<'tcx> {
                 | ty::ConstKind::Expr(_) => {
                     span_bug!(self.span, "unexpected const in `to_pat`: {:?}", c.kind())
                 }
-                ty::ConstKind::Value(valtree) => self
-                    .recur(valtree, cv.ty(), mir_structural_match_violation.unwrap_or(false))
-                    .unwrap_or_else(|_: FallbackToOpaqueConst| {
+                ty::ConstKind::Value(valtree) => {
+                    self.recur(valtree, cv.ty()).unwrap_or_else(|_: FallbackToOpaqueConst| {
                         Box::new(Pat {
                             span: self.span,
                             ty: cv.ty(),
                             kind: PatKind::Constant { value: cv },
                         })
-                    }),
+                    })
+                }
             },
             mir::Const::Unevaluated(_, _) => {
                 span_bug!(self.span, "unevaluated const in `to_pat`: {cv:?}")
@@ -160,7 +146,12 @@ impl<'tcx> ConstToPat<'tcx> {
         if self.saw_const_match_error.get().is_none() {
             // If we were able to successfully convert the const to some pat (possibly with some
             // lints, but no errors), double-check that all types in the const implement
-            // `Structural` and `PartialEq`.
+            // `PartialEq`. Even if we have a valtree, we may have found something
+            // in there with non-structural-equality, meaning we match using `PartialEq`
+            // and we hence have to check that that impl exists.
+            // This is all messy but not worth cleaning up: at some point we'll emit
+            // a hard error when we don't have a valtree or when we find something in
+            // the valtree that is not structural; then this can all be made a lot simpler.
 
             let structural =
                 traits::search_for_structural_match_violation(self.span, self.tcx(), cv.ty());
@@ -170,19 +161,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 structural
             );
 
-            // This can occur because const qualification treats all associated constants as
-            // opaque, whereas `search_for_structural_match_violation` tries to monomorphize them
-            // before it runs.
-            //
-            // FIXME(#73448): Find a way to bring const qualification into parity with
-            // `search_for_structural_match_violation`.
-            if structural.is_none() && mir_structural_match_violation.unwrap_or(false) {
-                warn!("MIR const-checker found novel structural match violation. See #73448.");
-                return inlined_const_as_pat;
-            }
-
             if let Some(non_sm_ty) = structural {
                 if !self.type_has_partial_eq_impl(cv.ty()) {
+                    // This is reachable and important even if we have a valtree: there might be
+                    // non-structural things in a valtree, in which case we fall back to `PartialEq`
+                    // comparison, in which case we better make sure the trait is implemented for
+                    // each inner type (and not just for the surrounding type).
                     let e = if let ty::Adt(def, ..) = non_sm_ty.kind() {
                         if def.is_union() {
                             let err = UnionPattern { span: self.span };
@@ -201,35 +185,18 @@ impl<'tcx> ConstToPat<'tcx> {
                     // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else if let ty::Adt(..) = cv.ty().kind()
-                    && matches!(cv, mir::Const::Val(..))
-                {
-                    // This branch is only entered when the current `cv` is `mir::Const::Val`.
-                    // This is because `mir::Const::ty` has already been handled by `Self::recur`
-                    // and the invalid types may be ignored.
+                } else if !have_valtree {
+                    // Not being structural prevented us from constructing a valtree,
+                    // so this is definitely a case we want to reject.
                     let err = TypeNotStructural { span: self.span, non_sm_ty };
                     let e = self.tcx().dcx().emit_err(err);
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else if !self.saw_const_match_lint.get() {
-                    if let Some(mir_structural_match_violation) = mir_structural_match_violation {
-                        match non_sm_ty.kind() {
-                            ty::Adt(..) if mir_structural_match_violation => {
-                                self.tcx().emit_node_span_lint(
-                                    lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                                    self.id,
-                                    self.span,
-                                    IndirectStructuralMatch { non_sm_ty },
-                                );
-                            }
-                            _ => {
-                                debug!(
-                                    "`search_for_structural_match_violation` found one, but `CustomEq` was \
-                                  not in the qualifs for that `const`"
-                                );
-                            }
-                        }
-                    }
+                } else {
+                    // This could be a violation in an inactive enum variant.
+                    // Since we have a valtree, we trust that we have traversed the full valtree and
+                    // complained about structural match violations there, so we don't
+                    // have to check anything any more.
                 }
             } else if !have_valtree && !self.saw_const_match_lint.get() {
                 // The only way valtree construction can fail without the structural match
@@ -299,7 +266,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx().normalize_erasing_regions(self.param_env, ty);
-                Ok(FieldPat { field, pattern: self.recur(val, ty, false)? })
+                Ok(FieldPat { field, pattern: self.recur(val, ty)? })
             })
             .collect()
     }
@@ -310,7 +277,6 @@ impl<'tcx> ConstToPat<'tcx> {
         &self,
         cv: ValTree<'tcx>,
         ty: Ty<'tcx>,
-        mir_structural_match_violation: bool,
     ) -> Result<Box<Pat<'tcx>>, FallbackToOpaqueConst> {
         let id = self.id;
         let span = self.span;
@@ -395,7 +361,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty, false))
+                    .map(|val| self.recur(*val, *elem_ty))
                     .collect::<Result<_, _>>()?,
                 slice: None,
                 suffix: Box::new([]),
@@ -404,7 +370,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.recur(*val, *elem_ty, false))
+                    .map(|val| self.recur(*val, *elem_ty))
                     .collect::<Result<_, _>>()?,
                 slice: None,
                 suffix: Box::new([]),
@@ -471,7 +437,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             _ => *pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = self.recur(cv, pointee_ty, false)?;
+                        let subpattern = self.recur(cv, pointee_ty)?;
                         self.behind_reference.set(old);
                         PatKind::Deref { subpattern }
                     }
@@ -511,25 +477,6 @@ impl<'tcx> ConstToPat<'tcx> {
                 PatKind::Error(e)
             }
         };
-
-        if self.saw_const_match_error.get().is_none()
-            && !self.saw_const_match_lint.get()
-            && mir_structural_match_violation
-            // FIXME(#73448): Find a way to bring const qualification into parity with
-            // `search_for_structural_match_violation` and then remove this condition.
-
-            // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
-            // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
-            && let Some(non_sm_ty) = traits::search_for_structural_match_violation(span, tcx, ty)
-        {
-            self.saw_const_match_lint.set(true);
-            tcx.emit_node_span_lint(
-                lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
-                id,
-                span,
-                NontrivialStructuralMatch { non_sm_ty },
-            );
-        }
 
         Ok(Box::new(Pat { span, ty, kind }))
     }
