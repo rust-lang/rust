@@ -934,10 +934,8 @@ LLVMRustOptimize(
     } else {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
-      if (OptStage != LLVMRustOptStage::PreLinkThinLTO) {
-        for (const auto &C : OptimizerLastEPCallbacks)
-          PB.registerOptimizerLastEPCallback(C);
-      }
+      for (const auto &C : OptimizerLastEPCallbacks)
+        PB.registerOptimizerLastEPCallback(C);
 
       switch (OptStage) {
       case LLVMRustOptStage::PreLinkNoLTO:
@@ -946,8 +944,6 @@ LLVMRustOptimize(
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
         NeedThinLTOBufferPasses = false;
-        for (const auto &C : OptimizerLastEPCallbacks)
-          C(MPM, OptLevel);
         break;
       case LLVMRustOptStage::PreLinkFatLTO:
         MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel);
