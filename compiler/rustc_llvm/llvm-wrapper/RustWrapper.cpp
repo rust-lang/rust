@@ -418,12 +418,35 @@ extern "C" LLVMAttributeRef LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
   }
 }
 
-// Enable a fast-math flag
+// Enable all fast-math flags, including those which will cause floating-point operations
+// to return poison for some well-defined inputs. This function can only be used to build
+// unsafe Rust intrinsics. That unsafety does permit additional optimizations, but at the
+// time of writing, their value is not well-understood relative to those enabled by
+// LLVMRustSetAlgebraicMath.
 //
 // https://llvm.org/docs/LangRef.html#fast-math-flags
 extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setFast(true);
+  }
+}
+
+// Enable fast-math flags which permit algebraic transformations that are not allowed by
+// IEEE floating point. For example:
+// a + (b + c) = (a + b) + c
+// and
+// a / b = a * (1 / b)
+// Note that this does NOT enable any flags which can cause a floating-point operation on
+// well-defined inputs to return poison, and therefore this function can be used to build
+// safe Rust intrinsics (such as fadd_algebraic).
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetAlgebraicMath(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasAllowReassoc(true);
+    I->setHasAllowContract(true);
+    I->setHasAllowReciprocal(true);
+    I->setHasNoSignedZeros(true);
   }
 }
 

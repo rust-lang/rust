@@ -1880,14 +1880,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
     arith_red!(
         simd_reduce_add_unordered: vector_reduce_add,
-        vector_reduce_fadd_fast,
+        vector_reduce_fadd_algebraic,
         false,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_unordered: vector_reduce_mul,
-        vector_reduce_fmul_fast,
+        vector_reduce_fmul_algebraic,
         false,
         mul,
         1.0
