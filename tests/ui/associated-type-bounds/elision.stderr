@@ -15,6 +15,11 @@ error: associated type bounds are not allowed in `dyn` types
    |
 LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `impl Trait` to introduce a type instead
+   |
+LL | fn f(x: &mut dyn Iterator<Item = impl Iterator<Item = &'_ ()>>) -> Option<&'_ ()> { x.next() }
+   |                                ~~~~~~
 
 error: aborting due to 2 previous errors
 

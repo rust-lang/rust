@@ -98,6 +98,8 @@ pub struct MisplacedImplTrait<'a> {
 pub struct MisplacedAssocTyBinding {
     #[primary_span]
     pub span: Span,
+    #[suggestion(code = " = impl", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic, Clone, Copy)]

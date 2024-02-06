@@ -1084,41 +1084,38 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TypeBindingKind::Equality { term }
             }
             AssocConstraintKind::Bound { bounds } => {
-                enum DesugarKind {
-                    Error,
-                    Bound,
-                }
+                // Disallow ATB in dyn types
+                if self.is_in_dyn_type {
+                    let suggestion = match itctx {
+                        ImplTraitContext::ReturnPositionOpaqueTy { .. }
+                        | ImplTraitContext::TypeAliasesOpaqueTy { .. }
+                        | ImplTraitContext::Universal => {
+                            let bound_end_span = constraint
+                                .gen_args
+                                .as_ref()
+                                .map_or(constraint.ident.span, |args| args.span());
+                            if bound_end_span.eq_ctxt(constraint.span) {
+                                Some(self.tcx.sess.source_map().next_point(bound_end_span))
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
 
-                // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let desugar_kind = match itctx {
-                    _ if self.is_in_dyn_type => DesugarKind::Error,
+                    let guar = self.dcx().emit_err(errors::MisplacedAssocTyBinding {
+                        span: constraint.span,
+                        suggestion,
+                    });
+                    let err_ty =
+                        &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
+                    hir::TypeBindingKind::Equality { term: err_ty.into() }
+                } else {
+                    // Desugar `AssocTy: Bounds` into a type binding where the
+                    // later desugars into a trait predicate.
+                    let bounds = self.lower_param_bounds(bounds, itctx);
 
-                    // We are in the parameter position, but not within a dyn type:
-                    //
-                    //     fn foo(x: impl Iterator<Item: Debug>)
-                    //
-                    // so we leave it as is and this gets expanded in astconv to a bound like
-                    // `<T as Iterator>::Item: Debug` where `T` is the type parameter for the
-                    // `impl Iterator`.
-                    _ => DesugarKind::Bound,
-                };
-
-                match desugar_kind {
-                    DesugarKind::Bound => {
-                        // Desugar `AssocTy: Bounds` into a type binding where the
-                        // later desugars into a trait predicate.
-                        let bounds = self.lower_param_bounds(bounds, itctx);
-
-                        hir::TypeBindingKind::Constraint { bounds }
-                    }
-                    DesugarKind::Error => {
-                        let guar = self
-                            .dcx()
-                            .emit_err(errors::MisplacedAssocTyBinding { span: constraint.span });
-                        let err_ty =
-                            &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
-                        hir::TypeBindingKind::Equality { term: err_ty.into() }
-                    }
+                    hir::TypeBindingKind::Constraint { bounds }
                 }
             }
         };

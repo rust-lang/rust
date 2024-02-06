@@ -10,6 +10,7 @@ ast_lowering_argument = argument
 
 ast_lowering_assoc_ty_binding_in_dyn =
     associated type bounds are not allowed in `dyn` types
+    .suggestion = use `impl Trait` to introduce a type instead
 
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
