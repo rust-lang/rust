@@ -36,6 +36,29 @@ enum SelfSemantic {
     No,
 }
 
+struct Context<'a> {
+    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
+    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
+    /// Nested `impl Trait` _is_ allowed in associated type position,
+    /// e.g., `impl Iterator<Item = impl Debug>`.
+    outer_impl_trait: Option<Span>,
+    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
+    /// or `Foo::Bar<impl Trait>`
+    is_impl_trait_banned: bool,
+    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
+}
+
+impl Default for Context<'_> {
+    fn default() -> Self {
+        Self {
+            outer_trait_or_trait_impl: None,
+            outer_impl_trait: None,
+            is_impl_trait_banned: false,
+            disallow_tilde_const: Some(DisallowTildeConstContext::Item),
+        }
+    }
+}
+
 /// What is the context that prevents using `~const`?
 // FIXME(effects): Consider getting rid of this in favor of `errors::TildeConstReason`, they're
 // almost identical. This gets rid of an abstraction layer which might be considered bad.
@@ -75,15 +98,7 @@ struct AstValidator<'a> {
 
     has_proc_macro_decls: bool,
 
-    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
-    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-    /// Nested `impl Trait` _is_ allowed in associated type position,
-    /// e.g., `impl Iterator<Item = impl Debug>`.
-    outer_impl_trait: Option<Span>,
-    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    /// or `Foo::Bar<impl Trait>`
-    is_impl_trait_banned: bool,
-    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
+    context: Context<'a>,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -138,16 +153,9 @@ impl<'a> AstValidator<'a> {
     }
 
     fn in_new_context(&mut self, f: impl FnOnce(&mut Self)) {
-        let outer_trait_or_trait_impl = self.outer_trait_or_trait_impl.take();
-        let outer_impl_trait = self.outer_impl_trait.take();
-        let is_impl_trait_banned = mem::take(&mut self.is_impl_trait_banned);
-        let disallow_tilde_const =
-            mem::replace(&mut self.disallow_tilde_const, Some(DisallowTildeConstContext::Item));
+        let context = mem::take(&mut self.context);
         f(self);
-        self.disallow_tilde_const = disallow_tilde_const;
-        self.is_impl_trait_banned = is_impl_trait_banned;
-        self.outer_impl_trait = outer_impl_trait;
-        self.outer_trait_or_trait_impl = outer_trait_or_trait_impl;
+        self.context = context;
     }
 
     fn check_type_alias_where_clause_location(
@@ -760,6 +768,20 @@ impl<'a> AstValidator<'a> {
                 BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }
+    }
+}
+
+impl<'a> std::ops::Deref for AstValidator<'a> {
+    type Target = Context<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+impl<'a> std::ops::DerefMut for AstValidator<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.context
     }
 }
 
@@ -1665,11 +1687,8 @@ pub fn check_crate(
         session,
         features,
         extern_mod: None,
-        outer_trait_or_trait_impl: None,
         has_proc_macro_decls: false,
-        outer_impl_trait: None,
-        disallow_tilde_const: Some(DisallowTildeConstContext::Item),
-        is_impl_trait_banned: false,
+        context: Context::default(),
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
