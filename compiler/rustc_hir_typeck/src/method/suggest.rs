@@ -540,6 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
+        let mut suggested_derive = false;
         let mut unsatisfied_bounds = false;
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
             let msg = "consider using `len` instead";
@@ -927,20 +928,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .enumerate()
                 .collect::<Vec<(usize, String)>>();
 
-            for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
-                restrict_type_params = true;
-                // #74886: Sort here so that the output is always the same.
-                let obligations = obligations.into_sorted_stable_ord();
-                err.span_suggestion_verbose(
-                    span,
-                    format!(
-                        "consider restricting the type parameter{s} to satisfy the \
-                         trait bound{s}",
-                        s = pluralize!(obligations.len())
-                    ),
-                    format!("{} {}", add_where_or_comma, obligations.join(", ")),
-                    Applicability::MaybeIncorrect,
-                );
+            if !matches!(rcvr_ty.peel_refs().kind(), ty::Param(_)) {
+                for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
+                    restrict_type_params = true;
+                    // #74886: Sort here so that the output is always the same.
+                    let obligations = obligations.into_sorted_stable_ord();
+                    err.span_suggestion_verbose(
+                        span,
+                        format!(
+                            "consider restricting the type parameter{s} to satisfy the trait \
+                             bound{s}",
+                            s = pluralize!(obligations.len())
+                        ),
+                        format!("{} {}", add_where_or_comma, obligations.join(", ")),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
 
             bound_list.sort_by(|(_, a), (_, b)| a.cmp(b)); // Sort alphabetically.
@@ -988,7 +991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the following trait bounds were not satisfied:\n{bound_list}"
                     ));
                 }
-                self.suggest_derive(&mut err, unsatisfied_predicates);
+                suggested_derive = self.suggest_derive(&mut err, unsatisfied_predicates);
 
                 unsatisfied_bounds = true;
             }
@@ -1211,7 +1214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params {
+        if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params || suggested_derive {
         } else {
             self.suggest_traits_to_import(
                 &mut err,
@@ -1221,7 +1224,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args.map(|args| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
-                unsatisfied_predicates,
                 static_candidates,
                 unsatisfied_bounds,
                 expected.only_has_type(self),
@@ -2481,7 +2483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
-    ) {
+    ) -> bool {
         let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
         derives.sort();
         derives.dedup();
@@ -2506,6 +2508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        !derives_grouped.is_empty()
     }
 
     fn note_derefed_ty_has_method(
@@ -2708,11 +2711,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inputs_len: Option<usize>,
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
-        unsatisfied_predicates: &[(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )],
         static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
         return_type: Option<Ty<'tcx>>,
@@ -2977,20 +2975,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item.visibility(self.tcx).is_public() || info.def_id.is_local()
                         })
                         .is_some()
-                    && (matches!(rcvr_ty.kind(), ty::Param(_))
-                        || unsatisfied_predicates.iter().all(|(p, _, _)| {
-                            match p.kind().skip_binder() {
-                                // Hide traits if they are present in predicates as they can be fixed without
-                                // having to implement them.
-                                ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
-                                    t.def_id() == info.def_id
-                                }
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
-                                    p.projection_ty.def_id == info.def_id
-                                }
-                                _ => false,
-                            }
-                        }))
             })
             .collect::<Vec<_>>();
         for span in &arbitrary_rcvr {

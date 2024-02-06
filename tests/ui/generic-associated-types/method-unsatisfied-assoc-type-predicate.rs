@@ -5,7 +5,7 @@ trait X {
     type Y<T>;
 }
 
-trait M {
+trait M { //~ NOTE
     fn f(&self) {}
 }
 
