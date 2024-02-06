@@ -1,3 +1,30 @@
+print-type-size type: `core::fmt::rt::Placeholder`: 56 bytes, alignment: 8 bytes
+print-type-size     field `.precision`: 16 bytes
+print-type-size     field `.width`: 16 bytes
+print-type-size     field `.position`: 8 bytes
+print-type-size     field `.fill`: 4 bytes
+print-type-size     field `.flags`: 4 bytes
+print-type-size     field `.align`: 1 bytes
+print-type-size     end padding: 7 bytes
+print-type-size type: `std::fmt::Arguments<'_>`: 48 bytes, alignment: 8 bytes
+print-type-size     field `.pieces`: 16 bytes
+print-type-size     field `.args`: 16 bytes
+print-type-size     field `.fmt`: 16 bytes
+print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
+print-type-size     field `.file`: 16 bytes
+print-type-size     field `.line`: 4 bytes
+print-type-size     field `.col`: 4 bytes
+print-type-size type: `core::fmt::rt::Count`: 16 bytes, alignment: 8 bytes
+print-type-size     discriminant: 8 bytes
+print-type-size     variant `Is`: 8 bytes
+print-type-size         field `.0`: 8 bytes
+print-type-size     variant `Param`: 8 bytes
+print-type-size         field `.0`: 8 bytes
+print-type-size     variant `Implied`: 0 bytes
+print-type-size type: `std::option::Option<&[core::fmt::rt::Placeholder]>`: 16 bytes, alignment: 8 bytes
+print-type-size     variant `Some`: 16 bytes
+print-type-size         field `.0`: 16 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `IndirectNonZero`: 12 bytes, alignment: 4 bytes
 print-type-size     field `.nested`: 8 bytes
 print-type-size     field `.post`: 2 bytes
@@ -68,8 +95,18 @@ print-type-size type: `Union2<std::num::NonZero<u32>, u32>`: 4 bytes, alignment:
 print-type-size     variant `Union2`: 4 bytes
 print-type-size         field `.a`: 4 bytes
 print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
+print-type-size type: `std::mem::ManuallyDrop<std::option::Option<std::num::NonZero<u32>>>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.value`: 4 bytes
+print-type-size type: `std::mem::MaybeUninit<std::option::Option<std::num::NonZero<u32>>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `MaybeUninit`: 4 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 4 bytes
 print-type-size type: `std::num::NonZero<u32>`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.0`: 4 bytes
+print-type-size type: `std::option::Option<std::num::NonZero<u32>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `Enum4<(), (), (), MyOption<u8>>`: 2 bytes, alignment: 1 bytes
 print-type-size     variant `Four`: 2 bytes
 print-type-size         field `.0`: 2 bytes
@@ -105,6 +142,12 @@ print-type-size type: `MyOption<std::cmp::Ordering>`: 1 bytes, alignment: 1 byte
 print-type-size     variant `Some`: 1 bytes
 print-type-size         field `.0`: 1 bytes
 print-type-size     variant `None`: 0 bytes
+print-type-size type: `core::fmt::rt::Alignment`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Left`: 0 bytes
+print-type-size     variant `Right`: 0 bytes
+print-type-size     variant `Center`: 0 bytes
+print-type-size     variant `Unknown`: 0 bytes
 print-type-size type: `std::cmp::Ordering`: 1 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Less`: 0 bytes
