@@ -156,7 +156,7 @@ impl Translate for BufferEmitter {
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
 
         let fluent_args = to_fluent_args(diag.args());
