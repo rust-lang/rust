@@ -6,7 +6,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::{Captures, TypeCx};
+use crate::TypeCx;
 
 use self::Constructor::*;
 
@@ -21,9 +21,9 @@ use self::Constructor::*;
 /// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
 /// observe that it is uninhabited. In that case that field is not included in `fields`. Care must
 /// be taken when converting to/from `thir::Pat`.
-pub struct DeconstructedPat<'p, Cx: TypeCx> {
+pub struct DeconstructedPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
-    fields: &'p [DeconstructedPat<'p, Cx>],
+    fields: Vec<DeconstructedPat<Cx>>,
     ty: Cx::Ty,
     /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
     /// correspond to a user-supplied pattern.
@@ -32,14 +32,20 @@ pub struct DeconstructedPat<'p, Cx: TypeCx> {
     useful: Cell<bool>,
 }
 
-impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
+impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn wildcard(ty: Cx::Ty) -> Self {
-        DeconstructedPat { ctor: Wildcard, fields: &[], ty, data: None, useful: Cell::new(false) }
+        DeconstructedPat {
+            ctor: Wildcard,
+            fields: Vec::new(),
+            ty,
+            data: None,
+            useful: Cell::new(false),
+        }
     }
 
     pub fn new(
         ctor: Constructor<Cx>,
-        fields: &'p [DeconstructedPat<'p, Cx>],
+        fields: Vec<DeconstructedPat<Cx>>,
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
@@ -62,17 +68,17 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
         self.data.as_ref()
     }
 
-    pub fn iter_fields(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
+    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a DeconstructedPat<Cx>> {
         self.fields.iter()
     }
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(crate) fn specialize(
-        &self,
+    pub(crate) fn specialize<'a>(
+        &'a self,
         other_ctor: &Constructor<Cx>,
         ctor_arity: usize,
-    ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
+    ) -> SmallVec<[PatOrWild<'a, Cx>; 2]> {
         let wildcard_sub_tys = || (0..ctor_arity).map(|_| PatOrWild::Wild).collect();
         match (&self.ctor, other_ctor) {
             // Return a wildcard for each field of `other_ctor`.
@@ -139,7 +145,7 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
 }
 
 /// This is best effort and not good enough for a `Display` impl.
-impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
+impl<Cx: TypeCx> fmt::Debug for DeconstructedPat<Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pat = self;
         let mut first = true;
@@ -221,7 +227,7 @@ pub(crate) enum PatOrWild<'p, Cx: TypeCx> {
     /// A non-user-provided wildcard, created during specialization.
     Wild,
     /// A user-provided pattern.
-    Pat(&'p DeconstructedPat<'p, Cx>),
+    Pat(&'p DeconstructedPat<Cx>),
 }
 
 impl<'p, Cx: TypeCx> Clone for PatOrWild<'p, Cx> {
@@ -236,7 +242,7 @@ impl<'p, Cx: TypeCx> Clone for PatOrWild<'p, Cx> {
 impl<'p, Cx: TypeCx> Copy for PatOrWild<'p, Cx> {}
 
 impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
-    pub(crate) fn as_pat(&self) -> Option<&'p DeconstructedPat<'p, Cx>> {
+    pub(crate) fn as_pat(&self) -> Option<&'p DeconstructedPat<Cx>> {
         match self {
             PatOrWild::Wild => None,
             PatOrWild::Pat(pat) => Some(pat),

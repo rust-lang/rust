@@ -13,7 +13,7 @@ use crate::{Captures, MatchArm, TypeCx};
 #[derive(Debug)]
 pub struct PatternColumn<'p, Cx: TypeCx> {
     /// This must not contain an or-pattern. `expand_and_push` takes care to expand them.
-    patterns: Vec<&'p DeconstructedPat<'p, Cx>>,
+    patterns: Vec<&'p DeconstructedPat<Cx>>,
 }
 
 impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
@@ -41,7 +41,7 @@ impl<'p, Cx: TypeCx> PatternColumn<'p, Cx> {
     pub fn head_ty(&self) -> Option<&Cx::Ty> {
         self.patterns.first().map(|pat| pat.ty())
     }
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'a> {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<Cx>> + Captures<'a> {
         self.patterns.iter().copied()
     }
 

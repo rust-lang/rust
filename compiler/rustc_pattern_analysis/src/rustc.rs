@@ -1,8 +1,7 @@
-use smallvec::SmallVec;
 use std::fmt;
 use std::iter::once;
 
-use rustc_arena::{DroplessArena, TypedArena};
+use rustc_arena::DroplessArena;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
@@ -27,8 +26,7 @@ use crate::constructor::Constructor::*;
 pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type ConstructorSet<'p, 'tcx> =
     crate::constructor::ConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type DeconstructedPat<'p, 'tcx> =
-    crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type DeconstructedPat<'p, 'tcx> = crate::pat::DeconstructedPat<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type UsefulnessReport<'p, 'tcx> =
@@ -64,7 +62,7 @@ impl<'tcx> RevealedTy<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct RustcMatchCheckCtxt<'p, 'tcx> {
+pub struct RustcMatchCheckCtxt<'p, 'tcx: 'p> {
     pub tcx: TyCtxt<'tcx>,
     pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
     /// The module in which the match occurs. This is necessary for
@@ -74,8 +72,6 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     /// outside its module and should not be matchable with an empty match statement.
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
-    /// To allocate lowered patterns
-    pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
     /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
@@ -91,13 +87,13 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub known_valid_scrutinee: bool,
 }
 
-impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RustcMatchCheckCtxt").finish()
     }
 }
 
-impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
     /// types, we use the corresponding concrete type if possible.
@@ -459,21 +455,20 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     /// Note: the input patterns must have been lowered through
     /// `rustc_mir_build::thir::pattern::check_match::MatchVisitor::lower_pattern`.
     pub fn lower_pat(&self, pat: &'p Pat<'tcx>) -> DeconstructedPat<'p, 'tcx> {
-        let singleton = |pat| std::slice::from_ref(self.pattern_arena.alloc(pat));
         let cx = self;
         let ty = cx.reveal_opaque_ty(pat.ty);
         let ctor;
-        let fields: &[_];
+        let mut fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
             | PatKind::InlineConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
-                fields = &[];
+                fields = vec![];
             }
             PatKind::Deref { subpattern } => {
-                fields = singleton(self.lower_pat(subpattern));
+                fields = vec![self.lower_pat(subpattern)];
                 ctor = match ty.kind() {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
@@ -485,15 +480,14 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 match ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Struct;
-                        let mut wilds: SmallVec<[_; 2]> = fs
+                        fields = fs
                             .iter()
                             .map(|ty| cx.reveal_opaque_ty(ty))
                             .map(|ty| DeconstructedPat::wildcard(ty))
                             .collect();
                         for pat in subpatterns {
-                            wilds[pat.field.index()] = self.lower_pat(&pat.pattern);
+                            fields[pat.field.index()] = self.lower_pat(&pat.pattern);
                         }
-                        fields = cx.pattern_arena.alloc_from_iter(wilds);
                     }
                     ty::Adt(adt, args) if adt.is_box() => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -515,7 +509,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             DeconstructedPat::wildcard(self.reveal_opaque_ty(args.type_at(0)))
                         };
                         ctor = Struct;
-                        fields = singleton(pat);
+                        fields = vec![pat];
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind {
@@ -535,14 +529,12 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                                 ty
                             },
                         );
-                        let mut wilds: SmallVec<[_; 2]> =
-                            tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
+                        fields = tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
-                                wilds[i] = self.lower_pat(&pat.pattern);
+                                fields[i] = self.lower_pat(&pat.pattern);
                             }
                         }
-                        fields = cx.pattern_arena.alloc_from_iter(wilds);
                     }
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
                 }
@@ -554,7 +546,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             Some(b) => Bool(b),
                             None => Opaque(OpaqueId::new()),
                         };
-                        fields = &[];
+                        fields = vec![];
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -570,7 +562,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             }
                             None => Opaque(OpaqueId::new()),
                         };
-                        fields = &[];
+                        fields = vec![];
                     }
                     ty::Float(ty::FloatTy::F32) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -581,7 +573,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             }
                             None => Opaque(OpaqueId::new()),
                         };
-                        fields = &[];
+                        fields = vec![];
                     }
                     ty::Float(ty::FloatTy::F64) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
@@ -592,7 +584,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             }
                             None => Opaque(OpaqueId::new()),
                         };
-                        fields = &[];
+                        fields = vec![];
                     }
                     ty::Ref(_, t, _) if t.is_str() => {
                         // We want a `&str` constant to behave like a `Deref` pattern, to be compatible
@@ -603,16 +595,16 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let ty = self.reveal_opaque_ty(*t);
-                        let subpattern = DeconstructedPat::new(Str(*value), &[], ty, pat);
+                        let subpattern = DeconstructedPat::new(Str(*value), Vec::new(), ty, pat);
                         ctor = Ref;
-                        fields = singleton(subpattern)
+                        fields = vec![subpattern]
                     }
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                     // opaque.
                     _ => {
                         ctor = Opaque(OpaqueId::new());
-                        fields = &[];
+                        fields = vec![];
                     }
                 }
             }
@@ -649,7 +641,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     }
                     _ => bug!("invalid type for range pattern: {}", ty.inner()),
                 };
-                fields = &[];
+                fields = vec![];
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match ty.kind() {
@@ -665,26 +657,23 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     SliceKind::FixedLen(prefix.len() + suffix.len())
                 };
                 ctor = Slice(Slice::new(array_len, kind));
-                fields = cx.pattern_arena.alloc_from_iter(
-                    prefix.iter().chain(suffix.iter()).map(|p| self.lower_pat(&*p)),
-                )
+                fields = prefix.iter().chain(suffix.iter()).map(|p| self.lower_pat(&*p)).collect();
             }
             PatKind::Or { .. } => {
                 ctor = Or;
                 let pats = expand_or_pat(pat);
-                fields =
-                    cx.pattern_arena.alloc_from_iter(pats.into_iter().map(|p| self.lower_pat(p)))
+                fields = pats.into_iter().map(|p| self.lower_pat(p)).collect();
             }
             PatKind::Never => {
                 // A never pattern matches all the values of its type (namely none). Moreover it
                 // must be compatible with other constructors, since we can use `!` on a type like
                 // `Result<!, !>` which has other constructors. Hence we lower it as a wildcard.
                 ctor = Wildcard;
-                fields = &[];
+                fields = vec![];
             }
             PatKind::Error(_) => {
                 ctor = Opaque(OpaqueId::new());
-                fields = &[];
+                fields = vec![];
             }
         }
         DeconstructedPat::new(ctor, fields, ty, pat)
@@ -855,7 +844,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
+impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
@@ -889,7 +878,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
 
     fn write_variant_name(
         f: &mut fmt::Formatter<'_>,
-        pat: &crate::pat::DeconstructedPat<'_, Self>,
+        pat: &crate::pat::DeconstructedPat<Self>,
     ) -> fmt::Result {
         if let ty::Adt(adt, _) = pat.ty().kind() {
             if adt.is_box() {
@@ -908,9 +897,9 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
 
     fn lint_overlapping_range_endpoints(
         &self,
-        pat: &crate::pat::DeconstructedPat<'_, Self>,
+        pat: &crate::pat::DeconstructedPat<Self>,
         overlaps_on: IntRange,
-        overlaps_with: &[&crate::pat::DeconstructedPat<'_, Self>],
+        overlaps_with: &[&crate::pat::DeconstructedPat<Self>],
     ) {
         let overlap_as_pat = self.hoist_pat_range(&overlaps_on, *pat.ty());
         let overlaps: Vec<_> = overlaps_with
