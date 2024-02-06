@@ -720,15 +720,8 @@ fn main_args(
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
     let (options, render_options) = match config::Options::from_matches(early_dcx, &matches, args) {
-        Ok(opts) => opts,
-        Err(code) => {
-            return if code == 0 {
-                Ok(())
-            } else {
-                #[allow(deprecated)]
-                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-            };
-        }
+        Some(opts) => opts,
+        None => return Ok(()),
     };
 
     let diag =
