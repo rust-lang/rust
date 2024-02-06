@@ -165,13 +165,14 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
         &self,
         ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (FieldIdx, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_> {
+    ) -> impl Iterator<Item = (FieldIdx, RevealedTy<'tcx>, bool)> + Captures<'p> + Captures<'_>
+    {
         let cx = self;
         let ty::Adt(adt, args) = ty.kind() else { bug!() };
-        // Whether we must not match the fields of this variant exhaustively.
+        // Whether we must avoid matching the fields of this variant exhaustively.
         let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
 
-        variant.fields.iter().enumerate().filter_map(move |(i, field)| {
+        variant.fields.iter().enumerate().map(move |(i, field)| {
             let ty = field.ty(cx.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
@@ -180,12 +181,9 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 || cx.tcx.features().min_exhaustive_patterns)
                 && cx.is_uninhabited(ty);
 
-            if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                None
-            } else {
-                let ty = cx.reveal_opaque_ty(ty);
-                Some((FieldIdx::new(i), ty))
-            }
+            let skip = is_uninhabited && (!is_visible || is_non_exhaustive);
+            let ty = cx.reveal_opaque_ty(ty);
+            (FieldIdx::new(i), ty, skip)
         })
     }
 
@@ -229,7 +227,10 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     } else {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
+                        let tys = cx
+                            .list_variant_nonhidden_fields(ty, variant)
+                            .filter(|(_, _, skip)| !skip)
+                            .map(|(_, ty, _)| ty);
                         cx.dropless_arena.alloc_from_iter(tys)
                     }
                 }
@@ -276,7 +277,9 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     } else {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        self.list_variant_nonhidden_fields(ty, variant).count()
+                        self.list_variant_nonhidden_fields(ty, variant)
+                            .filter(|(_, _, skip)| !skip)
+                            .count()
                     }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
@@ -523,12 +526,14 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
-                        let tys = cx.list_variant_nonhidden_fields(ty, variant).enumerate().map(
-                            |(i, (field, ty))| {
+                        let tys = cx
+                            .list_variant_nonhidden_fields(ty, variant)
+                            .filter(|(_, _, skip)| !skip)
+                            .enumerate()
+                            .map(|(i, (field, ty, _))| {
                                 field_id_to_id[field.index()] = Some(i);
                                 ty
-                            },
-                        );
+                            });
                         fields = tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
@@ -778,8 +783,9 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
                         .list_variant_nonhidden_fields(*pat.ty(), variant)
+                        .filter(|(_, _, skip)| !skip)
                         .zip(subpatterns)
-                        .map(|((field, _ty), pattern)| FieldPat { field, pattern })
+                        .map(|((field, _ty, _), pattern)| FieldPat { field, pattern })
                         .collect();
 
                     if adt_def.is_enum() {
