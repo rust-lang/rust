@@ -3,6 +3,9 @@
 //! These are the built-in lints that are emitted direct in the main
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
+//!
+//! When removing a lint, make sure to also add a call to `register_removed` in
+//! compiler/rustc_lint/src/lib.rs.
 
 use crate::{declare_lint, declare_lint_pass, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
@@ -66,7 +69,6 @@ declare_lint_pass! {
         MUST_NOT_SUSPEND,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        NONTRIVIAL_STRUCTURAL_MATCH,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -2280,8 +2282,8 @@ declare_lint! {
     Warn,
     "constant used in pattern contains value of non-structural-match type in a field or a variant",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 
@@ -2336,47 +2338,8 @@ declare_lint! {
     Warn,
     "pointers are not structural-match",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #62411 <https://github.com/rust-lang/rust/issues/70861>",
-    };
-}
-
-declare_lint! {
-    /// The `nontrivial_structural_match` lint detects constants that are used in patterns,
-    /// whose type is not structural-match and whose initializer body actually uses values
-    /// that are not structural-match. So `Option<NotStructuralMatch>` is ok if the constant
-    /// is just `None`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(nontrivial_structural_match)]
-    ///
-    /// #[derive(Copy, Clone, Debug)]
-    /// struct NoDerive(u32);
-    /// impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
-    /// impl Eq for NoDerive { }
-    /// fn main() {
-    ///     const INDEX: Option<NoDerive> = [None, Some(NoDerive(10))][0];
-    ///     match None { Some(_) => panic!("whoops"), INDEX => dbg!(INDEX), };
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
-    /// did not have `PartialEq` derived. Thus the compiler falls back to runtime execution of
-    /// `PartialEq`, which can report that two constants are not equal even if they are
-    /// bit-equivalent.
-    pub NONTRIVIAL_STRUCTURAL_MATCH,
-    Warn,
-    "constant used in pattern of non-structural-match type and the constant's initializer \
-    expression contains values of non-structural-match types",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #73448 <https://github.com/rust-lang/rust/issues/73448>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
     };
 }
 
