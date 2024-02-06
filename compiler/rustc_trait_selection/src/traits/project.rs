@@ -23,7 +23,6 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{BoundRegionConversionTime, InferOk};
 use crate::traits::normalize::normalize_with_depth;
 use crate::traits::normalize::normalize_with_depth_to;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -975,9 +974,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 //
                 // NOTE: This should be kept in sync with the similar code in
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
-                let node_item =
-                    specialization_graph::assoc_def(selcx.tcx(), impl_data.impl_def_id, obligation.predicate.def_id)
-                        .map_err(|ErrorGuaranteed { .. }| ())?;
+                let node_item = specialization_graph::assoc_def(
+                    selcx.tcx(),
+                    impl_data.impl_def_id,
+                    obligation.predicate.def_id,
+                )
+                .map_err(|ErrorGuaranteed { .. }| ())?;
 
                 if node_item.is_final() {
                     // Non-specializable items are always projectable.
@@ -1020,7 +1022,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     lang_items.async_fn_trait(),
                     lang_items.async_fn_mut_trait(),
                     lang_items.async_fn_once_trait(),
-                ].contains(&Some(trait_ref.def_id))
+                ]
+                .contains(&Some(trait_ref.def_id))
                 {
                     true
                 } else if lang_items.async_fn_kind_helper() == Some(trait_ref.def_id) {
@@ -1033,7 +1036,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         true
                     } else {
                         obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
-                        && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
+                            && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
                     }
                 } else if lang_items.discriminant_kind_trait() == Some(trait_ref.def_id) {
                     match self_ty.kind() {
@@ -1116,33 +1119,27 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // If returned by `struct_tail_without_normalization` this is the empty tuple.
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
-                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
+                        // `{type error}` is sized, so its metadata must be the unit type.
+                        | ty::Error(_) => true,
 
-                        // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
-                        // Otherwise, type parameters, opaques, and unnormalized projections have
-                        // unit metadata if they're known (e.g. by the param_env) to be sized.
-                        ty::Param(_) | ty::Alias(..)
-                            if self_ty != tail || selcx.infcx.predicate_must_hold_modulo_regions(
-                                &obligation.with(
-                                    selcx.tcx(),
-                                    ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty]),
-                                ),
-                            ) =>
-                        {
-                            true
+                        // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata`.
+                        ty::Param(_) | ty::Alias(..) => self_ty != tail,
+
+                        // FIXME: These should probably project to the tail as well.
+                        ty::Bound(..) | ty::Placeholder(..) => false,
+
+                        ty::Infer(ty::TyVar(_)) => {
+                            candidate_set.mark_ambiguous();
+                            false
                         }
 
-                        // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
-                        ty::Param(_)
-                        | ty::Alias(..)
-                        | ty::Bound(..)
-                        | ty::Placeholder(..)
-                        | ty::Infer(..)
-                        | ty::Error(_) => {
-                            if tail.has_infer_types() {
-                                candidate_set.mark_ambiguous();
-                            }
-                            false
+                        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                            span_bug!(
+                                obligation.cause.span,
+                                "unexpected self ty `{self_ty:?}` when normalizing \
+                                `<T as Pointee>::Metadata`",
+                            )
                         }
                     }
                 } else {
@@ -1190,7 +1187,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     obligation.cause.span,
                     format!("Cannot project an associated type from `{impl_source:?}`"),
                 );
-                return Err(())
+                return Err(());
             }
         };
 
@@ -1510,23 +1507,15 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         };
         let metadata_ty = self_ty.ptr_metadata_ty_or_tail(tcx, normalize).unwrap_or_else(|tail| {
             if tail == self_ty {
-                // This is the "fallback impl" for type parameters, unnormalizable projections
-                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
-                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
-                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                let sized_predicate = ty::TraitRef::from_lang_item(
-                    tcx,
-                    LangItem::Sized,
-                    obligation.cause.span(),
-                    [self_ty],
+                span_bug!(
+                    obligation.cause.span,
+                    "`<{self_ty:?} as Pointee>::Metadata` projection candidate assembled, \
+                    but we cannot project further",
                 );
-                obligations.push(obligation.with(tcx, sized_predicate));
-                tcx.types.unit
-            } else {
-                // We know that `self_ty` has the same metadata as `tail`. This allows us
-                // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
-                Ty::new_projection(tcx, metadata_def_id, [tail])
             }
+            // We know that `self_ty` has the same metadata as `tail`. This allows us
+            // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
+            Ty::new_projection(tcx, metadata_def_id, [tail])
         });
         (metadata_ty.into(), obligations)
     } else {

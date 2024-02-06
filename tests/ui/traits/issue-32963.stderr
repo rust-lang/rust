@@ -9,16 +9,16 @@ LL |     size_of_copy::<dyn Misc + Copy>();
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Misc + Copy {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0277]: the trait bound `dyn Misc: Copy` is not satisfied
+error[E0277]: the trait bound `dyn Misc<Metadata = ()>: Copy` is not satisfied
   --> $DIR/issue-32963.rs:8:20
    |
 LL |     size_of_copy::<dyn Misc + Copy>();
-   |                    ^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `dyn Misc`
+   |                    ^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `dyn Misc<Metadata = ()>`
    |
 note: required by a bound in `size_of_copy`
   --> $DIR/issue-32963.rs:5:20
    |
-LL | fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
+LL | fn size_of_copy<T: Copy + ?Sized>() -> usize { mem::size_of::<T>() }
    |                    ^^^^ required by this bound in `size_of_copy`
 
 error: aborting due to 2 previous errors

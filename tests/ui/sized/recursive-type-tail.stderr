@@ -1,0 +1,21 @@
+error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: reached the recursion limit finding the struct tail for `<() as A>::Assoc`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

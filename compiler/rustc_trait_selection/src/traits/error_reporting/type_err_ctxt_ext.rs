@@ -123,17 +123,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             })
             .collect();
 
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorOrd {
+            Default,
+            Sized,
+            Metadata,
+            Coerce,
+            WellFormed,
+        }
+
         // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
         // with more relevant type information and hide redundant E0282 ("type annotations needed") errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 if Some(pred.def_id()) == self.tcx.lang_items().sized_trait() =>
             {
-                1
+                ErrorOrd::Sized
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred))
+                if Some(pred.def_id()) == self.tcx.lang_items().metadata_type() =>
+            {
+                ErrorOrd::Metadata
+            }
+            ty::PredicateKind::Coerce(_) => ErrorOrd::Coerce,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => ErrorOrd::WellFormed,
+            _ => ErrorOrd::Default,
         });
 
         for (index, error) in errors.iter().enumerate() {

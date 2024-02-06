@@ -32,6 +32,11 @@ LL | impl<T, P: PointerFamily> Node<T, P>
 LL | where
 LL |     P::Pointer<Node<T, P>>: Sized,
    |                             ^^^^^ unsatisfied trait bound introduced here
+   = note: the following trait bounds were not satisfied:
+           `(dyn Deref<Target = Node<i32, RcFamily>> + 'static): Thin`
+           which is required by `(dyn Deref<Target = Node<i32, RcFamily>> + 'static): Sized`
+           `<(dyn Deref<Target = Node<i32, RcFamily>> + 'static) as Pointee>::Metadata = ()`
+           which is required by `(dyn Deref<Target = Node<i32, RcFamily>> + 'static): Sized`
 
 error: aborting due to 2 previous errors
 

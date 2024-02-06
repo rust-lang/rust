@@ -8,6 +8,7 @@ use std::mem;
 
 pub struct S<T: Tr> {
     pub f: <T as Tr>::I,
+    _tail: (), // without this, we get "reached the recursion limit finding the struct tail" instead
 }
 
 pub trait Tr {

@@ -37,8 +37,26 @@ LL - impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
 LL + impl<A, B> Trait<(A, B)> for (A, B) where B: ?Sized, {}
    |
 
+error[E0271]: type mismatch resolving `<(A, B) as Pointee>::Metadata == ()`
+  --> $DIR/unsized-bound.rs:2:30
+   |
+LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
+   |                              ^^^^^^ expected `()`, found associated type
+   |
+   = note:    expected unit type `()`
+           found associated type `<B as Pointee>::Metadata`
+   = help: consider constraining the associated type `<B as Pointee>::Metadata` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: required for `(A, B)` to implement `Thin`
+   = note: required for `(A, B)` to implement `Sized`
+note: required by an implicit `Sized` bound in `Trait`
+  --> $DIR/unsized-bound.rs:1:13
+   |
+LL | trait Trait<A> {}
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Trait`
+
 error[E0277]: the size for values of type `C` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:6:52
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |                    -                               ^^^^^^^^^ doesn't have a size known at compile-time
@@ -62,7 +80,7 @@ LL | trait Trait<A: ?Sized> {}
    |              ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:6:52
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |      - this type parameter needs to be `Sized`     ^^^^^^^^^ doesn't have a size known at compile-time
@@ -75,7 +93,7 @@ LL + impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C)  {}
    |
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:5:52
+  --> $DIR/unsized-bound.rs:6:52
    |
 LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |         - this type parameter needs to be `Sized`  ^^^^^^^^^ doesn't have a size known at compile-time
@@ -87,8 +105,26 @@ LL - impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Size
 LL + impl<A, B, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
    |
 
+error[E0271]: type mismatch resolving `<(A, B, C) as Pointee>::Metadata == ()`
+  --> $DIR/unsized-bound.rs:6:52
+   |
+LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
+   |                                                    ^^^^^^^^^ expected `()`, found associated type
+   |
+   = note:    expected unit type `()`
+           found associated type `<C as Pointee>::Metadata`
+   = help: consider constraining the associated type `<C as Pointee>::Metadata` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: required for `(A, B, C)` to implement `Thin`
+   = note: required for `(A, B, C)` to implement `Sized`
+note: required by an implicit `Sized` bound in `Trait`
+  --> $DIR/unsized-bound.rs:1:13
+   |
+LL | trait Trait<A> {}
+   |             ^ required by the implicit `Sized` requirement on this type parameter in `Trait`
+
 error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:10:47
+  --> $DIR/unsized-bound.rs:12:47
    |
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |                 -                             ^^^^^^ doesn't have a size known at compile-time
@@ -97,7 +133,7 @@ LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |
    = note: required because it appears within the type `(A, B)`
 note: required by an implicit `Sized` bound in `Trait2`
-  --> $DIR/unsized-bound.rs:9:14
+  --> $DIR/unsized-bound.rs:11:14
    |
 LL | trait Trait2<A> {}
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait2`
@@ -112,7 +148,7 @@ LL | trait Trait2<A: ?Sized> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:10:47
+  --> $DIR/unsized-bound.rs:12:47
    |
 LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |      -                                        ^^^^^^ doesn't have a size known at compile-time
@@ -126,8 +162,26 @@ LL - impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
 LL + impl<A, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |
 
+error[E0271]: type mismatch resolving `<(A, B) as Pointee>::Metadata == ()`
+  --> $DIR/unsized-bound.rs:12:47
+   |
+LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
+   |                                               ^^^^^^ expected `()`, found associated type
+   |
+   = note:    expected unit type `()`
+           found associated type `<B as Pointee>::Metadata`
+   = help: consider constraining the associated type `<B as Pointee>::Metadata` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: required for `(A, B)` to implement `Thin`
+   = note: required for `(A, B)` to implement `Sized`
+note: required by an implicit `Sized` bound in `Trait2`
+  --> $DIR/unsized-bound.rs:11:14
+   |
+LL | trait Trait2<A> {}
+   |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait2`
+
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:14:23
+  --> $DIR/unsized-bound.rs:17:23
    |
 LL | impl<A> Trait3<A> for A where A: ?Sized {}
    |      -                ^ doesn't have a size known at compile-time
@@ -135,7 +189,7 @@ LL | impl<A> Trait3<A> for A where A: ?Sized {}
    |      this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait3`
-  --> $DIR/unsized-bound.rs:13:14
+  --> $DIR/unsized-bound.rs:16:14
    |
 LL | trait Trait3<A> {}
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait3`
@@ -150,7 +204,7 @@ LL | trait Trait3<A: ?Sized> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:17:31
+  --> $DIR/unsized-bound.rs:20:31
    |
 LL | impl<A: ?Sized> Trait4<A> for A {}
    |      -                        ^ doesn't have a size known at compile-time
@@ -158,7 +212,7 @@ LL | impl<A: ?Sized> Trait4<A> for A {}
    |      this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait4`
-  --> $DIR/unsized-bound.rs:16:14
+  --> $DIR/unsized-bound.rs:19:14
    |
 LL | trait Trait4<A> {}
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait4`
@@ -173,7 +227,7 @@ LL | trait Trait4<A: ?Sized> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:20:29
+  --> $DIR/unsized-bound.rs:23:29
    |
 LL | impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
    |      -                      ^ doesn't have a size known at compile-time
@@ -181,7 +235,7 @@ LL | impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
    |      this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait5`
-  --> $DIR/unsized-bound.rs:19:14
+  --> $DIR/unsized-bound.rs:22:14
    |
 LL | trait Trait5<A, B> {}
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait5`
@@ -196,7 +250,7 @@ LL | trait Trait5<A: ?Sized, B> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:23:37
+  --> $DIR/unsized-bound.rs:26:37
    |
 LL | impl<X: ?Sized, Y> Trait6<X, Y> for X {}
    |      -                              ^ doesn't have a size known at compile-time
@@ -204,7 +258,7 @@ LL | impl<X: ?Sized, Y> Trait6<X, Y> for X {}
    |      this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait6`
-  --> $DIR/unsized-bound.rs:22:14
+  --> $DIR/unsized-bound.rs:25:14
    |
 LL | trait Trait6<A, B> {}
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Trait6`
@@ -219,7 +273,7 @@ LL | trait Trait6<A: ?Sized, B> {}
    |               ++++++++
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:26:12
+  --> $DIR/unsized-bound.rs:29:12
    |
 LL | impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
    |         -  ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -227,7 +281,7 @@ LL | impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
    |         this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait7`
-  --> $DIR/unsized-bound.rs:25:17
+  --> $DIR/unsized-bound.rs:28:17
    |
 LL | trait Trait7<A, B> {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `Trait7`
@@ -242,7 +296,7 @@ LL | trait Trait7<A, B: ?Sized> {}
    |                  ++++++++
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
-  --> $DIR/unsized-bound.rs:29:20
+  --> $DIR/unsized-bound.rs:32:20
    |
 LL | impl<X, Y: ?Sized> Trait8<X, Y> for X {}
    |         -          ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -250,7 +304,7 @@ LL | impl<X, Y: ?Sized> Trait8<X, Y> for X {}
    |         this type parameter needs to be `Sized`
    |
 note: required by an implicit `Sized` bound in `Trait8`
-  --> $DIR/unsized-bound.rs:28:17
+  --> $DIR/unsized-bound.rs:31:17
    |
 LL | trait Trait8<A, B> {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `Trait8`
@@ -264,6 +318,7 @@ help: consider relaxing the implicit `Sized` restriction
 LL | trait Trait8<A, B: ?Sized> {}
    |                  ++++++++
 
-error: aborting due to 13 previous errors
+error: aborting due to 16 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

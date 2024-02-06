@@ -142,6 +142,19 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[rustc_specialization_trait]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 #[rustc_coinductive]
+#[cfg(not(bootstrap))]
+pub trait Sized: crate::ptr::Thin {
+    // Empty.
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "sized"]
+#[fundamental]
+#[rustc_specialization_trait]
+#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_coinductive]
+#[cfg(bootstrap)]
+#[allow(missing_docs)]
 pub trait Sized {
     // Empty.
 }

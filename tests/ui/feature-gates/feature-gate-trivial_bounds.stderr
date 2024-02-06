@@ -132,8 +132,20 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 LL + #![feature(trivial_bounds)]
    |
 
+error[E0271]: type mismatch resolving `<Dst<dyn A> as Pointee>::Metadata == ()`
+  --> $DIR/feature-gate-trivial_bounds.rs:55:26
+   |
+LL | fn unsized_local() where Dst<dyn A>: Sized {
+   |                          ^^^^^^^^^^^^^^^^^ expected `DynMetadata<(dyn A + 'static)>`, found `()`
+   |
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/feature-gate-trivial_bounds.rs:59:30
+  --> $DIR/feature-gate-trivial_bounds.rs:60:30
    |
 LL | fn return_str() -> str where str: Sized {
    |                              ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -145,6 +157,7 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 LL + #![feature(trivial_bounds)]
    |
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

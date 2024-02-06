@@ -541,22 +541,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         .instantiate(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
                 }
 
-                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // This is the "fallback impl" for type parameters, unnormalizable projections
-                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
-                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
-                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate = ty::TraitRef::from_lang_item(
-                        tcx,
-                        LangItem::Sized,
-                        DUMMY_SP,
-                        [ty::GenericArg::from(goal.predicate.self_ty())],
-                    );
-                    // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                    ecx.add_goal(GoalSource::Misc, goal.with(tcx, sized_predicate));
-                    tcx.types.unit
-                }
-
                 ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
                     None => tcx.types.unit,
                     Some(tail_def) => {
@@ -570,6 +554,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     None => tcx.types.unit,
                     Some(&tail_ty) => Ty::new_projection(tcx, metadata_def_id, [tail_ty]),
                 },
+
+                // The metadata of these types can only be known from param env or alias bound
+                // candidates.
+                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => return Err(NoSolution),
 
                 ty::Infer(
                     ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),

@@ -26,6 +26,14 @@ fn wrapper_to_unit<T>(ptr: *const ()) -> *const Wrapper<T> {
     cast_same_meta(ptr)
 }
 
+// normalize `Wrapper<T>::Metadata` -> `()`
+fn wrapper_to_unit2<T: ?Sized>(ptr: *const ()) -> *const Wrapper<T>
+where
+    Wrapper<T>: Sized,
+{
+    cast_same_meta(ptr)
+}
+
 trait Project {
     type Assoc: ?Sized;
 }
@@ -45,8 +53,16 @@ where
     cast_same_meta(ptr)
 }
 
-// normalize `<[T] as Pointee>::Metadata` -> `usize`, even if `[T]: Sized`
-fn sized_slice<T>(ptr: *const [T]) -> *const str
+// normalize `WrapperProject<T>::Metadata` -> `T::Assoc::Metadata` -> `()`
+fn wrapper_project_unit2<T: ?Sized + Project>(ptr: *const ()) -> *const WrapperProject<T>
+where
+    WrapperProject<T>: Sized,
+{
+    cast_same_meta(ptr)
+}
+
+// if `[T]: Sized`, then normalize `<[T] as Pointee>::Metadata` -> `()`
+fn sized_slice<T>(ptr: *const ()) -> *const [T]
 where
     [T]: Sized,
 {
