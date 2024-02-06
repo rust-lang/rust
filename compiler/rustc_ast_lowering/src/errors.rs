@@ -395,3 +395,18 @@ pub(crate) struct GenericParamDefaultInBinder {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_async_bound_not_on_trait)]
+pub(crate) struct AsyncBoundNotOnTrait {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_async_bound_only_for_fn_traits)]
+pub(crate) struct AsyncBoundOnlyForFnTraits {
+    #[primary_span]
+    pub span: Span,
+}

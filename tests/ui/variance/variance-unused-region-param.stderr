@@ -1,16 +1,16 @@
-error[E0392]: parameter `'a` is never used
+error[E0392]: lifetime parameter `'a` is never used
   --> $DIR/variance-unused-region-param.rs:3:19
    |
 LL | struct SomeStruct<'a> { x: u32 }
-   |                   ^^ unused parameter
+   |                   ^^ unused lifetime parameter
    |
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0392]: parameter `'a` is never used
+error[E0392]: lifetime parameter `'a` is never used
   --> $DIR/variance-unused-region-param.rs:4:15
    |
 LL | enum SomeEnum<'a> { Nothing }
-   |               ^^ unused parameter
+   |               ^^ unused lifetime parameter
    |
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 

@@ -1,4 +1,4 @@
-use rustc_errors::codes::*;
+use rustc_errors::{codes::*, Applicability};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{
     symbol::{Ident, Symbol},
@@ -786,4 +786,17 @@ pub(crate) struct IsNotDirectlyImportable {
     #[label]
     pub(crate) span: Span,
     pub(crate) target: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unexpected_res_change_ty_to_const_param_sugg,
+    code = "const ",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
+    #[primary_span]
+    pub span: Span,
+    #[applicability]
+    pub applicability: Applicability,
 }

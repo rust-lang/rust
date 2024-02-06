@@ -1,11 +1,11 @@
 error: constant pattern depends on a generic parameter
-  --> $DIR/const-match-pat-generic.rs:8:9
+  --> $DIR/const-match-pat-generic.rs:7:9
    |
 LL |         const { V } => {},
    |         ^^^^^^^^^^^
 
 error: constant pattern depends on a generic parameter
-  --> $DIR/const-match-pat-generic.rs:20:9
+  --> $DIR/const-match-pat-generic.rs:19:9
    |
 LL |         const { f(V) } => {},
    |         ^^^^^^^^^^^^^^

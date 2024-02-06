@@ -26,15 +26,15 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
-mod lexed_str;
-mod token_set;
-mod syntax_kind;
 mod event;
-mod parser;
 mod grammar;
 mod input;
+mod lexed_str;
 mod output;
+mod parser;
 mod shortcuts;
+mod syntax_kind;
+mod token_set;
 
 #[cfg(test)]
 mod tests;

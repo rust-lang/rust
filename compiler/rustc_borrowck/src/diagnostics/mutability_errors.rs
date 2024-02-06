@@ -198,12 +198,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         let span = self.body.local_decls[local].source_info.span;
                         mut_error = Some(span);
-                        if let Some((buffer, c)) = self.get_buffered_mut_error(span) {
+                        if let Some((buffered_err, c)) = self.get_buffered_mut_error(span) {
                             // We've encountered a second (or more) attempt to mutably borrow an
                             // immutable binding, so the likely problem is with the binding
                             // declaration, not the use. We collect these in a single diagnostic
                             // and make the binding the primary span of the error.
-                            err = buffer;
+                            err = buffered_err;
                             count = c + 1;
                             if count == 2 {
                                 err.replace_span_with(span, false);
@@ -924,7 +924,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_lo(),
                             "use a mutable iterator instead",
-                            "mut ".to_string(),
+                            "mut ",
                             Applicability::MachineApplicable,
                         );
                     }

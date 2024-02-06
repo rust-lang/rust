@@ -8,6 +8,7 @@ mod item;
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 use crate::pprust::state::expr::FixupContext;
+use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
@@ -1590,18 +1591,28 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(tref, modifier) => {
-                    match modifier.constness {
+                GenericBound::Trait(
+                    tref,
+                    TraitBoundModifiers { constness, asyncness, polarity },
+                ) => {
+                    match constness {
                         ast::BoundConstness::Never => {}
                         ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
-                            self.word_space(modifier.constness.as_str());
+                            self.word_space(constness.as_str());
                         }
                     }
 
-                    match modifier.polarity {
+                    match asyncness {
+                        ast::BoundAsyncness::Normal => {}
+                        ast::BoundAsyncness::Async(_) => {
+                            self.word_space(asyncness.as_str());
+                        }
+                    }
+
+                    match polarity {
                         ast::BoundPolarity::Positive => {}
                         ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
-                            self.word(modifier.polarity.as_str());
+                            self.word(polarity.as_str());
                         }
                     }
 

@@ -1116,9 +1116,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         item_name.span,
                                         format!(
                                             "you might have meant to use `{}`",
-                                            inherent_method.name.as_str()
+                                            inherent_method.name
                                         ),
-                                        inherent_method.name.as_str(),
+                                        inherent_method.name,
                                         Applicability::MaybeIncorrect,
                                     );
                                     break 'outer;
@@ -2019,7 +2019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 diag.span_suggestion_verbose(
                     sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':').unwrap(),
                     "you may have meant to call an instance method",
-                    ".".to_string(),
+                    ".",
                     Applicability::MaybeIncorrect,
                 );
             }

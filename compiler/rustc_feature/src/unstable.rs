@@ -321,8 +321,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    /// Allows using the `amdgpu-kernel` ABI.
-    (unstable, abi_amdgpu_kernel, "1.29.0", Some(51575)),
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
@@ -498,7 +496,7 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (unstable, inline_const, "1.49.0", Some(76001)),
     /// Allow anonymous constants from an inline `const` block in pattern position
-    (incomplete, inline_const_pat, "1.58.0", Some(76001)),
+    (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     // Allows setting the threshold for the `large_assignments` lint.

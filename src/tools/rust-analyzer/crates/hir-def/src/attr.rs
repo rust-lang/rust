@@ -32,6 +32,7 @@ use crate::{
     VariantId,
 };
 
+/// Desugared attributes of an item post `cfg_attr` expansion.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attrs(RawAttrs);
 
@@ -74,7 +75,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
-        let _p = profile::span("fields_attrs_query");
+        let _p = tracing::span!(tracing::Level::INFO, "fields_attrs_query").entered();
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
 
@@ -228,7 +229,6 @@ pub enum DocAtom {
     KeyValue { key: SmolStr, value: SmolStr },
 }
 
-// Adapted from `CfgExpr` parsing code
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DocExpr {
     Invalid,
@@ -322,7 +322,7 @@ impl AttrsWithOwner {
     }
 
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
-        let _p = profile::span("attrs_query");
+        let _p = tracing::span!(tracing::Level::INFO, "attrs_query").entered();
         // FIXME: this should use `Trace` to avoid duplication in `source_map` below
         let raw_attrs = match def {
             AttrDefId::ModuleId(module) => {
@@ -448,10 +448,7 @@ impl AttrsWithOwner {
                 let map = db.fields_attrs_source_map(id.parent);
                 let file_id = id.parent.file_id(db);
                 let root = db.parse_or_expand(file_id);
-                let owner = match &map[id.local_id] {
-                    Either::Left(it) => ast::AnyHasAttrs::new(it.to_node(&root)),
-                    Either::Right(it) => ast::AnyHasAttrs::new(it.to_node(&root)),
-                };
+                let owner = ast::AnyHasAttrs::new(map[id.local_id].to_node(&root));
                 InFile::new(file_id, owner)
             }
             AttrDefId::AdtId(adt) => match adt {
@@ -634,7 +631,7 @@ fn attrs_from_item_tree_assoc<'db, N: ItemTreeModItemNode>(
 pub(crate) fn fields_attrs_source_map(
     db: &dyn DefDatabase,
     def: VariantId,
-) -> Arc<ArenaMap<LocalFieldId, Either<AstPtr<ast::TupleField>, AstPtr<ast::RecordField>>>> {
+) -> Arc<ArenaMap<LocalFieldId, AstPtr<Either<ast::TupleField, ast::RecordField>>>> {
     let mut res = ArenaMap::default();
     let child_source = def.child_source(db);
 
@@ -643,7 +640,7 @@ pub(crate) fn fields_attrs_source_map(
             idx,
             variant
                 .as_ref()
-                .either(|l| Either::Left(AstPtr::new(l)), |r| Either::Right(AstPtr::new(r))),
+                .either(|l| AstPtr::new(l).wrap_left(), |r| AstPtr::new(r).wrap_right()),
         );
     }
 

@@ -558,7 +558,7 @@ impl Emitter for HumanEmitter {
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
     pub fatal_dcx: DiagCtxt,
-    pub fatal_note: Option<String>,
+    pub fatal_note: String,
 }
 
 impl Translate for SilentEmitter {
@@ -576,13 +576,11 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, d: &Diagnostic) {
-        if d.level == Level::Fatal {
-            let mut d = d.clone();
-            if let Some(ref note) = self.fatal_note {
-                d.note(note.clone());
-            }
-            self.fatal_dcx.emit_diagnostic(d);
+    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+        if diag.level == Level::Fatal {
+            let mut diag = diag.clone();
+            diag.note(self.fatal_note.clone());
+            self.fatal_dcx.emit_diagnostic(diag);
         }
     }
 }

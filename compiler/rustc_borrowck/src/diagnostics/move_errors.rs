@@ -288,7 +288,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         place: Place<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -310,7 +310,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.

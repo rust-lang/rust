@@ -111,7 +111,6 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
             Conv::X86VectorCall => CallConvention::X86VectorCall,
             Conv::X86_64SysV => CallConvention::X86_64SysV,
             Conv::X86_64Win64 => CallConvention::X86_64Win64,
-            Conv::AmdGpuKernel => CallConvention::AmdGpuKernel,
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,

@@ -114,7 +114,7 @@ impl MirLowerCtx<'_> {
                             index: i as u32,
                         }))
                     }),
-                    &mut cond_place,
+                    &cond_place,
                     mode,
                 )?
             }

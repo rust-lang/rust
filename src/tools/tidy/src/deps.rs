@@ -132,6 +132,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("dissimilar", "Apache-2.0"),
     ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
     ("snap", "BSD-3-Clause"),
@@ -458,13 +459,17 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "proc-macro2",
+    "quote",
     "regalloc2",
     "region",
     "rustc-hash",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",
+    "syn",
     "target-lexicon",
+    "unicode-ident",
     "version_check",
     "wasmtime-jit-icache-coherence",
     "winapi",
@@ -479,6 +484,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "zerocopy",
+    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 

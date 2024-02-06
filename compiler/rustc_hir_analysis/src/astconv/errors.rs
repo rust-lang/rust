@@ -247,7 +247,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_suggestion_verbose(
                             assoc_name.span,
                             fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
-                            suggested_name.to_string(),
+                            suggested_name,
                             Applicability::MaybeIncorrect,
                         );
                     }

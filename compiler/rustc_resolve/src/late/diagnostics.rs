@@ -444,6 +444,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         self.suggest_bare_struct_literal(&mut err);
+        self.suggest_changing_type_to_const_param(&mut err, res, source, span);
 
         if self.suggest_pattern_match_with_let(&mut err, source, span) {
             // Fallback label.
@@ -452,7 +453,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         self.suggest_self_or_self_ref(&mut err, path, span);
-        self.detect_assoct_type_constraint_meant_as_path(&mut err, &base_error);
+        self.detect_assoc_type_constraint_meant_as_path(&mut err, &base_error);
         if self.suggest_self_ty(&mut err, source, path, span)
             || self.suggest_self_value(&mut err, source, path, span)
         {
@@ -491,7 +492,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         (err, candidates)
     }
 
-    fn detect_assoct_type_constraint_meant_as_path(
+    fn detect_assoc_type_constraint_meant_as_path(
         &self,
         err: &mut Diagnostic,
         base_error: &BaseError,
@@ -699,7 +700,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             msg,
-                            "self.".to_string(),
+                            "self.",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -710,7 +711,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             format!("you might have meant to {}", candidate.action()),
-                            "Self::".to_string(),
+                            "Self::",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -799,7 +800,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             false,
         ) = (source, res, is_macro)
         {
-            if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
+            if let Some(bounds @ [first_bound, .., last_bound]) =
+                self.diagnostic_metadata.current_trait_object
+            {
                 fallback = true;
                 let spans: Vec<Span> = bounds
                     .iter()
@@ -807,9 +810,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     .filter(|&sp| sp != base_error.span)
                     .collect();
 
-                let start_span = bounds[0].span();
+                let start_span = first_bound.span();
                 // `end_span` is the end of the poly trait ref (Foo + 'baz + Bar><)
-                let end_span = bounds.last().unwrap().span();
+                let end_span = last_bound.span();
                 // `last_bound_span` is the last bound of the poly trait ref (Foo + >'baz< + Bar)
                 let last_bound_span = spans.last().cloned().unwrap();
                 let mut multi_span: MultiSpan = spans.clone().into();
@@ -1133,6 +1136,55 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 ],
                 Applicability::HasPlaceholders,
             );
+        }
+    }
+
+    fn suggest_changing_type_to_const_param(
+        &mut self,
+        err: &mut Diagnostic,
+        res: Option<Res>,
+        source: PathSource<'_>,
+        span: Span,
+    ) {
+        let PathSource::Trait(_) = source else { return };
+
+        // We don't include `DefKind::Str` and `DefKind::AssocTy` as they can't be reached here anyway.
+        let applicability = match res {
+            Some(Res::PrimTy(PrimTy::Int(_) | PrimTy::Uint(_) | PrimTy::Bool | PrimTy::Char)) => {
+                Applicability::MachineApplicable
+            }
+            // FIXME(const_generics): Add `DefKind::TyParam` and `SelfTyParam` once we support generic
+            // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
+            // benefits of including them here outweighs the small number of false positives.
+            Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
+                if self.r.tcx.features().adt_const_params =>
+            {
+                Applicability::MaybeIncorrect
+            }
+            _ => return,
+        };
+
+        let Some(item) = self.diagnostic_metadata.current_item else { return };
+        let Some(generics) = item.kind.generics() else { return };
+
+        let param = generics.params.iter().find_map(|param| {
+            // Only consider type params with exactly one trait bound.
+            if let [bound] = &*param.bounds
+                && let ast::GenericBound::Trait(tref, ast::TraitBoundModifiers::NONE) = bound
+                && tref.span == span
+                && param.ident.span.eq_ctxt(span)
+            {
+                Some(param.ident.span)
+            } else {
+                None
+            }
+        });
+
+        if let Some(param) = param {
+            err.subdiagnostic(errors::UnexpectedResChangeTyToConstParamSugg {
+                span: param.shrink_to_lo(),
+                applicability,
+            });
         }
     }
 
@@ -2419,10 +2471,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let mut iter = ident.chars().map(|c| c.is_uppercase());
         let single_uppercase_char =
             matches!(iter.next(), Some(true)) && matches!(iter.next(), None);
-        if !self.diagnostic_metadata.currently_processing_generics && !single_uppercase_char {
+        if !self.diagnostic_metadata.currently_processing_generic_args && !single_uppercase_char {
             return None;
         }
-        match (self.diagnostic_metadata.current_item, single_uppercase_char, self.diagnostic_metadata.currently_processing_generics) {
+        match (self.diagnostic_metadata.current_item, single_uppercase_char, self.diagnostic_metadata.currently_processing_generic_args) {
             (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _, _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }

@@ -30,12 +30,12 @@
 
 mod attributes;
 mod expressions;
+mod generic_args;
+mod generic_params;
 mod items;
 mod params;
 mod paths;
 mod patterns;
-mod generic_args;
-mod generic_params;
 mod types;
 
 use crate::{

@@ -17,6 +17,7 @@ use hir_def::{
 use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
 use intern::Interned;
 use la_arena::ArenaMap;
+use rustc_abi::TargetDataLayout;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
@@ -51,7 +52,7 @@ macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
             Ok(it) => it,
-            Err(_) => return Err(MirEvalError::TypeError(stringify!(mismatched size in constructing $ty))),
+            Err(_) => return Err(MirEvalError::InternalError(stringify!(mismatched size in constructing $ty).into())),
         }))
     };
 }
@@ -145,6 +146,7 @@ enum MirOrDynIndex {
 pub struct Evaluator<'a> {
     db: &'a dyn HirDatabase,
     trait_env: Arc<TraitEnvironment>,
+    target_data_layout: Arc<TargetDataLayout>,
     stack: Vec<u8>,
     heap: Vec<u8>,
     code_stack: Vec<StackFrame>,
@@ -316,12 +318,12 @@ impl Address {
 pub enum MirEvalError {
     ConstEvalError(String, Box<ConstEvalError>),
     LayoutError(LayoutError, Ty),
-    /// Means that code had type errors (or mismatched args) and we shouldn't generate mir in first place.
-    TypeError(&'static str),
+    TargetDataLayoutNotAvailable(Arc<str>),
     /// Means that code had undefined behavior. We don't try to actively detect UB, but if it was detected
     /// then use this type of error.
     UndefinedBehavior(String),
     Panic(String),
+    // FIXME: This should be folded into ConstEvalError?
     MirLowerError(FunctionId, MirLowerError),
     MirLowerErrorForClosure(ClosureId, MirLowerError),
     TypeIsUnsized(Ty, &'static str),
@@ -330,11 +332,12 @@ pub enum MirEvalError {
     InFunction(Box<MirEvalError>, Vec<(Either<FunctionId, ClosureId>, MirSpan, DefWithBodyId)>),
     ExecutionLimitExceeded,
     StackOverflow,
-    TargetDataLayoutNotAvailable,
+    /// FIXME: Fold this into InternalError
     InvalidVTableId(usize),
+    /// ?
     CoerceUnsizedError(Ty),
-    LangItemNotFound(LangItem),
-    BrokenLayout(Box<Layout>),
+    /// These should not occur, usually indicates a bug in mir lowering.
+    InternalError(Box<str>),
 }
 
 impl MirEvalError {
@@ -359,8 +362,8 @@ impl MirEvalError {
                             func
                         )?;
                     }
-                    Either::Right(clos) => {
-                        writeln!(f, "In {:?}", clos)?;
+                    Either::Right(closure) => {
+                        writeln!(f, "In {:?}", closure)?;
                     }
                 }
                 let source_map = db.body_with_source_map(*def).1;
@@ -406,8 +409,8 @@ impl MirEvalError {
                     span_formatter,
                 )?;
             }
-            MirEvalError::TypeError(_)
-            | MirEvalError::UndefinedBehavior(_)
+            MirEvalError::UndefinedBehavior(_)
+            | MirEvalError::TargetDataLayoutNotAvailable(_)
             | MirEvalError::Panic(_)
             | MirEvalError::MirLowerErrorForClosure(_, _)
             | MirEvalError::TypeIsUnsized(_, _)
@@ -415,10 +418,8 @@ impl MirEvalError {
             | MirEvalError::InvalidConst(_)
             | MirEvalError::ExecutionLimitExceeded
             | MirEvalError::StackOverflow
-            | MirEvalError::TargetDataLayoutNotAvailable
             | MirEvalError::CoerceUnsizedError(_)
-            | MirEvalError::LangItemNotFound(_)
-            | MirEvalError::BrokenLayout(_)
+            | MirEvalError::InternalError(_)
             | MirEvalError::InvalidVTableId(_) => writeln!(f, "{:?}", err)?,
         }
         Ok(())
@@ -431,16 +432,16 @@ impl std::fmt::Debug for MirEvalError {
             Self::ConstEvalError(arg0, arg1) => {
                 f.debug_tuple("ConstEvalError").field(arg0).field(arg1).finish()
             }
-            Self::LangItemNotFound(arg0) => f.debug_tuple("LangItemNotFound").field(arg0).finish(),
             Self::LayoutError(arg0, arg1) => {
                 f.debug_tuple("LayoutError").field(arg0).field(arg1).finish()
             }
-            Self::TypeError(arg0) => f.debug_tuple("TypeError").field(arg0).finish(),
             Self::UndefinedBehavior(arg0) => {
                 f.debug_tuple("UndefinedBehavior").field(arg0).finish()
             }
             Self::Panic(msg) => write!(f, "Panic with message:\n{msg:?}"),
-            Self::TargetDataLayoutNotAvailable => write!(f, "TargetDataLayoutNotAvailable"),
+            Self::TargetDataLayoutNotAvailable(arg0) => {
+                f.debug_tuple("TargetDataLayoutNotAvailable").field(arg0).finish()
+            }
             Self::TypeIsUnsized(ty, it) => write!(f, "{ty:?} is unsized. {it} should be sized."),
             Self::ExecutionLimitExceeded => write!(f, "execution limit exceeded"),
             Self::StackOverflow => write!(f, "stack overflow"),
@@ -453,7 +454,7 @@ impl std::fmt::Debug for MirEvalError {
             Self::CoerceUnsizedError(arg0) => {
                 f.debug_tuple("CoerceUnsizedError").field(arg0).finish()
             }
-            Self::BrokenLayout(arg0) => f.debug_tuple("BrokenLayout").field(arg0).finish(),
+            Self::InternalError(arg0) => f.debug_tuple("InternalError").field(arg0).finish(),
             Self::InvalidVTableId(arg0) => f.debug_tuple("InvalidVTableId").field(arg0).finish(),
             Self::NotSupported(arg0) => f.debug_tuple("NotSupported").field(arg0).finish(),
             Self::InvalidConst(arg0) => {
@@ -530,7 +531,11 @@ pub fn interpret_mir(
     trait_env: Option<Arc<TraitEnvironment>>,
 ) -> (Result<Const>, MirOutput) {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env);
+    let mut evaluator =
+        match Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env) {
+            Ok(it) => it,
+            Err(e) => return (Err(e), MirOutput { stdout: vec![], stderr: vec![] }),
+        };
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
@@ -566,9 +571,15 @@ impl Evaluator<'_> {
         owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
         trait_env: Option<Arc<TraitEnvironment>>,
-    ) -> Evaluator<'_> {
+    ) -> Result<Evaluator<'_>> {
         let crate_id = owner.module(db.upcast()).krate();
-        Evaluator {
+        let target_data_layout = match db.target_data_layout(crate_id) {
+            Ok(target_data_layout) => target_data_layout,
+            Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
+        };
+        let cached_ptr_size = target_data_layout.pointer_size.bytes_usize();
+        Ok(Evaluator {
+            target_data_layout,
             stack: vec![0],
             heap: vec![0],
             code_stack: vec![],
@@ -590,10 +601,7 @@ impl Evaluator<'_> {
             not_special_fn_cache: RefCell::new(Default::default()),
             mir_or_dyn_index_cache: RefCell::new(Default::default()),
             unused_locals_store: RefCell::new(Default::default()),
-            cached_ptr_size: match db.target_data_layout(crate_id) {
-                Some(it) => it.pointer_size.bytes_usize(),
-                None => 8,
-            },
+            cached_ptr_size,
             cached_fn_trait_func: db
                 .lang_item(crate_id, LangItem::Fn)
                 .and_then(|x| x.as_trait())
@@ -606,7 +614,7 @@ impl Evaluator<'_> {
                 .lang_item(crate_id, LangItem::FnOnce)
                 .and_then(|x| x.as_trait())
                 .and_then(|x| db.trait_data(x).method_by_name(&name![call_once])),
-        }
+        })
     }
 
     fn place_addr(&self, p: &Place, locals: &Locals) -> Result<Address> {
@@ -754,8 +762,8 @@ impl Evaluator<'_> {
                                     RustcEnumVariantIdx(it.lookup(self.db.upcast()).index as usize)
                                 }
                                 _ => {
-                                    return Err(MirEvalError::TypeError(
-                                        "Multivariant layout only happens for enums",
+                                    return Err(MirEvalError::InternalError(
+                                        "mismatched layout".into(),
                                     ))
                                 }
                             }]
@@ -993,12 +1001,12 @@ impl Evaluator<'_> {
                 IntervalOrOwned::Borrowed(value) => interval.write_from_interval(self, value)?,
             }
             if remain_args == 0 {
-                return Err(MirEvalError::TypeError("more arguments provided"));
+                return Err(MirEvalError::InternalError("too many arguments".into()));
             }
             remain_args -= 1;
         }
         if remain_args > 0 {
-            return Err(MirEvalError::TypeError("not enough arguments provided"));
+            return Err(MirEvalError::InternalError("too few arguments".into()));
         }
         Ok(())
     }
@@ -1071,8 +1079,8 @@ impl Evaluator<'_> {
                 match metadata {
                     Some(m) => m,
                     None => {
-                        return Err(MirEvalError::TypeError(
-                            "type without metadata is used for Rvalue::Len",
+                        return Err(MirEvalError::InternalError(
+                            "type without metadata is used for Rvalue::Len".into(),
                         ));
                     }
                 }
@@ -1312,7 +1320,7 @@ impl Evaluator<'_> {
                     }
                     AggregateKind::Tuple(ty) => {
                         let layout = self.layout(ty)?;
-                        Owned(self.make_by_layout(
+                        Owned(self.construct_with_layout(
                             layout.size.bytes_usize(),
                             &layout,
                             None,
@@ -1334,7 +1342,7 @@ impl Evaluator<'_> {
                     AggregateKind::Adt(it, subst) => {
                         let (size, variant_layout, tag) =
                             self.layout_of_variant(*it, subst.clone(), locals)?;
-                        Owned(self.make_by_layout(
+                        Owned(self.construct_with_layout(
                             size,
                             &variant_layout,
                             tag,
@@ -1343,7 +1351,7 @@ impl Evaluator<'_> {
                     }
                     AggregateKind::Closure(ty) => {
                         let layout = self.layout(ty)?;
-                        Owned(self.make_by_layout(
+                        Owned(self.construct_with_layout(
                             layout.size.bytes_usize(),
                             &layout,
                             None,
@@ -1415,10 +1423,7 @@ impl Evaluator<'_> {
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
-                let Some(target_data_layout) = self.db.target_data_layout(self.crate_id) else {
-                    not_supported!("missing target data layout");
-                };
-                let size = tag.size(&*target_data_layout).bytes_usize();
+                let size = tag.size(&*self.target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
                 match tag_encoding {
                     TagEncoding::Direct => {
@@ -1458,9 +1463,8 @@ impl Evaluator<'_> {
         if let TyKind::Adt(id, subst) = kind {
             if let AdtId::StructId(struct_id) = id.0 {
                 let field_types = self.db.field_types(struct_id.into());
-                let mut field_types = field_types.iter();
                 if let Some(ty) =
-                    field_types.next().map(|it| it.1.clone().substitute(Interner, subst))
+                    field_types.iter().last().map(|it| it.1.clone().substitute(Interner, subst))
                 {
                     return self.coerce_unsized_look_through_fields(&ty, goal);
                 }
@@ -1578,10 +1582,6 @@ impl Evaluator<'_> {
         Ok(match &layout.variants {
             Variants::Single { .. } => (layout.size.bytes_usize(), layout, None),
             Variants::Multiple { variants, tag, tag_encoding, .. } => {
-                let cx = self
-                    .db
-                    .target_data_layout(self.crate_id)
-                    .ok_or(MirEvalError::TargetDataLayoutNotAvailable)?;
                 let enum_variant_id = match it {
                     VariantId::EnumVariantId(it) => it,
                     _ => not_supported!("multi variant layout for non-enums"),
@@ -1612,7 +1612,7 @@ impl Evaluator<'_> {
                     if have_tag {
                         Some((
                             layout.fields.offset(0).bytes_usize(),
-                            tag.size(&*cx).bytes_usize(),
+                            tag.size(&*self.target_data_layout).bytes_usize(),
                             discriminant,
                         ))
                     } else {
@@ -1623,7 +1623,7 @@ impl Evaluator<'_> {
         })
     }
 
-    fn make_by_layout(
+    fn construct_with_layout(
         &mut self,
         size: usize, // Not necessarily equal to variant_layout.size
         variant_layout: &Layout,
@@ -1634,7 +1634,14 @@ impl Evaluator<'_> {
         if let Some((offset, size, value)) = tag {
             match result.get_mut(offset..offset + size) {
                 Some(it) => it.copy_from_slice(&value.to_le_bytes()[0..size]),
-                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
+                None => {
+                    return Err(MirEvalError::InternalError(
+                        format!(
+                            "encoded tag ({offset}, {size}, {value}) is out of bounds 0..{size}"
+                        )
+                        .into(),
+                    ))
+                }
             }
         }
         for (i, op) in values.enumerate() {
@@ -1642,7 +1649,11 @@ impl Evaluator<'_> {
             let op = op.get(self)?;
             match result.get_mut(offset..offset + op.len()) {
                 Some(it) => it.copy_from_slice(op),
-                None => return Err(MirEvalError::BrokenLayout(Box::new(variant_layout.clone()))),
+                None => {
+                    return Err(MirEvalError::InternalError(
+                        format!("field offset ({offset}) is out of bounds 0..{size}").into(),
+                    ))
+                }
             }
         }
         Ok(result)
@@ -1695,28 +1706,29 @@ impl Evaluator<'_> {
             }
             ConstScalar::Unknown => not_supported!("evaluating unknown const"),
         };
-        let mut v: Cow<'_, [u8]> = Cow::Borrowed(v);
         let patch_map = memory_map.transform_addresses(|b, align| {
             let addr = self.heap_allocate(b.len(), align)?;
             self.write_memory(addr, b)?;
             Ok(addr.to_usize())
         })?;
         let (size, align) = self.size_align_of(ty, locals)?.unwrap_or((v.len(), 1));
-        if size != v.len() {
+        let v: Cow<'_, [u8]> = if size != v.len() {
             // Handle self enum
             if size == 16 && v.len() < 16 {
-                v = Cow::Owned(pad16(&v, false).to_vec());
+                Cow::Owned(pad16(v, false).to_vec())
             } else if size < 16 && v.len() == 16 {
-                v = Cow::Owned(v[0..size].to_vec());
+                Cow::Borrowed(&v[0..size])
             } else {
                 return Err(MirEvalError::InvalidConst(konst.clone()));
             }
-        }
+        } else {
+            Cow::Borrowed(v)
+        };
         let addr = self.heap_allocate(size, align)?;
         self.write_memory(addr, &v)?;
         self.patch_addresses(
             &patch_map,
-            |bytes| match &memory_map {
+            |bytes| match memory_map {
                 MemoryMap::Empty | MemoryMap::Simple(_) => {
                     Err(MirEvalError::InvalidVTableId(from_bytes!(usize, bytes)))
                 }
@@ -2000,7 +2012,7 @@ impl Evaluator<'_> {
                         if let Some((v, l)) = detect_variant_from_bytes(
                             &layout,
                             this.db,
-                            this.trait_env.clone(),
+                            &this.target_data_layout,
                             bytes,
                             e,
                         ) {
@@ -2079,7 +2091,7 @@ impl Evaluator<'_> {
                     if let Some((ev, layout)) = detect_variant_from_bytes(
                         &layout,
                         self.db,
-                        self.trait_env.clone(),
+                        &self.target_data_layout,
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
@@ -2153,14 +2165,14 @@ impl Evaluator<'_> {
     ) -> Result<Option<StackFrame>> {
         let id = from_bytes!(usize, bytes.get(self)?);
         let next_ty = self.vtable_map.ty(id)?.clone();
-        match &next_ty.kind(Interner) {
+        match next_ty.kind(Interner) {
             TyKind::FnDef(def, generic_args) => {
                 self.exec_fn_def(*def, generic_args, destination, args, locals, target_bb, span)
             }
             TyKind::Closure(id, subst) => {
                 self.exec_closure(*id, bytes.slice(0..0), subst, destination, args, locals, span)
             }
-            _ => Err(MirEvalError::TypeError("function pointer to non function")),
+            _ => Err(MirEvalError::InternalError("function pointer to non function".into())),
         }
     }
 
@@ -2241,7 +2253,7 @@ impl Evaluator<'_> {
             CallableDefId::StructId(id) => {
                 let (size, variant_layout, tag) =
                     self.layout_of_variant(id.into(), generic_args, locals)?;
-                let result = self.make_by_layout(
+                let result = self.construct_with_layout(
                     size,
                     &variant_layout,
                     tag,
@@ -2253,7 +2265,7 @@ impl Evaluator<'_> {
             CallableDefId::EnumVariantId(id) => {
                 let (size, variant_layout, tag) =
                     self.layout_of_variant(id.into(), generic_args, locals)?;
-                let result = self.make_by_layout(
+                let result = self.construct_with_layout(
                     size,
                     &variant_layout,
                     tag,
@@ -2407,7 +2419,9 @@ impl Evaluator<'_> {
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
     ) -> Result<Option<StackFrame>> {
-        let func = args.first().ok_or(MirEvalError::TypeError("fn trait with no arg"))?;
+        let func = args
+            .first()
+            .ok_or_else(|| MirEvalError::InternalError("fn trait with no arg".into()))?;
         let mut func_ty = func.ty.clone();
         let mut func_data = func.interval;
         while let TyKind::Ref(_, _, z) = func_ty.kind(Interner) {
@@ -2450,7 +2464,7 @@ impl Evaluator<'_> {
                     )
                     .intern(Interner);
                     let layout = self.layout(&ty)?;
-                    let result = self.make_by_layout(
+                    let result = self.construct_with_layout(
                         layout.size.bytes_usize(),
                         &layout,
                         None,
@@ -2634,7 +2648,7 @@ pub fn render_const_using_debug_impl(
     owner: ConstId,
     c: &Const,
 ) -> Result<String> {
-    let mut evaluator = Evaluator::new(db, owner.into(), false, None);
+    let mut evaluator = Evaluator::new(db, owner.into(), false, None)?;
     let locals = &Locals {
         ptr: ArenaMap::new(),
         body: db
@@ -2699,12 +2713,7 @@ pub fn render_const_using_debug_impl(
 
 pub fn pad16(it: &[u8], is_signed: bool) -> [u8; 16] {
     let is_negative = is_signed && it.last().unwrap_or(&0) > &127;
-    let fill_with = if is_negative { 255 } else { 0 };
-    it.iter()
-        .copied()
-        .chain(iter::repeat(fill_with))
-        .take(16)
-        .collect::<Vec<u8>>()
-        .try_into()
-        .expect("iterator take is not working")
+    let mut res = [if is_negative { 255 } else { 0 }; 16];
+    res[..it.len()].copy_from_slice(it);
+    res
 }

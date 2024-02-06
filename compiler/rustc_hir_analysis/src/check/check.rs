@@ -31,6 +31,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
 use rustc_type_ir::fold::TypeFoldable;
 
+use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
@@ -520,9 +521,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(def_id).instantiate_identity();
-            let generics = tcx.generics_of(def_id);
-            check_type_params_are_used(tcx, generics, pty_ty);
+            check_type_alias_type_params_are_used(tcx, def_id);
         }
         DefKind::ForeignMod => {
             let it = tcx.hir().expect_item(def_id);
@@ -1269,28 +1268,51 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
     }
 }
 
-pub(super) fn check_type_params_are_used<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    generics: &ty::Generics,
-    ty: Ty<'tcx>,
-) {
-    debug!("check_type_params_are_used(generics={:?}, ty={:?})", generics, ty);
+fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    if tcx.type_alias_is_lazy(def_id) {
+        // Since we compute the variances for lazy type aliases and already reject bivariant
+        // parameters as unused, we can and should skip this check for lazy type aliases.
+        return;
+    }
 
-    assert_eq!(generics.parent, None);
-
+    let generics = tcx.generics_of(def_id);
     if generics.own_counts().types == 0 {
         return;
     }
 
-    let mut params_used = BitSet::new_empty(generics.params.len());
-
+    let ty = tcx.type_of(def_id).instantiate_identity();
     if ty.references_error() {
-        // If there is already another error, do not emit
-        // an error for not using a type parameter.
+        // If there is already another error, do not emit an error for not using a type parameter.
         assert!(tcx.dcx().has_errors().is_some());
         return;
     }
 
+    // Lazily calculated because it is only needed in case of an error.
+    let bounded_params = LazyCell::new(|| {
+        tcx.explicit_predicates_of(def_id)
+            .predicates
+            .iter()
+            .filter_map(|(predicate, span)| {
+                let bounded_ty = match predicate.kind().skip_binder() {
+                    ty::ClauseKind::Trait(pred) => pred.trait_ref.self_ty(),
+                    ty::ClauseKind::TypeOutlives(pred) => pred.0,
+                    _ => return None,
+                };
+                if let ty::Param(param) = bounded_ty.kind() {
+                    Some((param.index, span))
+                } else {
+                    None
+                }
+            })
+            // FIXME: This assumes that elaborated `Sized` bounds come first (which does hold at the
+            // time of writing). This is a bit fragile since we later use the span to detect elaborated
+            // `Sized` bounds. If they came last for example, this would break `Trait + /*elab*/Sized`
+            // since it would overwrite the span of the user-written bound. This could be fixed by
+            // folding the spans with `Span::to` which requires a bit of effort I think.
+            .collect::<FxHashMap<_, _>>()
+    });
+
+    let mut params_used = BitSet::new_empty(generics.params.len());
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
             && let ty::Param(param) = leaf_ty.kind()
@@ -1305,15 +1327,24 @@ pub(super) fn check_type_params_are_used<'tcx>(
             && let ty::GenericParamDefKind::Type { .. } = param.kind
         {
             let span = tcx.def_span(param.def_id);
-            struct_span_code_err!(
-                tcx.dcx(),
+            let param_name = Ident::new(param.name, span);
+
+            // The corresponding predicates are post-`Sized`-elaboration. Therefore we
+            // * check for emptiness to detect lone user-written `?Sized` bounds
+            // * compare the param span to the pred span to detect lone user-written `Sized` bounds
+            let has_explicit_bounds = bounded_params.is_empty()
+                || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
+            let const_param_help = (!has_explicit_bounds).then_some(());
+
+            let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
                 span,
-                E0091,
-                "type parameter `{}` is unused",
-                param.name,
-            )
-            .with_span_label(span, "unused type parameter")
-            .emit();
+                param_name,
+                param_def_kind: tcx.def_descr(param.def_id),
+                help: errors::UnusedGenericParameterHelp::TyAlias { param_name },
+                const_param_help,
+            });
+            diag.code(E0091);
+            diag.emit();
         }
     }
 }

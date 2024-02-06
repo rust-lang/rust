@@ -92,6 +92,7 @@ pub(crate) fn document_highlight_kind(
         ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
         ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
         ReferenceCategory::Import => None,
+        ReferenceCategory::Test => None,
     }
 }
 
@@ -311,16 +312,14 @@ fn completion_item(
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
     if config.completion().enable_imports_on_the_fly && !item.import_to_add.is_empty() {
-        let imports: Vec<_> = item
+        let imports = item
             .import_to_add
             .into_iter()
-            .filter_map(|(import_path, import_name)| {
-                Some(lsp_ext::CompletionImport {
-                    full_import_path: import_path,
-                    imported_name: import_name,
-                })
+            .map(|(import_path, import_name)| lsp_ext::CompletionImport {
+                full_import_path: import_path,
+                imported_name: import_name,
             })
-            .collect();
+            .collect::<Vec<_>>();
         if !imports.is_empty() {
             let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
             lsp_item.data = Some(to_value(data).unwrap());

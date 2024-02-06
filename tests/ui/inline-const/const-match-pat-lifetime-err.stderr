@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/const-match-pat-lifetime-err.rs:29:29
+  --> $DIR/const-match-pat-lifetime-err.rs:28:29
    |
 LL | fn match_invariant_ref<'a>() {
    |                        -- lifetime `'a` defined here
@@ -15,7 +15,7 @@ LL | }
    | - `y` dropped here while still borrowed
 
 error: lifetime may not live long enough
-  --> $DIR/const-match-pat-lifetime-err.rs:39:12
+  --> $DIR/const-match-pat-lifetime-err.rs:38:12
    |
 LL | fn match_covariant_ref<'a>() {
    |                        -- lifetime `'a` defined here

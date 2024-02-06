@@ -22,6 +22,8 @@ parse_associated_static_item_not_allowed = associated `static` items are not all
 
 parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or later
 
+parse_async_bound_modifier_in_2015 = `async` trait bounds are only allowed in Rust 2018 or later
+
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
 

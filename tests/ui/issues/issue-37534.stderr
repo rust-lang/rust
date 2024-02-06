@@ -15,11 +15,11 @@ warning: relaxing a default bound only does something for `?Sized`; all other tr
 LL | struct Foo<T: ?Hash> {}
    |               ^^^^^
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/issue-37534.rs:1:12
    |
 LL | struct Foo<T: ?Hash> {}
-   |            ^ unused parameter
+   |            ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 

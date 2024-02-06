@@ -78,7 +78,4 @@ pub mod netc {
         pub sin6_flowinfo: u32,
         pub sin6_scope_id: u32,
     }
-
-    #[derive(Copy, Clone)]
-    pub struct sockaddr {}
 }

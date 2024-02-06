@@ -4,11 +4,11 @@ error[E0308]: mismatched types
 LL |     X = Trait::Number,
    |         ^^^^^^^^^^^^^ expected `isize`, found `i32`
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/issue-31910.rs:1:11
    |
 LL | enum Enum<T: Trait> {
-   |           ^ unused parameter
+   |           ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 

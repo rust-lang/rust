@@ -120,7 +120,7 @@ fn main() -> () {
     }
 
     #[test]
-    fn fromed_in_child_mod_imported() {
+    fn from_in_child_mod_imported() {
         check_assist(
             into_to_qualified_from,
             r#"
@@ -168,7 +168,7 @@ fn main() -> () {
     }
 
     #[test]
-    fn fromed_in_child_mod_not_imported() {
+    fn from_in_child_mod_not_imported() {
         check_assist(
             into_to_qualified_from,
             r#"

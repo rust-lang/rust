@@ -9,9 +9,9 @@
 //! write unit-tests (in fact, we used to do that), but that makes tests brittle
 //! and harder to understand.
 
-mod mbe;
-mod builtin_fn_macro;
 mod builtin_derive_macro;
+mod builtin_fn_macro;
+mod mbe;
 mod proc_macros;
 
 use std::{iter, ops::Range, sync};
@@ -25,7 +25,7 @@ use hir_expand::{
     InFile, MacroFileId, MacroFileIdExt,
 };
 use span::Span;
-use stdx::format_to;
+use stdx::{format_to, format_to_acc};
 use syntax::{
     ast::{self, edit::IndentLevel},
     AstNode,
@@ -149,8 +149,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         if tree {
             let tree = format!("{:#?}", parse.syntax_node())
                 .split_inclusive('\n')
-                .map(|line| format!("// {line}"))
-                .collect::<String>();
+                .fold(String::new(), |mut acc, line| format_to_acc!(acc, "// {line}"));
             format_to!(expn_text, "\n{}", tree)
         }
         let range = call.syntax().text_range();

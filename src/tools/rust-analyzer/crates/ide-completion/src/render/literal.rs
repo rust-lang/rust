@@ -27,7 +27,7 @@ pub(crate) fn render_variant_lit(
     variant: hir::Variant,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
-    let _p = profile::span("render_enum_variant");
+    let _p = tracing::span!(tracing::Level::INFO, "render_enum_variant").entered();
     let db = ctx.db();
 
     let name = local_name.unwrap_or_else(|| variant.name(db));
@@ -41,7 +41,7 @@ pub(crate) fn render_struct_literal(
     path: Option<hir::ModPath>,
     local_name: Option<hir::Name>,
 ) -> Option<Builder> {
-    let _p = profile::span("render_struct_literal");
+    let _p = tracing::span!(tracing::Level::INFO, "render_struct_literal").entered();
     let db = ctx.db();
 
     let name = local_name.unwrap_or_else(|| strukt.name(db));

@@ -5,7 +5,7 @@ use either::Either;
 use span::{FileId, FileRange, HirFileId, HirFileIdRepr, MacroFileId, SyntaxContextId};
 use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-use crate::{db, ExpansionInfo, MacroFileIdExt};
+use crate::{db, map_node_range_up, span_for_offset, MacroFileIdExt};
 
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
@@ -147,7 +147,7 @@ impl InFile<&SyntaxNode> {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
                 if let Some((res, ctxt)) =
-                    ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value.text_range())
+                    map_node_range_up(db, &db.expansion_span_map(mac_file), self.value.text_range())
                 {
                     // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                     // keep pre-token map rewrite behaviour.
@@ -163,12 +163,15 @@ impl InFile<&SyntaxNode> {
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
-    pub fn original_file_range_full(self, db: &dyn db::ExpandDatabase) -> FileRange {
+    pub fn original_file_range_with_macro_call_body(
+        self,
+        db: &dyn db::ExpandDatabase,
+    ) -> FileRange {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
                 if let Some((res, ctxt)) =
-                    ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value.text_range())
+                    map_node_range_up(db, &db.expansion_span_map(mac_file), self.value.text_range())
                 {
                     // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                     // keep pre-token map rewrite behaviour.
@@ -193,7 +196,7 @@ impl InFile<&SyntaxNode> {
                 Some((FileRange { file_id, range: self.value.text_range() }, SyntaxContextId::ROOT))
             }
             HirFileIdRepr::MacroFile(mac_file) => {
-                ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value.text_range())
+                map_node_range_up(db, &db.expansion_span_map(mac_file), self.value.text_range())
             }
         }
     }
@@ -215,7 +218,7 @@ impl InFile<&SyntaxNode> {
         }
 
         let (FileRange { file_id, range }, ctx) =
-            ExpansionInfo::new(db, file_id).map_node_range_up(db, self.value.text_range())?;
+            map_node_range_up(db, &db.expansion_span_map(file_id), self.value.text_range())?;
 
         // FIXME: Figure out an API that makes proper use of ctx, this only exists to
         // keep pre-token map rewrite behaviour.
@@ -246,8 +249,11 @@ impl InFile<SyntaxToken> {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
-                let (range, ctxt) = ExpansionInfo::new(db, mac_file)
-                    .span_for_offset(db, self.value.text_range().start());
+                let (range, ctxt) = span_for_offset(
+                    db,
+                    &db.expansion_span_map(mac_file),
+                    self.value.text_range().start(),
+                );
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                 // keep pre-token map rewrite behaviour.
@@ -269,8 +275,11 @@ impl InFile<SyntaxToken> {
                 Some(FileRange { file_id, range: self.value.text_range() })
             }
             HirFileIdRepr::MacroFile(mac_file) => {
-                let (range, ctxt) = ExpansionInfo::new(db, mac_file)
-                    .span_for_offset(db, self.value.text_range().start());
+                let (range, ctxt) = span_for_offset(
+                    db,
+                    &db.expansion_span_map(mac_file),
+                    self.value.text_range().start(),
+                );
 
                 // FIXME: Figure out an API that makes proper use of ctx, this only exists to
                 // keep pre-token map rewrite behaviour.
@@ -286,7 +295,7 @@ impl InFile<SyntaxToken> {
 
 impl InMacroFile<TextSize> {
     pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> (FileRange, SyntaxContextId) {
-        ExpansionInfo::new(db, self.file_id).span_for_offset(db, self.value)
+        span_for_offset(db, &db.expansion_span_map(self.file_id), self.value)
     }
 }
 
@@ -300,7 +309,7 @@ impl InFile<TextRange> {
                 (FileRange { file_id, range: self.value }, SyntaxContextId::ROOT)
             }
             HirFileIdRepr::MacroFile(mac_file) => {
-                match ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value) {
+                match map_node_range_up(db, &db.expansion_span_map(mac_file), self.value) {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
@@ -315,7 +324,7 @@ impl InFile<TextRange> {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value },
             HirFileIdRepr::MacroFile(mac_file) => {
-                match ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value) {
+                match map_node_range_up(db, &db.expansion_span_map(mac_file), self.value) {
                     Some((it, SyntaxContextId::ROOT)) => it,
                     _ => {
                         let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
@@ -335,7 +344,7 @@ impl InFile<TextRange> {
                 Some((FileRange { file_id, range: self.value }, SyntaxContextId::ROOT))
             }
             HirFileIdRepr::MacroFile(mac_file) => {
-                ExpansionInfo::new(db, mac_file).map_node_range_up(db, self.value)
+                map_node_range_up(db, &db.expansion_span_map(mac_file), self.value)
             }
         }
     }
@@ -355,8 +364,11 @@ impl<N: AstNode> InFile<N> {
             return None;
         }
 
-        let (FileRange { file_id, range }, ctx) = ExpansionInfo::new(db, file_id)
-            .map_node_range_up(db, self.value.syntax().text_range())?;
+        let (FileRange { file_id, range }, ctx) = map_node_range_up(
+            db,
+            &db.expansion_span_map(file_id),
+            self.value.syntax().text_range(),
+        )?;
 
         // FIXME: Figure out an API that makes proper use of ctx, this only exists to
         // keep pre-token map rewrite behaviour.

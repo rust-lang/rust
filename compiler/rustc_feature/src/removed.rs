@@ -32,6 +32,8 @@ declare_features! (
     // feature-group-start: removed features
     // -------------------------------------------------------------------------
 
+    /// Allows using the `amdgpu-kernel` ABI.
+    (removed, abi_amdgpu_kernel, "CURRENT_RUSTC_VERSION", Some(51575), None),
     (removed, advanced_slice_patterns, "1.0.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, allocator, "1.0.0", None, None),

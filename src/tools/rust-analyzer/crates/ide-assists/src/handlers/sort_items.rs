@@ -116,11 +116,9 @@ trait AddRewrite {
         new: Vec<T>,
         target: TextRange,
     ) -> Option<()>;
-    fn yeet() {}
 }
 
 impl AddRewrite for Assists {
-    fn yeet() {}
     fn add_rewrite<T: AstNode>(
         &mut self,
         label: &str,

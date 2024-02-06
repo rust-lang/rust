@@ -26,7 +26,7 @@ error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
   --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
-   |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
+   |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`, which is required by `<u8 as Baz>::Quaks: Bar`
    |
    = help: the following other types implement trait `Bar`:
              [u16; 4]
@@ -44,7 +44,7 @@ error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
   --> $DIR/issue-67185-2.rs:21:6
    |
 LL | impl Foo for FooImpl {}
-   |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
+   |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`, which is required by `[<u8 as Baz>::Quaks; 2]: Bar`
    |
    = help: the following other types implement trait `Bar`:
              [u16; 4]

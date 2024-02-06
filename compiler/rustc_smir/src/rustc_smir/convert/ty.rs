@@ -223,7 +223,6 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 abi::Abi::PtxKernel => Abi::PtxKernel,
                 abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
                 abi::Abi::X86Interrupt => Abi::X86Interrupt,
-                abi::Abi::AmdGpuKernel => Abi::AmdGpuKernel,
                 abi::Abi::EfiApi => Abi::EfiApi,
                 abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
                 abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,

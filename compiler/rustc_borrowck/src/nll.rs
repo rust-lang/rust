@@ -264,7 +264,7 @@ pub(super) fn dump_annotation<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    errors: &mut crate::error::BorrowckErrors<'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -310,7 +310,7 @@ pub(super) fn dump_annotation<'tcx>(
         err.note(format!("Inferred opaque type values:\n{opaque_type_values:#?}"));
     }
 
-    errors.buffer_non_error_diag(err);
+    diags.buffer_non_error(err);
 }
 
 fn for_each_region_constraint<'tcx>(

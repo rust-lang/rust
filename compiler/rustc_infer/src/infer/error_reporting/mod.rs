@@ -2555,7 +2555,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             add_lt_suggs,
             new_lt: &new_lt,
         };
-        match self.tcx.hir().expect_owner(lifetime_scope) {
+        match self.tcx.expect_hir_owner_node(lifetime_scope) {
             hir::OwnerNode::Item(i) => visitor.visit_item(i),
             hir::OwnerNode::ForeignItem(i) => visitor.visit_foreign_item(i),
             hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),

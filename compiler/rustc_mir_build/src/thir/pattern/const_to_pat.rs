@@ -1,3 +1,4 @@
+use rustc_apfloat::Float;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -16,7 +17,7 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    FloatPattern, IndirectStructuralMatch, InvalidPattern, NonPartialEqMatch,
+    IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch,
     NontrivialStructuralMatch, PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
@@ -317,16 +318,6 @@ impl<'tcx> ConstToPat<'tcx> {
         let param_env = self.param_env;
 
         let kind = match ty.kind() {
-            ty::Float(_) => {
-                self.saw_const_match_lint.set(true);
-                tcx.emit_node_span_lint(
-                    lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                    id,
-                    span,
-                    FloatPattern,
-                );
-                return Err(FallbackToOpaqueConst);
-            }
             // If the type is not structurally comparable, just emit the constant directly,
             // causing the pattern match code to treat it opaquely.
             // FIXME: This code doesn't emit errors itself, the caller emits the errors.
@@ -486,6 +477,22 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             },
+            ty::Float(flt) => {
+                let v = cv.unwrap_leaf();
+                let is_nan = match flt {
+                    ty::FloatTy::F32 => v.try_to_f32().unwrap().is_nan(),
+                    ty::FloatTy::F64 => v.try_to_f64().unwrap().is_nan(),
+                };
+                if is_nan {
+                    // NaNs are not ever equal to anything so they make no sense as patterns.
+                    // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
+                    let e = tcx.dcx().emit_err(NaNPattern { span });
+                    self.saw_const_match_error.set(Some(e));
+                    return Err(FallbackToOpaqueConst);
+                } else {
+                    PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+                }
+            }
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
