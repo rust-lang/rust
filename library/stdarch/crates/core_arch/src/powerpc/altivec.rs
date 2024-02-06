@@ -377,6 +377,13 @@ extern "C" {
     fn vslv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
     #[link_name = "llvm.ppc.altivec.srv"]
     fn vsrv(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+
+    #[link_name = "llvm.ctlz.v16i8"]
+    fn vclzb(a: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ctlz.v8i16"]
+    fn vclzh(a: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ctlz.v4i32"]
+    fn vclzw(a: vector_signed_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -3090,6 +3097,35 @@ mod sealed {
     }
 
     impl_vec_shift_octect! { [VectorSro vec_sro] (vsro) }
+
+    test_impl! { vec_vcntlzb(a: vector_signed_char) -> vector_signed_char [vclzb, vclzb] }
+    test_impl! { vec_vcntlzh(a: vector_signed_short) -> vector_signed_short [vclzh, vclzh] }
+    test_impl! { vec_vcntlzw(a: vector_signed_int) -> vector_signed_int [vclzw, vclzw] }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorCntlz {
+        unsafe fn vec_cntlz(self) -> Self;
+    }
+
+    macro_rules! impl_vec_cntlz {
+        ($fun:ident ($a:ty)) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorCntlz for $a {
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_cntlz(self) -> Self {
+                    transmute($fun(transmute(self)))
+                }
+            }
+        };
+    }
+
+    impl_vec_cntlz! { vec_vcntlzb(vector_signed_char) }
+    impl_vec_cntlz! { vec_vcntlzb(vector_unsigned_char) }
+    impl_vec_cntlz! { vec_vcntlzh(vector_signed_short) }
+    impl_vec_cntlz! { vec_vcntlzh(vector_unsigned_short) }
+    impl_vec_cntlz! { vec_vcntlzw(vector_signed_int) }
+    impl_vec_cntlz! { vec_vcntlzw(vector_unsigned_int) }
 }
 
 /// Vector Merge Low
@@ -4217,6 +4253,25 @@ pub unsafe fn vec_any_nlt(a: vector_float, b: vector_float) -> bool {
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_any_numeric(a: vector_float) -> bool {
     vcmpgefp_p(1, a, a) != 0
+}
+
+/// Vector Count Leading Zeros
+///
+/// ## Purpose
+/// Returns a vector containing the number of most-significant bits equal to zero of each
+/// corresponding element of the source vector.
+///
+/// ## Result value
+/// The value of each element of r is set to the number of leading zeros of the
+/// corresponding element of a.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_cntlz<T>(a: T) -> T
+where
+    T: sealed::VectorCntlz,
+{
+    a.vec_cntlz()
 }
 
 /// Any Element Out of Bounds
