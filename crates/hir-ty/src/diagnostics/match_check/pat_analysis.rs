@@ -9,7 +9,7 @@ use rustc_pattern_analysis::{
     index::IdxContainer,
     Captures, TypeCx,
 };
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use typed_arena::Arena;
 
@@ -41,7 +41,6 @@ pub(crate) struct MatchCheckCtx<'p> {
     body: DefWithBodyId,
     pub(crate) db: &'p dyn HirDatabase,
     pub(crate) pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-    ty_arena: &'p Arena<Ty>,
     exhaustive_patterns: bool,
     min_exhaustive_patterns: bool,
 }
@@ -58,21 +57,12 @@ impl<'p> MatchCheckCtx<'p> {
         body: DefWithBodyId,
         db: &'p dyn HirDatabase,
         pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-        ty_arena: &'p Arena<Ty>,
     ) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
         let min_exhaustive_patterns =
             def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
-        Self {
-            module,
-            body,
-            db,
-            pattern_arena,
-            exhaustive_patterns,
-            min_exhaustive_patterns,
-            ty_arena,
-        }
+        Self { module, body, db, pattern_arena, exhaustive_patterns, min_exhaustive_patterns }
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -370,50 +360,46 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
     ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
-        use std::iter::once;
-        fn alloc<'a>(cx: &'a MatchCheckCtx<'_>, iter: impl Iterator<Item = Ty>) -> &'a [Ty] {
-            cx.ty_arena.alloc_extend(iter)
-        }
-        let slice = match ctor {
+        let single = |ty| smallvec![ty];
+        let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
-                    alloc(self, tys.cloned())
+                    tys.cloned().collect()
                 }
-                TyKind::Ref(.., rty) => alloc(self, once(rty.clone())),
+                TyKind::Ref(.., rty) => single(rty.clone()),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
                     if is_box(self.db, adt) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
-                        alloc(self, once(subst_ty))
+                        single(subst_ty)
                     } else {
                         let variant = Self::variant_id_for_adt(ctor, adt).unwrap();
-                        let tys = self.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
-                        alloc(self, tys)
+                        self.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty).collect()
                     }
                 }
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);
-                    alloc(self, once(ty.clone()))
+                    single(ty.clone())
                 }
             },
             Ref => match ty.kind(Interner) {
-                TyKind::Ref(.., rty) => alloc(self, once(rty.clone())),
+                TyKind::Ref(.., rty) => single(rty.clone()),
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);
-                    alloc(self, once(ty.clone()))
+                    single(ty.clone())
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Wildcard => &[],
+            | NonExhaustive | Hidden | Missing | Wildcard => smallvec![],
             Or => {
                 never!("called `Fields::wildcards` on an `Or` ctor");
-                &[]
+                smallvec![]
             }
         };
-        slice.into_iter().cloned()
+        tys.into_iter()
     }
 
     fn ctors_for_ty(
