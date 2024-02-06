@@ -968,12 +968,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 {
                     lit
                 } else {
-                    MetaItemLit {
-                        symbol: kw::Empty,
-                        suffix: None,
-                        kind: LitKind::Err,
-                        span: DUMMY_SP,
-                    }
+                    MetaItemLit { symbol: kw::Empty, kind: LitKind::Err, span: DUMMY_SP }
                 };
                 AttrArgs::Eq(*eq_span, AttrArgsEq::Hir(lit))
             }

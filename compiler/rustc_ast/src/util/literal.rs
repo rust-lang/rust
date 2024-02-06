@@ -218,7 +218,6 @@ impl MetaItemLit {
     pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, LitError> {
         Ok(MetaItemLit {
             symbol: token_lit.symbol,
-            suffix: token_lit.suffix,
             kind: LitKind::from_token_lit(token_lit)?,
             span,
         })
@@ -241,7 +240,7 @@ impl MetaItemLit {
             LitKind::Err => token::Err,
         };
 
-        token::Lit::new(kind, self.symbol, self.suffix)
+        token::Lit::new(kind, self.symbol, self.kind.suffix())
     }
 
     /// Converts an arbitrary token into meta item literal.

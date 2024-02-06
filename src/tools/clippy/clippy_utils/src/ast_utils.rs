@@ -723,7 +723,7 @@ pub fn eq_ext(l: &Extern, r: &Extern) -> bool {
 }
 
 pub fn eq_str_lit(l: &StrLit, r: &StrLit) -> bool {
-    l.style == r.style && l.symbol == r.symbol && l.suffix == r.suffix
+    l.style == r.style && l.symbol == r.symbol
 }
 
 pub fn eq_poly_ref_trait(l: &PolyTraitRef, r: &PolyTraitRef) -> bool {

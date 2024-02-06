@@ -2005,13 +2005,9 @@ impl<'a> Parser<'a> {
     pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<MetaItemLit>> {
         match self.parse_opt_meta_item_lit() {
             Some(lit) => match lit.kind {
-                ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
-                    style,
-                    symbol: lit.symbol,
-                    suffix: lit.suffix,
-                    span: lit.span,
-                    symbol_unescaped,
-                }),
+                ast::LitKind::Str(symbol_unescaped, style) => {
+                    Ok(ast::StrLit { style, symbol: lit.symbol, span: lit.span, symbol_unescaped })
+                }
                 _ => Err(Some(lit)),
             },
             None => Err(None),
@@ -2025,7 +2021,6 @@ impl<'a> Parser<'a> {
     fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
         ast::MetaItemLit {
             symbol: name,
-            suffix: None,
             kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
             span,
         }

@@ -23,7 +23,7 @@ fn dummy_meta_item_word(name: &str) -> MetaItem {
 }
 
 fn dummy_meta_item_name_value(name: &str, symbol: Symbol, kind: LitKind) -> MetaItem {
-    let lit = MetaItemLit { symbol, suffix: None, kind, span: DUMMY_SP };
+    let lit = MetaItemLit { symbol, kind, span: DUMMY_SP };
     MetaItem {
         path: Path::from_ident(Ident::from_str(name)),
         kind: MetaItemKind::NameValue(lit),
