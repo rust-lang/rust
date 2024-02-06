@@ -1,4 +1,5 @@
 //! Table-of-contents creation.
+use crate::html::escape::EscapeBodyText;
 
 /// A (recursive) table of contents
 #[derive(Debug, PartialEq)]
@@ -16,7 +17,7 @@ pub(crate) struct Toc {
     /// ### A
     /// ## B
     /// ```
-    entries: Vec<TocEntry>,
+    pub(crate) entries: Vec<TocEntry>,
 }
 
 impl Toc {
@@ -27,11 +28,11 @@ impl Toc {
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct TocEntry {
-    level: u32,
-    sec_number: String,
-    name: String,
-    id: String,
-    children: Toc,
+    pub(crate) level: u32,
+    pub(crate) sec_number: String,
+    pub(crate) name: String,
+    pub(crate) id: String,
+    pub(crate) children: Toc,
 }
 
 /// Progressive construction of a table of contents.
@@ -173,7 +174,7 @@ impl Toc {
                 "\n<li><a href=\"#{id}\">{num} {name}</a>",
                 id = entry.id,
                 num = entry.sec_number,
-                name = entry.name
+                name = EscapeBodyText(&entry.name)
             );
             entry.children.print_inner(&mut *v);
             v.push_str("</li>");
