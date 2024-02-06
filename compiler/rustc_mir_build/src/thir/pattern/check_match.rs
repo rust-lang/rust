@@ -291,7 +291,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 err = err.and(check_never_pattern(cx, pat));
             });
             err?;
-            Ok(cx.pattern_arena.alloc(cx.lower_pat(pat)))
+            Ok(self.pattern_arena.alloc(cx.lower_pat(pat)))
         }
     }
 
@@ -388,7 +388,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             typeck_results: self.typeck_results,
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
-            pattern_arena: self.pattern_arena,
             dropless_arena: self.dropless_arena,
             match_lint_level: self.lint_level,
             whole_match_span,
