@@ -14,6 +14,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::query::Key;
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -858,6 +859,56 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         self.set_tainted_by_errors(err.emit());
+    }
+
+    /// On ambiguous associated type, look for an associated function whose name matches the
+    /// extended path and, if found, emit an E0223 error with a structured suggestion.
+    /// e.g. for `String::from::utf8`, suggest `String::from_utf8` (#109195)
+    pub(crate) fn maybe_report_similar_assoc_fn(
+        &self,
+        span: Span,
+        qself_ty: Ty<'tcx>,
+        qself: &hir::Ty<'_>,
+    ) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        if let Some((_, node)) = tcx.hir().parent_iter(qself.hir_id).skip(1).next()
+            && let hir::Node::Expr(hir::Expr {
+                kind:
+                    hir::ExprKind::Path(hir::QPath::TypeRelative(
+                        hir::Ty {
+                            kind:
+                                hir::TyKind::Path(hir::QPath::TypeRelative(
+                                    _,
+                                    hir::PathSegment { ident: ident2, .. },
+                                )),
+                            ..
+                        },
+                        hir::PathSegment { ident: ident3, .. },
+                    )),
+                ..
+            }) = node
+            && let Some(ty_def_id) = qself_ty.ty_def_id()
+            && let Ok([inherent_impl]) = tcx.inherent_impls(ty_def_id)
+            && let name = format!("{ident2}_{ident3}")
+            && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
+                .associated_items(inherent_impl)
+                .filter_by_name_unhygienic(Symbol::intern(&name))
+                .next()
+        {
+            let reported =
+                struct_span_code_err!(tcx.dcx(), span, E0223, "ambiguous associated type")
+                    .with_span_suggestion_verbose(
+                        ident2.span.to(ident3.span),
+                        format!("there is an associated function with a similar name: `{name}`"),
+                        name,
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+            self.set_tainted_by_errors(reported);
+            Err(reported)
+        } else {
+            Ok(())
+        }
     }
 }
 
