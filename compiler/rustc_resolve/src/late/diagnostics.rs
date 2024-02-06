@@ -1077,24 +1077,34 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         err: &mut Diagnostic,
         path: &[Segment],
     ) {
-        if let Some(pat) = self.diagnostic_metadata.current_pat
-            && let ast::PatKind::Range(Some(start), None, range) = &pat.kind
-            && let ExprKind::Path(None, range_path) = &start.kind
+        let Some(pat) = self.diagnostic_metadata.current_pat else { return };
+        let (bound, side, range) = match &pat.kind {
+            ast::PatKind::Range(Some(bound), None, range) => (bound, Side::Start, range),
+            ast::PatKind::Range(None, Some(bound), range) => (bound, Side::End, range),
+            _ => return,
+        };
+        if let ExprKind::Path(None, range_path) = &bound.kind
             && let [segment] = &range_path.segments[..]
             && let [s] = path
             && segment.ident == s.ident
+            && segment.ident.span.eq_ctxt(range.span)
         {
-            // We've encountered `[first, rest..]` where the user might have meant
-            // `[first, rest @ ..]` (#88404).
-            err.span_suggestion_verbose(
-                segment.ident.span.between(range.span),
-                format!(
-                    "if you meant to collect the rest of the slice in `{}`, use the at operator",
-                    segment.ident,
-                ),
-                " @ ",
-                Applicability::MaybeIncorrect,
-            );
+            // We've encountered `[first, rest..]` (#88404) or `[first, ..rest]` (#120591)
+            // where the user might have meant `[first, rest @ ..]`.
+            let (span, snippet) = match side {
+                Side::Start => (segment.ident.span.between(range.span), " @ ".into()),
+                Side::End => (range.span.to(segment.ident.span), format!("{} @ ..", segment.ident)),
+            };
+            err.subdiagnostic(errors::UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+                span,
+                ident: segment.ident,
+                snippet,
+            });
+        }
+
+        enum Side {
+            Start,
+            End,
         }
     }
 
