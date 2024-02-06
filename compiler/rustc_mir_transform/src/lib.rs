@@ -3,7 +3,7 @@
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
-#![feature(impl_trait_in_assoc_type)]
+#![cfg_attr(bootstrap, feature(impl_trait_in_assoc_type))]
 #![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(let_chains)]

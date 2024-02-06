@@ -2,8 +2,6 @@
 // lifetimes are used in an associated opaque type
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait UnwrapItemsExt<'a> {
     type Iter;
     fn unwrap_items(self) -> Self::Iter;

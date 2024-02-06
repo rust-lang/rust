@@ -3,7 +3,6 @@
 //~^^ ERROR overflow evaluating the requirement `<() as B>::Assoc == _`
 
 #![feature(rustc_attrs)]
-#![feature(impl_trait_in_assoc_type)]
 
 #[rustc_coinductive]
 trait A {

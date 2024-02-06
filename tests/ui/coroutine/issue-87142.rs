@@ -4,7 +4,7 @@
 // Regression test for #87142
 // This test needs the above flags and the "lib" crate type.
 
-#![feature(impl_trait_in_assoc_type, coroutine_trait, coroutines)]
+#![feature(coroutine_trait, coroutines)]
 #![crate_type = "lib"]
 
 use std::ops::Coroutine;

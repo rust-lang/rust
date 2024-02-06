@@ -3,8 +3,6 @@
 //! with their hidden types if we failed the
 //! defining scope check at the signature level.
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Foo {
     type Bar<T>;
     fn foo() -> Self::Bar<u32>;

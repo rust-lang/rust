@@ -1,7 +1,5 @@
 //check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Trait {
     type Opaque1;
     type Opaque2;

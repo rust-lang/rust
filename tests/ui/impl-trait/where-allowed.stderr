@@ -16,16 +16,6 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 |       nested `impl Trait` here
    |                                                 outer `impl Trait`
 
-error[E0658]: `impl Trait` in associated types is unstable
-  --> $DIR/where-allowed.rs:119:16
-   |
-LL |     type Out = impl Debug;
-   |                ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/where-allowed.rs:154:23
    |
@@ -369,7 +359,7 @@ LL | impl <T = impl Debug> T {}
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 
-error: aborting due to 45 previous errors
+error: aborting due to 44 previous errors
 
 Some errors have detailed explanations: E0118, E0562, E0658, E0666.
 For more information about an error, try `rustc --explain E0118`.

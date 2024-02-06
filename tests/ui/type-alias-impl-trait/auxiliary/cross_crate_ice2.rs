@@ -1,7 +1,6 @@
 // Crate that exports an opaque `impl Trait` type. Used for testing cross-crate.
 
 #![crate_type = "rlib"]
-#![feature(impl_trait_in_assoc_type)]
 
 pub trait View {
     type Tmp: Iterator<Item = u32>;

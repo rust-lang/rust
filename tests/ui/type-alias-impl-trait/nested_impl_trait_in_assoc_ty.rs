@@ -7,8 +7,6 @@
 // edition: 2021
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 use std::future::Future;
 
 pub struct MemtableLocalStateStore {

@@ -4,8 +4,6 @@
 //! degenerate into looking at an exponential number of types depending on the complexity
 //! of a program.
 
-#![feature(impl_trait_in_assoc_type)]
-
 struct Bar;
 
 trait Trait: Sized {

@@ -4,8 +4,6 @@
 // edition: 2021
 // build-pass: ICEd during codegen.
 
-#![feature(impl_trait_in_assoc_type)]
-
 use std::future::Future;
 
 fn main() {

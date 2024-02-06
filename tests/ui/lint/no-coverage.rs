@@ -1,6 +1,5 @@
 #![feature(extern_types)]
 #![feature(coverage_attribute)]
-#![feature(impl_trait_in_assoc_type)]
 #![warn(unused_attributes)]
 #![coverage(off)]
 //~^ WARN: `#[coverage]` does not propagate into items and must be applied to the contained functions directly

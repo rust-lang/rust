@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(impl_trait_in_assoc_type, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 mod foo {
     pub trait Callable {

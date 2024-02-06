@@ -14,7 +14,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
-#![feature(impl_trait_in_assoc_type)]
+#![cfg_attr(bootstrap, feature(impl_trait_in_assoc_type))]
 
 #[macro_use]
 extern crate rustc_macros;

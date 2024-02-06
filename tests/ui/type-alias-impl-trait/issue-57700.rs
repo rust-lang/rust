@@ -1,5 +1,4 @@
 #![feature(arbitrary_self_types)]
-#![feature(impl_trait_in_assoc_type)]
 
 use std::ops::Deref;
 

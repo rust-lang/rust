@@ -4,8 +4,6 @@
 // Check that we don't cause cycle errors when validating pre-`Reveal::All` MIR
 // that assigns opaques through normalized projections.
 
-#![feature(impl_trait_in_assoc_type)]
-
 struct Bar;
 
 trait Trait {

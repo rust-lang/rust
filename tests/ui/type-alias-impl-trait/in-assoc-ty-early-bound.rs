@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 trait Foo {
     type Assoc<'a, 'b>;
     fn bar<'a: 'a, 'b: 'b>(_: &'a ()) -> Self::Assoc<'a, 'b>;

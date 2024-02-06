@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(impl_trait_in_assoc_type)]
-
 use std::future::Future;
 
 trait MakeFut {

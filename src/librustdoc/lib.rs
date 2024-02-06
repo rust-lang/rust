@@ -6,7 +6,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
-#![feature(impl_trait_in_assoc_type)]
+#![cfg_attr(bootstrap, feature(impl_trait_in_assoc_type))]
 #![feature(iter_intersperse)]
 #![feature(lazy_cell)]
 #![feature(let_chains)]

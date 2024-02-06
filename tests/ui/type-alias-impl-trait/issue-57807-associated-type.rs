@@ -2,7 +2,6 @@
 // that we properly unify associated types within
 // a type alias impl trait
 // check-pass
-#![feature(impl_trait_in_assoc_type)]
 
 trait Bar {
     type A;

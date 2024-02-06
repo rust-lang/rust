@@ -4,8 +4,6 @@
 // revisions: nll polonius
 // [polonius] compile-flags: -Zpolonius=next
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Callable {
     type Output;
     fn call(x: Self) -> Self::Output;

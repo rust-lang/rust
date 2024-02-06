@@ -1,8 +1,6 @@
 //! Check that we cannot instantiate a hidden type in the body
 //! of an assoc fn or const unless mentioned in the signature.
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Trait: Sized {
     type Assoc;
     fn foo();
