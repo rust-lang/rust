@@ -315,7 +315,7 @@ impl Session {
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
         // We must include lint errors here.
         if let Some(reported) = self.dcx().has_errors_or_lint_errors() {
-            let _ = self.dcx().emit_stashed_diagnostics();
+            self.dcx().emit_stashed_diagnostics();
             Err(reported)
         } else {
             Ok(())

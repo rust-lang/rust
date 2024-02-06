@@ -708,7 +708,7 @@ impl DiagCtxt {
     }
 
     /// Emit all stashed diagnostics.
-    pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
+    pub fn emit_stashed_diagnostics(&self) {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
@@ -1216,9 +1216,8 @@ impl DiagCtxt {
 // `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
-    fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
+    fn emit_stashed_diagnostics(&mut self) {
         let has_errors = self.has_errors();
-        let mut reported = None;
         for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
@@ -1235,10 +1234,8 @@ impl DiagCtxtInner {
                     continue;
                 }
             }
-            let reported_this = self.emit_diagnostic(diag);
-            reported = reported.or(reported_this);
+            self.emit_diagnostic(diag);
         }
-        reported
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
