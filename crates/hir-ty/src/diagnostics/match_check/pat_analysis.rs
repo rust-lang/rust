@@ -43,6 +43,13 @@ pub(crate) struct MatchCheckCtx<'p> {
     pub(crate) pattern_arena: &'p Arena<DeconstructedPat<'p>>,
     ty_arena: &'p Arena<Ty>,
     exhaustive_patterns: bool,
+    min_exhaustive_patterns: bool,
+}
+
+#[derive(Clone)]
+pub(crate) struct PatData<'p> {
+    /// Keep db around so that we can print variant names in `Debug`.
+    pub(crate) db: &'p dyn HirDatabase,
 }
 
 impl<'p> MatchCheckCtx<'p> {
@@ -55,7 +62,17 @@ impl<'p> MatchCheckCtx<'p> {
     ) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
-        Self { module, body, db, pattern_arena, exhaustive_patterns, ty_arena }
+        let min_exhaustive_patterns =
+            def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
+        Self {
+            module,
+            body,
+            db,
+            pattern_arena,
+            exhaustive_patterns,
+            min_exhaustive_patterns,
+            ty_arena,
+        }
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -238,7 +255,8 @@ impl<'p> MatchCheckCtx<'p> {
                 fields = self.pattern_arena.alloc_extend(subpats);
             }
         }
-        DeconstructedPat::new(ctor, fields, pat.ty.clone(), ())
+        let data = PatData { db: self.db };
+        DeconstructedPat::new(ctor, fields, pat.ty.clone(), data)
     }
 
     pub(crate) fn hoist_witness_pat(&self, pat: &WitnessPat<'p>) -> Pat {
@@ -304,10 +322,13 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
     type VariantIdx = EnumVariantId;
     type StrLit = Void;
     type ArmData = ();
-    type PatData = ();
+    type PatData = PatData<'p>;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.exhaustive_patterns
+    }
+    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
+        self.min_exhaustive_patterns
     }
 
     fn ctor_arity(
@@ -344,16 +365,16 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         }
     }
 
-    fn ctor_sub_tys(
-        &self,
-        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
-        ty: &Self::Ty,
-    ) -> &[Self::Ty] {
+    fn ctor_sub_tys<'a>(
+        &'a self,
+        ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
+        ty: &'a Self::Ty,
+    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
         use std::iter::once;
         fn alloc<'a>(cx: &'a MatchCheckCtx<'_>, iter: impl Iterator<Item = Ty>) -> &'a [Ty] {
             cx.ty_arena.alloc_extend(iter)
         }
-        match ctor {
+        let slice = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
@@ -391,7 +412,8 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
                 never!("called `Fields::wildcards` on an `Or` ctor");
                 &[]
             }
-        }
+        };
+        slice.into_iter().cloned()
     }
 
     fn ctors_for_ty(
@@ -453,11 +475,27 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         })
     }
 
-    fn debug_pat(
-        _f: &mut fmt::Formatter<'_>,
-        _pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
+    fn write_variant_name(
+        f: &mut fmt::Formatter<'_>,
+        pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
-        // FIXME: implement this, as using `unimplemented!()` causes panics in `tracing`.
+        let variant =
+            pat.ty().as_adt().and_then(|(adt, _)| Self::variant_id_for_adt(pat.ctor(), adt));
+
+        let db = pat.data().unwrap().db;
+        if let Some(variant) = variant {
+            match variant {
+                VariantId::EnumVariantId(v) => {
+                    write!(f, "{}", db.enum_variant_data(v).name.display(db.upcast()))?;
+                }
+                VariantId::StructId(s) => {
+                    write!(f, "{}", db.struct_data(s).name.display(db.upcast()))?
+                }
+                VariantId::UnionId(u) => {
+                    write!(f, "{}", db.union_data(u).name.display(db.upcast()))?
+                }
+            }
+        }
         Ok(())
     }
 

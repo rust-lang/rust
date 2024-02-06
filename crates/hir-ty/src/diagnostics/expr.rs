@@ -207,7 +207,7 @@ impl ExprValidator {
         }
 
         let report = match compute_match_usefulness(
-            rustc_pattern_analysis::MatchCtxt { tycx: &cx },
+            &cx,
             m_arms.as_slice(),
             scrut_ty.clone(),
             ValidityConstraint::ValidOnly,
