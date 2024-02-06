@@ -904,10 +904,10 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         let overlap_as_pat = self.hoist_pat_range(&overlaps_on, *pat.ty());
         let overlaps: Vec<_> = overlaps_with
             .iter()
-            .map(|pat| pat.data().unwrap().span)
+            .map(|pat| pat.data().span)
             .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
             .collect();
-        let pat_span = pat.data().unwrap().span;
+        let pat_span = pat.data().span;
         self.tcx.emit_node_span_lint(
             lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
             self.match_lint_level,
@@ -927,7 +927,7 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
         gap: IntRange,
         gapped_with: &[&crate::pat::DeconstructedPat<Self>],
     ) {
-        let Some(&thir_pat) = pat.data() else { return };
+        let &thir_pat = pat.data();
         let thir::PatKind::Range(range) = &thir_pat.kind else { return };
         // Only lint when the left range is an exclusive range.
         if range.end != rustc_hir::RangeEnd::Excluded {
@@ -975,7 +975,7 @@ impl<'p, 'tcx: 'p> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
                     gap_with: gapped_with
                         .iter()
                         .map(|pat| errors::GappedRange {
-                            span: pat.data().unwrap().span,
+                            span: pat.data().span,
                             gap: gap_as_pat.clone(),
                             first_range: thir_pat.clone(),
                         })

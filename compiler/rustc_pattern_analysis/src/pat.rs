@@ -37,9 +37,8 @@ pub struct DeconstructedPat<Cx: TypeCx> {
     /// This is also the same as `self.ctor.arity(self.ty)`.
     arity: usize,
     ty: Cx::Ty,
-    /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
-    /// correspond to a user-supplied pattern.
-    data: Option<Cx::PatData>,
+    /// Extra data to store in a pattern.
+    data: Cx::PatData,
     /// Globally-unique id used to track usefulness at the level of subpatterns.
     pub(crate) uid: PatId,
 }
@@ -52,7 +51,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, arity, ty, data: Some(data), uid: PatId::new() }
+        DeconstructedPat { ctor, fields, arity, ty, data, uid: PatId::new() }
     }
 
     pub fn at_index(self, idx: usize) -> IndexedPat<Cx> {
@@ -69,10 +68,9 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn ty(&self) -> &Cx::Ty {
         &self.ty
     }
-    /// Returns the extra data stored in a pattern. Returns `None` if the pattern is a wildcard that
-    /// does not correspond to a user-supplied pattern.
-    pub fn data(&self) -> Option<&Cx::PatData> {
-        self.data.as_ref()
+    /// Returns the extra data stored in a pattern.
+    pub fn data(&self) -> &Cx::PatData {
+        &self.data
     }
     pub fn arity(&self) -> usize {
         self.arity
