@@ -465,8 +465,6 @@ declare_features! (
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
     (unstable, ffi_pure, "1.45.0", Some(58329)),
-    /// Allows using `#[ffi_returns_twice]` on foreign functions.
-    (unstable, ffi_returns_twice, "1.34.0", Some(58314)),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
