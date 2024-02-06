@@ -931,6 +931,7 @@ impl DiagCtxt {
     /// This excludes lint errors and delayed bugs.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors().then(|| {
+            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -942,6 +943,7 @@ impl DiagCtxt {
         let inner = self.inner.borrow();
         let result = inner.has_errors() || inner.lint_err_count > 0;
         result.then(|| {
+            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -954,6 +956,7 @@ impl DiagCtxt {
         let result =
             inner.has_errors() || inner.lint_err_count > 0 || !inner.delayed_bugs.is_empty();
         result.then(|| {
+            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
             ErrorGuaranteed::unchecked_claim_error_was_emitted()
         })
@@ -1238,6 +1241,7 @@ impl DiagCtxtInner {
         }
     }
 
+    // Return value is only `Some` if the level is `Error` or `DelayedBug`.
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
         assert!(diagnostic.level.can_be_top_or_sub().0);
 
@@ -1316,6 +1320,7 @@ impl DiagCtxtInner {
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
+            let level = diagnostic.level;
             let is_error = diagnostic.is_error();
             let is_lint = diagnostic.is_lint.is_some();
 
@@ -1352,6 +1357,7 @@ impl DiagCtxtInner {
 
                 self.emitter.emit_diagnostic(diagnostic);
             }
+
             if is_error {
                 if is_lint {
                     self.lint_err_count += 1;
@@ -1359,11 +1365,11 @@ impl DiagCtxtInner {
                     self.err_count += 1;
                 }
                 self.panic_if_treat_err_as_bug();
+            }
 
-                #[allow(deprecated)]
-                {
-                    guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
-                }
+            #[allow(deprecated)]
+            if level == Level::Error {
+                guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             }
         });
 
