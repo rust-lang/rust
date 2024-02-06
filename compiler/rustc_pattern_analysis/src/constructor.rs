@@ -688,6 +688,10 @@ pub enum Constructor<Cx: TypeCx> {
     /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
     /// top of the file.
     Missing,
+    /// Fake extra constructor that indicates that we should skip the column entirely. This is used
+    /// when a private field is empty, so that we don't observe its emptiness. Only used for
+    /// specialization.
+    Skip,
 }
 
 impl<Cx: TypeCx> Clone for Constructor<Cx> {
@@ -709,6 +713,7 @@ impl<Cx: TypeCx> Clone for Constructor<Cx> {
             Constructor::NonExhaustive => Constructor::NonExhaustive,
             Constructor::Hidden => Constructor::Hidden,
             Constructor::Missing => Constructor::Missing,
+            Constructor::Skip => Constructor::Skip,
         }
     }
 }
@@ -763,6 +768,8 @@ impl<Cx: TypeCx> Constructor<Cx> {
             }
             // Wildcards cover anything
             (_, Wildcard) => true,
+            // `Skip` skips everything.
+            (Skip, _) => true,
             // Only a wildcard pattern can match these special constructors.
             (Missing { .. } | NonExhaustive | Hidden, _) => false,
 
