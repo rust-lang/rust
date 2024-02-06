@@ -1,5 +1,6 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
@@ -116,10 +117,7 @@ use visitors::Visitable;
 
 use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
-use crate::ty::{
-    adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
-    ty_is_fn_once_param,
-};
+use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr;
 
 use rustc_middle::hir::nested_filter;
@@ -1355,46 +1353,12 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
     for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(e) => match e.kind {
-                ExprKind::Closure { .. } => {
+                ExprKind::Closure { .. }
                     if let rustc_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
-                        && subs.as_closure().kind() == ClosureKind::FnOnce
-                    {
-                        continue;
-                    }
-                    let is_once = walk_to_expr_usage(cx, e, |node, id| {
-                        let Node::Expr(e) = node else {
-                            return None;
-                        };
-                        match e.kind {
-                            ExprKind::Call(f, _) if f.hir_id == id => Some(()),
-                            ExprKind::Call(f, args) => {
-                                let i = args.iter().position(|arg| arg.hir_id == id)?;
-                                let sig = expr_sig(cx, f)?;
-                                let predicates = sig
-                                    .predicates_id()
-                                    .map_or(cx.param_env, |id| cx.tcx.param_env(id))
-                                    .caller_bounds();
-                                sig.input(i).and_then(|ty| {
-                                    ty_is_fn_once_param(cx.tcx, ty.skip_binder(), predicates).then_some(())
-                                })
-                            },
-                            ExprKind::MethodCall(_, receiver, args, _) => {
-                                let i = std::iter::once(receiver)
-                                    .chain(args.iter())
-                                    .position(|arg| arg.hir_id == id)?;
-                                let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
-                                let ty = cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i];
-                                ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
-                            },
-                            _ => None,
-                        }
-                    })
-                    .is_some();
-                    if !is_once {
-                        return Some(e);
-                    }
-                },
-                ExprKind::Loop(..) => return Some(e),
+                        && subs.as_closure().kind() == ClosureKind::FnOnce => {},
+
+                // Note: A closure's kind is determined by how it's used, not it's captures.
+                ExprKind::Closure { .. } | ExprKind::Loop(..) => return Some(e),
                 _ => (),
             },
             Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
@@ -2592,26 +2556,30 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
             && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
 }
 
-/// Walks the HIR tree from the given expression, up to the node where the value produced by the
-/// expression is consumed. Calls the function for every node encountered this way until it returns
-/// `Some`.
+/// Walks up the HIR tree from the given expression in an attempt to find where the value is
+/// consumed.
 ///
-/// This allows walking through `if`, `match`, `break`, block expressions to find where the value
-/// produced by the expression is consumed.
+/// Termination has three conditions:
+/// - The given function returns `Break`. This function will return the value.
+/// - The consuming node is found. This function will return `Continue(use_node, child_id)`.
+/// - No further parent nodes are found. This will trigger a debug assert or return `None`.
+///
+/// This allows walking through `if`, `match`, `break`, and block expressions to find where the
+/// value produced by the expression is consumed.
 pub fn walk_to_expr_usage<'tcx, T>(
     cx: &LateContext<'tcx>,
     e: &Expr<'tcx>,
-    mut f: impl FnMut(Node<'tcx>, HirId) -> Option<T>,
-) -> Option<T> {
+    mut f: impl FnMut(HirId, Node<'tcx>, HirId) -> ControlFlow<T>,
+) -> Option<ControlFlow<T, (Node<'tcx>, HirId)>> {
     let map = cx.tcx.hir();
     let mut iter = map.parent_iter(e.hir_id);
     let mut child_id = e.hir_id;
 
     while let Some((parent_id, parent)) = iter.next() {
-        if let Some(x) = f(parent, child_id) {
-            return Some(x);
+        if let ControlFlow::Break(x) = f(parent_id, parent, child_id) {
+            return Some(ControlFlow::Break(x));
         }
-        let parent = match parent {
+        let parent_expr = match parent {
             Node::Expr(e) => e,
             Node::Block(Block { expr: Some(body), .. }) | Node::Arm(Arm { body, .. }) if body.hir_id == child_id => {
                 child_id = parent_id;
@@ -2621,18 +2589,19 @@ pub fn walk_to_expr_usage<'tcx, T>(
                 child_id = parent_id;
                 continue;
             },
-            _ => return None,
+            _ => return Some(ControlFlow::Continue((parent, child_id))),
         };
-        match parent.kind {
+        match parent_expr.kind {
             ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => child_id = parent_id,
             ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
                 child_id = id;
                 iter = map.parent_iter(id);
             },
-            ExprKind::Block(..) => child_id = parent_id,
-            _ => return None,
+            ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = parent_id,
+            _ => return Some(ControlFlow::Continue((parent, child_id))),
         }
     }
+    debug_assert!(false, "no parent node found for `{child_id:?}`");
     None
 }
 
@@ -2676,6 +2645,8 @@ pub enum ExprUseNode<'tcx> {
     Callee,
     /// Access of a field.
     FieldAccess(Ident),
+    Expr,
+    Other,
 }
 impl<'tcx> ExprUseNode<'tcx> {
     /// Checks if the value is returned from the function.
@@ -2752,144 +2723,104 @@ impl<'tcx> ExprUseNode<'tcx> {
                 let sig = cx.tcx.fn_sig(id).skip_binder();
                 Some(DefinedTy::Mir(cx.tcx.param_env(id).and(sig.input(i))))
             },
-            Self::Local(_) | Self::FieldAccess(..) | Self::Callee => None,
+            Self::Local(_) | Self::FieldAccess(..) | Self::Callee | Self::Expr | Self::Other => None,
         }
     }
 }
 
 /// Gets the context an expression's value is used in.
-#[expect(clippy::too_many_lines)]
 pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Option<ExprUseCtxt<'tcx>> {
     let mut adjustments = [].as_slice();
     let mut is_ty_unified = false;
     let mut moved_before_use = false;
     let ctxt = e.span.ctxt();
-    walk_to_expr_usage(cx, e, &mut |parent, child_id| {
-        // LocalTableInContext returns the wrong lifetime, so go use `expr_adjustments` instead.
+    walk_to_expr_usage(cx, e, &mut |parent_id, parent, child_id| {
         if adjustments.is_empty()
             && let Node::Expr(e) = cx.tcx.hir_node(child_id)
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        match parent {
-            Node::Local(l) if l.span.ctxt() == ctxt => Some(ExprUseCtxt {
-                node: ExprUseNode::Local(l),
-                adjustments,
-                is_ty_unified,
-                moved_before_use,
-            }),
+        if !cx.tcx.hir().opt_span(parent_id).is_some_and(|x| x.ctxt() == ctxt) {
+            return ControlFlow::Break(());
+        }
+        if let Node::Expr(e) = parent {
+            match e.kind {
+                ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {
+                    is_ty_unified = true;
+                    moved_before_use = true;
+                },
+                ExprKind::Block(_, Some(_)) | ExprKind::Break(..) => {
+                    is_ty_unified = true;
+                    moved_before_use = true;
+                },
+                ExprKind::Block(..) => moved_before_use = true,
+                _ => {},
+            }
+        }
+        ControlFlow::Continue(())
+    })?
+    .continue_value()
+    .map(|(use_node, child_id)| {
+        let node = match use_node {
+            Node::Local(l) => ExprUseNode::Local(l),
+            Node::ExprField(field) => ExprUseNode::Field(field),
+
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
                 owner_id,
-                span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Const(..),
                 owner_id,
-                span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Const(..),
                 owner_id,
-                span,
                 ..
-            }) if span.ctxt() == ctxt => Some(ExprUseCtxt {
-                node: ExprUseNode::ConstStatic(owner_id),
-                adjustments,
-                is_ty_unified,
-                moved_before_use,
-            }),
+            }) => ExprUseNode::ConstStatic(owner_id),
 
             Node::Item(&Item {
                 kind: ItemKind::Fn(..),
                 owner_id,
-                span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(..),
                 owner_id,
-                span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(..),
                 owner_id,
-                span,
                 ..
-            }) if span.ctxt() == ctxt => Some(ExprUseCtxt {
-                node: ExprUseNode::Return(owner_id),
-                adjustments,
-                is_ty_unified,
-                moved_before_use,
-            }),
+            }) => ExprUseNode::Return(owner_id),
 
-            Node::ExprField(field) if field.span.ctxt() == ctxt => Some(ExprUseCtxt {
-                node: ExprUseNode::Field(field),
-                adjustments,
-                is_ty_unified,
-                moved_before_use,
-            }),
-
-            Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
-                ExprKind::Ret(_) => Some(ExprUseCtxt {
-                    node: ExprUseNode::Return(OwnerId {
-                        def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-                    }),
-                    adjustments,
-                    is_ty_unified,
-                    moved_before_use,
+            Node::Expr(use_expr) => match use_expr.kind {
+                ExprKind::Ret(_) => ExprUseNode::Return(OwnerId {
+                    def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
                 }),
-                ExprKind::Closure(closure) => Some(ExprUseCtxt {
-                    node: ExprUseNode::Return(OwnerId { def_id: closure.def_id }),
-                    adjustments,
-                    is_ty_unified,
-                    moved_before_use,
-                }),
-                ExprKind::Call(func, args) => Some(ExprUseCtxt {
-                    node: match args.iter().position(|arg| arg.hir_id == child_id) {
-                        Some(i) => ExprUseNode::FnArg(func, i),
-                        None => ExprUseNode::Callee,
-                    },
-                    adjustments,
-                    is_ty_unified,
-                    moved_before_use,
-                }),
-                ExprKind::MethodCall(name, _, args, _) => Some(ExprUseCtxt {
-                    node: ExprUseNode::MethodArg(
-                        parent.hir_id,
-                        name.args,
-                        args.iter().position(|arg| arg.hir_id == child_id).map_or(0, |i| i + 1),
-                    ),
-                    adjustments,
-                    is_ty_unified,
-                    moved_before_use,
-                }),
-                ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(ExprUseCtxt {
-                    node: ExprUseNode::FieldAccess(name),
-                    adjustments,
-                    is_ty_unified,
-                    moved_before_use,
-                }),
-                ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {
-                    is_ty_unified = true;
-                    moved_before_use = true;
-                    None
+                ExprKind::Closure(closure) => ExprUseNode::Return(OwnerId { def_id: closure.def_id }),
+                ExprKind::Call(func, args) => match args.iter().position(|arg| arg.hir_id == child_id) {
+                    Some(i) => ExprUseNode::FnArg(func, i),
+                    None => ExprUseNode::Callee,
                 },
-                ExprKind::Block(_, Some(_)) | ExprKind::Break(..) => {
-                    is_ty_unified = true;
-                    moved_before_use = true;
-                    None
-                },
-                ExprKind::Block(..) => {
-                    moved_before_use = true;
-                    None
-                },
-                _ => None,
+                ExprKind::MethodCall(name, _, args, _) => ExprUseNode::MethodArg(
+                    use_expr.hir_id,
+                    name.args,
+                    args.iter().position(|arg| arg.hir_id == child_id).map_or(0, |i| i + 1),
+                ),
+                ExprKind::Field(child, name) if child.hir_id == e.hir_id => ExprUseNode::FieldAccess(name),
+                _ => ExprUseNode::Expr,
             },
-            _ => None,
+            _ => ExprUseNode::Other,
+        };
+        ExprUseCtxt {
+            node,
+            adjustments,
+            is_ty_unified,
+            moved_before_use,
         }
     })
 }
