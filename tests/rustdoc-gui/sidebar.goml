@@ -121,7 +121,7 @@ assert-false: ".sidebar-elems > .crate"
 go-to: "./module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
-assert-text: (".sidebar > .location", "Module module")
+assert-text: (".sidebar .location", "Module module")
 assert-count: (".sidebar .location", 1)
 // Module page requires three headings:
 //   - Presistent crate branding (name and version)
@@ -138,7 +138,7 @@ assert-false: ".sidebar-elems > .crate"
 go-to: "./sub_module/sub_sub_module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
-assert-text: (".sidebar > .location", "Module sub_sub_module")
+assert-text: (".sidebar .location", "Module sub_sub_module")
 assert-text: (".sidebar > .sidebar-elems > h2", "In lib2::module::sub_module")
 assert-property: (".sidebar > .sidebar-elems > h2 > a", {
     "href": "/module/sub_module/index.html",
