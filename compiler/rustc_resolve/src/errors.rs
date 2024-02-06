@@ -800,3 +800,17 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     #[applicability]
     pub applicability: Applicability,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Ident,
+    pub snippet: String,
+}

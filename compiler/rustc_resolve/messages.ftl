@@ -292,6 +292,9 @@ resolve_underscore_lifetime_name_cannot_be_used_here =
 resolve_unexpected_res_change_ty_to_const_param_sugg =
     you might have meant to write a const parameter here
 
+resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
+    if you meant to collect the rest of the slice in `{$ident}`, use the at operator
+
 resolve_unreachable_label =
     use of unreachable label `{$name}`
     .label = unreachable label `{$name}`
