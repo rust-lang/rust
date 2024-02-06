@@ -1373,6 +1373,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     )
                     .emit() // Already reported in an earlier stage.
                 } else {
+                    self.maybe_report_similar_assoc_fn(span, qself_ty, qself)?;
+
                     let traits: Vec<_> =
                         self.probe_traits_that_match_assoc_ty(qself_ty, assoc_ident);
 
