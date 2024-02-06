@@ -27,7 +27,7 @@ use crate::{
 
 pub(crate) use hir_def::{
     body::Body,
-    hir::{Expr, ExprId, MatchArm, Pat, PatId},
+    hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
     LocalFieldId, VariantId,
 };
 
@@ -43,6 +43,9 @@ pub enum BodyValidationDiagnostic {
     MissingMatchArms {
         match_expr: ExprId,
         uncovered_patterns: String,
+    },
+    RemoveUnnecessaryElse {
+        if_expr: ExprId,
     },
 }
 
@@ -89,6 +92,9 @@ impl ExprValidator {
                 }
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr, &mut filter_map_next_checker);
+                }
+                Expr::If { .. } => {
+                    self.check_for_unnecessary_else(id, expr, &body);
                 }
                 _ => {}
             }
@@ -236,6 +242,27 @@ impl ExprValidator {
             *have_errors = true;
         }
         pattern
+    }
+
+    fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, body: &Body) {
+        if let Expr::If { condition: _, then_branch, else_branch } = expr {
+            if else_branch.is_none() {
+                return;
+            }
+            if let Expr::Block { statements, tail, .. } = &body.exprs[*then_branch] {
+                let last_then_expr = tail.or_else(|| match statements.last()? {
+                    Statement::Expr { expr, .. } => Some(*expr),
+                    _ => None,
+                });
+                if let Some(last_then_expr) = last_then_expr {
+                    let last_then_expr_ty = &self.infer[last_then_expr];
+                    if last_then_expr_ty.is_never() {
+                        self.diagnostics
+                            .push(BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr: id })
+                    }
+                }
+            }
+        }
     }
 }
 

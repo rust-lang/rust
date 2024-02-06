@@ -68,6 +68,7 @@ diagnostics![
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    RemoveUnnecessaryElse,
     TraitImplIncorrectSafety,
     TraitImplMissingAssocItems,
     TraitImplOrphan,
@@ -342,6 +343,11 @@ pub struct TraitImplRedundantAssocItems {
     pub assoc_item: (Name, AssocItem),
 }
 
+#[derive(Debug)]
+pub struct RemoveUnnecessaryElse {
+    pub if_expr: InFile<AstPtr<ast::IfExpr>>,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -442,6 +448,16 @@ impl AnyDiagnostic {
                         }
                     }
                     Err(SyntheticSyntax) => (),
+                }
+            }
+            BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr } => {
+                if let Ok(source_ptr) = source_map.expr_syntax(if_expr) {
+                    if let Some(ptr) = source_ptr.value.cast::<ast::IfExpr>() {
+                        return Some(
+                            RemoveUnnecessaryElse { if_expr: InFile::new(source_ptr.file_id, ptr) }
+                                .into(),
+                        );
+                    }
                 }
             }
         }
