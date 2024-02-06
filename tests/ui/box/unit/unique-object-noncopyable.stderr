@@ -12,6 +12,9 @@ LL |     let _z = y.clone();
            which is required by `Box<dyn Foo>: Clone`
            `dyn Foo: Clone`
            which is required by `Box<dyn Foo>: Clone`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
 
 error: aborting due to 1 previous error
 
