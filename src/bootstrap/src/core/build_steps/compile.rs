@@ -239,7 +239,7 @@ impl Step for Std {
         let mut cargo = if self.is_for_mir_opt_tests {
             let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "check");
             cargo.rustflag("-Zalways-encode-mir");
-            std_cargo(builder, target, compiler.stage, &mut cargo);
+            cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
             cargo
         } else {
             let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
