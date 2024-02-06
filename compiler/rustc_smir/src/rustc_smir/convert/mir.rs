@@ -538,6 +538,9 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
+            mir::AggregateKind::CoroutineClosure(..) => {
+                todo!("FIXME(async_closures): Lower these to SMIR")
+            }
         }
     }
 }

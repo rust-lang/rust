@@ -863,7 +863,7 @@ where
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(did, ..) | ty::Coroutine(did, ..) => {
+            ty::Closure(did, ..) | ty::CoroutineClosure(did, ..) | ty::Coroutine(did, ..) => {
                 if self.def_id_is_local(did) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {

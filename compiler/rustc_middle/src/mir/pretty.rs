@@ -990,7 +990,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         })
                     }
 
-                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, args)
+                    | AggregateKind::CoroutineClosure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                             let args = tcx.lift(args).unwrap();
                             format!("{{closure@{}}}", tcx.def_path_str_with_args(def_id, args),)

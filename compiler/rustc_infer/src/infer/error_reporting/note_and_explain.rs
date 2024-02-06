@@ -228,7 +228,10 @@ impl<T> Trait<T> for X {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Param(p), ty::Closure(..) | ty::Coroutine(..)) => {
+                    (
+                        ty::Param(p),
+                        ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..),
+                    ) => {
                         let generics = tcx.generics_of(body_owner_def_id);
                         if let Some(param) = generics.opt_type_param(p, tcx) {
                             let p_span = tcx.def_span(param.def_id);
@@ -497,7 +500,7 @@ impl<T> Trait<T> for X {
             }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
-                if ty.is_closure() || ty.is_coroutine() {
+                if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() {
                     diag.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
                          this error may be the result of a recent compiler bug-fix,\n\

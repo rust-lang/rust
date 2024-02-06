@@ -182,6 +182,22 @@ pub(super) trait GoalKind<'tcx>:
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
+    /// An async closure is known to implement the `AsyncFn<A>` family of traits
+    /// where `A` is given by the signature of the type.
+    fn consider_builtin_async_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx>;
+
+    /// Compute the built-in logic of the `AsyncFnKindHelper` helper trait, which
+    /// is used internally to delay computation for async closures until after
+    /// upvar analysis is performed in HIR typeck.
+    fn consider_builtin_async_fn_kind_helper_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     /// `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
@@ -340,7 +356,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_) => {
@@ -460,6 +477,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
+        } else if let Some(kind) = self.tcx().async_fn_trait_kind_from_def_id(trait_def_id) {
+            G::consider_builtin_async_fn_trait_candidates(self, goal, kind)
+        } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
+            G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
             G::consider_builtin_tuple_candidate(self, goal)
         } else if lang_items.pointee_trait() == Some(trait_def_id) {
@@ -538,6 +559,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -694,6 +716,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Alias(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never

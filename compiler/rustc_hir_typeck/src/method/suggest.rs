@@ -57,6 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match ty.kind() {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
+            // FIXME(async_closures): These don't impl `FnOnce` by default.
             ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {

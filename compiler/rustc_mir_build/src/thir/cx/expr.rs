@@ -556,6 +556,9 @@ impl<'tcx> Cx<'tcx> {
                     ty::Coroutine(def_id, args) => {
                         (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
                     }
+                    ty::CoroutineClosure(def_id, args) => {
+                        (def_id, UpvarArgs::CoroutineClosure(args), None)
+                    }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                     }

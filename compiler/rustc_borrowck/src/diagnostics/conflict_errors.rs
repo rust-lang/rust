@@ -858,7 +858,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             use crate::session_diagnostics::CaptureVarCause::*;
             match kind {
                 hir::ClosureKind::Coroutine(_) => MoveUseInCoroutine { var_span },
-                hir::ClosureKind::Closure => MoveUseInClosure { var_span },
+                hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
+                    MoveUseInClosure { var_span }
+                }
             }
         });
 
@@ -905,7 +907,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 hir::ClosureKind::Coroutine(_) => {
                     BorrowUsePlaceCoroutine { place: desc_place, var_span, is_single_var: true }
                 }
-                hir::ClosureKind::Closure => {
+                hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                     BorrowUsePlaceClosure { place: desc_place, var_span, is_single_var: true }
                 }
             }
@@ -1056,7 +1058,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     var_span,
                                     is_single_var: true,
                                 },
-                                hir::ClosureKind::Closure => BorrowUsePlaceClosure {
+                                hir::ClosureKind::Closure
+                                | hir::ClosureKind::CoroutineClosure(_) => BorrowUsePlaceClosure {
                                     place: desc_place,
                                     var_span,
                                     is_single_var: true,
@@ -1140,7 +1143,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         var_span,
                         is_single_var: false,
                     },
-                    hir::ClosureKind::Closure => {
+                    hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         BorrowUsePlaceClosure { place: desc_place, var_span, is_single_var: false }
                     }
                 }
@@ -1158,7 +1161,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         hir::ClosureKind::Coroutine(_) => {
                             FirstBorrowUsePlaceCoroutine { place: borrow_place_desc, var_span }
                         }
-                        hir::ClosureKind::Closure => {
+                        hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                             FirstBorrowUsePlaceClosure { place: borrow_place_desc, var_span }
                         }
                     }
@@ -1175,7 +1178,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         hir::ClosureKind::Coroutine(_) => {
                             SecondBorrowUsePlaceCoroutine { place: desc_place, var_span }
                         }
-                        hir::ClosureKind::Closure => {
+                        hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                             SecondBorrowUsePlaceClosure { place: desc_place, var_span }
                         }
                     }
@@ -2942,7 +2945,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     use crate::session_diagnostics::CaptureVarCause::*;
                     match kind {
                         hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
-                        hir::ClosureKind::Closure => BorrowUseInClosure { var_span },
+                        hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
+                            BorrowUseInClosure { var_span }
+                        }
                     }
                 });
 
@@ -2958,7 +2963,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             use crate::session_diagnostics::CaptureVarCause::*;
             match kind {
                 hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
-                hir::ClosureKind::Closure => BorrowUseInClosure { var_span },
+                hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
+                    BorrowUseInClosure { var_span }
+                }
             }
         });
 

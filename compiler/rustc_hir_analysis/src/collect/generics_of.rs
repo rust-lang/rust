@@ -349,6 +349,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             ClosureKind::Coroutine(_) => {
                 &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
             }
+            ClosureKind::CoroutineClosure(_) => &[
+                "<closure_kind>",
+                "<closure_signature_parts>",
+                "<upvars>",
+                "<bound_captures_by_ref>",
+                "<witness>",
+            ][..],
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {

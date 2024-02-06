@@ -170,9 +170,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, args) = match *ty.kind() {
-            ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
-            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args)),
+        let (closure_def_id, args, infer_kind) = match *ty.kind() {
+            ty::Closure(def_id, args) => {
+                (def_id, UpvarArgs::Closure(args), self.closure_kind(ty).is_none())
+            }
+            ty::CoroutineClosure(def_id, args) => {
+                (def_id, UpvarArgs::CoroutineClosure(args), self.closure_kind(ty).is_none())
+            }
+            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args), false),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -188,18 +193,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let closure_def_id = closure_def_id.expect_local();
 
-        let infer_kind = if let UpvarArgs::Closure(closure_args) = args {
-            self.closure_kind(closure_args).is_none().then_some(closure_args)
-        } else {
-            None
-        };
-
         assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             closure_def_id,
             capture_information: Default::default(),
             fake_reads: Default::default(),
         };
+
+        // As noted in `lower_coroutine_body_with_moved_arguments`, we default the capture mode
+        // to `ByRef` for the `async {}` block internal to async fns/closure. This means
+        // that we would *not* be moving all of the parameters into the async block by default.
+        //
+        // We force all of these arguments to be captured by move before we do expr use analysis.
+        //
+        // FIXME(async_closures): This could be cleaned up. It's a bit janky that we're just
+        // moving all of the `LocalSource::AsyncFn` locals here.
+        if let Some(hir::CoroutineKind::Desugared(
+            _,
+            hir::CoroutineSource::Fn | hir::CoroutineSource::Closure,
+        )) = self.tcx.coroutine_kind(closure_def_id)
+        {
+            let hir::ExprKind::Block(block, _) = body.value.kind else {
+                bug!();
+            };
+            for stmt in block.stmts {
+                let hir::StmtKind::Local(hir::Local {
+                    init: Some(init),
+                    source: hir::LocalSource::AsyncFn,
+                    pat,
+                    ..
+                }) = stmt.kind
+                else {
+                    bug!();
+                };
+                let hir::PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), _, _, _) =
+                    pat.kind
+                else {
+                    // Complex pattern, skip the non-upvar local.
+                    continue;
+                };
+                let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = init.kind else {
+                    bug!();
+                };
+                let hir::def::Res::Local(local_id) = path.res else {
+                    bug!();
+                };
+                let place = self.place_for_root_variable(closure_def_id, local_id);
+                delegate.capture_information.push((
+                    place,
+                    ty::CaptureInfo {
+                        capture_kind_expr_id: Some(init.hir_id),
+                        path_expr_id: Some(init.hir_id),
+                        capture_kind: UpvarCapture::ByValue,
+                    },
+                ));
+            }
+        }
+
         euv::ExprUseVisitor::new(
             &mut delegate,
             &self.infcx,
@@ -257,10 +307,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let before_feature_tys = self.final_upvar_tys(closure_def_id);
 
-        if let Some(closure_args) = infer_kind {
+        if infer_kind {
             // Unify the (as yet unbound) type variable in the closure
             // args with the kind we inferred.
-            let closure_kind_ty = closure_args.as_closure().kind_ty();
+            let closure_kind_ty = match args {
+                UpvarArgs::Closure(args) => args.as_closure().kind_ty(),
+                UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().kind_ty(),
+                UpvarArgs::Coroutine(_) => unreachable!("coroutines don't have an inferred kind"),
+            };
             self.demand_eqtype(
                 span,
                 Ty::from_closure_kind(self.tcx, closure_kind),
@@ -280,6 +334,84 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .closure_kind_origins_mut()
                     .insert(closure_hir_id, origin);
             }
+        }
+
+        // For coroutine-closures, we additionally must compute the
+        // `coroutine_captures_by_ref_ty` type, which is used to generate the by-ref
+        // version of the coroutine-closure's output coroutine.
+        if let UpvarArgs::CoroutineClosure(args) = args {
+            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
+                self.tcx,
+                ty::INNERMOST,
+                ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(0),
+                    kind: ty::BoundRegionKind::BrEnv,
+                },
+            );
+            let tupled_upvars_ty_for_borrow = Ty::new_tup_from_iter(
+                self.tcx,
+                self.typeck_results
+                    .borrow()
+                    .closure_min_captures_flattened(
+                        self.tcx.coroutine_for_closure(closure_def_id).expect_local(),
+                    )
+                    // Skip the captures that are just moving the closure's args
+                    // into the coroutine. These are always by move, and we append
+                    // those later in the `CoroutineClosureSignature` helper functions.
+                    .skip(
+                        args.as_coroutine_closure()
+                            .coroutine_closure_sig()
+                            .skip_binder()
+                            .tupled_inputs_ty
+                            .tuple_fields()
+                            .len(),
+                    )
+                    .map(|captured_place| {
+                        let upvar_ty = captured_place.place.ty();
+                        let capture = captured_place.info.capture_kind;
+                        // Not all upvars are captured by ref, so use
+                        // `apply_capture_kind_on_capture_ty` to ensure that we
+                        // compute the right captured type.
+                        apply_capture_kind_on_capture_ty(
+                            self.tcx,
+                            upvar_ty,
+                            capture,
+                            Some(closure_env_region),
+                        )
+                    }),
+            );
+            let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
+                self.tcx,
+                ty::Binder::bind_with_vars(
+                    self.tcx.mk_fn_sig(
+                        [],
+                        tupled_upvars_ty_for_borrow,
+                        false,
+                        hir::Unsafety::Normal,
+                        rustc_target::spec::abi::Abi::Rust,
+                    ),
+                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
+                        ty::BoundRegionKind::BrEnv,
+                    )]),
+                ),
+            );
+            self.demand_eqtype(
+                span,
+                args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                coroutine_captures_by_ref_ty,
+            );
+
+            // Additionally, we can now constrain the coroutine's kind type.
+            let ty::Coroutine(_, coroutine_args) =
+                *self.typeck_results.borrow().expr_ty(body.value).kind()
+            else {
+                bug!();
+            };
+            self.demand_eqtype(
+                span,
+                coroutine_args.as_coroutine().kind_ty(),
+                Ty::from_closure_kind(self.tcx, closure_kind),
+            );
         }
 
         self.log_closure_min_capture_info(closure_def_id, span);
@@ -551,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // Go through each entry in the current list of min_captures
-            // - if ancestor is found, update it's capture kind to account for current place's
+            // - if ancestor is found, update its capture kind to account for current place's
             // capture information.
             //
             // - if descendant is found, remove it from the list, and update the current place's

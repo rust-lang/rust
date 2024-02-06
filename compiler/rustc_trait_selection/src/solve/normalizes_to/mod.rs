@@ -366,6 +366,119 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
     }
 
+    fn consider_builtin_async_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        let env_region = match goal_kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
+            // Doesn't matter what this region is
+            ty::ClosureKind::FnOnce => tcx.lifetimes.re_static,
+        };
+        let (tupled_inputs_and_output_and_coroutine, nested_preds) =
+            structural_traits::extract_tupled_inputs_and_output_from_async_callable(
+                tcx,
+                goal.predicate.self_ty(),
+                goal_kind,
+                env_region,
+            )?;
+        let output_is_sized_pred =
+            tupled_inputs_and_output_and_coroutine.map_bound(|(_, output, _)| {
+                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
+            });
+
+        let pred = tupled_inputs_and_output_and_coroutine
+            .map_bound(|(inputs, output, coroutine)| {
+                let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
+                    sym::CallOnceFuture => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [goal.predicate.self_ty(), inputs],
+                        ),
+                        coroutine.into(),
+                    ),
+                    sym::CallMutFuture | sym::CallFuture => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [
+                                ty::GenericArg::from(goal.predicate.self_ty()),
+                                inputs.into(),
+                                env_region.into(),
+                            ],
+                        ),
+                        coroutine.into(),
+                    ),
+                    sym::Output => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [ty::GenericArg::from(goal.predicate.self_ty()), inputs.into()],
+                        ),
+                        output.into(),
+                    ),
+                    name => bug!("no such associated type: {name}"),
+                };
+                ty::ProjectionPredicate { projection_ty, term }
+            })
+            .to_predicate(tcx);
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        Self::consider_implied_clause(
+            ecx,
+            goal,
+            pred,
+            [goal.with(tcx, output_is_sized_pred)]
+                .into_iter()
+                .chain(nested_preds.into_iter().map(|pred| goal.with(tcx, pred))),
+        )
+    }
+
+    fn consider_builtin_async_fn_kind_helper_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let [
+            closure_fn_kind_ty,
+            goal_kind_ty,
+            borrow_region,
+            tupled_inputs_ty,
+            tupled_upvars_ty,
+            coroutine_captures_by_ref_ty,
+        ] = **goal.predicate.alias.args
+        else {
+            bug!();
+        };
+
+        let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind() else {
+            // We don't need to worry about the self type being an infer var.
+            return Err(NoSolution);
+        };
+        let Some(goal_kind) = goal_kind_ty.expect_ty().to_opt_closure_kind() else {
+            return Err(NoSolution);
+        };
+        if !closure_kind.extends(goal_kind) {
+            return Err(NoSolution);
+        }
+
+        let upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
+            ecx.tcx(),
+            goal_kind,
+            tupled_inputs_ty.expect_ty(),
+            tupled_upvars_ty.expect_ty(),
+            coroutine_captures_by_ref_ty.expect_ty(),
+            borrow_region.expect_region(),
+        );
+
+        ecx.eq(goal.param_env, goal.predicate.term.ty().unwrap(), upvars_ty)?;
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
     fn consider_builtin_tuple_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -391,6 +504,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::FnDef(..)
                 | ty::FnPtr(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
@@ -627,6 +741,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)

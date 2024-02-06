@@ -952,6 +952,11 @@ pub enum ClosureKind {
     ///  usage (e.g. `let x = || { yield (); }`) or from a desugared expression
     /// (e.g. `async` and `gen` blocks).
     Coroutine(CoroutineKind),
+    /// This is a coroutine-closure, which is a special sugared closure that
+    /// returns one of the sugared coroutine (`async`/`gen`/`async gen`). It
+    /// additionally allows capturing the coroutine's upvars by ref, and therefore
+    /// needs to be specially treated during analysis and borrowck.
+    CoroutineClosure(CoroutineDesugaring),
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the
@@ -3698,6 +3703,7 @@ impl<'hir> Node<'hir> {
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
         expect_crate,         &'hir Mod<'hir>,          Node::Crate(n),        n;
         expect_infer,         &'hir InferArg,           Node::Infer(n),        n;
+        expect_closure,       &'hir Closure<'hir>, Node::Expr(Expr { kind: ExprKind::Closure(n), .. }), n;
     }
 }
 

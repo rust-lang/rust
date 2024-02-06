@@ -87,7 +87,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
+        ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Foreign(..) | ty::Coroutine(..) | ty::Str
             if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_trimmed_paths!(layout.ty.to_string());

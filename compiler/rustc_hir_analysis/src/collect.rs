@@ -81,6 +81,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         coroutine_kind,
+        coroutine_for_closure,
         collect_mod_item_types,
         is_type_alias_impl_trait,
         ..*providers
@@ -1529,6 +1530,29 @@ fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineK
         }) => Some(kind),
         _ => None,
     }
+}
+
+fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
+    let &rustc_hir::Closure { kind: hir::ClosureKind::CoroutineClosure(_), body, .. } =
+        tcx.hir_node_by_def_id(def_id).expect_closure()
+    else {
+        bug!()
+    };
+
+    let &hir::Expr {
+        kind:
+            hir::ExprKind::Closure(&rustc_hir::Closure {
+                def_id,
+                kind: hir::ClosureKind::Coroutine(_),
+                ..
+            }),
+        ..
+    } = tcx.hir().body(body).value
+    else {
+        bug!()
+    };
+
+    def_id.to_def_id()
 }
 
 fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {

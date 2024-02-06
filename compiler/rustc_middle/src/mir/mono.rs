@@ -402,6 +402,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::FnPtrShim(..)
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
+                            | InstanceDef::ConstructCoroutineInClosureShim { .. }
+                            | InstanceDef::CoroutineKindShim { .. }
                             | InstanceDef::DropGlue(..)
                             | InstanceDef::CloneShim(..)
                             | InstanceDef::ThreadLocalShim(..)

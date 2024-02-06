@@ -490,6 +490,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                             format!("ClosureKind::Coroutine(CoroutineKind::Coroutine(Movability::{movability:?})")
                         },
                     },
+                    ClosureKind::CoroutineClosure(desugaring) => format!(
+                        "ClosureKind::CoroutineClosure(CoroutineDesugaring::{desugaring:?})"
+                    ),
                 };
 
                 let ret_ty = match fn_decl.output {

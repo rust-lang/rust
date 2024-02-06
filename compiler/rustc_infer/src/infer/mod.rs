@@ -1538,9 +1538,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Obtains the latest type of the given closure; this may be a
     /// closure in the current function, in which case its
     /// `ClosureKind` may not yet be known.
-    pub fn closure_kind(&self, closure_args: GenericArgsRef<'tcx>) -> Option<ty::ClosureKind> {
-        let closure_kind_ty = closure_args.as_closure().kind_ty();
-        let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
+    pub fn closure_kind(&self, closure_ty: Ty<'tcx>) -> Option<ty::ClosureKind> {
+        let unresolved_kind_ty = match *closure_ty.kind() {
+            ty::Closure(_, args) => args.as_closure().kind_ty(),
+            ty::CoroutineClosure(_, args) => args.as_coroutine_closure().kind_ty(),
+            _ => bug!("unexpected type {closure_ty}"),
+        };
+        let closure_kind_ty = self.shallow_resolve(unresolved_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
 

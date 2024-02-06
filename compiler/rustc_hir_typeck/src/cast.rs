@@ -133,6 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::Adt(..)
             | ty::Never

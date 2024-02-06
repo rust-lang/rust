@@ -2839,7 +2839,11 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => Error0644,
+                TypeError::CyclicTy(ty)
+                    if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() =>
+                {
+                    Error0644
+                }
                 TypeError::IntrinsicCast => Error0308,
                 _ => Error0308,
             },
@@ -2886,7 +2890,9 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => {
+                TypeError::CyclicTy(ty)
+                    if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() =>
+                {
                     ObligationCauseFailureCode::ClosureSelfref { span }
                 }
                 TypeError::IntrinsicCast => {

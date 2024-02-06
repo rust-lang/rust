@@ -1007,6 +1007,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 | ty::CoroutineWitness(..)
                 | ty::Array(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Error(_) => true,
 

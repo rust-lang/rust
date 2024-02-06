@@ -1544,6 +1544,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     CoroutineWitness,
                     Dynamic,
                     Closure,
+                    CoroutineClosure,
                     Tuple,
                     Bound,
                     Param,
