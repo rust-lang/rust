@@ -5,7 +5,7 @@ use std::fmt;
 use smallvec::{smallvec, SmallVec};
 
 use crate::constructor::{Constructor, Slice, SliceKind};
-use crate::TypeCx;
+use crate::{SkipField, TypeCx};
 
 use self::Constructor::*;
 
@@ -300,7 +300,11 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     pub(crate) fn wild_from_ctor(cx: &Cx, ctor: Constructor<Cx>, ty: Cx::Ty) -> Self {
-        let fields = cx.ctor_sub_tys(&ctor, &ty).map(|ty| Self::wildcard(ty)).collect();
+        let fields = cx
+            .ctor_sub_tys(&ctor, &ty)
+            .filter(|(_, SkipField(skip))| !skip)
+            .map(|(ty, _)| Self::wildcard(ty))
+            .collect();
         Self::new(ctor, fields, ty)
     }
 
