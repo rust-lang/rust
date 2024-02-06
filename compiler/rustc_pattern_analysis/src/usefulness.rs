@@ -817,6 +817,9 @@ impl fmt::Display for ValidityConstraint {
 struct PlaceInfo<Cx: TypeCx> {
     /// The type of the place.
     ty: Cx::Ty,
+    /// Whether we must skip this field during analysis. This is used when a private field is empty,
+    /// so that we don't observe its emptiness.
+    skip: SkipField,
     /// Whether the place is known to contain valid data.
     validity: ValidityConstraint,
     /// Whether the place is the scrutinee itself or a subplace of it.
@@ -833,10 +836,9 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
-        // Collect to keep the `ExactSizeIterator` bound. This is a temporary measure.
-        let tmp: Vec<_> = ctor_sub_tys.filter(|(_, SkipField(skip))| !skip).collect();
-        tmp.into_iter().map(move |(ty, _)| PlaceInfo {
+        ctor_sub_tys.map(move |(ty, skip)| PlaceInfo {
             ty,
+            skip,
             validity: ctor_sub_validity,
             is_scrutinee: false,
         })
@@ -858,6 +860,11 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
     where
         Cx: 'a,
     {
+        if matches!(self.skip, SkipField(true)) {
+            // Skip the whole column
+            return Ok((smallvec![Constructor::Skip], vec![]));
+        }
+
         let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
 
         // We treat match scrutinees of type `!` or `EmptyEnum` differently.
@@ -916,7 +923,12 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
 
 impl<Cx: TypeCx> Clone for PlaceInfo<Cx> {
     fn clone(&self) -> Self {
-        Self { ty: self.ty.clone(), validity: self.validity, is_scrutinee: self.is_scrutinee }
+        Self {
+            ty: self.ty.clone(),
+            skip: self.skip,
+            validity: self.validity,
+            is_scrutinee: self.is_scrutinee,
+        }
     }
 }
 
@@ -1123,7 +1135,12 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let place_info = PlaceInfo { ty: scrut_ty, validity: scrut_validity, is_scrutinee: true };
+        let place_info = PlaceInfo {
+            ty: scrut_ty,
+            skip: SkipField(false),
+            validity: scrut_validity,
+            is_scrutinee: true,
+        };
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
             place_info: smallvec![place_info],

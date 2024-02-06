@@ -23,11 +23,6 @@ impl PatId {
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
 /// exception are some `Wildcard`s introduced during pattern lowering.
-///
-/// Note that the number of fields may not match the fields declared in the original struct/variant.
-/// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
-/// observe that it is uninhabited. In that case that field is not included in `fields`. Care must
-/// be taken when converting to/from `thir::Pat`.
 pub struct DeconstructedPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     fields: Vec<DeconstructedPat<Cx>>,

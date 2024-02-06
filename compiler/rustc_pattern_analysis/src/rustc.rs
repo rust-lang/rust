@@ -271,9 +271,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     } else {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
-                        self.list_variant_nonhidden_fields(ty, variant)
-                            .filter(|(_, _, skip)| !skip)
-                            .count()
+                        self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
@@ -512,14 +510,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
-                        let tys = cx
-                            .list_variant_nonhidden_fields(ty, variant)
-                            .filter(|(_, _, skip)| !skip)
-                            .enumerate()
-                            .map(|(i, (field, ty, _))| {
+                        let tys = cx.list_variant_nonhidden_fields(ty, variant).enumerate().map(
+                            |(i, (field, ty, _))| {
                                 field_id_to_id[field.index()] = Some(i);
                                 ty
-                            });
+                            },
+                        );
                         fields = tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
@@ -769,7 +765,6 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
                         .list_variant_nonhidden_fields(*pat.ty(), variant)
-                        .filter(|(_, _, skip)| !skip)
                         .zip(subpatterns)
                         .map(|((field, _ty, _), pattern)| FieldPat { field, pattern })
                         .collect();
