@@ -1,6 +1,7 @@
 use std::fmt::{self, Display};
 use std::iter;
 
+use rustc_data_structures::fx::IndexEntry;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -247,25 +248,28 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         assert!(self.regioncx.universal_regions().is_universal_region(fr));
 
-        if let Some(value) = self.region_names.try_borrow_mut().unwrap().get(&fr) {
-            return Some(value.clone());
+        match self.region_names.borrow_mut().entry(fr) {
+            IndexEntry::Occupied(precomputed_name) => Some(precomputed_name.get().clone()),
+            IndexEntry::Vacant(slot) => {
+                let new_name = self
+                    .give_name_from_error_region(fr)
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
+                    .or_else(|| {
+                        self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr)
+                    });
+
+                if let Some(new_name) = &new_name {
+                    slot.insert(new_name.clone());
+                }
+                debug!("give_region_a_name: gave name {:?}", new_name);
+
+                new_name
+            }
         }
-
-        let value = self
-            .give_name_from_error_region(fr)
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr));
-
-        if let Some(value) = &value {
-            self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
-        }
-
-        debug!("give_region_a_name: gave name {:?}", value);
-        value
     }
 
     /// Checks for the case where `fr` maps to something that the
