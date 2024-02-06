@@ -396,7 +396,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
-                if let Some(Node::Pat(pat)) = self.infcx.tcx.opt_hir_node(upvar_hir_id)
+                if let Node::Pat(pat) = self.infcx.tcx.hir_node(upvar_hir_id)
                     && let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, upvar_ident, _) =
                         pat.kind
                 {
@@ -688,15 +688,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         break;
                     }
                     f_in_trait_opt.and_then(|f_in_trait| {
-                        match self.infcx.tcx.opt_hir_node(f_in_trait) {
-                            Some(Node::TraitItem(hir::TraitItem {
+                        match self.infcx.tcx.hir_node(f_in_trait) {
+                            Node::TraitItem(hir::TraitItem {
                                 kind:
                                     hir::TraitItemKind::Fn(
                                         hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
                                         _,
                                     ),
                                 ..
-                            })) => {
+                            }) => {
                                 let hir::Ty { span, .. } = inputs[local.index() - 1];
                                 Some(span)
                             }
@@ -759,10 +759,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         //
         // `let &b = a;` -> `let &(mut b) = a;`
         if let Some(hir_id) = hir_id
-            && let Some(hir::Node::Local(hir::Local {
+            && let hir::Node::Local(hir::Local {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
                 ..
-            })) = self.infcx.tcx.opt_hir_node(hir_id)
+            }) = self.infcx.tcx.hir_node(hir_id)
             && let Ok(name) =
                 self.infcx.tcx.sess.source_map().span_to_snippet(local_decl.source_info.span)
         {
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 if let Some(hir_id) = hir_id
-                    && let Some(hir::Node::Local(local)) = self.infcx.tcx.opt_hir_node(hir_id)
+                    && let hir::Node::Local(local) = self.infcx.tcx.hir_node(hir_id)
                 {
                     let tables = self.infcx.tcx.typeck(def_id.as_local().unwrap());
                     if let Some(clone_trait) = self.infcx.tcx.lang_items().clone_trait()

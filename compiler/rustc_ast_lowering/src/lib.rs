@@ -63,7 +63,7 @@ use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
 
@@ -676,7 +676,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             (None, None)
         };
-        let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies);
+        let num_nodes = self.item_local_id_counter.as_usize();
+        let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
@@ -751,8 +752,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
-        self.resolver.get_import_res(id).present_items()
+    fn lower_import_res(&mut self, id: NodeId) -> SmallVec<[Res; 3]> {
+        let res = self.resolver.get_import_res(id).present_items();
+        let res: SmallVec<_> = res.map(|res| self.lower_res(res)).collect();
+        // FIXME: The `Res::Err` doesn't necessarily mean an error was reported, it also happens
+        // for import list stem items with non-empty list. Instead, consider not emitting such
+        // items into HIR at all, or fill the `import_res_map` tables for them in resolve if that
+        // is not possible. Then add `span_delayed_bug` here.
+        if !res.is_empty() { res } else { smallvec![Res::Err] }
     }
 
     fn make_lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {

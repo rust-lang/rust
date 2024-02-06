@@ -134,7 +134,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if let Some(Node::Block(_)) = loop_id.and_then(|id| self.tcx.opt_hir_node(id)) {
+                if let Some(Node::Block(_)) = loop_id.map(|id| self.tcx.hir_node(id)) {
                     return;
                 }
 
@@ -186,7 +186,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match destination.target_id {
                     Ok(loop_id) => {
-                        if let Node::Block(block) = self.tcx.opt_hir_node(loop_id).unwrap() {
+                        if let Node::Block(block) = self.tcx.hir_node(loop_id) {
                             self.sess.dcx().emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,
