@@ -1,7 +1,7 @@
 //! Errors emitted by ast_passes.
 
 use rustc_ast::ParamKindOrd;
-use rustc_errors::{codes::*, AddToDiagnostic, Applicability};
+use rustc_errors::{codes::*, AddToDiagnostic, Applicability, Diagnostic, SubdiagnosticMessageOp};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -372,13 +372,7 @@ pub struct EmptyLabelManySpans(pub Vec<Span>);
 
 // The derive for `Vec<Span>` does multiple calls to `span_label`, adding commas between each
 impl AddToDiagnostic for EmptyLabelManySpans {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         diag.span_labels(self.0, "");
     }
 }
@@ -735,13 +729,7 @@ pub struct StableFeature {
 }
 
 impl AddToDiagnostic for StableFeature {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         diag.arg("name", self.name);
         diag.arg("since", self.since);
         diag.help(fluent::ast_passes_stable_since);
