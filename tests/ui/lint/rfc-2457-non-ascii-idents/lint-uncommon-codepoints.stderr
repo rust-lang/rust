@@ -22,6 +22,12 @@ error: identifier contains uncommon Unicode codepoints: 'ㇻ', 'ㇲ', and 'ㇳ'
 LL |     let ㇻㇲㇳ = "rust";
    |         ^^^^^^
 
+error: identifier contains an uncommon Unicode codepoint: '·'
+  --> $DIR/lint-uncommon-codepoints.rs:17:7
+   |
+LL | const FOO·: () = ();
+   |       ^^^^
+
 warning: constant `µ` should have an upper case name
   --> $DIR/lint-uncommon-codepoints.rs:3:7
    |
@@ -30,5 +36,5 @@ LL | const µ: f64 = 0.000001;
    |
    = note: `#[warn(non_upper_case_globals)]` on by default
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 

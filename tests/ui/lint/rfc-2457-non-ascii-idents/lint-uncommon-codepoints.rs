@@ -11,3 +11,9 @@ fn main() {
     // using the same identifier the second time won't trigger the lint.
     println!("{}", ㇻㇲㇳ);
 }
+
+// 00B7 MIDDLE DOT '·' is linted against only in final position.
+
+const FOO·: () = (); //~ ERROR identifier contains an uncommon Unicode codepoint
+
+const FOL·LY: () = ();

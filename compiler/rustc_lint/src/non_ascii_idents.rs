@@ -187,20 +187,31 @@ impl EarlyLintPass for NonAsciiIdents {
             }
             has_non_ascii_idents = true;
             cx.emit_span_lint(NON_ASCII_IDENTS, sp, IdentifierNonAsciiChar);
-            if check_uncommon_codepoints
-                && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
-            {
-                let codepoints: Vec<_> = symbol_str
+            if check_uncommon_codepoints {
+                let mut codepoints: Vec<_> = symbol_str
                     .chars()
                     .filter(|c| !GeneralSecurityProfile::identifier_allowed(*c))
                     .collect();
-                let codepoints_len = codepoints.len();
 
-                cx.emit_span_lint(
-                    UNCOMMON_CODEPOINTS,
-                    sp,
-                    IdentifierUncommonCodepoints { codepoints, codepoints_len },
-                );
+                // 00B7 MIDDLE DOT '·' is considered by
+                // [UTS 39](https://unicode.org/reports/tr39/#Identifier_Status_and_Type)
+                // to be "Allowed - Inclusion" due to its presence in [UTR 31 Table 3a - Optional Characters for Medial]
+                // (https://www.unicode.org/reports/tr31/#Table_Optional_Medial);
+                // as such, it is unsuitable for appearing in the final position of identifiers.
+                if symbol_str.chars().last() == Some('·') {
+                    codepoints.push('·');
+                }
+
+                if !codepoints.is_empty() {
+                    cx.emit_span_lint(
+                        UNCOMMON_CODEPOINTS,
+                        sp,
+                        IdentifierUncommonCodepoints {
+                            codepoints_len: codepoints.len(),
+                            codepoints,
+                        },
+                    );
+                }
             }
         }
 
