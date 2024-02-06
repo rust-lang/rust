@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::Map;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
@@ -62,7 +61,7 @@ pub fn report_object_safety_error<'tcx>(
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
     if let Some(hir_id) = hir_id
-        && let Some(hir::Node::Ty(ty)) = tcx.hir().find(hir_id)
+        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
         && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
     {
         let mut hir_id = hir_id;
