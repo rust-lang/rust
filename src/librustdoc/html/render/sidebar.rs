@@ -19,6 +19,7 @@ pub(super) struct Sidebar<'a> {
     pub(super) title_prefix: &'static str,
     pub(super) title: &'a str,
     pub(super) is_crate: bool,
+    pub(super) parent_is_crate: bool,
     pub(super) is_mod: bool,
     pub(super) blocks: Vec<LinkBlock<'a>>,
     pub(super) path: String,
@@ -126,8 +127,15 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     } else {
         "".into()
     };
-    let sidebar =
-        Sidebar { title_prefix, title, is_mod: it.is_mod(), is_crate: it.is_crate(), blocks, path };
+    let sidebar = Sidebar {
+        title_prefix,
+        title,
+        is_mod: it.is_mod(),
+        is_crate: it.is_crate(),
+        parent_is_crate: sidebar_path.len() == 1,
+        blocks,
+        path,
+    };
     sidebar.render_into(buffer).unwrap();
 }
 
@@ -156,26 +164,32 @@ fn docblock_toc<'a>(
         edition: cx.shared.edition(),
         playground: &cx.shared.playground,
         custom_code_classes_in_docs: cx.tcx().features().custom_code_classes_in_docs,
-    }.into_parts();
-    let links: Vec<Link<'_>> = toc.entries.into_iter().map(|entry| {
-        Link {
-            name: entry.name.into(),
-            href: entry.id.into(),
-            children: entry.children.entries.into_iter().map(|entry| Link {
+    }
+    .into_parts();
+    let links: Vec<Link<'_>> = toc
+        .entries
+        .into_iter()
+        .map(|entry| {
+            Link {
                 name: entry.name.into(),
                 href: entry.id.into(),
-                // Only a single level of nesting is shown here.
-                // Going the full six could break the layout,
-                // so we have to cut it off somewhere.
-                children: vec![],
-            }).collect()
-        }
-    }).collect();
-    if links.is_empty() {
-        None
-    } else {
-        Some(LinkBlock::new(Link::new("#", "Sections"), "top-toc", links))
-    }
+                children: entry
+                    .children
+                    .entries
+                    .into_iter()
+                    .map(|entry| Link {
+                        name: entry.name.into(),
+                        href: entry.id.into(),
+                        // Only a single level of nesting is shown here.
+                        // Going the full six could break the layout,
+                        // so we have to cut it off somewhere.
+                        children: vec![],
+                    })
+                    .collect(),
+            }
+        })
+        .collect();
+    if links.is_empty() { None } else { Some(LinkBlock::new(Link::new("", ""), "top-toc", links)) }
 }
 
 fn sidebar_struct<'a>(
@@ -505,10 +519,7 @@ pub(crate) fn sidebar_module_like(
     LinkBlock::new(Link::empty(), "", item_sections)
 }
 
-fn sidebar_module(
-    items: &[clean::Item],
-    ids: &mut IdMap,
-) -> LinkBlock<'static> {
+fn sidebar_module(items: &[clean::Item], ids: &mut IdMap) -> LinkBlock<'static> {
     let item_sections_in_use: FxHashSet<_> = items
         .iter()
         .filter(|it| {

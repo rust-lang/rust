@@ -567,6 +567,14 @@ ul.block, .block li, .block ul {
 	margin-right: 0.25rem;
 }
 
+.hide-toc #TOC, .hide-toc .in-crate {
+	display: none;
+}
+
+.hide-modnav #ModNav {
+	display: none;
+}
+
 .sidebar h2 {
 	overflow-wrap: anywhere;
 	padding: 0;

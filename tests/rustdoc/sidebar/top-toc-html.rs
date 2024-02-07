@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 #![crate_name = "foo"]
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

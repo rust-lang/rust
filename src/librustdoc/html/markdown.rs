@@ -1661,7 +1661,10 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
     s
 }
 
-pub(crate) fn plain_text_from_events<'a>(events: impl Iterator<Item=pulldown_cmark::Event<'a>>, s: &mut String) {
+pub(crate) fn plain_text_from_events<'a>(
+    events: impl Iterator<Item = pulldown_cmark::Event<'a>>,
+    s: &mut String,
+) {
     for event in events {
         match &event {
             Event::Text(text) => s.push_str(text),

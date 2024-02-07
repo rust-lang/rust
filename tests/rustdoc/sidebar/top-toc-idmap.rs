@@ -3,7 +3,7 @@
 #![allow(incomplete_features)]
 
 //! # Structs
-//! 
+//!
 //! This header has the same name as a built-in header,
 //! and we need to make sure they're disambiguated with
 //! suffixes.

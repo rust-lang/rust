@@ -196,15 +196,20 @@ updateTheme();
 // This needs to be done here because this JS is render-blocking,
 // so that the sidebar doesn't "jump" after appearing on screen.
 // The user interaction to change this is set up in main.js.
+//
+// At this point in page load, `document.body` is not available yet.
+// Set a class on the `<html>` element instead.
 if (getSettingValue("source-sidebar-show") === "true") {
-    // At this point in page load, `document.body` is not available yet.
-    // Set a class on the `<html>` element instead.
     addClass(document.documentElement, "src-sidebar-expanded");
 }
 if (getSettingValue("hide-sidebar") === "true") {
-    // At this point in page load, `document.body` is not available yet.
-    // Set a class on the `<html>` element instead.
     addClass(document.documentElement, "hide-sidebar");
+}
+if (getSettingValue("hide-toc") === "true") {
+    addClass(document.documentElement, "hide-toc");
+}
+if (getSettingValue("hide-modnav") === "true") {
+    addClass(document.documentElement, "hide-modnav");
 }
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
