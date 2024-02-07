@@ -4,7 +4,7 @@
 use std::ops::ControlFlow;
 
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
 
@@ -58,7 +58,16 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // Look at field types
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             let span = tcx.def_ident_span(item).unwrap();
-            visitor.visit(span, tcx.type_of(item).instantiate_identity());
+            let ty = tcx.type_of(item).instantiate_identity();
+            visitor.visit(span, ty);
+            let ty::Adt(def, args) = ty.kind() else {
+                span_bug!(span, "invalid type for {kind:?}: {:#?}", ty.kind())
+            };
+            for field in def.all_fields() {
+                let span = tcx.def_ident_span(field.did).unwrap();
+                let ty = field.ty(tcx, args);
+                visitor.visit(span, ty);
+            }
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
