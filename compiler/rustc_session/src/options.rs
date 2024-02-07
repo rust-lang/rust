@@ -1572,6 +1572,8 @@ options! {
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
+    direct_access_external_data: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "Direct or use GOT indirect to reference external data symbols"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
