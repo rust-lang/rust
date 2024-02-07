@@ -429,7 +429,7 @@ Building rustdoc for stage1 (x86_64-unknown-linux-gnu)
 These steps use the provided (downloaded, usually) compiler to compile the
 local Rust source into libraries we can use.
 
-### Copying stage0 {std,rustc}
+### Copying stage0 \{std,rustc\}
 
 This copies the library and compiler artifacts from Cargo into
 `stage0-sysroot/lib/rustlib/{target-triple}/lib`

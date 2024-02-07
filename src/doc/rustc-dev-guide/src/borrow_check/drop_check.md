@@ -152,3 +152,5 @@ One possible way these inconsistencies can be fixed is by MIR building
 to be more pessimistic, probably by making `Ty::needs_drop` weaker, or
 alternatively, changing `dropck_outlives` to be more precise, requiring
 fewer regions to be live.
+
+[^core]: This is the core assumption of [#110288](https://github.com/rust-lang/rust/issues/110288) and [RFC 3417](https://github.com/rust-lang/rfcs/pull/3417).
