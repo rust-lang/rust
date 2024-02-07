@@ -542,97 +542,103 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, G>,
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
-        let _ = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
-            let mut self_ty = goal.predicate.self_ty();
+        let () = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
+            ecx.assemble_alias_bound_candidates_recur(goal.predicate.self_ty(), goal, candidates);
+        });
+    }
 
-            // For some deeply nested `<T>::A::B::C::D` rigid associated type,
-            // we should explore the item bounds for all levels, since the
-            // `associated_type_bounds` feature means that a parent associated
-            // type may carry bounds for a nested associated type.
-            loop {
-                let (kind, alias_ty) = match *self_ty.kind() {
-                    ty::Bool
-                    | ty::Char
-                    | ty::Int(_)
-                    | ty::Uint(_)
-                    | ty::Float(_)
-                    | ty::Adt(_, _)
-                    | ty::Foreign(_)
-                    | ty::Str
-                    | ty::Array(_, _)
-                    | ty::Slice(_)
-                    | ty::RawPtr(_)
-                    | ty::Ref(_, _, _)
-                    | ty::FnDef(_, _)
-                    | ty::FnPtr(_)
-                    | ty::Dynamic(..)
-                    | ty::Closure(..)
-                    | ty::CoroutineClosure(..)
-                    | ty::Coroutine(..)
-                    | ty::CoroutineWitness(..)
-                    | ty::Never
-                    | ty::Tuple(_)
-                    | ty::Param(_)
-                    | ty::Placeholder(..)
-                    | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-                    | ty::Error(_) => break,
-                    ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-                    | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
+    /// For some deeply nested `<T>::A::B::C::D` rigid associated type,
+    /// we should explore the item bounds for all levels, since the
+    /// `associated_type_bounds` feature means that a parent associated
+    /// type may carry bounds for a nested associated type.
+    ///
+    /// If we have a projection, check that its self type is a rigid projection.
+    /// If so, continue searching by recursively calling after normalization.
+    // FIXME: This may recurse infinitely, but I can't seem to trigger it without
+    // hitting another overflow error something. Add a depth parameter needed later.
+    fn assemble_alias_bound_candidates_recur<G: GoalKind<'tcx>>(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let (kind, alias_ty) = match *self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Param(_)
+            | ty::Placeholder(..)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Error(_) => return,
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) | ty::Bound(..) => {
+                bug!("unexpected self type for `{goal:?}`")
+            }
 
-                    // If we hit infer when normalizing the self type of an alias,
-                    // then bail with ambiguity.
-                    ty::Infer(ty::TyVar(_)) => {
-                        if let Ok(result) = ecx
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                        {
-                            candidates
-                                .push(Candidate { source: CandidateSource::AliasBound, result });
-                        }
-                        break;
-                    }
-
-                    ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
-                    ty::Alias(ty::Inherent | ty::Weak, _) => {
-                        unreachable!("Weak and Inherent aliases should have been normalized away")
-                    }
-                };
-
-                for assumption in
-                    ecx.tcx().item_bounds(alias_ty.def_id).instantiate(ecx.tcx(), alias_ty.args)
+            ty::Infer(ty::TyVar(_)) => {
+                // If we hit infer when normalizing the self type of an alias,
+                // then bail with ambiguity. We should never encounter this on
+                // the *first* iteration of this recursive function.
+                if let Ok(result) =
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
-                    match G::consider_alias_bound_candidate(ecx, goal, assumption) {
-                        Ok(result) => {
-                            candidates
-                                .push(Candidate { source: CandidateSource::AliasBound, result });
-                        }
-                        Err(NoSolution) => {}
-                    }
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
                 }
+                return;
+            }
 
-                // If we have a projection, check that its self type is a rigid projection.
-                // If so, continue searching.
-                if kind == ty::Projection {
-                    match ecx.try_normalize_ty(goal.param_env, alias_ty.self_ty()) {
-                        Some(next_self_ty) => self_ty = next_self_ty,
-                        None => {
-                            if let Ok(result) = ecx
-                                .evaluate_added_goals_and_make_canonical_response(
-                                    Certainty::OVERFLOW,
-                                )
-                            {
-                                candidates.push(Candidate {
-                                    source: CandidateSource::AliasBound,
-                                    result,
-                                });
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    break;
+            ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
+            ty::Alias(ty::Inherent | ty::Weak, _) => {
+                unreachable!("Weak and Inherent aliases should have been normalized away already")
+            }
+        };
+
+        for assumption in
+            self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
+        {
+            match G::consider_alias_bound_candidate(self, goal, assumption) {
+                Ok(result) => {
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
+                }
+                Err(NoSolution) => {}
+            }
+        }
+
+        if kind != ty::Projection {
+            return;
+        }
+
+        match self.try_normalize_ty(goal.param_env, alias_ty.self_ty()) {
+            // Recurse on the self type of the projection.
+            Some(next_self_ty) => {
+                self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates);
+            }
+            // Bail if we overflow when normalizing, adding an ambiguous candidate.
+            None => {
+                if let Ok(result) =
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
+                {
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
                 }
             }
-        });
+        }
     }
 
     /// Check that we are allowed to use an alias bound originating from the self

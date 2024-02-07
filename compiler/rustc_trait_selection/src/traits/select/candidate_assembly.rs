@@ -201,10 +201,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     ControlFlow::Continue(())
                 },
-                || {
-                    // On ambiguity.
-                    candidates.ambiguous = true;
-                },
+                // On ambiguity.
+                || candidates.ambiguous = true,
             );
         });
     }

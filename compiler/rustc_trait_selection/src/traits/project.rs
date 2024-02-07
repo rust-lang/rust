@@ -1645,11 +1645,9 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 
             ControlFlow::Continue(())
         },
-        || {
-            // `ProjectionCandidateSet` is borrowed in the above closure,
-            // so just mark ambiguous outside of the closure.
-            ambiguous = true;
-        },
+        // `ProjectionCandidateSet` is borrowed in the above closure,
+        // so just mark ambiguous outside of the closure.
+        || ambiguous = true,
     );
 
     if ambiguous {
