@@ -1,8 +1,3 @@
-{% if !title.is_empty() %}
-    <h2 class="location"> {# #}
-        <a href="#">{{title_prefix}}{{title|wrapped|safe}}</a> {# #}
-    </h2>
-{% endif %}
 <div class="sidebar-elems">
     {% if is_crate %}
         <ul class="block"> {# #}
@@ -11,11 +6,16 @@
     {% endif %}
 
     {% if self.should_render_blocks() %}
-        <section>
+        <section id="TOC">
+            {% if !title.is_empty() %}
+            <h2 class="location"> {# #}
+                <a href="#">{{title_prefix}}{{title|wrapped|safe}}</a> {# #}
+            </h2>
+            {% endif %}
             {% for block in blocks %}
                 {% if block.should_render() %}
                     {% if !block.heading.name.is_empty() %}
-                        <h3{% if !block.class.is_empty() +%} class="{{block.class}}"{% endif %}> {# #}
+                        <h3> {# #}
                             <a href="#{{block.heading.href|safe}}">{{block.heading.name|wrapped|safe}}</a> {# #}
                         </h3> {# #}
                     {% endif %}
@@ -39,7 +39,11 @@
             {% endfor %}
         </section>
     {% endif %}
+    <div id="ModNav">
     {% if !path.is_empty() %}
-        <h2><a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a></h2>
+        <h2{% if parent_is_crate +%} class="in-crate"{% endif %}> {# #}
+            <a href="{% if is_mod %}../{% endif %}index.html">In {{+ path|wrapped|safe}}</a> {# #}
+        </h2> {# #}
     {% endif %}
+    </div> {# #}
 </div>

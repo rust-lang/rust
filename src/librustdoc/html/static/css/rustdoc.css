@@ -574,8 +574,8 @@ ul.block, .block li, .block ul {
 	list-style: none;
 }
 
-.block ul {
-	margin-left: 12px;
+.block ul a {
+	padding-left: 1rem;
 }
 
 .sidebar-elems a,
@@ -587,6 +587,14 @@ ul.block, .block li, .block ul {
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
 	background-clip: border-box;
+}
+
+.hide-toc #TOC, .hide-toc .in-crate {
+	display: none;
+}
+
+.hide-modnav #ModNav {
+	display: none;
 }
 
 .sidebar h2 {
