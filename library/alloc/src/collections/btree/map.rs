@@ -979,6 +979,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push", "put", "set")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
@@ -1041,6 +1042,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
@@ -2495,6 +2497,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         issue = "71835",
         implied_by = "const_btree_new"
     )]
+    #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
     }
