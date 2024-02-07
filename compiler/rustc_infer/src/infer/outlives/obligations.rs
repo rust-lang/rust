@@ -68,8 +68,9 @@ use crate::infer::{
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::GenericArgKind;
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArgsRef, Region, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArgKind, PolyTypeOutlivesPredicate};
 use rustc_span::DUMMY_SP;
 use smallvec::smallvec;
 
@@ -125,11 +126,15 @@ impl<'tcx> InferCtxt<'tcx> {
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
-    pub fn process_registered_region_obligations<E>(
+    pub fn process_registered_region_obligations(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        mut deeply_normalize_ty: impl FnMut(Ty<'tcx>, SubregionOrigin<'tcx>) -> Result<Ty<'tcx>, E>,
-    ) -> Result<(), (E, SubregionOrigin<'tcx>)> {
+        mut deeply_normalize_ty: impl FnMut(
+            PolyTypeOutlivesPredicate<'tcx>,
+            SubregionOrigin<'tcx>,
+        )
+            -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
+    ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         let normalized_caller_bounds: Vec<_> = outlives_env
@@ -137,38 +142,53 @@ impl<'tcx> InferCtxt<'tcx> {
             .caller_bounds()
             .iter()
             .filter_map(|clause| {
-                let bound_clause = clause.kind();
-                let ty::ClauseKind::TypeOutlives(outlives) = bound_clause.skip_binder() else {
-                    return None;
-                };
+                let outlives = clause.as_type_outlives_clause()?;
                 Some(
                     deeply_normalize_ty(
-                        outlives.0,
+                        outlives,
                         SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
                     )
-                    .map(|ty| bound_clause.rebind(ty::OutlivesPredicate(ty, outlives.1))),
+                    // FIXME(-Znext-solver): How do we accurately report an error span here :(
+                    .map_err(|NoSolution| {
+                        (outlives, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP))
+                    }),
                 )
             })
-            // FIXME(-Znext-solver): How do we accurately report an error here :(
-            .try_collect()
-            .map_err(|e| (e, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP)))?;
+            .try_collect()?;
 
-        let my_region_obligations = self.take_registered_region_obligations();
+        // Must loop since the process of normalizing may itself register region obligations.
+        for iteration in 0.. {
+            let my_region_obligations = self.take_registered_region_obligations();
+            if my_region_obligations.is_empty() {
+                break;
+            }
 
-        for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
-            let sup_type =
-                deeply_normalize_ty(sup_type, origin.clone()).map_err(|e| (e, origin.clone()))?;
-            debug!(?sup_type, ?sub_region, ?origin);
+            if !self.tcx.recursion_limit().value_within_limit(iteration) {
+                bug!(
+                    "FIXME(-Znext-solver): Overflowed when processing region obligations: {my_region_obligations:#?}"
+                );
+            }
 
-            let outlives = &mut TypeOutlives::new(
-                self,
-                self.tcx,
-                outlives_env.region_bound_pairs(),
-                None,
-                &normalized_caller_bounds,
-            );
-            let category = origin.to_constraint_category();
-            outlives.type_must_outlive(origin, sup_type, sub_region, category);
+            for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+                let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
+                let ty::OutlivesPredicate(sup_type, sub_region) =
+                    deeply_normalize_ty(outlives, origin.clone())
+                        .map_err(|NoSolution| (outlives, origin.clone()))?
+                        .no_bound_vars()
+                        .expect("started with no bound vars, should end with no bound vars");
+
+                debug!(?sup_type, ?sub_region, ?origin);
+
+                let outlives = &mut TypeOutlives::new(
+                    self,
+                    self.tcx,
+                    outlives_env.region_bound_pairs(),
+                    None,
+                    &normalized_caller_bounds,
+                );
+                let category = origin.to_constraint_category();
+                outlives.type_must_outlive(origin, sup_type, sub_region, category);
+            }
         }
 
         Ok(())

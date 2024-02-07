@@ -541,6 +541,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
+        let mut suggested_derive = false;
         let mut unsatisfied_bounds = false;
         if item_name.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
             let msg = "consider using `len` instead";
@@ -555,6 +556,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
+        } else if !unsatisfied_predicates.is_empty() && matches!(rcvr_ty.kind(), ty::Param(_)) {
+            // We special case the situation where we are looking for `_` in
+            // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
+            // implementations that have unsatisfied trait bounds to suggest, leading us to claim
+            // things like "we're looking for a trait with method `cmp`, both `Iterator` and `Ord`
+            // have one, in order to implement `Ord` you need to restrict `TypeParam: FnPtr` so
+            // that `impl<T: FnPtr> Ord for T` can apply", which is not what we want. We have a type
+            // parameter, we want to directly say "`Ord::cmp` and `Iterator::cmp` exist, restrict
+            // `TypeParam: Ord` or `TypeParam: Iterator`"". That is done further down when calling
+            // `self.suggest_traits_to_import`, so we ignore the `unsatisfied_predicates`
+            // suggestions.
         } else if !unsatisfied_predicates.is_empty() {
             let mut type_params = FxIndexMap::default();
 
@@ -917,20 +929,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .enumerate()
                 .collect::<Vec<(usize, String)>>();
 
-            for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
-                restrict_type_params = true;
-                // #74886: Sort here so that the output is always the same.
-                let obligations = obligations.into_sorted_stable_ord();
-                err.span_suggestion_verbose(
-                    span,
-                    format!(
-                        "consider restricting the type parameter{s} to satisfy the \
-                         trait bound{s}",
-                        s = pluralize!(obligations.len())
-                    ),
-                    format!("{} {}", add_where_or_comma, obligations.join(", ")),
-                    Applicability::MaybeIncorrect,
-                );
+            if !matches!(rcvr_ty.peel_refs().kind(), ty::Param(_)) {
+                for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
+                    restrict_type_params = true;
+                    // #74886: Sort here so that the output is always the same.
+                    let obligations = obligations.into_sorted_stable_ord();
+                    err.span_suggestion_verbose(
+                        span,
+                        format!(
+                            "consider restricting the type parameter{s} to satisfy the trait \
+                             bound{s}",
+                            s = pluralize!(obligations.len())
+                        ),
+                        format!("{} {}", add_where_or_comma, obligations.join(", ")),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
 
             bound_list.sort_by(|(_, a), (_, b)| a.cmp(b)); // Sort alphabetically.
@@ -978,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the following trait bounds were not satisfied:\n{bound_list}"
                     ));
                 }
-                self.suggest_derive(&mut err, unsatisfied_predicates);
+                suggested_derive = self.suggest_derive(&mut err, unsatisfied_predicates);
 
                 unsatisfied_bounds = true;
             }
@@ -1201,7 +1215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params {
+        if rcvr_ty.is_numeric() && rcvr_ty.is_fresh() || restrict_type_params || suggested_derive {
         } else {
             self.suggest_traits_to_import(
                 &mut err,
@@ -1211,7 +1225,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args.map(|args| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
-                unsatisfied_predicates,
                 static_candidates,
                 unsatisfied_bounds,
                 expected.only_has_type(self),
@@ -1326,7 +1339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
-        return Some(err);
+        Some(err)
     }
 
     fn note_candidates_on_method_error(
@@ -2471,7 +2484,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
-    ) {
+    ) -> bool {
         let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
         derives.sort();
         derives.dedup();
@@ -2496,6 +2509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        !derives_grouped.is_empty()
     }
 
     fn note_derefed_ty_has_method(
@@ -2698,11 +2712,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inputs_len: Option<usize>,
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
-        unsatisfied_predicates: &[(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )],
         static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
         return_type: Option<Ty<'tcx>>,
@@ -2919,19 +2928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                unsatisfied_predicates.iter().all(|(p, _, _)| {
-                    match p.kind().skip_binder() {
-                        // Hide traits if they are present in predicates as they can be fixed without
-                        // having to implement them.
-                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) => {
-                            t.def_id() == info.def_id
-                        }
-                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(p)) => {
-                            p.projection_ty.def_id == info.def_id
-                        }
-                        _ => false,
-                    }
-                }) && (type_is_local || info.def_id.is_local())
+                (type_is_local || info.def_id.is_local())
                     && !self.tcx.trait_is_auto(info.def_id)
                     && self
                         .associated_value(info.def_id, item_name)

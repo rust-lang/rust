@@ -45,6 +45,17 @@ pub(crate) struct GenericParamsFromOuterItem {
     pub(crate) refer_to_type_directly: Option<Span>,
     #[subdiagnostic]
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
+    #[subdiagnostic]
+    pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
+    pub(crate) is_self: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum GenericParamsFromOuterItemStaticOrConst {
+    #[note(resolve_generic_params_from_outer_item_static)]
+    Static,
+    #[note(resolve_generic_params_from_outer_item_const)]
+    Const,
 }
 
 #[derive(Subdiagnostic)]

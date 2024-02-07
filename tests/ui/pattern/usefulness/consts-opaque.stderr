@@ -5,7 +5,7 @@ LL |         QUUX => {}
    |         ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
    = note: `#[warn(pointer_structural_match)]` on by default
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
@@ -15,7 +15,7 @@ LL |         QUUX => {}
    |         ^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:108:9
@@ -24,7 +24,7 @@ LL |         WRAPQUUX => {}
    |         ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:110:9
@@ -33,7 +33,7 @@ LL |         WRAPQUUX => {}
    |         ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:117:9
@@ -42,7 +42,7 @@ LL |         WRAPQUUX => {}
    |         ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:127:9
@@ -51,7 +51,7 @@ LL |         WRAPQUUX => {}
    |         ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:139:9
@@ -60,7 +60,7 @@ LL |         WHOKNOWSQUUX => {}
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
   --> $DIR/consts-opaque.rs:142:9
@@ -69,7 +69,7 @@ LL |         WHOKNOWSQUUX => {}
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
 
 error: unreachable pattern
   --> $DIR/consts-opaque.rs:48:9
@@ -166,3 +166,91 @@ LL |         WRAPQUUX => {}, Wrap(_) => todo!()
 error: aborting due to 10 previous errors; 8 warnings emitted
 
 For more information about this error, try `rustc --explain E0004`.
+Future incompatibility report: Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:96:9
+   |
+LL |         QUUX => {}
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:98:9
+   |
+LL |         QUUX => {}
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:108:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:110:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:117:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:127:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:139:9
+   |
+LL |         WHOKNOWSQUUX => {}
+   |         ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+Future breakage diagnostic:
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:142:9
+   |
+LL |         WHOKNOWSQUUX => {}
+   |         ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
