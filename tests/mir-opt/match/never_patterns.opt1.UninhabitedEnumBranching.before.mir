@@ -6,7 +6,6 @@ fn opt1(_1: &Result<u32, Void>) -> &u32 {
     let mut _2: isize;
     let _3: &u32;
     let mut _4: !;
-    let mut _5: ();
     scope 1 {
         debug x => _3;
     }
@@ -18,7 +17,7 @@ fn opt1(_1: &Result<u32, Void>) -> &u32 {
 
     bb1: {
         nop;
-        goto -> bb4;
+        unreachable;
     }
 
     bb2: {
@@ -31,10 +30,5 @@ fn opt1(_1: &Result<u32, Void>) -> &u32 {
         _0 = &(*_3);
         StorageDead(_3);
         return;
-    }
-
-    bb4: {
-        nop;
-        goto -> bb4;
     }
 }

@@ -570,19 +570,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.dcx().emit_err(NeverPatternWithGuard { span: g.span });
             }
 
-            // We add a fake `loop {}` arm body so that it typecks to `!`.
-            // FIXME(never_patterns): Desugar into a call to `unreachable_unchecked`.
-            let block = self.arena.alloc(hir::Block {
-                stmts: &[],
-                expr: None,
-                hir_id: self.next_id(),
-                rules: hir::BlockCheckMode::DefaultBlock,
-                span,
-                targeted_by_break: false,
-            });
             self.arena.alloc(hir::Expr {
                 hir_id: self.next_id(),
-                kind: hir::ExprKind::Loop(block, None, hir::LoopSource::Loop, span),
+                kind: hir::ExprKind::Unreachable,
                 span,
             })
         };
