@@ -2479,7 +2479,7 @@ pub struct ErrorGuaranteed(());
 impl ErrorGuaranteed {
     /// Don't use this outside of `DiagCtxtInner::emit_diagnostic`!
     #[deprecated = "should only be used in `DiagCtxtInner::emit_diagnostic`"]
-    pub fn unchecked_claim_error_was_emitted() -> Self {
+    pub fn unchecked_error_guaranteed() -> Self {
         ErrorGuaranteed(())
     }
 }

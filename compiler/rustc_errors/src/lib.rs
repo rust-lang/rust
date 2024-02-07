@@ -933,7 +933,7 @@ impl DiagCtxt {
         self.inner.borrow().has_errors().then(|| {
             // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
+            ErrorGuaranteed::unchecked_error_guaranteed()
         })
     }
 
@@ -945,7 +945,7 @@ impl DiagCtxt {
         result.then(|| {
             // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
+            ErrorGuaranteed::unchecked_error_guaranteed()
         })
     }
 
@@ -958,7 +958,7 @@ impl DiagCtxt {
         result.then(|| {
             // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
             #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
+            ErrorGuaranteed::unchecked_error_guaranteed()
         })
     }
 
@@ -1286,7 +1286,7 @@ impl DiagCtxtInner {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
                 #[allow(deprecated)]
-                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+                return Some(ErrorGuaranteed::unchecked_error_guaranteed());
             }
             GoodPathDelayedBug => {
                 let backtrace = std::backtrace::Backtrace::capture();
@@ -1369,7 +1369,7 @@ impl DiagCtxtInner {
 
             #[allow(deprecated)]
             if level == Level::Error {
-                guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+                guaranteed = Some(ErrorGuaranteed::unchecked_error_guaranteed());
             }
         });
 
