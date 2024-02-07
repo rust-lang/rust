@@ -167,17 +167,6 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_async_trait_impl_should_be_async)]
-pub struct AsyncTraitImplShouldBeAsync {
-    #[primary_span]
-    // #[label]
-    pub span: Span,
-    #[label(hir_analysis_trait_item_label)]
-    pub trait_item_span: Option<Span>,
-    pub method_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_drop_impl_on_wrong_item, code = E0120)]
 pub struct DropImplOnWrongItem {
     #[primary_span]
@@ -1510,6 +1499,16 @@ pub struct NotSupportedDelegation<'a> {
     pub descr: &'a str,
     #[label]
     pub callee_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_method_should_return_future)]
+pub struct MethodShouldReturnFuture {
+    #[primary_span]
+    pub span: Span,
+    pub method_name: Symbol,
+    #[note]
+    pub trait_item_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
