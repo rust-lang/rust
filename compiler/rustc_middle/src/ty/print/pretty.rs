@@ -1299,25 +1299,30 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                     let mut projections: Vec<_> = predicates
                         .projection_bounds()
-                        .filter_map(|proj| {
+                        .filter(|&proj| {
                             // Filter out projections that are implied by the super predicates.
                             let proj_is_implied = super_projections.iter().any(|&super_proj| {
-                                let proj = cx.tcx().anonymize_bound_vars(proj);
-                                let super_proj = cx.tcx().anonymize_bound_vars(super_proj);
-                                assert_eq!(proj.bound_vars(), super_proj.bound_vars());
+                                let super_proj = super_proj.map_bound(|super_proj| {
+                                    ty::ExistentialProjection::erase_self_ty(cx.tcx(), super_proj)
+                                });
 
-                                let proj = proj.skip_binder();
-                                let super_proj = ty::ExistentialProjection::erase_self_ty(
-                                    cx.tcx(),
-                                    super_proj.skip_binder(),
-                                );
+                                // This function is sometimes called on types with erased and
+                                // anonymized regions, but the super projections can still
+                                // contain named regions. So we erase and anonymize everything
+                                // here to compare the types modulo regions below.
+                                let proj = cx.tcx().erase_regions(proj);
+                                let proj = cx.tcx().anonymize_bound_vars(proj);
+                                let super_proj = cx.tcx().erase_regions(super_proj);
+                                let super_proj = cx.tcx().anonymize_bound_vars(super_proj);
 
                                 proj == super_proj
                             });
-
+                            !proj_is_implied
+                        })
+                        .map(|proj| {
                             // Skip the binder, because we don't want to print the binder in
                             // front of the associated item.
-                            (!proj_is_implied).then_some(proj.skip_binder())
+                            proj.skip_binder()
                         })
                         .collect();
 
