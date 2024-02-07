@@ -827,10 +827,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
-        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
+        let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
-        }) {
+        };
+        match item_kind {
             Some(ItemKind::Mod(module)) => {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
@@ -853,10 +854,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        match self.tcx.opt_hir_node(hir_id).and_then(|node| match node {
+        let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
-        }) {
+        };
+        match item_kind {
             Some(ItemKind::Impl(i)) => {
                 let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
                     || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
@@ -2221,8 +2223,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (macro_definition, _) =
-                self.tcx.opt_hir_node(hir_id).unwrap().expect_item().expect_macro();
+            let (macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {

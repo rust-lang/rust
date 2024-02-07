@@ -87,7 +87,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind
                         && let [hir::PathSegment { ident, args: None, .. }] = p.segments
                         && let hir::def::Res::Local(hir_id) = p.res
-                        && let Some(hir::Node::Pat(pat)) = tcx.opt_hir_node(hir_id)
+                        && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
                         err.span_label(pat.span, format!("binding `{ident}` declared here"));
                     }
