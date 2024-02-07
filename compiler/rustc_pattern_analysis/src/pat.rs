@@ -9,6 +9,17 @@ use crate::TypeCx;
 
 use self::Constructor::*;
 
+/// A globally unique id to distinguish patterns.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PatId(u32);
+impl PatId {
+    fn new() -> Self {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static PAT_ID: AtomicU32 = AtomicU32::new(0);
+        PatId(PAT_ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
 /// exception are some `Wildcard`s introduced during pattern lowering.
@@ -24,11 +35,13 @@ pub struct DeconstructedPat<Cx: TypeCx> {
     /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
     /// correspond to a user-supplied pattern.
     data: Option<Cx::PatData>,
+    /// Globally-unique id used to track usefulness at the level of subpatterns.
+    pub(crate) uid: PatId,
 }
 
 impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn wildcard(ty: Cx::Ty) -> Self {
-        DeconstructedPat { ctor: Wildcard, fields: Vec::new(), ty, data: None }
+        DeconstructedPat { ctor: Wildcard, fields: Vec::new(), ty, data: None, uid: PatId::new() }
     }
 
     pub fn new(
@@ -37,7 +50,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, data: Some(data) }
+        DeconstructedPat { ctor, fields, ty, data: Some(data), uid: PatId::new() }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
