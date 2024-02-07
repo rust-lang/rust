@@ -473,7 +473,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
-        unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
+        unsafe { NonNull { pointer: self.as_ptr() as *mut U } }
     }
 
     /// Calculates the offset from a pointer.
@@ -1828,9 +1828,8 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
-        // SAFETY: A Unique pointer cannot be null, so the conditions for
-        // new_unchecked() are respected.
-        unsafe { NonNull::new_unchecked(unique.as_ptr()) }
+        // SAFETY: A Unique pointer cannot be null.
+        unsafe { NonNull { pointer: unique.as_ptr() } }
     }
 }
 
@@ -1853,8 +1852,7 @@ impl<T: ?Sized> From<&T> for NonNull<T> {
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
     fn from(reference: &T) -> Self {
-        // SAFETY: A reference cannot be null, so the conditions for
-        // new_unchecked() are respected.
+        // SAFETY: A reference cannot be null.
         unsafe { NonNull { pointer: reference as *const T } }
     }
 }

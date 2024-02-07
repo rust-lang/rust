@@ -87,12 +87,13 @@ unsafe impl<T: Sync> Send for Iter<'_, T> {}
 impl<'a, T> Iter<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
-        let ptr = slice.as_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            let end_or_len = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
+            let end_or_len = if T::IS_ZST { invalid(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 
@@ -208,7 +209,8 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 impl<'a, T> IterMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
-        let ptr = slice.as_mut_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: There are several things here:
         //
         // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
@@ -226,10 +228,9 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            let end_or_len =
-                if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
+            let end_or_len = if T::IS_ZST { invalid_mut(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 

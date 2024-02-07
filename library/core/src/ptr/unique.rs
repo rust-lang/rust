@@ -138,7 +138,7 @@ impl<T: ?Sized> Unique<T> {
     pub const fn cast<U>(self) -> Unique<U> {
         // FIXME(const-hack): replace with `From`
         // SAFETY: is `NonNull`
-        unsafe { Unique::new_unchecked(self.pointer.cast().as_ptr()) }
+        Unique { pointer: self.pointer.cast(), _marker: PhantomData }
     }
 }
 
