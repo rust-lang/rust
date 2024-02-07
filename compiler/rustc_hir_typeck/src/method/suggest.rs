@@ -1132,33 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             label_span_not_found(&mut err);
         }
 
-        let mut confusable_suggested = None;
-        if let ty::Adt(adt, _) = rcvr_ty.kind() {
-            'outer: for inherent_impl_did in
-                self.tcx.inherent_impls(adt.did()).into_iter().flatten()
-            {
-                for inherent_method in
-                    self.tcx.associated_items(inherent_impl_did).in_definition_order()
-                {
-                    if let Some(attr) =
-                        self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
-                        && let Some(candidates) = parse_confusables(attr)
-                        && candidates.contains(&item_name.name)
-                    {
-                        {
-                            err.span_suggestion_verbose(
-                                item_name.span,
-                                format!("you might have meant to use `{}`", inherent_method.name),
-                                inherent_method.name,
-                                Applicability::MaybeIncorrect,
-                            );
-                            confusable_suggested = Some(inherent_method.name);
-                            break 'outer;
-                        }
-                    }
-                }
-            }
-        }
+        let confusable_suggested = self.confusable_method_name(&mut err, rcvr_ty, item_name, None);
 
         // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
         // can't be called due to `typeof(expr): Clone` not holding.
@@ -1340,6 +1314,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(err)
     }
 
+    pub(crate) fn confusable_method_name(
+        &self,
+        err: &mut Diagnostic,
+        rcvr_ty: Ty<'tcx>,
+        item_name: Ident,
+        args: Option<Vec<Ty<'tcx>>>,
+    ) -> Option<Symbol> {
+        if let ty::Adt(adt, _) = rcvr_ty.kind() {
+            for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter().flatten() {
+                for inherent_method in
+                    self.tcx.associated_items(inherent_impl_did).in_definition_order()
+                {
+                    if let Some(attr) =
+                        self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
+                        && let Some(candidates) = parse_confusables(attr)
+                        && candidates.contains(&item_name.name)
+                    {
+                        let mut matches_args = args.is_none();
+                        if let ty::AssocKind::Fn = inherent_method.kind
+                            && let Some(ref args) = args
+                        {
+                            let fn_sig =
+                                self.tcx.fn_sig(inherent_method.def_id).instantiate_identity();
+                            matches_args = fn_sig
+                                .inputs()
+                                .skip_binder()
+                                .iter()
+                                .skip(1)
+                                .zip(args.into_iter())
+                                .all(|(expected, found)| self.can_coerce(*expected, *found));
+                        }
+                        if matches_args {
+                            err.span_suggestion_verbose(
+                                item_name.span,
+                                format!("you might have meant to use `{}`", inherent_method.name),
+                                inherent_method.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                            return Some(inherent_method.name);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
     fn note_candidates_on_method_error(
         &self,
         rcvr_ty: Ty<'tcx>,

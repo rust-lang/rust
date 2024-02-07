@@ -1049,6 +1049,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("append", "push")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.extend_from_slice(string.as_bytes())
     }

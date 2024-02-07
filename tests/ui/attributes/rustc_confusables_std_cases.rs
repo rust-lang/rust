@@ -18,4 +18,7 @@ fn main() {
     //~^ HELP you might have meant to use `len`
     //~| HELP there is a method with a similar name
     String::new().push(""); //~ ERROR E0308
+    //~^ HELP you might have meant to use `push_str`
+    String::new().append(""); //~ ERROR E0599
+    //~^ HELP you might have meant to use `push_str`
 }
