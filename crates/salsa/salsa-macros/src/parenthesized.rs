@@ -1,3 +1,4 @@
+//!
 pub(crate) struct Parenthesized<T>(pub(crate) T);
 
 impl<T> syn::parse::Parse for Parenthesized<T>

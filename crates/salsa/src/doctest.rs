@@ -1,3 +1,4 @@
+//!
 #![allow(dead_code)]
 
 /// Test that a database with a key/value that is not `Send` will,

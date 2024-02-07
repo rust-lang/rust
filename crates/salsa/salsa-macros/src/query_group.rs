@@ -1,3 +1,4 @@
+//!
 use std::{convert::TryFrom, iter::FromIterator};
 
 use crate::parenthesized::Parenthesized;
@@ -20,12 +21,9 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
     let input_span = input.span();
     let (trait_attrs, salsa_attrs) = filter_attrs(input.attrs);
     if !salsa_attrs.is_empty() {
-        return Error::new(
-            input_span,
-            format!("unsupported attributes: {:?}", salsa_attrs),
-        )
-        .to_compile_error()
-        .into();
+        return Error::new(input_span, format!("unsupported attributes: {:?}", salsa_attrs))
+            .to_compile_error()
+            .into();
     }
 
     let trait_vis = input.vis;
@@ -43,7 +41,8 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
             let mut cycle = None;
             let mut invoke = None;
 
-            let mut query_type = format_ident!("{}Query", query_name.to_string().to_upper_camel_case());
+            let mut query_type =
+                format_ident!("{}Query", query_name.to_string().to_upper_camel_case());
             let mut num_storages = 0;
 
             // Extract attributes.
@@ -175,9 +174,7 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
                     fn_name: lookup_fn_name,
                     receiver: self_receiver.clone(),
                     attrs: vec![], // FIXME -- some automatically generated docs on this method?
-                    storage: QueryStorage::InternedLookup {
-                        intern_query_type: query_type.clone(),
-                    },
+                    storage: QueryStorage::InternedLookup { intern_query_type: query_type.clone() },
                     keys: lookup_keys,
                     value: lookup_value,
                     invoke: None,
@@ -211,9 +208,9 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
     let mut storage_fields = proc_macro2::TokenStream::new();
     let mut queries_with_storage = vec![];
     for query in &queries {
-        #[allow(clippy::map_identity)] // clippy is incorrect here, this is not the identity function due to match ergonomics
-        let (key_names, keys): (Vec<_>, Vec<_>) =
-            query.keys.iter().map(|(a, b)| (a, b)).unzip();
+        #[allow(clippy::map_identity)]
+        // clippy is incorrect here, this is not the identity function due to match ergonomics
+        let (key_names, keys): (Vec<_>, Vec<_>) = query.keys.iter().map(|(a, b)| (a, b)).unzip();
         let value = &query.value;
         let fn_name = &query.fn_name;
         let qt = &query.query_type;
@@ -361,11 +358,8 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
         }
     });
 
-    let non_transparent_queries = || {
-        queries
-            .iter()
-            .filter(|q| !matches!(q.storage, QueryStorage::Transparent))
-    };
+    let non_transparent_queries =
+        || queries.iter().filter(|q| !matches!(q.storage, QueryStorage::Transparent));
 
     // Emit the query types.
     for (query, query_index) in non_transparent_queries().zip(0_u16..) {
@@ -681,11 +675,7 @@ impl TryFrom<syn::Attribute> for SalsaAttr {
 }
 
 fn is_not_salsa_attr_path(path: &syn::Path) -> bool {
-    path.segments
-        .first()
-        .map(|s| s.ident != "salsa")
-        .unwrap_or(true)
-        || path.segments.len() != 2
+    path.segments.first().map(|s| s.ident != "salsa").unwrap_or(true) || path.segments.len() != 2
 }
 
 fn filter_attrs(attrs: Vec<Attribute>) -> (Vec<Attribute>, Vec<SalsaAttr>) {

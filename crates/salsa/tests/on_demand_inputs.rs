@@ -100,16 +100,16 @@ fn on_demand_input_durability() {
     db.external_state.insert(2, 20);
     assert_eq!(db.b(1), 10);
     assert_eq!(db.b(2), 20);
-    insta::assert_debug_snapshot!(events, @r###"
-    RefCell {
-        value: [
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(2) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
-        ],
-    }
-    "###);
+    expect_test::expect![[r#"
+        RefCell {
+            value: [
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: b(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
+            ],
+        }
+    "#]].assert_debug_eq(&events);
 
     eprintln!("------------------");
     db.salsa_runtime_mut().synthetic_write(Durability::LOW);
@@ -117,17 +117,17 @@ fn on_demand_input_durability() {
     assert_eq!(db.c(1), 10);
     assert_eq!(db.c(2), 20);
     // Re-execute `a(2)` because that has low durability, but not `a(1)`
-    insta::assert_debug_snapshot!(events, @r###"
-    RefCell {
-        value: [
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(2) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(2) } }",
-        ],
-    }
-    "###);
+    expect_test::expect![[r#"
+        RefCell {
+            value: [
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: c(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: b(2) } }",
+            ],
+        }
+    "#]].assert_debug_eq(&events);
 
     eprintln!("------------------");
     db.salsa_runtime_mut().synthetic_write(Durability::HIGH);
@@ -136,14 +136,14 @@ fn on_demand_input_durability() {
     assert_eq!(db.c(2), 20);
     // Re-execute both `a(1)` and `a(2)`, but we don't re-execute any `b` queries as the
     // result didn't actually change.
-    insta::assert_debug_snapshot!(events, @r###"
-    RefCell {
-        value: [
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(1) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
-            "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(2) } }",
-        ],
-    }
-    "###);
+    expect_test::expect![[r#"
+        RefCell {
+            value: [
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(1) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: WillExecute { database_key: a(2) } }",
+                "Event { runtime_id: RuntimeId { counter: 0 }, kind: DidValidateMemoizedValue { database_key: c(2) } }",
+            ],
+        }
+    "#]].assert_debug_eq(&events);
 }

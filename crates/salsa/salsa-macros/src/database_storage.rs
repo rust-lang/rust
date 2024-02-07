@@ -1,3 +1,4 @@
+//!
 use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseStream};
@@ -113,10 +114,8 @@ pub(crate) fn database(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut maybe_changed_ops = proc_macro2::TokenStream::new();
     let mut cycle_recovery_strategy_ops = proc_macro2::TokenStream::new();
     let mut for_each_ops = proc_macro2::TokenStream::new();
-    for ((QueryGroup { group_path }, group_storage), group_index) in query_groups
-        .iter()
-        .zip(&query_group_storage_names)
-        .zip(0_u16..)
+    for ((QueryGroup { group_path }, group_storage), group_index) in
+        query_groups.iter().zip(&query_group_storage_names).zip(0_u16..)
     {
         fmt_ops.extend(quote! {
             #group_index => {

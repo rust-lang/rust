@@ -1,3 +1,4 @@
+//!
 #![allow(clippy::type_complexity)]
 #![allow(clippy::question_mark)]
 #![warn(rust_2018_idioms)]

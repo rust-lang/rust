@@ -1,5 +1,6 @@
 use std::panic::UnwindSafe;
 
+use expect_test::expect;
 use salsa::{Durability, ParallelDatabase, Snapshot};
 use test_log::test;
 
@@ -179,24 +180,26 @@ fn extract_cycle(f: impl FnOnce() + UnwindSafe) -> salsa::Cycle {
 fn cycle_memoized() {
     let db = DatabaseImpl::default();
     let cycle = extract_cycle(|| db.memoized_a());
-    insta::assert_debug_snapshot!(cycle.unexpected_participants(&db), @r###"
-    [
-        "memoized_a(())",
-        "memoized_b(())",
-    ]
-    "###);
+    expect![[r#"
+        [
+            "memoized_a(())",
+            "memoized_b(())",
+        ]
+    "#]]
+    .assert_debug_eq(&cycle.unexpected_participants(&db));
 }
 
 #[test]
 fn cycle_volatile() {
     let db = DatabaseImpl::default();
     let cycle = extract_cycle(|| db.volatile_a());
-    insta::assert_debug_snapshot!(cycle.unexpected_participants(&db), @r###"
-            [
-                "volatile_a(())",
-                "volatile_b(())",
-            ]
-            "###);
+    expect![[r#"
+        [
+            "volatile_a(())",
+            "volatile_b(())",
+        ]
+    "#]]
+    .assert_debug_eq(&cycle.unexpected_participants(&db));
 }
 
 #[test]
@@ -228,12 +231,13 @@ fn inner_cycle() {
     let err = query.cycle_c();
     assert!(err.is_err());
     let cycle = err.unwrap_err().cycle;
-    insta::assert_debug_snapshot!(cycle, @r###"
-    [
-        "cycle_a(())",
-        "cycle_b(())",
-    ]
-    "###);
+    expect![[r#"
+        [
+            "cycle_a(())",
+            "cycle_b(())",
+        ]
+    "#]]
+    .assert_debug_eq(&cycle);
 }
 
 #[test]
@@ -265,16 +269,17 @@ fn cycle_revalidate_unchanged_twice() {
     db.set_c_invokes(CycleQuery::A); // force new revisi5on
 
     // on this run
-    insta::assert_debug_snapshot!(db.cycle_a(), @r###"
-    Err(
-        Error {
-            cycle: [
-                "cycle_a(())",
-                "cycle_b(())",
-            ],
-        },
-    )
-    "###);
+    expect![[r#"
+        Err(
+            Error {
+                cycle: [
+                    "cycle_a(())",
+                    "cycle_b(())",
+                ],
+            },
+        )
+    "#]]
+    .assert_debug_eq(&db.cycle_a());
 }
 
 #[test]
@@ -346,16 +351,17 @@ fn cycle_mixed_1() {
     db.set_c_invokes(CycleQuery::B);
 
     let u = db.cycle_c();
-    insta::assert_debug_snapshot!(u, @r###"
-    Err(
-        Error {
-            cycle: [
-                "cycle_b(())",
-                "cycle_c(())",
-            ],
-        },
-    )
-    "###);
+    expect![[r#"
+        Err(
+            Error {
+                cycle: [
+                    "cycle_b(())",
+                    "cycle_c(())",
+                ],
+            },
+        )
+    "#]]
+    .assert_debug_eq(&u);
 }
 
 #[test]
@@ -372,17 +378,18 @@ fn cycle_mixed_2() {
     db.set_c_invokes(CycleQuery::A);
 
     let u = db.cycle_a();
-    insta::assert_debug_snapshot!(u, @r###"
-    Err(
-        Error {
-            cycle: [
-                "cycle_a(())",
-                "cycle_b(())",
-                "cycle_c(())",
-            ],
-        },
-    )
-    "###);
+    expect![[r#"
+        Err(
+            Error {
+                cycle: [
+                    "cycle_a(())",
+                    "cycle_b(())",
+                    "cycle_c(())",
+                ],
+            },
+        )
+    "#]]
+    .assert_debug_eq(&u);
 }
 
 #[test]
@@ -399,26 +406,27 @@ fn cycle_deterministic_order() {
     };
     let a = db().cycle_a();
     let b = db().cycle_b();
-    insta::assert_debug_snapshot!((a, b), @r###"
-    (
-        Err(
-            Error {
-                cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                ],
-            },
-        ),
-        Err(
-            Error {
-                cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                ],
-            },
-        ),
-    )
-    "###);
+    expect![[r#"
+        (
+            Err(
+                Error {
+                    cycle: [
+                        "cycle_a(())",
+                        "cycle_b(())",
+                    ],
+                },
+            ),
+            Err(
+                Error {
+                    cycle: [
+                        "cycle_a(())",
+                        "cycle_b(())",
+                    ],
+                },
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&(a, b));
 }
 
 #[test]
@@ -443,34 +451,35 @@ fn cycle_multiple() {
     let c = db.cycle_c();
     let b = db.cycle_b();
     let a = db.cycle_a();
-    insta::assert_debug_snapshot!((a, b, c), @r###"
-    (
-        Err(
-            Error {
-                cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                ],
-            },
-        ),
-        Err(
-            Error {
-                cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                ],
-            },
-        ),
-        Err(
-            Error {
-                cycle: [
-                    "cycle_a(())",
-                    "cycle_b(())",
-                ],
-            },
-        ),
-    )
-    "###);
+    expect![[r#"
+        (
+            Err(
+                Error {
+                    cycle: [
+                        "cycle_a(())",
+                        "cycle_b(())",
+                    ],
+                },
+            ),
+            Err(
+                Error {
+                    cycle: [
+                        "cycle_a(())",
+                        "cycle_b(())",
+                    ],
+                },
+            ),
+            Err(
+                Error {
+                    cycle: [
+                        "cycle_a(())",
+                        "cycle_b(())",
+                    ],
+                },
+            ),
+        )
+    "#]]
+    .assert_debug_eq(&(a, b, c));
 }
 
 #[test]
@@ -485,9 +494,10 @@ fn cycle_recovery_set_but_not_participating() {
 
     // Here we expect C to panic and A not to recover:
     let r = extract_cycle(|| drop(db.cycle_a()));
-    insta::assert_debug_snapshot!(r.all_participants(&db), @r###"
-    [
-        "cycle_c(())",
-    ]
-    "###);
+    expect![[r#"
+        [
+            "cycle_c(())",
+        ]
+    "#]]
+    .assert_debug_eq(&r.all_participants(&db));
 }

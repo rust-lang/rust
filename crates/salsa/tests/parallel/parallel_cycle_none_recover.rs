@@ -3,6 +3,7 @@
 //! both intra and cross thread.
 
 use crate::setup::{Knobs, ParDatabaseImpl};
+use expect_test::expect;
 use salsa::ParallelDatabase;
 use test_log::test;
 
@@ -25,12 +26,13 @@ fn parallel_cycle_none_recover() {
     // Right now, it panics with a string.
     let err_b = thread_b.join().unwrap_err();
     if let Some(c) = err_b.downcast_ref::<salsa::Cycle>() {
-        insta::assert_debug_snapshot!(c.unexpected_participants(&db), @r###"
-        [
-            "a(-1)",
-            "b(-1)",
-        ]
-        "###);
+        expect![[r#"
+            [
+                "a(-1)",
+                "b(-1)",
+            ]
+        "#]]
+        .assert_debug_eq(&c.unexpected_participants(&db));
     } else {
         panic!("b failed in an unexpected way: {:?}", err_b);
     }
