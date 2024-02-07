@@ -263,6 +263,10 @@ hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
+hir_analysis_not_supported_delegation =
+    {$descr} is not supported yet
+    .label = callee defined here
+
 hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
@@ -346,6 +350,20 @@ hir_analysis_start_not_target_feature = `#[start]` function is not allowed to ha
 hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
     .label = `#[start]` function is not allowed to be `#[track_caller]`
 
+hir_analysis_static_mut_ref = reference of mutable static is disallowed
+    .label = reference of mutable static
+    .note = mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+    .suggestion = shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
+
+hir_analysis_static_mut_ref_lint = {$shared}reference of mutable static is discouraged
+    .label = shared reference of mutable static
+    .label_mut = mutable reference of mutable static
+    .suggestion = shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
+    .note = reference of mutable static is a hard error from 2024 edition
+    .why_note = mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
@@ -415,6 +433,17 @@ hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
     .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
     .suggestion = remove this bound
+
+hir_analysis_unused_generic_parameter =
+    {$param_def_kind} `{$param_name}` is never used
+    .label = unused {$param_def_kind}
+    .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+hir_analysis_unused_generic_parameter_adt_help =
+    consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`
+hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =
+    consider removing `{$param_name}` or referring to it in a field
+hir_analysis_unused_generic_parameter_ty_alias_help =
+    consider removing `{$param_name}` or referring to it in the body of the type alias
 
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified

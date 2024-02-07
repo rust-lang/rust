@@ -7,6 +7,8 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::source_map::Spanned;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use std::{fmt, iter};
 
@@ -652,7 +654,10 @@ where
                         [ty.into()],
                         self.source_info.span,
                     ),
-                    args: vec![Operand::Move(Place::from(ref_place))],
+                    args: vec![Spanned {
+                        node: Operand::Move(Place::from(ref_place)),
+                        span: DUMMY_SP,
+                    }],
                     destination: unit_temp,
                     target: Some(succ),
                     unwind: unwind.into_action(),
@@ -856,6 +861,9 @@ where
         let ty = self.place_ty(self.place);
         match ty.kind() {
             ty::Closure(_, args) => self.open_drop_for_tuple(args.as_closure().upvar_tys()),
+            ty::CoroutineClosure(_, args) => {
+                self.open_drop_for_tuple(args.as_coroutine_closure().upvar_tys())
+            }
             // Note that `elaborate_drops` only drops the upvars of a coroutine,
             // and this is ok because `open_drop` here can only be reached
             // within that own coroutine's resume function.

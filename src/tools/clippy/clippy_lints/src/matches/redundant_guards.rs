@@ -5,7 +5,7 @@ use clippy_utils::visitors::{for_each_expr, is_local_used};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Guard, MatchSource, Node, Pat, PatKind};
+use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, MatchSource, Node, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
@@ -21,20 +21,19 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
         };
 
         // `Some(x) if matches!(x, y)`
-        if let Guard::If(if_expr) = guard
-            && let ExprKind::Match(
-                scrutinee,
-                [
-                    arm,
-                    Arm {
-                        pat: Pat {
-                            kind: PatKind::Wild, ..
-                        },
-                        ..
+        if let ExprKind::Match(
+            scrutinee,
+            [
+                arm,
+                Arm {
+                    pat: Pat {
+                        kind: PatKind::Wild, ..
                     },
-                ],
-                MatchSource::Normal,
-            ) = if_expr.kind
+                    ..
+                },
+            ],
+            MatchSource::Normal,
+        ) = guard.kind
             && let Some(binding) = get_pat_binding(cx, scrutinee, outer_arm)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
@@ -45,14 +44,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             emit_redundant_guards(
                 cx,
                 outer_arm,
-                if_expr.span,
+                guard.span,
                 snippet(cx, pat_span, "<binding>"),
                 &binding,
                 arm.guard,
             );
         }
         // `Some(x) if let Some(2) = x`
-        else if let Guard::IfLet(let_expr) = guard
+        else if let ExprKind::Let(let_expr) = guard.kind
             && let Some(binding) = get_pat_binding(cx, let_expr.init, outer_arm)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
@@ -71,8 +70,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
         }
         // `Some(x) if x == Some(2)`
         // `Some(x) if Some(2) == x`
-        else if let Guard::If(if_expr) = guard
-            && let ExprKind::Binary(bin_op, local, pat) = if_expr.kind
+        else if let ExprKind::Binary(bin_op, local, pat) = guard.kind
             && matches!(bin_op.node, BinOpKind::Eq)
             // Ensure they have the same type. If they don't, we'd need deref coercion which isn't
             // possible (currently) in a pattern. In some cases, you can use something like
@@ -96,16 +94,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             emit_redundant_guards(
                 cx,
                 outer_arm,
-                if_expr.span,
+                guard.span,
                 snippet(cx, pat_span, "<binding>"),
                 &binding,
                 None,
             );
-        } else if let Guard::If(if_expr) = guard
-            && let ExprKind::MethodCall(path, recv, args, ..) = if_expr.kind
+        } else if let ExprKind::MethodCall(path, recv, args, ..) = guard.kind
             && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
         {
-            check_method_calls(cx, outer_arm, path.ident.name, recv, args, if_expr, &binding);
+            check_method_calls(cx, outer_arm, path.ident.name, recv, args, guard, &binding);
         }
     }
 }
@@ -216,7 +213,7 @@ fn emit_redundant_guards<'tcx>(
     guard_span: Span,
     binding_replacement: Cow<'static, str>,
     pat_binding: &PatBindingInfo,
-    inner_guard: Option<Guard<'_>>,
+    inner_guard: Option<&Expr<'_>>,
 ) {
     span_lint_and_then(
         cx,
@@ -242,12 +239,7 @@ fn emit_redundant_guards<'tcx>(
                     (
                         guard_span.source_callsite().with_lo(outer_arm.pat.span.hi()),
                         inner_guard.map_or_else(String::new, |guard| {
-                            let (prefix, span) = match guard {
-                                Guard::If(e) => ("if", e.span),
-                                Guard::IfLet(l) => ("if let", l.span),
-                            };
-
-                            format!(" {prefix} {}", snippet(cx, span, "<guard>"))
+                            format!(" if {}", snippet(cx, guard.span, "<guard>"))
                         }),
                     ),
                 ],

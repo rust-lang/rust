@@ -97,7 +97,7 @@ pub(super) fn check(
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
         let hint = format!("{}.{method_hint}()", snippet(cx, as_ref_recv.span, ".."));
-        let suggestion = format!("try using {method_hint} instead");
+        let suggestion = format!("consider using {method_hint}");
 
         let msg = format!("called `{current_method}` on an `Option` value");
         span_lint_and_sugg(

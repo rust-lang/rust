@@ -98,6 +98,9 @@ fn start<T: Termination + 'static>(
 }
 
 static mut NUM: u8 = 6 * 7;
+
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
+#[allow(static_mut_ref)]
 static NUM_REF: &'static u8 = unsafe { &NUM };
 
 macro_rules! assert {

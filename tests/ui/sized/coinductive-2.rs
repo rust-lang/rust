@@ -11,7 +11,7 @@ impl<T> CollectionFactory<T> for Vec<()> {
     type Collection = Vec<T>;
 }
 
-trait Collection<T>: Sized {
+trait Collection<T>: Sized { //~ WARN trait `Collection` is never used
     fn push(&mut self, v: T);
 }
 

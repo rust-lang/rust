@@ -17,7 +17,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
-    1,70,0 { OPTION_IS_SOME_AND, BINARY_HEAP_RETAIN }
+    1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
     1,68,0 { PATH_MAIN_SEPARATOR_STR }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE }
@@ -109,7 +109,7 @@ impl Msrv {
             if let Some(duplicate) = msrv_attrs.last() {
                 sess.dcx()
                     .struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
-                    .span_note(msrv_attr.span, "first definition found here")
+                    .with_span_note(msrv_attr.span, "first definition found here")
                     .emit();
             }
 

@@ -1,8 +1,9 @@
 // Make sure we suggest the bound `T: 'a` in the correct scope:
 // trait, impl or associated fn.
 // run-rustfix
+#![allow(dead_code)]
 
-struct Inv<'a>(Option<*mut &'a u8>);
+struct Inv<'a>(#[allow(dead_code)] Option<*mut &'a u8>);
 
 fn check_bound<'a, A: 'a>(_: A, _: Inv<'a>) {}
 

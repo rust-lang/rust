@@ -289,9 +289,11 @@ pub enum ObligationCauseCode<'tcx> {
     /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType(Option<Span>),
+    SizedArgumentType(Option<hir::HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
+    /// Return type of a call expression must be `Sized`.
+    SizedCallReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
@@ -604,16 +606,13 @@ pub enum SelectionError<'tcx> {
     /// After a closure impl has selected, its "outputs" were evaluated
     /// (which for closures includes the "input" type params) and they
     /// didn't resolve. See `confirm_poly_trait_refs` for more.
-    OutputTypeParameterMismatch(Box<SelectionOutputTypeParameterMismatch<'tcx>>),
+    SignatureMismatch(Box<SignatureMismatchData<'tcx>>),
     /// The trait pointed by `DefId` is not object safe.
     TraitNotObjectSafe(DefId),
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
     Overflow(OverflowError),
-    /// Signaling that an error has already been emitted, to avoid
-    /// multiple errors being shown.
-    ErrorReporting,
     /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.
@@ -621,7 +620,7 @@ pub enum SelectionError<'tcx> {
 }
 
 #[derive(Clone, Debug, TypeVisitable)]
-pub struct SelectionOutputTypeParameterMismatch<'tcx> {
+pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::PolyTraitRef<'tcx>,
     pub expected_trait_ref: ty::PolyTraitRef<'tcx>,
     pub terr: ty::error::TypeError<'tcx>,

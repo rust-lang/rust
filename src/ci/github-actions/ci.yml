@@ -34,6 +34,7 @@ x--expand-yaml-anchors--remove:
     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
     HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
@@ -92,7 +93,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-macos-m1
-    os: macos-13-xlarge
+    os: macos-14
     <<: *base-job
 
   - &job-windows-8c
@@ -324,6 +325,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 defaults:
   run:
@@ -545,7 +547,7 @@ jobs:
               # nightly features to compile, and this job would fail if
               # executed on beta and stable.
               CI_ONLY_WHEN_CHANNEL: nightly
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-debug
             <<: *job-linux-8c
@@ -578,7 +580,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin
+              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
@@ -592,7 +594,7 @@ jobs:
           - name: dist-apple-various
             env:
               SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
-              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
@@ -604,7 +606,7 @@ jobs:
           - name: x86_64-apple-1
             env: &env-x86_64-apple-tests
               SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
-              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -622,17 +624,14 @@ jobs:
           # This target only needs to support 11.0 and up as nothing else supports the hardware
           - name: dist-aarch64-apple
             env:
-              SCRIPT: ./x.py dist bootstrap --include-default-paths --stage 2
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
               RUST_CONFIGURE_ARGS: >-
-                --build=x86_64-apple-darwin
-                --host=aarch64-apple-darwin
-                --target=aarch64-apple-darwin
                 --enable-full-tools
                 --enable-sanitizers
                 --enable-profiler
-                --disable-docs
                 --set rust.jemalloc
                 --set llvm.ninja=false
+                --set rust.lto=thin
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
               USE_XCODE_CLANG: 1
@@ -642,15 +641,25 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              # Corresponds to 16K page size
-              #
-              # Shouldn't be needed if jemalloc-sys is updated to
-              # handle this platform like iOS or if we build on
-              # aarch64-apple-darwin itself.
-              #
-              # https://github.com/gnzlbg/jemallocator/blob/c27a859e98e3cb790dc269773d9da71a1e918458/jemalloc-sys/build.rs#L237
-              JEMALLOC_SYS_WITH_LG_PAGE: 14
-            <<: *job-macos-xl
+            <<: *job-macos-m1
+
+          # This target only needs to support 11.0 and up as nothing else supports the hardware
+          - name: aarch64-apple
+            env:
+              SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+              RUST_CONFIGURE_ARGS: >-
+                --enable-sanitizers
+                --enable-profiler
+                --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-m1
 
           ######################
           #  Windows Builders  #

@@ -461,6 +461,10 @@ fn ipv4_properties() {
     check!("198.18.54.2", benchmarking);
     check!("198.19.255.255", benchmarking);
     check!("192.0.0.0");
+    check!("192.0.0.8");
+    check!("192.0.0.9", global);
+    check!("192.0.0.10", global);
+    check!("192.0.0.11");
     check!("192.0.0.255");
     check!("192.0.0.100");
     check!("240.0.0.0", reserved);
@@ -480,6 +484,10 @@ fn ipv6_properties() {
     }
 
     macro_rules! check {
+        ($s:expr, &[$($octet:expr),*]) => {
+            check!($s, &[$($octet),*], 0);
+        };
+
         ($s:expr, &[$($octet:expr),*], $mask:expr) => {
             assert_eq!($s, ip!($s).to_string());
             let octets = &[$($octet),*];
@@ -508,6 +516,7 @@ fn ipv6_properties() {
                 | multicast_realm_local
                 | multicast_site_local
                 | multicast_organization_local;
+            let ipv4_mapped: u32 = 1 << 17;
 
             if ($mask & unspecified) == unspecified {
                 assert!(ip!($s).is_unspecified());
@@ -584,6 +593,11 @@ fn ipv6_properties() {
                 assert_eq!(ip!($s).multicast_scope().unwrap(),
                            Ipv6MulticastScope::Global);
             }
+            if ($mask & ipv4_mapped) == ipv4_mapped {
+                assert!(ip!($s).is_ipv4_mapped());
+            } else {
+                assert!(!ip!($s).is_ipv4_mapped());
+            }
         }
     }
 
@@ -602,6 +616,7 @@ fn ipv6_properties() {
     let multicast_site_local: u32 = 1 << 13;
     let multicast_organization_local: u32 = 1 << 14;
     let multicast_global: u32 = 1 << 15;
+    let ipv4_mapped: u32 = 1 << 17;
 
     check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
 
@@ -614,7 +629,7 @@ fn ipv6_properties() {
     check!(
         "::ffff:127.0.0.1",
         &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0, 0, 1],
-        unicast_global
+        unicast_global | ipv4_mapped
     );
 
     check!(
@@ -656,14 +671,20 @@ fn ipv6_properties() {
         &[0x20, 1, 0, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         global | unicast_global
     );
-
-    check!("2001:30::", &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+    check!(
+        "2001:30::",
+        &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
+    check!("2001:40::", &[0x20, 1, 0, 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!(
         "2001:200::",
         &[0x20, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         global | unicast_global
     );
+
+    check!("2002::", &[0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
@@ -981,6 +1002,9 @@ fn ipv6_const() {
 
     const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
     assert!(!IS_MULTICAST);
+
+    const IS_IPV4_MAPPED: bool = IP_ADDRESS.is_ipv4_mapped();
+    assert!(!IS_IPV4_MAPPED);
 
     const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
     assert_eq!(IP_V4.unwrap(), Ipv4Addr::new(0, 0, 0, 1));

@@ -1,9 +1,5 @@
 // check-pass
-// revisions: mir thir
-// [mir]ignore-test This is currently broken
-// [thir]compile-flags: -Z thir-unsafeck
 
-#![allow(incomplete_features)]
 #![warn(unused_unsafe)]
 #![feature(inline_const_pat)]
 

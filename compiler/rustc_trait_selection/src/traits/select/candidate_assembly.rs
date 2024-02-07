@@ -9,10 +9,13 @@
 use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_hir as hir;
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
+use crate::traits;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
 use super::BuiltinImplConditions;
@@ -114,10 +117,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
                 } else if lang_items.async_iterator_trait() == Some(def_id) {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.async_fn_kind_helper() == Some(def_id) {
+                    self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
 
+                // FIXME: Put these into `else if` blocks above, since they're built-in.
                 self.assemble_closure_candidates(obligation, &mut candidates);
+                self.assemble_async_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
@@ -303,11 +311,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(def_id, closure_args) => {
+        let self_ty = obligation.self_ty().skip_binder();
+        match *self_ty.kind() {
+            ty::Closure(def_id, _) => {
                 let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
-                match self.infcx.closure_kind(closure_args) {
+                match self.infcx.closure_kind(self_ty) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
@@ -328,6 +337,61 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
             _ => {}
+        }
+    }
+
+    fn assemble_async_closure_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let Some(goal_kind) =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id())
+        else {
+            return;
+        };
+
+        match *obligation.self_ty().skip_binder().kind() {
+            ty::CoroutineClosure(_, args) => {
+                if let Some(closure_kind) =
+                    args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn assemble_async_fn_kind_helper_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        let target_kind_ty = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
+
+        // `to_opt_closure_kind` is kind of ICEy when it sees non-int types.
+        if !(self_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+        if !(target_kind_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+
+        // Check that the self kind extends the goal kind. If it does,
+        // then there's nothing else to check.
+        if let Some(closure_kind) = self_ty.to_opt_closure_kind()
+            && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
+        {
+            if closure_kind.extends(goal_kind) {
+                candidates.vec.push(AsyncFnKindHelperCandidate);
+            }
         }
     }
 
@@ -485,7 +549,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Slice(_)
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
@@ -620,7 +685,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -723,6 +789,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Temporary migration for #89190
+    fn need_migrate_deref_output_trait_object(
+        &mut self,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
+        let tcx = self.tcx();
+        if tcx.features().trait_upcasting {
+            return None;
+        }
+
+        // <ty as Deref>
+        let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
+
+        let obligation =
+            traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
+        if !self.infcx.predicate_may_hold(&obligation) {
+            return None;
+        }
+
+        self.infcx.probe(|_| {
+            let ty = traits::normalize_projection_type(
+                self,
+                param_env,
+                ty::AliasTy::new(tcx, tcx.lang_items().deref_target()?, trait_ref.args),
+                cause.clone(),
+                0,
+                // We're *intentionally* throwing these away,
+                // since we don't actually use them.
+                &mut vec![],
+            )
+            .ty()
+            .unwrap();
+
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+        })
+    }
+
     /// Searches for unsizing that might apply to `obligation`.
     fn assemble_candidates_for_unsizing(
         &mut self,
@@ -780,6 +885,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = a_data.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
+                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                            source,
+                            obligation.param_env,
+                            &obligation.cause,
+                        ) {
+                            if deref_trait_ref.def_id() == target_trait_did {
+                                return;
+                            }
+                        }
 
                         for (idx, upcast_trait_ref) in
                             util::supertraits(self.tcx(), source_trait_ref).enumerate()
@@ -949,6 +1063,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Slice(_)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::Tuple(_)
             | ty::CoroutineWitness(..) => {
@@ -969,7 +1084,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     self.tcx().def_span(impl_def_id),
                                     "multiple drop impls found",
                                 )
-                                .span_note(self.tcx().def_span(old_impl_def_id), "other impl here")
+                                .with_span_note(
+                                    self.tcx().def_span(old_impl_def_id),
+                                    "other impl here",
+                                )
                                 .delay_as_bug();
                         }
 
@@ -1022,7 +1140,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -1085,6 +1204,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never

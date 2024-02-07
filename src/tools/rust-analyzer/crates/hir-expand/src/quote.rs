@@ -1,6 +1,14 @@
 //! A simplified version of quote-crate like quasi quote macro
+#![allow(clippy::crate_in_macro_def)]
 
-use base_db::span::SpanData;
+use span::Span;
+use syntax::format_smolstr;
+
+use crate::name::Name;
+
+pub(crate) const fn dollar_crate(span: Span) -> tt::Ident<Span> {
+    tt::Ident { text: syntax::SmolStr::new_static("$crate"), span }
+}
 
 // A helper macro quote macro
 // FIXME:
@@ -11,13 +19,13 @@ use base_db::span::SpanData;
 #[macro_export]
 macro_rules! __quote {
     ($span:ident) => {
-        Vec::<crate::tt::TokenTree>::new()
+        Vec::<$crate::tt::TokenTree>::new()
     };
 
     ( @SUBTREE($span:ident) $delim:ident $($tt:tt)* ) => {
         {
             let children = $crate::__quote!($span $($tt)*);
-            crate::tt::Subtree {
+            $crate::tt::Subtree {
                 delimiter: crate::tt::Delimiter {
                     kind: crate::tt::DelimiterKind::$delim,
                     open: $span,
@@ -130,12 +138,12 @@ macro_rules! quote {
 }
 
 pub(crate) trait IntoTt {
-    fn to_subtree(self, span: SpanData) -> crate::tt::Subtree;
+    fn to_subtree(self, span: Span) -> crate::tt::Subtree;
     fn to_tokens(self) -> Vec<crate::tt::TokenTree>;
 }
 
 impl IntoTt for Vec<crate::tt::TokenTree> {
-    fn to_subtree(self, span: SpanData) -> crate::tt::Subtree {
+    fn to_subtree(self, span: Span) -> crate::tt::Subtree {
         crate::tt::Subtree {
             delimiter: crate::tt::Delimiter::invisible_spanned(span),
             token_trees: self,
@@ -148,7 +156,7 @@ impl IntoTt for Vec<crate::tt::TokenTree> {
 }
 
 impl IntoTt for crate::tt::Subtree {
-    fn to_subtree(self, _: SpanData) -> crate::tt::Subtree {
+    fn to_subtree(self, _: Span) -> crate::tt::Subtree {
         self
     }
 
@@ -158,39 +166,39 @@ impl IntoTt for crate::tt::Subtree {
 }
 
 pub(crate) trait ToTokenTree {
-    fn to_token(self, span: SpanData) -> crate::tt::TokenTree;
+    fn to_token(self, span: Span) -> crate::tt::TokenTree;
 }
 
 impl ToTokenTree for crate::tt::TokenTree {
-    fn to_token(self, _: SpanData) -> crate::tt::TokenTree {
+    fn to_token(self, _: Span) -> crate::tt::TokenTree {
         self
     }
 }
 
 impl ToTokenTree for &crate::tt::TokenTree {
-    fn to_token(self, _: SpanData) -> crate::tt::TokenTree {
+    fn to_token(self, _: Span) -> crate::tt::TokenTree {
         self.clone()
     }
 }
 
 impl ToTokenTree for crate::tt::Subtree {
-    fn to_token(self, _: SpanData) -> crate::tt::TokenTree {
+    fn to_token(self, _: Span) -> crate::tt::TokenTree {
         self.into()
     }
 }
 
 macro_rules! impl_to_to_tokentrees {
-    ($($span:ident: $ty:ty => $this:ident $im:block);*) => {
+    ($($span:ident: $ty:ty => $this:ident $im:block;)*) => {
         $(
             impl ToTokenTree for $ty {
-                fn to_token($this, $span: SpanData) -> crate::tt::TokenTree {
+                fn to_token($this, $span: Span) -> crate::tt::TokenTree {
                     let leaf: crate::tt::Leaf = $im.into();
                     leaf.into()
                 }
             }
 
             impl ToTokenTree for &$ty {
-                fn to_token($this, $span: SpanData) -> crate::tt::TokenTree {
+                fn to_token($this, $span: Span) -> crate::tt::TokenTree {
                     let leaf: crate::tt::Leaf = $im.clone().into();
                     leaf.into()
                 }
@@ -208,21 +216,20 @@ impl_to_to_tokentrees! {
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
-    span: &str => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span}};
-    span: String => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span}}
+    span: &str => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
+    span: String => self { crate::tt::Literal{text: format_smolstr!("\"{}\"", self.escape_default()), span}};
+    span: Name => self { crate::tt::Ident{text: self.to_smol_str(), span}};
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tt;
-    use base_db::{
-        span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
-        FileId,
-    };
+    use base_db::FileId;
     use expect_test::expect;
+    use span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
     use syntax::{TextRange, TextSize};
 
-    const DUMMY: tt::SpanData = tt::SpanData {
+    const DUMMY: tt::Span = tt::Span {
         range: TextRange::empty(TextSize::new(0)),
         anchor: SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID },
         ctx: SyntaxContextId::ROOT,

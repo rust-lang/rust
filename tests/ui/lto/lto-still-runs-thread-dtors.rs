@@ -2,8 +2,6 @@
 // compile-flags: -C lto
 // no-prefer-dynamic
 // ignore-emscripten no threads support
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
 
 use std::thread;
 

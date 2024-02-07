@@ -14,7 +14,7 @@ use stable_mir::{opaque, Opaque};
 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
     type T = VariantIdx;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         VariantIdx::to_val(self.as_usize())
     }
 }
@@ -22,7 +22,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
 impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
     type T = stable_mir::target::Endian;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_abi::Endian::Little => stable_mir::target::Endian::Little,
             rustc_abi::Endian::Big => stable_mir::target::Endian::Big,
@@ -33,7 +33,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
 impl<'tcx> Stable<'tcx> for rustc_target::abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     type T = TyAndLayout;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         TyAndLayout { ty: self.ty.stable(tables), layout: self.layout.stable(tables) }
     }
 }
@@ -41,8 +41,8 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
 impl<'tcx> Stable<'tcx> for rustc_target::abi::Layout<'tcx> {
     type T = Layout;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        tables.layout_id(*self)
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        tables.layout_id(tables.tcx.lift(*self).unwrap())
     }
 }
 
@@ -51,7 +51,7 @@ impl<'tcx> Stable<'tcx>
 {
     type T = LayoutShape;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         LayoutShape {
             fields: self.fields.stable(tables),
             variants: self.variants.stable(tables),
@@ -65,7 +65,7 @@ impl<'tcx> Stable<'tcx>
 impl<'tcx> Stable<'tcx> for rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>> {
     type T = FnAbi;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         assert!(self.args.len() >= self.fixed_count as usize);
         assert!(!self.c_variadic || matches!(self.conv, Conv::C));
         FnAbi {
@@ -81,7 +81,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>> {
 impl<'tcx> Stable<'tcx> for rustc_target::abi::call::ArgAbi<'tcx, ty::Ty<'tcx>> {
     type T = ArgAbi;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         ArgAbi {
             ty: self.layout.ty.stable(tables),
             layout: self.layout.layout.stable(tables),
@@ -93,7 +93,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::ArgAbi<'tcx, ty::Ty<'tcx>> 
 impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
     type T = CallConvention;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         match self {
             Conv::C => CallConvention::C,
             Conv::Rust => CallConvention::Rust,
@@ -111,7 +111,6 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
             Conv::X86VectorCall => CallConvention::X86VectorCall,
             Conv::X86_64SysV => CallConvention::X86_64SysV,
             Conv::X86_64Win64 => CallConvention::X86_64Win64,
-            Conv::AmdGpuKernel => CallConvention::AmdGpuKernel,
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,
@@ -122,7 +121,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
 impl<'tcx> Stable<'tcx> for rustc_target::abi::call::PassMode {
     type T = PassMode;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_target::abi::call::PassMode::Ignore => PassMode::Ignore,
             rustc_target::abi::call::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
@@ -146,7 +145,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::PassMode {
 impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_target::abi::FieldIdx> {
     type T = FieldsShape;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_abi::FieldsShape::Primitive => FieldsShape::Primitive,
             rustc_abi::FieldsShape::Union(count) => FieldsShape::Union(*count),
@@ -165,7 +164,7 @@ impl<'tcx> Stable<'tcx>
 {
     type T = VariantsShape;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_abi::Variants::Single { index } => {
                 VariantsShape::Single { index: index.stable(tables) }
@@ -185,7 +184,7 @@ impl<'tcx> Stable<'tcx>
 impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_target::abi::VariantIdx> {
     type T = TagEncoding;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             rustc_abi::TagEncoding::Direct => TagEncoding::Direct,
             rustc_abi::TagEncoding::Niche { untagged_variant, niche_variants, niche_start } => {
@@ -202,7 +201,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_target::abi::VariantIdx
 impl<'tcx> Stable<'tcx> for rustc_abi::Abi {
     type T = ValueAbi;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match *self {
             rustc_abi::Abi::Uninhabited => ValueAbi::Uninhabited,
             rustc_abi::Abi::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables)),
@@ -220,7 +219,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Abi {
 impl<'tcx> Stable<'tcx> for rustc_abi::Size {
     type T = Size;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         self.bytes_usize()
     }
 }
@@ -228,7 +227,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Size {
 impl<'tcx> Stable<'tcx> for rustc_abi::Align {
     type T = Align;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         self.bytes()
     }
 }
@@ -236,7 +235,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Align {
 impl<'tcx> Stable<'tcx> for rustc_abi::Scalar {
     type T = Opaque;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         opaque(self)
     }
 }

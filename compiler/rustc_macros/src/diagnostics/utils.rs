@@ -584,7 +584,7 @@ pub(super) enum SubdiagnosticKind {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
         /// Identifier for variable used for formatted code, e.g. `___code_0`. Enables separation
-        /// of formatting and diagnostic emission so that `set_arg` calls can happen in-between..
+        /// of formatting and diagnostic emission so that `arg` calls can happen in-between..
         code_field: syn::Ident,
         /// Initialization logic for `code_field`'s variable, e.g.
         /// `let __formatted_code = /* whatever */;`
@@ -863,9 +863,9 @@ impl quote::IdentFragment for SubdiagnosticKind {
     }
 }
 
-/// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
+/// Returns `true` if `field` should generate a `arg` call rather than any other diagnostic
 /// call (like `span_label`).
-pub(super) fn should_generate_set_arg(field: &Field) -> bool {
+pub(super) fn should_generate_arg(field: &Field) -> bool {
     // Perhaps this should be an exhaustive list...
     field.attrs.iter().all(|attr| is_doc_comment(attr))
 }

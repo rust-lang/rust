@@ -2,6 +2,7 @@
 
 use std::{fmt, fs, path::Path};
 
+use stdx::format_to_acc;
 use test_utils::project_root;
 
 #[test]
@@ -103,7 +104,7 @@ impl Assist {
                     let doc = take_until(lines.by_ref(), "```").trim().to_string();
                     assert!(
                         (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
-                            || assist.sections.len() > 0,
+                            || !assist.sections.is_empty(),
                         "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
                         &assist.id,
                         doc,
@@ -172,8 +173,7 @@ impl fmt::Display for Assist {
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }
 
 fn reveal_hash_comments(text: &str) -> String {
@@ -187,6 +187,5 @@ fn reveal_hash_comments(text: &str) -> String {
                 it
             }
         })
-        .map(|it| format!("{it}\n"))
-        .collect()
+        .fold(String::new(), |mut acc, it| format_to_acc!(acc, "{it}\n"))
 }

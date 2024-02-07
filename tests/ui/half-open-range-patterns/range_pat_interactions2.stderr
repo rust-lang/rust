@@ -1,17 +1,75 @@
-error[E0586]: inclusive range with no end
-  --> $DIR/range_pat_interactions2.rs:10:14
+error: expected a pattern range bound, found an expression
+  --> $DIR/range_pat_interactions2.rs:10:18
    |
 LL |             0..=(5+1) => errors_only.push(x),
-   |              ^^^ help: use `..` instead
-   |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
+   |                  ^^^ arbitrary expressions are not allowed in patterns
 
-error: expected one of `=>`, `if`, or `|`, found `(`
+error: range pattern bounds cannot have parentheses
   --> $DIR/range_pat_interactions2.rs:10:17
    |
 LL |             0..=(5+1) => errors_only.push(x),
-   |                 ^ expected one of `=>`, `if`, or `|`
+   |                 ^   ^
+   |
+help: remove these parentheses
+   |
+LL -             0..=(5+1) => errors_only.push(x),
+LL +             0..=5+1 => errors_only.push(x),
+   |
 
-error: aborting due to 2 previous errors
+error[E0658]: inline-const in pattern position is experimental
+  --> $DIR/range_pat_interactions2.rs:17:20
+   |
+LL |             y @ 0..const { 5 + 1 } => assert_eq!(y, 5),
+   |                    ^^^^^
+   |
+   = note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
+   = help: add `#![feature(inline_const_pat)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-For more information about this error, try `rustc --explain E0586`.
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions2.rs:13:17
+   |
+LL |             1 | -3..0 => first_or.push(x),
+   |                 ^^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions2.rs:15:18
+   |
+LL |             y @ (0..5 | 6) => or_two.push(y),
+   |                  ^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions2.rs:17:17
+   |
+LL |             y @ 0..const { 5 + 1 } => assert_eq!(y, 5),
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
+
+error[E0658]: exclusive range pattern syntax is experimental
+  --> $DIR/range_pat_interactions2.rs:21:17
+   |
+LL |             y @ ..-7 => assert_eq!(y, -8),
+   |                 ^^^^
+   |
+   = note: see issue #37854 <https://github.com/rust-lang/rust/issues/37854> for more information
+   = help: add `#![feature(exclusive_range_pattern)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use an inclusive range pattern, like N..=M
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

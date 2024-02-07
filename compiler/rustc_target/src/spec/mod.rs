@@ -1543,6 +1543,7 @@ supported_targets! {
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
+    ("armv8r-none-eabihf", armv8r_none_eabihf),
 
     ("x86_64-pc-solaris", x86_64_pc_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
@@ -1597,10 +1598,13 @@ supported_targets! {
     ("x86_64-unikraft-linux-musl", x86_64_unikraft_linux_musl),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
+    ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
+    ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
+
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
@@ -1883,6 +1887,8 @@ pub struct TargetOptions {
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
     /// -mattr=$features`.
     pub features: StaticCow<str>,
+    /// Direct or use GOT indirect to reference external data symbols
+    pub direct_access_external_data: Option<bool>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
     /// Whether dynamic linking can export TLS globals. Defaults to true.
@@ -2277,6 +2283,7 @@ impl Default for TargetOptions {
             asm_args: cvs![],
             cpu: "generic".into(),
             features: "".into(),
+            direct_access_external_data: None,
             dynamic_linking: false,
             dll_tls_export: true,
             only_cdylib: false,
@@ -2399,10 +2406,14 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi) -> Abi {
+    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
         match abi {
             Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" => {
+
+            // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
+            // `__stdcall` only applies on x86 and on non-variadic functions:
+            // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
+            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
@@ -2450,7 +2461,6 @@ impl Target {
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
-            AmdGpuKernel => self.arch == "amdgcn",
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
             Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
@@ -2571,6 +2581,12 @@ impl Target {
                         return Err("Not a valid DWARF version number".into());
                     }
                     base.$key_name = s as u32;
+                }
+            } );
+            ($key_name:ident, Option<bool>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
+                    base.$key_name = Some(s);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -3001,6 +3017,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(direct_access_external_data, Option<bool>);
         key!(dll_tls_export, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
@@ -3255,6 +3272,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(direct_access_external_data);
         target_option_val!(dll_tls_export);
         target_option_val!(only_cdylib);
         target_option_val!(executables);
@@ -3394,19 +3412,22 @@ impl Hash for TargetTriple {
 impl<S: Encoder> Encodable<S> for TargetTriple {
     fn encode(&self, s: &mut S) {
         match self {
-            TargetTriple::TargetTriple(triple) => s.emit_enum_variant(0, |s| s.emit_str(triple)),
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => s
-                .emit_enum_variant(1, |s| {
-                    s.emit_str(triple);
-                    s.emit_str(contents)
-                }),
+            TargetTriple::TargetTriple(triple) => {
+                s.emit_u8(0);
+                s.emit_str(triple);
+            }
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+                s.emit_u8(1);
+                s.emit_str(triple);
+                s.emit_str(contents);
+            }
         }
     }
 }
 
 impl<D: Decoder> Decodable<D> for TargetTriple {
     fn decode(d: &mut D) -> Self {
-        match d.read_usize() {
+        match d.read_u8() {
             0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
             1 => TargetTriple::TargetJson {
                 path_for_rustdoc: PathBuf::new(),

@@ -214,36 +214,22 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    let callee_id = cx
-        .enclosing_body
-        .map(|body| cx.tcx.hir().body_owner(body).owner.to_def_id());
-    implements_trait_with_env_from_iter(
-        cx.tcx,
-        cx.param_env,
-        ty,
-        trait_id,
-        callee_id,
-        args.iter().map(|&x| Some(x)),
-    )
+    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, trait_id, None, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
+///
+/// The `callee_id` argument is used to determine whether this is a function call in a `const fn`
+/// environment, used for checking const traits.
 pub fn implements_trait_with_env<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    callee_id: DefId,
+    callee_id: Option<DefId>,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(
-        tcx,
-        param_env,
-        ty,
-        trait_id,
-        Some(callee_id),
-        args.iter().map(|&x| Some(x)),
-    )
+    implements_trait_with_env_from_iter(tcx, param_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait_from_env` but takes the arguments as an iterator.
@@ -257,6 +243,13 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
 ) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.has_infer());
+
+    // If a `callee_id` is passed, then we assert that it is a body owner
+    // through calling `body_owner_kind`, which would panic if the callee
+    // does not have a body.
+    if let Some(callee_id) = callee_id {
+        let _ = tcx.hir().body_owner_kind(callee_id);
+    }
 
     let ty = tcx.erase_regions(ty);
     if ty.has_escaping_bound_vars() {

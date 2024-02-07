@@ -12,7 +12,7 @@ use crate::MoveDataParamEnv;
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 use rustc_ast::MetaItem;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::ChunkedBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -209,7 +209,7 @@ impl PeekCall {
 
                 assert_eq!(fn_args.len(), 1);
                 let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
-                let arg = match &args[0] {
+                let arg = match &args[0].node {
                     Operand::Copy(place) | Operand::Move(place) => {
                         if let Some(local) = place.as_local() {
                             local
@@ -275,7 +275,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &ChunkedBitSet<Local>,
+        flow_state: &BitSet<Local>,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");

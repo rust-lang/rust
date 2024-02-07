@@ -21,24 +21,25 @@ macro_rules! eprintln {
 mod fixture;
 
 mod markup;
-mod prime_caches;
 mod navigation_target;
+mod prime_caches;
 
 mod annotations;
 mod call_hierarchy;
-mod signature_help;
 mod doc_links;
-mod highlight_related;
 mod expand_macro;
 mod extend_selection;
+mod fetch_crates;
 mod file_structure;
 mod folding_ranges;
 mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
+mod highlight_related;
 mod hover;
 mod inlay_hints;
+mod interpret_function;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -48,6 +49,8 @@ mod parent_module;
 mod references;
 mod rename;
 mod runnables;
+mod shuffle_crate_graph;
+mod signature_help;
 mod ssr;
 mod static_index;
 mod status;
@@ -56,17 +59,15 @@ mod syntax_tree;
 mod typing;
 mod view_crate_graph;
 mod view_hir;
-mod view_mir;
-mod interpret_function;
 mod view_item_tree;
-mod shuffle_crate_graph;
-mod fetch_crates;
 mod view_memory_layout;
+mod view_mir;
 
 use std::ffi::OsStr;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
+use hir::Change;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
@@ -78,7 +79,7 @@ use syntax::SourceFile;
 use triomphe::Arc;
 use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
 
-use crate::navigation_target::{ToNav, TryToNav};
+use crate::navigation_target::ToNav;
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
@@ -98,9 +99,12 @@ pub use crate::{
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
-    moniker::{MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation},
+    moniker::{
+        MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation,
+        SymbolInformationKind,
+    },
     move_item::Direction,
-    navigation_target::{NavigationTarget, UpmappingResult},
+    navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
     prime_caches::ParallelPrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,
@@ -122,7 +126,7 @@ pub use ide_completion::{
 };
 pub use ide_db::{
     base_db::{
-        Cancelled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
+        Cancelled, CrateGraph, CrateId, Edition, FileChange, FileId, FilePosition, FileRange,
         SourceRoot, SourceRootId,
     },
     documentation::Documentation,
@@ -167,7 +171,7 @@ impl AnalysisHost {
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
-        self.db.update_parse_query_lru_capacity(lru_capacity);
+        self.db.update_base_query_lru_capacities(lru_capacity);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
@@ -183,7 +187,7 @@ impl AnalysisHost {
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
     pub fn apply_change(&mut self, change: Change) {
-        self.db.apply_change(change)
+        self.db.apply_change(change);
     }
 
     /// NB: this clears the database
@@ -265,7 +269,7 @@ impl Analysis {
 
     /// Debug info about the current state of the analysis.
     pub fn status(&self, file_id: Option<FileId>) -> Cancellable<String> {
-        self.with_db(|db| status::status(&*db, file_id))
+        self.with_db(|db| status::status(db, file_id))
     }
 
     pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>
@@ -344,7 +348,7 @@ impl Analysis {
     }
 
     pub fn fetch_crates(&self) -> Cancellable<FxIndexSet<CrateInfo>> {
-        self.with_db(|db| fetch_crates::fetch_crates(db))
+        self.with_db(fetch_crates::fetch_crates)
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancellable<Option<ExpandedMacro>> {
@@ -410,11 +414,12 @@ impl Analysis {
     }
 
     /// Fuzzy searches for a symbol.
-    pub fn symbol_search(&self, query: Query) -> Cancellable<Vec<NavigationTarget>> {
+    pub fn symbol_search(&self, query: Query, limit: usize) -> Cancellable<Vec<NavigationTarget>> {
         self.with_db(|db| {
             symbol_index::world_symbols(db, query)
                 .into_iter() // xx: should we make this a par iter?
                 .filter_map(|s| s.try_to_nav(db))
+                .take(limit)
                 .map(UpmappingResult::call_site)
                 .collect::<Vec<_>>()
         })
@@ -662,8 +667,8 @@ impl Analysis {
             let assists = ide_assists::assists(db, assist_config, resolve, frange);
 
             let mut res = diagnostic_assists;
-            res.extend(ssr_assists.into_iter());
-            res.extend(assists.into_iter());
+            res.extend(ssr_assists);
+            res.extend(assists);
 
             res
         })
@@ -675,8 +680,9 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
+        rename_external: bool,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| rename::rename(db, position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name, rename_external))
     }
 
     pub fn prepare_rename(

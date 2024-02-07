@@ -6,6 +6,7 @@ LL | #[cfg_accessible(std)]
    |
    = note: see issue #64797 <https://github.com/rust-lang/rust/issues/64797> for more information
    = help: add `#![feature(cfg_accessible)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error
 

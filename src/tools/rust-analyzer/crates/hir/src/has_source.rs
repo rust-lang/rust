@@ -116,7 +116,7 @@ impl HasSource for Enum {
 impl HasSource for Variant {
     type Ast = ast::Variant;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Variant>> {
-        Some(self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone()))
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for Function {

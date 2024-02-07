@@ -6,7 +6,7 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// FIXME: Generate proper `index_mut` method body refer to `index` method body may impossible due to the unpredicable case [#15581].
+// FIXME: Generate proper `index_mut` method body refer to `index` method body may impossible due to the unpredictable case [#15581].
 // Here just leave the `index_mut` method body be same as `index` method body, user can modify it manually to meet their need.
 
 // Assist: generate_mut_trait_impl
@@ -47,7 +47,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?.clone_for_update();
 
     let trait_ = impl_def.trait_()?;
-    if let ast::Type::PathType(trait_path) = trait_.clone() {
+    if let ast::Type::PathType(trait_path) = trait_ {
         let trait_type = ctx.sema.resolve_trait(&trait_path.path()?)?;
         let scope = ctx.sema.scope(trait_path.syntax())?;
         if trait_type != FamousDefs(&ctx.sema, scope.krate()).core_convert_Index()? {
@@ -105,7 +105,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         "Generate `IndexMut` impl from this `Index` trait",
         target,
         |edit| {
-            edit.insert(target.start(), format!("$0{}\n\n", impl_def.to_string()));
+            edit.insert(target.start(), format!("$0{}\n\n", impl_def));
         },
     )
 }

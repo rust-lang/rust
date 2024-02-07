@@ -186,14 +186,13 @@ impl TypeLocation {
     }
 
     pub(crate) fn complete_consts(&self) -> bool {
-        match self {
+        matches!(
+            self,
             TypeLocation::GenericArg {
                 corresponding_param: Some(ast::GenericParam::ConstParam(_)),
                 ..
-            } => true,
-            TypeLocation::AssocConstEq => true,
-            _ => false,
-        }
+            } | TypeLocation::AssocConstEq
+        )
     }
 
     pub(crate) fn complete_types(&self) -> bool {
@@ -371,6 +370,7 @@ pub(super) enum CompletionAnalysis {
     UnexpandedAttrTT {
         colon_prefix: bool,
         fake_attribute_under_caret: Option<ast::Attr>,
+        extern_crate: Option<ast::ExternCrate>,
     },
 }
 
@@ -528,6 +528,11 @@ impl CompletionContext<'_> {
         }
     }
 
+    /// Whether the given trait has `#[doc(notable_trait)]`
+    pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
+        trait_.attrs(self.db).has_doc_notable_trait()
+    }
+
     /// Returns the traits in scope, with the [`Drop`] trait removed.
     pub(crate) fn traits_in_scope(&self) -> hir::VisibleTraits {
         let mut traits_in_scope = self.scope.visible_traits();
@@ -563,7 +568,8 @@ impl CompletionContext<'_> {
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into [`Completions::add_path_resolution`].
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
-        let _p = profile::span("CompletionContext::process_all_names");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
                 return;
@@ -574,7 +580,8 @@ impl CompletionContext<'_> {
     }
 
     pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let _p = profile::span("CompletionContext::process_all_names_raw");
+        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names_raw")
+            .entered();
         self.scope.process_all_names(f);
     }
 
@@ -632,7 +639,7 @@ impl<'a> CompletionContext<'a> {
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
-        let _p = profile::span("CompletionContext::new");
+        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
         let original_file = sema.parse(file_id);
@@ -693,7 +700,7 @@ impl<'a> CompletionContext<'a> {
         let krate = scope.krate();
         let module = scope.module();
 
-        let toolchain = db.crate_graph()[krate.into()].channel;
+        let toolchain = db.crate_graph()[krate.into()].channel();
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);

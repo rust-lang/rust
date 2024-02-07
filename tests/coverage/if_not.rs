@@ -1,6 +1,7 @@
 #![feature(coverage_attribute)]
 // edition: 2021
 
+#[rustfmt::skip]
 fn if_not(cond: bool) {
     if
         !

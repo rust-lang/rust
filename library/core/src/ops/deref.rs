@@ -70,7 +70,7 @@
 /// implementation is still specific in this sense; for example, [`Vec<T>`][vec]
 /// dereferences to `[T]`, so methods of `T` are not applicable.
 ///
-/// Consider also that deref coericion means that deref traits are a much larger
+/// Consider also that deref coercion means that deref traits are a much larger
 /// part of a type's public API than any other trait as it is implicitly called
 /// by the compiler. Therefore, it is advisable to consider whether this is
 /// something you are comfortable supporting as a public API.

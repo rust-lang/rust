@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{get_parent_node, numeric_literal};
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_stmt, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, HirId, ItemKind, Lit, Node, Stmt, StmtKind};
+use rustc_hir::{Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
@@ -50,11 +50,11 @@ declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
-        let is_parent_const = if let Some(Node::Item(item)) = get_parent_node(cx.tcx, body.id().hir_id) {
-            matches!(item.kind, ItemKind::Const(..))
-        } else {
-            false
-        };
+        let hir = cx.tcx.hir();
+        let is_parent_const = matches!(
+            hir.body_const_context(hir.body_owner_def_id(body.id())),
+            Some(ConstContext::Const { inline: false } | ConstContext::Static(_))
+        );
         let mut visitor = NumericFallbackVisitor::new(cx, is_parent_const);
         visitor.visit_body(body);
     }
@@ -122,13 +122,42 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
+            ExprKind::Block(
+                Block {
+                    stmts, expr: Some(_), ..
+                },
+                _,
+            ) => {
+                if let Some(parent) = self.cx.tcx.hir().find_parent(expr.hir_id)
+                    && let Some(fn_sig) = parent.fn_sig()
+                    && let FnRetTy::Return(_ty) = fn_sig.decl.output
+                {
+                    // We cannot check the exact type since it's a `hir::Ty`` which does not implement `is_numeric`
+                    self.ty_bounds.push(ExplicitTyBound(true));
+                    for stmt in *stmts {
+                        self.visit_stmt(stmt);
+                    }
+                    self.ty_bounds.pop();
+                    // Ignore return expr since we know its type was inferred from return ty
+                    return;
+                }
+            },
+
+            // Ignore return expr since we know its type was inferred from return ty
+            ExprKind::Ret(_) => return,
+
             ExprKind::Call(func, args) => {
                 if let Some(fn_sig) = fn_sig_opt(self.cx, func.hir_id) {
                     for (expr, bound) in iter::zip(*args, fn_sig.skip_binder().inputs()) {
-                        // Push found arg type, then visit arg.
-                        self.ty_bounds.push((*bound).into());
-                        self.visit_expr(expr);
-                        self.ty_bounds.pop();
+                        // If is from macro, try to use last bound type (typically pushed when visiting stmt),
+                        // otherwise push found arg type, then visit arg,
+                        if expr.span.from_expansion() {
+                            self.visit_expr(expr);
+                        } else {
+                            self.ty_bounds.push((*bound).into());
+                            self.visit_expr(expr);
+                            self.ty_bounds.pop();
+                        }
                     }
                     return;
                 }
@@ -137,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
-                    for (expr, bound) in iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
+                    for (expr, bound) in iter::zip(iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
                         self.ty_bounds.push((*bound).into());
                         self.visit_expr(expr);
                         self.ty_bounds.pop();

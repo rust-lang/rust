@@ -428,7 +428,7 @@ fn signature_help_for_tuple_struct_pat(
     let fields: Vec<_> = if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
         let en = variant.parent_enum(db);
 
-        res.doc = en.docs(db).map(|it| it.into());
+        res.doc = en.docs(db);
         format_to!(
             res.signature,
             "enum {}::{} (",
@@ -445,7 +445,7 @@ fn signature_help_for_tuple_struct_pat(
 
         match adt {
             hir::Adt::Struct(it) => {
-                res.doc = it.docs(db).map(|it| it.into());
+                res.doc = it.docs(db);
                 format_to!(res.signature, "struct {} (", it.name(db).display(db));
                 it.fields(db)
             }
@@ -549,7 +549,7 @@ fn signature_help_for_record_(
         fields = variant.fields(db);
         let en = variant.parent_enum(db);
 
-        res.doc = en.docs(db).map(|it| it.into());
+        res.doc = en.docs(db);
         format_to!(
             res.signature,
             "enum {}::{} {{ ",
@@ -566,12 +566,12 @@ fn signature_help_for_record_(
         match adt {
             hir::Adt::Struct(it) => {
                 fields = it.fields(db);
-                res.doc = it.docs(db).map(|it| it.into());
+                res.doc = it.docs(db);
                 format_to!(res.signature, "struct {} {{ ", it.name(db).display(db));
             }
             hir::Adt::Union(it) => {
                 fields = it.fields(db);
-                res.doc = it.docs(db).map(|it| it.into());
+                res.doc = it.docs(db);
                 format_to!(res.signature, "union {} {{ ", it.name(db).display(db));
             }
             _ => return None,
@@ -638,7 +638,7 @@ fn signature_help_for_tuple_pat_ish(
         res.push_call_param(&buf);
         buf.clear();
     }
-    res.signature.push_str(")");
+    res.signature.push(')');
     res
 }
 #[cfg(test)]
@@ -646,8 +646,9 @@ mod tests {
     use std::iter;
 
     use expect_test::{expect, Expect};
-    use ide_db::base_db::{fixture::ChangeFixture, FilePosition};
+    use ide_db::base_db::FilePosition;
     use stdx::format_to;
+    use test_fixture::ChangeFixture;
 
     use crate::RootDatabase;
 

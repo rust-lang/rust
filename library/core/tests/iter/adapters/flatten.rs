@@ -1,5 +1,5 @@
-use core::assert_eq;
 use super::*;
+use core::assert_eq;
 use core::iter::*;
 use core::num::NonZeroUsize;
 

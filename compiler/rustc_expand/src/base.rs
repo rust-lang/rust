@@ -1,5 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 
+use crate::base::ast::NestedMetaItem;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
@@ -19,6 +20,7 @@ use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
+use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -664,8 +666,8 @@ pub enum SyntaxExtensionKind {
     /// A token-based attribute macro.
     Attr(
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
-        /// The first TokenSteam is the attribute itself, the second is the annotated item.
-        /// The produced TokenSteam replaces the input TokenSteam.
+        /// The first TokenStream is the attribute itself, the second is the annotated item.
+        /// The produced TokenStream replaces the input TokenStream.
         Box<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
@@ -685,7 +687,7 @@ pub enum SyntaxExtensionKind {
     /// A token-based derive macro.
     Derive(
         /// An expander with signature TokenStream -> TokenStream.
-        /// The produced TokenSteam is appended to the input TokenSteam.
+        /// The produced TokenStream is appended to the input TokenStream.
         ///
         /// FIXME: The text above describes how this should work. Currently it
         /// is handled identically to `LegacyDerive`. It should be migrated to
@@ -761,6 +763,61 @@ impl SyntaxExtension {
         }
     }
 
+    fn collapse_debuginfo_by_name(sess: &Session, attr: &Attribute) -> CollapseMacroDebuginfo {
+        use crate::errors::CollapseMacroDebuginfoIllegal;
+        // #[collapse_debuginfo] without enum value (#[collapse_debuginfo(no/external/yes)])
+        // considered as `yes`
+        attr.meta_item_list().map_or(CollapseMacroDebuginfo::Yes, |l| {
+            let [NestedMetaItem::MetaItem(item)] = &l[..] else {
+                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: attr.span });
+                return CollapseMacroDebuginfo::Unspecified;
+            };
+            if !item.is_word() {
+                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
+                CollapseMacroDebuginfo::Unspecified
+            } else {
+                match item.name_or_empty() {
+                    sym::no => CollapseMacroDebuginfo::No,
+                    sym::external => CollapseMacroDebuginfo::External,
+                    sym::yes => CollapseMacroDebuginfo::Yes,
+                    _ => {
+                        sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
+                        CollapseMacroDebuginfo::Unspecified
+                    }
+                }
+            }
+        })
+    }
+
+    /// if-ext - if macro from different crate (related to callsite code)
+    /// | cmd \ attr    | no  | (unspecified) | external | yes |
+    /// | no            | no  | no            | no       | no  |
+    /// | (unspecified) | no  | no            | if-ext   | yes |
+    /// | external      | no  | if-ext        | if-ext   | yes |
+    /// | yes           | yes | yes           | yes      | yes |
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], is_local: bool) -> bool {
+        let mut collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+            .map(|v| Self::collapse_debuginfo_by_name(sess, v))
+            .unwrap_or(CollapseMacroDebuginfo::Unspecified);
+        if collapse_debuginfo_attr == CollapseMacroDebuginfo::Unspecified
+            && attr::contains_name(attrs, sym::rustc_builtin_macro)
+        {
+            collapse_debuginfo_attr = CollapseMacroDebuginfo::Yes;
+        }
+
+        let flag = sess.opts.unstable_opts.collapse_macro_debuginfo;
+        let attr = collapse_debuginfo_attr;
+        let ext = !is_local;
+        #[rustfmt::skip]
+        let collapse_table = [
+            [false, false, false, false],
+            [false, false, ext,   true],
+            [false, ext,   ext,   true],
+            [true,  true,  true,  true],
+        ];
+        collapse_table[flag as usize][attr as usize]
+    }
+
     /// Constructs a syntax extension with the given properties
     /// and other properties converted from attributes.
     pub fn new(
@@ -772,6 +829,7 @@ impl SyntaxExtension {
         edition: Edition,
         name: Symbol,
         attrs: &[ast::Attribute],
+        is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
@@ -780,8 +838,8 @@ impl SyntaxExtension {
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
-        tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
+        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, is_local);
+        tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
@@ -1150,7 +1208,7 @@ impl<'a> ExtCtxt<'a> {
 ///
 /// This unifies the logic used for resolving `include_X!`.
 pub fn resolve_path(
-    parse_sess: &ParseSess,
+    parse_sess: &Session,
     path: impl Into<PathBuf>,
     span: Span,
 ) -> PResult<'_, PathBuf> {
@@ -1166,7 +1224,7 @@ pub fn resolve_path(
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx.create_err(errors::ResolveRelativePath {
+                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
@@ -1232,7 +1290,7 @@ pub fn expr_to_string(
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| {
-            err.map(|(mut err, _)| {
+            err.map(|(err, _)| {
                 err.emit();
             })
         })
@@ -1254,7 +1312,7 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str
 pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
     match p.parse_expr() {
         Ok(e) => return Some(e),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }
@@ -1390,7 +1448,7 @@ pub fn parse_macro_name_and_helper_attrs(
 /// asserts in old versions of those crates and their wide use in the ecosystem.
 /// See issue #73345 for more details.
 /// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
+fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
     let name = item.ident.name;
     if name == sym::ProceduralMasqueradeDummyType {
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
@@ -1418,7 +1476,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                             };
 
                             if crate_matches {
-                                sess.buffer_lint_with_diagnostic(
+                                sess.parse_sess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
@@ -1439,7 +1497,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
     false
 }
 
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &ParseSess) -> bool {
+pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &Session) -> bool {
     let item = match ann {
         Annotatable::Item(item) => item,
         Annotatable::Stmt(stmt) => match &stmt.kind {
@@ -1451,7 +1509,7 @@ pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &P
     pretty_printing_compatibility_hack(item, sess)
 }
 
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
+pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Session) -> bool {
     let item = match nt {
         Nonterminal::NtItem(item) => item,
         Nonterminal::NtStmt(stmt) => match &stmt.kind {

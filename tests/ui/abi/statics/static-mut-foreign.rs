@@ -33,7 +33,9 @@ unsafe fn run() {
     rust_dbg_static_mut = -3;
     assert_eq!(rust_dbg_static_mut, -3);
     static_bound(&rust_dbg_static_mut);
+    //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
     static_bound_set(&mut rust_dbg_static_mut);
+    //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
 }
 
 pub fn main() {

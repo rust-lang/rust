@@ -25,10 +25,11 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::{Crate, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
+use std::iter;
 
-use crate::rustc_internal::{internal, RustcInternal};
+use crate::rustc_internal::RustcInternal;
 use crate::rustc_smir::builder::BodyBuilder;
 use crate::rustc_smir::{alloc, new_item_kind, smir_crate, Stable, Tables};
 
@@ -68,9 +69,13 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_decls(&self) -> stable_mir::TraitDecls {
         let mut tables = self.0.borrow_mut();
-        tables
-            .tcx
-            .traits(LOCAL_CRATE)
+        tables.tcx.all_traits().map(|trait_def_id| tables.trait_def(trait_def_id)).collect()
+    }
+
+    fn trait_decls(&self, crate_num: CrateNum) -> stable_mir::TraitDecls {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        tcx.traits(crate_num.internal(&mut *tables, tcx))
             .iter()
             .map(|trait_def_id| tables.trait_def(*trait_def_id))
             .collect()
@@ -85,9 +90,18 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_impls(&self) -> stable_mir::ImplTraitDecls {
         let mut tables = self.0.borrow_mut();
-        tables
-            .tcx
-            .trait_impls_in_crate(LOCAL_CRATE)
+        let tcx = tables.tcx;
+        iter::once(LOCAL_CRATE)
+            .chain(tables.tcx.crates(()).iter().copied())
+            .flat_map(|cnum| tcx.trait_impls_in_crate(cnum).iter())
+            .map(|impl_def_id| tables.impl_def(*impl_def_id))
+            .collect()
+    }
+
+    fn trait_impls(&self, crate_num: CrateNum) -> stable_mir::ImplTraitDecls {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        tcx.trait_impls_in_crate(crate_num.internal(&mut *tables, tcx))
             .iter()
             .map(|impl_def_id| tables.impl_def(*impl_def_id))
             .collect()
@@ -213,57 +227,68 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn adt_kind(&self, def: AdtDef) -> AdtKind {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).adt_kind().stable(&mut *tables)
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).adt_kind().stable(&mut *tables)
     }
 
     fn adt_is_box(&self, def: AdtDef) -> bool {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).is_box()
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).is_box()
     }
 
     fn adt_is_simd(&self, def: AdtDef) -> bool {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).repr().simd()
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).repr().simd()
     }
 
     fn adt_is_cstr(&self, def: AdtDef) -> bool {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
         tables.tcx.lang_items().c_str() == Some(def_id)
     }
 
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
-        let sig = tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables));
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        let sig =
+            tables.tcx.fn_sig(def_id).instantiate(tables.tcx, args.internal(&mut *tables, tcx));
         sig.stable(&mut *tables)
     }
 
     fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.0.borrow_mut();
-        let args_ref = args.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let args_ref = args.internal(&mut *tables, tcx);
         let sig = args_ref.as_closure().sig();
         sig.stable(&mut *tables)
     }
 
     fn adt_variants_len(&self, def: AdtDef) -> usize {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).variants().len()
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).variants().len()
     }
 
     fn variant_name(&self, def: VariantDef) -> Symbol {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).name.to_string()
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).name.to_string()
     }
 
     fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
         let mut tables = self.0.borrow_mut();
-        def.internal(&mut *tables).fields.iter().map(|f| f.stable(&mut *tables)).collect()
+        let tcx = tables.tcx;
+        def.internal(&mut *tables, tcx).fields.iter().map(|f| f.stable(&mut *tables)).collect()
     }
 
     fn eval_target_usize(&self, cnst: &Const) -> Result<u64, Error> {
         let mut tables = self.0.borrow_mut();
-        let mir_const = cnst.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
             .try_eval_target_usize(tables.tcx, ParamEnv::empty())
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
@@ -283,30 +308,36 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn new_rigid_ty(&self, kind: RigidTy) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
-        let internal_kind = kind.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let internal_kind = kind.internal(&mut *tables, tcx);
         tables.tcx.mk_ty_from_kind(internal_kind).stable(&mut *tables)
     }
 
     fn new_box_ty(&self, ty: stable_mir::ty::Ty) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
-        let inner = ty.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let inner = ty.internal(&mut *tables, tcx);
         ty::Ty::new_box(tables.tcx, inner).stable(&mut *tables)
     }
 
     fn def_ty(&self, item: stable_mir::DefId) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
-        tables.tcx.type_of(item.internal(&mut *tables)).instantiate_identity().stable(&mut *tables)
+        let tcx = tables.tcx;
+        tcx.type_of(item.internal(&mut *tables, tcx)).instantiate_identity().stable(&mut *tables)
     }
 
     fn def_ty_with_args(&self, item: stable_mir::DefId, args: &GenericArgs) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
-        let args = args.internal(&mut *tables);
-        let def_ty = tables.tcx.type_of(item.internal(&mut *tables));
+        let tcx = tables.tcx;
+        let args = args.internal(&mut *tables, tcx);
+        let def_ty = tables.tcx.type_of(item.internal(&mut *tables, tcx));
         def_ty.instantiate(tables.tcx, args).stable(&mut *tables)
     }
 
     fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {
-        internal(cnst).to_string()
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        cnst.internal(&mut *tables, tcx).to_string()
     }
 
     fn span_of_an_item(&self, def_id: stable_mir::DefId) -> Span {
@@ -321,7 +352,8 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
-        let internal_kind = ty.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let internal_kind = ty.internal(&mut *tables, tcx);
         let internal_ty = tables.tcx.mk_ty_from_kind(internal_kind);
         internal_ty.discriminant_ty(tables.tcx).stable(&mut *tables)
     }
@@ -391,8 +423,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         args: &stable_mir::ty::GenericArgs,
     ) -> Option<stable_mir::mir::mono::Instance> {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
-        let args_ref = args.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        let args_ref = args.internal(&mut *tables, tcx);
         match Instance::resolve(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
             Ok(Some(instance)) => Some(instance.stable(&mut *tables)),
             Ok(None) | Err(_) => None,
@@ -401,7 +434,8 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn resolve_drop_in_place(&self, ty: stable_mir::ty::Ty) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
-        let internal_ty = ty.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let internal_ty = ty.internal(&mut *tables, tcx);
         let instance = Instance::resolve_drop_in_place(tables.tcx, internal_ty);
         instance.stable(&mut *tables)
     }
@@ -412,8 +446,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         args: &GenericArgs,
     ) -> Option<stable_mir::mir::mono::Instance> {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
-        let args_ref = args.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        let args_ref = args.internal(&mut *tables, tcx);
         Instance::resolve_for_fn_ptr(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref)
             .stable(&mut *tables)
     }
@@ -425,36 +460,47 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         kind: ClosureKind,
     ) -> Option<stable_mir::mir::mono::Instance> {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
-        let args_ref = args.internal(&mut *tables);
-        let closure_kind = kind.internal(&mut *tables);
-        Instance::resolve_closure(tables.tcx, def_id, args_ref, closure_kind).stable(&mut *tables)
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
+        let args_ref = args.internal(&mut *tables, tcx);
+        let closure_kind = kind.internal(&mut *tables, tcx);
+        Some(
+            Instance::resolve_closure(tables.tcx, def_id, args_ref, closure_kind)
+                .stable(&mut *tables),
+        )
     }
 
     fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error> {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        let result = tables.tcx.const_eval_instance(
+        let tcx = tables.tcx;
+        let result = tcx.const_eval_instance(
             ParamEnv::reveal_all(),
             instance,
-            Some(tables.tcx.def_span(instance.def_id())),
+            Some(tcx.def_span(instance.def_id())),
         );
         result
             .map(|const_val| {
-                alloc::try_new_allocation(const_ty.internal(&mut *tables), const_val, &mut *tables)
+                alloc::try_new_allocation(
+                    const_ty.internal(&mut *tables, tcx),
+                    const_val,
+                    &mut *tables,
+                )
             })
             .map_err(|e| e.stable(&mut *tables))?
     }
 
     fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {
         let mut tables = self.0.borrow_mut();
-        let def_id = def.0.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let def_id = def.0.internal(&mut *tables, tcx);
         tables.tcx.eval_static_initializer(def_id).stable(&mut *tables)
     }
 
     fn global_alloc(&self, alloc: stable_mir::mir::alloc::AllocId) -> GlobalAlloc {
         let mut tables = self.0.borrow_mut();
-        let alloc_id = alloc.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let alloc_id = alloc.internal(&mut *tables, tcx);
         tables.tcx.global_alloc(alloc_id).stable(&mut *tables)
     }
 
@@ -464,9 +510,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     ) -> Option<stable_mir::mir::alloc::AllocId> {
         let mut tables = self.0.borrow_mut();
         let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else { return None };
-        let alloc_id = tables
-            .tcx
-            .vtable_allocation((ty.internal(&mut *tables), trait_ref.internal(&mut *tables)));
+        let tcx = tables.tcx;
+        let alloc_id = tables.tcx.vtable_allocation((
+            ty.internal(&mut *tables, tcx),
+            trait_ref.internal(&mut *tables, tcx),
+        ));
         Some(alloc_id.stable(&mut *tables))
     }
 
@@ -494,14 +542,16 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
         let mut tables = self.0.borrow_mut();
-        let ty = ty.internal(&mut *tables);
+        let tcx = tables.tcx;
+        let ty = ty.internal(&mut *tables, tcx);
         let layout = tables.layout_of(ty)?.layout;
         Ok(layout.stable(&mut *tables))
     }
 
     fn layout_shape(&self, id: Layout) -> LayoutShape {
         let mut tables = self.0.borrow_mut();
-        id.internal(&mut *tables).0.stable(&mut *tables)
+        let tcx = tables.tcx;
+        id.internal(&mut *tables, tcx).0.stable(&mut *tables)
     }
 }
 

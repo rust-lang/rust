@@ -1,6 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 #![allow(unused)]
 
 use std::ops::{Deref, DerefMut};

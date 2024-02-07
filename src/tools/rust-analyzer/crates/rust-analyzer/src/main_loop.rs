@@ -60,6 +60,17 @@ enum Event {
     Flycheck(flycheck::Message),
 }
 
+impl fmt::Display for Event {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Event::Lsp(_) => write!(f, "Event::Lsp"),
+            Event::Task(_) => write!(f, "Event::Task"),
+            Event::Vfs(_) => write!(f, "Event::Vfs"),
+            Event::Flycheck(_) => write!(f, "Event::Flycheck"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
@@ -196,7 +207,8 @@ impl GlobalState {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile::span("GlobalState::handle_event");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event", event = %event)
+            .entered();
 
         let event_dbg_msg = format!("{event:?}");
         tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);
@@ -215,7 +227,8 @@ impl GlobalState {
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::Task(task) => {
-                let _p = profile::span("GlobalState::handle_event/task");
+                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
+                    .entered();
                 let mut prime_caches_progress = Vec::new();
 
                 self.handle_task(&mut prime_caches_progress, task);
@@ -269,7 +282,8 @@ impl GlobalState {
                 }
             }
             Event::Vfs(message) => {
-                let _p = profile::span("GlobalState::handle_event/vfs");
+                let _p =
+                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/vfs").entered();
                 self.handle_vfs_msg(message);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
@@ -277,7 +291,8 @@ impl GlobalState {
                 }
             }
             Event::Flycheck(message) => {
-                let _p = profile::span("GlobalState::handle_event/flycheck");
+                let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/flycheck")
+                    .entered();
                 self.handle_flycheck_msg(message);
                 // Coalesce many flycheck updates into a single loop turn
                 while let Ok(message) = self.flycheck_receiver.try_recv() {
@@ -521,7 +536,7 @@ impl GlobalState {
 
                         if self.config.run_build_scripts() && workspaces_updated {
                             self.fetch_build_data_queue
-                                .request_op(format!("workspace updated"), ());
+                                .request_op("workspace updated".to_string(), ());
                         }
 
                         (Progress::End, None)
@@ -571,35 +586,51 @@ impl GlobalState {
     }
 
     fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
-            vfs::loader::Message::Loaded { files } => {
+            vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
-                    if !self.mem_docs.contains(&path) {
+                    // if the file is in mem docs, it's managed by the client via notifications
+                    // so only set it if its not in there
+                    if !self.mem_docs.contains(&path)
+                        && (is_changed || vfs.file_id(&path).is_none())
+                    {
                         vfs.set_file_contents(path, contents);
                     }
                 }
             }
-            vfs::loader::Message::Progress { n_total, n_done, config_version } => {
+            vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
                 always!(config_version <= self.vfs_config_version);
+
+                let state = match n_done {
+                    None => Progress::Begin,
+                    Some(done) if done == n_total => Progress::End,
+                    Some(_) => Progress::Report,
+                };
+                let n_done = n_done.unwrap_or_default();
 
                 self.vfs_progress_config_version = config_version;
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
 
-                let state = if n_done == 0 {
-                    Progress::Begin
-                } else if n_done < n_total {
-                    Progress::Report
-                } else {
-                    assert_eq!(n_done, n_total);
-                    Progress::End
-                };
+                let mut message = format!("{n_done}/{n_total}");
+                if let Some(dir) = dir {
+                    message += &format!(
+                        ": {}",
+                        match dir.strip_prefix(self.config.root_path()) {
+                            Some(relative_path) => relative_path.as_ref(),
+                            None => dir.as_ref(),
+                        }
+                        .display()
+                    );
+                }
+
                 self.report_progress(
                     "Roots Scanned",
                     state,
-                    Some(format!("{n_done}/{n_total}")),
+                    Some(message),
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 );

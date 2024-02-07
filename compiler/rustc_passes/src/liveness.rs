@@ -98,7 +98,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
 use std::io;
@@ -351,10 +350,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.add_from_pat(arm.pat);
-        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
-            self.add_from_pat(let_expr.pat);
-        }
+        self.add_from_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
@@ -563,7 +559,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.successors[ln] {
             Some(successor) => self.assigned_on_entry(successor, var),
             None => {
-                self.ir.tcx.dcx().span_delayed_bug(DUMMY_SP, "no successor");
+                self.ir.tcx.dcx().delayed_bug("no successor");
                 true
             }
         }
@@ -719,6 +715,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let ty = self.typeck_results.node_type(hir_id);
         match ty.kind() {
             ty::Closure(_def_id, args) => match args.as_closure().kind() {
+                ty::ClosureKind::Fn => {}
+                ty::ClosureKind::FnMut => {}
+                ty::ClosureKind::FnOnce => return succ,
+            },
+            ty::CoroutineClosure(_def_id, args) => match args.as_coroutine_closure().kind() {
                 ty::ClosureKind::Fn => {}
                 ty::ClosureKind::FnMut => {}
                 ty::ClosureKind::FnOnce => return succ,
@@ -921,14 +922,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(arm.body, succ);
 
-                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
-                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
-                        hir::Guard::IfLet(let_expr) => {
-                            let let_bind = self.define_bindings_in_pat(let_expr.pat, body_succ);
-                            self.propagate_through_expr(let_expr.init, let_bind)
-                        }
-                    });
-                    let arm_succ = self.define_bindings_in_pat(arm.pat, guard_succ);
+                    let guard_succ = arm
+                        .guard
+                        .as_ref()
+                        .map_or(body_succ, |g| self.propagate_through_expr(g, body_succ));
+                    let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(e, ln)
@@ -1292,7 +1290,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // that we do not emit the same warning twice if the uninhabited type
             // is indeed `!`.
 
-            self.ir.tcx.emit_spanned_lint(
+            self.ir.tcx.emit_node_span_lint(
                 lint::builtin::UNREACHABLE_CODE,
                 expr_id,
                 expr_span,
@@ -1328,9 +1326,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.check_unused_vars_in_pat(arm.pat, None, None, |_, _, _, _| {});
-        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
-            self.check_unused_vars_in_pat(let_expr.pat, None, None, |_, _, _, _| {});
-        }
         intravisit::walk_arm(self, arm);
     }
 }
@@ -1456,7 +1451,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if self.used_on_entry(entry_ln, var) {
                     if !self.live_on_entry(entry_ln, var) {
                         if let Some(name) = self.should_warn(var) {
-                            self.ir.tcx.emit_spanned_lint(
+                            self.ir.tcx.emit_node_span_lint(
                                 lint::builtin::UNUSED_ASSIGNMENTS,
                                 var_hir_id,
                                 vec![span],
@@ -1466,7 +1461,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     }
                 } else {
                     if let Some(name) = self.should_warn(var) {
-                        self.ir.tcx.emit_spanned_lint(
+                        self.ir.tcx.emit_node_span_lint(
                             lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
                             vec![span],
@@ -1488,7 +1483,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     if !self.live_on_entry(ln, var)
                         && let Some(name) = self.should_warn(var)
                     {
-                        self.ir.tcx.emit_spanned_lint(
+                        self.ir.tcx.emit_node_span_lint(
                             lint::builtin::UNUSED_ASSIGNMENTS,
                             hir_id,
                             spans,
@@ -1562,7 +1557,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
             if is_assigned {
-                self.ir.tcx.emit_spanned_lint(
+                self.ir.tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
                     hir_ids_and_spans
@@ -1584,7 +1579,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         span.with_hi(BytePos(span.hi().0 + 1))
                     })
                     .collect();
-                self.ir.tcx.emit_spanned_lint(
+                self.ir.tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
                     hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>(),
@@ -1609,7 +1604,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     let non_shorthands =
                         non_shorthands.into_iter().map(|(_, pat_span, _)| pat_span).collect();
 
-                    self.ir.tcx.emit_spanned_lint(
+                    self.ir.tcx.emit_node_span_lint(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
                         hir_ids_and_spans
@@ -1630,7 +1625,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     let from_macro = non_shorthands
                         .iter()
                         .find(|(_, pat_span, ident_span)| {
-                            pat_span.ctxt() != ident_span.ctxt() && pat_span.from_expansion()
+                            !pat_span.eq_ctxt(*ident_span) && pat_span.from_expansion()
                         })
                         .map(|(_, pat_span, _)| *pat_span);
                     let non_shorthands = non_shorthands
@@ -1648,7 +1643,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         }
                     };
 
-                    self.ir.tcx.emit_spanned_lint(
+                    self.ir.tcx.emit_node_span_lint(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
                         hir_ids_and_spans
@@ -1700,7 +1695,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         if !self.live_on_exit(ln, var)
             && let Some(name) = self.should_warn(var)
         {
-            self.ir.tcx.emit_spanned_lint(
+            self.ir.tcx.emit_node_span_lint(
                 lint::builtin::UNUSED_ASSIGNMENTS,
                 hir_id,
                 spans,

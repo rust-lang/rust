@@ -60,7 +60,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
 
     pub fn try_report(&self) -> Option<ErrorGuaranteed> {
         self.try_report_from_nll()
-            .map(|mut diag| diag.emit())
+            .map(|diag| diag.emit())
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_static_impl_trait())

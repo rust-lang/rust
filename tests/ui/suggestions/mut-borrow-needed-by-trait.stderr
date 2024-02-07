@@ -25,9 +25,6 @@ error[E0599]: the method `write_fmt` exists for struct `BufWriter<&dyn Write>`, 
    |
 LL |     writeln!(fp, "hello world").unwrap();
    |     ---------^^---------------- method cannot be called on `BufWriter<&dyn Write>` due to unsatisfied trait bounds
-  --> $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
-   |
-   = note: doesn't satisfy `BufWriter<&dyn std::io::Write>: std::io::Write`
    |
 note: must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method
   --> $DIR/mut-borrow-needed-by-trait.rs:21:14

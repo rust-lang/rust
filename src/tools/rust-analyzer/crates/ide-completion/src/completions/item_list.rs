@@ -28,7 +28,7 @@ pub(crate) fn complete_item_list(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     kind: &ItemListKind,
 ) {
-    let _p = profile::span("complete_item_list");
+    let _p = tracing::span!(tracing::Level::INFO, "complete_item_list").entered();
     if path_ctx.is_trivial_path() {
         add_keywords(acc, ctx, Some(kind));
     }
@@ -80,7 +80,7 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
     let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl(_)));
     let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
     let no_qualifiers = ctx.qualifier_ctx.vis_node.is_none();
-    let in_block = matches!(kind, None);
+    let in_block = kind.is_none();
 
     if !in_trait_impl {
         if ctx.qualifier_ctx.unsafe_tok.is_some() {

@@ -25,6 +25,7 @@ pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
+use crate::regions::InferCtxtRegionExt;
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
@@ -279,6 +280,12 @@ pub fn normalize_param_env_or_error<'tcx>(
                 }
 
                 fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+                    // FIXME(return_type_notation): track binders in this normalizer, as
+                    // `ty::Const::normalize` can only work with properly preserved binders.
+
+                    if c.has_escaping_bound_vars() {
+                        return ty::Const::new_misc_error(self.0, c.ty());
+                    }
                     // While it is pretty sus to be evaluating things with an empty param env, it
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These

@@ -1,4 +1,6 @@
-use crate::spec::{base, CodeModel, SanitizerSet, Target, TargetOptions};
+use std::borrow::Cow;
+
+use crate::spec::{base, CodeModel, SanitizerSet, SplitDebuginfo, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,6 +15,7 @@ pub fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
+            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             ..base::android::opts()
         },
     }

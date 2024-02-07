@@ -2,9 +2,9 @@ use rustc_data_structures::vec_linked_list as vll;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 
 use crate::def_use::{self, DefUse};
-use crate::region_infer::values::{PointIndex, RegionValueElements};
 
 /// A map that cross references each local with the locations where it
 /// is defined (assigned), used, or dropped. Used during liveness
@@ -60,7 +60,7 @@ impl vll::LinkElem for Appearance {
 impl LocalUseMap {
     pub(crate) fn build(
         live_locals: &[Local],
-        elements: &RegionValueElements,
+        elements: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
         let nones = IndexVec::from_elem(None, &body.local_decls);
@@ -103,7 +103,7 @@ impl LocalUseMap {
 
 struct LocalUseMapBuild<'me> {
     local_use_map: &'me mut LocalUseMap,
-    elements: &'me RegionValueElements,
+    elements: &'me DenseLocationMap,
 
     // Vector used in `visit_local` to signal which `Local`s do we need
     // def/use/drop information on, constructed from `live_locals` (that
@@ -144,7 +144,7 @@ impl LocalUseMapBuild<'_> {
     }
 
     fn insert(
-        elements: &RegionValueElements,
+        elements: &DenseLocationMap,
         first_appearance: &mut Option<AppearanceIndex>,
         appearances: &mut IndexVec<AppearanceIndex, Appearance>,
         location: Location,

@@ -64,13 +64,12 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
             if let Some((target, title)) = rewrite_intra_doc_link(db, definition, target, title) {
-                return (None, target, title);
+                (None, target, title)
+            } else if let Some(target) = rewrite_url_link(db, definition, target) {
+                (Some(LinkType::Inline), target, title.to_string())
+            } else {
+                (None, target.to_string(), title.to_string())
             }
-            if let Some(target) = rewrite_url_link(db, definition, target) {
-                return (Some(LinkType::Inline), target, title.to_string());
-            }
-
-            (None, target.to_string(), title.to_string())
         }
     });
     let mut out = String::new();
@@ -219,6 +218,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
+        | Definition::TupleField(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_)
@@ -351,8 +351,12 @@ fn get_doc_links(
     web_url = join_url(web_url, &file);
     local_url = join_url(local_url, &file);
 
-    web_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
-    local_url.as_mut().map(|url| url.set_fragment(frag.as_deref()));
+    if let Some(url) = web_url.as_mut() {
+        url.set_fragment(frag.as_deref())
+    }
+    if let Some(url) = local_url.as_mut() {
+        url.set_fragment(frag.as_deref())
+    }
 
     DocumentationLinks {
         web_url: web_url.map(|it| it.into()),
@@ -368,16 +372,21 @@ fn rewrite_intra_doc_link(
 ) -> Option<(String, String)> {
     let (link, ns) = parse_intra_doc_link(target);
 
+    let (link, anchor) = match link.split_once('#') {
+        Some((new_link, anchor)) => (new_link, Some(anchor)),
+        None => (link, None),
+    };
+
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let mut url = get_doc_base_urls(db, resolved, None, None).0?;
 
-    let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
+    let (_, file, _) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
         url = url.join(&path).ok()?;
     }
 
     url = url.join(&file).ok()?;
-    url.set_fragment(frag.as_deref());
+    url.set_fragment(anchor);
 
     Some((url.into(), strip_prefixes_suffixes(title).to_string()))
 }
@@ -492,7 +501,7 @@ fn get_doc_base_urls(
     let Some(krate) = def.krate(db) else { return Default::default() };
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
-    let channel = crate_data.channel.map_or("nightly", ReleaseChannel::as_str);
+    let channel = crate_data.channel().unwrap_or(ReleaseChannel::Nightly).as_str();
 
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
@@ -639,6 +648,7 @@ fn filename_and_frag_for_def(
         }
         Definition::Local(_)
         | Definition::GenericParam(_)
+        | Definition::TupleField(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)

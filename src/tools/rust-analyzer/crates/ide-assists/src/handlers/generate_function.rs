@@ -8,20 +8,21 @@ use ide_db::{
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
     path_transform::PathTransform,
+    source_change::SourceChangeBuilder,
     FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
+use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, AstNode, CallExpr, HasArgList, HasGenericParams, HasModuleItem, HasTypeBounds,
+        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, CallExpr, HasArgList,
+        HasGenericParams, HasModuleItem, HasTypeBounds,
     },
-    SyntaxKind, SyntaxNode, TextRange, TextSize,
+    ted, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
 use crate::{
-    utils::{convert_reference_type, find_struct_impl, render_snippet, Cursor},
+    utils::{convert_reference_type, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -65,7 +66,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     }
 
     let fn_name = &*name_ref.text();
-    let TargetInfo { target_module, adt_name, target, file, insert_offset } =
+    let TargetInfo { target_module, adt_name, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
     if let Some(m) = target_module {
@@ -77,16 +78,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
-    add_func_to_accumulator(
-        acc,
-        ctx,
-        text_range,
-        function_builder,
-        insert_offset,
-        file,
-        adt_name,
-        label,
-    )
+    add_func_to_accumulator(acc, ctx, text_range, function_builder, file, adt_name, label)
 }
 
 struct TargetInfo {
@@ -94,7 +86,6 @@ struct TargetInfo {
     adt_name: Option<hir::Name>,
     target: GeneratedFunctionTarget,
     file: FileId,
-    insert_offset: TextSize,
 }
 
 impl TargetInfo {
@@ -103,9 +94,8 @@ impl TargetInfo {
         adt_name: Option<hir::Name>,
         target: GeneratedFunctionTarget,
         file: FileId,
-        insert_offset: TextSize,
     ) -> Self {
-        Self { target_module, adt_name, target, file, insert_offset }
+        Self { target_module, adt_name, target, file }
     }
 }
 
@@ -156,7 +146,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     }
 
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name.text().as_str())?;
-    let (target, insert_offset) = get_method_target(ctx, &impl_, &adt)?;
+    let target = get_method_target(ctx, &impl_, &adt)?;
 
     let function_builder = FunctionBuilder::from_method_call(
         ctx,
@@ -169,16 +159,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let text_range = call.syntax().text_range();
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
     let label = format!("Generate {} method", function_builder.fn_name);
-    add_func_to_accumulator(
-        acc,
-        ctx,
-        text_range,
-        function_builder,
-        insert_offset,
-        file,
-        adt_name,
-        label,
-    )
+    add_func_to_accumulator(acc, ctx, text_range, function_builder, file, adt_name, label)
 }
 
 fn add_func_to_accumulator(
@@ -186,23 +167,28 @@ fn add_func_to_accumulator(
     ctx: &AssistContext<'_>,
     text_range: TextRange,
     function_builder: FunctionBuilder,
-    insert_offset: TextSize,
     file: FileId,
     adt_name: Option<hir::Name>,
     label: String,
 ) -> Option<()> {
-    acc.add(AssistId("generate_function", AssistKind::Generate), label, text_range, |builder| {
-        let indent = IndentLevel::from_node(function_builder.target.syntax());
-        let function_template = function_builder.render(adt_name.is_some());
-        let mut func = function_template.to_string(ctx.config.snippet_cap);
+    acc.add(AssistId("generate_function", AssistKind::Generate), label, text_range, |edit| {
+        edit.edit_file(file);
+
+        let target = function_builder.target.clone();
+        let function_template = function_builder.render();
+        let func = function_template.to_ast(ctx.config.snippet_cap, edit);
+
         if let Some(name) = adt_name {
+            let name = make::ty_path(make::ext::ident_path(&format!("{}", name.display(ctx.db()))));
+
             // FIXME: adt may have generic params.
-            func = format!("\n{indent}impl {} {{\n{func}\n{indent}}}", name.display(ctx.db()));
-        }
-        builder.edit_file(file);
-        match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, insert_offset, func),
-            None => builder.insert(insert_offset, func),
+            let impl_ = make::impl_(None, None, name, None, None).clone_for_update();
+
+            func.indent(IndentLevel(1));
+            impl_.get_or_create_assoc_item_list().add_item(func.into());
+            target.insert_impl_at(edit, impl_);
+        } else {
+            target.insert_fn_at(edit, func);
         }
     })
 }
@@ -220,36 +206,33 @@ fn get_adt_source(
 }
 
 struct FunctionTemplate {
-    leading_ws: String,
     fn_def: ast::Fn,
     ret_type: Option<ast::RetType>,
     should_focus_return_type: bool,
-    trailing_ws: String,
     tail_expr: ast::Expr,
 }
 
 impl FunctionTemplate {
-    fn to_string(&self, cap: Option<SnippetCap>) -> String {
-        let Self { leading_ws, fn_def, ret_type, should_focus_return_type, trailing_ws, tail_expr } =
-            self;
+    fn to_ast(&self, cap: Option<SnippetCap>, edit: &mut SourceChangeBuilder) -> ast::Fn {
+        let Self { fn_def, ret_type, should_focus_return_type, tail_expr } = self;
 
-        let f = match cap {
-            Some(cap) => {
-                let cursor = if *should_focus_return_type {
-                    // Focus the return type if there is one
-                    match ret_type {
-                        Some(ret_type) => ret_type.syntax(),
-                        None => tail_expr.syntax(),
+        if let Some(cap) = cap {
+            if *should_focus_return_type {
+                // Focus the return type if there is one
+                match ret_type {
+                    Some(ret_type) => {
+                        edit.add_placeholder_snippet(cap, ret_type.clone());
                     }
-                } else {
-                    tail_expr.syntax()
-                };
-                render_snippet(cap, fn_def.syntax(), Cursor::Replace(cursor))
+                    None => {
+                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                    }
+                }
+            } else {
+                edit.add_placeholder_snippet(cap, tail_expr.clone());
             }
-            None => fn_def.to_string(),
-        };
+        }
 
-        format!("{leading_ws}{f}{trailing_ws}")
+        fn_def.clone()
     }
 }
 
@@ -356,7 +339,7 @@ impl FunctionBuilder {
         })
     }
 
-    fn render(self, is_method: bool) -> FunctionTemplate {
+    fn render(self) -> FunctionTemplate {
         let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = match self.visibility {
@@ -364,7 +347,7 @@ impl FunctionBuilder {
             Visibility::Crate => Some(make::visibility_pub_crate()),
             Visibility::Pub => Some(make::visibility_pub()),
         };
-        let mut fn_def = make::fn_(
+        let fn_def = make::fn_(
             visibility,
             self.fn_name,
             self.generic_param_list,
@@ -375,34 +358,10 @@ impl FunctionBuilder {
             self.is_async,
             false, // FIXME : const and unsafe are not handled yet.
             false,
-        );
-        let leading_ws;
-        let trailing_ws;
-
-        match self.target {
-            GeneratedFunctionTarget::BehindItem(it) => {
-                let mut indent = IndentLevel::from_node(&it);
-                if is_method {
-                    indent = indent + 1;
-                    leading_ws = format!("{indent}");
-                } else {
-                    leading_ws = format!("\n\n{indent}");
-                }
-
-                fn_def = fn_def.indent(indent);
-                trailing_ws = String::new();
-            }
-            GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let indent = IndentLevel::from_node(&it);
-                let leading_indent = indent + 1;
-                leading_ws = format!("\n{leading_indent}");
-                fn_def = fn_def.indent(leading_indent);
-                trailing_ws = format!("\n{indent}");
-            }
-        };
+        )
+        .clone_for_update();
 
         FunctionTemplate {
-            leading_ws,
             ret_type: fn_def.ret_type(),
             // PANIC: we guarantee we always create a function body with a tail expr
             tail_expr: fn_def
@@ -412,7 +371,6 @@ impl FunctionBuilder {
                 .expect("function body should have a tail expression"),
             should_focus_return_type: self.should_focus_return_type,
             fn_def,
-            trailing_ws,
         }
     }
 }
@@ -456,40 +414,37 @@ fn get_fn_target_info(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<TargetInfo> {
-    let (target, file, insert_offset) = get_fn_target(ctx, target_module, call)?;
-    Some(TargetInfo::new(target_module, None, target, file, insert_offset))
+    let (target, file) = get_fn_target(ctx, target_module, call)?;
+    Some(TargetInfo::new(target_module, None, target, file))
 }
 
 fn get_fn_target(
     ctx: &AssistContext<'_>,
     target_module: Option<Module>,
     call: CallExpr,
-) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
+) -> Option<(GeneratedFunctionTarget, FileId)> {
     let mut file = ctx.file_id();
     let target = match target_module {
         Some(target_module) => {
-            let module_source = target_module.definition_source(ctx.db());
-            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
+            let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
             file = in_file;
             target
         }
         None => next_space_for_fn_after_call_site(ast::CallableExpr::Call(call))?,
     };
-    Some((target.clone(), file, get_insert_offset(&target)))
+    Some((target, file))
 }
 
 fn get_method_target(
     ctx: &AssistContext<'_>,
     impl_: &Option<ast::Impl>,
     adt: &Adt,
-) -> Option<(GeneratedFunctionTarget, TextSize)> {
+) -> Option<GeneratedFunctionTarget> {
     let target = match impl_ {
-        Some(impl_) => next_space_for_fn_in_impl(impl_)?,
-        None => {
-            GeneratedFunctionTarget::BehindItem(adt.source(ctx.sema.db)?.syntax().value.clone())
-        }
+        Some(impl_) => GeneratedFunctionTarget::InImpl(impl_.clone()),
+        None => GeneratedFunctionTarget::AfterItem(adt.source(ctx.sema.db)?.syntax().value.clone()),
     };
-    Some((target.clone(), get_insert_offset(&target)))
+    Some(target)
 }
 
 fn assoc_fn_target_info(
@@ -505,36 +460,120 @@ fn assoc_fn_target_info(
         return None;
     }
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
-    let (target, insert_offset) = get_method_target(ctx, &impl_, &adt)?;
+    let target = get_method_target(ctx, &impl_, &adt)?;
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    Some(TargetInfo::new(target_module, adt_name, target, file, insert_offset))
-}
-
-fn get_insert_offset(target: &GeneratedFunctionTarget) -> TextSize {
-    match target {
-        GeneratedFunctionTarget::BehindItem(it) => it.text_range().end(),
-        GeneratedFunctionTarget::InEmptyItemList(it) => it.text_range().start() + TextSize::of('{'),
-    }
+    Some(TargetInfo::new(target_module, adt_name, target, file))
 }
 
 #[derive(Clone)]
 enum GeneratedFunctionTarget {
-    BehindItem(SyntaxNode),
+    AfterItem(SyntaxNode),
     InEmptyItemList(SyntaxNode),
+    InImpl(ast::Impl),
 }
 
 impl GeneratedFunctionTarget {
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            GeneratedFunctionTarget::BehindItem(it) => it,
+            GeneratedFunctionTarget::AfterItem(it) => it,
             GeneratedFunctionTarget::InEmptyItemList(it) => it,
+            GeneratedFunctionTarget::InImpl(it) => it.syntax(),
         }
     }
 
     fn parent(&self) -> SyntaxNode {
         match self {
-            GeneratedFunctionTarget::BehindItem(it) => it.parent().expect("item without parent"),
+            GeneratedFunctionTarget::AfterItem(it) => it.parent().expect("item without parent"),
             GeneratedFunctionTarget::InEmptyItemList(it) => it.clone(),
+            GeneratedFunctionTarget::InImpl(it) => it.syntax().clone(),
+        }
+    }
+
+    fn insert_impl_at(&self, edit: &mut SourceChangeBuilder, impl_: ast::Impl) {
+        match self {
+            GeneratedFunctionTarget::AfterItem(item) => {
+                let item = edit.make_syntax_mut(item.clone());
+                let position = if item.parent().is_some() {
+                    ted::Position::after(&item)
+                } else {
+                    ted::Position::first_child_of(&item)
+                };
+
+                let indent = IndentLevel::from_node(&item);
+                let leading_ws = make::tokens::whitespace(&format!("\n{indent}"));
+                impl_.indent(indent);
+
+                ted::insert_all(position, vec![leading_ws.into(), impl_.syntax().clone().into()]);
+            }
+            GeneratedFunctionTarget::InEmptyItemList(item_list) => {
+                let item_list = edit.make_syntax_mut(item_list.clone());
+                let insert_after =
+                    item_list.children_with_tokens().find_or_first(|child| child.kind() == T!['{']);
+                let position = match insert_after {
+                    Some(child) => ted::Position::after(child),
+                    None => ted::Position::first_child_of(&item_list),
+                };
+
+                let indent = IndentLevel::from_node(&item_list);
+                let leading_indent = indent + 1;
+                let leading_ws = make::tokens::whitespace(&format!("\n{leading_indent}"));
+                impl_.indent(indent);
+
+                ted::insert_all(position, vec![leading_ws.into(), impl_.syntax().clone().into()]);
+            }
+            GeneratedFunctionTarget::InImpl(_) => {
+                unreachable!("can't insert an impl inside an impl")
+            }
+        }
+    }
+
+    fn insert_fn_at(&self, edit: &mut SourceChangeBuilder, func: ast::Fn) {
+        match self {
+            GeneratedFunctionTarget::AfterItem(item) => {
+                let item = edit.make_syntax_mut(item.clone());
+                let position = if item.parent().is_some() {
+                    ted::Position::after(&item)
+                } else {
+                    ted::Position::first_child_of(&item)
+                };
+
+                let indent = IndentLevel::from_node(&item);
+                let leading_ws = make::tokens::whitespace(&format!("\n\n{indent}"));
+                func.indent(indent);
+
+                ted::insert_all_raw(
+                    position,
+                    vec![leading_ws.into(), func.syntax().clone().into()],
+                );
+            }
+            GeneratedFunctionTarget::InEmptyItemList(item_list) => {
+                let item_list = edit.make_syntax_mut(item_list.clone());
+                let insert_after =
+                    item_list.children_with_tokens().find_or_first(|child| child.kind() == T!['{']);
+                let position = match insert_after {
+                    Some(child) => ted::Position::after(child),
+                    None => ted::Position::first_child_of(&item_list),
+                };
+
+                let indent = IndentLevel::from_node(&item_list);
+                let leading_indent = indent + 1;
+                let leading_ws = make::tokens::whitespace(&format!("\n{leading_indent}"));
+                let trailing_ws = make::tokens::whitespace(&format!("\n{indent}"));
+                func.indent(leading_indent);
+
+                ted::insert_all(
+                    position,
+                    vec![leading_ws.into(), func.syntax().clone().into(), trailing_ws.into()],
+                );
+            }
+            GeneratedFunctionTarget::InImpl(impl_) => {
+                let impl_ = edit.make_mut(impl_.clone());
+
+                let leading_indent = impl_.indent_level() + 1;
+                func.indent(leading_indent);
+
+                impl_.get_or_create_assoc_item_list().add_item(func.into());
+            }
         }
     }
 }
@@ -1026,43 +1065,40 @@ fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<Generate
         }
         last_ancestor = Some(next_ancestor);
     }
-    last_ancestor.map(GeneratedFunctionTarget::BehindItem)
+    last_ancestor.map(GeneratedFunctionTarget::AfterItem)
 }
 
 fn next_space_for_fn_in_module(
-    db: &dyn hir::db::ExpandDatabase,
-    module_source: &hir::InFile<hir::ModuleSource>,
-) -> Option<(FileId, GeneratedFunctionTarget)> {
-    let file = module_source.file_id.original_file(db);
+    db: &dyn hir::db::HirDatabase,
+    target_module: hir::Module,
+) -> (FileId, GeneratedFunctionTarget) {
+    let module_source = target_module.definition_source(db);
+    let file = module_source.file_id.original_file(db.upcast());
     let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => match it.items().last() {
-            Some(last_item) => GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()),
-            None => GeneratedFunctionTarget::BehindItem(it.syntax().clone()),
+            Some(last_item) => GeneratedFunctionTarget::AfterItem(last_item.syntax().clone()),
+            None => GeneratedFunctionTarget::AfterItem(it.syntax().clone()),
         },
         hir::ModuleSource::Module(it) => match it.item_list().and_then(|it| it.items().last()) {
-            Some(last_item) => GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()),
-            None => GeneratedFunctionTarget::InEmptyItemList(it.item_list()?.syntax().clone()),
+            Some(last_item) => GeneratedFunctionTarget::AfterItem(last_item.syntax().clone()),
+            None => {
+                let item_list =
+                    it.item_list().expect("module definition source should have an item list");
+                GeneratedFunctionTarget::InEmptyItemList(item_list.syntax().clone())
+            }
         },
         hir::ModuleSource::BlockExpr(it) => {
             if let Some(last_item) =
                 it.statements().take_while(|stmt| matches!(stmt, ast::Stmt::Item(_))).last()
             {
-                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
+                GeneratedFunctionTarget::AfterItem(last_item.syntax().clone())
             } else {
                 GeneratedFunctionTarget::InEmptyItemList(it.syntax().clone())
             }
         }
     };
-    Some((file, assist_item))
-}
 
-fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarget> {
-    let assoc_item_list = impl_.assoc_item_list()?;
-    if let Some(last_item) = assoc_item_list.assoc_items().last() {
-        Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
-    } else {
-        Some(GeneratedFunctionTarget::InEmptyItemList(assoc_item_list.syntax().clone()))
-    }
+    (file, assist_item)
 }
 
 #[derive(Clone, Copy)]

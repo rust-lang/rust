@@ -21,7 +21,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
     generic_args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     target: BasicBlock,
     span: Span,
@@ -121,8 +121,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let [x, y] = args else {
                 bug!("wrong number of args for intrinsic {intrinsic}");
             };
-            let x = codegen_operand(fx, x);
-            let y = codegen_operand(fx, y);
+            let x = codegen_operand(fx, &x.node);
+            let y = codegen_operand(fx, &y.node);
 
             if !x.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
@@ -172,8 +172,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     bug!("wrong number of args for intrinsic {intrinsic}");
                 }
             };
-            let x = codegen_operand(fx, x);
-            let y = codegen_operand(fx, y);
+            let x = codegen_operand(fx, &x.node);
+            let y = codegen_operand(fx, &y.node);
 
             if !x.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
@@ -182,7 +182,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             // Make sure this is actually an array, since typeck only checks the length-suffixed
             // version of this intrinsic.
-            let idx_ty = fx.monomorphize(idx.ty(fx.mir, fx.tcx));
+            let idx_ty = fx.monomorphize(idx.node.ty(fx.mir, fx.tcx));
             let n: u16 = match idx_ty.kind() {
                 ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
                     .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
@@ -215,7 +215,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let indexes = {
                 use rustc_middle::mir::interpret::*;
-                let idx_const = match idx {
+                let idx_const = match &idx.node {
                     Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
                     Operand::Copy(_) | Operand::Move(_) => unreachable!("{idx:?}"),
                 };
@@ -269,12 +269,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     bug!("wrong number of args for intrinsic {intrinsic}");
                 }
             };
-            let base = codegen_operand(fx, base);
-            let val = codegen_operand(fx, val);
+            let base = codegen_operand(fx, &base.node);
+            let val = codegen_operand(fx, &val.node);
 
             // FIXME validate
             let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, idx)
+                crate::constant::mir_operand_get_const_val(fx, &idx.node)
             {
                 idx_const
             } else {
@@ -293,7 +293,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             ret.write_cvalue(fx, base);
-            let ret_lane = ret.place_lane(fx, idx.try_into().unwrap());
+            let ret_lane = ret.place_lane(fx, idx.into());
             ret_lane.write_cvalue(fx, val);
         }
 
@@ -304,7 +304,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     bug!("wrong number of args for intrinsic {intrinsic}");
                 }
             };
-            let v = codegen_operand(fx, v);
+            let v = codegen_operand(fx, &v.node);
 
             if !v.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
@@ -312,7 +312,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             let idx_const = if let Some(idx_const) =
-                crate::constant::mir_operand_get_const_val(fx, idx)
+                crate::constant::mir_operand_get_const_val(fx, &idx.node)
             {
                 idx_const
             } else {
@@ -340,7 +340,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             }
 
-            let ret_lane = v.value_lane(fx, idx.try_into().unwrap());
+            let ret_lane = v.value_lane(fx, idx.into());
             ret.write_cvalue(fx, ret_lane);
         }
 
@@ -822,7 +822,35 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
             let lane_layout = fx.layout_of(lane_ty);
 
-            let m = m.load_scalar(fx);
+            let expected_int_bits = lane_count.max(8);
+            let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+
+            let m = match m.layout().ty.kind() {
+                ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => m.load_scalar(fx),
+                ty::Array(elem, len)
+                    if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                        && len.try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                            == Some(expected_bytes) =>
+                {
+                    m.force_stack(fx).0.load(
+                        fx,
+                        Type::int(expected_int_bits as u16).unwrap(),
+                        MemFlags::trusted(),
+                    )
+                }
+                _ => {
+                    fx.tcx.dcx().span_fatal(
+                        span,
+                        format!(
+                            "invalid monomorphization of `simd_select_bitmask` intrinsic: \
+                            cannot accept `{}` as mask, expected `u{}` or `[u8; {}]`",
+                            ret.layout().ty,
+                            expected_int_bits,
+                            expected_bytes
+                        ),
+                    );
+                }
+            };
 
             for lane in 0..lane_count {
                 let m_lane = fx.bcx.ins().ushr_imm(m, u64::from(lane) as i64);

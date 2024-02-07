@@ -100,7 +100,7 @@ implements_const_drop! {
 }
 
 fn main() {
-    struct HasDropGlue(#[allow(unused_tuple_struct_fields)] Box<u8>);
+    struct HasDropGlue(#[allow(dead_code)] Box<u8>);
     struct HasDropImpl;
     impl Drop for HasDropImpl {
         fn drop(&mut self) {

@@ -7,7 +7,7 @@ use clippy_utils::{
 };
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, Guard, HirId, Let, Pat, PatKind};
+use rustc_hir::{Arm, Expr, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -16,7 +16,7 @@ use super::COLLAPSIBLE_MATCH;
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         for arm in arms {
-            check_arm(cx, true, arm.pat, arm.body, arm.guard.as_ref(), Some(els_arm.body));
+            check_arm(cx, true, arm.pat, arm.body, arm.guard, Some(els_arm.body));
         }
     }
 }
@@ -35,7 +35,7 @@ fn check_arm<'tcx>(
     outer_is_match: bool,
     outer_pat: &'tcx Pat<'tcx>,
     outer_then_body: &'tcx Expr<'tcx>,
-    outer_guard: Option<&'tcx Guard<'tcx>>,
+    outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
 ) {
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
@@ -71,7 +71,7 @@ fn check_arm<'tcx>(
         // the binding must not be used in the if guard
         && outer_guard.map_or(
             true,
-            |(Guard::If(e) | Guard::IfLet(Let { init: e, .. }))| !is_local_used(cx, *e, binding_id)
+            |e| !is_local_used(cx, e, binding_id)
         )
         // ...or anywhere in the inner expression
         && match inner {

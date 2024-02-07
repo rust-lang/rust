@@ -1,6 +1,6 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
-use rustc_errors::error_code;
+use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
@@ -135,7 +135,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
             if main_def.is_import && !tcx.features().imported_main {
                 let span = main_def.span;
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     sym::imported_main,
                     span,
                     "using an imported function as entry point `main` is experimental",
@@ -180,8 +180,8 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
         Default::default()
     });
     let main_def_opt = tcx.resolutions(()).main_def;
-    let diagnostic_id = error_code!(E0601);
-    let add_teach_note = tcx.sess.teach(&diagnostic_id);
+    let code = E0601;
+    let add_teach_note = tcx.sess.teach(code);
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.

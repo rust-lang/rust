@@ -38,7 +38,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
 
         ExprKind::Call(callee, args) => {
             let lhs = expr_type_certainty(cx, callee);
-            let rhs = if type_is_inferrable_from_arguments(cx, expr) {
+            let rhs = if type_is_inferable_from_arguments(cx, expr) {
                 meet(args.iter().map(|arg| expr_type_certainty(cx, arg)))
             } else {
                 Certainty::Uncertain
@@ -57,7 +57,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
                 receiver_type_certainty = receiver_type_certainty.with_def_id(self_ty_def_id);
             };
             let lhs = path_segment_certainty(cx, receiver_type_certainty, method, false);
-            let rhs = if type_is_inferrable_from_arguments(cx, expr) {
+            let rhs = if type_is_inferable_from_arguments(cx, expr) {
                 meet(
                     std::iter::once(receiver_type_certainty).chain(args.iter().map(|arg| expr_type_certainty(cx, arg))),
                 )
@@ -279,7 +279,7 @@ fn update_res(cx: &LateContext<'_>, parent_certainty: Certainty, path_segment: &
 }
 
 #[allow(clippy::cast_possible_truncation)]
-fn type_is_inferrable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let Some(callee_def_id) = (match expr.kind {
         ExprKind::Call(callee, _) => {
             let callee_ty = cx.typeck_results().expr_ty(callee);

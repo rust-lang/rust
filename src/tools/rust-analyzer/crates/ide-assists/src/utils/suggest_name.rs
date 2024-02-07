@@ -1,5 +1,7 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
+use std::collections::HashSet;
+
 use hir::Semantics;
 use ide_db::RootDatabase;
 use itertools::Itertools;
@@ -58,12 +60,59 @@ const USELESS_METHODS: &[&str] = &[
     "into_future",
 ];
 
-pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
+/// Suggest a unique name for generic parameter.
+///
+/// `existing_params` is used to check if the name conflicts with existing
+/// generic parameters.
+///
+/// The function checks if the name conflicts with existing generic parameters.
+/// If so, it will try to resolve the conflict by adding a number suffix, e.g.
+/// `T`, `T0`, `T1`, ...
+pub(crate) fn for_unique_generic_name(
+    name: &str,
+    existing_params: &ast::GenericParamList,
+) -> SmolStr {
+    let param_names = existing_params
+        .generic_params()
+        .map(|param| match param {
+            ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
+            p => p.to_string(),
+        })
+        .collect::<HashSet<_>>();
+    let mut name = name.to_string();
+    let base_len = name.len();
+    let mut count = 0;
+    while param_names.contains(&name) {
+        name.truncate(base_len);
+        name.push_str(&count.to_string());
+        count += 1;
+    }
+
+    name.into()
+}
+
+/// Suggest name of impl trait type
+///
+/// `existing_params` is used to check if the name conflicts with existing
+/// generic parameters.
+///
+/// # Current implementation
+///
+/// In current implementation, the function tries to get the name from the first
+/// character of the name for the first type bound.
+///
+/// If the name conflicts with existing generic parameters, it will try to
+/// resolve the conflict with `for_unique_generic_name`.
+pub(crate) fn for_impl_trait_as_generic(
+    ty: &ast::ImplTraitType,
+    existing_params: &ast::GenericParamList,
+) -> SmolStr {
     let c = ty
         .type_bound_list()
         .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
         .unwrap_or('T');
-    c.encode_utf8(&mut [0; 4]).into()
+
+    for_unique_generic_name(c.encode_utf8(&mut [0; 4]), existing_params)
 }
 
 /// Suggest name of variable for given expression
@@ -136,10 +185,10 @@ fn normalize(name: &str) -> Option<String> {
 }
 
 fn is_valid_name(name: &str) -> bool {
-    match ide_db::syntax_helpers::LexedStr::single_token(name) {
-        Some((syntax::SyntaxKind::IDENT, _error)) => true,
-        _ => false,
-    }
+    matches!(
+        ide_db::syntax_helpers::LexedStr::single_token(name),
+        Some((syntax::SyntaxKind::IDENT, _error))
+    )
 }
 
 fn is_useless_method(method: &ast::MethodCallExpr) -> bool {
@@ -275,7 +324,8 @@ fn from_field_name(expr: &ast::Expr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::{fixture::WithFixture, FileRange};
+    use ide_db::base_db::FileRange;
+    use test_fixture::WithFixture;
 
     use super::*;
 

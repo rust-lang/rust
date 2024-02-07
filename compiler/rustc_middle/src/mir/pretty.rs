@@ -5,7 +5,6 @@ use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
-use super::spanview::write_mir_fn_spanview;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{
     alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
@@ -141,27 +140,19 @@ fn dump_matched_mir_node<'tcx, F>(
             write_mir_fn_graphviz(tcx, body, false, &mut file)?;
         };
     }
-
-    if let Some(spanview) = tcx.sess.opts.unstable_opts.dump_mir_spanview {
-        let _: io::Result<()> = try {
-            let file_basename = dump_file_basename(tcx, pass_num, pass_name, disambiguator, body);
-            let mut file = create_dump_file_with_basename(tcx, &file_basename, "html")?;
-            if body.source.def_id().is_local() {
-                write_mir_fn_spanview(tcx, body, spanview, &file_basename, &mut file)?;
-            }
-        };
-    }
 }
 
-/// Returns the file basename portion (without extension) of a filename path
-/// where we should dump a MIR representation output files.
-fn dump_file_basename<'tcx>(
+/// Returns the path to the filename where we should dump a given MIR.
+/// Also used by other bits of code (e.g., NLL inference) that dump
+/// graphviz data or other things.
+fn dump_path<'tcx>(
     tcx: TyCtxt<'tcx>,
+    extension: &str,
     pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
-) -> String {
+) -> PathBuf {
     let source = body.source;
     let promotion_id = match source.promoted {
         Some(id) => format!("-{id:?}"),
@@ -197,43 +188,16 @@ fn dump_file_basename<'tcx>(
         _ => String::new(),
     };
 
-    format!(
-        "{crate_name}.{item_name}{shim_disambiguator}{promotion_id}{pass_num}.{pass_name}.{disambiguator}",
-    )
-}
-
-/// Returns the path to the filename where we should dump a given MIR.
-/// Also used by other bits of code (e.g., NLL inference) that dump
-/// graphviz data or other things.
-fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.unstable_opts.dump_mir_dir));
 
-    let file_name = format!("{basename}.{extension}",);
+    let file_name = format!(
+        "{crate_name}.{item_name}{shim_disambiguator}{promotion_id}{pass_num}.{pass_name}.{disambiguator}.{extension}",
+    );
 
     file_path.push(&file_name);
 
     file_path
-}
-
-/// Attempts to open the MIR dump file with the given name and extension.
-fn create_dump_file_with_basename(
-    tcx: TyCtxt<'_>,
-    file_basename: &str,
-    extension: &str,
-) -> io::Result<io::BufWriter<fs::File>> {
-    let file_path = dump_path(tcx, file_basename, extension);
-    if let Some(parent) = file_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            io::Error::new(
-                e.kind(),
-                format!("IO error creating MIR dump directory: {parent:?}; {e}"),
-            )
-        })?;
-    }
-    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
-        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
-    })?))
 }
 
 /// Attempts to open a file where we should dump a given MIR or other
@@ -248,11 +212,18 @@ pub fn create_dump_file<'tcx>(
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
 ) -> io::Result<io::BufWriter<fs::File>> {
-    create_dump_file_with_basename(
-        tcx,
-        &dump_file_basename(tcx, pass_num, pass_name, disambiguator, body),
-        extension,
-    )
+    let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, body);
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!("IO error creating MIR dump directory: {parent:?}; {e}"),
+            )
+        })?;
+    }
+    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
+        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
+    })?))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -504,8 +475,8 @@ fn write_function_coverage_info(
     for (id, expression) in expressions.iter_enumerated() {
         writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
     }
-    for coverage::Mapping { term, code_region } in mappings {
-        writeln!(w, "{INDENT}coverage {term:?} => {code_region:?};")?;
+    for coverage::Mapping { kind, code_region } in mappings {
+        writeln!(w, "{INDENT}coverage {kind:?} => {code_region:?};")?;
     }
     writeln!(w)?;
 
@@ -796,7 +767,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
-                for (index, arg) in args.iter().enumerate() {
+                for (index, arg) in args.iter().map(|a| &a.node).enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
@@ -1019,7 +990,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         })
                     }
 
-                    AggregateKind::Closure(def_id, args) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, args)
+                    | AggregateKind::CoroutineClosure(def_id, args) => ty::tls::with(|tcx| {
                         let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                             let args = tcx.lift(args).unwrap();
                             format!("{{closure@{}}}", tcx.def_path_str_with_args(def_id, args),)
@@ -1127,10 +1099,10 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             | ProjectionElem::Subtype(_)
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Field(_, _) => {
-                write!(fmt, "(").unwrap();
+                write!(fmt, "(")?;
             }
             ProjectionElem::Deref => {
-                write!(fmt, "(*").unwrap();
+                write!(fmt, "(*")?;
             }
             ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }

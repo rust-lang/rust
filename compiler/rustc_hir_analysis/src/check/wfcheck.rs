@@ -1,18 +1,18 @@
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::errors;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
-use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
-use rustc_infer::infer::outlives::obligations::TypeOutlives;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -20,9 +20,10 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, ConstParamTyImplementationError,
@@ -110,12 +111,10 @@ where
 
     let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, assumed_wf_types);
-
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         let err = infcx.err_ctxt().report_fulfillment_errors(errors);
-        if tcx.dcx().err_count() > 0 {
+        if tcx.dcx().has_errors().is_some() {
             return Err(err);
         } else {
             // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs
@@ -126,14 +125,69 @@ where
         }
     }
 
+    debug!(?assumed_wf_types);
+
+    let infcx_compat = infcx.fork();
+
+    // We specifically want to call the non-compat version of `implied_bounds_tys`; we do this always.
+    let implied_bounds =
+        infcx.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, false);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
-    wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env)?;
-    infcx.tainted_by_errors().error_reported()
+    let errors = infcx.resolve_regions(&outlives_env);
+    if errors.is_empty() {
+        return Ok(());
+    }
+
+    let is_bevy = 'is_bevy: {
+        // We don't want to emit this for dependents of Bevy, for now.
+        // See #119956
+        let is_bevy_paramset = |def: ty::AdtDef<'_>| {
+            let adt_did = with_no_trimmed_paths!(infcx.tcx.def_path_str(def.0.did));
+            adt_did.contains("ParamSet")
+        };
+        for ty in assumed_wf_types.iter() {
+            match ty.kind() {
+                ty::Adt(def, _) => {
+                    if is_bevy_paramset(*def) {
+                        break 'is_bevy true;
+                    }
+                }
+                ty::Ref(_, ty, _) => match ty.kind() {
+                    ty::Adt(def, _) => {
+                        if is_bevy_paramset(*def) {
+                            break 'is_bevy true;
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        false
+    };
+
+    // If we have set `no_implied_bounds_compat`, then do not attempt compatibility.
+    // We could also just always enter if `is_bevy`, and call `implied_bounds_tys`,
+    // but that does result in slightly more work when this option is set and
+    // just obscures what we mean here anyways. Let's just be explicit.
+    if is_bevy && !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
+        let implied_bounds =
+            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, true);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+        let errors_compat = infcx_compat.resolve_regions(&outlives_env);
+        if errors_compat.is_empty() {
+            Ok(())
+        } else {
+            Err(infcx_compat.err_ctxt().report_region_errors(body_def_id, &errors_compat))
+        }
+    } else {
+        Err(infcx.err_ctxt().report_region_errors(body_def_id, &errors))
+    }
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
-    let node = tcx.hir().owner(def_id);
+    let node = tcx.hir_owner_node(def_id);
     let mut res = match node {
         hir::OwnerNode::Crate(_) => bug!("check_well_formed cannot be applied to the crate root"),
         hir::OwnerNode::Item(item) => check_item(tcx, item),
@@ -172,7 +226,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         item.name = ? tcx.def_path_str(def_id)
     );
 
-    match item.kind {
+    let res = match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -197,11 +251,12 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
-                let mut err =
-                    tcx.dcx().struct_span_err(sp, "impls of auto traits cannot be default");
-                err.span_labels(impl_.defaultness_span, "default because of this");
-                err.span_label(sp, "auto trait");
-                res = Err(err.emit());
+                res = Err(tcx
+                    .dcx()
+                    .struct_span_err(sp, "impls of auto traits cannot be default")
+                    .with_span_labels(impl_.defaultness_span, "default because of this")
+                    .with_span_label(sp, "auto trait")
+                    .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
             match tcx.impl_polarity(def_id) {
@@ -216,7 +271,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     if let hir::Defaultness::Default { .. } = impl_.defaultness {
                         let mut spans = vec![span];
                         spans.extend(impl_.defaultness_span);
-                        res = Err(struct_span_err!(
+                        res = Err(struct_span_code_err!(
                             tcx.dcx(),
                             spans,
                             E0750,
@@ -271,7 +326,11 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
         }
         _ => Ok(()),
-    }
+    };
+
+    crate::check::check::check_item_type(tcx, def_id);
+
+    res
 }
 
 fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<(), ErrorGuaranteed> {
@@ -485,35 +544,32 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 
         if !unsatisfied_bounds.is_empty() {
             let plural = pluralize!(unsatisfied_bounds.len());
-            let mut err = tcx.dcx().struct_span_err(
-                gat_item_hir.span,
-                format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
-            );
-
             let suggestion = format!(
                 "{} {}",
                 gat_item_hir.generics.add_where_or_trailing_comma(),
                 unsatisfied_bounds.join(", "),
             );
-            err.span_suggestion(
-                gat_item_hir.generics.tail_span_for_predicate_suggestion(),
-                format!("add the required where clause{plural}"),
-                suggestion,
-                Applicability::MachineApplicable,
-            );
-
             let bound =
                 if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
-            err.note(format!(
-                "{bound} currently required to ensure that impls have maximum flexibility"
-            ));
-            err.note(
-                "we are soliciting feedback, see issue #87479 \
-                 <https://github.com/rust-lang/rust/issues/87479> \
-                 for more information",
-            );
-
-            err.emit();
+            tcx.dcx()
+                .struct_span_err(
+                    gat_item_hir.span,
+                    format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
+                )
+                .with_span_suggestion(
+                    gat_item_hir.generics.tail_span_for_predicate_suggestion(),
+                    format!("add the required where clause{plural}"),
+                    suggestion,
+                    Applicability::MachineApplicable,
+                )
+                .with_note(format!(
+                    "{bound} currently required to ensure that impls have maximum flexibility"
+                ))
+                .with_note(
+                    "we are soliciting feedback, see issue #87479 \
+                     <https://github.com/rust-lang/rust/issues/87479> for more information",
+                )
+                .emit();
         }
     }
 }
@@ -673,10 +729,12 @@ fn ty_known_to_outlive<'tcx>(
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
-    resolve_regions_with_wf_tys(tcx, id, param_env, wf_tys, |infcx, region_bound_pairs| {
-        let origin = infer::RelateParamBound(DUMMY_SP, ty, None);
-        let outlives = &mut TypeOutlives::new(infcx, tcx, region_bound_pairs, None, param_env);
-        outlives.type_must_outlive(origin, ty, region, ConstraintCategory::BoringNoLocation);
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.register_region_obligation(infer::RegionObligation {
+            sub_region: region,
+            sup_type: ty,
+            origin: infer::RelateParamBound(DUMMY_SP, ty, None),
+        });
     })
 }
 
@@ -690,40 +748,32 @@ fn region_known_to_outlive<'tcx>(
     region_a: ty::Region<'tcx>,
     region_b: ty::Region<'tcx>,
 ) -> bool {
-    resolve_regions_with_wf_tys(tcx, id, param_env, wf_tys, |mut infcx, _| {
-        use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
-        let origin = infer::RelateRegionParamBound(DUMMY_SP);
-        // `region_a: region_b` -> `region_b <= region_a`
-        infcx.push_sub_region_constraint(
-            origin,
-            region_b,
-            region_a,
-            ConstraintCategory::BoringNoLocation,
-        );
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP), region_b, region_a);
     })
 }
 
 /// Given a known `param_env` and a set of well formed types, set up an
 /// `InferCtxt`, call the passed function (to e.g. set up region constraints
 /// to be tested), then resolve region and return errors
-fn resolve_regions_with_wf_tys<'tcx>(
+fn test_region_obligations<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
-    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
+    add_constraints: impl FnOnce(&InferCtxt<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
     let infcx = tcx.infer_ctxt().build();
+
+    add_constraints(&infcx);
+
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        infcx.implied_bounds_tys(param_env, id, wf_tys),
     );
-    let region_bound_pairs = outlives_environment.region_bound_pairs();
-
-    add_constraints(&infcx, region_bound_pairs);
 
     let errors = infcx.resolve_regions(&outlives_environment);
     debug!(?errors, "errors");
@@ -834,8 +884,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
                 trait_should_be_self,
                 "associated item referring to unboxed trait object for its own trait",
             )
-            .span_label(trait_name.span, "in this trait")
-            .multipart_suggestion(
+            .with_span_label(trait_name.span, "in this trait")
+            .with_multipart_suggestion(
                 "you might have meant to use `Self` to refer to the implementing type",
                 sugg,
                 Applicability::MachineApplicable,
@@ -934,8 +984,8 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                 };
                 if may_suggest_feature && tcx.sess.is_nightly_build() {
                     diag.help(
-                            "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
-                        );
+                        "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
+                    );
                 }
 
                 Err(diag.emit())
@@ -1113,7 +1163,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
         || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
     {
         for associated_def_id in &*tcx.associated_item_def_ids(def_id) {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 tcx.def_span(*associated_def_id),
                 E0714,
@@ -1587,7 +1637,7 @@ fn check_method_receiver<'tcx>(
             return Err(if receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
                 // Report error; would have worked with `arbitrary_self_types`.
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     sym::arbitrary_self_types,
                     span,
                     format!(
@@ -1595,7 +1645,7 @@ fn check_method_receiver<'tcx>(
                          the `arbitrary_self_types` feature",
                     ),
                 )
-                .help(HELP_FOR_SELF_TYPE)
+                .with_help(HELP_FOR_SELF_TYPE)
                 .emit()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
@@ -1607,9 +1657,9 @@ fn check_method_receiver<'tcx>(
 }
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
-        .note("type of `self` must be `Self` or a type that dereferences to it")
-        .help(HELP_FOR_SELF_TYPE)
+    struct_span_code_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
+        .with_note("type of `self` must be `Self` or a type that dereferences to it")
+        .with_help(HELP_FOR_SELF_TYPE)
         .emit()
 }
 
@@ -1732,7 +1782,7 @@ fn receiver_is_implemented<'tcx>(
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &hir::Item<'tcx>,
-    hir_generics: &hir::Generics<'_>,
+    hir_generics: &hir::Generics<'tcx>,
 ) {
     let identity_args = ty::GenericArgs::identity_for_item(tcx, item.owner_id);
 
@@ -1818,7 +1868,7 @@ fn check_variances_for_type_defn<'tcx>(
             hir::ParamName::Error => {}
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
-                report_bivariance(tcx, hir_param, has_explicit_bounds);
+                report_bivariance(tcx, hir_param, has_explicit_bounds, item.kind);
             }
         }
     }
@@ -1828,30 +1878,38 @@ fn report_bivariance(
     tcx: TyCtxt<'_>,
     param: &rustc_hir::GenericParam<'_>,
     has_explicit_bounds: bool,
+    item_kind: ItemKind<'_>,
 ) -> ErrorGuaranteed {
-    let span = param.span;
-    let param_name = param.name.ident().name;
-    let mut err = error_392(tcx, span, param_name);
+    let param_name = param.name.ident();
 
-    let suggested_marker_id = tcx.lang_items().phantom_data();
-    // Help is available only in presence of lang items.
-    let msg = if let Some(def_id) = suggested_marker_id {
-        format!(
-            "consider removing `{}`, referring to it in a field, or using a marker such as `{}`",
-            param_name,
-            tcx.def_path_str(def_id),
-        )
-    } else {
-        format!("consider removing `{param_name}` or referring to it in a field")
+    let help = match item_kind {
+        ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
+            if let Some(def_id) = tcx.lang_items().phantom_data() {
+                errors::UnusedGenericParameterHelp::Adt {
+                    param_name,
+                    phantom_data: tcx.def_path_str(def_id),
+                }
+            } else {
+                errors::UnusedGenericParameterHelp::AdtNoPhantomData { param_name }
+            }
+        }
+        ItemKind::TyAlias(..) => errors::UnusedGenericParameterHelp::TyAlias { param_name },
+        item_kind => bug!("report_bivariance: unexpected item kind: {item_kind:?}"),
     };
-    err.help(msg);
 
-    if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
-        err.help(format!(
-            "if you intended `{param_name}` to be a const parameter, use `const {param_name}: usize` instead"
-        ));
-    }
-    err.emit()
+    let const_param_help =
+        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
+            .then_some(());
+
+    let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
+        span: param.span,
+        param_name,
+        param_def_kind: tcx.def_descr(param.def_id.to_def_id()),
+        help,
+        const_param_help,
+    });
+    diag.code(E0392);
+    diag.emit()
 }
 
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
@@ -1909,14 +1967,11 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
     let mut res = items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id));
     res = res.and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
     res = res.and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
-    res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)))
-}
-
-fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    let mut err =
-        struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used");
-    err.span_label(span, "unused parameter");
-    err
+    res = res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
+    if module == LocalModDefId::CRATE_DEF_ID {
+        super::entry::check_for_entry_fn(tcx);
+    }
+    res
 }
 
 pub fn provide(providers: &mut Providers) {

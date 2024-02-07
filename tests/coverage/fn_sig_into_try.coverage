@@ -1,5 +1,5 @@
    LL|       |#![feature(coverage_attribute)]
-   LL|       |// compile-flags: --edition=2021
+   LL|       |// edition: 2021
    LL|       |
    LL|       |// Regression test for inconsistent handling of function signature spans that
    LL|       |// are followed by code using the `?` operator.
@@ -8,12 +8,14 @@
    LL|       |// signature should be handled in the same way.
    LL|       |
    LL|      1|fn a() -> Option<i32>
+   LL|      1|//
    LL|      1|{
    LL|      1|    Some(7i32);
    LL|      1|    Some(0)
    LL|      1|}
    LL|       |
    LL|      1|fn b() -> Option<i32>
+   LL|      1|//
    LL|      1|{
    LL|      1|    Some(7i32)?;
                             ^0
@@ -21,6 +23,7 @@
    LL|      1|}
    LL|       |
    LL|      1|fn c() -> Option<i32>
+   LL|      1|//
    LL|      1|{
    LL|      1|    let _ = Some(7i32)?;
                                     ^0
@@ -28,6 +31,7 @@
    LL|      1|}
    LL|       |
    LL|      1|fn d() -> Option<i32>
+   LL|      1|//
    LL|      1|{
    LL|      1|    let _: () = ();
    LL|      1|    Some(7i32)?;

@@ -217,8 +217,7 @@ impl LsifManager<'_> {
             let mut edges = token.references.iter().fold(
                 HashMap::<_, Vec<lsp_types::NumberOrString>>::new(),
                 |mut edges, it| {
-                    let entry =
-                        edges.entry((it.range.file_id, it.is_definition)).or_insert_with(Vec::new);
+                    let entry = edges.entry((it.range.file_id, it.is_definition)).or_default();
                     entry.push((*self.range_map.get(&it.range).unwrap()).into());
                     edges
                 },
@@ -288,15 +287,15 @@ impl flags::Lsif {
     pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating LSIF started...");
         let now = Instant::now();
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let path = AbsPathBuf::assert(env::current_dir()?.join(self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;

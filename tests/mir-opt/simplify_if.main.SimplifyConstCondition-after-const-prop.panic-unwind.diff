@@ -6,8 +6,8 @@
       let _1: ();
   
       bb0: {
--         switchInt(const false) -> [0: bb3, otherwise: bb1];
-+         goto -> bb3;
+-         switchInt(const false) -> [0: bb2, otherwise: bb1];
++         goto -> bb2;
       }
   
       bb1: {
@@ -15,14 +15,6 @@
       }
   
       bb2: {
-          goto -> bb4;
-      }
-  
-      bb3: {
-          goto -> bb4;
-      }
-  
-      bb4: {
           return;
       }
   }

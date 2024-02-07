@@ -18,7 +18,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
-    let param = impl_trait_type.syntax().parent().and_then(ast::Param::cast)?;
+    let param = impl_trait_type.syntax().ancestors().find_map(ast::Param::cast)?;
     let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
 
     let type_bound_list = impl_trait_type.type_bound_list()?;
@@ -31,15 +31,16 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
         |edit| {
             let impl_trait_type = edit.make_mut(impl_trait_type);
             let fn_ = edit.make_mut(fn_);
-
-            let type_param_name = suggest_name::for_generic_parameter(&impl_trait_type);
+            let fn_generic_param_list = fn_.get_or_create_generic_param_list();
+            let type_param_name =
+                suggest_name::for_impl_trait_as_generic(&impl_trait_type, &fn_generic_param_list);
 
             let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
                 .clone_for_update();
             let new_ty = make::ty(&type_param_name).clone_for_update();
 
             ted::replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_.get_or_create_generic_param_list().add_generic_param(type_param.into());
+            fn_generic_param_list.add_generic_param(type_param.into());
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generic_param) =
@@ -111,12 +112,19 @@ fn foo<$0B: Bar
 
     #[test]
     fn replace_impl_trait_with_exist_generic_letter() {
-        // FIXME: This is wrong, we should pick a different name if the one we
-        // want is already bound.
         check_assist(
             introduce_named_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, $0B: Bar>(bar: B) {}"#,
+            r#"fn foo<B, $0B0: Bar>(bar: B0) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_trait_with_more_exist_generic_letter() {
+        check_assist(
+            introduce_named_generic,
+            r#"fn foo<B, B0, B1, B3>(bar: $0impl Bar) {}"#,
+            r#"fn foo<B, B0, B1, B3, $0B2: Bar>(bar: B2) {}"#,
         );
     }
 
@@ -147,6 +155,24 @@ fn foo<
             introduce_named_generic,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
             r#"fn foo<$0F: Foo + Bar>(bar: F) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_with_mut() {
+        check_assist(
+            introduce_named_generic,
+            r#"fn f(iter: &mut $0impl Iterator<Item = i32>) {}"#,
+            r#"fn f<$0I: Iterator<Item = i32>>(iter: &mut I) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_inside() {
+        check_assist(
+            introduce_named_generic,
+            r#"fn f(x: &mut Vec<$0impl Iterator<Item = i32>>) {}"#,
+            r#"fn f<$0I: Iterator<Item = i32>>(x: &mut Vec<I>) {}"#,
         );
     }
 }

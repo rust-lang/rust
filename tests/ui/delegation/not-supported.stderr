@@ -1,0 +1,184 @@
+warning: the feature `fn_delegation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/not-supported.rs:2:12
+   |
+LL | #![feature(fn_delegation)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:16:29
+   |
+LL |         fn bar(&self, x: T) -> T { x }
+   |         ------------------------ callee defined here
+...
+LL |         reuse GenericTrait::bar;
+   |                             ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:18:29
+   |
+LL |         fn bar1() {}
+   |         --------- callee defined here
+...
+LL |         reuse GenericTrait::bar1;
+   |                             ^^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:29:39
+   |
+LL |         fn bar(&self, x: T) -> T { x }
+   |         ------------------------ callee defined here
+...
+LL |         reuse <F as GenericTrait<T>>::bar { &self.0 }
+   |                                       ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:31:34
+   |
+LL |         fn bar1() {}
+   |         --------- callee defined here
+...
+LL |         reuse GenericTrait::<T>::bar1;
+   |                                  ^^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:36:29
+   |
+LL |         fn bar(&self, x: T) -> T { x }
+   |         ------------------------ callee defined here
+...
+LL |         reuse GenericTrait::bar { &F }
+   |                             ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:38:29
+   |
+LL |         fn bar1() {}
+   |         --------- callee defined here
+...
+LL |         reuse GenericTrait::bar1;
+   |                             ^^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:43:22
+   |
+LL |         fn foo(&self, x: i32) -> i32 { x }
+   |         ---------------------------- callee defined here
+...
+LL |         reuse Trait::foo;
+   |                      ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:49:22
+   |
+LL |         fn foo2<T>(&self, x: T) -> T { x }
+   |         ---------------------------- callee defined here
+...
+LL |         reuse Trait::foo2 { &self.0 }
+   |                      ^^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:52:29
+   |
+LL |         fn foo3<'a: 'a>(_: &'a u32) {}
+   |         --------------------------- callee defined here
+...
+LL |         reuse <F as Trait>::foo3;
+   |                             ^^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:59:22
+   |
+LL |         fn foo(&self, x: i32) -> i32 { x }
+   |         ---------------------------- callee defined here
+...
+LL |         reuse Trait::foo { &self.0 }
+   |                      ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:74:21
+   |
+LL |         pub fn opaque_arg(_: impl Trait) -> i32 { 0 }
+   |         --------------------------------------- callee defined here
+...
+LL |     reuse to_reuse::opaque_arg;
+   |                     ^^^^^^^^^^
+
+error: delegation to a function with opaque type is not supported yet
+  --> $DIR/not-supported.rs:76:21
+   |
+LL |         pub fn opaque_ret() -> impl Trait { unimplemented!() }
+   |         --------------------------------- callee defined here
+...
+LL |     reuse to_reuse::opaque_ret;
+   |                     ^^^^^^^^^^
+
+error: delegation to unsafe functions is not supported yet
+  --> $DIR/not-supported.rs:88:21
+   |
+LL |         pub unsafe fn unsafe_fn() {}
+   |         ------------------------- callee defined here
+...
+LL |     reuse to_reuse::unsafe_fn;
+   |                     ^^^^^^^^^
+
+error: delegation to non Rust ABI functions is not supported yet
+  --> $DIR/not-supported.rs:90:21
+   |
+LL |         pub extern "C" fn extern_fn() {}
+   |         ----------------------------- callee defined here
+...
+LL |     reuse to_reuse::extern_fn;
+   |                     ^^^^^^^^^
+
+error: delegation to variadic functions is not supported yet
+  --> $DIR/not-supported.rs:92:21
+   |
+LL |         pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) {}
+   |         ------------------------------------------------------------- callee defined here
+...
+LL |     reuse to_reuse::variadic_fn;
+   |                     ^^^^^^^^^^^
+
+error: delegation to const functions is not supported yet
+  --> $DIR/not-supported.rs:94:21
+   |
+LL |         pub const fn const_fn() {}
+   |         ----------------------- callee defined here
+...
+LL |     reuse to_reuse::const_fn;
+   |                     ^^^^^^^^
+
+error: recursive delegation is not supported yet
+  --> $DIR/not-supported.rs:107:22
+   |
+LL |         pub reuse to_reuse2::foo;
+   |                              --- callee defined here
+...
+LL |     reuse to_reuse1::foo;
+   |                      ^^^
+
+error[E0049]: method `foo2` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/not-supported.rs:49:22
+   |
+LL |         fn foo2<T>(&self, x: T) -> T { x }
+   |                 - expected 1 type parameter
+...
+LL |         reuse Trait::foo2 { &self.0 }
+   |                      ^^^^ found 0 type parameters
+
+error[E0195]: lifetime parameters or bounds on method `foo3` do not match the trait declaration
+  --> $DIR/not-supported.rs:52:29
+   |
+LL |         fn foo3<'a: 'a>(_: &'a u32) {}
+   |                -------- lifetimes in impl do not match this method in trait
+...
+LL |         reuse <F as Trait>::foo3;
+   |                             ^^^^ lifetimes do not match method in trait
+
+error: aborting due to 19 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0049, E0195.
+For more information about an error, try `rustc --explain E0049`.

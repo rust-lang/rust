@@ -46,6 +46,7 @@ pub struct Std {
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
+    is_for_mir_opt_tests: bool,
 }
 
 impl Std {
@@ -56,6 +57,7 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         }
     }
 
@@ -66,6 +68,18 @@ impl Std {
             crates: Default::default(),
             force_recompile: true,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
+        }
+    }
+
+    pub fn new_for_mir_opt_tests(compiler: Compiler, target: TargetSelection) -> Self {
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: false,
+            extra_rust_args: &[],
+            is_for_mir_opt_tests: true,
         }
     }
 
@@ -80,7 +94,22 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args,
+            is_for_mir_opt_tests: false,
         }
+    }
+
+    fn copy_extra_objects(
+        &self,
+        builder: &Builder<'_>,
+        compiler: &Compiler,
+        target: TargetSelection,
+    ) -> Vec<(PathBuf, DependencyType)> {
+        let mut deps = Vec::new();
+        if !self.is_for_mir_opt_tests {
+            deps.extend(copy_third_party_objects(builder, &compiler, target));
+            deps.extend(copy_self_contained_objects(builder, &compiler, target));
+        }
+        deps
     }
 }
 
@@ -109,6 +138,7 @@ impl Step for Std {
             crates,
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         });
     }
 
@@ -143,8 +173,7 @@ impl Step for Std {
         {
             builder.info("WARNING: Using a potentially old libstd. This may not behave well.");
 
-            copy_third_party_objects(builder, &compiler, target);
-            copy_self_contained_objects(builder, &compiler, target);
+            self.copy_extra_objects(builder, &compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler));
             return;
@@ -177,15 +206,13 @@ impl Step for Std {
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
-            copy_third_party_objects(builder, &compiler, target);
-            copy_self_contained_objects(builder, &compiler, target);
+            self.copy_extra_objects(builder, &compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler_to_use));
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target));
-        target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
+        target_deps.extend(self.copy_extra_objects(builder, &compiler, target));
 
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
@@ -206,11 +233,22 @@ impl Step for Std {
             }
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        // We build a sysroot for mir-opt tests using the same trick that Miri does: A check build
+        // with -Zalways-encode-mir. This frees us from the need to have a target linker, and the
+        // fact that this is a check build integrates nicely with run_cargo.
+        let mut cargo = if self.is_for_mir_opt_tests {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "check");
+            cargo.rustflag("-Zalways-encode-mir");
+            cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
+            cargo
+        } else {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            for krate in &*self.crates {
+                cargo.arg("-p").arg(krate);
+            }
+            cargo
+        };
 
         // See src/bootstrap/synthetic_targets.rs
         if target.is_synthetic() {
@@ -233,7 +271,7 @@ impl Step for Std {
             vec![],
             &libstd_stamp(builder, compiler, target),
             target_deps,
-            false,
+            self.is_for_mir_opt_tests, // is_check
             false,
         );
 
@@ -274,7 +312,7 @@ fn copy_third_party_objects(
 ) -> Vec<(PathBuf, DependencyType)> {
     let mut target_deps = vec![];
 
-    if builder.config.sanitizers_enabled(target) && compiler.stage != 0 {
+    if builder.config.needs_sanitizer_runtime_built(target) && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
         target_deps.extend(
@@ -382,9 +420,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
-    // always checked out, so we need to conditionally look for this. (e.g. if
-    // an external LLVM is used we skip the LLVM submodule checkout).
+    // `compiler-rt` repository.
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -395,8 +431,21 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
+        // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce `submodules = false`, so this is a no-op.
+        // But, the user could still decide to manually use an in-tree submodule.
+        //
+        // NOTE: if we're using system llvm, we'll end up building a version of `compiler-rt` that doesn't match the LLVM we're linking to.
+        // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
+        // the compiler_builtins build script that makes me nervous, though:
+        // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
+        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_builtins_root.exists() {
+            panic!(
+                "need LLVM sources available to build `compiler-rt`, but they weren't present; consider enabling `build.submodules = true` or disabling `optimized-compiler-builtins`"
+            );
+        }
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -768,7 +817,14 @@ impl Rustc {
 }
 
 impl Step for Rustc {
-    type Output = ();
+    // We return the stage of the "actual" compiler (not the uplifted one).
+    //
+    // By "actual" we refer to the uplifting logic where we may not compile the requested stage;
+    // instead, we uplift it from the previous stages. Which can lead to bootstrap failures in
+    // specific situations where we request stage X from other steps. However we may end up
+    // uplifting it from stage Y, causing the other stage to fail when attempting to link with
+    // stage X which was never actually built.
+    type Output = u32;
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
 
@@ -799,7 +855,7 @@ impl Step for Rustc {
     /// This will build the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> u32 {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -813,7 +869,7 @@ impl Step for Rustc {
                 compiler,
                 builder.config.ci_rustc_dev_contents(),
             );
-            return;
+            return compiler.stage;
         }
 
         builder.ensure(Std::new(compiler, target));
@@ -822,7 +878,8 @@ impl Step for Rustc {
             builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
             builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
             builder.ensure(RustcLink::from_rustc(self, compiler));
-            return;
+
+            return compiler.stage;
         }
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
@@ -845,7 +902,7 @@ impl Step for Rustc {
             };
             builder.info(&msg);
             builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
-            return;
+            return compiler_to_use.stage;
         }
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
@@ -905,34 +962,6 @@ impl Step for Rustc {
             ));
         }
 
-        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
-        // and may just be a time sink.
-        if compiler.stage != 0 {
-            match builder.config.rust_lto {
-                RustcLto::Thin | RustcLto::Fat => {
-                    // Since using LTO for optimizing dylibs is currently experimental,
-                    // we need to pass -Zdylib-lto.
-                    cargo.rustflag("-Zdylib-lto");
-                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
-                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
-                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
-                    let lto_type = match builder.config.rust_lto {
-                        RustcLto::Thin => "thin",
-                        RustcLto::Fat => "fat",
-                        _ => unreachable!(),
-                    };
-                    cargo.rustflag(&format!("-Clto={lto_type}"));
-                    cargo.rustflag("-Cembed-bitcode=yes");
-                }
-                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
-                RustcLto::Off => {
-                    cargo.rustflag("-Clto=off");
-                }
-            }
-        } else if builder.config.rust_lto == RustcLto::Off {
-            cargo.rustflag("-Clto=off");
-        }
-
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
@@ -977,6 +1006,8 @@ impl Step for Rustc {
             self,
             builder.compiler(compiler.stage, builder.config.build),
         ));
+
+        compiler.stage
     }
 }
 
@@ -988,6 +1019,34 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+
+    // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+    // and may just be a time sink.
+    if stage != 0 {
+        match builder.config.rust_lto {
+            RustcLto::Thin | RustcLto::Fat => {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto.
+                cargo.rustflag("-Zdylib-lto");
+                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                let lto_type = match builder.config.rust_lto {
+                    RustcLto::Thin => "thin",
+                    RustcLto::Fat => "fat",
+                    _ => unreachable!(),
+                };
+                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            RustcLto::Off => {
+                cargo.rustflag("-Clto=off");
+            }
+        }
+    } else if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 
     rustc_cargo_env(builder, cargo, target, stage);
 }
@@ -1068,16 +1127,11 @@ pub fn rustc_cargo_env(
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    let target_config = builder.config.target_config.get(&target);
-
     if builder.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &llvm_config);
-    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-        cargo.env("CFG_LLVM_ROOT", s);
-    }
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
@@ -1607,21 +1661,6 @@ impl Step for Assemble {
             return target_compiler;
         }
 
-        // Get the compiler that we'll use to bootstrap ourselves.
-        //
-        // Note that this is where the recursive nature of the bootstrap
-        // happens, as this will request the previous stage's compiler on
-        // downwards to stage 0.
-        //
-        // Also note that we're building a compiler for the host platform. We
-        // only assume that we can run `build` artifacts, which means that to
-        // produce some other architecture compiler we need to start from
-        // `build` to get there.
-        //
-        // FIXME: It may be faster if we build just a stage 1 compiler and then
-        //        use that to bootstrap this compiler forward.
-        let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
-
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
         if builder.download_rustc() {
             let sysroot =
@@ -1636,19 +1675,30 @@ impl Step for Assemble {
             return target_compiler;
         }
 
+        // Get the compiler that we'll use to bootstrap ourselves.
+        //
+        // Note that this is where the recursive nature of the bootstrap
+        // happens, as this will request the previous stage's compiler on
+        // downwards to stage 0.
+        //
+        // Also note that we're building a compiler for the host platform. We
+        // only assume that we can run `build` artifacts, which means that to
+        // produce some other architecture compiler we need to start from
+        // `build` to get there.
+        //
+        // FIXME: It may be faster if we build just a stage 1 compiler and then
+        //        use that to bootstrap this compiler forward.
+        let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        builder.ensure(Rustc::new(build_compiler, target_compiler.host));
-
-        // FIXME: For now patch over problems noted in #90244 by early returning here, even though
-        // we've not properly assembled the target sysroot. A full fix is pending further investigation,
-        // for now full bootstrap usage is rare enough that this is OK.
-        if target_compiler.stage >= 3 && !builder.config.full_bootstrap {
-            return target_compiler;
-        }
+        let actual_stage = builder.ensure(Rustc::new(build_compiler, target_compiler.host));
+        // Current build_compiler.stage might be uplifted instead of being built; so update it
+        // to not fail while linking the artifacts.
+        build_compiler.stage = actual_stage;
 
         for &backend in builder.config.rust_codegen_backends.iter() {
             if backend == "llvm" {

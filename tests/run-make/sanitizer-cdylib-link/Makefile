@@ -12,5 +12,5 @@ LOG := $(TMPDIR)/log.txt
 
 all:
 	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) library.rs
-	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) -llibrary program.rs
+	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) program.rs
 	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | $(CGREP) stack-buffer-overflow

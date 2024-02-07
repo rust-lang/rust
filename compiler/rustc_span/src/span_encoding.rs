@@ -210,12 +210,10 @@ impl Span {
         }
     }
 
-    /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
-    /// It's a cut-down version of `data_untracked`.
-    #[cfg_attr(not(test), rustc_diagnostic_item = "SpanCtxt")]
-    #[inline]
-    pub fn ctxt(self) -> SyntaxContext {
-        if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
+    // Returns either syntactic context, if it can be retrieved without taking the interner lock,
+    // or an index into the interner if it cannot.
+    fn inline_ctxt(self) -> Result<SyntaxContext, usize> {
+        Ok(if self.len_with_tag_or_marker != BASE_LEN_INTERNED_MARKER {
             if self.len_with_tag_or_marker & PARENT_TAG == 0 {
                 // Inline-context format.
                 SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)
@@ -223,17 +221,36 @@ impl Span {
                 // Inline-parent format. We know that the SyntaxContext is root.
                 SyntaxContext::root()
             }
+        } else if self.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
+            // Partially-interned format. This path avoids looking up the
+            // interned value, and is the whole point of the
+            // partially-interned format.
+            SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)
         } else {
-            if self.ctxt_or_parent_or_marker != CTXT_INTERNED_MARKER {
-                // Partially-interned format. This path avoids looking up the
-                // interned value, and is the whole point of the
-                // partially-interned format.
-                SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32)
-            } else {
-                // Fully-interned format.
-                let index = self.lo_or_index;
-                with_span_interner(|interner| interner.spans[index as usize].ctxt)
+            // Fully-interned format.
+            return Err(self.lo_or_index as usize);
+        })
+    }
+
+    /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
+    /// It's a cut-down version of `data_untracked`.
+    #[cfg_attr(not(test), rustc_diagnostic_item = "SpanCtxt")]
+    #[inline]
+    pub fn ctxt(self) -> SyntaxContext {
+        self.inline_ctxt()
+            .unwrap_or_else(|index| with_span_interner(|interner| interner.spans[index].ctxt))
+    }
+
+    #[inline]
+    pub fn eq_ctxt(self, other: Span) -> bool {
+        match (self.inline_ctxt(), other.inline_ctxt()) {
+            (Ok(ctxt1), Ok(ctxt2)) => ctxt1 == ctxt2,
+            (Ok(ctxt), Err(index)) | (Err(index), Ok(ctxt)) => {
+                with_span_interner(|interner| ctxt == interner.spans[index].ctxt)
             }
+            (Err(index1), Err(index2)) => with_span_interner(|interner| {
+                interner.spans[index1].ctxt == interner.spans[index2].ctxt
+            }),
         }
     }
 }

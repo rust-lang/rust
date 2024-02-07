@@ -10,15 +10,15 @@ use core::intrinsics::mir::*;
 struct NotCopy(bool);
 
 // EMIT_MIR custom_move_arg.f.CopyProp.diff
-#[custom_mir(dialect = "analysis", phase = "post-cleanup")]
+#[custom_mir(dialect = "runtime")]
 fn f(_1: NotCopy) {
     mir!({
         let _2 = _1;
-        Call(RET = opaque(Move(_1)), bb1, UnwindContinue())
+        Call(RET = opaque(Move(_1)), ReturnTo(bb1), UnwindUnreachable())
     }
     bb1 = {
         let _3 = Move(_2);
-        Call(RET = opaque(_3), bb2, UnwindContinue())
+        Call(RET = opaque(_3), ReturnTo(bb2), UnwindUnreachable())
     }
     bb2 = {
         Return()

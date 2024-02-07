@@ -1,5 +1,4 @@
 PRINT-BANG INPUT (DISPLAY): struct M($crate :: S);
-PRINT-BANG RE-COLLECTED (DISPLAY): struct M($crate :: S) ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -40,7 +39,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct A($crate :: S);
-PRINT-ATTR RE-COLLECTED (DISPLAY): struct A($crate :: S) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -81,7 +79,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-DERIVE INPUT (DISPLAY): struct D($crate :: S);
-PRINT-DERIVE RE-COLLECTED (DISPLAY): struct D($crate :: S) ;
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -122,7 +119,6 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-BANG INPUT (DISPLAY): struct M($crate :: S);
-PRINT-BANG RE-COLLECTED (DISPLAY): struct M($crate :: S) ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -163,7 +159,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct A($crate :: S);
-PRINT-ATTR RE-COLLECTED (DISPLAY): struct A($crate :: S) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -204,7 +199,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-DERIVE INPUT (DISPLAY): struct D($crate :: S);
-PRINT-DERIVE RE-COLLECTED (DISPLAY): struct D($crate :: S) ;
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",

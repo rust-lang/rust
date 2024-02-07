@@ -5,6 +5,8 @@
 //! item as an ID. That way, id's don't change unless the set of items itself
 //! changes.
 
+// FIXME: Consider moving this into the span crate
+
 use std::{
     any::type_name,
     fmt,
@@ -17,9 +19,9 @@ use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
-use crate::db;
+use crate::db::ExpandDatabase;
 
-pub use base_db::span::ErasedFileAstId;
+pub use span::ErasedFileAstId;
 
 /// `AstId` points to an AST node in any file.
 ///
@@ -27,13 +29,13 @@ pub use base_db::span::ErasedFileAstId;
 pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
 impl<N: AstIdNode> AstId<N> {
-    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
+    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
         self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
     }
-    pub fn to_in_file_node(&self, db: &dyn db::ExpandDatabase) -> crate::InFile<N> {
+    pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
         crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
     }
-    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> AstPtr<N> {
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
         db.ast_id_map(self.file_id).get(self.value)
     }
 }
@@ -41,7 +43,7 @@ impl<N: AstIdNode> AstId<N> {
 pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
 
 impl ErasedAstId {
-    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
         db.ast_id_map(self.file_id).get_erased(self.value)
     }
 }
@@ -153,7 +155,14 @@ impl PartialEq for AstIdMap {
 impl Eq for AstIdMap {}
 
 impl AstIdMap {
-    pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
+    pub(crate) fn ast_id_map(
+        db: &dyn ExpandDatabase,
+        file_id: span::HirFileId,
+    ) -> triomphe::Arc<AstIdMap> {
+        triomphe::Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
+    }
+
+    fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap::default();
 
@@ -189,7 +198,7 @@ impl AstIdMap {
 
     /// The [`AstId`] of the root node
     pub fn root(&self) -> SyntaxNodePtr {
-        self.arena[Idx::from_raw(RawIdx::from_u32(0))].clone()
+        self.arena[Idx::from_raw(RawIdx::from_u32(0))]
     }
 
     pub fn ast_id<N: AstIdNode>(&self, item: &N) -> FileAstId<N> {
@@ -197,12 +206,25 @@ impl AstIdMap {
         FileAstId { raw, covariant: PhantomData }
     }
 
+    pub fn ast_id_for_ptr<N: AstIdNode>(&self, ptr: AstPtr<N>) -> FileAstId<N> {
+        let ptr = ptr.syntax_node_ptr();
+        let hash = hash_ptr(&ptr);
+        match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
+            Some((&raw, &())) => FileAstId { raw, covariant: PhantomData },
+            None => panic!(
+                "Can't find {:?} in AstIdMap:\n{:?}",
+                ptr,
+                self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
+            ),
+        }
+    }
+
     pub fn get<N: AstIdNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
-        AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
+        AstPtr::try_from_raw(self.arena[id.raw]).unwrap()
     }
 
     pub fn get_erased(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
-        self.arena[id].clone()
+        self.arena[id]
     }
 
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
@@ -224,9 +246,7 @@ impl AstIdMap {
 }
 
 fn hash_ptr(ptr: &SyntaxNodePtr) -> u64 {
-    let mut hasher = BuildHasherDefault::<FxHasher>::default().build_hasher();
-    ptr.hash(&mut hasher);
-    hasher.finish()
+    BuildHasherDefault::<FxHasher>::default().hash_one(ptr)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

@@ -5,14 +5,16 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-annotate-snippets = "0.9"
+annotate-snippets = "0.10"
 derive_setters = "0.1.6"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }

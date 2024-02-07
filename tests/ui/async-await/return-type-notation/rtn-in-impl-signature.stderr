@@ -13,6 +13,16 @@ error[E0229]: associated type bindings are not allowed here
 LL | impl Super1<'_, bar(): Send> for () {}
    |                 ^^^^^^^^^^^ associated type not allowed here
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0046]: not all trait items implemented, missing: `bar`
+  --> $DIR/rtn-in-impl-signature.rs:10:1
+   |
+LL |     fn bar<'b>() -> bool;
+   |     --------------------- `bar` from trait
+...
+LL | impl Super1<'_, bar(): Send> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
 
-For more information about this error, try `rustc --explain E0229`.
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0046, E0229.
+For more information about an error, try `rustc --explain E0046`.

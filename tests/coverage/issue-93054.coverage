@@ -1,10 +1,9 @@
    LL|       |#![allow(dead_code, unreachable_code)]
+   LL|       |// edition: 2021
    LL|       |
    LL|       |// Regression test for #93054: Functions using uninhabited types often only have a single,
    LL|       |// unreachable basic block which doesn't get instrumented. This should not cause llvm-cov to fail.
    LL|       |// Since these kinds functions can't be invoked anyway, it's ok to not have coverage data for them.
-   LL|       |
-   LL|       |// compile-flags: --edition=2021
    LL|       |
    LL|       |enum Never {}
    LL|       |

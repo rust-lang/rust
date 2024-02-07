@@ -25,9 +25,13 @@ fn main() {
 
     permissions.set_mode(644);
     permissions.set_mode(0o704);
+    // no error
+    permissions.set_mode(0b111_000_100);
 
     // DirBuilderExt::mode
     let mut builder = DirBuilder::new();
     builder.mode(755);
     builder.mode(0o406);
+    // no error
+    permissions.set_mode(0b111000100);
 }

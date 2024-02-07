@@ -2,10 +2,7 @@ error[E0599]: the method `filterx` exists for struct `Map<Repeat, {closure@issue
   --> $DIR/issue-30786.rs:120:22
    |
 LL | pub struct Map<S, F> {
-   | --------------------
-   | |
-   | method `filterx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | -------------------- method `filterx` not found for this struct because it doesn't satisfy `_: StreamExt`
 ...
 LL |     let filter = map.filterx(|x: &_| true);
    |                      ^^^^^^^ method cannot be called on `Map<Repeat, {closure@issue-30786.rs:119:27}>` due to unsatisfied trait bounds
@@ -18,15 +15,18 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:66:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, {closure@issue-30786.rs:131:30}>`, but its trait bounds were not satisfied
   --> $DIR/issue-30786.rs:132:24
    |
 LL | pub struct Filter<S, F> {
-   | -----------------------
-   | |
-   | method `countx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | ----------------------- method `countx` not found for this struct because it doesn't satisfy `_: StreamExt`
 ...
 LL |     let count = filter.countx();
    |                        ^^^^^^ method cannot be called due to unsatisfied trait bounds
@@ -39,6 +39,12 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `countx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:66:1
+   |
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

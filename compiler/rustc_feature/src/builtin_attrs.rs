@@ -440,9 +440,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(optimize),
     ),
 
-    gated!(
-        ffi_returns_twice, Normal, template!(Word), WarnFollowing, experimental!(ffi_returns_twice)
-    ),
     gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),
     gated!(ffi_const, Normal, template!(Word), WarnFollowing, experimental!(ffi_const)),
     gated!(
@@ -469,7 +466,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // `#[collapse_debuginfo]`
     gated!(
-        collapse_debuginfo, Normal, template!(Word), WarnFollowing,
+        collapse_debuginfo, Normal, template!(Word, List: "no|external|yes"), ErrorFollowing,
         experimental!(collapse_debuginfo)
     ),
 

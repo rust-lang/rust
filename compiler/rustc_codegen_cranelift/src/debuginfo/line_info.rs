@@ -68,15 +68,7 @@ impl DebugContext {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site (when the macro is
         // annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
-        let span = if tcx.should_collapse_debuginfo(span) {
-            span
-        } else {
-            // Walk up the macro expansion chain until we reach a non-expanded span.
-            // We also stop at the function body level because no line stepping can occur
-            // at the level above that.
-            rustc_span::hygiene::walk_chain(span, function_span.ctxt())
-        };
-
+        let span = tcx.collapsed_debuginfo(span, function_span);
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
                 let line_pos = file.lines()[line];

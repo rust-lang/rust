@@ -1,4 +1,5 @@
 use rustc_ast::ast;
+use rustc_errors::codes::*;
 use rustc_macros::Diagnostic;
 use rustc_session::Limit;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
@@ -56,6 +57,13 @@ pub(crate) struct ResolveRelativePath {
     #[primary_span]
     pub span: Span,
     pub path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_collapse_debuginfo_illegal)]
+pub(crate) struct CollapseMacroDebuginfoIllegal {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -168,7 +176,7 @@ pub(crate) struct TakesNoArguments<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_feature_removed, code = "E0557")]
+#[diag(expand_feature_removed, code = E0557)]
 pub(crate) struct FeatureRemoved<'a> {
     #[primary_span]
     #[label]
@@ -184,7 +192,7 @@ pub(crate) struct FeatureRemovedReason<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_feature_not_allowed, code = "E0725")]
+#[diag(expand_feature_not_allowed, code = E0725)]
 pub(crate) struct FeatureNotAllowed {
     #[primary_span]
     pub span: Span,
@@ -203,7 +211,7 @@ pub(crate) struct RecursionLimitReached<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_malformed_feature_attribute, code = "E0556")]
+#[diag(expand_malformed_feature_attribute, code = E0556)]
 pub(crate) struct MalformedFeatureAttribute {
     #[primary_span]
     pub span: Span,
@@ -340,7 +348,7 @@ pub(crate) struct ModuleInBlockName {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_module_file_not_found, code = "E0583")]
+#[diag(expand_module_file_not_found, code = E0583)]
 #[help]
 #[note]
 pub(crate) struct ModuleFileNotFound {
@@ -352,7 +360,7 @@ pub(crate) struct ModuleFileNotFound {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_module_multiple_candidates, code = "E0761")]
+#[diag(expand_module_multiple_candidates, code = E0761)]
 #[help]
 pub(crate) struct ModuleMultipleCandidates {
     #[primary_span]

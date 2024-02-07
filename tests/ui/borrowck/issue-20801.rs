@@ -12,6 +12,7 @@ fn imm_ref() -> &'static T {
 
 fn mut_ref() -> &'static mut T {
     unsafe { &mut GLOBAL_MUT_T }
+    //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
 }
 
 fn mut_ptr() -> *mut T {

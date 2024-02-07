@@ -30,4 +30,4 @@ fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
 // FIXME(effects): Instead of suggesting `+ const Trait`, suggest
 //                 changing `~const Trait` to `const Trait`.
 const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
-//~^ ERROR the trait bound `T: const Trait` is not satisfied
+//~^ ERROR mismatched types

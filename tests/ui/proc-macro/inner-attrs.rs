@@ -1,5 +1,6 @@
 // gate-test-custom_inner_attributes
 // compile-flags: -Z span-debug --error-format human
+// error-pattern:expected non-macro inner attribute
 // aux-build:test-macros.rs
 // edition:2018
 
@@ -61,19 +62,19 @@ fn bar() {
     );
 
     for _ in &[true] {
-        #![print_attr] //~ ERROR expected non-macro inner attribute
+        #![print_attr]
     }
 
     let _ = {
-        #![print_attr] //~ ERROR expected non-macro inner attribute
+        #![print_attr]
     };
 
     let _ = async {
-        #![print_attr] //~ ERROR expected non-macro inner attribute
+        #![print_attr]
     };
 
     {
-        #![print_attr] //~ ERROR expected non-macro inner attribute
+        #![print_attr]
     };
 }
 

@@ -30,10 +30,11 @@
           StorageLive(_6);
           _6 = _1;
 -         _4 = Eq(move _5, move _6);
-+         _4 = Eq(_1, _1);
++         _4 = const true;
           StorageDead(_6);
           StorageDead(_5);
-          _3 = opaque::<bool>(move _4) -> [return: bb1, unwind continue];
+-         _3 = opaque::<bool>(move _4) -> [return: bb1, unwind continue];
++         _3 = opaque::<bool>(const true) -> [return: bb1, unwind continue];
       }
   
       bb1: {
@@ -46,10 +47,11 @@
           StorageLive(_10);
           _10 = _1;
 -         _8 = Ne(move _9, move _10);
-+         _8 = Ne(_1, _1);
++         _8 = const false;
           StorageDead(_10);
           StorageDead(_9);
-          _7 = opaque::<bool>(move _8) -> [return: bb2, unwind continue];
+-         _7 = opaque::<bool>(move _8) -> [return: bb2, unwind continue];
++         _7 = opaque::<bool>(const false) -> [return: bb2, unwind continue];
       }
   
       bb2: {

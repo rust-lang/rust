@@ -6,8 +6,8 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, report_ambiguity_error, struct_span_err, Applicability, DiagCtxt, Diagnostic,
-    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt,
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -100,6 +100,8 @@ pub(crate) struct ImportSuggestion {
     pub descr: &'static str,
     pub path: Path,
     pub accessible: bool,
+    // false if the path traverses a foreign `#[doc(hidden)]` item.
+    pub doc_visible: bool,
     pub via_import: bool,
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
@@ -151,7 +153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
                 );
             } else {
-                let mut err = struct_span_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
+                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
                 report_ambiguity_error(&mut err, diag);
                 err.emit();
             }
@@ -252,15 +254,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let msg = format!("the name `{name}` is defined multiple times");
 
         let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
-            (true, true) => struct_span_err!(self.dcx(), span, E0259, "{}", msg),
+            (true, true) => struct_span_code_err!(self.dcx(), span, E0259, "{}", msg),
             (true, _) | (_, true) => match new_binding.is_import() && old_binding.is_import() {
-                true => struct_span_err!(self.dcx(), span, E0254, "{}", msg),
-                false => struct_span_err!(self.dcx(), span, E0260, "{}", msg),
+                true => struct_span_code_err!(self.dcx(), span, E0254, "{}", msg),
+                false => struct_span_code_err!(self.dcx(), span, E0260, "{}", msg),
             },
             _ => match (old_binding.is_import_user_facing(), new_binding.is_import_user_facing()) {
-                (false, false) => struct_span_err!(self.dcx(), span, E0428, "{}", msg),
-                (true, true) => struct_span_err!(self.dcx(), span, E0252, "{}", msg),
-                _ => struct_span_err!(self.dcx(), span, E0255, "{}", msg),
+                (false, false) => struct_span_code_err!(self.dcx(), span, E0428, "{}", msg),
+                (true, true) => struct_span_code_err!(self.dcx(), span, E0252, "{}", msg),
+                _ => struct_span_code_err!(self.dcx(), span, E0255, "{}", msg),
             },
         };
 
@@ -283,7 +285,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         use NameBindingKind::Import;
         let can_suggest = |binding: NameBinding<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
-                && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
+                && !matches!(import.kind, ImportKind::MacroUse { .. } | ImportKind::MacroExport)
         };
         let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
@@ -559,13 +561,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         resolution_error: ResolutionError<'a>,
     ) -> DiagnosticBuilder<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
+            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params, def_kind) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
+                let static_or_const = match def_kind {
+                    DefKind::Static(_) => Some(errs::GenericParamsFromOuterItemStaticOrConst::Static),
+                    DefKind::Const => Some(errs::GenericParamsFromOuterItemStaticOrConst::Const),
+                    _ => None,
+                };
+                let is_self = matches!(outer_res, Res::SelfTyParam { .. } | Res::SelfTyAlias { .. });
                 let mut err = errs::GenericParamsFromOuterItem {
                     span,
                     label: None,
                     refer_to_type_directly: None,
                     sugg: None,
+                    static_or_const,
+                    is_self,
                 };
 
                 let sm = self.tcx.sess.source_map();
@@ -657,7 +667,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let mut err = struct_span_err!(
+                let mut err = struct_span_code_err!(
                     self.dcx(),
                     msp,
                     E0408,
@@ -784,9 +794,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
                 self.dcx().create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span })
             }
-            ResolutionError::FailedToResolve { last_segment, label, suggestion, module } => {
+            ResolutionError::FailedToResolve { segment, label, suggestion, module } => {
                 let mut err =
-                    struct_span_err!(self.dcx(), span, E0433, "failed to resolve: {}", &label);
+                    struct_span_code_err!(self.dcx(), span, E0433, "failed to resolve: {}", &label);
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -799,9 +809,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 if let Some(ModuleOrUniformRoot::Module(module)) = module
                     && let Some(module) = module.opt_def_id()
-                    && let Some(last_segment) = last_segment
+                    && let Some(segment) = segment
                 {
-                    self.find_cfg_stripped(&mut err, &last_segment, module);
+                    self.find_cfg_stripped(&mut err, &segment, module);
                 }
 
                 err
@@ -942,22 +952,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 trait_item_span,
                 trait_path,
             } => {
-                let mut err = self.dcx().struct_span_err_with_code(
+                self.dcx().struct_span_err(
                     span,
                     format!(
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
-                    code,
-                );
-                err.span_label(span, "does not match trait");
-                err.span_label(trait_item_span, "item in trait");
-                err
+                )
+                .with_code(code)
+                .with_span_label(span, "does not match trait")
+                .with_span_label(trait_item_span, "item in trait")
             }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .dcx()
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),
             ResolutionError::InvalidAsmSym => self.dcx().create_err(errs::InvalidAsmSym { span }),
             ResolutionError::LowercaseSelf => self.dcx().create_err(errs::LowercaseSelf { span }),
+            ResolutionError::BindingInNeverPattern => {
+                self.dcx().create_err(errs::BindingInNeverPattern { span })
+            }
         }
     }
 
@@ -980,12 +992,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
                 span,
-                ResolutionError::FailedToResolve {
-                    last_segment: None,
-                    label,
-                    suggestion,
-                    module: None,
-                },
+                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
             ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedFound { span, res, path_str })
@@ -1146,10 +1153,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(start_module, ThinVec::<ast::PathSegment>::new(), true)];
+        let start_did = start_module.def_id();
+        let mut worklist = vec![(
+            start_module,
+            ThinVec::<ast::PathSegment>::new(),
+            true,
+            start_did.is_local() || !self.tcx.is_doc_hidden(start_did),
+        )];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+        while let Some((in_module, path_segments, accessible, doc_visible)) = match worklist.pop() {
             None => worklist_via_import.pop(),
             Some(x) => Some(x),
         } {
@@ -1192,6 +1205,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
+                let res = name_binding.res();
+                let did = match res {
+                    Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
+                    _ => res.opt_def_id(),
+                };
+                let child_doc_visible = doc_visible
+                    && (did.map_or(true, |did| did.is_local() || !this.tcx.is_doc_hidden(did)));
+
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
                 // avoid suggesting anything with a hygienic name
@@ -1200,7 +1221,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
                 {
-                    let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
                         let mut segms = if lookup_ident.span.at_least_rust_2018() {
@@ -1214,10 +1234,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms, tokens: None };
-                        let did = match res {
-                            Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
-                            _ => res.opt_def_id(),
-                        };
 
                         if child_accessible {
                             // Remove invisible match if exists
@@ -1257,6 +1273,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 descr: res.descr(),
                                 path,
                                 accessible: child_accessible,
+                                doc_visible: child_doc_visible,
                                 note,
                                 via_import,
                             });
@@ -1277,7 +1294,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible));
+                                .push((module, path_segments, child_accessible, child_doc_visible));
                         }
                     }
                 }
@@ -1691,8 +1708,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Print the primary message.
         let descr = get_descr(binding);
-        let mut err =
-            struct_span_err!(self.dcx(), ident.span, E0603, "{} `{}` is private", descr, ident);
+        let mut err = struct_span_code_err!(
+            self.dcx(),
+            ident.span,
+            E0603,
+            "{} `{}` is private",
+            descr,
+            ident
+        );
         err.span_label(ident.span, format!("private {descr}"));
 
         let mut not_publicly_reexported = false;
@@ -1804,9 +1827,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         next_ident = source;
                         Some(binding)
                     }
-                    ImportKind::Glob { .. } | ImportKind::MacroUse | ImportKind::MacroExport => {
-                        Some(binding)
-                    }
+                    ImportKind::Glob { .. }
+                    | ImportKind::MacroUse { .. }
+                    | ImportKind::MacroExport => Some(binding),
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,
@@ -2433,7 +2456,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn find_cfg_stripped(
         &mut self,
         err: &mut Diagnostic,
-        last_segment: &Symbol,
+        segment: &Symbol,
         module: DefId,
     ) {
         let local_items;
@@ -2452,7 +2475,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
 
         for &StrippedCfgItem { parent_module, name, ref cfg } in symbols {
-            if parent_module != module || name.name != *last_segment {
+            if parent_module != module || name.name != *segment {
                 continue;
             }
 
@@ -2687,8 +2710,26 @@ fn show_candidates(
         Vec::new();
 
     candidates.iter().for_each(|c| {
-        (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((pprust::path_to_string(&c.path), c.descr, c.did, &c.note, c.via_import))
+        if c.accessible {
+            // Don't suggest `#[doc(hidden)]` items from other crates
+            if c.doc_visible {
+                accessible_path_strings.push((
+                    pprust::path_to_string(&c.path),
+                    c.descr,
+                    c.did,
+                    &c.note,
+                    c.via_import,
+                ))
+            }
+        } else {
+            inaccessible_path_strings.push((
+                pprust::path_to_string(&c.path),
+                c.descr,
+                c.did,
+                &c.note,
+                c.via_import,
+            ))
+        }
     });
 
     // we want consistent results across executions, but candidates are produced
@@ -2787,9 +2828,7 @@ fn show_candidates(
             err.help(msg);
         }
         true
-    } else if !matches!(mode, DiagnosticMode::Import) {
-        assert!(!inaccessible_path_strings.is_empty());
-
+    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagnosticMode::Import)) {
         let prefix = if let DiagnosticMode::Pattern = mode {
             "you might have meant to match on "
         } else {

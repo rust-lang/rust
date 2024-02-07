@@ -32,7 +32,7 @@ macro_rules! panic {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => {
         match (&$left, &$right) {
@@ -82,7 +82,7 @@ macro_rules! assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => {
         match (&$left, &$right) {
@@ -139,7 +139,7 @@ macro_rules! assert_ne {
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[unstable(feature = "assert_matches", issue = "82775")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
@@ -787,7 +787,7 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unimplemented_macro")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 macro_rules! unimplemented {
     () => {
         $crate::panicking::panic("not implemented")
@@ -867,7 +867,7 @@ macro_rules! unimplemented {
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 macro_rules! todo {
     () => {
         $crate::panicking::panic("not yet implemented")
@@ -1534,7 +1534,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     #[rustc_diagnostic_item = "assert_macro"]
-    #[allow_internal_unstable(core_panic, edition_panic, generic_assert_internals)]
+    #[allow_internal_unstable(panic_internals, edition_panic, generic_assert_internals)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
@@ -1596,7 +1596,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/testing.html#the-test-attribute
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(test, rustc_attrs)]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro test($item:item) {
         /* compiler built-in */
@@ -1609,7 +1609,7 @@ pub(crate) mod builtin {
         soft,
         reason = "`bench` is a part of custom test frameworks which are unstable"
     )]
-    #[allow_internal_unstable(test, rustc_attrs)]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro bench($item:item) {
         /* compiler built-in */

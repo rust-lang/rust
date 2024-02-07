@@ -196,6 +196,10 @@ impl CStore {
         CrateMetadataRef { cdata, cstore: self }
     }
 
+    pub(crate) fn get_crate_data_mut(&mut self, cnum: CrateNum) -> &mut CrateMetadata {
+        self.metas[cnum].as_mut().unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"))
+    }
+
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
         self.metas[cnum] = Some(Box::new(data));
@@ -205,6 +209,12 @@ impl CStore {
         self.metas
             .iter_enumerated()
             .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
+    }
+
+    fn iter_crate_data_mut(&mut self) -> impl Iterator<Item = (CrateNum, &mut CrateMetadata)> {
+        self.metas
+            .iter_enumerated_mut()
+            .filter_map(|(cnum, data)| data.as_deref_mut().map(|data| (cnum, data)))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
@@ -586,11 +596,11 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
-                let data = self.cstore.get_crate_data(cnum);
+                let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
-                data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
+                data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
                 if let Some(private_dep) = private_dep {
                     data.update_and_private_dep(private_dep);
                 }
@@ -635,17 +645,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         } else {
             LoadResult::Loaded(library)
         }))
-    }
-
-    fn update_extern_crate(&self, cnum: CrateNum, extern_crate: ExternCrate) {
-        let cmeta = self.cstore.get_crate_data(cnum);
-        if cmeta.update_extern_crate(extern_crate) {
-            // Propagate the extern crate info to dependencies if it was updated.
-            let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            for dep_cnum in cmeta.dependencies() {
-                self.update_extern_crate(dep_cnum, extern_crate);
-            }
-        }
     }
 
     // Go through the crate metadata and load any crates that it references
@@ -726,16 +725,18 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let mut runtime_found = false;
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
 
+        let mut panic_runtimes = Vec::new();
         for (cnum, data) in self.cstore.iter_crate_data() {
             needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
             if data.is_panic_runtime() {
                 // Inject a dependency from all #![needs_panic_runtime] to this
                 // #![panic_runtime] crate.
-                self.inject_dependency_if(cnum, "a panic runtime", &|data| {
-                    data.needs_panic_runtime()
-                });
+                panic_runtimes.push(cnum);
                 runtime_found = runtime_found || data.dep_kind() == CrateDepKind::Explicit;
             }
+        }
+        for cnum in panic_runtimes {
+            self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
         }
 
         // If an explicitly linked and matching panic runtime was found, or if
@@ -917,7 +918,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     fn inject_dependency_if(
-        &self,
+        &mut self,
         krate: CrateNum,
         what: &str,
         needs_dep: &dyn Fn(&CrateMetadata) -> bool,
@@ -947,7 +948,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // crate provided for this compile, but in order for this compilation to
         // be successfully linked we need to inject a dependency (to order the
         // crates on the command line correctly).
-        for (cnum, data) in self.cstore.iter_crate_data() {
+        for (cnum, data) in self.cstore.iter_crate_data_mut() {
             if needs_dep(data) {
                 info!("injecting a dep from {} to {}", cnum, krate);
                 data.add_dependency(krate);
@@ -1031,7 +1032,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 let cnum = self.resolve_crate(name, item.span, dep_kind)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
-                self.update_extern_crate(
+                self.cstore.update_extern_crate(
                     cnum,
                     ExternCrate {
                         src: ExternCrateSource::Extern(def_id.to_def_id()),
@@ -1049,7 +1050,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
         let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit)?;
 
-        self.update_extern_crate(
+        self.cstore.update_extern_crate(
             cnum,
             ExternCrate {
                 src: ExternCrateSource::Path,

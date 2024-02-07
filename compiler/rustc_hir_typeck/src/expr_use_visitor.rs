@@ -458,11 +458,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             needs_to_be_read = true;
                         }
                     }
-                    PatKind::Or(_) | PatKind::Box(_) | PatKind::Ref(..) | PatKind::Wild => {
+                    PatKind::Or(_)
+                    | PatKind::Box(_)
+                    | PatKind::Ref(..)
+                    | PatKind::Wild
+                    | PatKind::Err(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
                         // as these patterns contains subpatterns
-                        // If the PatKind is Wild, the decision is made based on the other patterns being
-                        // examined
+                        // If the PatKind is Wild or Err, the decision is made based on the other patterns
+                        // being examined
                     }
                 }
             })?
@@ -669,12 +673,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         );
         self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
-        match arm.guard {
-            Some(hir::Guard::If(e)) => self.consume_expr(e),
-            Some(hir::Guard::IfLet(l)) => {
-                self.walk_local(l.init, l.pat, None, |t| t.borrow_expr(l.init, ty::ImmBorrow))
-            }
-            None => {}
+        if let Some(ref e) = arm.guard {
+            self.consume_expr(e)
         }
 
         self.consume_expr(arm.body);

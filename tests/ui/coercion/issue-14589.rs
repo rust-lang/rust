@@ -19,6 +19,6 @@ impl<T> Test<T> {
     fn send(&self, _: T) {}
 }
 
-trait Foo { fn dummy(&self) { }}
-struct Output(#[allow(unused_tuple_struct_fields)] isize);
+trait Foo { fn dummy(&self) { }} //~ WARN method `dummy` is never used
+struct Output(#[allow(dead_code)] isize);
 impl Foo for Output {}

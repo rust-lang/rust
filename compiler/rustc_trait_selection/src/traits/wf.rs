@@ -727,6 +727,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.out.extend(obligations);
                 }
 
+                ty::CoroutineClosure(did, args) => {
+                    // See the above comments. The same apply to coroutine-closures.
+                    walker.skip_current_subtree();
+                    self.compute(args.as_coroutine_closure().tupled_upvars_ty().into());
+                    let obligations = self.nominal_obligations(did, args);
+                    self.out.extend(obligations);
+                }
+
                 ty::FnPtr(_) => {
                     // let the loop iterate into the argument/return
                     // types appearing in the fn signature

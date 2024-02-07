@@ -13,8 +13,8 @@ use crate::{
     item_scope::ItemScope,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId, ImplId,
-    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, ExternCrateId, FieldId, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId, UseId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -92,7 +92,7 @@ impl ChildBySource for ItemScope {
         self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
         self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
         self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
-        self.unnamed_consts().for_each(|konst| {
+        self.unnamed_consts(db).for_each(|konst| {
             let loc = konst.lookup(db);
             if loc.id.file_id() == file_id {
                 res[keys::CONST].insert(loc.source(db).value, konst);
@@ -204,13 +204,22 @@ impl ChildBySource for VariantId {
 }
 
 impl ChildBySource for EnumId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
-        let arena_map = self.child_source(db);
-        let arena_map = arena_map.as_ref();
-        for (local_id, source) in arena_map.value.iter() {
-            let id = EnumVariantId { parent: *self, local_id };
-            res[keys::VARIANT].insert(source.clone(), id)
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let loc = &self.lookup(db);
+        if file_id != loc.id.file_id() {
+            return;
         }
+
+        let tree = loc.id.item_tree(db);
+        let ast_id_map = db.ast_id_map(loc.id.file_id());
+        let root = db.parse_or_expand(loc.id.file_id());
+
+        db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
+            res[keys::ENUM_VARIANT].insert(
+                ast_id_map.get(tree[variant.lookup(db).id.value].ast_id).to_node(&root),
+                variant,
+            );
+        });
     }
 }
 

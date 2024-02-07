@@ -10,7 +10,8 @@
 //! in release mode in VS Code. There's however "rust-analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
-use ide::{CallableSnippets, Change, CompletionConfig, FilePosition, TextSize};
+use hir::Change;
+use ide::{CallableSnippets, CompletionConfig, FilePosition, TextSize};
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
@@ -59,7 +60,7 @@ fn integrated_highlighting_benchmark() {
         analysis.highlight_as_html(file_id, false).unwrap();
     }
 
-    profile::init_from("*>100");
+    crate::tracing::hprof::init("*>100");
 
     {
         let _it = stdx::timeit("change");
@@ -151,8 +152,7 @@ fn integrated_completion_benchmark() {
         analysis.completions(&config, position, None).unwrap();
     }
 
-    profile::init_from("*>5");
-    // let _s = profile::heartbeat_span();
+    crate::tracing::hprof::init("*>5");
 
     let completion_offset = {
         let _it = stdx::timeit("change");
@@ -167,7 +167,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _p = profile::span("unqualified path completion");
+        let _p = tracing::span!(tracing::Level::INFO, "unqualified path completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {
@@ -208,7 +208,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _p = profile::span("dot completion");
+        let _p = tracing::span!(tracing::Level::INFO, "dot completion").entered();
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {

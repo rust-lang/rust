@@ -8,7 +8,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::TraitEngineExt;
 use rustc_infer::traits::{FulfillmentError, Obligation, TraitEngine};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::traits::{ObligationCause, Reveal};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, AliasTy, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
@@ -52,14 +52,16 @@ struct NormalizationFolder<'me, 'tcx> {
 impl<'tcx> NormalizationFolder<'_, 'tcx> {
     fn normalize_alias_ty(
         &mut self,
-        alias: AliasTy<'tcx>,
+        alias_ty: Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Vec<FulfillmentError<'tcx>>> {
+        assert!(matches!(alias_ty.kind(), ty::Alias(..)));
+
         let infcx = self.at.infcx;
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                &alias.to_ty(tcx),
+                &alias_ty,
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -76,7 +78,11 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::NormalizesTo { alias, term: new_infer_ty.into() },
+            ty::PredicateKind::AliasRelate(
+                alias_ty.into(),
+                new_infer_ty.into(),
+                ty::AliasRelationDirection::Equate,
+            ),
         );
 
         // Do not emit an error if normalization is known to fail but instead
@@ -90,9 +96,12 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
                 return Err(errors);
             }
             let ty = infcx.resolve_vars_if_possible(new_infer_ty);
-            ty.try_fold_with(self)?
+
+            // Alias is guaranteed to be fully structurally resolved,
+            // so we can super fold here.
+            ty.try_super_fold_with(self)?
         } else {
-            alias.to_ty(tcx).try_super_fold_with(self)?
+            alias_ty.try_super_fold_with(self)?
         };
 
         self.depth -= 1;
@@ -170,24 +179,18 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
     }
 
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        let reveal = self.at.param_env.reveal();
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
-        if !needs_normalization(&ty, reveal) {
+        if !ty.has_projections() {
             return Ok(ty);
         }
 
-        // We don't normalize opaque types unless we have
-        // `Reveal::All`, even if we're in the defining scope.
-        let data = match *ty.kind() {
-            ty::Alias(kind, alias_ty) if kind != ty::Opaque || reveal == Reveal::All => alias_ty,
-            _ => return ty.try_super_fold_with(self),
-        };
+        let ty::Alias(..) = *ty.kind() else { return ty.try_super_fold_with(self) };
 
-        if data.has_escaping_bound_vars() {
-            let (data, mapped_regions, mapped_types, mapped_consts) =
-                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
-            let result = ensure_sufficient_stack(|| self.normalize_alias_ty(data))?;
+        if ty.has_escaping_bound_vars() {
+            let (ty, mapped_regions, mapped_types, mapped_consts) =
+                BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ty);
+            let result = ensure_sufficient_stack(|| self.normalize_alias_ty(ty))?;
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
@@ -197,7 +200,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
                 result,
             ))
         } else {
-            ensure_sufficient_stack(|| self.normalize_alias_ty(data))
+            ensure_sufficient_stack(|| self.normalize_alias_ty(ty))
         }
     }
 

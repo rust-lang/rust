@@ -10,20 +10,24 @@
       }
   
       bb0: {
+          StorageLive(_1);
+-         StorageLive(_2);
++         nop;
           _2 = const false;
--         switchInt(_2) -> [0: bb1, otherwise: bb2];
-+         switchInt(const false) -> [0: bb1, otherwise: bb2];
+-         _1 = _2;
+-         StorageDead(_2);
+-         switchInt(_1) -> [0: bb2, otherwise: bb1];
++         _1 = const false;
++         nop;
++         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          goto -> bb3;
+          _0 = noop() -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
-          _0 = noop() -> [return: bb3, unwind unreachable];
-      }
-  
-      bb3: {
+          StorageDead(_1);
           return;
       }
   }

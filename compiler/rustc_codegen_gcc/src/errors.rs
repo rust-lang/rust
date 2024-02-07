@@ -35,7 +35,7 @@ pub(crate) enum PossibleFeature<'a> {
 struct ExitCode(Option<i32>);
 
 impl IntoDiagnosticArg for ExitCode {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         let ExitCode(exit_code) = self;
         match exit_code {
             Some(t) => t.into_diagnostic_arg(),
@@ -119,12 +119,12 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnabl
             fluent::codegen_gcc_target_feature_disable_or_enable
         );
         if let Some(span) = self.span {
-            diag.set_span(span);
+            diag.span(span);
         };
         if let Some(missing_features) = self.missing_features {
             diag.subdiagnostic(missing_features);
         }
-        diag.set_arg("features", self.features.join(", "));
+        diag.arg("features", self.features.join(", "));
         diag
     }
 }

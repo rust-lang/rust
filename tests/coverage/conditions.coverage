@@ -49,6 +49,7 @@
    LL|      1|        if countdown > 7 {
    LL|      1|            countdown -= 4;
    LL|      1|        }
+   LL|       |        //
    LL|      0|        else if countdown > 2 {
    LL|      0|            if countdown < 1 || countdown > 5 || countdown != 9 {
    LL|      0|                countdown = 0;

@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 fn main() {
     basic();
     diamond();
@@ -380,14 +383,17 @@ fn struct_() {
 
 fn replace_vptr() {
     trait A {
+        #[allow(dead_code)]
         fn foo_a(&self);
     }
 
     trait B {
+        #[allow(dead_code)]
         fn foo_b(&self);
     }
 
     trait C: A + B {
+        #[allow(dead_code)]
         fn foo_c(&self);
     }
 

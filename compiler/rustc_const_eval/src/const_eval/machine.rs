@@ -391,10 +391,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def) {
                     Ok(ecx.tcx.mir_for_ctfe(def))
                 } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    let guar = ecx.tcx.dcx().span_delayed_bug(
-                        rustc_span::DUMMY_SP,
-                        "This is likely a const item that is missing from its impl",
-                    );
+                    let guar = ecx
+                        .tcx
+                        .dcx()
+                        .delayed_bug("This is likely a const item that is missing from its impl");
                     throw_inval!(AlreadyReported(guar.into()));
                 } else {
                     // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
@@ -531,6 +531,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     )?;
                 }
             }
+            // The intrinsic represents whether the value is known to the optimizer (LLVM).
+            // We're not doing any optimizations here, so there is no optimizer that could know the value.
+            // (We know the value here in the machine of course, but this is the runtime of that code,
+            // not the optimization stage.)
+            sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
                 throw_unsup_format!(
                     "intrinsic `{intrinsic_name}` is not supported at compile-time"
@@ -611,7 +616,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     .0
                     .is_error();
                 let span = ecx.cur_span();
-                ecx.tcx.emit_spanned_lint(
+                ecx.tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,
@@ -630,7 +635,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.dcx().emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
+                ecx.tcx.dcx().emit_warn(LongRunningWarn { span, item_span: ecx.tcx.span });
             }
         }
 
@@ -723,7 +728,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             && ty.is_freeze(*ecx.tcx, ecx.param_env)
         {
             let place = ecx.ref_to_mplace(val)?;
-            let new_place = place.map_provenance(|p| p.map(CtfeProvenance::as_immutable));
+            let new_place = place.map_provenance(CtfeProvenance::as_immutable);
             Ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
         } else {
             Ok(val.clone())

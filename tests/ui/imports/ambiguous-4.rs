@@ -5,5 +5,5 @@ extern crate ambiguous_4_extern;
 
 fn main() {
     ambiguous_4_extern::id();
-    // `warning_ambiguous` had been lost at metadata.
+    //^ FIXME: `id` should be identified as an ambiguous item.
 }

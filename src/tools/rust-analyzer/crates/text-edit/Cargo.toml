@@ -14,3 +14,6 @@ doctest = false
 [dependencies]
 itertools.workspace = true
 text-size.workspace = true
+
+[lints]
+workspace = true

@@ -134,6 +134,15 @@ pub enum SelectionCandidate<'tcx> {
         is_const: bool,
     },
 
+    /// Implementation of an `AsyncFn`-family trait by one of the anonymous types
+    /// generated for an `async ||` expression.
+    AsyncClosureCandidate,
+
+    /// Implementation of the the `AsyncFnKindHelper` helper trait, which
+    /// is used internally to delay computation for async closures until after
+    /// upvar analysis is performed in HIR typeck.
+    AsyncFnKindHelperCandidate,
+
     /// Implementation of a `Coroutine` trait by one of the anonymous types
     /// generated for a coroutine.
     CoroutineCandidate,
@@ -302,7 +311,6 @@ impl EvaluationResult {
 pub enum OverflowError {
     Error(ErrorGuaranteed),
     Canonical,
-    ErrorReporting,
 }
 
 impl From<ErrorGuaranteed> for OverflowError {
@@ -318,7 +326,6 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
         match overflow_error {
             OverflowError::Error(e) => SelectionError::Overflow(OverflowError::Error(e)),
             OverflowError::Canonical => SelectionError::Overflow(OverflowError::Canonical),
-            OverflowError::ErrorReporting => SelectionError::ErrorReporting,
         }
     }
 }

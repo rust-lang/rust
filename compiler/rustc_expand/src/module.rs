@@ -282,7 +282,7 @@ impl ModError<'_> {
                     secondary_path: secondary_path.display().to_string(),
                 })
             }
-            ModError::ParserError(mut err) => err.emit(),
+            ModError::ParserError(err) => err.emit(),
         }
     }
 }

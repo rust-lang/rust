@@ -1,4 +1,7 @@
-use syntax::ast::{self, AstNode};
+use syntax::{
+    ast::{self, make, AstNode},
+    ted,
+};
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
@@ -42,21 +45,36 @@ pub(crate) fn replace_is_method_with_if_let_method(
                 suggest_name::for_variable(&receiver, &ctx.sema)
             };
 
-            let target = call_expr.syntax().text_range();
-
             let (assist_id, message, text) = if name_ref.text() == "is_some" {
                 ("replace_is_some_with_if_let_some", "Replace `is_some` with `if let Some`", "Some")
             } else {
                 ("replace_is_ok_with_if_let_ok", "Replace `is_ok` with `if let Ok`", "Ok")
             };
 
-            acc.add(AssistId(assist_id, AssistKind::RefactorRewrite), message, target, |edit| {
-                let var_name = format!("${{0:{}}}", var_name);
-                let replacement = format!("let {}({}) = {}", text, var_name, receiver);
-                edit.replace(target, replacement);
-            })
+            acc.add(
+                AssistId(assist_id, AssistKind::RefactorRewrite),
+                message,
+                call_expr.syntax().text_range(),
+                |edit| {
+                    let call_expr = edit.make_mut(call_expr);
+
+                    let var_pat = make::ident_pat(false, false, make::name(&var_name));
+                    let pat = make::tuple_struct_pat(make::ext::ident_path(text), [var_pat.into()]);
+                    let let_expr = make::expr_let(pat.into(), receiver).clone_for_update();
+
+                    if let Some(cap) = ctx.config.snippet_cap {
+                        if let Some(ast::Pat::TupleStructPat(pat)) = let_expr.pat() {
+                            if let Some(first_var) = pat.fields().next() {
+                                edit.add_placeholder_snippet(cap, first_var);
+                            }
+                        }
+                    }
+
+                    ted::replace(call_expr.syntax(), let_expr.syntax());
+                },
+            )
         }
-        _ => return None,
+        _ => None,
     }
 }
 

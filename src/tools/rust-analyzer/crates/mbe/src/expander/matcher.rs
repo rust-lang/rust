@@ -63,7 +63,7 @@ use std::rc::Rc;
 
 use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
-use tt::Span;
+use tt::{DelimSpan, Span};
 
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
@@ -74,11 +74,7 @@ use crate::{
 
 impl<S: Span> Bindings<S> {
     fn push_optional(&mut self, name: &SmolStr) {
-        // FIXME: Do we have a better way to represent an empty token ?
-        // Insert an empty subtree for empty token
-        let tt =
-            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] }.into();
-        self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
+        self.inner.insert(name.clone(), Binding::Fragment(Fragment::Empty));
     }
 
     fn push_empty(&mut self, name: &SmolStr) {
@@ -387,6 +383,7 @@ fn match_loop_inner<'t, S: Span>(
     eof_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
     error_items: &mut SmallVec<[MatchState<'t, S>; 1]>,
     is_2021: bool,
+    delim_span: tt::DelimSpan<S>,
 ) {
     macro_rules! try_push {
         ($items: expr, $it:expr) => {
@@ -474,7 +471,7 @@ fn match_loop_inner<'t, S: Span>(
                     cur_items.push(new_item);
                 }
                 cur_items.push(MatchState {
-                    dot: tokens.iter_delimited(None),
+                    dot: tokens.iter_delimited(delim_span),
                     stack: Default::default(),
                     up: Some(Box::new(item)),
                     sep: separator.clone(),
@@ -489,7 +486,7 @@ fn match_loop_inner<'t, S: Span>(
                 if let Ok(subtree) = src.clone().expect_subtree() {
                     if subtree.delimiter.kind == delimiter.kind {
                         item.stack.push(item.dot);
-                        item.dot = tokens.iter_delimited(Some(*delimiter));
+                        item.dot = tokens.iter_delimited_with(*delimiter);
                         cur_items.push(item);
                     }
                 }
@@ -497,7 +494,7 @@ fn match_loop_inner<'t, S: Span>(
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
                 if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind, &mut fork, is_2021);
+                    let match_res = match_meta_var(kind, &mut fork, is_2021, delim_span);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -588,7 +585,9 @@ fn match_loop_inner<'t, S: Span>(
                 item.is_error = true;
                 error_items.push(item);
             }
-            OpDelimited::Op(Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. }) => {
+            OpDelimited::Op(
+                Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. },
+            ) => {
                 stdx::never!("metavariable expression in lhs found");
             }
             OpDelimited::Open => {
@@ -609,6 +608,7 @@ fn match_loop_inner<'t, S: Span>(
 }
 
 fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021: bool) -> Match<S> {
+    let span = src.delimiter.delim_span();
     let mut src = TtIter::new(src);
     let mut stack: SmallVec<[TtIter<'_, S>; 1]> = SmallVec::new();
     let mut res = Match::default();
@@ -617,7 +617,7 @@ fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021:
     let mut bindings_builder = BindingsBuilder::default();
 
     let mut cur_items = smallvec![MatchState {
-        dot: pattern.iter_delimited(None),
+        dot: pattern.iter_delimited(span),
         stack: Default::default(),
         up: None,
         sep: None,
@@ -648,6 +648,7 @@ fn match_loop<S: Span>(pattern: &MetaTemplate<S>, src: &tt::Subtree<S>, is_2021:
             &mut eof_items,
             &mut error_items,
             is_2021,
+            span,
         );
         stdx::always!(cur_items.is_empty());
 
@@ -761,12 +762,13 @@ fn match_meta_var<S: Span>(
     kind: MetaVarKind,
     input: &mut TtIter<'_, S>,
     is_2021: bool,
+    delim_span: DelimSpan<S>,
 ) -> ExpandResult<Option<Fragment<S>>> {
     let fragment = match kind {
         MetaVarKind::Path => {
-            return input
-                .expect_fragment(parser::PrefixEntryPoint::Path)
-                .map(|it| it.map(tt::TokenTree::subtree_or_wrap).map(Fragment::Path));
+            return input.expect_fragment(parser::PrefixEntryPoint::Path).map(|it| {
+                it.map(|it| tt::TokenTree::subtree_or_wrap(it, delim_span)).map(Fragment::Path)
+            });
         }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
         MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
@@ -795,7 +797,7 @@ fn match_meta_var<S: Span>(
             return input.expect_fragment(parser::PrefixEntryPoint::Expr).map(|tt| {
                 tt.map(|tt| match tt {
                     tt::TokenTree::Leaf(leaf) => tt::Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
+                        delimiter: tt::Delimiter::invisible_spanned(*leaf.span()),
                         token_trees: vec![leaf.into()],
                     },
                     tt::TokenTree::Subtree(mut s) => {
@@ -829,7 +831,7 @@ fn match_meta_var<S: Span>(
                             match neg {
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: tt::Delimiter::dummy_invisible(),
+                                    delimiter: tt::Delimiter::invisible_spanned(*literal.span()),
                                     token_trees: vec![neg, lit.into()],
                                 }),
                             }
@@ -851,18 +853,21 @@ fn collect_vars<S: Span>(collector_fun: &mut impl FnMut(SmolStr), pattern: &Meta
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {}
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } => {
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. } => {
                 stdx::never!("metavariable expression in lhs found");
             }
         }
     }
 }
 impl<S: Span> MetaTemplate<S> {
-    fn iter_delimited(&self, delimited: Option<tt::Delimiter<S>>) -> OpDelimitedIter<'_, S> {
+    fn iter_delimited_with(&self, delimiter: tt::Delimiter<S>) -> OpDelimitedIter<'_, S> {
+        OpDelimitedIter { inner: &self.0, idx: 0, delimited: delimiter }
+    }
+    fn iter_delimited(&self, span: tt::DelimSpan<S>) -> OpDelimitedIter<'_, S> {
         OpDelimitedIter {
             inner: &self.0,
             idx: 0,
-            delimited: delimited.unwrap_or(tt::Delimiter::DUMMY_INVISIBLE),
+            delimited: tt::Delimiter::invisible_delim_spanned(span),
         }
     }
 }
@@ -958,11 +963,13 @@ impl<S: Span> TtIter<'_, S> {
                 self.expect_lifetime()
             } else {
                 let puncts = self.expect_glued_punct()?;
+                let delimiter = tt::Delimiter {
+                    open: puncts.first().unwrap().span,
+                    close: puncts.last().unwrap().span,
+                    kind: tt::DelimiterKind::Invisible,
+                };
                 let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
-                Ok(tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter::dummy_invisible(),
-                    token_trees,
-                }))
+                Ok(tt::TokenTree::Subtree(tt::Subtree { delimiter, token_trees }))
             }
         } else {
             self.next().ok_or(()).cloned()
@@ -977,7 +984,11 @@ impl<S: Span> TtIter<'_, S> {
         let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
-            delimiter: tt::Delimiter::dummy_invisible(),
+            delimiter: tt::Delimiter {
+                open: punct.span,
+                close: ident.span,
+                kind: tt::DelimiterKind::Invisible,
+            },
             token_trees: vec![
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),

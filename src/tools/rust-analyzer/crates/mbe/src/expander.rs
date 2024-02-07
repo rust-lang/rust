@@ -16,6 +16,8 @@ pub(crate) fn expand_rules<S: Span>(
     input: &tt::Subtree<S>,
     marker: impl Fn(&mut S) + Copy,
     is_2021: bool,
+    new_meta_vars: bool,
+    call_site: S,
 ) -> ExpandResult<tt::Subtree<S>> {
     let mut match_: Option<(matcher::Match<S>, &crate::Rule<S>)> = None;
     for rule in rules {
@@ -25,8 +27,13 @@ pub(crate) fn expand_rules<S: Span>(
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
-            let ExpandResult { value, err: transcribe_err } =
-                transcriber::transcribe(&rule.rhs, &new_match.bindings, marker);
+            let ExpandResult { value, err: transcribe_err } = transcriber::transcribe(
+                &rule.rhs,
+                &new_match.bindings,
+                marker,
+                new_meta_vars,
+                call_site,
+            );
             if transcribe_err.is_none() {
                 return ExpandResult::ok(value);
             }
@@ -45,11 +52,14 @@ pub(crate) fn expand_rules<S: Span>(
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
-            transcriber::transcribe(&rule.rhs, &match_.bindings, marker);
+            transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars, call_site);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] },
+            tt::Subtree {
+                delimiter: tt::Delimiter::invisible_spanned(call_site),
+                token_trees: vec![],
+            },
             ExpandError::NoMatchingRule,
         )
     }
@@ -121,6 +131,7 @@ enum Binding<S> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Fragment<S> {
+    Empty,
     /// token fragments are just copy-pasted into the output
     Tokens(tt::TokenTree<S>),
     /// Expr ast fragments are surrounded with `()` on insertion to preserve

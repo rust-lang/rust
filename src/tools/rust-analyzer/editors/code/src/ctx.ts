@@ -23,6 +23,7 @@ import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
 import type { RustAnalyzerExtensionApi } from "./main";
+import type { JsonProject } from "./rust_project";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios

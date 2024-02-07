@@ -1,4 +1,4 @@
-error: encountered dangling pointer in final constant
+error: encountered dangling pointer in final value of constant
   --> $DIR/dangling_raw_ptr.rs:1:1
    |
 LL | const FOO: *const u32 = {

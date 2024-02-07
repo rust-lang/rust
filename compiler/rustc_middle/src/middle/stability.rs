@@ -8,11 +8,11 @@ use rustc_ast::NodeId;
 use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -61,10 +61,10 @@ impl DeprecationEntry {
 pub struct Index {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
-    pub default_body_stab_map: FxHashMap<LocalDefId, DefaultBodyStability>,
-    pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
+    pub stab_map: LocalDefIdMap<Stability>,
+    pub const_stab_map: LocalDefIdMap<ConstStability>,
+    pub default_body_stab_map: LocalDefIdMap<DefaultBodyStability>,
+    pub depr_map: LocalDefIdMap<DeprecationEntry>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
     /// exists, then this map will have a `impliee -> implier` entry.
@@ -77,7 +77,7 @@ pub struct Index {
     /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
     /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
     /// unstable feature" error for a feature that was implied.
-    pub implications: FxHashMap<Symbol, Symbol>,
+    pub implications: UnordMap<Symbol, Symbol>,
 }
 
 impl Index {
@@ -116,8 +116,7 @@ pub fn report_unstable(
     if is_soft {
         soft_handler(SOFT_UNSTABLE, span, msg)
     } else {
-        let mut err =
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
+        let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
         if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }
@@ -218,7 +217,7 @@ fn late_report_deprecation(
         return;
     }
     let method_span = method_span.unwrap_or(span);
-    tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
+    tcx.node_span_lint(lint, hir_id, method_span, message, |diag| {
         if let hir::Node::Expr(_) = tcx.hir_node(hir_id) {
             let kind = tcx.def_descr(def_id);
             deprecation_suggestion(diag, kind, suggestion, method_span);
@@ -586,7 +585,7 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
+            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

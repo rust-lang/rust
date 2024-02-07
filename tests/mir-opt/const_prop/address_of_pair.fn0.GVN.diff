@@ -24,9 +24,8 @@
       bb0: {
           StorageLive(_2);
 -         _2 = (const 1_i32, const false);
--         StorageLive(_3);
 +         _2 = const (1_i32, false);
-+         nop;
+          StorageLive(_3);
           _3 = &raw mut (_2.1: bool);
 -         _2 = (const 1_i32, const false);
 +         _2 = const (1_i32, false);
@@ -42,9 +41,8 @@
           StorageDead(_6);
           _0 = _5;
 -         StorageDead(_5);
--         StorageDead(_3);
 +         nop;
-+         nop;
+          StorageDead(_3);
           StorageDead(_2);
           return;
       }

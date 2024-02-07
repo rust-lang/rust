@@ -28,7 +28,9 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         arr.iter().copied().map(String::from)
     }
 
-    if let Subcommand::Clippy { fix, allow, deny, warn, forbid, .. } = &builder.config.cmd {
+    if let Subcommand::Clippy { fix, allow_dirty, allow_staged, allow, deny, warn, forbid } =
+        &builder.config.cmd
+    {
         // disable the most spammy clippy lints
         let ignored_lints = vec![
             "many_single_char_names", // there are a lot in stdarch
@@ -49,7 +51,16 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
                 // As a workaround, avoid checking tests and benches when passed --fix.
                 "--lib", "--bins", "--examples",
             ]));
+
+            if *allow_dirty {
+                args.push("--allow-dirty".to_owned());
+            }
+
+            if *allow_staged {
+                args.push("--allow-staged".to_owned());
+            }
         }
+
         args.extend(strings(&["--", "--cap-lints", "warn"]));
         args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
         let mut clippy_lint_levels: Vec<String> = Vec::new();
@@ -386,7 +397,7 @@ impl Step for RustAnalyzer {
             cargo_subcommand(builder.kind),
             "src/tools/rust-analyzer",
             SourceType::InTree,
-            &["rust-analyzer/in-rust-tree".to_owned()],
+            &["in-rust-tree".to_owned()],
         );
 
         cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);

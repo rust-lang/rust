@@ -473,7 +473,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
         let fcx_coercion_casts = fcx_typeck_results.coercion_casts().to_sorted_stable_ord();
-        for local_id in fcx_coercion_casts {
+        for &local_id in fcx_coercion_casts {
             self.typeck_results.set_coercion_cast(local_id);
         }
     }
@@ -498,14 +498,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // order when emitting them.
                     let err =
                         self.tcx().dcx().struct_span_err(span, format!("user args: {user_args:?}"));
-                    err.buffer(&mut errors_buffer);
+                    errors_buffer.push(err);
                 }
             }
 
             if !errors_buffer.is_empty() {
                 errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-                for diag in errors_buffer {
-                    self.tcx().dcx().emit_diagnostic(diag);
+                for err in errors_buffer {
+                    err.emit();
                 }
             }
         }

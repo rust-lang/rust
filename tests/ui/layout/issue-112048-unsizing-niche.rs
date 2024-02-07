@@ -2,7 +2,6 @@
 
 // Check that unsizing does not change which field is considered for niche layout.
 
-#![feature(offset_of)]
 #![allow(dead_code)]
 
 #[derive(Clone)]

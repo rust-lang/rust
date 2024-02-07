@@ -17,4 +17,5 @@ impl X {
     type W where Self: Eq;
     //~^ ERROR associated type in `impl` without body
     //~| ERROR inherent associated types are unstable
+    //~| ERROR duplicate definitions
 }

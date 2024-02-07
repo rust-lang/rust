@@ -26,12 +26,11 @@ mod y {
     use x;
 
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig",
+        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig",
         cfg="cfail2",
     )]
     pub fn y() {
-        //[cfail2]~^ ERROR `hir_owner(y)` should be dirty but is not
-        //[cfail2]~| ERROR `hir_owner_nodes(y)` should be dirty but is not
+        //[cfail2]~^ ERROR `opt_hir_owner_nodes(y)` should be dirty but is not
         //[cfail2]~| ERROR `generics_of(y)` should be dirty but is not
         //[cfail2]~| ERROR `predicates_of(y)` should be dirty but is not
         //[cfail2]~| ERROR `type_of(y)` should be dirty but is not

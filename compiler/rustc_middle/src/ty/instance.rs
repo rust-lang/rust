@@ -3,6 +3,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, GenericArgs, GenericArgsRef, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
@@ -11,6 +12,7 @@ use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
 
+use std::assert_matches::assert_matches;
 use std::fmt;
 
 /// A monomorphized `InstanceDef`.
@@ -80,10 +82,32 @@ pub enum InstanceDef<'tcx> {
     /// details on that).
     Virtual(DefId, usize),
 
-    /// `<[FnMut closure] as FnOnce>::call_once`.
+    /// `<[FnMut/Fn closure] as FnOnce>::call_once`.
     ///
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
+    ///
+    /// This generates a body that will just borrow the (owned) self type,
+    /// and dispatch to the `FnMut::call_mut` instance for the closure.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
+
+    /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once` or
+    /// `<[Fn coroutine-closure] as FnMut>::call_mut`.
+    ///
+    /// The body generated here differs significantly from the `ClosureOnceShim`,
+    /// since we need to generate a distinct coroutine type that will move the
+    /// closure's upvars *out* of the closure.
+    ConstructCoroutineInClosureShim {
+        coroutine_closure_def_id: DefId,
+        target_kind: ty::ClosureKind,
+    },
+
+    /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
+    /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
+    /// similarly for `AsyncFnMut`.
+    ///
+    /// This will select the body that is produced by the `ByMoveBody` transform, and thus
+    /// take and use all of its upvars by-move rather than by-ref.
+    CoroutineKindShim { coroutine_def_id: DefId, target_kind: ty::ClosureKind },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
@@ -166,6 +190,11 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ThreadLocalShim(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim {
+                coroutine_closure_def_id: def_id,
+                target_kind: _,
+            }
+            | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id, target_kind: _ }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -185,6 +214,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Virtual(..)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrAddrShim(..) => None,
@@ -280,6 +311,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | InstanceDef::CoroutineKindShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
@@ -293,12 +326,16 @@ impl<'tcx> InstanceDef<'tcx> {
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: &Instance<'_>,
-    type_length: rustc_session::Limit,
+    type_length: Option<rustc_session::Limit>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let args = tcx.lift(instance.args).expect("could not lift for printing");
 
-        let mut cx = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length);
+        let mut cx = if let Some(type_length) = type_length {
+            FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+        } else {
+            FmtPrinter::new(tcx, Namespace::ValueNS)
+        };
         cx.print_def_path(instance.def_id(), args)?;
         let s = cx.into_buffer();
         f.write_str(&s)
@@ -313,6 +350,8 @@ fn fmt_instance(
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
+        InstanceDef::CoroutineKindShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
@@ -324,13 +363,13 @@ pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
 
 impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
     }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
+        fmt_instance(f, self, None)
     }
 }
 
@@ -524,12 +563,12 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
         requested_kind: ty::ClosureKind,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let actual_kind = args.as_closure().kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, args),
-            _ => Some(Instance::new(def_id, args)),
+            _ => Instance::new(def_id, args),
         }
     }
 
@@ -544,7 +583,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         args: ty::GenericArgsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Instance<'tcx> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -558,14 +597,77 @@ impl<'tcx> Instance<'tcx> {
 
         let self_ty = Ty::new_closure(tcx, closure_did, args);
 
-        let sig = args.as_closure().sig();
-        let sig =
-            tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
-        assert_eq!(sig.inputs().len(), 1);
-        let args = tcx.mk_args_trait(self_ty, [sig.inputs()[0].into()]);
+        let tupled_inputs_ty = args.as_closure().sig().map_bound(|sig| sig.inputs()[0]);
+        let tupled_inputs_ty = tcx.instantiate_bound_regions_with_erased(tupled_inputs_ty);
+        let args = tcx.mk_args_trait(self_ty, [tupled_inputs_ty.into()]);
 
-        debug!(?self_ty, ?sig);
-        Some(Instance { def, args })
+        debug!(?self_ty, args=?tupled_inputs_ty.tuple_fields());
+        Instance { def, args }
+    }
+
+    pub fn try_resolve_item_for_coroutine(
+        tcx: TyCtxt<'tcx>,
+        trait_item_id: DefId,
+        trait_id: DefId,
+        rcvr_args: ty::GenericArgsRef<'tcx>,
+    ) -> Option<Instance<'tcx>> {
+        let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
+            return None;
+        };
+        let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
+
+        let lang_items = tcx.lang_items();
+        let coroutine_callable_item = if Some(trait_id) == lang_items.future_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+            );
+            hir::LangItem::FuturePoll
+        } else if Some(trait_id) == lang_items.iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+            );
+            hir::LangItem::IteratorNext
+        } else if Some(trait_id) == lang_items.async_iterator_trait() {
+            assert_matches!(
+                coroutine_kind,
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
+            );
+            hir::LangItem::AsyncIteratorPollNext
+        } else if Some(trait_id) == lang_items.coroutine_trait() {
+            assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
+            hir::LangItem::CoroutineResume
+        } else {
+            return None;
+        };
+
+        if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+            let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+            else {
+                bug!()
+            };
+
+            // If the closure's kind ty disagrees with the identity closure's kind ty,
+            // then this must be a coroutine generated by one of the `ConstructCoroutineInClosureShim`s.
+            if args.as_coroutine().kind_ty() == id_args.as_coroutine().kind_ty() {
+                Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
+            } else {
+                Some(Instance {
+                    def: ty::InstanceDef::CoroutineKindShim {
+                        coroutine_def_id,
+                        target_kind: args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
+                    },
+                    args,
+                })
+            }
+        } else {
+            // All other methods should be defaulted methods of the built-in trait.
+            // This is important for `Iterator`'s combinators, but also useful for
+            // adding future default methods to `Future`, for instance.
+            debug_assert!(tcx.defaultness(trait_item_id).has_value());
+            Some(Instance::new(trait_item_id, rcvr_args))
+        }
     }
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
@@ -663,7 +765,14 @@ fn polymorphize<'tcx>(
     let def_id = instance.def_id();
     let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
         ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
-        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        ty::Coroutine(..) => {
+            assert_eq!(
+                args.as_coroutine().kind_ty(),
+                tcx.types.unit,
+                "polymorphization does not support coroutines from async closures"
+            );
+            Some(args.as_coroutine().tupled_upvars_ty())
+        }
         _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());

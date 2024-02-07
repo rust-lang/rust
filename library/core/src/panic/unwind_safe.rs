@@ -83,7 +83,7 @@ use crate::task::{Context, Poll};
 /// implemented for any closed over variables passed to `catch_unwind`.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unwind_safe_trait")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
     label = "`{Self}` may not be safely transferred across an unwind boundary"
 )]
@@ -99,7 +99,7 @@ pub auto trait UnwindSafe {}
 /// [`UnwindSafe`] trait, for more information see that documentation.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "ref_unwind_safe_trait")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
                transferrable across a catch_unwind boundary",
     label = "`{Self}` may contain interior mutability and a reference may not be safely \

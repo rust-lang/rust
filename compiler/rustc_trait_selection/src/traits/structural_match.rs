@@ -39,7 +39,7 @@ pub fn search_for_structural_match_violation<'tcx>(
 
 /// This implements the traversal over the structure of a given type to try to
 /// find instances of ADTs (specifically structs or enums) that do not implement
-/// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
+/// `StructuralPartialEq`.
 struct Search<'tcx> {
     span: Span,
 
@@ -77,6 +77,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
                 return ControlFlow::Break(ty);
             }
             ty::Closure(..) => {
+                return ControlFlow::Break(ty);
+            }
+            ty::CoroutineClosure(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::Coroutine(..) | ty::CoroutineWitness(..) => {

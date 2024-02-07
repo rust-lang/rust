@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -26,23 +26,44 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
+        let sized_def_id = tcx.lang_items().sized_trait();
+        let mut seen_negative_sized_bound = false;
+        let mut seen_positive_sized_bound = false;
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for ab in ast_bounds {
-                if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
-                    unbounds.push(ptr)
+                let hir::GenericBound::Trait(ptr, modifier) = ab else {
+                    continue;
+                };
+                match modifier {
+                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
+                    hir::TraitBoundModifier::Negative => {
+                        if let Some(sized_def_id) = sized_def_id
+                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+                        {
+                            seen_negative_sized_bound = true;
+                        }
+                    }
+                    hir::TraitBoundModifier::None => {
+                        if let Some(sized_def_id) = sized_def_id
+                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+                        {
+                            seen_positive_sized_bound = true;
+                        }
+                    }
+                    _ => {}
                 }
             }
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty.to_def_id()) {
-                        search_bounds(pred.bounds);
-                    }
+                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                    && pred.is_param_bound(self_ty.to_def_id())
+                {
+                    search_bounds(pred.bounds);
                 }
             }
         }
@@ -53,15 +74,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             });
         }
 
-        let sized_def_id = tcx.lang_items().sized_trait();
-
         let mut seen_sized_unbound = false;
         for unbound in unbounds {
-            if let Some(sized_def_id) = sized_def_id {
-                if unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id) {
-                    seen_sized_unbound = true;
-                    continue;
-                }
+            if let Some(sized_def_id) = sized_def_id
+                && unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+            {
+                seen_sized_unbound = true;
+                continue;
             }
             // There was a `?Trait` bound, but it was not `?Sized`; warn.
             tcx.dcx().span_warn(
@@ -71,15 +90,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             );
         }
 
-        // If the above loop finished there was no `?Sized` bound; add implicitly sized if `Sized` is available.
-        if sized_def_id.is_none() {
-            // No lang item for `Sized`, so we can't add it as a bound.
-            return;
-        }
-        if seen_sized_unbound {
-            // There was in fact a `?Sized` bound, return without doing anything
-        } else {
-            // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
+        if seen_sized_unbound || seen_negative_sized_bound || seen_positive_sized_bound {
+            // There was in fact a `?Sized`, `!Sized` or explicit `Sized` bound;
+            // we don't need to do anything.
+        } else if sized_def_id.is_some() {
+            // There was no `?Sized`, `!Sized` or explicit `Sized` bound;
+            // add `Sized` if it's available.
             bounds.push_sized(tcx, self_ty, span);
         }
     }
@@ -100,14 +116,16 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
     #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
-    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'hir>>>(
+    pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         only_self_bounds: OnlySelfBounds,
-    ) {
+    ) where
+        'tcx: 'hir,
+    {
         for ast_bound in ast_bounds {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
@@ -171,7 +189,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     pub(crate) fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[hir::GenericBound<'tcx>],
         filter: PredicateFilter,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
@@ -292,13 +310,15 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .expect("missing associated item");
 
         if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            tcx.dcx()
+            let reported = tcx
+                .dcx()
                 .struct_span_err(
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, format!("private {}", assoc_item.kind))
+                .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
+            self.set_tainted_by_errors(reported);
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
 
@@ -317,7 +337,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
 
         let projection_ty = if let ty::AssocKind::Fn = assoc_kind {
-            let mut emitted_bad_param_err = false;
+            let mut emitted_bad_param_err = None;
             // If we have an method return type bound, then we need to substitute
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
@@ -334,46 +354,30 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         )
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
-                            Ty::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundTy {
-                                    var: ty::BoundVar::from_usize(num_bound_vars),
-                                    kind: ty::BoundTyKind::Param(param.def_id, param.name),
-                                },
-                            )
-                            .into()
+                                )
+                            });
+                            Ty::new_error(tcx, guar).into()
                         }
                         ty::GenericParamDefKind::Const { .. } => {
-                            if !emitted_bad_param_err {
+                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
                                 tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
                                     },
-                                );
-                                emitted_bad_param_err = true;
-                            }
+                                )
+                            });
                             let ty = tcx
                                 .type_of(param.def_id)
                                 .no_bound_vars()
                                 .expect("ct params cannot have early bound vars");
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(num_bound_vars),
-                                ty,
-                            )
-                            .into()
+                            ty::Const::new_error(tcx, guar, ty).into()
                         }
                     };
                     num_bound_vars += 1;
@@ -454,7 +458,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     late_bound_in_trait_ref,
                     late_bound_in_ty,
                     |br_name| {
-                        struct_span_err!(
+                        struct_span_code_err!(
                             tcx.dcx(),
                             binding.span,
                             E0582,

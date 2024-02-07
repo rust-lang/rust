@@ -1,22 +1,22 @@
-mod never_type;
 mod coercion;
-mod regression;
-mod simple;
-mod patterns;
-mod traits;
-mod method_resolution;
-mod macros;
+mod diagnostics;
 mod display_source_code;
 mod incremental;
-mod diagnostics;
+mod macros;
+mod method_resolution;
+mod never_type;
+mod patterns;
+mod regression;
+mod simple;
+mod traits;
 
 use std::{collections::HashMap, env};
 
-use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
+use base_db::{FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
-    db::{DefDatabase, InternDatabase},
+    db::DefDatabase,
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
@@ -30,6 +30,7 @@ use syntax::{
     ast::{self, AstNode, HasName},
     SyntaxNode,
 };
+use test_fixture::WithFixture;
 use tracing_subscriber::{layer::SubscriberExt, Registry};
 use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;
@@ -144,7 +145,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::VariantId(it) => {
-            let loc = db.lookup_intern_enum(it.parent);
+            let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
@@ -382,7 +383,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::VariantId(it) => {
-            let loc = db.lookup_intern_enum(it.parent);
+            let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
@@ -452,16 +453,12 @@ fn visit_module(
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
-                    db.enum_data(it)
-                        .variants
-                        .iter()
-                        .map(|(id, _)| hir_def::EnumVariantId { parent: it, local_id: id })
-                        .for_each(|it| {
-                            let def = it.into();
-                            cb(def);
-                            let body = db.body(def);
-                            visit_body(db, &body, cb);
-                        });
+                    db.enum_data(it).variants.iter().for_each(|&(it, _)| {
+                        let def = it.into();
+                        cb(def);
+                        let body = db.body(def);
+                        visit_body(db, &body, cb);
+                    });
                 }
                 ModuleDefId::TraitId(it) => {
                     let trait_data = db.trait_data(it);

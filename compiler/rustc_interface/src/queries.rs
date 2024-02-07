@@ -108,7 +108,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
         self.parse.compute(|| {
-            passes::parse(&self.compiler.sess).map_err(|mut parse_error| parse_error.emit())
+            passes::parse(&self.compiler.sess).map_err(|parse_error| parse_error.emit())
         })
     }
 
@@ -213,9 +213,8 @@ impl<'tcx> Queries<'tcx> {
 
                 // Some other attribute.
                 Some(_) => {
-                    tcx.dcx().emit_warning(RustcErrorUnexpectedAnnotation {
-                        span: tcx.def_span(def_id),
-                    });
+                    tcx.dcx()
+                        .emit_warn(RustcErrorUnexpectedAnnotation { span: tcx.def_span(def_id) });
                 }
             }
         }

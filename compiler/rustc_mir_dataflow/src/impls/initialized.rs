@@ -305,7 +305,10 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
+    /// There can be many more `MovePathIndex` than there are locals in a MIR body.
+    /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
+
     const NAME: &'static str = "maybe_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
@@ -437,6 +440,8 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
+    /// There can be many more `MovePathIndex` than there are locals in a MIR body.
+    /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<MovePathIndex>;
 
     const NAME: &'static str = "maybe_uninit";
@@ -636,6 +641,8 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
+    /// There can be many more `InitIndex` than there are locals in a MIR body.
+    /// We use a chunked bitset to avoid paying too high a memory footprint.
     type Domain = ChunkedBitSet<InitIndex>;
 
     const NAME: &'static str = "ever_init";

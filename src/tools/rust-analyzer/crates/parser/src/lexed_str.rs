@@ -8,8 +8,6 @@
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
 
-use rustc_dependencies::lexer as rustc_lexer;
-
 use std::ops;
 
 use rustc_lexer::unescape::{EscapeError, Mode};
@@ -371,6 +369,7 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
             "non-ASCII character in byte string literal"
         }
         EscapeError::NonAsciiCharInByte => "non-ASCII character in raw byte string literal",
+        EscapeError::NulInCStr => "null character in C string literal",
         EscapeError::UnskippedWhitespaceWarning => "",
         EscapeError::MultipleSkippedLinesWarning => "",
     }
@@ -380,14 +379,14 @@ fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
     let mut error_message = "";
     match mode {
         Mode::CStr => {
-            rustc_lexer::unescape::unescape_c_string(text, mode, &mut |_, res| {
+            rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }
             });
         }
         Mode::ByteStr | Mode::Str => {
-            rustc_lexer::unescape::unescape_literal(text, mode, &mut |_, res| {
+            rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
                 if let Err(e) = res {
                     error_message = error_to_diagnostic_message(e, mode);
                 }

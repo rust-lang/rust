@@ -2,6 +2,7 @@ use crate::errors;
 use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
+use itertools::Itertools;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -555,6 +556,9 @@ impl<'tcx> Cx<'tcx> {
                     ty::Coroutine(def_id, args) => {
                         (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
                     }
+                    ty::CoroutineClosure(def_id, args) => {
+                        (def_id, UpvarArgs::CoroutineClosure(args), None)
+                    }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                     }
@@ -565,7 +569,7 @@ impl<'tcx> Cx<'tcx> {
                     .tcx
                     .closure_captures(def_id)
                     .iter()
-                    .zip(args.upvar_tys())
+                    .zip_eq(args.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);
                         self.thir.exprs.push(upvars)
@@ -855,13 +859,8 @@ impl<'tcx> Cx<'tcx> {
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
         let arm = Arm {
-            pattern: self.pattern_from_hir(arm.pat),
-            guard: arm.guard.as_ref().map(|g| match g {
-                hir::Guard::If(e) => Guard::If(self.mirror_expr(e)),
-                hir::Guard::IfLet(l) => {
-                    Guard::IfLet(self.pattern_from_hir(l.pat), self.mirror_expr(l.init))
-                }
-            }),
+            pattern: self.pattern_from_hir(&arm.pat),
+            guard: arm.guard.as_ref().map(|g| self.mirror_expr(g)),
             body: self.mirror_expr(arm.body),
             lint_level: LintLevel::Explicit(arm.hir_id),
             scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },

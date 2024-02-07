@@ -5,7 +5,7 @@
 use self::Join::*;
 
 #[derive(Debug)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 enum Join<A,B> {
   Keep(A,B),
   Skip(A,B),

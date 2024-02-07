@@ -1,13 +1,14 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::ErrorGuaranteed;
 
-pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
 
@@ -18,66 +19,66 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
         match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0199,
                     "implementing the trait `{}` is not unsafe",
                     trait_ref.print_trait_sugared()
                 )
-                .span_suggestion_verbose(
+                .with_span_suggestion_verbose(
                     item.span.with_hi(item.span.lo() + rustc_span::BytePos(7)),
                     "remove `unsafe` from this trait implementation",
                     "",
                     rustc_errors::Applicability::MachineApplicable,
                 )
-                .emit();
+                .emit());
             }
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0200,
                     "the trait `{}` requires an `unsafe impl` declaration",
                     trait_ref.print_trait_sugared()
                 )
-                .note(format!(
+                .with_note(format!(
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
                     trait_ref.print_trait_sugared()
                 ))
-                .span_suggestion_verbose(
+                .with_span_suggestion_verbose(
                     item.span.shrink_to_lo(),
                     "add `unsafe` to this trait implementation",
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit());
             }
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
+                return Err(struct_span_code_err!(
                     tcx.dcx(),
                     tcx.def_span(def_id),
                     E0569,
                     "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                     attr_name
                 )
-                .note(format!(
+                .with_note(format!(
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
                     trait_ref.print_trait_sugared()
                 ))
-                .span_suggestion_verbose(
+                .with_span_suggestion_verbose(
                     item.span.shrink_to_lo(),
                     "add `unsafe` to this trait implementation",
                     "unsafe ",
                     rustc_errors::Applicability::MaybeIncorrect,
                 )
-                .emit();
+                .emit());
             }
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
@@ -92,4 +93,5 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             }
         }
     }
+    Ok(())
 }

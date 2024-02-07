@@ -4,7 +4,6 @@ use ide_db::{
     helpers::pick_best_token,
     RootDatabase,
 };
-use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxKind::*, T};
 
 use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
@@ -34,10 +33,10 @@ pub(crate) fn goto_implementation(
     })?;
     let range = original_token.text_range();
     let navs =
-        sema.descend_into_macros(DescendPreference::None, original_token)
-            .into_iter()
-            .filter_map(|token| token.parent().and_then(ast::NameLike::cast))
-            .filter_map(|node| match &node {
+        sema.descend_into_macros_single(DescendPreference::SameText, original_token)
+            .parent()
+            .and_then(ast::NameLike::cast)
+            .and_then(|node| match &node {
                 ast::NameLike::Name(name) => {
                     NameClass::classify(&sema, name).and_then(|class| match class {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
@@ -52,8 +51,7 @@ pub(crate) fn goto_implementation(
                     }),
                 ast::NameLike::Lifetime(_) => None,
             })
-            .unique()
-            .filter_map(|def| {
+            .and_then(|def| {
                 let navs = match def {
                     Definition::Trait(trait_) => impls_for_trait(&sema, trait_),
                     Definition::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
@@ -75,8 +73,7 @@ pub(crate) fn goto_implementation(
                 };
                 Some(navs)
             })
-            .flatten()
-            .collect();
+            .unwrap_or_default();
 
     Some(RangeInfo { range, info: navs })
 }

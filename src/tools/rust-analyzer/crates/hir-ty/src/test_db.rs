@@ -9,7 +9,6 @@ use base_db::{
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::ExpandDatabase;
 use nohash_hasher::IntMap;
-use rustc_hash::FxHashSet;
 use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
@@ -44,13 +43,13 @@ impl fmt::Debug for TestDB {
 
 impl Upcast<dyn ExpandDatabase> for TestDB {
     fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn DefDatabase> for TestDB {
     fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        &*self
+        self
     }
 }
 
@@ -81,7 +80,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

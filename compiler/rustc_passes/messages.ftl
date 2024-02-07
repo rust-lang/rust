@@ -323,9 +323,6 @@ passes_ffi_const_invalid_target =
 passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
 
-passes_ffi_returns_twice_invalid_target =
-    `#[ffi_returns_twice]` may only be used on foreign functions
-
 passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
     .label = only adts, extern types and traits are supported
@@ -574,6 +571,11 @@ passes_outside_loop =
     }
 
 passes_outside_loop_suggestion = consider labeling this block to be able to break within it
+
+passes_panic_unwind_without_std =
+    unwinding panics are not supported without std
+    .note = since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+    .help = using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
 
 passes_params_not_allowed =
     referencing function parameters is not allowed in naked functions

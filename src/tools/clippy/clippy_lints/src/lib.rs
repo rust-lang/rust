@@ -115,7 +115,7 @@ mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
-mod empty_structs_with_brackets;
+mod empty_with_brackets;
 mod endian_bytes;
 mod entry;
 mod enum_clike;
@@ -272,6 +272,7 @@ mod permissions_set_readonly_false;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
+mod pub_underscore_fields;
 mod pub_use;
 mod question_mark;
 mod question_mark_used;
@@ -322,6 +323,7 @@ mod swap_ptr_to_ref;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod tests_outside_test_module;
+mod thread_local_initializer_can_be_made_const;
 mod to_digit_is_some;
 mod trailing_empty_array;
 mod trait_bounds;
@@ -571,6 +573,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         verbose_bit_mask_threshold,
         warn_on_all_wildcard_imports,
         check_private_items,
+        pub_underscore_fields_behavior,
+        ref allowed_duplicate_crates,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -716,7 +720,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(needless_update::NeedlessUpdate));
     store.register_late_pass(|_| Box::new(needless_borrowed_ref::NeedlessBorrowedRef));
     store.register_late_pass(|_| Box::new(borrow_deref_ref::BorrowDerefRef));
-    store.register_late_pass(|_| Box::new(no_effect::NoEffect));
+    store.register_late_pass(|_| Box::<no_effect::NoEffect>::default());
     store.register_late_pass(|_| Box::new(temporary_assignment::TemporaryAssignment));
     store.register_late_pass(move |_| Box::new(transmute::Transmute::new(msrv())));
     store.register_late_pass(move |_| {
@@ -944,10 +948,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(cargo::Cargo {
             ignore_publish: cargo_ignore_publish,
+            allowed_duplicate_crates: allowed_duplicate_crates.clone(),
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
-    store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
+    store.register_early_pass(|| Box::new(empty_with_brackets::EmptyWithBrackets));
     store.register_late_pass(|_| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|_| Box::new(format_push_string::FormatPushString));
@@ -1080,7 +1085,15 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
-    store.register_late_pass(|_| Box::new(unconditional_recursion::UnconditionalRecursion));
+    store.register_late_pass(|_| Box::<unconditional_recursion::UnconditionalRecursion>::default());
+    store.register_late_pass(move |_| {
+        Box::new(pub_underscore_fields::PubUnderscoreFields {
+            behavior: pub_underscore_fields_behavior,
+        })
+    });
+    store.register_late_pass(move |_| {
+        Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -35,7 +35,8 @@ impl Hasher for MyHasher {
 #[test]
 fn test_writer_hasher() {
     // FIXME(#110395)
-    /* const */ fn hash<T: Hash>(t: &T) -> u64 {
+    /* const */
+    fn hash<T: Hash>(t: &T) -> u64 {
         let mut s = MyHasher { hash: 0 };
         t.hash(&mut s);
         s.finish()
@@ -140,7 +141,8 @@ impl Hash for Custom {
 #[test]
 fn test_custom_state() {
     // FIXME(#110395)
-    /* const */ fn hash<T: Hash>(t: &T) -> u64 {
+    /* const */
+    fn hash<T: Hash>(t: &T) -> u64 {
         let mut c = CustomHasher { output: 0 };
         t.hash(&mut c);
         c.finish()

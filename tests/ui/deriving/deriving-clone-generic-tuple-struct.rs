@@ -2,7 +2,7 @@
 // pretty-expanded FIXME #23616
 
 #[derive(Clone)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct S<T>(T, ());
 
 pub fn main() {

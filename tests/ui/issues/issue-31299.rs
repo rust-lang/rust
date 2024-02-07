@@ -25,9 +25,9 @@ impl<T> Front for Vec<T> {
     type Back = Vec<T>;
 }
 
-struct PtrBack<T: Front>(#[allow(unused_tuple_struct_fields)] Vec<T::Back>);
+struct PtrBack<T: Front>(#[allow(dead_code)] Vec<T::Back>);
 
-struct M(#[allow(unused_tuple_struct_fields)] PtrBack<Vec<M>>);
+struct M(#[allow(dead_code)] PtrBack<Vec<M>>);
 
 #[allow(unused_must_use)]
 fn main() {

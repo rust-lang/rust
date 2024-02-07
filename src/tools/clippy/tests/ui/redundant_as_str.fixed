@@ -11,7 +11,7 @@ fn main() {
     let _no_as_str = string.as_bytes();
     let _no_as_str = string.is_empty();
 
-    // These methods are not redundant, and are equivelant to
+    // These methods are not redundant, and are equivalent to
     // doing dereferencing the string and applying the method
     let _not_redundant = string.as_str().escape_unicode();
     let _not_redundant = string.as_str().trim();

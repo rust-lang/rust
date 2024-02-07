@@ -80,6 +80,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
@@ -534,10 +535,16 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "u128" => SimplifiedType::Uint(UintTy::U128),
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
-        _ => return [].iter().copied(),
+        #[allow(trivial_casts)]
+        _ => {
+            return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_])
+                .into_iter()
+                .flatten()
+                .copied();
+        },
     };
 
-    tcx.incoherent_impls(ty).iter().copied()
+    tcx.incoherent_impls(ty).into_iter().flatten().copied()
 }
 
 fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
@@ -663,7 +670,8 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
                 // `impl S { ... }`
                 let inherent_impl_children = tcx
                     .inherent_impls(def_id)
-                    .iter()
+                    .into_iter()
+                    .flatten()
                     .flat_map(|&impl_def_id| item_children_by_name(tcx, impl_def_id, segment));
 
                 let direct_children = item_children_by_name(tcx, def_id, segment);
@@ -836,7 +844,7 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
 pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     match &e.kind {
         ExprKind::Lit(lit) => match lit.node {
-            LitKind::Bool(false) | LitKind::Int(0, _) => true,
+            LitKind::Bool(false) | LitKind::Int(Pu128(0), _) => true,
             LitKind::Str(s, _) => s.is_empty(),
             _ => false,
         },
@@ -1709,7 +1717,6 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
-        PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
@@ -1733,6 +1740,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
+        PatKind::Lit(..) | PatKind::Range(..) | PatKind::Err(_) => true,
     }
 }
 
@@ -3164,7 +3172,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                             self.is_never = false;
                             if let Some(guard) = arm.guard {
                                 let in_final_expr = mem::replace(&mut self.in_final_expr, false);
-                                self.visit_expr(guard.body());
+                                self.visit_expr(guard);
                                 self.in_final_expr = in_final_expr;
                                 // The compiler doesn't consider diverging guards as causing the arm to diverge.
                                 self.is_never = false;
@@ -3223,7 +3231,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         fn visit_arm(&mut self, arm: &Arm<'tcx>) {
             if let Some(guard) = arm.guard {
                 let in_final_expr = mem::replace(&mut self.in_final_expr, false);
-                self.visit_expr(guard.body());
+                self.visit_expr(guard);
                 self.in_final_expr = in_final_expr;
             }
             self.visit_expr(arm.body);

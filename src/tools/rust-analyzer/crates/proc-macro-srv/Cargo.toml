@@ -26,13 +26,19 @@ stdx.workspace = true
 tt.workspace = true
 mbe.workspace = true
 paths.workspace = true
+base-db.workspace = true
+span.workspace = true
 proc-macro-api.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
 
 # used as proc macro test targets
-proc-macro-test.workspace = true
+proc-macro-test.path = "./proc-macro-test"
 
 [features]
 sysroot-abi = []
+in-rust-tree = ["mbe/in-rust-tree", "sysroot-abi"]
+
+[lints]
+workspace = true

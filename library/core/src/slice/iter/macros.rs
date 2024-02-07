@@ -338,7 +338,7 @@ macro_rules! iterator {
                     if predicate(x) {
                         // SAFETY: we are guaranteed to be in bounds by the loop invariant:
                         // when `i >= n`, `self.next()` returns `None` and the loop breaks.
-                        unsafe { assume(i < n) };
+                        unsafe { assert_unchecked(i < n) };
                         return Some(i);
                     }
                     i += 1;
@@ -361,7 +361,7 @@ macro_rules! iterator {
                     if predicate(x) {
                         // SAFETY: `i` must be lower than `n` since it starts at `n`
                         // and is only decreasing.
-                        unsafe { assume(i < n) };
+                        unsafe { assert_unchecked(i < n) };
                         return Some(i);
                     }
                 }

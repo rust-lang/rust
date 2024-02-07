@@ -7,12 +7,18 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc_infer::infer::BoundRegionConversionTime;
+use std::assert_matches::assert_matches;
+
+use itertools::Itertools;
+use rustc_hir as hir;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
-use crate::universal_regions::UniversalRegions;
+use crate::renumber::RegionCtxt;
+use crate::universal_regions::{DefiningTy, UniversalRegions};
 
 use super::{Locations, TypeChecker};
 
@@ -22,9 +28,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
+
         if !self.tcx().is_closure_or_coroutine(mir_def_id.to_def_id()) {
             return;
         }
+
         let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
 
         // Instantiate the canonicalized variables from user-provided signature
@@ -33,15 +41,84 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // so that they represent the view from "inside" the closure.
         let user_provided_sig = self
             .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
-        let user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
+        let mut user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
             body.span,
             BoundRegionConversionTime::FnCall,
             user_provided_sig,
         );
 
-        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip(
-            // In MIR, closure args begin with an implicit `self`. Skip it!
-            body.args_iter().skip(1).map(|local| &body.local_decls[local]),
+        // FIXME(async_closures): It's kind of wacky that we must apply this
+        // transformation here, since we do the same thing in HIR typeck.
+        // Maybe we could just fix up the canonicalized signature during HIR typeck?
+        if let DefiningTy::CoroutineClosure(_, args) =
+            self.borrowck_context.universal_regions.defining_ty
+        {
+            assert_matches!(
+                self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
+                Some(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Closure
+                )),
+                "this needs to be modified if we're lowering non-async closures"
+            );
+            // Make sure to use the args from `DefiningTy` so the right NLL region vids are prepopulated
+            // into the type.
+            let args = args.as_coroutine_closure();
+            let tupled_upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
+                self.tcx(),
+                args.kind(),
+                Ty::new_tup(self.tcx(), user_provided_sig.inputs()),
+                args.tupled_upvars_ty(),
+                args.coroutine_captures_by_ref_ty(),
+                self.infcx.next_region_var(RegionVariableOrigin::MiscVariable(body.span), || {
+                    RegionCtxt::Unknown
+                }),
+            );
+
+            let next_ty_var = || {
+                self.infcx.next_ty_var(TypeVariableOrigin {
+                    span: body.span,
+                    kind: TypeVariableOriginKind::MiscVariable,
+                })
+            };
+            let output_ty = Ty::new_coroutine(
+                self.tcx(),
+                self.tcx().coroutine_for_closure(mir_def_id),
+                ty::CoroutineArgs::new(
+                    self.tcx(),
+                    ty::CoroutineArgsParts {
+                        parent_args: args.parent_args(),
+                        kind_ty: Ty::from_closure_kind(self.tcx(), args.kind()),
+                        return_ty: user_provided_sig.output(),
+                        tupled_upvars_ty,
+                        // For async closures, none of these can be annotated, so just fill
+                        // them with fresh ty vars.
+                        resume_ty: next_ty_var(),
+                        yield_ty: next_ty_var(),
+                        witness: next_ty_var(),
+                    },
+                )
+                .args,
+            );
+
+            user_provided_sig = self.tcx().mk_fn_sig(
+                user_provided_sig.inputs().iter().copied(),
+                output_ty,
+                user_provided_sig.c_variadic,
+                user_provided_sig.unsafety,
+                user_provided_sig.abi,
+            );
+        }
+
+        let is_coroutine_with_implicit_resume_ty = self.tcx().is_coroutine(mir_def_id.to_def_id())
+            && user_provided_sig.inputs().is_empty();
+
+        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip_eq(
+            // In MIR, closure args begin with an implicit `self`.
+            // Also, coroutines have a resume type which may be implicitly `()`.
+            body.args_iter()
+                .skip(1 + if is_coroutine_with_implicit_resume_ty { 1 } else { 0 })
+                .map(|local| &body.local_decls[local]),
         ) {
             self.ascribe_user_type_skip_wf(
                 arg_decl.ty,
@@ -94,31 +171,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        debug!(
-            "equate_inputs_and_outputs: body.yield_ty {:?}, universal_regions.yield_ty {:?}",
-            body.yield_ty(),
-            universal_regions.yield_ty
-        );
-
-        // We will not have a universal_regions.yield_ty if we yield (by accident)
-        // outside of a coroutine and return an `impl Trait`, so emit a span_delayed_bug
-        // because we don't want to panic in an assert here if we've already got errors.
-        if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
-            self.tcx().dcx().span_delayed_bug(
-                body.span,
-                format!(
-                    "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
-                    body.yield_ty(),
-                    universal_regions.yield_ty,
-                ),
+        if let Some(mir_yield_ty) = body.yield_ty() {
+            let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
+            self.equate_normalized_input_or_output(
+                universal_regions.yield_ty.unwrap(),
+                mir_yield_ty,
+                yield_span,
             );
         }
 
-        if let (Some(mir_yield_ty), Some(ur_yield_ty)) =
-            (body.yield_ty(), universal_regions.yield_ty)
-        {
+        if let Some(mir_resume_ty) = body.resume_ty() {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
-            self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
+            self.equate_normalized_input_or_output(
+                universal_regions.resume_ty.unwrap(),
+                mir_resume_ty,
+                yield_span,
+            );
         }
 
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.

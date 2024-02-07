@@ -33,7 +33,7 @@ use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, Ty
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::{LintStoreMarker, Session};
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi;
@@ -117,7 +117,7 @@ struct LintGroup {
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
     /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
-    NoLint(Option<Symbol>),
+    NoLint(Option<(Symbol, bool)>),
     /// The lint refers to a tool that has not been registered.
     NoTool,
     /// The lint has been renamed to a new name.
@@ -326,11 +326,9 @@ impl LintStore {
 
     /// True if this symbol represents a lint group name.
     pub fn is_lint_group(&self, lint_name: Symbol) -> bool {
-        debug!(
-            "is_lint_group(lint_name={:?}, lint_groups={:?})",
-            lint_name,
-            self.lint_groups.keys().collect::<Vec<_>>()
-        );
+        #[allow(rustc::potential_query_instability)]
+        let lint_groups = self.lint_groups.keys().collect::<Vec<_>>();
+        debug!("is_lint_group(lint_name={:?}, lint_groups={:?})", lint_name, lint_groups);
         let lint_name_str = lint_name.as_str();
         self.lint_groups.contains_key(lint_name_str) || {
             let warnings_name_str = crate::WARNINGS.name_lower();
@@ -374,10 +372,14 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        #[allow(rustc::potential_query_instability)]
+                        let lints = self.by_name.keys().collect::<Vec<_>>();
+                        debug!("lints={:?}", lints);
                         let tool_prefix = format!("{tool_name}::");
+
+                        #[allow(rustc::potential_query_instability)]
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
-                            self.no_lint_suggestion(&complete_name)
+                            self.no_lint_suggestion(&complete_name, tool_name.as_str())
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
                             // To avoid giving a false positive, ignore all unknown lints.
@@ -419,13 +421,14 @@ impl LintStore {
         }
     }
 
-    fn no_lint_suggestion(&self, lint_name: &str) -> CheckLintNameResult<'_> {
+    fn no_lint_suggestion(&self, lint_name: &str, tool_name: &str) -> CheckLintNameResult<'_> {
         let name_lower = lint_name.to_lowercase();
 
         if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_ok() {
             // First check if the lint name is (partly) in upper case instead of lower case...
-            return CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)));
+            return CheckLintNameResult::NoLint(Some((Symbol::intern(&name_lower), false)));
         }
+
         // ...if not, search for lints with a similar name
         // Note: find_best_match_for_name depends on the sort order of its input vector.
         // To ensure deterministic output, sort elements of the lint_groups hash map.
@@ -441,7 +444,16 @@ impl LintStore {
         let groups = groups.iter().map(|k| Symbol::intern(k));
         let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
         let names: Vec<Symbol> = groups.chain(lints).collect();
-        let suggestion = find_best_match_for_name(&names, Symbol::intern(&name_lower), None);
+        let mut lookups = vec![Symbol::intern(&name_lower)];
+        if let Some(stripped) = name_lower.split("::").last() {
+            lookups.push(Symbol::intern(stripped));
+        }
+        let res = find_best_match_for_names(&names, &lookups, None);
+        let is_rustc = res.map_or_else(
+            || false,
+            |s| name_lower.contains("::") && !s.as_str().starts_with(tool_name),
+        );
+        let suggestion = res.map(|s| (s, is_rustc));
         CheckLintNameResult::NoLint(suggestion)
     }
 
@@ -454,7 +466,7 @@ impl LintStore {
         match self.by_name.get(&complete_name) {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
-                None => self.no_lint_suggestion(lint_name),
+                None => self.no_lint_suggestion(lint_name, tool_name),
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Reaching this would be weird, but let's cover this case anyway
                     if let Some(LintAlias { name, silent }) = depr {
@@ -520,9 +532,9 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with an optional associated span and an existing
     /// diagnostic.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn lookup_with_diagnostics(
+    fn span_lint_with_diagnostics(
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
@@ -531,7 +543,7 @@ pub trait LintContext {
         diagnostic: BuiltinLintDiagnostics,
     ) {
         // We first generate a blank diagnostic.
-        self.lookup(lint, span, msg, |db| {
+        self.opt_span_lint(lint, span, msg, |db| {
             // Now, set up surrounding context.
             diagnostics::builtin(self.sess(), diagnostic, db);
             // Rewrap `db`, and pass control to the user.
@@ -543,9 +555,9 @@ pub trait LintContext {
     // set the span in their `decorate` function (preferably using set_span).
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn lookup<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
@@ -555,42 +567,42 @@ pub trait LintContext {
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
     /// typically generated by `#[derive(LintDiagnostic)]`).
-    fn emit_spanned_lint<S: Into<MultiSpan>>(
+    fn emit_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: S,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.lookup(lint, Some(span), decorator.msg(), |diag| {
+        self.opt_span_lint(lint, Some(span), decorator.msg(), |diag| {
             decorator.decorate_lint(diag);
         });
     }
 
     /// Emit a lint at the appropriate level, with an associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn struct_span_lint<S: Into<MultiSpan>>(
+    fn span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: S,
         msg: impl Into<DiagnosticMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
-        self.lookup(lint, Some(span), msg, decorate);
+        self.opt_span_lint(lint, Some(span), msg, decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
     /// generated by `#[derive(LintDiagnostic)]`).
     fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> DecorateLint<'a, ()>) {
-        self.lookup(lint, None as Option<Span>, decorator.msg(), |diag| {
+        self.opt_span_lint(lint, None as Option<Span>, decorator.msg(), |diag| {
             decorator.decorate_lint(diag);
         });
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn lint(
         &self,
@@ -598,7 +610,7 @@ pub trait LintContext {
         msg: impl Into<DiagnosticMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
-        self.lookup(lint, None as Option<Span>, msg, decorate);
+        self.opt_span_lint(lint, None as Option<Span>, msg, decorate);
     }
 
     /// This returns the lint level for the given lint at the current location.
@@ -656,7 +668,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
     }
 
     #[rustc_lint_diagnostics]
-    fn lookup<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
@@ -666,8 +678,8 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
-            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg, decorate),
-            None => self.tcx.struct_lint_node(lint, hir_id, msg, decorate),
+            Some(s) => self.tcx.node_span_lint(lint, hir_id, s, msg, decorate),
+            None => self.tcx.node_lint(lint, hir_id, msg, decorate),
         }
     }
 
@@ -683,14 +695,14 @@ impl LintContext for EarlyContext<'_> {
     }
 
     #[rustc_lint_diagnostics]
-    fn lookup<S: Into<MultiSpan>>(
+    fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
         msg: impl Into<DiagnosticMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
-        self.builder.struct_lint(lint, span.map(|s| s.into()), msg, decorate)
+        self.builder.opt_span_lint(lint, span.map(|s| s.into()), msg, decorate)
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {

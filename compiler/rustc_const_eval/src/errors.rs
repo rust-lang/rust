@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
-    IntoDiagnostic, Level,
+    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
+    EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -13,12 +15,24 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 use rustc_target::abi::{Size, WrappingRange};
+use rustc_type_ir::Mutability;
+
+use crate::interpret::InternKind;
 
 #[derive(Diagnostic)]
 #[diag(const_eval_dangling_ptr_in_final)]
 pub(crate) struct DanglingPtrInFinal {
     #[primary_span]
     pub span: Span,
+    pub kind: InternKind,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_mutable_ptr_in_final)]
+pub(crate) struct MutablePtrInFinal {
+    #[primary_span]
+    pub span: Span,
+    pub kind: InternKind,
 }
 
 #[derive(Diagnostic)]
@@ -41,14 +55,14 @@ pub(crate) struct UnstableInStable {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_thread_local_access, code = "E0625")]
+#[diag(const_eval_thread_local_access, code = E0625)]
 pub(crate) struct NonConstOpErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_static_access, code = "E0013")]
+#[diag(const_eval_static_access, code = E0013)]
 #[help]
 pub(crate) struct StaticAccessErr {
     #[primary_span]
@@ -84,7 +98,7 @@ pub(crate) struct PanicNonStrErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mut_deref, code = "E0658")]
+#[diag(const_eval_mut_deref, code = E0658)]
 pub(crate) struct MutDerefErr {
     #[primary_span]
     pub span: Span,
@@ -92,7 +106,7 @@ pub(crate) struct MutDerefErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow, code = "E0658")]
+#[diag(const_eval_transient_mut_borrow, code = E0658)]
 pub(crate) struct TransientMutBorrowErr {
     #[primary_span]
     pub span: Span,
@@ -100,8 +114,8 @@ pub(crate) struct TransientMutBorrowErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow_raw, code = "E0658")]
-pub(crate) struct TransientMutBorrowErrRaw {
+#[diag(const_eval_transient_mut_raw, code = E0658)]
+pub(crate) struct TransientMutRawErr {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -132,7 +146,7 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs, code = "E0764")]
+#[diag(const_eval_unallowed_mutable_refs, code = E0764)]
 pub(crate) struct UnallowedMutableRefs {
     #[primary_span]
     pub span: Span,
@@ -142,8 +156,8 @@ pub(crate) struct UnallowedMutableRefs {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs_raw, code = "E0764")]
-pub(crate) struct UnallowedMutableRefsRaw {
+#[diag(const_eval_unallowed_mutable_raw, code = E0764)]
+pub(crate) struct UnallowedMutableRaw {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -151,7 +165,7 @@ pub(crate) struct UnallowedMutableRefsRaw {
     pub teach: Option<()>,
 }
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fmt_macro_call, code = "E0015")]
+#[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
 pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
@@ -159,7 +173,7 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_non_const_fn_call, code = "E0015")]
+#[diag(const_eval_non_const_fn_call, code = E0015)]
 pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
@@ -176,7 +190,7 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_heap_allocations, code = "E0010")]
+#[diag(const_eval_unallowed_heap_allocations, code = E0010)]
 pub(crate) struct UnallowedHeapAllocations {
     #[primary_span]
     #[label]
@@ -187,7 +201,7 @@ pub(crate) struct UnallowedHeapAllocations {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_inline_asm, code = "E0015")]
+#[diag(const_eval_unallowed_inline_asm, code = E0015)]
 pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -195,15 +209,7 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unsupported_untyped_pointer)]
-#[note]
-pub(crate) struct UnsupportedUntypedPointer {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_data_refer, code = "E0492")]
+#[diag(const_eval_interior_mutable_data_refer, code = E0492)]
 pub(crate) struct InteriorMutableDataRefer {
     #[primary_span]
     #[label]
@@ -268,7 +274,7 @@ pub struct RawBytesNote {
 // FIXME(fee1-dead) do not use stringly typed `ConstContext`
 
 #[derive(Diagnostic)]
-#[diag(const_eval_match_eq_non_const, code = "E0015")]
+#[diag(const_eval_match_eq_non_const, code = E0015)]
 #[note]
 pub struct NonConstMatchEq<'tcx> {
     #[primary_span]
@@ -278,7 +284,7 @@ pub struct NonConstMatchEq<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_for_loop_into_iter_non_const, code = "E0015")]
+#[diag(const_eval_for_loop_into_iter_non_const, code = E0015)]
 pub struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -287,7 +293,7 @@ pub struct NonConstForLoopIntoIter<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_branch_non_const, code = "E0015")]
+#[diag(const_eval_question_branch_non_const, code = E0015)]
 pub struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -296,7 +302,7 @@ pub struct NonConstQuestionBranch<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_from_residual_non_const, code = "E0015")]
+#[diag(const_eval_question_from_residual_non_const, code = E0015)]
 pub struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -305,7 +311,7 @@ pub struct NonConstQuestionFromResidual<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_try_block_from_output_non_const, code = "E0015")]
+#[diag(const_eval_try_block_from_output_non_const, code = E0015)]
 pub struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -314,7 +320,7 @@ pub struct NonConstTryBlockFromOutput<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_await_non_const, code = "E0015")]
+#[diag(const_eval_await_non_const, code = E0015)]
 pub struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -323,7 +329,7 @@ pub struct NonConstAwait<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_closure_non_const, code = "E0015")]
+#[diag(const_eval_closure_non_const, code = E0015)]
 pub struct NonConstClosure {
     #[primary_span]
     pub span: Span,
@@ -356,7 +362,7 @@ pub struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_operator_non_const, code = "E0015")]
+#[diag(const_eval_operator_non_const, code = E0015)]
 pub struct NonConstOperator {
     #[primary_span]
     pub span: Span,
@@ -366,7 +372,7 @@ pub struct NonConstOperator {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_deref_coercion_non_const, code = "E0015")]
+#[diag(const_eval_deref_coercion_non_const, code = E0015)]
 #[note]
 pub struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
@@ -379,7 +385,7 @@ pub struct NonConstDerefCoercion<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_live_drop, code = "E0493")]
+#[diag(const_eval_live_drop, code = E0493)]
 pub struct LiveDrop<'tcx> {
     #[primary_span]
     #[label]
@@ -391,7 +397,7 @@ pub struct LiveDrop<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_error, code = "E0080")]
+#[diag(const_eval_error, code = E0080)]
 pub struct ConstEvalError {
     #[primary_span]
     pub span: Span,
@@ -417,7 +423,7 @@ pub struct NullaryIntrinsicError {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_undefined_behavior, code = "E0080")]
+#[diag(const_eval_undefined_behavior, code = E0080)]
 pub struct UndefinedBehavior {
     #[primary_span]
     pub span: Span,
@@ -518,7 +524,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             Ub(_) => {}
             Custom(custom) => {
                 (custom.add_args)(&mut |name, value| {
-                    builder.set_arg(name, value);
+                    builder.arg(name, value);
                 });
             }
             ValidationError(e) => e.add_args(dcx, builder),
@@ -536,65 +542,65 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
             BoundsCheckFailed { len, index } => {
-                builder.set_arg("len", len);
-                builder.set_arg("index", index);
+                builder.arg("len", len);
+                builder.arg("index", index);
             }
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
-                builder.set_arg("pointer", ptr);
+                builder.arg("pointer", ptr);
             }
             PointerUseAfterFree(alloc_id, msg) => {
                 builder
-                    .set_arg("alloc_id", alloc_id)
-                    .set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                    .arg("alloc_id", alloc_id)
+                    .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
                 builder
-                    .set_arg("alloc_id", alloc_id)
-                    .set_arg("alloc_size", alloc_size.bytes())
-                    .set_arg("ptr_offset", ptr_offset)
-                    .set_arg("ptr_size", ptr_size.bytes())
-                    .set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                    .arg("alloc_id", alloc_id)
+                    .arg("alloc_size", alloc_size.bytes())
+                    .arg("ptr_offset", ptr_offset)
+                    .arg("ptr_size", ptr_size.bytes())
+                    .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             DanglingIntPointer(ptr, msg) => {
                 if ptr != 0 {
-                    builder.set_arg("pointer", format!("{ptr:#x}[noalloc]"));
+                    builder.arg("pointer", format!("{ptr:#x}[noalloc]"));
                 }
 
-                builder.set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                builder.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {
-                builder.set_arg("required", required.bytes());
-                builder.set_arg("has", has.bytes());
-                builder.set_arg("msg", format!("{msg:?}"));
+                builder.arg("required", required.bytes());
+                builder.arg("has", has.bytes());
+                builder.arg("msg", format!("{msg:?}"));
             }
             WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
-                builder.set_arg("allocation", alloc);
+                builder.arg("allocation", alloc);
             }
             InvalidBool(b) => {
-                builder.set_arg("value", format!("{b:02x}"));
+                builder.arg("value", format!("{b:02x}"));
             }
             InvalidChar(c) => {
-                builder.set_arg("value", format!("{c:08x}"));
+                builder.arg("value", format!("{c:08x}"));
             }
             InvalidTag(tag) => {
-                builder.set_arg("tag", format!("{tag:x}"));
+                builder.arg("tag", format!("{tag:x}"));
             }
             InvalidStr(err) => {
-                builder.set_arg("err", format!("{err}"));
+                builder.arg("err", format!("{err}"));
             }
             InvalidUninitBytes(Some((alloc, info))) => {
-                builder.set_arg("alloc", alloc);
-                builder.set_arg("access", info.access);
-                builder.set_arg("uninit", info.bad);
+                builder.arg("alloc", alloc);
+                builder.arg("access", info.access);
+                builder.arg("uninit", info.bad);
             }
             ScalarSizeMismatch(info) => {
-                builder.set_arg("target_size", info.target_size);
-                builder.set_arg("data_size", info.data_size);
+                builder.arg("target_size", info.target_size);
+                builder.arg("data_size", info.data_size);
             }
             AbiMismatchArgument { caller_ty, callee_ty }
             | AbiMismatchReturn { caller_ty, callee_ty } => {
-                builder.set_arg("caller_ty", caller_ty.to_string());
-                builder.set_arg("callee_ty", callee_ty.to_string());
+                builder.arg("caller_ty", caller_ty.to_string());
+                builder.arg("callee_ty", callee_ty.to_string());
             }
         }
     }
@@ -615,18 +621,16 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
             PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_static,
 
-            PtrToMut { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_mut,
-            PtrToMut { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_mut,
-
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
+            MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
             PtrOutOfRange { .. } => const_eval_validation_ptr_out_of_range,
             OutOfRange { .. } => const_eval_validation_out_of_range,
-            UnsafeCell => const_eval_validation_unsafe_cell,
+            UnsafeCellInImmutable => const_eval_validation_unsafe_cell,
             UninhabitedVal { .. } => const_eval_validation_uninhabited_val,
             InvalidEnumTag { .. } => const_eval_validation_invalid_enum_tag,
             UninhabitedEnumVariant => const_eval_validation_uninhabited_enum_variant,
@@ -695,7 +699,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             )
         };
 
-        err.set_arg("front_matter", message);
+        err.arg("front_matter", message);
 
         fn add_range_arg<G: EmissionGuarantee>(
             r: WrappingRange,
@@ -725,12 +729,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             ];
             let args = args.iter().map(|(a, b)| (a, b));
             let message = dcx.eagerly_translate_to_string(msg, args);
-            err.set_arg("in_range", message);
+            err.arg("in_range", message);
         }
 
         match self.kind {
             PtrToUninhabited { ty, .. } | UninhabitedVal { ty } => {
-                err.set_arg("ty", ty);
+                err.arg("ty", ty);
             }
             PointerAsInt { expected } | Uninit { expected } => {
                 let msg = match expected {
@@ -747,36 +751,36 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                     ExpectedKind::Str => fluent::const_eval_validation_expected_str,
                 };
                 let msg = dcx.eagerly_translate_to_string(msg, [].into_iter());
-                err.set_arg("expected", msg);
+                err.arg("expected", msg);
             }
             InvalidEnumTag { value }
             | InvalidVTablePtr { value }
             | InvalidBool { value }
             | InvalidChar { value }
             | InvalidFnPtr { value } => {
-                err.set_arg("value", value);
+                err.arg("value", value);
             }
             NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
                 add_range_arg(range, max_value, dcx, err)
             }
             OutOfRange { range, max_value, value } => {
-                err.set_arg("value", value);
+                err.arg("value", value);
                 add_range_arg(range, max_value, dcx, err);
             }
             UnalignedPtr { required_bytes, found_bytes, .. } => {
-                err.set_arg("required_bytes", required_bytes);
-                err.set_arg("found_bytes", found_bytes);
+                err.arg("required_bytes", required_bytes);
+                err.arg("found_bytes", found_bytes);
             }
             DanglingPtrNoProvenance { pointer, .. } => {
-                err.set_arg("pointer", pointer);
+                err.arg("pointer", pointer);
             }
             NullPtr { .. }
             | PtrToStatic { .. }
-            | PtrToMut { .. }
             | MutableRefInConst
+            | MutableRefToImmutable
             | NullFnPtr
             | NeverVal
-            | UnsafeCell
+            | UnsafeCellInImmutable
             | InvalidMetaSliceTooLarge { .. }
             | InvalidMetaTooLarge { .. }
             | DanglingPtrUseAfterFree { .. }
@@ -814,10 +818,10 @@ impl ReportErrorExt for UnsupportedOpInfo {
             // print. So it's not worth the effort of having diagnostics that can print the `info`.
             UnsizedLocal | Unsupported(_) | ReadPointerAsInt(_) => {}
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
-                builder.set_arg("ptr", ptr);
+                builder.arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ReadExternStatic(did) => {
-                builder.set_arg("did", format!("{did:?}"));
+                builder.arg("did", format!("{did:?}"));
             }
         }
     }
@@ -844,7 +848,7 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
             InterpError::InvalidProgram(e) => e.add_args(dcx, builder),
             InterpError::ResourceExhaustion(e) => e.add_args(dcx, builder),
             InterpError::MachineStop(e) => e.add_args(&mut |name, value| {
-                builder.set_arg(name, value);
+                builder.arg(name, value);
             }),
         }
     }
@@ -860,9 +864,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
                 rustc_middle::error::middle_adjust_for_foreign_abi_error
             }
-            InvalidProgramInfo::ConstPropNonsense => {
-                panic!("We had const-prop nonsense, this should never be printed")
-            }
         }
     }
     fn add_args<G: EmissionGuarantee>(
@@ -871,24 +872,22 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
-            InvalidProgramInfo::TooGeneric
-            | InvalidProgramInfo::AlreadyReported(_)
-            | InvalidProgramInfo::ConstPropNonsense => {}
+            InvalidProgramInfo::TooGeneric | InvalidProgramInfo::AlreadyReported(_) => {}
             InvalidProgramInfo::Layout(e) => {
                 // The level doesn't matter, `diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
                 let diag: DiagnosticBuilder<'_, ()> =
                     e.into_diagnostic().into_diagnostic(dcx, dummy_level);
                 for (name, val) in diag.args() {
-                    builder.set_arg(name.clone(), val.clone());
+                    builder.arg(name.clone(), val.clone());
                 }
                 diag.cancel();
             }
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(
                 AdjustForForeignAbiError::Unsupported { arch, abi },
             ) => {
-                builder.set_arg("arch", arch);
-                builder.set_arg("abi", abi.name());
+                builder.arg("arch", arch);
+                builder.arg("abi", abi.name());
             }
         }
     }
@@ -904,4 +903,15 @@ impl ReportErrorExt for ResourceExhaustionInfo {
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, _: &mut DiagnosticBuilder<'_, G>) {}
+}
+
+impl rustc_errors::IntoDiagnosticArg for InternKind {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            InternKind::Static(Mutability::Not) => "static",
+            InternKind::Static(Mutability::Mut) => "static_mut",
+            InternKind::Constant => "const",
+            InternKind::Promoted => "promoted",
+        }))
+    }
 }

@@ -16,8 +16,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticId,
-    DiagnosticMessage, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
+    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
     SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
@@ -61,13 +61,13 @@ impl HumanReadableErrorType {
         self,
         mut dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
         if !dst.supports_color() && color {
             dst = Box::new(Ansi::new(dst));
         }
-        EmitterWriter::new(dst, fallback_bundle).short_message(short)
+        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -193,16 +193,18 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: &Diagnostic);
+    fn emit_diagnostic(&mut self, diag: Diagnostic);
 
     /// Emit a notification that an artifact has been output.
-    /// This is currently only supported for the JSON format,
-    /// other formats can, and will, simply ignore it.
+    /// Currently only supported for the JSON format.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
+    /// Emit a report about future breakage.
+    /// Currently only supported for the JSON format.
     fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
 
-    /// Emit list of unused externs
+    /// Emit list of unused externs.
+    /// Currently only supported for the JSON format.
     fn emit_unused_externs(
         &mut self,
         _lint_level: rustc_lint_defs::Level,
@@ -228,17 +230,17 @@ pub trait Emitter: Translate {
     ///
     /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
-    ///   substitutions. In that case, we return the modified span only.
+    ///   substitutions. In that case, we modify the span and clear the
+    ///   suggestions.
     ///
     /// * If the current `Diagnostic` has multiple suggestions,
-    ///   we return the original `primary_span` and the original suggestions.
-    fn primary_span_formatted<'a>(
+    ///   we leave `primary_span` and the suggestions untouched.
+    fn primary_span_formatted(
         &mut self,
-        diag: &'a Diagnostic,
+        primary_span: &mut MultiSpan,
+        suggestions: &mut Vec<CodeSuggestion>,
         fluent_args: &FluentArgs<'_>,
-    ) -> (MultiSpan, &'a [CodeSuggestion]) {
-        let mut primary_span = diag.span.clone();
-        let suggestions = diag.suggestions.as_deref().unwrap_or(&[]);
+    ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
             if rest.is_empty() &&
@@ -285,16 +287,15 @@ pub trait Emitter: Translate {
                 primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
 
                 // We return only the modified primary_span
-                (primary_span, &[])
+                suggestions.clear();
             } else {
                 // if there are multiple suggestions, print them all in full
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                (primary_span, suggestions)
             }
         } else {
-            (primary_span, suggestions)
+            // do nothing
         }
     }
 
@@ -501,7 +502,7 @@ pub trait Emitter: Translate {
     }
 }
 
-impl Translate for EmitterWriter {
+impl Translate for HumanEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
@@ -511,21 +512,20 @@ impl Translate for EmitterWriter {
     }
 }
 
-impl Emitter for EmitterWriter {
+impl Emitter for HumanEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
         let fluent_args = to_fluent_args(diag.args());
 
-        let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
-        debug!("emit_diagnostic: suggestions={:?}", suggestions);
+        let mut suggestions = diag.suggestions.unwrap_or(vec![]);
+        self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &mut primary_span,
-            &mut children,
+            &mut diag.span,
+            &mut diag.children,
             &diag.level,
             self.macro_backtrace,
         );
@@ -535,9 +535,9 @@ impl Emitter for EmitterWriter {
             &diag.messages,
             &fluent_args,
             &diag.code,
-            &primary_span,
-            &children,
-            suggestions,
+            &diag.span,
+            &diag.children,
+            &suggestions,
             self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
@@ -556,7 +556,7 @@ impl Emitter for EmitterWriter {
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
     pub fatal_dcx: DiagCtxt,
-    pub fatal_note: Option<String>,
+    pub fatal_note: String,
 }
 
 impl Translate for SilentEmitter {
@@ -574,13 +574,10 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, d: &Diagnostic) {
-        if d.level == Level::Fatal {
-            let mut d = d.clone();
-            if let Some(ref note) = self.fatal_note {
-                d.note(note.clone());
-            }
-            self.fatal_dcx.emit_diagnostic(d);
+    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+        if diag.level == Level::Fatal {
+            diag.note(self.fatal_note.clone());
+            self.fatal_dcx.emit_diagnostic(diag);
         }
     }
 }
@@ -622,7 +619,7 @@ impl ColorConfig {
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 #[derive(Setters)]
-pub struct EmitterWriter {
+pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
     sm: Option<Lrc<SourceMap>>,
@@ -647,14 +644,14 @@ pub struct FileWithAnnotatedLines {
     multiline_depth: usize,
 }
 
-impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
+impl HumanEmitter {
+    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         let dst = from_stderr(color_config);
         Self::create(dst, fallback_bundle)
     }
 
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
-        EmitterWriter {
+    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+        HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
             fluent_bundle: None,
@@ -673,7 +670,7 @@ impl EmitterWriter {
     pub fn new(
         dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         Self::create(dst, fallback_bundle)
     }
 
@@ -1307,7 +1304,7 @@ impl EmitterWriter {
         msp: &MultiSpan,
         msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<ErrCode>,
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
@@ -1334,14 +1331,13 @@ impl EmitterWriter {
                 buffer.append(0, level.to_str(), Style::Level(*level));
                 label_width += level.to_str().len();
             }
-            // only render error codes, not lint codes
-            if let Some(DiagnosticId::Error(ref code)) = *code {
+            if let Some(code) = code {
                 buffer.append(0, "[", Style::Level(*level));
                 let code = if let TerminalUrl::Yes = self.terminal_url {
                     let path = "https://doc.rust-lang.org/error_codes";
                     format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
                 } else {
-                    code.clone()
+                    code.to_string()
                 };
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
@@ -2075,7 +2071,7 @@ impl EmitterWriter {
         level: &Level,
         messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<DiagnosticId>,
+        code: &Option<ErrCode>,
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
@@ -2117,6 +2113,7 @@ impl EmitterWriter {
                 }
                 if !self.short_message {
                     for child in children {
+                        assert!(child.level.can_be_top_or_sub().1);
                         let span = &child.span;
                         if let Err(err) = self.emit_messages_default_inner(
                             span,

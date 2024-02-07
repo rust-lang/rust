@@ -106,9 +106,9 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
 pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
-    let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
+    let dylib_mmapped = unsafe { Mmap::map(&dylib_file) }?;
 
-    let dot_rustc = read_section(&dylib_mmaped, ".rustc")?;
+    let dot_rustc = read_section(&dylib_mmapped, ".rustc")?;
 
     // check if magic is valid
     if &dot_rustc[0..4] != b"rust" {

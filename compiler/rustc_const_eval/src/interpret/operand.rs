@@ -260,8 +260,12 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let inner_val: Immediate<_> = match (**self, self.layout.abi) {
-            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            // If the entire value is uninit, then so is the field (can happen in ConstProp).
             (Immediate::Uninit, _) => Immediate::Uninit,
+            // If the field is uninhabited, we can forget the data (can happen in ConstProp).
+            // `enum S { A(!), B, C }` is an example of an enum with Scalar layout that
+            // has an `Uninhabited` variant, which means this case is possible.
+            _ if layout.abi.is_uninhabited() => Immediate::Uninit,
             // the field contains no information, can be left uninit
             // (Scalar/ScalarPair can contain even aligned ZST, not just 1-ZST)
             _ if layout.is_zst() => Immediate::Uninit,
@@ -643,11 +647,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
-            if layout.is_unsized() {
-                // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
-                // efficiently check whether they are sized. We have to catch that case here.
-                throw_inval!(ConstPropNonsense);
-            }
+            assert!(!layout.is_unsized());
         }
         Ok(OpTy { op, layout })
     }

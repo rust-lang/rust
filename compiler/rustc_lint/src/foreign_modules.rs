@@ -1,5 +1,5 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::query::Providers;
@@ -72,7 +72,7 @@ struct ClashingExternDeclarations {
     /// the symbol should be reported as a clashing declaration.
     // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
     // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
-    seen_decls: FxHashMap<Symbol, hir::OwnerId>,
+    seen_decls: UnordMap<Symbol, hir::OwnerId>,
 }
 
 /// Differentiate between whether the name for an extern decl came from the link_name attribute or
@@ -96,7 +96,7 @@ impl SymbolName {
 
 impl ClashingExternDeclarations {
     pub(crate) fn new() -> Self {
-        ClashingExternDeclarations { seen_decls: FxHashMap::default() }
+        ClashingExternDeclarations { seen_decls: Default::default() }
     }
 
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
@@ -161,7 +161,7 @@ impl ClashingExternDeclarations {
                     sub,
                 }
             };
-            tcx.emit_spanned_lint(
+            tcx.emit_node_span_lint(
                 CLASHING_EXTERN_DECLARATIONS,
                 this_fi.hir_id(),
                 mismatch_label,
@@ -209,12 +209,12 @@ fn structurally_same_type<'tcx>(
     b: Ty<'tcx>,
     ckind: types::CItemKind,
 ) -> bool {
-    let mut seen_types = FxHashSet::default();
+    let mut seen_types = UnordSet::default();
     structurally_same_type_impl(&mut seen_types, tcx, param_env, a, b, ckind)
 }
 
 fn structurally_same_type_impl<'tcx>(
-    seen_types: &mut FxHashSet<(Ty<'tcx>, Ty<'tcx>)>,
+    seen_types: &mut UnordSet<(Ty<'tcx>, Ty<'tcx>)>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     a: Ty<'tcx>,

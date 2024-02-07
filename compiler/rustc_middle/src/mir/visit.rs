@@ -345,6 +345,8 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::Virtual(_def_id, _) |
                         ty::InstanceDef::ThreadLocalShim(_def_id) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
+                        ty::InstanceDef::ConstructCoroutineInClosureShim { coroutine_closure_def_id: _def_id, target_kind: _ } |
+                        ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id, target_kind: _ } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
@@ -524,7 +526,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         self.visit_operand(func, location);
                         for arg in args {
-                            self.visit_operand(arg, location);
+                            self.visit_operand(&$($mutability)? arg.node, location);
                         }
                         self.visit_place(
                             destination,
@@ -738,6 +740,12 @@ macro_rules! make_mir_visitor {
                                 coroutine_args,
                             ) => {
                                 self.visit_args(coroutine_args, location);
+                            }
+                            AggregateKind::CoroutineClosure(
+                                _,
+                                coroutine_closure_args,
+                            ) => {
+                                self.visit_args(coroutine_closure_args, location);
                             }
                         }
 
@@ -996,6 +1004,12 @@ macro_rules! super_body {
                     TyContext::YieldTy(SourceInfo::outermost(span))
                 );
             }
+            if let Some(resume_ty) = $(& $mutability)? gen.resume_ty {
+                $self.visit_ty(
+                    resume_ty,
+                    TyContext::ResumeTy(SourceInfo::outermost(span))
+                );
+            }
         }
 
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
@@ -1243,6 +1257,8 @@ pub enum TyContext {
     ReturnTy(SourceInfo),
 
     YieldTy(SourceInfo),
+
+    ResumeTy(SourceInfo),
 
     /// A type found at some location.
     Location(Location),

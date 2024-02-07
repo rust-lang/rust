@@ -65,6 +65,7 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
+//! #![allow(unused_assignments)]
 //!
 //! use core::intrinsics::mir::*;
 //!
@@ -104,21 +105,22 @@
 //! }
 //!
 //! #[custom_mir(dialect = "runtime", phase = "optimized")]
+#![cfg_attr(bootstrap, doc = "#[cfg(any())]")] // disable the following function in doctests when `bootstrap` is set
 //! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
 //!     mir!(
 //!         let _unused;
 //!         let popped;
 //!
 //!         {
-//!             Call(_unused = Vec::push(v, value), pop, UnwindContinue())
+//!             Call(_unused = Vec::push(v, value), ReturnTo(pop), UnwindContinue())
 //!         }
 //!
 //!         pop = {
-//!             Call(popped = Vec::pop(v), drop, UnwindContinue())
+//!             Call(popped = Vec::pop(v), ReturnTo(drop), UnwindContinue())
 //!         }
 //!
 //!         drop = {
-//!             Drop(popped, ret, UnwindContinue())
+//!             Drop(popped, ReturnTo(ret), UnwindContinue())
 //!         }
 //!
 //!         ret = {
@@ -242,9 +244,8 @@
 //!  - `match some_int_operand` becomes a `SwitchInt`. Each arm should be `literal => basic_block`
 //!     - The exception is the last arm, which must be `_ => basic_block` and corresponds to the
 //!       otherwise branch.
-//!  - [`Call`] has an associated function as well. The third argument of this function is a normal
-//!    function call expression, for example `my_other_function(a, 5)`.
-//!
+//!  - [`Call`] has an associated function as well, with special syntax:
+//!    `Call(ret_val = function(arg1, arg2, ...), ReturnTo(next_block), UnwindContinue())`.
 
 #![unstable(
     feature = "custom_mir",
@@ -287,35 +288,68 @@ macro_rules! define {
 }
 
 // Unwind actions
+pub struct UnwindActionArg;
 define!(
     "mir_unwind_continue",
     /// An unwind action that continues unwinding.
-    fn UnwindContinue()
+    fn UnwindContinue() -> UnwindActionArg
 );
 define!(
     "mir_unwind_unreachable",
     /// An unwind action that triggers undefined behaviour.
-    fn UnwindUnreachable() -> BasicBlock
+    fn UnwindUnreachable() -> UnwindActionArg
 );
 define!(
     "mir_unwind_terminate",
     /// An unwind action that terminates the execution.
     ///
     /// `UnwindTerminate` can also be used as a terminator.
-    fn UnwindTerminate(reason: UnwindTerminateReason)
+    fn UnwindTerminate(reason: UnwindTerminateReason) -> UnwindActionArg
 );
 define!(
     "mir_unwind_cleanup",
     /// An unwind action that continues execution in a given basic blok.
-    fn UnwindCleanup(goto: BasicBlock)
+    fn UnwindCleanup(goto: BasicBlock) -> UnwindActionArg
 );
+
+// Return destination for `Call`
+pub struct ReturnToArg;
+define!("mir_return_to", fn ReturnTo(goto: BasicBlock) -> ReturnToArg);
 
 // Terminators
 define!("mir_return", fn Return() -> BasicBlock);
 define!("mir_goto", fn Goto(destination: BasicBlock) -> BasicBlock);
 define!("mir_unreachable", fn Unreachable() -> BasicBlock);
-define!("mir_drop", fn Drop<T, U>(place: T, goto: BasicBlock, unwind_action: U));
-define!("mir_call", fn Call<U>(call: (), goto: BasicBlock, unwind_action: U));
+define!("mir_drop",
+    /// Drop the contents of a place.
+    ///
+    /// The first argument must be a place.
+    ///
+    /// The second argument must be of the form `ReturnTo(bb)`, where `bb` is the basic block that
+    /// will be jumped to after the destructor returns.
+    ///
+    /// The third argument describes what happens on unwind. It can be one of:
+    /// - [`UnwindContinue`]
+    /// - [`UnwindUnreachable`]
+    /// - [`UnwindTerminate`]
+    /// - [`UnwindCleanup`]
+    fn Drop<T>(place: T, goto: ReturnToArg, unwind_action: UnwindActionArg)
+);
+define!("mir_call",
+    /// Call a function.
+    ///
+    /// The first argument must be of the form `ret_val = fun(arg1, arg2, ...)`.
+    ///
+    /// The second argument must be of the form `ReturnTo(bb)`, where `bb` is the basic block that
+    /// will be jumped to after the function returns.
+    ///
+    /// The third argument describes what happens on unwind. It can be one of:
+    /// - [`UnwindContinue`]
+    /// - [`UnwindUnreachable`]
+    /// - [`UnwindTerminate`]
+    /// - [`UnwindCleanup`]
+    fn Call(call: (), goto: ReturnToArg, unwind_action: UnwindActionArg)
+);
 define!("mir_unwind_resume",
     /// A terminator that resumes the unwinding.
     fn UnwindResume()
@@ -323,6 +357,8 @@ define!("mir_unwind_resume",
 
 define!("mir_storage_live", fn StorageLive<T>(local: T));
 define!("mir_storage_dead", fn StorageDead<T>(local: T));
+#[cfg(not(bootstrap))]
+define!("mir_assume", fn Assume(operand: bool));
 define!("mir_deinit", fn Deinit<T>(place: T));
 define!("mir_checked", fn Checked<T>(binop: T) -> (T, bool));
 define!("mir_len", fn Len<T>(place: T) -> usize);

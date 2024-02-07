@@ -128,12 +128,12 @@ pub(crate) fn fetch_native_diagnostics(
     snapshot: GlobalStateSnapshot,
     subscriptions: Vec<FileId>,
 ) -> Vec<(FileId, Vec<lsp_types::Diagnostic>)> {
-    let _p = profile::span("fetch_native_diagnostics");
+    let _p = tracing::span!(tracing::Level::INFO, "fetch_native_diagnostics").entered();
     let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
 
     let convert_diagnostic =
         |line_index: &crate::line_index::LineIndex, d: ide::Diagnostic| lsp_types::Diagnostic {
-            range: lsp::to_proto::range(&line_index, d.range.range),
+            range: lsp::to_proto::range(line_index, d.range.range),
             severity: Some(lsp::to_proto::diagnostic_severity(d.severity)),
             code: Some(lsp_types::NumberOrString::String(d.code.as_str().to_string())),
             code_description: Some(lsp_types::CodeDescription {

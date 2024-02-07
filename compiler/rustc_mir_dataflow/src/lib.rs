@@ -3,9 +3,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
-#![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -16,15 +14,17 @@ extern crate rustc_middle;
 
 use rustc_middle::ty;
 
+// Please change the public `use` directives cautiously, as they might be used by external tools.
+// See issue #120130.
 pub use self::drop_flag_effects::{
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
 };
 pub use self::framework::{
-    fmt, lattice, visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis,
-    JoinSemiLattice, MaybeReachable, Results, ResultsCursor, ResultsVisitable, ResultsVisitor,
+    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine,
+    Forward, GenKill, GenKillAnalysis, JoinSemiLattice, MaybeReachable, Results, ResultsCursor,
+    ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
 };
-use self::framework::{Backward, SwitchIntEdgeEffects};
 use self::move_paths::MoveData;
 
 pub mod debuginfo;
@@ -34,6 +34,7 @@ mod errors;
 mod framework;
 pub mod impls;
 pub mod move_paths;
+pub mod points;
 pub mod rustc_peek;
 pub mod storage;
 pub mod un_derefer;

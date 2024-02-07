@@ -30,14 +30,13 @@ python3 "$X_PY" test --stage 2 src/tools/rustfmt
 # We set the GC interval to the shortest possible value (0 would be off) to increase the chance
 # that bugs which only surface when the GC runs at a specific time are more likely to cause CI to fail.
 # This significantly increases the runtime of our test suite, or we'd do this in PR CI too.
-if [[ -z "${PR_CI_JOB:-}" ]]; then
+if [ -z "${PR_CI_JOB:-}" ]; then
     MIRIFLAGS=-Zmiri-provenance-gc=1 python3 "$X_PY" test --stage 2 src/tools/miri
 else
     python3 "$X_PY" test --stage 2 src/tools/miri
 fi
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
-export BOOTSTRAP_SKIP_TARGET_SANITY=1 # we don't need `cc` for these targets
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     # Only this branch runs in PR CI.
@@ -62,4 +61,3 @@ case $HOST_TARGET in
     exit 1
     ;;
 esac
-unset BOOTSTRAP_SKIP_TARGET_SANITY

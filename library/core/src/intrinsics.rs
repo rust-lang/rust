@@ -947,7 +947,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
+    #[rustc_const_stable(feature = "const_assume", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn assume(b: bool);
 
@@ -1783,27 +1783,39 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn truncf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     pub fn nearbyintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
@@ -2505,6 +2517,66 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
+
+    /// Returns whether the argument's value is statically known at
+    /// compile-time.
+    ///
+    /// This is useful when there is a way of writing the code that will
+    /// be *faster* when some variables have known values, but *slower*
+    /// in the general case: an `if is_val_statically_known(var)` can be used
+    /// to select between these two variants. The `if` will be optimized away
+    /// and only the desired branch remains.
+    ///
+    /// Formally speaking, this function non-deterministically returns `true`
+    /// or `false`, and the caller has to ensure sound behavior for both cases.
+    /// In other words, the following code has *Undefined Behavior*:
+    ///
+    /// ```no_run
+    /// #![feature(is_val_statically_known)]
+    /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::is_val_statically_known;
+    ///
+    /// unsafe {
+    ///    if !is_val_statically_known(0) { unreachable_unchecked(); }
+    /// }
+    /// ```
+    ///
+    /// This also means that the following code's behavior is unspecified; it
+    /// may panic, or it may not:
+    ///
+    /// ```no_run
+    /// #![feature(is_val_statically_known)]
+    /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
+    /// use std::intrinsics::is_val_statically_known;
+    ///
+    /// unsafe {
+    ///     assert_eq!(is_val_statically_known(0), is_val_statically_known(0));
+    /// }
+    /// ```
+    ///
+    /// Unsafe code may not rely on `is_val_statically_known` returning any
+    /// particular value, ever. However, the compiler will generally make it
+    /// return `true` only if the value of the argument is actually known.
+    ///
+    /// When calling this in a `const fn`, both paths must be semantically
+    /// equivalent, that is, the result of the `true` branch and the `false`
+    /// branch must return the same value and have the same side-effects *no
+    /// matter what*.
+    #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn is_val_statically_known<T: Copy>(arg: T) -> bool;
+}
+
+// FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
+// and thus compiling stage0 core doesn't work.
+#[rustc_const_stable(feature = "is_val_statically_known", since = "0.0.0")]
+#[cfg(bootstrap)]
+pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
+    false
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2677,13 +2749,13 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
         #[rustc_nounwind]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
@@ -2773,13 +2845,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules]
-#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
         #[rustc_nounwind]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }

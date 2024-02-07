@@ -92,6 +92,7 @@ pub(crate) fn document_highlight_kind(
         ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
         ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
         ReferenceCategory::Import => None,
+        ReferenceCategory::Test => None,
     }
 }
 
@@ -310,22 +311,18 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    if config.completion().enable_imports_on_the_fly {
-        if !item.import_to_add.is_empty() {
-            let imports: Vec<_> = item
-                .import_to_add
-                .into_iter()
-                .filter_map(|(import_path, import_name)| {
-                    Some(lsp_ext::CompletionImport {
-                        full_import_path: import_path,
-                        imported_name: import_name,
-                    })
-                })
-                .collect();
-            if !imports.is_empty() {
-                let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
-                lsp_item.data = Some(to_value(data).unwrap());
-            }
+    if config.completion().enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+        let imports = item
+            .import_to_add
+            .into_iter()
+            .map(|(import_path, import_name)| lsp_ext::CompletionImport {
+                full_import_path: import_path,
+                imported_name: import_name,
+            })
+            .collect::<Vec<_>>();
+        if !imports.is_empty() {
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
+            lsp_item.data = Some(to_value(data).unwrap());
         }
     }
 
@@ -857,7 +854,7 @@ pub(crate) fn location_from_nav(
 ) -> Cancellable<lsp_types::Location> {
     let url = url(snap, nav.file_id);
     let line_index = snap.file_line_index(nav.file_id)?;
-    let range = range(&line_index, nav.full_range);
+    let range = range(&line_index, nav.focus_or_full_range());
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }
@@ -931,9 +928,9 @@ fn merge_text_and_snippet_edits(
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
-    let mut text_edits = edit.into_iter();
+    let text_edits = edit.into_iter();
 
-    while let Some(current_indel) = text_edits.next() {
+    for current_indel in text_edits {
         let new_range = {
             let insert_len =
                 TextSize::try_from(current_indel.insert.len()).unwrap_or(TextSize::from(u32::MAX));
@@ -956,7 +953,7 @@ fn merge_text_and_snippet_edits(
                 snippet_range
             };
 
-            let range = range(&line_index, snippet_range);
+            let range = range(line_index, snippet_range);
             let new_text = format!("${snippet_index}");
 
             edits.push(SnippetTextEdit {
@@ -1026,7 +1023,7 @@ fn merge_text_and_snippet_edits(
             snippet_range
         };
 
-        let range = range(&line_index, snippet_range);
+        let range = range(line_index, snippet_range);
         let new_text = format!("${snippet_index}");
 
         SnippetTextEdit {

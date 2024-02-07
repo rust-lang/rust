@@ -13,8 +13,7 @@ doctest = false
 
 [dependencies]
 drop_bomb = "0.1.5"
-rustc-dependencies.workspace = true
-
+ra-ap-rustc_lexer.workspace = true
 limit.workspace = true
 
 [dev-dependencies]
@@ -24,4 +23,7 @@ stdx.workspace = true
 sourcegen.workspace = true
 
 [features]
-in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+in-rust-tree = []
+
+[lints]
+workspace = true

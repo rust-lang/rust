@@ -50,6 +50,9 @@
 //! For coroutines with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+mod by_move_body;
+pub use by_move_body::ByMoveBody;
+
 use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
 use crate::errors;
@@ -675,9 +678,9 @@ fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local
     let terminator = bb_data.terminator.take().unwrap();
     if let TerminatorKind::Call { mut args, destination, target, .. } = terminator.kind {
         let arg = args.pop().unwrap();
-        let local = arg.place().unwrap().local;
+        let local = arg.node.place().unwrap().local;
 
-        let arg = Rvalue::Use(arg);
+        let arg = Rvalue::Use(arg.node);
         let assign = Statement {
             source_info: terminator.source_info,
             kind: StatementKind::Assign(Box::new((destination, arg))),
@@ -942,6 +945,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         body,
         saved_locals: saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
+        eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
     };
 
     requires_storage.visit_reachable_with(body, &mut visitor);
@@ -978,6 +982,8 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
+    // We keep this bitset as a buffer to avoid reallocating memory.
+    eligible_storage_live: BitSet<Local>,
 }
 
 impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
@@ -1009,19 +1015,19 @@ impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
 impl StorageConflictVisitor<'_, '_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        if self.body.basic_blocks[loc.block].terminator().kind == TerminatorKind::Unreachable {
+        if let TerminatorKind::Unreachable = self.body.basic_blocks[loc.block].terminator().kind {
             return;
         }
 
-        let mut eligible_storage_live = flow_state.clone();
-        eligible_storage_live.intersect(&**self.saved_locals);
+        self.eligible_storage_live.clone_from(flow_state);
+        self.eligible_storage_live.intersect(&**self.saved_locals);
 
-        for local in eligible_storage_live.iter() {
-            self.local_conflicts.union_row_with(&eligible_storage_live, local);
+        for local in self.eligible_storage_live.iter() {
+            self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
         }
 
-        if eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, eligible_storage_live);
+        if self.eligible_storage_live.count() > 1 {
+            trace!("at {:?}, eligible_storage_live={:?}", loc, self.eligible_storage_live);
         }
     }
 }
@@ -1228,7 +1234,12 @@ fn create_coroutine_drop_shim<'tcx>(
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
     let mut body = body.clone();
-    body.arg_count = 1; // make sure the resume argument is not included here
+    // Take the coroutine info out of the body, since the drop shim is
+    // not a coroutine body itself; it just has its drop built out of it.
+    let _ = body.coroutine.take();
+    // Make sure the resume argument is not included here, since we're
+    // building a body for `drop_in_place`.
+    body.arg_count = 1;
 
     let source_info = SourceInfo::outermost(body.span);
 
@@ -1733,6 +1744,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         }
 
         body.coroutine.as_mut().unwrap().yield_ty = None;
+        body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
         // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
@@ -1861,7 +1873,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
                 self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {
-                        this.visit_operand(arg, location);
+                        this.visit_operand(&arg.node, location);
                     }
                 });
             }
@@ -2067,7 +2079,7 @@ fn check_must_not_suspend_def(
             span: data.source_span,
             reason: s.as_str().to_string(),
         });
-        tcx.emit_spanned_lint(
+        tcx.emit_node_span_lint(
             rustc_session::lint::builtin::MUST_NOT_SUSPEND,
             hir_id,
             data.source_span,

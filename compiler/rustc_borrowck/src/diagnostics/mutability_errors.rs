@@ -198,12 +198,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         let span = self.body.local_decls[local].source_info.span;
                         mut_error = Some(span);
-                        if let Some((buffer, c)) = self.get_buffered_mut_error(span) {
+                        if let Some((buffered_err, c)) = self.get_buffered_mut_error(span) {
                             // We've encountered a second (or more) attempt to mutably borrow an
                             // immutable binding, so the likely problem is with the binding
                             // declaration, not the use. We collect these in a single diagnostic
                             // and make the binding the primary span of the error.
-                            err = buffer;
+                            err = buffered_err;
                             count = c + 1;
                             if count == 2 {
                                 err.replace_span_with(span, false);
@@ -924,7 +924,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_lo(),
                             "use a mutable iterator instead",
-                            "mut ".to_string(),
+                            "mut ",
                             Applicability::MachineApplicable,
                         );
                     }
@@ -1217,19 +1217,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         match self
                             .infcx
-                            .could_impl_trait(clone_trait, ty.peel_refs(), self.param_env)
+                            .type_implements_trait_shallow(
+                                clone_trait,
+                                ty.peel_refs(),
+                                self.param_env,
+                            )
                             .as_deref()
                         {
                             Some([]) => {
-                                // The type implements Clone.
-                                err.span_help(
-                                    expr.span,
-                                    format!(
-                                        "you can `clone` the `{}` value and consume it, but this \
-                                         might not be your desired behavior",
-                                        ty.peel_refs(),
-                                    ),
-                                );
+                                // FIXME: This error message isn't useful, since we're just
+                                // vaguely suggesting to clone a value that already
+                                // implements `Clone`.
+                                //
+                                // A correct suggestion here would take into account the fact
+                                // that inference may be affected by missing types on bindings,
+                                // etc., to improve "tests/ui/borrowck/issue-91206.stderr", for
+                                // example.
                             }
                             None => {
                                 if let hir::ExprKind::MethodCall(segment, _rcvr, [], span) =
@@ -1288,7 +1291,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                                 // The type doesn't implement Clone because of unmet obligations.
                                 for error in errors {
-                                    if let traits::FulfillmentErrorCode::CodeSelectionError(
+                                    if let traits::FulfillmentErrorCode::SelectionError(
                                         traits::SelectionError::Unimplemented,
                                     ) = error.code
                                         && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
@@ -1469,7 +1472,7 @@ fn suggest_ampmut<'tcx>(
 }
 
 fn is_closure_or_coroutine(ty: Ty<'_>) -> bool {
-    ty.is_closure() || ty.is_coroutine()
+    ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure()
 }
 
 /// Given a field that needs to be mutable, returns a span where the " mut " could go.

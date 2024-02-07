@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
     pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -389,7 +389,7 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
                     operator: op.node.as_str(),
-                    sugg: errors::WrapExpressionInParentheses {
+                    sugg: errors::WrapInParentheses::Expression {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
                     },
@@ -400,12 +400,19 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
-                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
-                sugg: errors::WrapExpressionInParentheses {
+            let sugg = match &trailing.kind {
+                ExprKind::MacCall(mac) => errors::WrapInParentheses::MacroArgs {
+                    left: mac.args.dspan.open,
+                    right: mac.args.dspan.close,
+                },
+                _ => errors::WrapInParentheses::Expression {
                     left: trailing.span.shrink_to_lo(),
                     right: trailing.span.shrink_to_hi(),
                 },
+            };
+            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
+                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                sugg,
             });
         }
     }
@@ -663,7 +670,7 @@ impl<'a> Parser<'a> {
                     match expect_result {
                         // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
-                        Err(mut e) => {
+                        Err(e) => {
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
                                 e.delay_as_bug();
@@ -716,7 +723,7 @@ impl<'a> Parser<'a> {
                                 _ => {}
                             }
 
-                            if let Err(mut e) =
+                            if let Err(e) =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
                             {
                                 if recover.no() {

@@ -182,6 +182,8 @@ _arguments "${_arguments_options[@]}" \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT: ' \
 '*--set=[override options in config.toml]:section.option=value:( )' \
 '--fix[]' \
+'--allow-dirty[]' \
+'--allow-staged[]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

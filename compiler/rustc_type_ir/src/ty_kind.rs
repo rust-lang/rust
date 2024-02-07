@@ -202,6 +202,13 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
 
+    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    ///
+    /// Coroutine-closure args contain both the - potentially substituted - generic
+    /// parameters of its parent and some synthetic parameters. See the documentation
+    /// for `CoroutineClosureArgs` for more details.
+    CoroutineClosure(I::DefId, I::GenericArgs),
+
     /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
     ///
@@ -317,16 +324,17 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Coroutine(_, _) => 16,
-        CoroutineWitness(_, _) => 17,
-        Never => 18,
-        Tuple(_) => 19,
-        Alias(_, _) => 20,
-        Param(_) => 21,
-        Bound(_, _) => 22,
-        Placeholder(_) => 23,
-        Infer(_) => 24,
-        Error(_) => 25,
+        CoroutineClosure(_, _) => 16,
+        Coroutine(_, _) => 17,
+        CoroutineWitness(_, _) => 18,
+        Never => 19,
+        Tuple(_) => 20,
+        Alias(_, _) => 21,
+        Param(_) => 22,
+        Bound(_, _) => 23,
+        Placeholder(_) => 24,
+        Infer(_) => 25,
+        Error(_) => 26,
     }
 }
 
@@ -356,6 +364,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (CoroutineClosure(a_d, a_s), CoroutineClosure(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
@@ -430,6 +439,9 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
+            CoroutineClosure(d, s) => {
+                f.debug_tuple("CoroutineClosure").field(d).field(&this.wrap(s)).finish()
+            }
             Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
             CoroutineWitness(d, s) => {
                 f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()

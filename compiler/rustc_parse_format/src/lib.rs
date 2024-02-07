@@ -11,8 +11,9 @@
 )]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-// WARNING: We want to be able to build this crate with a stable compiler,
-//          so no `#![feature]` attributes should be added!
+// We want to be able to build this crate with a stable compiler,
+// so no `#![feature]` attributes should be added.
+#![deny(unstable_features)]
 
 use rustc_lexer::unescape;
 pub use Alignment::*;
@@ -289,10 +290,10 @@ impl<'a> Iterator for Parser<'a> {
                             }
                         } else {
                             if let Some(&(_, maybe)) = self.cur.peek() {
-                                if maybe == '?' {
-                                    self.suggest_format();
-                                } else {
-                                    self.suggest_positional_arg_instead_of_captured_arg(arg);
+                                match maybe {
+                                    '?' => self.suggest_format_debug(),
+                                    '<' | '^' | '>' => self.suggest_format_align(maybe),
+                                    _ => self.suggest_positional_arg_instead_of_captured_arg(arg),
                                 }
                             }
                         }
@@ -868,10 +869,9 @@ impl<'a> Parser<'a> {
         found.then_some(cur)
     }
 
-    fn suggest_format(&mut self) {
+    fn suggest_format_debug(&mut self) {
         if let (Some(pos), Some(_)) = (self.consume_pos('?'), self.consume_pos(':')) {
             let word = self.word();
-            let _end = self.current_pos();
             let pos = self.to_span_index(pos);
             self.errors.insert(
                 0,
@@ -879,6 +879,23 @@ impl<'a> Parser<'a> {
                     description: "expected format parameter to occur after `:`".to_owned(),
                     note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
                     label: "expected `?` to occur after `:`".to_owned(),
+                    span: pos.to(pos),
+                    secondary_label: None,
+                    suggestion: Suggestion::None,
+                },
+            );
+        }
+    }
+
+    fn suggest_format_align(&mut self, alignment: char) {
+        if let Some(pos) = self.consume_pos(alignment) {
+            let pos = self.to_span_index(pos);
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "expected format parameter to occur after `:`".to_owned(),
+                    note: None,
+                    label: format!("expected `{}` to occur after `:`", alignment).to_owned(),
                     span: pos.to(pos),
                     secondary_label: None,
                     suggestion: Suggestion::None,
@@ -1039,7 +1056,7 @@ fn find_width_map_from_snippet(
 fn unescape_string(string: &str) -> Option<string::String> {
     let mut buf = string::String::new();
     let mut ok = true;
-    unescape::unescape_literal(string, unescape::Mode::Str, &mut |_, unescaped_char| {
+    unescape::unescape_unicode(string, unescape::Mode::Str, &mut |_, unescaped_char| {
         match unescaped_char {
             Ok(c) => buf.push(c),
             Err(_) => ok = false,

@@ -124,7 +124,7 @@ fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     cycle_error: &CycleError,
-    mut error: DiagnosticBuilder<'_>,
+    error: DiagnosticBuilder<'_>,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
@@ -134,7 +134,7 @@ where
     match query.handle_cycle_error() {
         Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Fatal => {
             error.emit();
@@ -143,7 +143,7 @@ where
         }
         DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -154,7 +154,7 @@ where
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
     }
 }
@@ -211,7 +211,7 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CycleError {
+pub struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
     pub cycle: Vec<QueryInfo>,
@@ -431,17 +431,14 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    format!(
-                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                qcx.dep_context().sess().dcx().delayed_bug(format!(
+                    "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
                         computed={:#?}\nfed={:#?}",
-                        query.dep_kind(),
-                        key,
-                        formatter(&result),
-                        formatter(&cached_result),
-                    ),
-                );
+                    query.dep_kind(),
+                    key,
+                    formatter(&result),
+                    formatter(&cached_result),
+                ));
             }
         }
     }
@@ -541,10 +538,9 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    let diagnostics = diagnostics.into_inner();
-    let side_effects = QuerySideEffects { diagnostics };
+    let side_effects = QuerySideEffects { diagnostics: diagnostics.into_inner() };
 
-    if std::intrinsics::unlikely(!side_effects.is_empty()) {
+    if std::intrinsics::unlikely(side_effects.maybe_any()) {
         if query.anon() {
             qcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {

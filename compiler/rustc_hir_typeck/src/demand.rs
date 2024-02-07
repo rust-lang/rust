@@ -44,7 +44,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
             || self.suggest_no_capture_closure(err, expected, expr_ty)
-            || self.suggest_boxing_when_appropriate(err, expr.span, expr.hir_id, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(
+                err,
+                expr.peel_blocks().span,
+                expr.hir_id,
+                expected,
+                expr_ty,
+            )
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_cloned_or_as_ref(err, expr, expr_ty, expected)
             || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
@@ -158,7 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Requires that the two types unify, and prints an error message if
     /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(mut e) = self.demand_suptype_diag(sp, expected, actual) {
+        if let Some(e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
         }
     }
@@ -189,7 +195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        if let Some(mut err) = self.demand_eqtype_diag(sp, expected, actual) {
+        if let Some(err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
@@ -228,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (ty, err) =
             self.demand_coerce_diag(expr, checked_ty, expected, expected_ty_expr, allow_two_phase);
-        if let Some(mut err) = err {
+        if let Some(err) = err {
             err.emit();
         }
         ty

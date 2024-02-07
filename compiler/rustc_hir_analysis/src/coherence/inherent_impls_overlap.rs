@@ -1,21 +1,23 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Symbol;
+use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 
-pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
+pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
+    let mut res = Ok(());
     for id in tcx.hir().items() {
-        inherent_overlap_checker.check_item(id);
+        res = res.and(inherent_overlap_checker.check_item(id));
     }
+    res
 }
 
 struct InherentOverlapChecker<'tcx> {
@@ -58,10 +60,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 == item2.ident(self.tcx).normalize_to_macros_2_0()
     }
 
-    fn check_for_duplicate_items_in_impl(&self, impl_: DefId) {
+    fn check_for_duplicate_items_in_impl(&self, impl_: DefId) -> Result<(), ErrorGuaranteed> {
         let impl_items = self.tcx.associated_items(impl_);
 
         let mut seen_items = FxHashMap::default();
+        let mut res = Ok(());
         for impl_item in impl_items.in_definition_order() {
             let span = self.tcx.def_span(impl_item.def_id);
             let ident = impl_item.ident(self.tcx);
@@ -70,23 +73,23 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             match seen_items.entry(norm_ident) {
                 Entry::Occupied(entry) => {
                     let former = entry.get();
-                    let mut err = struct_span_err!(
+                    res = Err(struct_span_code_err!(
                         self.tcx.dcx(),
                         span,
                         E0592,
                         "duplicate definitions with name `{}`",
                         ident,
-                    );
-                    err.span_label(span, format!("duplicate definitions for `{ident}`"));
-                    err.span_label(*former, format!("other definition for `{ident}`"));
-
-                    err.emit();
+                    )
+                    .with_span_label(span, format!("duplicate definitions for `{ident}`"))
+                    .with_span_label(*former, format!("other definition for `{ident}`"))
+                    .emit());
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(span);
                 }
             }
         }
+        res
     }
 
     fn check_for_common_items_in_impls(
@@ -94,10 +97,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         impl1: DefId,
         impl2: DefId,
         overlap: traits::OverlapResult<'_>,
-    ) {
+    ) -> Result<(), ErrorGuaranteed> {
         let impl_items1 = self.tcx.associated_items(impl1);
         let impl_items2 = self.tcx.associated_items(impl2);
 
+        let mut res = Ok(());
         for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name)
@@ -105,7 +109,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             if let Some(item2) = collision {
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
-                let mut err = struct_span_err!(
+                let mut err = struct_span_code_err!(
                     self.tcx.dcx(),
                     self.tcx.def_span(item1.def_id),
                     E0592,
@@ -129,9 +133,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                     traits::add_placeholder_note(&mut err);
                 }
 
-                err.emit();
+                res = Err(err.emit());
             }
         }
+        res
     }
 
     fn check_for_overlapping_inherent_impls(
@@ -139,7 +144,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         overlap_mode: OverlapMode,
         impl1_def_id: DefId,
         impl2_def_id: DefId,
-    ) {
+    ) -> Result<(), ErrorGuaranteed> {
         let maybe_overlap = traits::overlapping_impls(
             self.tcx,
             impl1_def_id,
@@ -151,17 +156,19 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         );
 
         if let Some(overlap) = maybe_overlap {
-            self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
+            self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap)
+        } else {
+            Ok(())
         }
     }
 
-    fn check_item(&mut self, id: hir::ItemId) {
+    fn check_item(&mut self, id: hir::ItemId) -> Result<(), ErrorGuaranteed> {
         let def_kind = self.tcx.def_kind(id.owner_id);
         if !matches!(def_kind, DefKind::Enum | DefKind::Struct | DefKind::Trait | DefKind::Union) {
-            return;
+            return Ok(());
         }
 
-        let impls = self.tcx.inherent_impls(id.owner_id);
+        let impls = self.tcx.inherent_impls(id.owner_id)?;
 
         let overlap_mode = OverlapMode::get(self.tcx, id.owner_id.to_def_id());
 
@@ -174,17 +181,18 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         // otherwise switch to an allocating algorithm with
         // faster asymptotic runtime.
         const ALLOCATING_ALGO_THRESHOLD: usize = 500;
+        let mut res = Ok(());
         if impls.len() < ALLOCATING_ALGO_THRESHOLD {
             for (i, &(&impl1_def_id, impl_items1)) in impls_items.iter().enumerate() {
-                self.check_for_duplicate_items_in_impl(impl1_def_id);
+                res = res.and(self.check_for_duplicate_items_in_impl(impl1_def_id));
 
                 for &(&impl2_def_id, impl_items2) in &impls_items[(i + 1)..] {
                     if self.impls_have_common_items(impl_items1, impl_items2) {
-                        self.check_for_overlapping_inherent_impls(
+                        res = res.and(self.check_for_overlapping_inherent_impls(
                             overlap_mode,
                             impl1_def_id,
                             impl2_def_id,
-                        );
+                        ));
                     }
                 }
             }
@@ -316,20 +324,21 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 impl_blocks.sort_unstable();
                 for (i, &impl1_items_idx) in impl_blocks.iter().enumerate() {
                     let &(&impl1_def_id, impl_items1) = &impls_items[impl1_items_idx];
-                    self.check_for_duplicate_items_in_impl(impl1_def_id);
+                    res = res.and(self.check_for_duplicate_items_in_impl(impl1_def_id));
 
                     for &impl2_items_idx in impl_blocks[(i + 1)..].iter() {
                         let &(&impl2_def_id, impl_items2) = &impls_items[impl2_items_idx];
                         if self.impls_have_common_items(impl_items1, impl_items2) {
-                            self.check_for_overlapping_inherent_impls(
+                            res = res.and(self.check_for_overlapping_inherent_impls(
                                 overlap_mode,
                                 impl1_def_id,
                                 impl2_def_id,
-                            );
+                            ));
                         }
                     }
                 }
             }
         }
+        res
     }
 }

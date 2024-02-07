@@ -125,21 +125,6 @@ pub enum LtoCli {
     Unspecified,
 }
 
-/// The different settings that the `-Z dump_mir_spanview` flag can have. `Statement` generates a
-/// document highlighting each span of every statement (including terminators). `Terminator` and
-/// `Block` highlight a single span per `BasicBlock`: the span of the block's `Terminator`, or a
-/// computed span for the block, representing the entire range, covering the block's terminator and
-/// all of its statements.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum MirSpanview {
-    /// Default `-Z dump_mir_spanview` or `-Z dump_mir_spanview=statement`
-    Statement,
-    /// `-Z dump_mir_spanview=terminator`
-    Terminator,
-    /// `-Z dump_mir_spanview=block`
-    Block,
-}
-
 /// The different settings that the `-C instrument-coverage` flag can have.
 ///
 /// Coverage instrumentation now supports combining `-C instrument-coverage`
@@ -362,6 +347,7 @@ impl SwitchWithOptPath {
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
+    Hashed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -546,21 +532,6 @@ impl Default for ErrorOutputType {
     fn default() -> Self {
         Self::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
     }
-}
-
-/// Parameter to control path trimming.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum TrimmedDefPaths {
-    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive
-    /// query.
-    #[default]
-    Never,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call
-    /// `good_path_delayed_bug`.
-    Always,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query calls
-    /// `good_path_delayed_bug`.
-    GoodPath,
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -1104,7 +1075,7 @@ impl Default for Options {
             debug_assertions: true,
             actually_rustdoc: false,
             resolve_doc_links: ResolveDocLinks::None,
-            trimmed_def_paths: TrimmedDefPaths::default(),
+            trimmed_def_paths: false,
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
@@ -1161,8 +1132,7 @@ impl UnstableOptions {
         DiagCtxtFlags {
             can_emit_warnings,
             treat_err_as_bug: self.treat_err_as_bug,
-            dont_buffer_diagnostics: self.dont_buffer_diagnostics,
-            report_delayed_bugs: self.report_delayed_bugs,
+            eagerly_emit_delayed_bugs: self.eagerly_emit_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
@@ -1396,6 +1366,8 @@ pub struct CheckCfg {
     pub exhaustive_values: bool,
     /// All the expected values for a config name
     pub expecteds: FxHashMap<Symbol, ExpectedValues<Symbol>>,
+    /// Well known names (only used for diagnostics purposes)
+    pub well_known_names: FxHashSet<Symbol>,
 }
 
 pub enum ExpectedValues<T> {
@@ -1448,9 +1420,10 @@ impl CheckCfg {
         };
 
         macro_rules! ins {
-            ($name:expr, $values:expr) => {
+            ($name:expr, $values:expr) => {{
+                self.well_known_names.insert($name);
                 self.expecteds.entry($name).or_insert_with($values)
-            };
+            }};
         }
 
         // Symbols are inserted in alphabetical order as much as possible.
@@ -1840,7 +1813,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
-        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
+        opt::multi("", "env-set", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2051,23 +2024,14 @@ fn check_error_format_stability(
     early_dcx: &mut EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
-    json_rendered: HumanReadableErrorType,
 ) {
     if !unstable_opts.unstable_options {
-        if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
+        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
             early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
         }
         if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format
         {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
         }
     }
@@ -2625,11 +2589,11 @@ fn parse_logical_env(
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
 
-    for arg in matches.opt_strs("env") {
+    for arg in matches.opt_strs("env-set") {
         if let Some((name, val)) = arg.split_once('=') {
             vars.insert(name.to_string(), val.to_string());
         } else {
-            early_dcx.early_fatal(format!("`--env`: specify value for variable `{arg}`"));
+            early_dcx.early_fatal(format!("`--env-set`: specify value for variable `{arg}`"));
         }
     }
 
@@ -2665,7 +2629,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
-    check_error_format_stability(early_dcx, &unstable_opts, error_format, json_rendered);
+    check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
     if !unstable_opts.unstable_options && json_unused_externs.is_enabled() {
         early_dcx.early_fatal(
@@ -2729,11 +2693,19 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     match cg.symbol_mangling_version {
         // Stable values:
         None | Some(SymbolManglingVersion::V0) => {}
+
         // Unstable values:
         Some(SymbolManglingVersion::Legacy) => {
             if !unstable_opts.unstable_options {
                 early_dcx.early_fatal(
                     "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+                );
+            }
+        }
+        Some(SymbolManglingVersion::Hashed) => {
+            if !unstable_opts.unstable_options {
+                early_dcx.early_fatal(
+                    "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
                 );
             }
         }
@@ -2778,6 +2750,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
                 );
             }
             Some(SymbolManglingVersion::V0) => {}
+            Some(SymbolManglingVersion::Hashed) => {
+                early_dcx.early_warn(
+                    "-C instrument-coverage requires symbol mangling version `v0`, \
+                    but `-C symbol-mangling-version=hashed` was specified",
+                );
+            }
         }
     }
 
@@ -2948,7 +2926,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         debug_assertions,
         actually_rustdoc: false,
         resolve_doc_links: ResolveDocLinks::ExportedMetadata,
-        trimmed_def_paths: TrimmedDefPaths::default(),
+        trimmed_def_paths: false,
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
@@ -3114,7 +3092,7 @@ impl fmt::Display for CrateType {
 }
 
 impl IntoDiagnosticArg for CrateType {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -3227,12 +3205,12 @@ pub enum WasiExecModel {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use super::{
-        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay,
-        LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel,
-        OutFileName, OutputType, OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        TrimmedDefPaths, WasiExecModel,
+        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CrateType, DebugInfo,
+        DebugInfoCompression, ErrorOutputType, FunctionReturn, InliningThreshold,
+        InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3311,6 +3289,7 @@ pub(crate) mod dep_tracking {
         LtoCli,
         DebugInfo,
         DebugInfoCompression,
+        CollapseMacroDebuginfo,
         UnstableFeatures,
         NativeLib,
         SanitizerSet,
@@ -3327,7 +3306,6 @@ pub(crate) mod dep_tracking {
         SymbolManglingVersion,
         RemapPathScopeComponents,
         SourceFileHashAlgorithm,
-        TrimmedDefPaths,
         OutFileName,
         OutputType,
         RealFileName,
@@ -3473,6 +3451,25 @@ pub enum ProcMacroExecutionStrategy {
 
     /// Run the proc-macro code on a different thread.
     CrossThread,
+}
+
+/// How to perform collapse macros debug info
+/// if-ext - if macro from different crate (related to callsite code)
+/// | cmd \ attr    | no  | (unspecified) | external | yes |
+/// | no            | no  | no            | no       | no  |
+/// | (unspecified) | no  | no            | if-ext   | yes |
+/// | external      | no  | if-ext        | if-ext   | yes |
+/// | yes           | yes | yes           | yes      | yes |
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CollapseMacroDebuginfo {
+    /// Don't collapse debuginfo for the macro
+    No = 0,
+    /// Unspecified value
+    Unspecified = 1,
+    /// Collapse debuginfo if the macro comes from a different crate
+    External = 2,
+    /// Collapse debuginfo for the macro
+    Yes = 3,
 }
 
 /// Which format to use for `-Z dump-mono-stats`

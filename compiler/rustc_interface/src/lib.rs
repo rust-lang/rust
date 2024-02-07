@@ -1,11 +1,9 @@
-#![feature(box_patterns)]
 #![feature(decl_macro)]
-#![feature(internal_output_capture)]
-#![feature(thread_spawn_unchecked)]
+#![feature(error_iter)]
 #![feature(lazy_cell)]
 #![feature(let_chains)]
+#![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

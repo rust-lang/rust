@@ -451,34 +451,38 @@ fn align_offset_various_strides() {
         for ptr in 1usize..4 * align {
             unsafe {
                 #[repr(packed)]
-                struct A3(u16, u8);
+                struct A3(#[allow(dead_code)] u16, #[allow(dead_code)] u8);
                 x |= test_stride::<A3>(ptr::invalid::<A3>(ptr), align);
 
-                struct A4(u32);
+                struct A4(#[allow(dead_code)] u32);
                 x |= test_stride::<A4>(ptr::invalid::<A4>(ptr), align);
 
                 #[repr(packed)]
-                struct A5(u32, u8);
+                struct A5(#[allow(dead_code)] u32, #[allow(dead_code)] u8);
                 x |= test_stride::<A5>(ptr::invalid::<A5>(ptr), align);
 
                 #[repr(packed)]
-                struct A6(u32, u16);
+                struct A6(#[allow(dead_code)] u32, #[allow(dead_code)] u16);
                 x |= test_stride::<A6>(ptr::invalid::<A6>(ptr), align);
 
                 #[repr(packed)]
-                struct A7(u32, u16, u8);
+                struct A7(#[allow(dead_code)] u32, #[allow(dead_code)] u16, #[allow(dead_code)] u8);
                 x |= test_stride::<A7>(ptr::invalid::<A7>(ptr), align);
 
                 #[repr(packed)]
-                struct A8(u32, u32);
+                struct A8(#[allow(dead_code)] u32, #[allow(dead_code)] u32);
                 x |= test_stride::<A8>(ptr::invalid::<A8>(ptr), align);
 
                 #[repr(packed)]
-                struct A9(u32, u32, u8);
+                struct A9(#[allow(dead_code)] u32, #[allow(dead_code)] u32, #[allow(dead_code)] u8);
                 x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
 
                 #[repr(packed)]
-                struct A10(u32, u32, u16);
+                struct A10(
+                    #[allow(dead_code)] u32,
+                    #[allow(dead_code)] u32,
+                    #[allow(dead_code)] u16,
+                );
                 x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
 
                 x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
@@ -517,34 +521,46 @@ fn align_offset_various_strides_const() {
             while ptr < 4 * align {
                 unsafe {
                     #[repr(packed)]
-                    struct A3(u16, u8);
+                    struct A3(#[allow(dead_code)] u16, #[allow(dead_code)] u8);
                     test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
 
-                    struct A4(u32);
+                    struct A4(#[allow(dead_code)] u32);
                     test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A5(u32, u8);
+                    struct A5(#[allow(dead_code)] u32, #[allow(dead_code)] u8);
                     test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A6(u32, u16);
+                    struct A6(#[allow(dead_code)] u32, #[allow(dead_code)] u16);
                     test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A7(u32, u16, u8);
+                    struct A7(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u16,
+                        #[allow(dead_code)] u8,
+                    );
                     test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A8(u32, u32);
+                    struct A8(#[allow(dead_code)] u32, #[allow(dead_code)] u32);
                     test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A9(u32, u32, u8);
+                    struct A9(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u8,
+                    );
                     test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A10(u32, u32, u16);
+                    struct A10(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u16,
+                    );
                     test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
 
                     test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
@@ -672,7 +688,7 @@ fn align_offset_issue_103361() {
     const SIZE: usize = 1 << 30;
     #[cfg(target_pointer_width = "16")]
     const SIZE: usize = 1 << 13;
-    struct HugeSize([u8; SIZE - 1]);
+    struct HugeSize(#[allow(dead_code)] [u8; SIZE - 1]);
     let _ = ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
 }
 
@@ -684,7 +700,7 @@ fn align_offset_issue_103361_const() {
     const SIZE: usize = 1 << 30;
     #[cfg(target_pointer_width = "16")]
     const SIZE: usize = 1 << 13;
-    struct HugeSize([u8; SIZE - 1]);
+    struct HugeSize(#[allow(dead_code)] [u8; SIZE - 1]);
 
     const {
         assert!(ptr::invalid::<HugeSize>(SIZE - 1).align_offset(SIZE) == SIZE - 1);
@@ -834,7 +850,7 @@ fn ptr_metadata_bounds() {
 fn dyn_metadata() {
     #[derive(Debug)]
     #[repr(align(32))]
-    struct Something([u8; 47]);
+    struct Something(#[allow(dead_code)] [u8; 47]);
 
     let value = Something([0; 47]);
     let trait_object: &dyn Debug = &value;

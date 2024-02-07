@@ -45,7 +45,7 @@ mod allow {
 }
 
 pub fn incorrect_case(db: &dyn HirDatabase, owner: ModuleDefId) -> Vec<IncorrectCase> {
-    let _p = profile::span("validate_module_item");
+    let _p = tracing::span!(tracing::Level::INFO, "validate_module_item").entered();
     let mut validator = DeclValidator::new(db);
     validator.validate_item(owner);
     validator.sink
@@ -387,7 +387,7 @@ impl<'a> DeclValidator<'a> {
 
         for (id, replacement) in pats_replacements {
             if let Ok(source_ptr) = source_map.pat_syntax(id) {
-                if let Some(ptr) = source_ptr.value.clone().cast::<ast::IdentPat>() {
+                if let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() {
                     let root = source_ptr.file_syntax(self.db.upcast());
                     let ident_pat = ptr.to_node(&root);
                     let parent = match ident_pat.syntax().parent() {
@@ -582,11 +582,11 @@ impl<'a> DeclValidator<'a> {
         // Check the field names.
         let enum_fields_replacements = data
             .variants
-            .values()
-            .filter_map(|variant| {
+            .iter()
+            .filter_map(|(_, name)| {
                 Some(Replacement {
-                    current_name: variant.name.clone(),
-                    suggested_text: to_camel_case(&variant.name.to_smol_str())?,
+                    current_name: name.clone(),
+                    suggested_text: to_camel_case(&name.to_smol_str())?,
                     expected_case: CaseType::UpperCamelCase,
                 })
             })

@@ -10,7 +10,7 @@ use hir_expand::{
     AstId,
 };
 use intern::Interned;
-use syntax::ast::{self, HasName};
+use syntax::ast::{self, HasName, IsString};
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
@@ -116,12 +116,16 @@ pub enum TypeRef {
     Path(Path),
     RawPtr(Box<TypeRef>, Mutability),
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
-    // FIXME: for full const generics, the latter element (length) here is going to have to be an
-    // expression that is further lowered later in hir_ty.
+    // FIXME: This should be Array(Box<TypeRef>, Ast<ConstArg>),
     Array(Box<TypeRef>, ConstRef),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/, bool /*is_unsafe*/),
+    Fn(
+        Vec<(Option<Name>, TypeRef)>,
+        bool,                  /*varargs*/
+        bool,                  /*is_unsafe*/
+        Option<Interned<str>>, /* abi */
+    ),
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
     Macro(AstId<ast::MacroCall>),
@@ -226,8 +230,17 @@ impl TypeRef {
                 } else {
                     Vec::new()
                 };
+                fn lower_abi(abi: ast::Abi) -> Interned<str> {
+                    match abi.abi_string() {
+                        Some(tok) => Interned::new_str(tok.text_without_quotes()),
+                        // `extern` default to be `extern "C"`.
+                        _ => Interned::new_str("C"),
+                    }
+                }
+
+                let abi = inner.abi().map(lower_abi);
                 params.push((None, ret_ty));
-                TypeRef::Fn(params, is_varargs, inner.unsafe_token().is_some())
+                TypeRef::Fn(params, is_varargs, inner.unsafe_token().is_some(), abi)
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
@@ -261,7 +274,7 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(params, _, _) => {
+                TypeRef::Fn(params, _, _, _) => {
                     params.iter().for_each(|(_, param_type)| go(param_type, f))
                 }
                 TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
@@ -397,11 +410,7 @@ impl ConstRef {
         lower_ctx: &LowerCtx<'_>,
         param: &ast::ConstParam,
     ) -> Option<Self> {
-        let default = param.default_val();
-        match default {
-            Some(_) => Some(Self::from_const_arg(lower_ctx, default)),
-            None => None,
-        }
+        param.default_val().map(|default| Self::from_const_arg(lower_ctx, Some(default)))
     }
 
     pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {

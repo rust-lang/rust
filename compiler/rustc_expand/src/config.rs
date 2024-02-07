@@ -256,12 +256,7 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(
-            &cfg_predicate,
-            &self.sess.parse_sess,
-            self.lint_node_id,
-            self.features,
-        ) {
+        if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
             return vec![];
         }
 
@@ -362,19 +357,14 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 return (true, None);
             }
         };
         (
             parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
-                attr::cfg_matches(
-                    meta_item,
-                    &self.sess.parse_sess,
-                    self.lint_node_id,
-                    self.features,
-                )
+                attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),
         )
@@ -383,9 +373,11 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if self.features.is_some_and(|features| !features.stmt_expr_attributes) {
+        if self.features.is_some_and(|features| !features.stmt_expr_attributes)
+            && !attr.span.allows_unstable(sym::stmt_expr_attributes)
+        {
             let mut err = feature_err(
-                &self.sess.parse_sess,
+                &self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
                 "attributes on expressions are experimental",

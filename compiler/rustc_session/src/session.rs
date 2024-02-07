@@ -15,16 +15,15 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
+    AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
-use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
-use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic,
-    LazyFallbackBundle, TerminalUrl,
+    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrCode,
+    ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -38,13 +37,12 @@ use rustc_target::spec::{
 };
 
 use std::any::Any;
-use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{atomic::AtomicBool, atomic::Ordering::SeqCst, Arc};
 
 struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -113,7 +111,7 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Limit {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -152,7 +150,7 @@ pub struct Session {
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
 
-    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
+    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -265,7 +263,7 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
-            self.dcx().emit_warning(errors::SkippingConstChecks {
+            self.dcx().emit_warn(errors::SkippingConstChecks {
                 unleashed_features: unleashed_features
                     .iter()
                     .map(|(span, gate)| {
@@ -290,19 +288,9 @@ impl Session {
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
         self.dcx().print_error_count(registry);
-        self.emit_future_breakage();
-    }
-
-    fn emit_future_breakage(&self) {
-        if !self.opts.json_future_incompat {
-            return;
+        if self.opts.json_future_incompat {
+            self.dcx().emit_future_breakage_report();
         }
-
-        let diags = self.dcx().take_future_breakage_diagnostics();
-        if diags.is_empty() {
-            return;
-        }
-        self.dcx().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.
@@ -318,35 +306,19 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            err.code(error_code!(E0658));
+            err.code(E0658);
         }
-        add_feature_diagnostics(&mut err, &self.parse_sess, feature);
+        add_feature_diagnostics(&mut err, self, feature);
         err
     }
 
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
+        // We must include lint errors here.
         if let Some(reported) = self.dcx().has_errors_or_lint_errors() {
-            let _ = self.dcx().emit_stashed_diagnostics();
+            self.dcx().emit_stashed_diagnostics();
             Err(reported)
         } else {
             Ok(())
-        }
-    }
-
-    // FIXME(matthewjasper) Remove this method, it should never be needed.
-    pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorGuaranteed>
-    where
-        F: FnOnce() -> T,
-    {
-        let old_count = self.dcx().err_count();
-        let result = f();
-        if self.dcx().err_count() == old_count {
-            Ok(result)
-        } else {
-            Err(self.dcx().span_delayed_bug(
-                rustc_span::DUMMY_SP,
-                "`self.err_count()` changed but an error was not emitted",
-            ))
         }
     }
 
@@ -539,9 +511,9 @@ impl Session {
         *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
     }
 
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
+    pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
+        ReadGuard::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
             IncrCompSession::NotInitialized => panic!(
                 "trying to get session directory from `IncrCompSession`: {:?}",
                 *incr_comp_session,
@@ -554,7 +526,7 @@ impl Session {
         })
     }
 
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
+    pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
@@ -576,7 +548,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
-                        self.dcx().emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
+                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
@@ -795,6 +767,13 @@ impl Session {
         self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn direct_access_external_data(&self) -> Option<bool> {
+        self.opts
+            .unstable_opts
+            .direct_access_external_data
+            .or(self.target.direct_access_external_data)
+    }
+
     pub fn split_debuginfo(&self) -> SplitDebuginfo {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
     }
@@ -911,7 +890,7 @@ impl Session {
         CodegenUnits::Default(16)
     }
 
-    pub fn teach(&self, code: &DiagnosticId) -> bool {
+    pub fn teach(&self, code: ErrCode) -> bool {
         self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }
 
@@ -1000,7 +979,7 @@ fn default_emitter(
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
-                let emitter = AnnotateSnippetEmitterWriter::new(
+                let emitter = AnnotateSnippetEmitter::new(
                     Some(source_map),
                     bundle,
                     fallback_bundle,
@@ -1009,7 +988,7 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = EmitterWriter::stderr(color_config, fallback_bundle)
+                let emitter = HumanEmitter::stderr(color_config, fallback_bundle)
                     .fluent_bundle(bundle)
                     .sm(Some(source_map))
                     .short_message(short)
@@ -1131,7 +1110,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                dcx.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warn(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1182,7 +1161,7 @@ pub fn build_session(
         parse_sess,
         sysroot,
         io,
-        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
+        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
         optimization_fuel,
@@ -1274,7 +1253,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
+    if sess.crt_static(None)
+        && !sess.opts.unstable_opts.sanitizer.is_empty()
+        && !sess.target.is_like_msvc
+    {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
@@ -1340,7 +1322,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.dcx().emit_warning(errors::StackProtectorNotSupportedForTarget {
+            sess.dcx().emit_warn(errors::StackProtectorNotSupportedForTarget {
                 stack_protector: sess.opts.unstable_opts.stack_protector,
                 target_triple: &sess.opts.target_triple,
             });
@@ -1446,7 +1428,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_note(msg).emit()
+        self.dcx.note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1459,13 +1441,13 @@ impl EarlyDiagCtxt {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.dcx.struct_err(msg).emit()
+        self.dcx.err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.dcx.struct_fatal(msg).emit()
+        self.dcx.fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1480,7 +1462,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_warn(msg).emit()
+        self.dcx.warn(msg)
     }
 
     pub fn initialize_checked_jobserver(&self) {
@@ -1488,7 +1470,10 @@ impl EarlyDiagCtxt {
         jobserver::initialize_checked(|err| {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            self.dcx.struct_warn(err).note("the build environment is likely misconfigured").emit()
+            self.dcx
+                .struct_warn(err)
+                .with_note("the build environment is likely misconfigured")
+                .emit()
         });
     }
 }
@@ -1501,7 +1486,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, fallback_bundle).short_message(short))
+            Box::new(HumanEmitter::stderr(color_config, fallback_bundle).short_message(short))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
             pretty,
@@ -1522,16 +1507,25 @@ pub trait RemapFileNameExt {
     where
         Self: 'a;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_>;
+    /// Returns a possibly remapped filename based on the passed scope and remap cli options.
+    ///
+    /// One and only one scope should be passed to this method. For anything related to
+    /// "codegen" see the [`RemapFileNameExt::for_codegen`] method.
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_>;
 
+    /// Return a possibly remapped filename, to be used in "codegen" related parts.
     fn for_codegen(&self, sess: &Session) -> Self::Output<'_>;
 }
 
 impl RemapFileNameExt for rustc_span::FileName {
     type Output<'a> = rustc_span::FileNameDisplay<'a>;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_> {
-        if sess.opts.unstable_opts.remap_path_scope.contains(scopes) {
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to for_scope"
+        );
+        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
             self.prefer_remapped_unconditionaly()
         } else {
             self.prefer_local()
@@ -1550,8 +1544,12 @@ impl RemapFileNameExt for rustc_span::FileName {
 impl RemapFileNameExt for rustc_span::RealFileName {
     type Output<'a> = &'a Path;
 
-    fn for_scope(&self, sess: &Session, scopes: RemapPathScopeComponents) -> Self::Output<'_> {
-        if sess.opts.unstable_opts.remap_path_scope.contains(scopes) {
+    fn for_scope(&self, sess: &Session, scope: RemapPathScopeComponents) -> Self::Output<'_> {
+        assert!(
+            scope.bits().count_ones() == 1,
+            "one and only one scope should be passed to for_scope"
+        );
+        if sess.opts.unstable_opts.remap_path_scope.contains(scope) {
             self.remapped_path_if_available()
         } else {
             self.local_path_if_available()

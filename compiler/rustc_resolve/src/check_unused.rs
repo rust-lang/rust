@@ -20,7 +20,7 @@
 //    separate step to be able to collapse the adjacent spans that rustfix
 //    will remove
 //
-//  - `check_crate` finally emits the diagnostics based on the data generated
+//  - `check_unused` finally emits the diagnostics based on the data generated
 //    in the last step
 
 use crate::imports::ImportKind;
@@ -290,7 +290,7 @@ impl Resolver<'_, '_> {
                     || import.expect_vis().is_public()
                     || import.span.is_dummy() =>
                 {
-                    if let ImportKind::MacroUse = import.kind {
+                    if let ImportKind::MacroUse { .. } = import.kind {
                         if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
                                 MACRO_USE_EXTERN_CRATE,
@@ -315,7 +315,7 @@ impl Resolver<'_, '_> {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }
                 }
-                ImportKind::MacroUse => {
+                ImportKind::MacroUse { .. } => {
                     let msg = "unused `#[macro_use]` import";
                     self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.root_id, import.span, msg);
                 }

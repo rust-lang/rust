@@ -1,0 +1,25 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:11:16
+   |
+LL | pub fn test(_: Foo) {}
+   |                ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use local::Foo;
+   |
+
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/dont-suggest-foreign-doc-hidden.rs:14:17
+   |
+LL | pub fn test2(_: Bar) {}
+   |                 ^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use hidden_struct::Bar;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

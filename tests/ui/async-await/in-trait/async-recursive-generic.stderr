@@ -1,11 +1,13 @@
-error[E0733]: recursion in an `async fn` requires boxing
+error[E0733]: recursion in an async fn requires boxing
   --> $DIR/async-recursive-generic.rs:8:5
    |
 LL |     async fn foo_recursive(&self, n: usize) -> T {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive `async fn`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |             self.foo_recursive(n - 1).await
+   |             ------------------------------- recursive call here
    |
-   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
-   = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
 
 error: aborting due to 1 previous error
 

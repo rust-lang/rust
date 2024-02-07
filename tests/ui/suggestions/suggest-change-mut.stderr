@@ -27,9 +27,6 @@ error[E0599]: the method `read_until` exists for struct `BufReader<&T>`, but its
    |
 LL |         stream_reader.read_until(b'\n', &mut buffer).expect("Reading into buffer failed");
    |                       ^^^^^^^^^^ method cannot be called on `BufReader<&T>` due to unsatisfied trait bounds
-  --> $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL
-   |
-   = note: doesn't satisfy `BufReader<&T>: BufRead`
    |
    = note: the following trait bounds were not satisfied:
            `&T: std::io::Read`

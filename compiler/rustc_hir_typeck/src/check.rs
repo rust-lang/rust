@@ -2,8 +2,7 @@ use std::cell::RefCell;
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::CoroutineTypes;
-use crate::FnCtxt;
+use crate::{CoroutineTypes, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -28,10 +27,10 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 pub(super) fn check_fn<'a, 'tcx>(
     fcx: &mut FnCtxt<'a, 'tcx>,
     fn_sig: ty::FnSig<'tcx>,
+    coroutine_types: Option<CoroutineTypes<'tcx>>,
     decl: &'tcx hir::FnDecl<'tcx>,
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
-    closure_kind: Option<hir::ClosureKind>,
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.local_def_id_to_hir_id(fn_def_id);
@@ -49,53 +48,12 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.param_env,
         ));
 
+    fcx.coroutine_types = coroutine_types;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
 
     let span = body.value.span;
 
     forbid_intrinsic_abi(tcx, span, fn_sig.abi);
-
-    if let Some(hir::ClosureKind::Coroutine(kind)) = closure_kind {
-        let yield_ty = match kind {
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
-            | hir::CoroutineKind::Coroutine(_) => {
-                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
-                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-                yield_ty
-            }
-            // HACK(-Ztrait-solver=next): In the *old* trait solver, we must eagerly
-            // guide inference on the yield type so that we can handle `AsyncIterator`
-            // in this block in projection correctly. In the new trait solver, it is
-            // not a problem.
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
-                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
-                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-
-                Ty::new_adt(
-                    tcx,
-                    tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, Some(span))),
-                    tcx.mk_args(&[Ty::new_adt(
-                        tcx,
-                        tcx.adt_def(tcx.require_lang_item(hir::LangItem::Option, Some(span))),
-                        tcx.mk_args(&[yield_ty.into()]),
-                    )
-                    .into()]),
-                )
-            }
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => Ty::new_unit(tcx),
-        };
-
-        // Resume type defaults to `()` if the coroutine has no argument.
-        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx));
-
-        fcx.resume_yield_tys = Some((resume_ty, yield_ty));
-    }
 
     GatherLocalsVisitor::new(fcx).visit_body(body);
 
@@ -114,22 +72,29 @@ pub(super) fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        let ty_span = try { inputs_hir?.get(idx)?.span };
+        let ty: Option<&hir::Ty<'_>> = inputs_hir.and_then(|h| h.get(idx));
+        let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
+        if param.pat.is_never_pattern() {
+            fcx.function_diverges_because_of_empty_arguments.set(Diverges::Always {
+                span: param.pat.span,
+                custom_note: Some("any code following a never pattern is unreachable"),
+            });
+        }
 
         // Check that argument is Sized.
         if !params_can_be_unsized {
             fcx.require_type_is_sized(
                 param_ty,
                 param.pat.span,
-                // ty_span == binding_span iff this is a closure parameter with no type ascription,
+                // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 traits::SizedArgumentType(
                     if ty_span == Some(param.span) && tcx.is_closure_or_coroutine(fn_def_id.into())
                     {
                         None
                     } else {
-                        ty_span
+                        ty.map(|ty| ty.hir_id)
                     },
                 ),
             );
@@ -145,26 +110,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::Return(ty) => ty.span,
     };
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.is_whole_body.set(true);
     fcx.check_return_expr(body.value, false);
-
-    // We insert the deferred_coroutine_interiors entry after visiting the body.
-    // This ensures that all nested coroutines appear before the entry of this coroutine.
-    // resolve_coroutine_interiors relies on this property.
-    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(coroutine_kind)) = closure_kind {
-        let interior = fcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_coroutine_interiors.borrow_mut().push((
-            fn_def_id,
-            body.id(),
-            interior,
-            coroutine_kind,
-        ));
-
-        let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
-        Some(CoroutineTypes { resume_ty, yield_ty, interior })
-    } else {
-        None
-    };
 
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't
@@ -201,30 +148,26 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
-    coroutine_ty
+    fcx.coroutine_types
 }
 
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
+    let span = tcx.def_span(fn_id);
+
     let DefKind::Fn = tcx.def_kind(fn_id) else {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should be a function");
         return;
     };
 
     let generic_counts = tcx.generics_of(fn_id).own_counts();
     if generic_counts.types != 0 {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should have no type parameters");
     }
     if generic_counts.consts != 0 {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should have no const parameters");
     }
 
-    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
-        tcx.dcx().err("language item required, but not found: `panic_info`");
-        return;
-    };
+    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
@@ -256,11 +199,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
 
     let _ = check_function_signature(
         tcx,
-        ObligationCause::new(
-            tcx.def_span(fn_id),
-            fn_id,
-            ObligationCauseCode::LangFunctionType(sym::panic_impl),
-        ),
+        ObligationCause::new(span, fn_id, ObligationCauseCode::LangFunctionType(sym::panic_impl)),
         fn_id.into(),
         expected_sig,
     );

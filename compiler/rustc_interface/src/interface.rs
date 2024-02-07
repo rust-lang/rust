@@ -45,20 +45,19 @@ pub struct Compiler {
 pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
-            let sess = ParseSess::with_silent_emitter(Some(format!(
+            let sess = ParseSess::with_silent_emitter(format!(
                 "this error occurred on the command line: `--cfg={s}`"
-            )));
+            ));
             let filename = FileName::cfg_spec_source_code(&s);
 
             macro_rules! error {
                 ($reason: expr) => {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
-                    dcx.struct_fatal(format!(
+                    dcx.fatal(format!(
                         concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
                         s
-                    ))
-                    .emit();
+                    ));
                 };
             }
 
@@ -82,7 +81,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                     Ok(..) => {}
                     Err(err) => err.cancel(),
                 },
-                Err(errs) => drop(errs),
+                Err(errs) => errs.into_iter().for_each(|err| err.cancel()),
             }
 
             // If the user tried to use a key="value" flag, but is missing the quotes, provide
@@ -108,20 +107,19 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
     for s in specs {
-        let sess = ParseSess::with_silent_emitter(Some(format!(
+        let sess = ParseSess::with_silent_emitter(format!(
             "this error occurred on the command line: `--check-cfg={s}`"
-        )));
+        ));
         let filename = FileName::cfg_spec_source_code(&s);
 
         macro_rules! error {
             ($reason:expr) => {
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                dcx.struct_fatal(format!(
+                dcx.fatal(format!(
                     concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                     s
                 ))
-                .emit()
             };
         }
 
@@ -129,9 +127,12 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let Ok(mut parser) = maybe_new_parser_from_source_str(&sess, filename, s.to_string())
-        else {
-            expected_error();
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+            Ok(parser) => parser,
+            Err(errs) => {
+                errs.into_iter().for_each(|err| err.cancel());
+                expected_error();
+            }
         };
 
         let meta_item = match parser.parse_meta_item() {
@@ -199,8 +200,15 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
                         if !args.is_empty() {
                             error!("`any()` must be empty");
                         }
+                    } else if arg.has_name(sym::none)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        values.insert(None);
+                        if !args.is_empty() {
+                            error!("`none()` must be empty");
+                        }
                     } else {
-                        error!("`values()` arguments must be string literals or `any()`");
+                        error!("`values()` arguments must be string literals, `none()` or `any()`");
                     }
                 }
             } else {
@@ -208,7 +216,9 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             }
         }
 
-        if values.is_empty() && !values_any_specified && !any_specified {
+        if !values_specified && !any_specified {
+            // `cfg(name)` is equivalent to `cfg(name, values(none()))` so add
+            // an implicit `none()`
             values.insert(None);
         } else if !values.is_empty() && values_any_specified {
             error!(

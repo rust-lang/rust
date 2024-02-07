@@ -108,7 +108,7 @@ pub enum SuffixKind {
 }
 
 impl IntoDiagnosticArg for PrefixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
@@ -130,7 +130,7 @@ impl IntoDiagnosticArg for PrefixKind {
 }
 
 impl IntoDiagnosticArg for SuffixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::Continues => "continues",
@@ -164,10 +164,10 @@ impl AddToDiagnostic for RegionExplanation<'_> {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("pref_kind", self.prefix);
-        diag.set_arg("suff_kind", self.suffix);
-        diag.set_arg("desc_kind", self.desc.kind);
-        diag.set_arg("desc_arg", self.desc.arg);
+        diag.arg("pref_kind", self.prefix);
+        diag.arg("suff_kind", self.suffix);
+        diag.arg("desc_kind", self.desc.kind);
+        diag.arg("desc_arg", self.desc.arg);
 
         let msg = f(diag, fluent::infer_region_explanation.into());
         if let Some(span) = self.desc.span {

@@ -43,7 +43,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             let prev_token = parens.syntax().first_token().and_then(|it| it.prev_token());
             let need_to_add_ws = match prev_token {
                 Some(it) => {
-                    let tokens = vec![T![&], T![!], T!['('], T!['['], T!['{']];
+                    let tokens = [T![&], T![!], T!['('], T!['['], T!['{']];
                     it.kind() != SyntaxKind::WHITESPACE && !tokens.contains(&it.kind())
                 }
                 None => false,

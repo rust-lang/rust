@@ -594,7 +594,7 @@ pub struct RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
+    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site";
 }
 
 impl Step for RustAnalyzer {
@@ -628,7 +628,7 @@ impl Step for RustAnalyzer {
             tool: "rust-analyzer",
             mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer",
-            extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
+            extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
         })
@@ -673,9 +673,9 @@ impl Step for RustAnalyzerProcMacroSrv {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer-proc-macro-srv",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
-            extra_features: vec!["sysroot-abi".to_owned()],
+            extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
         });

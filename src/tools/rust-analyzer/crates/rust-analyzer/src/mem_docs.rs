@@ -62,10 +62,11 @@ impl MemDocs {
 #[derive(Debug, Clone)]
 pub(crate) struct DocumentData {
     pub(crate) version: i32,
+    pub(crate) data: Vec<u8>,
 }
 
 impl DocumentData {
-    pub(crate) fn new(version: i32) -> Self {
-        DocumentData { version }
+    pub(crate) fn new(version: i32, data: Vec<u8>) -> Self {
+        DocumentData { version, data }
     }
 }

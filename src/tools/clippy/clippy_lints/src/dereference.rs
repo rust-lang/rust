@@ -830,6 +830,7 @@ impl TyCoercionStability {
                 | TyKind::Infer
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
+                | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
             };
         }
@@ -880,6 +881,7 @@ impl TyCoercionStability {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::Alias(ty::Projection, _) => Self::Deref,

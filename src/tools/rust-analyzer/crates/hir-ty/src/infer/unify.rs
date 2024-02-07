@@ -250,9 +250,7 @@ impl<'a> InferenceTable<'a> {
                             // and registering an obligation. But it needs chalk support, so we handle the most basic
                             // case (a non associated const without generic parameters) manually.
                             if subst.len(Interner) == 0 {
-                                if let Ok(eval) =
-                                    self.db.const_eval((*c_id).into(), subst.clone(), None)
-                                {
+                                if let Ok(eval) = self.db.const_eval(*c_id, subst.clone(), None) {
                                     eval
                                 } else {
                                     unknown_const(c.data(Interner).ty.clone())
@@ -490,9 +488,8 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn try_obligation(&mut self, goal: Goal) -> Option<Solution> {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         let canonicalized = self.canonicalize(in_env);
-        let solution =
-            self.db.trait_solve(self.trait_env.krate, self.trait_env.block, canonicalized.value);
-        solution
+
+        self.db.trait_solve(self.trait_env.krate, self.trait_env.block, canonicalized.value)
     }
 
     pub(crate) fn register_obligation(&mut self, goal: Goal) {
@@ -512,7 +509,8 @@ impl<'a> InferenceTable<'a> {
     }
 
     pub(crate) fn resolve_obligations_as_possible(&mut self) {
-        let _span = profile::span("resolve_obligations_as_possible");
+        let _span =
+            tracing::span!(tracing::Level::INFO, "resolve_obligations_as_possible").entered();
         let mut changed = true;
         let mut obligations = mem::take(&mut self.resolve_obligations_buffer);
         while mem::take(&mut changed) {

@@ -6,6 +6,7 @@ use pulldown_cmark::{Event, Parser, Tag};
 /// Currently limited in styling, i.e. no ascii tables or lists
 pub(crate) fn remove_markdown(markdown: &str) -> String {
     let mut out = String::new();
+    out.reserve_exact(markdown.len());
     let parser = Parser::new(markdown);
 
     for event in parser {
@@ -13,10 +14,7 @@ pub(crate) fn remove_markdown(markdown: &str) -> String {
             Event::Text(text) | Event::Code(text) => out.push_str(&text),
             Event::SoftBreak => out.push(' '),
             Event::HardBreak | Event::Rule | Event::End(Tag::CodeBlock(_)) => out.push('\n'),
-            Event::End(Tag::Paragraph) => {
-                out.push('\n');
-                out.push('\n');
-            }
+            Event::End(Tag::Paragraph) => out.push_str("\n\n"),
             Event::Start(_)
             | Event::End(_)
             | Event::Html(_)
@@ -25,7 +23,10 @@ pub(crate) fn remove_markdown(markdown: &str) -> String {
         }
     }
 
-    if let Some(p) = out.rfind(|c| c != '\n') {
+    if let Some(mut p) = out.rfind(|c| c != '\n') {
+        while !out.is_char_boundary(p + 1) {
+            p += 1;
+        }
         out.drain(p + 1..);
     }
 
@@ -152,5 +153,11 @@ book] or the [Reference].
             Along with being made public via pub, fn can also have an extern added for use in FFI.
 
             For more information on the various types of functions and how they're used, consult the Rust book or the Reference."#]].assert_eq(&res);
+    }
+
+    #[test]
+    fn on_char_boundary() {
+        expect!["a┘"].assert_eq(&remove_markdown("```text\na┘\n```"));
+        expect!["وقار"].assert_eq(&remove_markdown("```\nوقار\n```\n"));
     }
 }

@@ -3,12 +3,10 @@
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{
-    byte_from_char, unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit,
-    Mode,
+    byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode, MixedUnit, Mode,
 };
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use std::ops::Range;
 use std::{ascii, fmt, str};
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
@@ -39,7 +37,6 @@ pub enum LitError {
     InvalidFloatSuffix,
     NonDecimalFloat(u32),
     IntTooLarge(u32),
-    NulInCStr(Range<usize>),
 }
 
 impl LitKind {
@@ -50,6 +47,9 @@ impl LitKind {
             return Err(LitError::InvalidSuffix);
         }
 
+        // For byte/char/string literals, chars and escapes have already been
+        // checked in the lexer (in `cook_lexer_literal`). So we can assume all
+        // chars and escapes are valid here.
         Ok(match kind {
             token::Bool => {
                 assert!(symbol.is_bool_lit());
@@ -58,12 +58,12 @@ impl LitKind {
             token::Byte => {
                 return unescape_byte(symbol.as_str())
                     .map(LitKind::Byte)
-                    .map_err(|_| LitError::LexerError);
+                    .map_err(|_| panic!("failed to unescape byte literal"));
             }
             token::Char => {
                 return unescape_char(symbol.as_str())
                     .map(LitKind::Char)
-                    .map_err(|_| LitError::LexerError);
+                    .map_err(|_| panic!("failed to unescape char literal"));
             }
 
             // There are some valid suffixes for integer and float literals,
@@ -79,26 +79,22 @@ impl LitKind {
                 let s = symbol.as_str();
                 // Vanilla strings are so common we optimize for the common case where no chars
                 // requiring special behaviour are present.
-                let symbol = if s.contains(['\\', '\r']) {
+                let symbol = if s.contains('\\') {
                     let mut buf = String::with_capacity(s.len());
-                    let mut error = Ok(());
                     // Force-inlining here is aggressive but the closure is
-                    // called on every char in the string, so it can be
-                    // hot in programs with many long strings.
-                    unescape_literal(
+                    // called on every char in the string, so it can be hot in
+                    // programs with many long strings containing escapes.
+                    unescape_unicode(
                         s,
                         Mode::Str,
                         &mut #[inline(always)]
-                        |_, unescaped_char| match unescaped_char {
+                        |_, c| match c {
                             Ok(c) => buf.push(c),
                             Err(err) => {
-                                if err.is_fatal() {
-                                    error = Err(LitError::LexerError);
-                                }
+                                assert!(!err.is_fatal(), "failed to unescape string literal")
                             }
                         },
                     );
-                    error?;
                     Symbol::intern(&buf)
                 } else {
                     symbol
@@ -106,92 +102,46 @@ impl LitKind {
                 LitKind::Str(symbol, ast::StrStyle::Cooked)
             }
             token::StrRaw(n) => {
-                // Raw strings have no escapes, so we only need to check for invalid chars, and we
-                // can reuse the symbol on success.
-                let mut error = Ok(());
-                unescape_literal(symbol.as_str(), Mode::RawStr, &mut |_, unescaped_char| {
-                    match unescaped_char {
-                        Ok(_) => {}
-                        Err(err) => {
-                            if err.is_fatal() {
-                                error = Err(LitError::LexerError);
-                            }
-                        }
-                    }
-                });
-                error?;
+                // Raw strings have no escapes so no work is needed here.
                 LitKind::Str(symbol, ast::StrStyle::Raw(n))
             }
             token::ByteStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                let mut error = Ok(());
-                unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
+                unescape_unicode(s, Mode::ByteStr, &mut |_, c| match c {
                     Ok(c) => buf.push(byte_from_char(c)),
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        assert!(!err.is_fatal(), "failed to unescape string literal")
                     }
                 });
-                error?;
                 LitKind::ByteStr(buf.into(), StrStyle::Cooked)
             }
             token::ByteStrRaw(n) => {
-                // Raw strings have no escapes, so we only need to check for invalid chars, and we
-                // can convert the symbol directly to a `Lrc<u8>` on success.
-                let s = symbol.as_str();
-                let mut error = Ok(());
-                unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
-                    Ok(_) => {}
-                    Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
-                    }
-                });
-                LitKind::ByteStr(s.to_owned().into_bytes().into(), StrStyle::Raw(n))
+                // Raw strings have no escapes so we can convert the symbol
+                // directly to a `Lrc<u8>`.
+                let buf = symbol.as_str().to_owned().into_bytes();
+                LitKind::ByteStr(buf.into(), StrStyle::Raw(n))
             }
             token::CStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                let mut error = Ok(());
-                unescape_c_string(s, Mode::CStr, &mut |span, c| match c {
-                    Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
-                        error = Err(LitError::NulInCStr(span));
-                    }
-                    Ok(CStrUnit::Byte(b)) => buf.push(b),
-                    Ok(CStrUnit::Char(c)) => {
+                unescape_mixed(s, Mode::CStr, &mut |_span, c| match c {
+                    Ok(MixedUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }
+                    Ok(MixedUnit::HighByte(b)) => buf.push(b),
                     Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
+                        assert!(!err.is_fatal(), "failed to unescape C string literal")
                     }
                 });
-                error?;
                 buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Cooked)
             }
             token::CStrRaw(n) => {
-                // Raw strings have no escapes, so we only need to check for invalid chars, and we
-                // can convert the symbol directly to a `Lrc<u8>` on success.
-                let s = symbol.as_str();
-                let mut error = Ok(());
-                unescape_c_string(s, Mode::RawCStr, &mut |span, c| match c {
-                    Ok(CStrUnit::Byte(0) | CStrUnit::Char('\0')) => {
-                        error = Err(LitError::NulInCStr(span));
-                    }
-                    Ok(_) => {}
-                    Err(err) => {
-                        if err.is_fatal() {
-                            error = Err(LitError::LexerError);
-                        }
-                    }
-                });
-                error?;
-                let mut buf = s.to_owned().into_bytes();
+                // Raw strings have no escapes so we can convert the symbol
+                // directly to a `Lrc<u8>` after appending the terminating NUL
+                // char.
+                let mut buf = symbol.as_str().to_owned().into_bytes();
                 buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Raw(n))
             }
@@ -374,7 +324,7 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
     };
 
     let s = &s[if base != 10 { 2 } else { 0 }..];
-    u128::from_str_radix(s, base).map(|i| LitKind::Int(i, ty)).map_err(|_| {
+    u128::from_str_radix(s, base).map(|i| LitKind::Int(i.into(), ty)).map_err(|_| {
         // Small bases are lexed as if they were base 10, e.g, the string
         // might be `0b10201`. This will cause the conversion above to fail,
         // but these kinds of errors are already reported by the lexer.

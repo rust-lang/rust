@@ -1,10 +1,10 @@
 //! Various code related to computing outlives relations.
 use self::env::OutlivesEnvironment;
 use super::region_constraints::RegionConstraintData;
-use super::{InferCtxt, RegionResolutionError};
+use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
-use rustc_middle::traits::query::OutlivesBound;
+use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
 
 pub mod components;
@@ -41,12 +41,25 @@ impl<'tcx> InferCtxt<'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    ///
+    /// If you are in a crate that has access to `rustc_trait_selection`,
+    /// then it's probably better to use `resolve_regions`,
+    /// which knows how to normalize registered region obligations.
     #[must_use]
-    pub fn resolve_regions(
+    pub fn resolve_regions_with_normalize(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
+        deeply_normalize_ty: impl Fn(
+            ty::PolyTypeOutlivesPredicate<'tcx>,
+            SubregionOrigin<'tcx>,
+        ) -> Result<ty::PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.process_registered_region_obligations(outlives_env);
+        match self.process_registered_region_obligations(outlives_env, deeply_normalize_ty) {
+            Ok(()) => {}
+            Err((clause, origin)) => {
+                return vec![RegionResolutionError::CannotNormalize(clause, origin)];
+            }
+        };
 
         let (var_infos, data) = {
             let mut inner = self.inner.borrow_mut();

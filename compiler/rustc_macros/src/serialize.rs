@@ -32,6 +32,14 @@ pub fn meta_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
 
 pub fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
+    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_span::SpanDecoder});
+    s.add_bounds(synstructure::AddBounds::Generics);
+
+    decodable_body(s, decoder_ty)
+}
+
+pub fn decodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_serialize::Decoder});
     s.add_bounds(synstructure::AddBounds::Generics);
 
@@ -68,8 +76,17 @@ fn decodable_body(
                 ty_name,
                 variants.len()
             );
+            let tag = if variants.len() < u8::MAX as usize {
+                quote! {
+                    ::rustc_serialize::Decoder::read_u8(__decoder) as usize
+                }
+            } else {
+                quote! {
+                    ::rustc_serialize::Decoder::read_usize(__decoder)
+                }
+            };
             quote! {
-                match ::rustc_serialize::Decoder::read_usize(__decoder) {
+                match #tag {
                     #match_inner
                     n => panic!(#message, n),
                 }
@@ -129,6 +146,14 @@ pub fn meta_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
 }
 
 pub fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    let encoder_ty = quote! { __E };
+    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_span::SpanEncoder});
+    s.add_bounds(synstructure::AddBounds::Generics);
+
+    encodable_body(s, encoder_ty, false)
+}
+
+pub fn encodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder});
     s.add_bounds(synstructure::AddBounds::Generics);
@@ -190,11 +215,20 @@ fn encodable_body(
                     variant_idx += 1;
                     result
                 });
-                quote! {
-                    let disc = match *self {
-                        #encode_inner
-                    };
-                    ::rustc_serialize::Encoder::emit_usize(__encoder, disc);
+                if variant_idx < u8::MAX as usize {
+                    quote! {
+                        let disc = match *self {
+                            #encode_inner
+                        };
+                        ::rustc_serialize::Encoder::emit_u8(__encoder, disc as u8);
+                    }
+                } else {
+                    quote! {
+                        let disc = match *self {
+                            #encode_inner
+                        };
+                        ::rustc_serialize::Encoder::emit_usize(__encoder, disc);
+                    }
                 }
             };
 

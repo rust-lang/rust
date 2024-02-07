@@ -20,7 +20,7 @@ pub fn f(a: u32) -> u32 {
             }
         }
         bb1 = {
-            Call(RET = f(1), bb2, UnwindTerminate(ReasonAbi))
+            Call(RET = f(1), ReturnTo(bb2), UnwindTerminate(ReasonAbi))
         }
 
         bb2 = {

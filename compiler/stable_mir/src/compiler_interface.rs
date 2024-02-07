@@ -16,8 +16,8 @@ use crate::ty::{
     TraitDef, Ty, TyKind, VariantDef,
 };
 use crate::{
-    mir, Crate, CrateItem, CrateItems, DefId, Error, Filename, ImplTraitDecls, ItemKind, Symbol,
-    TraitDecls,
+    mir, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls, ItemKind,
+    Symbol, TraitDecls,
 };
 
 /// This trait defines the interface between stable_mir and the Rust compiler.
@@ -32,8 +32,10 @@ pub trait Context {
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool;
     fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls;
     fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
     fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls;
     fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
     fn generics_of(&self, def_id: DefId) -> Generics;
     fn predicates_of(&self, def_id: DefId) -> GenericPredicates;

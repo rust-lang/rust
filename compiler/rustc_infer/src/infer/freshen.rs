@@ -146,24 +146,13 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
-                let opt_ct = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .const_unification_table()
-                    .probe_value(v)
-                    .val
-                    .known();
+                let opt_ct =
+                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(v).known();
                 self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
-                let opt_ct = self
-                    .infcx
-                    .inner
-                    .borrow_mut()
-                    .effect_unification_table()
-                    .probe_value(v)
-                    .map(|effect| effect.as_const(self.infcx.tcx));
+                let opt_ct =
+                    self.infcx.inner.borrow_mut().effect_unification_table().probe_value(v).known();
                 self.freshen_const(
                     opt_ct,
                     ty::InferConst::EffectVar(v),

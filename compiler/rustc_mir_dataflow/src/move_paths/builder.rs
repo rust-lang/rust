@@ -154,7 +154,8 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
-                    | ty::Closure(_, _)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
                     | ty::Coroutine(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
@@ -177,7 +178,10 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                             union_path.get_or_insert(base);
                         }
                     }
-                    ty::Closure(_, _) | ty::Coroutine(_, _) | ty::Tuple(_) => (),
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(_, _)
+                    | ty::Tuple(_) => (),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)
@@ -469,7 +473,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             } => {
                 self.gather_operand(func);
                 for arg in args {
-                    self.gather_operand(arg);
+                    self.gather_operand(&arg.node);
                 }
                 if let Some(_bb) = target {
                     self.create_move_path(destination);

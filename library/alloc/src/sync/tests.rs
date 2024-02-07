@@ -1,13 +1,15 @@
 use super::*;
 
 use std::clone::Clone;
+use std::mem::MaybeUninit;
 use std::option::Option::None;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::thread;
 
-struct Canary(*mut atomic::AtomicUsize);
+struct Canary(*mut AtomicUsize);
 
 impl Drop for Canary {
     fn drop(&mut self) {
@@ -18,6 +20,37 @@ impl Drop for Canary {
                 }
             }
         }
+    }
+}
+
+struct AllocCanary<'a>(&'a AtomicUsize);
+
+impl<'a> AllocCanary<'a> {
+    fn new(counter: &'a AtomicUsize) -> Self {
+        counter.fetch_add(1, SeqCst);
+        Self(counter)
+    }
+}
+
+unsafe impl Allocator for AllocCanary<'_> {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        std::alloc::Global.allocate(layout)
+    }
+
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        unsafe { std::alloc::Global.deallocate(ptr, layout) }
+    }
+}
+
+impl Clone for AllocCanary<'_> {
+    fn clone(&self) -> Self {
+        Self::new(self.0)
+    }
+}
+
+impl Drop for AllocCanary<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, SeqCst);
     }
 }
 
@@ -295,16 +328,16 @@ fn weak_self_cyclic() {
 
 #[test]
 fn drop_arc() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+    let mut canary = AtomicUsize::new(0);
+    let x = Arc::new(Canary(&mut canary as *mut AtomicUsize));
     drop(x);
     assert!(canary.load(Acquire) == 1);
 }
 
 #[test]
 fn drop_arc_weak() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+    let mut canary = AtomicUsize::new(0);
+    let arc = Arc::new(Canary(&mut canary as *mut AtomicUsize));
     let arc_weak = Arc::downgrade(&arc);
     assert!(canary.load(Acquire) == 0);
     drop(arc);
@@ -659,4 +692,26 @@ fn arc_drop_dereferenceable_race() {
         drop(arc_1);
         thread.join().unwrap();
     }
+}
+
+#[test]
+fn arc_doesnt_leak_allocator() {
+    let counter = AtomicUsize::new(0);
+
+    {
+        let arc: Arc<dyn Any + Send + Sync, _> = Arc::new_in(5usize, AllocCanary::new(&counter));
+        drop(arc.downcast::<usize>().unwrap());
+
+        let arc: Arc<dyn Any + Send + Sync, _> = Arc::new_in(5usize, AllocCanary::new(&counter));
+        drop(unsafe { arc.downcast_unchecked::<usize>() });
+
+        let arc = Arc::new_in(MaybeUninit::<usize>::new(5usize), AllocCanary::new(&counter));
+        drop(unsafe { arc.assume_init() });
+
+        let arc: Arc<[MaybeUninit<usize>], _> =
+            Arc::new_zeroed_slice_in(5, AllocCanary::new(&counter));
+        drop(unsafe { arc.assume_init() });
+    }
+
+    assert_eq!(counter.load(SeqCst), 0);
 }

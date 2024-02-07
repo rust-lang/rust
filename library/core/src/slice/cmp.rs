@@ -8,15 +8,15 @@ use super::from_raw_parts;
 use super::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> PartialEq<[B]> for [A]
+impl<T, U> PartialEq<[U]> for [T]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
-    fn eq(&self, other: &[B]) -> bool {
+    fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
     }
 
-    fn ne(&self, other: &[B]) -> bool {
+    fn ne(&self, other: &[U]) -> bool {
         SlicePartialEq::not_equal(self, other)
     }
 }
@@ -60,7 +60,17 @@ where
             return false;
         }
 
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
+        // Implemented as explicit indexing rather
+        // than zipped iterators for performance reasons.
+        // See PR https://github.com/rust-lang/rust/pull/116846
+        for idx in 0..self.len() {
+            // bound checks are optimized away
+            if self[idx] != other[idx] {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

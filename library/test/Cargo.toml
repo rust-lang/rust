@@ -3,12 +3,10 @@ name = "test"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-crate-type = ["dylib", "rlib"]
-
 [dependencies]
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 std = { path = "../std" }
 core = { path = "../core" }
 panic_unwind = { path = "../panic_unwind" }
 panic_abort = { path = "../panic_abort" }
+libc = { version = "0.2.150", default-features = false }

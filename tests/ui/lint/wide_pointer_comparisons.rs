@@ -109,6 +109,15 @@ fn main() {
 
     {
         macro_rules! cmp {
+            ($a:tt, $b:tt) => { $a == $b }
+            //~^ WARN ambiguous wide pointer comparison
+        }
+
+        cmp!(a, b);
+    }
+
+    {
+        macro_rules! cmp {
             ($a:ident, $b:ident) => { $a == $b }
             //~^ WARN ambiguous wide pointer comparison
         }

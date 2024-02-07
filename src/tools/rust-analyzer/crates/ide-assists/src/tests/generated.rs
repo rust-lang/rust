@@ -1153,7 +1153,7 @@ impl SomeTrait for B {
     }
 
     fn method_(&mut self) -> bool {
-        <A as SomeTrait>::method_( &mut self.a )
+        <A as SomeTrait>::method_(&mut self.a)
     }
 }
 "#####,
@@ -2052,6 +2052,23 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_merge_nested_if() {
+    check_doc_test(
+        "merge_nested_if",
+        r#####"
+fn main() {
+   i$0f x == 3 { if y == 4 { 1 } }
+}
+"#####,
+        r#####"
+fn main() {
+   if x == 3 && y == 4 { 1 }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_move_arm_cond_to_match_guard() {
     check_doc_test(
         "move_arm_cond_to_match_guard",
@@ -2196,6 +2213,19 @@ $0fn t() {}$0
 "#####,
         r#####"
 fn t() {}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_normalize_import() {
+    check_doc_test(
+        "normalize_import",
+        r#####"
+use$0 std::{io, {fmt::Formatter}};
+"#####,
+        r#####"
+use std::{fmt::Formatter, io};
 "#####,
     )
 }

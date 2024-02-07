@@ -134,29 +134,29 @@ This is to enable parallel parsing of all files.
 **Architecture Invariant:**  Syntax trees are by design incomplete and do not enforce well-formedness.
 If an AST method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
 
-### `crates/base_db`
+### `crates/base-db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and on-demand computation.
 Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions.
-The `base_db` crate provides basic infrastructure for interacting with salsa.
+The `base-db` crate provides basic infrastructure for interacting with salsa.
 Crucially, it defines most of the "input" queries: facts supplied by the client of the analyzer.
 Reading the docs of the `base_db::input` module should be useful: everything else is strictly derived from those inputs.
 
 **Architecture Invariant:** particularities of the build system are *not* the part of the ground state.
-In particular, `base_db` knows nothing about cargo.
+In particular, `base-db` knows nothing about cargo.
 For example, `cfg` flags are a part of `base_db`, but `feature`s are not.
 A `foo` feature is a Cargo-level concept, which is lowered by Cargo to `--cfg feature=foo` argument on the command line.
 The `CrateGraph` structure is used to represent the dependencies between the crates abstractly.
 
-**Architecture Invariant:** `base_db` doesn't know about file system and file paths.
+**Architecture Invariant:** `base-db` doesn't know about file system and file paths.
 Files are represented with opaque `FileId`, there's no operation to get an `std::path::Path` out of the `FileId`.
 
-### `crates/hir_expand`, `crates/hir_def`, `crates/hir_ty`
+### `crates/hir-expand`, `crates/hir-def`, `crates/hir_ty`
 
 These crates are the *brain* of rust-analyzer.
 This is the compiler part of the IDE.
 
-`hir_xxx` crates have a strong [ECS](https://en.wikipedia.org/wiki/Entity_component_system) flavor, in that they work with raw ids and directly query the database.
+`hir-xxx` crates have a strong [ECS](https://en.wikipedia.org/wiki/Entity_component_system) flavor, in that they work with raw ids and directly query the database.
 There's little abstraction here.
 These crates integrate deeply with salsa and chalk.
 
@@ -186,7 +186,7 @@ If you think about "using rust-analyzer as a library", `hir` crate is most likel
 It wraps ECS-style internal API into a more OO-flavored API (with an extra `db` argument for each call).
 
 **Architecture Invariant:** `hir` provides a static, fully resolved view of the code.
-While internal `hir_*` crates _compute_ things, `hir`, from the outside, looks like an inert data structure.
+While internal `hir-*` crates _compute_ things, `hir`, from the outside, looks like an inert data structure.
 
 `hir` also handles the delicate task of going from syntax to the corresponding `hir`.
 Remember that the mapping here is one-to-many.
@@ -200,7 +200,7 @@ Then we look for our node in the set of children.
 This is the heart of many IDE features, like goto definition, which start with figuring out the hir node at the cursor.
 This is some kind of (yet unnamed) uber-IDE pattern, as it is present in Roslyn and Kotlin as well.
 
-### `crates/ide`
+### `crates/ide`, `crates/ide-db`, `crates/ide-assists`, `crates/ide-completion`, `crates/ide-diagnostics`, `crates/ide-ssr`
 
 The `ide` crate builds on top of `hir` semantic model to provide high-level IDE features like completion or goto definition.
 It is an **API Boundary**.
@@ -217,8 +217,8 @@ Shout outs to LSP developers for popularizing the idea that "UI" is a good place
 `AnalysisHost` is a state to which you can transactionally `apply_change`.
 `Analysis` is an immutable snapshot of the state.
 
-Internally, `ide` is split across several crates. `ide_assists`, `ide_completion` and `ide_ssr` implement large isolated features.
-`ide_db` implements common IDE functionality (notably, reference search is implemented here).
+Internally, `ide` is split across several crates. `ide-assists`, `ide-completion`, `ide-diagnostics` and `ide-ssr` implement large isolated features.
+`ide-db` implements common IDE functionality (notably, reference search is implemented here).
 The `ide` contains a public API/façade, as well as implementation for a plethora of smaller features.
 
 **Architecture Invariant:** `ide` crate strives to provide a _perfect_ API.
@@ -251,14 +251,14 @@ This is a tricky business.
 **Architecture Invariant:** `rust-analyzer` should be partially available even when the build is broken.
 Reloading process should not prevent IDE features from working.
 
-### `crates/toolchain`, `crates/project_model`, `crates/flycheck`
+### `crates/toolchain`, `crates/project-model`, `crates/flycheck`
 
 These crates deal with invoking `cargo` to learn about project structure and get compiler errors for the "check on save" feature.
 
-They use `crates/path` heavily instead of `std::path`.
+They use `crates/paths` heavily instead of `std::path`.
 A single `rust-analyzer` process can serve many projects, so it is important that server's current directory does not leak.
 
-### `crates/mbe`, `crates/tt`, `crates/proc_macro_api`, `crates/proc_macro_srv`
+### `crates/mbe`, `crates/tt`, `crates/proc-macro-api`, `crates/proc-macro-srv`, `crates/proc-macro-srv-cli`
 
 These crates implement macros as token tree -> token tree transforms.
 They are independent from the rest of the code.
@@ -268,8 +268,8 @@ They are independent from the rest of the code.
 And it also handles the actual parsing and expansion of declarative macro (a-la "Macros By Example" or mbe).
 
 For proc macros, the client-server model are used.
-We start a separate process  (`proc_macro_srv`) which loads and runs the proc-macros for us.
-And the client (`proc_macro_api`) provides an interface to talk to that server separately.
+We start a separate process  (`proc-macro-srv-cli`) which loads and runs the proc-macros for us.
+And the client (`proc-macro-api`) provides an interface to talk to that server separately.
 
 And then token trees are passed from client, and the server will load the corresponding dynamic library (which built by `cargo`).
 And due to the fact the api for getting result from proc macro are always unstable in `rustc`,
@@ -283,7 +283,7 @@ And they may be non-deterministic which conflict how `salsa` works, so special a
 
 This crate is responsible for parsing, evaluation and general definition of `cfg` attributes.
 
-### `crates/vfs`, `crates/vfs-notify`
+### `crates/vfs`, `crates/vfs-notify`, `crates/paths`
 
 These crates implement a virtual file system.
 They provide consistent snapshots of the underlying file system and insulate messy OS paths.
@@ -301,6 +301,25 @@ as copies of unstable std items we would like to make use of already, like `std:
 
 This crate contains utilities for CPU and memory profiling.
 
+### `crates/intern`
+
+This crate contains infrastructure for globally interning things via `Arc`.
+
+### `crates/load-cargo`
+
+This crate exposes several utilities for loading projects, used by the main `rust-analyzer` crate
+and other downstream consumers.
+
+### `crates/rustc-dependencies`
+
+This crate wraps the `rustc_*` crates rust-analyzer relies on and conditionally points them to
+mirrored crates-io releases such that rust-analyzer keeps building on stable.
+
+### `crates/span`
+
+This crate exposes types and functions related to rust-analyzer's span for macros.
+
+A span is effectively a text range relative to some item in a file with a given `SyntaxContext` (hygiene).
 
 ## Cross-Cutting Concerns
 

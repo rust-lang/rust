@@ -1,7 +1,7 @@
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
+    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 use libc::c_int;
@@ -511,7 +511,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         sess.target
             .features
             .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+            .filter(|v| !v.is_empty() && backend_feature_name(sess, v).is_some())
             .map(String::from),
     );
 
@@ -529,13 +529,13 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.dcx().emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
             };
 
-            let feature = backend_feature_name(s)?;
+            let feature = backend_feature_name(sess, s)?;
             // Warn against use of LLVM specific feature names and unstable features on the CLI.
             if diagnostics {
                 let feature_state = supported_features.iter().find(|&&(v, _)| v == feature);
@@ -557,12 +557,12 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     } else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                    sess.dcx().emit_warning(unknown_feature);
+                    sess.dcx().emit_warn(unknown_feature);
                 } else if feature_state
                     .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
-                    sess.dcx().emit_warning(UnstableCTargetFeature { feature });
+                    sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                 }
             }
 
@@ -611,11 +611,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 /// Returns a feature name for the given `+feature` or `-feature` string.
 ///
 /// Only allows features that are backend specific (i.e. not [`RUSTC_SPECIFIC_FEATURES`].)
-fn backend_feature_name(s: &str) -> Option<&str> {
+fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
     // features must start with a `+` or `-`.
-    let feature = s.strip_prefix(&['+', '-'][..]).unwrap_or_else(|| {
-        bug!("target feature `{}` must begin with a `+` or `-`", s);
-    });
+    let feature = s
+        .strip_prefix(&['+', '-'][..])
+        .unwrap_or_else(|| sess.dcx().emit_fatal(InvalidTargetFeaturePrefix { feature: s }));
     // Rustc-specific feature requests like `+crt-static` or `-crt-static`
     // are not passed down to LLVM.
     if RUSTC_SPECIFIC_FEATURES.contains(&feature) {

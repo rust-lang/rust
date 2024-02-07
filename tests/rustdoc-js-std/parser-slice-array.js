@@ -267,6 +267,24 @@ const PARSED = [
         error: "Unexpected `]`",
     },
     {
+        query: '[a<b>',
+        elems: [],
+        foundElems: 0,
+        original: "[a<b>",
+        returned: [],
+        userQuery: "[a<b>",
+        error: "Unclosed `[`",
+    },
+    {
+        query: 'a<b>]',
+        elems: [],
+        foundElems: 0,
+        original: "a<b>]",
+        returned: [],
+        userQuery: "a<b>]",
+        error: "Unexpected `]` after `>`",
+    },
+    {
         query: 'primitive:[u8]',
         elems: [
             {

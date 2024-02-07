@@ -5,7 +5,6 @@ LL | #[cfg(target(os = "linux", pointer_width = "X"))]
    |                            ^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `target_pointer_width` are: `16`, `32`, `64`
-   = help: to expect this configuration use `--check-cfg=cfg(target_pointer_width, values("X"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 

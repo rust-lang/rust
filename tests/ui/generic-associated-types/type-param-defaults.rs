@@ -29,6 +29,8 @@ where
 fn main() {
     // errors
     foo::<()>();
+    //~^ ERROR type mismatch
+    //~| ERROR `u64: Other` is not satisfied
     // works
     foo::<u32>();
 }

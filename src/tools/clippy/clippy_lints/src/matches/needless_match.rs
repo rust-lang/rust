@@ -8,7 +8,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, ByRef, Expr, ExprKind, Guard, ItemKind, Node, Pat, PatKind, Path, QPath};
+use rustc_hir::{Arm, BindingAnnotation, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -66,18 +66,9 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
         let arm_expr = peel_blocks_with_stmt(arm.body);
 
         if let Some(guard_expr) = &arm.guard {
-            match guard_expr {
-                // gives up if `pat if expr` can have side effects
-                Guard::If(if_cond) => {
-                    if if_cond.can_have_side_effects() {
-                        return false;
-                    }
-                },
-                // gives up `pat if let ...` arm
-                Guard::IfLet(_) => {
-                    return false;
-                },
-            };
+            if guard_expr.can_have_side_effects() {
+                return false;
+            }
         }
 
         if let PatKind::Wild = arm.pat.kind {

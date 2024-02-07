@@ -6,8 +6,9 @@
 
 use std::{env, fs, iter, ops, path::PathBuf, process::Command};
 
-use anyhow::{format_err, Result};
+use anyhow::{format_err, Context, Result};
 use base_db::CrateName;
+use itertools::Itertools;
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
@@ -18,25 +19,61 @@ use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath};
 pub struct Sysroot {
     root: AbsPathBuf,
     src_root: AbsPathBuf,
+    mode: SysrootMode,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum SysrootMode {
+    Workspace(CargoWorkspace),
+    Stitched(Stitched),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct Stitched {
     crates: Arena<SysrootCrateData>,
-    /// Stores the result of `cargo metadata` of the `RA_UNSTABLE_SYSROOT_HACK` workspace.
-    pub hack_cargo_workspace: Option<CargoWorkspace>,
+}
+
+impl ops::Index<SysrootCrate> for Stitched {
+    type Output = SysrootCrateData;
+    fn index(&self, index: SysrootCrate) -> &SysrootCrateData {
+        &self.crates[index]
+    }
+}
+
+impl Stitched {
+    pub(crate) fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
+        // core is added as a dependency before std in order to
+        // mimic rustcs dependency order
+        ["core", "alloc", "std"]
+            .into_iter()
+            .zip(iter::repeat(true))
+            .chain(iter::once(("test", false)))
+            .filter_map(move |(name, prelude)| {
+                Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
+            })
+    }
+
+    pub(crate) fn proc_macro(&self) -> Option<SysrootCrate> {
+        self.by_name("proc_macro")
+    }
+
+    pub(crate) fn crates(&self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + '_ {
+        self.crates.iter().map(|(id, _data)| id)
+    }
+
+    fn by_name(&self, name: &str) -> Option<SysrootCrate> {
+        let (id, _data) = self.crates.iter().find(|(_id, data)| data.name == name)?;
+        Some(id)
+    }
 }
 
 pub(crate) type SysrootCrate = Idx<SysrootCrateData>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SysrootCrateData {
-    pub name: String,
-    pub root: ManifestPath,
-    pub deps: Vec<SysrootCrate>,
-}
-
-impl ops::Index<SysrootCrate> for Sysroot {
-    type Output = SysrootCrateData;
-    fn index(&self, index: SysrootCrate) -> &SysrootCrateData {
-        &self.crates[index]
-    }
+pub(crate) struct SysrootCrateData {
+    pub(crate) name: String,
+    pub(crate) root: ManifestPath,
+    pub(crate) deps: Vec<SysrootCrate>,
 }
 
 impl Sysroot {
@@ -53,32 +90,19 @@ impl Sysroot {
         &self.src_root
     }
 
-    pub fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
-        // core is added as a dependency before std in order to
-        // mimic rustcs dependency order
-        ["core", "alloc", "std"]
-            .into_iter()
-            .zip(iter::repeat(true))
-            .chain(iter::once(("test", false)))
-            .filter_map(move |(name, prelude)| {
-                Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
-            })
-    }
-
-    pub fn proc_macro(&self) -> Option<SysrootCrate> {
-        self.by_name("proc_macro")
-    }
-
-    pub fn crates(&self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + '_ {
-        self.crates.iter().map(|(id, _data)| id)
-    }
-
     pub fn is_empty(&self) -> bool {
-        self.crates.is_empty()
+        match &self.mode {
+            SysrootMode::Workspace(ws) => ws.packages().next().is_none(),
+            SysrootMode::Stitched(stitched) => stitched.crates.is_empty(),
+        }
     }
 
     pub fn loading_warning(&self) -> Option<String> {
-        if self.by_name("core").is_none() {
+        let has_core = match &self.mode {
+            SysrootMode::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
+            SysrootMode::Stitched(stitched) => stitched.by_name("core").is_some(),
+        };
+        if !has_core {
             let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
                 " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
             } else {
@@ -92,85 +116,184 @@ impl Sysroot {
             None
         }
     }
+
+    pub fn num_packages(&self) -> usize {
+        match &self.mode {
+            SysrootMode::Workspace(ws) => ws.packages().count(),
+            SysrootMode::Stitched(c) => c.crates().count(),
+        }
+    }
+
+    pub(crate) fn mode(&self) -> &SysrootMode {
+        &self.mode
+    }
 }
 
 // FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
 impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
-    pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Result<Sysroot> {
+    pub fn discover(
+        dir: &AbsPath,
+        extra_env: &FxHashMap<String, String>,
+        metadata: bool,
+    ) -> Result<Sysroot> {
         tracing::debug!("discovering sysroot for {dir}");
         let sysroot_dir = discover_sysroot_dir(dir, extra_env)?;
         let sysroot_src_dir =
             discover_sysroot_src_dir_or_add_component(&sysroot_dir, dir, extra_env)?;
-        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
+        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir, metadata))
     }
 
     pub fn discover_with_src_override(
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         src: AbsPathBuf,
+        metadata: bool,
     ) -> Result<Sysroot> {
         tracing::debug!("discovering sysroot for {current_dir}");
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env)?;
-        Ok(Sysroot::load(sysroot_dir, src))
+        Ok(Sysroot::load(sysroot_dir, src, metadata))
     }
 
     pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
         get_rustc_src(&self.root)
     }
 
-    pub fn discover_rustc(&self) -> Result<AbsPathBuf, std::io::Error> {
+    pub fn discover_rustc(&self) -> anyhow::Result<AbsPathBuf> {
         let rustc = self.root.join("bin/rustc");
         tracing::debug!(?rustc, "checking for rustc binary at location");
         match fs::metadata(&rustc) {
             Ok(_) => Ok(rustc),
-            Err(e) => Err(e),
+            Err(e) => Err(e).context(format!(
+                "failed to discover rustc in sysroot: {:?}",
+                AsRef::<std::path::Path>::as_ref(&self.root)
+            )),
         }
     }
 
-    pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf) -> Result<Sysroot> {
+    pub fn with_sysroot_dir(sysroot_dir: AbsPathBuf, metadata: bool) -> Result<Sysroot> {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir).ok_or_else(|| {
             format_err!("can't load standard library from sysroot path {sysroot_dir}")
         })?;
-        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir))
+        Ok(Sysroot::load(sysroot_dir, sysroot_src_dir, metadata))
     }
 
-    pub fn load(sysroot_dir: AbsPathBuf, mut sysroot_src_dir: AbsPathBuf) -> Sysroot {
-        // FIXME: Remove this `hack_cargo_workspace` field completely once we support sysroot dependencies
-        let hack_cargo_workspace = if let Ok(path) = std::env::var("RA_UNSTABLE_SYSROOT_HACK") {
-            let cargo_toml = ManifestPath::try_from(
-                AbsPathBuf::try_from(&*format!("{path}/Cargo.toml")).unwrap(),
-            )
-            .unwrap();
-            sysroot_src_dir = AbsPathBuf::try_from(&*path).unwrap().join("library");
-            CargoWorkspace::fetch_metadata(
-                &cargo_toml,
-                &AbsPathBuf::try_from("/").unwrap(),
-                &CargoConfig::default(),
-                &|_| (),
-            )
-            .map(CargoWorkspace::new)
-            .ok()
-        } else {
-            None
-        };
-        let mut sysroot = Sysroot {
-            root: sysroot_dir,
-            src_root: sysroot_src_dir,
-            crates: Arena::default(),
-            hack_cargo_workspace,
-        };
+    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf, metadata: bool) -> Sysroot {
+        if metadata {
+            let sysroot: Option<_> = (|| {
+                let sysroot_cargo_toml = ManifestPath::try_from(
+                    AbsPathBuf::try_from(&*format!("{sysroot_src_dir}/sysroot/Cargo.toml")).ok()?,
+                )
+                .ok()?;
+                let current_dir =
+                    AbsPathBuf::try_from(&*format!("{sysroot_src_dir}/sysroot")).ok()?;
+                let res = CargoWorkspace::fetch_metadata(
+                    &sysroot_cargo_toml,
+                    &current_dir,
+                    &CargoConfig::default(),
+                    &|_| (),
+                )
+                .map_err(|e| {
+                    tracing::error!(
+                        "failed to load sysroot `{sysroot_src_dir}/sysroot/Cargo.toml`: {}",
+                        e
+                    );
+                    e
+                });
+                if let Err(e) =
+                    std::fs::remove_file(format!("{sysroot_src_dir}/sysroot/Cargo.lock"))
+                {
+                    tracing::error!(
+                        "failed to remove sysroot `{sysroot_src_dir}/sysroot/Cargo.lock`: {}",
+                        e
+                    )
+                }
+                let mut res = res.ok()?;
+
+                // Patch out `rustc-std-workspace-*` crates to point to the real crates.
+                // This is done prior to `CrateGraph` construction to avoid having duplicate `std` targets.
+
+                let mut fake_core = None;
+                let mut fake_alloc = None;
+                let mut fake_std = None;
+                let mut real_core = None;
+                let mut real_alloc = None;
+                let mut real_std = None;
+                res.packages.iter().enumerate().for_each(|(idx, package)| {
+                    match package.name.strip_prefix("rustc-std-workspace-") {
+                        Some("core") => fake_core = Some((idx, package.id.clone())),
+                        Some("alloc") => fake_alloc = Some((idx, package.id.clone())),
+                        Some("std") => fake_std = Some((idx, package.id.clone())),
+                        Some(_) => {
+                            tracing::warn!("unknown rustc-std-workspace-* crate: {}", package.name)
+                        }
+                        None => match &*package.name {
+                            "core" => real_core = Some(package.id.clone()),
+                            "alloc" => real_alloc = Some(package.id.clone()),
+                            "std" => real_std = Some(package.id.clone()),
+                            _ => (),
+                        },
+                    }
+                });
+
+                let patches =
+                    [fake_core.zip(real_core), fake_alloc.zip(real_alloc), fake_std.zip(real_std)]
+                        .into_iter()
+                        .flatten();
+
+                let resolve = res.resolve.as_mut().expect("metadata executed with deps");
+                let mut remove_nodes = vec![];
+                for (idx, node) in resolve.nodes.iter_mut().enumerate() {
+                    // Replace them in the dependency list
+                    node.deps.iter_mut().for_each(|dep| {
+                        if let Some((_, real)) =
+                            patches.clone().find(|((_, fake_id), _)| *fake_id == dep.pkg)
+                        {
+                            dep.pkg = real;
+                        }
+                    });
+                    if patches.clone().any(|((_, fake), _)| fake == node.id) {
+                        remove_nodes.push(idx);
+                    }
+                }
+                // Remove the fake ones from the resolve data
+                remove_nodes.into_iter().rev().for_each(|r| {
+                    resolve.nodes.remove(r);
+                });
+                // Remove the fake ones from the packages
+                patches.map(|((r, _), _)| r).sorted().rev().for_each(|r| {
+                    res.packages.remove(r);
+                });
+
+                res.workspace_members = res
+                    .packages
+                    .iter()
+                    .filter(|&package| RELEVANT_SYSROOT_CRATES.contains(&&*package.name))
+                    .map(|package| package.id.clone())
+                    .collect();
+                let cargo_workspace = CargoWorkspace::new(res);
+                Some(Sysroot {
+                    root: sysroot_dir.clone(),
+                    src_root: sysroot_src_dir.clone(),
+                    mode: SysrootMode::Workspace(cargo_workspace),
+                })
+            })();
+            if let Some(sysroot) = sysroot {
+                return sysroot;
+            }
+        }
+        let mut stitched = Stitched { crates: Arena::default() };
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
             let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
                 .into_iter()
-                .map(|it| sysroot.src_root.join(it))
+                .map(|it| sysroot_src_dir.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
                 .find(|it| fs::metadata(it).is_ok());
 
             if let Some(root) = root {
-                sysroot.crates.alloc(SysrootCrateData {
+                stitched.crates.alloc(SysrootCrateData {
                     name: name.into(),
                     root,
                     deps: Vec::new(),
@@ -178,36 +301,34 @@ impl Sysroot {
             }
         }
 
-        if let Some(std) = sysroot.by_name("std") {
+        if let Some(std) = stitched.by_name("std") {
             for dep in STD_DEPS.trim().lines() {
-                if let Some(dep) = sysroot.by_name(dep) {
-                    sysroot.crates[std].deps.push(dep)
+                if let Some(dep) = stitched.by_name(dep) {
+                    stitched.crates[std].deps.push(dep)
                 }
             }
         }
 
-        if let Some(alloc) = sysroot.by_name("alloc") {
+        if let Some(alloc) = stitched.by_name("alloc") {
             for dep in ALLOC_DEPS.trim().lines() {
-                if let Some(dep) = sysroot.by_name(dep) {
-                    sysroot.crates[alloc].deps.push(dep)
+                if let Some(dep) = stitched.by_name(dep) {
+                    stitched.crates[alloc].deps.push(dep)
                 }
             }
         }
 
-        if let Some(proc_macro) = sysroot.by_name("proc_macro") {
+        if let Some(proc_macro) = stitched.by_name("proc_macro") {
             for dep in PROC_MACRO_DEPS.trim().lines() {
-                if let Some(dep) = sysroot.by_name(dep) {
-                    sysroot.crates[proc_macro].deps.push(dep)
+                if let Some(dep) = stitched.by_name(dep) {
+                    stitched.crates[proc_macro].deps.push(dep)
                 }
             }
         }
-
-        sysroot
-    }
-
-    fn by_name(&self, name: &str) -> Option<SysrootCrate> {
-        let (id, _data) = self.crates.iter().find(|(_id, data)| data.name == name)?;
-        Some(id)
+        Sysroot {
+            root: sysroot_dir,
+            src_root: sysroot_src_dir,
+            mode: SysrootMode::Stitched(stitched),
+        }
     }
 }
 
@@ -315,3 +436,5 @@ test";
 const PROC_MACRO_DEPS: &str = "
 std
 core";
+
+const RELEVANT_SYSROOT_CRATES: &[&str] = &["core", "alloc", "std", "test", "proc_macro"];

@@ -94,6 +94,7 @@ impl SsaLocals {
         self.direct_uses[local]
     }
 
+    #[inline]
     pub fn assignment_dominates(
         &self,
         dominators: &Dominators<BasicBlock>,

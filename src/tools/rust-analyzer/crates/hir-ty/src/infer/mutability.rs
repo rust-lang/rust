@@ -96,7 +96,7 @@ impl InferenceContext<'_> {
             Expr::RecordLit { path: _, fields, spread, ellipsis: _, is_assignee_expr: _ } => {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
-            &Expr::Index { base, index } => {
+            &Expr::Index { base, index, is_assignee_expr: _ } => {
                 if mutability == Mutability::Mut {
                     if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                         if let Some(index_trait) = self

@@ -11,7 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     TraitPredicate, Ty, TyCtxt, TypeVisitableExt,
@@ -26,9 +26,9 @@ use crate::traits::vtable::{
 };
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
-    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    OutputTypeParameterMismatch, PolyTraitObligation, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, Unimplemented,
+    ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause, PolyTraitObligation,
+    PredicateObligation, Selection, SelectionError, SignatureMismatch, TraitNotObjectSafe,
+    Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -82,6 +82,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
+
+            AsyncClosureCandidate => {
+                let vtable_closure = self.confirm_async_closure_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
+            }
+
+            // No nested obligations or confirmation process. The checks that we do in
+            // candidate assembly are sufficient.
+            AsyncFnKindHelperCandidate => ImplSource::Builtin(BuiltinImplSource::Misc, vec![]),
 
             CoroutineCandidate => {
                 let vtable_coroutine = self.confirm_coroutine_candidate(obligation)?;
@@ -869,6 +878,49 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(nested)
     }
 
+    #[instrument(skip(self), level = "debug")]
+    fn confirm_async_closure_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the args on closure types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::CoroutineClosure(closure_def_id, args) = *self_ty.kind() else {
+            bug!("async closure candidate for non-coroutine-closure {:?}", obligation);
+        };
+
+        let trait_ref = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+            ty::TraitRef::new(
+                self.tcx(),
+                obligation.predicate.def_id(),
+                [self_ty, sig.tupled_inputs_ty],
+            )
+        });
+
+        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+        let goal_kind =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
+        nested.push(obligation.with(
+            self.tcx(),
+            ty::TraitRef::from_lang_item(
+                self.tcx(),
+                LangItem::AsyncFnKindHelper,
+                obligation.cause.span,
+                [
+                    args.as_coroutine_closure().kind_ty(),
+                    Ty::from_closure_kind(self.tcx(), goal_kind),
+                ],
+            ),
+        ));
+
+        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
+
+        Ok(nested)
+    }
+
     /// In the case of closure types and fn pointers,
     /// we currently treat the input type parameters on the trait as
     /// outputs. This means that when we have a match we have only
@@ -922,7 +974,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligations
             })
             .map_err(|terr| {
-                OutputTypeParameterMismatch(Box::new(SelectionOutputTypeParameterMismatch {
+                SignatureMismatch(Box::new(SignatureMismatchData {
                     expected_trait_ref: obligation_trait_ref,
                     found_trait_ref: expected_trait_ref,
                     terr,

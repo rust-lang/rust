@@ -11,7 +11,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::*;
 
 use std::fmt::Debug;
@@ -91,7 +90,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.dcx().span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.dcx().delayed_bug("struct cannot be packed and aligned");
         return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
     }
 
@@ -329,6 +328,17 @@ fn layout_of_uncached<'tcx>(
             )?
         }
 
+        ty::CoroutineClosure(_, args) => {
+            let tys = args.as_coroutine_closure().upvar_tys();
+            univariant(
+                &tys.iter()
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .try_collect::<IndexVec<_, _>>()?,
+                &ReprOptions::default(),
+                StructKind::AlwaysSized,
+            )?
+        }
+
         ty::Tuple(tys) => {
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
@@ -344,10 +354,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    "#[repr(simd)] was applied to an ADT that is not a struct",
-                );
+                tcx.dcx().delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
                 return Err(error(cx, LayoutError::Unknown(ty)));
             }
 
@@ -374,8 +381,7 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.dcx().span_delayed_bug(
-                        DUMMY_SP,
+                    tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(error(cx, LayoutError::Unknown(ty)));
@@ -1057,6 +1063,8 @@ fn variant_info_for_coroutine<'tcx>(
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
+    use itertools::Itertools;
+
     let Variants::Multiple { tag, ref tag_encoding, tag_field, .. } = layout.variants else {
         return (vec![], None);
     };
@@ -1069,7 +1077,7 @@ fn variant_info_for_coroutine<'tcx>(
         .as_coroutine()
         .upvar_tys()
         .iter()
-        .zip(upvar_names)
+        .zip_eq(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {
             let field_layout = layout.field(cx, field_idx);
