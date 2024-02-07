@@ -12,6 +12,7 @@ pub fn target() -> Target {
             features: "+f,+d".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
+            direct_access_external_data: Some(false),
             ..base::linux_gnu::opts()
         },
     }
