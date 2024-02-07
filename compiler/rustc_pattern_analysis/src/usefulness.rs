@@ -713,9 +713,11 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use rustc_hash::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
+use std::ops::Deref;
 
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
@@ -730,17 +732,36 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
-/// Context that provides information for usefulness checking.
-pub struct UsefulnessCtxt<'a, Cx: TypeCx> {
-    /// The context for type information.
-    pub tycx: &'a Cx,
-}
+/// Wrapper type for by-address hashing. Comparison and hashing of the wrapped pointer type will be
+/// based on the address of its contents, rather than their value.
+struct ByAddress<T>(T);
 
-impl<'a, Cx: TypeCx> Copy for UsefulnessCtxt<'a, Cx> {}
-impl<'a, Cx: TypeCx> Clone for UsefulnessCtxt<'a, Cx> {
-    fn clone(&self) -> Self {
-        Self { tycx: self.tycx }
+impl<T: Deref> ByAddress<T> {
+    fn addr(&self) -> *const T::Target {
+        (&*self.0) as *const _
     }
+}
+/// Raw pointer hashing and comparison.
+impl<T: Deref> std::hash::Hash for ByAddress<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.addr().hash(state)
+    }
+}
+impl<T: Deref> PartialEq for ByAddress<T> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.addr(), other.addr())
+    }
+}
+impl<T: Deref> Eq for ByAddress<T> {}
+
+/// Context that provides information for usefulness checking.
+struct UsefulnessCtxt<'a, 'p, Cx: TypeCx> {
+    /// The context for type information.
+    tycx: &'a Cx,
+    /// Collect the patterns found useful during usefulness checking. This is used to lint
+    /// unreachable (sub)patterns. We distinguish patterns by their address to avoid needing to
+    /// inspect the contents. They'll all be distinct anyway since they carry a `Span`.
+    useful_subpatterns: FxHashSet<ByAddress<&'p DeconstructedPat<Cx>>>,
 }
 
 /// Context that provides information local to a place under investigation.
@@ -1381,7 +1402,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 /// We can however get false negatives because exhaustiveness does not explore all cases. See the
 /// section on relevancy at the top of the file.
 fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
-    mcx: UsefulnessCtxt<'_, Cx>,
+    mcx: &mut UsefulnessCtxt<'_, 'p, Cx>,
     overlap_range: IntRange,
     matrix: &Matrix<'p, Cx>,
     specialized_matrix: &Matrix<'p, Cx>,
@@ -1454,7 +1475,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
-    mcx: UsefulnessCtxt<'a, Cx>,
+    mcx: &mut UsefulnessCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'p, Cx>,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1580,7 +1601,9 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     // Record usefulness in the patterns.
     for row in matrix.rows() {
         if row.useful {
-            row.head().set_useful();
+            if let PatOrWild::Pat(pat) = row.head() {
+                mcx.useful_subpatterns.insert(ByAddress(pat));
+            }
         }
     }
 
@@ -1600,11 +1623,18 @@ pub enum Usefulness<'p, Cx: TypeCx> {
 }
 
 /// Report whether this pattern was found useful, and its subpatterns that were not useful if any.
-fn collect_pattern_usefulness<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> Usefulness<'p, Cx> {
-    fn pat_is_useful<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> bool {
-        if pat.useful.get() {
+fn collect_pattern_usefulness<'p, Cx: TypeCx>(
+    useful_subpatterns: &FxHashSet<ByAddress<&'p DeconstructedPat<Cx>>>,
+    pat: &'p DeconstructedPat<Cx>,
+) -> Usefulness<'p, Cx> {
+    fn pat_is_useful<'p, Cx: TypeCx>(
+        useful_subpatterns: &FxHashSet<ByAddress<&'p DeconstructedPat<Cx>>>,
+        pat: &'p DeconstructedPat<Cx>,
+    ) -> bool {
+        if useful_subpatterns.contains(&ByAddress(pat)) {
             true
-        } else if pat.is_or_pat() && pat.iter_fields().any(|f| pat_is_useful(f)) {
+        } else if pat.is_or_pat() && pat.iter_fields().any(|f| pat_is_useful(useful_subpatterns, f))
+        {
             // We always expand or patterns in the matrix, so we will never see the actual
             // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
             // marked as useful itself, only its children will. We recover this information here.
@@ -1616,7 +1646,7 @@ fn collect_pattern_usefulness<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> 
 
     let mut redundant_subpats = Vec::new();
     pat.walk(&mut |p| {
-        if pat_is_useful(p) {
+        if pat_is_useful(useful_subpatterns, p) {
             // The pattern is useful, so we recurse to find redundant subpatterns.
             true
         } else {
@@ -1626,7 +1656,11 @@ fn collect_pattern_usefulness<'p, Cx: TypeCx>(pat: &'p DeconstructedPat<Cx>) -> 
         }
     });
 
-    if pat_is_useful(pat) { Usefulness::Useful(redundant_subpats) } else { Usefulness::Redundant }
+    if pat_is_useful(useful_subpatterns, pat) {
+        Usefulness::Useful(redundant_subpats)
+    } else {
+        Usefulness::Redundant
+    }
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.
@@ -1646,9 +1680,9 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
-    let cx = UsefulnessCtxt { tycx };
+    let mut cx = UsefulnessCtxt { tycx, useful_subpatterns: FxHashSet::default() };
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix)?;
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(&mut cx, &mut matrix)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1656,7 +1690,7 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
         .copied()
         .map(|arm| {
             debug!(?arm);
-            let usefulness = collect_pattern_usefulness(arm.pat);
+            let usefulness = collect_pattern_usefulness(&cx.useful_subpatterns, arm.pat);
             (arm, usefulness)
         })
         .collect();
