@@ -454,7 +454,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
-              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin"
+              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set llvm.ninja=false --set rust.jemalloc --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
@@ -467,7 +467,7 @@ jobs:
           - name: dist-apple-various
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
-              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
+              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set llvm.ninja=false --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
@@ -478,7 +478,7 @@ jobs:
           - name: x86_64-apple-1
             env:
               SCRIPT: "./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set llvm.ninja=false --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -489,7 +489,7 @@ jobs:
           - name: x86_64-apple-2
             env:
               SCRIPT: "./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set llvm.ninja=false --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
               MACOSX_STD_DEPLOYMENT_TARGET: 10.12
