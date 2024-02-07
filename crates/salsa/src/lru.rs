@@ -62,7 +62,7 @@ where
     Node: LruNode,
 {
     /// Creates a new LRU list where LRU caching is disabled.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::with_seed(LRU_SEED)
     }
 
@@ -73,7 +73,7 @@ where
 
     /// Adjust the total number of nodes permitted to have a value at
     /// once.  If `len` is zero, this disables LRU caching completely.
-    pub fn set_lru_capacity(&self, len: usize) {
+    pub(crate) fn set_lru_capacity(&self, len: usize) {
         let mut data = self.data.lock();
 
         // We require each zone to have at least 1 slot. Therefore,
@@ -102,7 +102,7 @@ where
     }
 
     /// Records that `node` was used. This may displace an old node (if the LRU limits are
-    pub fn record_use(&self, node: &Arc<Node>) -> Option<Arc<Node>> {
+    pub(crate) fn record_use(&self, node: &Arc<Node>) -> Option<Arc<Node>> {
         tracing::debug!("record_use(node={:?})", node);
 
         // Load green zone length and check if the LRU cache is even enabled.
@@ -125,7 +125,7 @@ where
         self.data.lock().record_use(node)
     }
 
-    pub fn purge(&self) {
+    pub(crate) fn purge(&self) {
         self.green_zone.store(0, Ordering::SeqCst);
         *self.data.lock() = LruData::with_seed(LRU_SEED);
     }
