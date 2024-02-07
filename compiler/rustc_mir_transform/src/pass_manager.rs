@@ -8,18 +8,10 @@ use crate::{lint::lint_body, validate, MirPass};
 pub trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
         // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // See copypaste in `MirPass`
         const {
             let name = std::any::type_name::<Self>();
-            let bytes = name.as_bytes();
-            let mut i = bytes.len();
-            while i > 0 && bytes[i - 1] != b':' {
-                i = i - 1;
-            }
-            let (_, bytes) = bytes.split_at(i);
-            match std::str::from_utf8(bytes) {
-                Ok(name) => name,
-                Err(_) => name,
-            }
+            rustc_middle::util::common::c_name(name)
         }
     }
 
