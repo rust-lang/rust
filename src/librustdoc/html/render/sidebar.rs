@@ -21,6 +21,7 @@ pub(super) struct Sidebar<'a> {
     pub(super) title_prefix: &'static str,
     pub(super) title: &'a str,
     pub(super) is_crate: bool,
+    pub(super) parent_is_crate: bool,
     pub(super) is_mod: bool,
     pub(super) blocks: Vec<LinkBlock<'a>>,
     pub(super) path: String,
@@ -144,8 +145,15 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
     } else {
         "".into()
     };
-    let sidebar =
-        Sidebar { title_prefix, title, is_mod: it.is_mod(), is_crate: it.is_crate(), blocks, path };
+    let sidebar = Sidebar {
+        title_prefix,
+        title,
+        is_mod: it.is_mod(),
+        is_crate: it.is_crate(),
+        parent_is_crate: sidebar_path.len() == 1,
+        blocks,
+        path,
+    };
     sidebar.render_into(buffer).unwrap();
 }
 
@@ -173,7 +181,6 @@ fn docblock_toc<'a>(
         error_codes: cx.shared.codes,
         edition: cx.shared.edition(),
         playground: &cx.shared.playground,
-        custom_code_classes_in_docs: cx.tcx().features().custom_code_classes_in_docs,
     }
     .into_parts();
     let links: Vec<Link<'_>> = toc
@@ -202,7 +209,7 @@ fn docblock_toc<'a>(
     if links.is_empty() {
         None
     } else {
-        Some(LinkBlock::new(Link::new("#", "Sections"), "top-toc", links))
+        Some(LinkBlock::new(Link::new("", "Sections"), "top-toc", links))
     }
 }
 

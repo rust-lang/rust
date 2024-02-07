@@ -623,6 +623,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             title: "",
             is_crate: false,
             is_mod: false,
+            parent_is_crate: false,
             blocks: vec![blocks],
             path: String::new(),
         };
