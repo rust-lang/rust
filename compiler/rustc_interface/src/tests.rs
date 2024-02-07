@@ -749,6 +749,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(default_hidden_visibility, Some(true));
     tracked!(dep_info_omit_d_target, true);
+    tracked!(direct_access_external_data, Some(true));
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
     tracked!(emit_thin_lto, false);
