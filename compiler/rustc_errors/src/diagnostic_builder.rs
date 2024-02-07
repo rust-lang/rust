@@ -99,16 +99,20 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
-    // FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
     fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
         let diag = self.take_diag();
 
-        // Only allow a guarantee if the `level` wasn't switched to a
-        // non-error. The field isn't `pub`, but the whole `Diagnostic` can be
-        // overwritten with a new one, thanks to `DerefMut`.
+        // The only error levels that produce `ErrorGuaranteed` are
+        // `Error` and `DelayedBug`. But `DelayedBug` should never occur here
+        // because delayed bugs have their level changed to `Bug` when they are
+        // actually printed, so they produce an ICE.
+        //
+        // (Also, even though `level` isn't `pub`, the whole `Diagnostic` could
+        // be overwritten with a new one thanks to `DerefMut`. So this assert
+        // protects against that, too.)
         assert!(
-            diag.is_error(),
-            "emitted non-error ({:?}) diagnostic from `DiagnosticBuilder<ErrorGuaranteed>`",
+            matches!(diag.level, Level::Error | Level::DelayedBug),
+            "invalid diagnostic level ({:?})",
             diag.level,
         );
 

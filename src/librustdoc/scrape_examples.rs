@@ -38,28 +38,23 @@ pub(crate) struct ScrapeExamplesOptions {
 }
 
 impl ScrapeExamplesOptions {
-    pub(crate) fn new(
-        matches: &getopts::Matches,
-        dcx: &rustc_errors::DiagCtxt,
-    ) -> Result<Option<Self>, i32> {
+    pub(crate) fn new(matches: &getopts::Matches, dcx: &rustc_errors::DiagCtxt) -> Option<Self> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
         let scrape_tests = matches.opt_present("scrape-tests");
         match (output_path, !target_crates.is_empty(), scrape_tests) {
-            (Some(output_path), true, _) => Ok(Some(ScrapeExamplesOptions {
+            (Some(output_path), true, _) => Some(ScrapeExamplesOptions {
                 output_path: PathBuf::from(output_path),
                 target_crates,
                 scrape_tests,
-            })),
+            }),
             (Some(_), false, _) | (None, true, _) => {
-                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
-                Err(1)
+                dcx.fatal("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
             }
             (None, false, true) => {
-                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
-                Err(1)
+                dcx.fatal("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
             }
-            (None, false, false) => Ok(None),
+            (None, false, false) => None,
         }
     }
 }
@@ -342,24 +337,20 @@ pub(crate) fn run(
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: &rustc_errors::DiagCtxt,
-) -> Result<AllCallLocations, i32> {
-    let inner = || {
-        let mut all_calls: AllCallLocations = FxHashMap::default();
-        for path in with_examples {
-            let bytes = fs::read(&path).map_err(|e| format!("{e} (for path {path})"))?;
-            let mut decoder = MemDecoder::new(&bytes, 0);
-            let calls = AllCallLocations::decode(&mut decoder);
+) -> AllCallLocations {
+    let mut all_calls: AllCallLocations = FxHashMap::default();
+    for path in with_examples {
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(e) => dcx.fatal(format!("failed to load examples: {e}")),
+        };
+        let mut decoder = MemDecoder::new(&bytes, 0);
+        let calls = AllCallLocations::decode(&mut decoder);
 
-            for (function, fn_calls) in calls.into_iter() {
-                all_calls.entry(function).or_default().extend(fn_calls.into_iter());
-            }
+        for (function, fn_calls) in calls.into_iter() {
+            all_calls.entry(function).or_default().extend(fn_calls.into_iter());
         }
+    }
 
-        Ok(all_calls)
-    };
-
-    inner().map_err(|e: String| {
-        dcx.err(format!("failed to load examples: {e}"));
-        1
-    })
+    all_calls
 }
