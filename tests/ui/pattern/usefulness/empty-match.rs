@@ -55,9 +55,9 @@ fn nonempty() {
     match_no_arms!(NonEmptyEnum2::Foo(true)); //~ ERROR `NonEmptyEnum2::Foo(_)` and `NonEmptyEnum2::Bar` not covered
     match_no_arms!(NonEmptyEnum5::V1); //~ ERROR `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
 
-    match_guarded_arm!(0u8); //~ ERROR `_` not covered
-    match_guarded_arm!(0i8); //~ ERROR `_` not covered
-    match_guarded_arm!(0usize); //~ ERROR `_` not covered
+    match_guarded_arm!(0u8); //~ ERROR `0_u8..=u8::MAX` not covered
+    match_guarded_arm!(0i8); //~ ERROR `i8::MIN..=i8::MAX` not covered
+    match_guarded_arm!(0usize); //~ ERROR `0_usize..` not covered
     match_guarded_arm!(0isize); //~ ERROR `_` not covered
     match_guarded_arm!(NonEmptyStruct1); //~ ERROR `NonEmptyStruct1` not covered
     match_guarded_arm!(NonEmptyStruct2(true)); //~ ERROR `NonEmptyStruct2(_)` not covered
