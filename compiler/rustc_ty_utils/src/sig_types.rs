@@ -88,7 +88,6 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             }
         }
         | DefKind::Variant
-        | DefKind::ForeignTy
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)
@@ -102,6 +101,7 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These don't have any types.
         | DefKind::ExternCrate
         | DefKind::ForeignMod
+        | DefKind::ForeignTy
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Mod
