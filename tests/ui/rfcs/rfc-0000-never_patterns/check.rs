@@ -1,3 +1,4 @@
+// Check that never patterns can't have bodies or guards.
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 

@@ -123,3 +123,15 @@ fn never_pattern_typeck_pass(void: Void) {
         Some(!),
     }
 }
+
+struct Unsized {
+    void: Void,
+    slice: [u8],
+}
+
+#[cfg(pass)]
+fn not_sized(x: &Unsized) {
+    match *x {
+        !,
+    }
+}

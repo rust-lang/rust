@@ -1,0 +1,75 @@
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:11:15
+   |
+LL |     let (Ok(x) | Err(!)) = res_void;
+   |             -
+   |             |
+   |             binding initialized here in some conditions
+   |             binding declared here but left uninitialized
+LL |     println!("{x}");
+   |               ^^^ `x` used here but it is possibly-uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:14:15
+   |
+LL |     let (Ok(x) | Err(!)) = &res_void;
+   |             -
+   |             |
+   |             binding initialized here in some conditions
+   |             binding declared here but left uninitialized
+LL |     println!("{x}");
+   |               ^^^ `x` used here but it is possibly-uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:17:15
+   |
+LL |     let (Err(!) | Ok(x)) = res_void;
+   |                      -
+   |                      |
+   |                      binding initialized here in some conditions
+   |                      binding declared here but left uninitialized
+LL |     println!("{x}");
+   |               ^^^ `x` used here but it is possibly-uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:21:37
+   |
+LL |         Ok(x) | Err(!) => println!("{x}"),
+   |            -                        ^^^ `x` used here but it is possibly-uninitialized
+   |            |
+   |            binding initialized here in some conditions
+   |            binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:25:37
+   |
+LL |         Err(!) | Ok(x) => println!("{x}"),
+   |                     -               ^^^ `x` used here but it is possibly-uninitialized
+   |                     |
+   |                     binding initialized here in some conditions
+   |                     binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0381]: used binding `x` is possibly-uninitialized
+  --> $DIR/use-bindings.rs:31:50
+   |
+LL |         Ok(Ok(x) | Err(!)) | Err(!) => println!("{x}"),
+   |               -                                  ^^^ `x` used here but it is possibly-uninitialized
+   |               |
+   |               binding initialized here in some conditions
+   |               binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0381`.
