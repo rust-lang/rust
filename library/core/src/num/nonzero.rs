@@ -8,6 +8,7 @@ use crate::intrinsics;
 use crate::marker::StructuralEq;
 use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
+use crate::ptr;
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -96,7 +97,7 @@ where
     pub const fn new(n: T) -> Option<Self> {
         // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
         //         the same layout and size as `T`, with `0` representing `None`.
-        unsafe { crate::mem::transmute_copy(&n) }
+        unsafe { ptr::read(ptr::addr_of!(n).cast()) }
     }
 
     /// Creates a non-zero without checking whether the value is non-zero.
