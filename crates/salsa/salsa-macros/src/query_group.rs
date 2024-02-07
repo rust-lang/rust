@@ -371,6 +371,9 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
             QueryStorage::Dependencies => {
                 quote!(salsa::plumbing::DependencyStorage<Self>)
             }
+            QueryStorage::Input if query.keys.is_empty() => {
+                quote!(salsa::plumbing::UnitInputStorage<Self>)
+            }
             QueryStorage::Input => quote!(salsa::plumbing::InputStorage<Self>),
             QueryStorage::Interned => quote!(salsa::plumbing::InternedStorage<Self>),
             QueryStorage::InternedLookup { intern_query_type } => {
