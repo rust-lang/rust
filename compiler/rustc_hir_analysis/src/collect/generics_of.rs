@@ -344,11 +344,18 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
+        // See `ClosureArgsParts`, `CoroutineArgsParts`, and `CoroutineClosureArgsParts`
+        // for info on the usage of each of these fields.
         let dummy_args = match kind {
             ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
-            ClosureKind::Coroutine(_) => {
-                &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-            }
+            ClosureKind::Coroutine(_) => &[
+                "<coroutine_kind>",
+                "<resume_ty>",
+                "<yield_ty>",
+                "<return_ty>",
+                "<witness>",
+                "<upvars>",
+            ][..],
             ClosureKind::CoroutineClosure(_) => &[
                 "<closure_kind>",
                 "<closure_signature_parts>",
