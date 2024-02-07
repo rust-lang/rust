@@ -98,7 +98,7 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if !builder.config.build.is_msvc() || builder.ninja() {
+    if (!builder.config.build.is_msvc() || builder.ninja()) && !builder.config.llvm_from_ci {
         llvm_config_ret_dir.push("build");
     }
     llvm_config_ret_dir.push("bin");
