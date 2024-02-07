@@ -49,7 +49,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
         for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
-                inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                cx.with_param_env(impl_def_id, |cx| {
+                    inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                });
             }
         }
     }
@@ -74,7 +76,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                 );
                 parent = tcx.opt_parent(did);
             }
-            inline::build_impl(cx, impl_def_id, Some((&attr_buf, None)), &mut new_items_local);
+            cx.with_param_env(impl_def_id, |cx| {
+                inline::build_impl(cx, impl_def_id, Some((&attr_buf, None)), &mut new_items_local);
+            });
             attr_buf.clear();
         }
     }
@@ -83,7 +87,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         for def_id in PrimitiveType::all_impls(tcx) {
             // Try to inline primitive impls from other crates.
             if !def_id.is_local() {
-                inline::build_impl(cx, def_id, None, &mut new_items_external);
+                cx.with_param_env(def_id, |cx| {
+                    inline::build_impl(cx, def_id, None, &mut new_items_external);
+                });
             }
         }
         for (prim, did) in PrimitiveType::primitive_locations(tcx) {
