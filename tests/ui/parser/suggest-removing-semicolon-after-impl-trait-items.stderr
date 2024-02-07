@@ -1,5 +1,5 @@
 error: non-item in item list
-  --> $DIR/suggest-removing-semicolon-after-impl-trait-items.rs:4:16
+  --> $DIR/suggest-removing-semicolon-after-impl-trait-items.rs:5:16
    |
 LL | trait Foo {
    |           - item list starts here

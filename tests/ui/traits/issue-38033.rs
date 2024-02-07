@@ -19,7 +19,7 @@ trait IntoFuture {
     type Item;
     type Error;
 
-    fn into_future(self) -> Self::Future;
+    fn into_future(self) -> Self::Future; //~ WARN method `into_future` is never used
 }
 
 impl<F: Future> IntoFuture for F {

@@ -1,9 +1,11 @@
 // run-rustfix
 
+#[allow(dead_code)]
 trait Baz {}
 impl Baz for () {}
 impl<T> Baz for (T,) {}
 
+#[allow(dead_code)]
 trait Fiz {}
 impl Fiz for bool {}
 

@@ -1,6 +1,6 @@
 // run-pass
 
-trait Foo {
+trait Foo { //~ WARN trait `Foo` is never used
     fn new() -> bool { false }
     fn dummy(&self) { }
 }

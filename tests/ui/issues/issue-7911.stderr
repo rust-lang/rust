@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/issue-7911.rs:7:8
+   |
+LL | trait FooBar {
+   |       ------ method in this trait
+LL |     fn dummy(&self) { }
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

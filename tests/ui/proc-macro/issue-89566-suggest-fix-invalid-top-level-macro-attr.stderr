@@ -3,6 +3,7 @@ error: `derive` attribute cannot be used at crate level
    |
 LL | #![derive(Debug)]
    | ^^^^^^^^^^^^^^^^^
+LL | #[allow(dead_code)]
 LL | struct Test {}
    |        ---- the inner attribute doesn't annotate this struct
    |

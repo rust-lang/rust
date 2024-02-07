@@ -11,7 +11,7 @@
 use std::marker::Sized;
 
 // Note: this must be generic for the problem to show up
-trait Foo<A> {
+trait Foo<A> { //~ WARN trait `Foo` is never used
     fn foo(&self, a: A);
 }
 

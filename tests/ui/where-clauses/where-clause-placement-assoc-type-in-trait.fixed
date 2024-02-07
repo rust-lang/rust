@@ -1,6 +1,7 @@
 // check-pass
 // run-rustfix
 
+#![allow(dead_code)]
 #![feature(associated_type_defaults)]
 
 trait Trait {
