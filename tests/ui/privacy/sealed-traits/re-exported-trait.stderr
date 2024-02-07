@@ -1,11 +1,11 @@
 error[E0603]: module `b` is private
-  --> $DIR/re-exported-trait.rs:11:9
+  --> $DIR/re-exported-trait.rs:12:9
    |
 LL | impl a::b::Trait for S {}
    |         ^ private module
    |
 note: the module `b` is defined here
-  --> $DIR/re-exported-trait.rs:5:5
+  --> $DIR/re-exported-trait.rs:6:5
    |
 LL |     mod b {
    |     ^^^^^

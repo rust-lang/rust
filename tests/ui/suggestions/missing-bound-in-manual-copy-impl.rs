@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 
 #[derive(Clone)]
 struct Wrapper<T>(T);
