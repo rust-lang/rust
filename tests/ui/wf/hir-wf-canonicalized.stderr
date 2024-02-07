@@ -10,11 +10,11 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo {
    | ^^^^^^^^^
 
-error[E0277]: the trait bound `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static): Foo` is not satisfied
+error[E0277]: the trait bound `(dyn Callback<Bar<'a, T>, Output = ()> + 'static): Foo` is not satisfied
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/hir-wf-canonicalized.rs:3:1
@@ -22,13 +22,13 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo {
    | ^^^^^^^^^
 
-error[E0277]: the size for values of type `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)` cannot be known at compilation time
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn Callback<Bar<'a, T>, for<'b, 'c, 'd> Output = ()> + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)`
 note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/hir-wf-canonicalized.rs:9:16
    |
