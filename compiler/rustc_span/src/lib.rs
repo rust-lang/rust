@@ -2477,10 +2477,9 @@ where
 pub struct ErrorGuaranteed(());
 
 impl ErrorGuaranteed {
-    /// To be used only if you really know what you are doing... ideally, we would find a way to
-    /// eliminate all calls to this method.
-    #[deprecated = "`Session::span_delayed_bug` should be preferred over this function"]
-    pub fn unchecked_claim_error_was_emitted() -> Self {
+    /// Don't use this outside of `DiagCtxtInner::emit_diagnostic`!
+    #[deprecated = "should only be used in `DiagCtxtInner::emit_diagnostic`"]
+    pub fn unchecked_error_guaranteed() -> Self {
         ErrorGuaranteed(())
     }
 }
