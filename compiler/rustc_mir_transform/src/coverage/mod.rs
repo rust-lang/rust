@@ -7,7 +7,7 @@ mod spans;
 #[cfg(test)]
 mod tests;
 
-use self::counters::{BcbCounter, CoverageCounters};
+use self::counters::{CounterIncrementSite, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
 use self::spans::{BcbMapping, BcbMappingKind, CoverageSpans};
 
@@ -155,61 +155,52 @@ fn inject_coverage_statements<'tcx>(
     bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
     coverage_counters: &CoverageCounters,
 ) {
-    // Process the counters associated with BCB nodes.
-    for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
-        let do_inject = match counter_kind {
-            // Counter-increment statements always need to be injected.
-            BcbCounter::Counter { .. } => true,
-            // The only purpose of expression-used statements is to detect
-            // when a mapping is unreachable, so we only inject them for
-            // expressions with one or more mappings.
-            BcbCounter::Expression { .. } => bcb_has_coverage_spans(bcb),
+    // Inject counter-increment statements into MIR.
+    for (id, counter_increment_site) in coverage_counters.counter_increment_sites() {
+        // Determine the block to inject a counter-increment statement into.
+        // For BCB nodes this is just their first block, but for edges we need
+        // to create a new block between the two BCBs, and inject into that.
+        let target_bb = match *counter_increment_site {
+            CounterIncrementSite::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
+            CounterIncrementSite::Edge { from_bcb, to_bcb } => {
+                // Create a new block between the last block of `from_bcb` and
+                // the first block of `to_bcb`.
+                let from_bb = basic_coverage_blocks[from_bcb].last_bb();
+                let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
+
+                let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
+                debug!(
+                    "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
+                    requires a new MIR BasicBlock {new_bb:?} for counter increment {id:?}",
+                );
+                new_bb
+            }
         };
-        if do_inject {
-            inject_statement(
-                mir_body,
-                make_mir_coverage_kind(counter_kind),
-                basic_coverage_blocks[bcb].leader_bb(),
-            );
-        }
+
+        inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
     }
 
-    // Process the counters associated with BCB edges.
-    for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
-        let do_inject = match counter_kind {
-            // Counter-increment statements always need to be injected.
-            BcbCounter::Counter { .. } => true,
-            // BCB-edge expressions never have mappings, so they never need
-            // a corresponding statement.
-            BcbCounter::Expression { .. } => false,
-        };
-        if !do_inject {
-            continue;
-        }
-
-        // We need to inject a coverage statement into a new BB between the
-        // last BB of `from_bcb` and the first BB of `to_bcb`.
-        let from_bb = basic_coverage_blocks[from_bcb].last_bb();
-        let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
-
-        let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
-        debug!(
-            "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
-                requires a new MIR BasicBlock {new_bb:?} for edge counter {counter_kind:?}",
+    // For each counter expression that is directly associated with at least one
+    // span, we inject an "expression-used" statement, so that coverage codegen
+    // can check whether the injected statement survived MIR optimization.
+    // (BCB edges can't have spans, so we only need to process BCB nodes here.)
+    //
+    // See the code in `rustc_codegen_llvm::coverageinfo::map_data` that deals
+    // with "expressions seen" and "zero terms".
+    for (bcb, expression_id) in coverage_counters
+        .bcb_nodes_with_coverage_expressions()
+        .filter(|&(bcb, _)| bcb_has_coverage_spans(bcb))
+    {
+        inject_statement(
+            mir_body,
+            CoverageKind::ExpressionUsed { id: expression_id },
+            basic_coverage_blocks[bcb].leader_bb(),
         );
-
-        // Inject a counter into the newly-created BB.
-        inject_statement(mir_body, make_mir_coverage_kind(counter_kind), new_bb);
     }
 }
 
-fn make_mir_coverage_kind(counter_kind: &BcbCounter) -> CoverageKind {
-    match *counter_kind {
-        BcbCounter::Counter { id } => CoverageKind::CounterIncrement { id },
-        BcbCounter::Expression { id } => CoverageKind::ExpressionUsed { id },
-    }
-}
-
+/// Given two basic blocks that have a control-flow edge between them, creates
+/// and returns a new block that sits between those blocks.
 fn inject_edge_counter_basic_block(
     mir_body: &mut mir::Body<'_>,
     from_bb: BasicBlock,
