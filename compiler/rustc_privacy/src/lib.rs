@@ -1128,13 +1128,6 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         intravisit::walk_inf(self, inf);
     }
 
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
-        self.span = trait_ref.path.span;
-        // Privacy of traits in bodies is checked as a part of trait object types.
-
-        intravisit::walk_trait_ref(self, trait_ref);
-    }
-
     // Check types of expressions
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self.check_expr_pat_type(expr.hir_id, expr.span) {
