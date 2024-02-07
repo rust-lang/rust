@@ -140,8 +140,12 @@ fn to_profiler_name(type_name: &'static str) -> &'static str {
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
-        let name = std::any::type_name::<Self>();
-        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
+        // FIXME Simplify the implementation once more `str` methods get const-stable.
+        // See copypaste in `MirLint`
+        const {
+            let name = std::any::type_name::<Self>();
+            crate::util::common::c_name(name)
+        }
     }
 
     fn profiler_name(&self) -> &'static str {

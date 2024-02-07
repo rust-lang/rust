@@ -174,6 +174,9 @@
 // revisions: armv7r_none_eabihf
 // [armv7r_none_eabihf] compile-flags: --target armv7r-none-eabihf
 // [armv7r_none_eabihf] needs-llvm-components: arm
+// revisions: armv8r_none_eabihf
+// [armv8r_none_eabihf] compile-flags: --target armv8r-none-eabihf
+// [armv8r_none_eabihf] needs-llvm-components: arm
 // FIXME: disabled since it fails on CI saying the csky component is missing
 /*
     revisions: csky_unknown_linux_gnuabiv2

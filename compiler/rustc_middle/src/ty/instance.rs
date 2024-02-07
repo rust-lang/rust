@@ -765,7 +765,14 @@ fn polymorphize<'tcx>(
     let def_id = instance.def_id();
     let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
         ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
-        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        ty::Coroutine(..) => {
+            assert_eq!(
+                args.as_coroutine().kind_ty(),
+                tcx.types.unit,
+                "polymorphization does not support coroutines from async closures"
+            );
+            Some(args.as_coroutine().tupled_upvars_ty())
+        }
         _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
