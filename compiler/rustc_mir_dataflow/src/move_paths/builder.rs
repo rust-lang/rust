@@ -429,7 +429,10 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {}
+            | Rvalue::NullaryOp(
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::DebugAssertions,
+                _,
+            ) => {}
         }
     }
 
