@@ -27,7 +27,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
-        itctx: &ImplTraitContext,
+        itctx: ImplTraitContext,
         // modifiers of the impl/bound if this is a trait path
         modifiers: Option<ast::TraitBoundModifiers>,
     ) -> hir::QPath<'hir> {
@@ -205,7 +205,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     segment,
                     param_mode,
                     ParenthesizedGenericArgs::Err,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                     None,
                 )
@@ -220,7 +220,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment: &PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: &ImplTraitContext,
+        itctx: ImplTraitContext,
         constness: Option<ast::BoundConstness>,
         // Additional features ungated with a bound modifier like `async`.
         // This is passed down to the implicit associated type binding in
@@ -374,7 +374,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
-        itctx: &ImplTraitContext,
+        itctx: ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         let has_non_lt_args = data.args.iter().any(|arg| match arg {
             AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
@@ -405,7 +405,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
-        itctx: &ImplTraitContext,
+        itctx: ImplTraitContext,
         bound_modifier_allowed_features: Option<Lrc<[Symbol]>>,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
@@ -415,7 +415,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
             // Only allow `impl Trait` in return position. i.e.:
@@ -429,7 +429,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 } else {
                     self.lower_ty(
                         ty,
-                        &ImplTraitContext::FeatureGated(
+                        ImplTraitContext::FeatureGated(
                             ImplTraitPosition::FnTraitReturn,
                             sym::impl_trait_in_fn_trait_return,
                         ),
@@ -437,7 +437,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             FnRetTy::Ty(ty) => {
-                self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
+                self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
