@@ -33,11 +33,11 @@ impl TestContextImpl {
             return;
         }
 
-        for diff in diff::lines(expected_text, actual_text) {
+        for diff in dissimilar::diff(expected_text, actual_text) {
             match diff {
-                diff::Result::Left(l) => println!("-{}", l),
-                diff::Result::Both(l, _) => println!(" {}", l),
-                diff::Result::Right(r) => println!("+{}", r),
+                dissimilar::Chunk::Delete(l) => println!("-{}", l),
+                dissimilar::Chunk::Equal(l) => println!(" {}", l),
+                dissimilar::Chunk::Insert(r) => println!("+{}", r),
             }
         }
 
