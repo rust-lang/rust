@@ -1033,7 +1033,6 @@ impl<T> Option<T> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
-        debug_assert!(self.is_some());
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
