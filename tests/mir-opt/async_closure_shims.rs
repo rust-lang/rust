@@ -33,7 +33,7 @@ async fn call_once(f: impl AsyncFnOnce(i32)) {
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_mut.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_mut.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_move.0.mir
-fn main() {
+pub fn main() {
     block_on(async {
         let b = 2i32;
         let mut async_closure = async move |a: i32| {
