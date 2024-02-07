@@ -2569,6 +2569,17 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
     pub fn is_val_statically_known<T: Copy>(arg: T) -> bool;
+
+    #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub(crate) fn debug_assertions() -> bool;
+}
+
+#[cfg(bootstrap)]
+#[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+pub(crate) const fn debug_assertions() -> bool {
+    cfg!(debug_assertions)
 }
 
 // FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
