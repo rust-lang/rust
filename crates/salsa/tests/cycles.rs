@@ -58,17 +58,13 @@ impl salsa::Database for DatabaseImpl {}
 
 impl ParallelDatabase for DatabaseImpl {
     fn snapshot(&self) -> Snapshot<Self> {
-        Snapshot::new(DatabaseImpl {
-            storage: self.storage.snapshot(),
-        })
+        Snapshot::new(DatabaseImpl { storage: self.storage.snapshot() })
     }
 }
 
 impl Default for DatabaseImpl {
     fn default() -> Self {
-        let res = DatabaseImpl {
-            storage: salsa::Storage::default(),
-        };
+        let res = DatabaseImpl { storage: salsa::Storage::default() };
 
         res
     }
@@ -113,15 +109,11 @@ trait Database: salsa::Database {
 }
 
 fn recover_a(db: &dyn Database, cycle: &salsa::Cycle) -> Result<(), Error> {
-    Err(Error {
-        cycle: cycle.all_participants(db),
-    })
+    Err(Error { cycle: cycle.all_participants(db) })
 }
 
 fn recover_b(db: &dyn Database, cycle: &salsa::Cycle) -> Result<(), Error> {
-    Err(Error {
-        cycle: cycle.all_participants(db),
-    })
+    Err(Error { cycle: cycle.all_participants(db) })
 }
 
 fn memoized_a(db: &dyn Database) {

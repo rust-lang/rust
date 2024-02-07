@@ -12,9 +12,7 @@ impl salsa::Database for Database {}
 
 impl salsa::ParallelDatabase for Database {
     fn snapshot(&self) -> salsa::Snapshot<Self> {
-        salsa::Snapshot::new(Database {
-            storage: self.storage.snapshot(),
-        })
+        salsa::Snapshot::new(Database { storage: self.storage.snapshot() })
     }
 }
 
@@ -71,14 +69,8 @@ fn test_intern2() {
     assert_eq!(bar0, bar1);
     assert_ne!(foo0, bar0);
 
-    assert_eq!(
-        ("x".to_string(), "foo".to_string()),
-        db.lookup_intern2(foo0)
-    );
-    assert_eq!(
-        ("x".to_string(), "bar".to_string()),
-        db.lookup_intern2(bar0)
-    );
+    assert_eq!(("x".to_string(), "foo".to_string()), db.lookup_intern2(foo0));
+    assert_eq!(("x".to_string(), "bar".to_string()), db.lookup_intern2(bar0));
 }
 
 #[test]

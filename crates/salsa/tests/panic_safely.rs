@@ -33,9 +33,7 @@ impl salsa::Database for DatabaseStruct {}
 
 impl salsa::ParallelDatabase for DatabaseStruct {
     fn snapshot(&self) -> Snapshot<Self> {
-        Snapshot::new(DatabaseStruct {
-            storage: self.storage.snapshot(),
-        })
+        Snapshot::new(DatabaseStruct { storage: self.storage.snapshot() })
     }
 }
 

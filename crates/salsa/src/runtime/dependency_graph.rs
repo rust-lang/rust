@@ -103,21 +103,14 @@ impl DependencyGraph {
             // load up the next thread (i.e., we start at B/QB2,
             // and then load up the dependency on C/QC2).
             let edge = self.edges.get_mut(&id).unwrap();
-            let prefix = edge
-                .stack
-                .iter_mut()
-                .take_while(|p| p.database_key_index != key)
-                .count();
+            let prefix = edge.stack.iter_mut().take_while(|p| p.database_key_index != key).count();
             closure(&mut edge.stack[prefix..]);
             id = edge.blocked_on_id;
             key = edge.blocked_on_key;
         }
 
         // Finally, we copy in the results from `from_stack`.
-        let prefix = from_stack
-            .iter_mut()
-            .take_while(|p| p.database_key_index != key)
-            .count();
+        let prefix = from_stack.iter_mut().take_while(|p| p.database_key_index != key).count();
         closure(&mut from_stack[prefix..]);
     }
 
@@ -141,24 +134,13 @@ impl DependencyGraph {
         let mut others_unblocked = false;
         while id != from_id {
             let edge = self.edges.get(&id).unwrap();
-            let prefix = edge
-                .stack
-                .iter()
-                .take_while(|p| p.database_key_index != key)
-                .count();
+            let prefix = edge.stack.iter().take_while(|p| p.database_key_index != key).count();
             let next_id = edge.blocked_on_id;
             let next_key = edge.blocked_on_key;
 
-            if let Some(cycle) = edge.stack[prefix..]
-                .iter()
-                .rev()
-                .find_map(|aq| aq.cycle.clone())
-            {
+            if let Some(cycle) = edge.stack[prefix..].iter().rev().find_map(|aq| aq.cycle.clone()) {
                 // Remove `id` from the list of runtimes blocked on `next_key`:
-                self.query_dependents
-                    .get_mut(&next_key)
-                    .unwrap()
-                    .retain(|r| *r != id);
+                self.query_dependents.get_mut(&next_key).unwrap().retain(|r| *r != id);
 
                 // Unblock runtime so that it can resume execution once lock is released:
                 self.unblock_runtime(id, WaitResult::Cycle(cycle));
@@ -170,10 +152,7 @@ impl DependencyGraph {
             key = next_key;
         }
 
-        let prefix = from_stack
-            .iter()
-            .take_while(|p| p.database_key_index != key)
-            .count();
+        let prefix = from_stack.iter().take_while(|p| p.database_key_index != key).count();
         let this_unblocked = from_stack[prefix..].iter().any(|aq| aq.cycle.is_some());
 
         (this_unblocked, others_unblocked)
@@ -239,10 +218,7 @@ impl DependencyGraph {
                 condvar: condvar.clone(),
             },
         );
-        self.query_dependents
-            .entry(database_key)
-            .or_default()
-            .push(from_id);
+        self.query_dependents.entry(database_key).or_default().push(from_id);
         condvar
     }
 
@@ -253,10 +229,7 @@ impl DependencyGraph {
         database_key: DatabaseKeyIndex,
         wait_result: WaitResult,
     ) {
-        let dependents = self
-            .query_dependents
-            .remove(&database_key)
-            .unwrap_or_default();
+        let dependents = self.query_dependents.remove(&database_key).unwrap_or_default();
 
         for from_id in dependents {
             self.unblock_runtime(from_id, wait_result.clone());

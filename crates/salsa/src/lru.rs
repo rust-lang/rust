@@ -68,10 +68,7 @@ where
 
     #[cfg_attr(not(test), allow(dead_code))]
     fn with_seed(seed: &str) -> Self {
-        Lru {
-            green_zone: AtomicUsize::new(0),
-            data: Mutex::new(LruData::with_seed(seed)),
-        }
+        Lru { green_zone: AtomicUsize::new(0), data: Mutex::new(LruData::with_seed(seed)) }
     }
 
     /// Adjust the total number of nodes permitted to have a value at
@@ -143,13 +140,7 @@ where
     }
 
     fn with_rng(rng: Rand64) -> Self {
-        LruData {
-            end_yellow_zone: 0,
-            end_green_zone: 0,
-            end_red_zone: 0,
-            entries: Vec::new(),
-            rng,
-        }
+        LruData { end_yellow_zone: 0, end_green_zone: 0, end_red_zone: 0, entries: Vec::new(), rng }
     }
 
     fn green_zone(&self) -> std::ops::Range<usize> {
@@ -294,9 +285,7 @@ where
 
 impl Default for LruIndex {
     fn default() -> Self {
-        Self {
-            index: AtomicUsize::new(std::usize::MAX),
-        }
+        Self { index: AtomicUsize::new(std::usize::MAX) }
     }
 }
 

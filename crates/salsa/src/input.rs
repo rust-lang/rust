@@ -50,10 +50,7 @@ where
     const CYCLE_STRATEGY: crate::plumbing::CycleRecoveryStrategy = CycleRecoveryStrategy::Panic;
 
     fn new(group_index: u16) -> Self {
-        InputStorage {
-            group_index,
-            slots: Default::default(),
-        }
+        InputStorage { group_index, slots: Default::default() }
     }
 
     fn fmt_index(
@@ -91,18 +88,13 @@ where
             .get(key)
             .unwrap_or_else(|| panic!("no value set for {:?}({:?})", Q::default(), key));
 
-        let StampedValue {
-            value,
+        let StampedValue { value, durability, changed_at } = slot.stamped_value.read().clone();
+
+        db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
+            slot.database_key_index,
             durability,
             changed_at,
-        } = slot.stamped_value.read().clone();
-
-        db.salsa_runtime()
-            .report_query_read_and_unwind_if_cycle_resulted(
-                slot.database_key_index,
-                durability,
-                changed_at,
-            );
+        );
 
         value
     }
@@ -133,10 +125,7 @@ where
     Q: Query,
 {
     fn maybe_changed_after(&self, _db: &<Q as QueryDb<'_>>::DynDb, revision: Revision) -> bool {
-        debug!(
-            "maybe_changed_after(slot={:?}, revision={:?})",
-            self, revision,
-        );
+        debug!("maybe_changed_after(slot={:?}, revision={:?})", self, revision,);
 
         let changed_at = self.stamped_value.read().changed_at;
 
@@ -160,13 +149,7 @@ where
     Q: Query,
 {
     fn set(&self, runtime: &mut Runtime, key: &Q::Key, value: Q::Value, durability: Durability) {
-        tracing::debug!(
-            "{:?}({:?}) = {:?} ({:?})",
-            Q::default(),
-            key,
-            value,
-            durability
-        );
+        tracing::debug!("{:?}({:?}) = {:?} ({:?})", Q::default(), key, value, durability);
 
         // The value is changing, so we need a new revision (*). We also
         // need to update the 'last changed' revision by invoking
@@ -190,11 +173,7 @@ where
             // racing with somebody else to modify this same cell.
             // (Otherwise, someone else might write a *newer* revision
             // into the same cell while we block on the lock.)
-            let stamped_value = StampedValue {
-                value,
-                durability,
-                changed_at: next_revision,
-            };
+            let stamped_value = StampedValue { value, durability, changed_at: next_revision };
 
             match slots.entry(key.clone()) {
                 Entry::Occupied(entry) => {

@@ -78,10 +78,7 @@ pub trait QueryFunction: Query {
         key: &Self::Key,
     ) -> Self::Value {
         let _ = (db, cycle, key);
-        panic!(
-            "query `{:?}` doesn't support cycle fallback",
-            Self::default()
-        )
+        panic!("query `{:?}` doesn't support cycle fallback", Self::default())
     }
 }
 

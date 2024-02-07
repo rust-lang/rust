@@ -209,14 +209,7 @@ where
             }
         }
 
-        self.execute(
-            db,
-            runtime,
-            revision_now,
-            active_query,
-            panic_guard,
-            old_memo,
-        )
+        self.execute(db, runtime, revision_now, active_query, panic_guard, old_memo)
     }
 
     fn execute(
@@ -232,9 +225,7 @@ where
 
         db.salsa_event(Event {
             runtime_id: db.salsa_runtime().id(),
-            kind: EventKind::WillExecute {
-                database_key: self.database_key_index,
-            },
+            kind: EventKind::WillExecute { database_key: self.database_key_index },
         });
 
         // Query was not previously executed, or value is potentially
@@ -310,22 +301,12 @@ where
             changed_at: revisions.changed_at,
         };
 
-        let memo_value = if self.should_memoize_value(&self.key) {
-            Some(new_value.value.clone())
-        } else {
-            None
-        };
+        let memo_value =
+            if self.should_memoize_value(&self.key) { Some(new_value.value.clone()) } else { None };
 
-        debug!(
-            "read_upgrade({:?}): result.revisions = {:#?}",
-            self, revisions,
-        );
+        debug!("read_upgrade({:?}): result.revisions = {:#?}", self, revisions,);
 
-        panic_guard.proceed(Some(Memo {
-            value: memo_value,
-            verified_at: revision_now,
-            revisions,
-        }));
+        panic_guard.proceed(Some(Memo { value: memo_value, verified_at: revision_now, revisions }));
 
         new_value
     }
@@ -388,10 +369,7 @@ where
                         value: value.clone(),
                     };
 
-                    info!(
-                        "{:?}: returning memoized value changed at {:?}",
-                        self, value.changed_at
-                    );
+                    info!("{:?}: returning memoized value changed at {:?}", self, value.changed_at);
 
                     ProbeState::UpToDate(value)
                 } else {
@@ -503,11 +481,9 @@ where
             // If we know when value last changed, we can return right away.
             // Note that we don't need the actual value to be available.
             ProbeState::NoValue(_, changed_at)
-            | ProbeState::UpToDate(StampedValue {
-                value: _,
-                durability: _,
-                changed_at,
-            }) => MaybeChangedSinceProbeState::ChangedAt(changed_at),
+            | ProbeState::UpToDate(StampedValue { value: _, durability: _, changed_at }) => {
+                MaybeChangedSinceProbeState::ChangedAt(changed_at)
+            }
 
             // If we have nothing cached, then value may have changed.
             ProbeState::NotComputed(_) => MaybeChangedSinceProbeState::ChangedAt(revision_now),
@@ -561,14 +537,8 @@ where
             // We found that this memoized value may have changed
             // but we have an old value. We can re-run the code and
             // actually *check* if it has changed.
-            let StampedValue { changed_at, .. } = self.execute(
-                db,
-                runtime,
-                revision_now,
-                active_query,
-                panic_guard,
-                Some(old_memo),
-            );
+            let StampedValue { changed_at, .. } =
+                self.execute(db, runtime, revision_now, active_query, panic_guard, Some(old_memo));
             changed_at > revision
         } else {
             // We found that inputs to this memoized value may have chanced
@@ -605,10 +575,7 @@ where
     Q: QueryFunction,
 {
     fn in_progress(id: RuntimeId) -> Self {
-        QueryState::InProgress {
-            id,
-            anyone_waiting: Default::default(),
-        }
+        QueryState::InProgress { id, anyone_waiting: Default::default() }
     }
 }
 
@@ -632,11 +599,7 @@ where
         slot: &'me Slot<Q, MP>,
         runtime: &'me Runtime,
     ) -> Self {
-        Self {
-            database_key_index,
-            slot,
-            runtime,
-        }
+        Self { database_key_index, slot, runtime }
     }
 
     /// Indicates that we have concluded normally (without panicking).
@@ -674,8 +637,7 @@ where
                 // acquire a mutex; the mutex will guarantee that all writes
                 // we are interested in are visible.
                 if anyone_waiting.load(Ordering::Relaxed) {
-                    self.runtime
-                        .unblock_queries_blocked_on(self.database_key_index, wait_result);
+                    self.runtime.unblock_queries_blocked_on(self.database_key_index, wait_result);
                 }
             }
             _ => panic!(
@@ -784,9 +746,8 @@ where
             // are only interested in finding out whether the
             // input changed *again*.
             QueryInputs::Tracked { inputs } => {
-                let changed_input = inputs
-                    .iter()
-                    .find(|&&input| db.maybe_changed_after(input, verified_at));
+                let changed_input =
+                    inputs.iter().find(|&&input| db.maybe_changed_after(input, verified_at));
                 if let Some(input) = changed_input {
                     debug!("validate_memoized_value: `{:?}` may have changed", input);
 

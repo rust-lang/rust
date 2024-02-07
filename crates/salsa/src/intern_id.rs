@@ -63,9 +63,7 @@ impl InternId {
     /// `value` must be less than `MAX`
     pub const unsafe fn new_unchecked(value: u32) -> Self {
         debug_assert!(value < InternId::MAX);
-        InternId {
-            value: NonZeroU32::new_unchecked(value + 1),
-        }
+        InternId { value: NonZeroU32::new_unchecked(value + 1) }
     }
 
     /// Convert this raw-id into a u32 value.

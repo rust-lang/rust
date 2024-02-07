@@ -37,11 +37,7 @@ fn parallel_cycle_none_recover() {
 
     // We expect A to propagate a panic, which causes us to use the sentinel
     // type `Canceled`.
-    assert!(thread_a
-        .join()
-        .unwrap_err()
-        .downcast_ref::<salsa::Cycle>()
-        .is_some());
+    assert!(thread_a.join().unwrap_err().downcast_ref::<salsa::Cycle>().is_some());
 }
 
 #[salsa::query_group(ParallelCycleNoneRecover)]

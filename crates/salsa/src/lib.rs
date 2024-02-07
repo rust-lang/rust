@@ -216,18 +216,14 @@ impl fmt::Debug for EventKind {
                 .debug_struct("DidValidateMemoizedValue")
                 .field("database_key", database_key)
                 .finish(),
-            EventKind::WillBlockOn {
-                other_runtime_id,
-                database_key,
-            } => fmt
+            EventKind::WillBlockOn { other_runtime_id, database_key } => fmt
                 .debug_struct("WillBlockOn")
                 .field("other_runtime_id", other_runtime_id)
                 .field("database_key", database_key)
                 .finish(),
-            EventKind::WillExecute { database_key } => fmt
-                .debug_struct("WillExecute")
-                .field("database_key", database_key)
-                .finish(),
+            EventKind::WillExecute { database_key } => {
+                fmt.debug_struct("WillExecute").field("database_key", database_key).finish()
+            }
             EventKind::WillCheckCancellation => fmt.debug_struct("WillCheckCancellation").finish(),
         }
     }
@@ -251,10 +247,7 @@ where
                 .debug_struct("DidValidateMemoizedValue")
                 .field("database_key", &database_key.debug(self.db))
                 .finish(),
-            EventKind::WillBlockOn {
-                other_runtime_id,
-                database_key,
-            } => fmt
+            EventKind::WillBlockOn { other_runtime_id, database_key } => fmt
                 .debug_struct("WillBlockOn")
                 .field("other_runtime_id", &other_runtime_id)
                 .field("database_key", &database_key.debug(self.db))
@@ -707,9 +700,7 @@ impl Cycle {
     /// Returns a vector with the debug information for
     /// all the participants in the cycle.
     pub fn all_participants<DB: ?Sized + Database>(&self, db: &DB) -> Vec<String> {
-        self.participant_keys()
-            .map(|d| format!("{:?}", d.debug(db)))
-            .collect()
+        self.participant_keys().map(|d| format!("{:?}", d.debug(db))).collect()
     }
 
     /// Returns a vector with the debug information for
@@ -733,18 +724,12 @@ impl Cycle {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 fmt.debug_struct("UnexpectedCycle")
                     .field("all_participants", &self.c.all_participants(self.db))
-                    .field(
-                        "unexpected_participants",
-                        &self.c.unexpected_participants(self.db),
-                    )
+                    .field("unexpected_participants", &self.c.unexpected_participants(self.db))
                     .finish()
             }
         }
 
-        UnexpectedCycleDebug {
-            c: self,
-            db: db.ops_database(),
-        }
+        UnexpectedCycleDebug { c: self, db: db.ops_database() }
     }
 }
 

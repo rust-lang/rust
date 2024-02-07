@@ -16,11 +16,7 @@ trait QueryGroup: salsa::Database + AsRef<HashMap<u32, u32>> {
 }
 
 fn a(db: &dyn QueryGroup, x: u32) -> u32 {
-    let durability = if x % 2 == 0 {
-        Durability::LOW
-    } else {
-        Durability::HIGH
-    };
+    let durability = if x % 2 == 0 { Durability::LOW } else { Durability::HIGH };
     db.salsa_runtime().report_synthetic_read(durability);
     let external_state: &HashMap<u32, u32> = db.as_ref();
     external_state[&x]

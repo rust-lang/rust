@@ -85,9 +85,7 @@ impl Runtime {
 
         let revision_guard = RevisionGuard::new(&self.shared_state);
 
-        let id = RuntimeId {
-            counter: self.shared_state.next_id.fetch_add(1, Ordering::SeqCst),
-        };
+        let id = RuntimeId { counter: self.shared_state.next_id.fetch_add(1, Ordering::SeqCst) };
 
         Runtime {
             id,
@@ -242,8 +240,7 @@ impl Runtime {
     /// Queries which report untracked reads will be re-executed in the next
     /// revision.
     pub fn report_untracked_read(&self) {
-        self.local_state
-            .report_untracked_read(self.current_revision());
+        self.local_state.report_untracked_read(self.current_revision());
     }
 
     /// Acts as though the current query had read an input with the given durability; this will force the current query's durability to be at most `durability`.
@@ -251,8 +248,7 @@ impl Runtime {
     /// This is mostly useful to control the durability level for [on-demand inputs](https://salsa-rs.github.io/salsa/common_patterns/on_demand_inputs.html).
     pub fn report_synthetic_read(&self, durability: Durability) {
         let changed_at = self.last_changed_revision(durability);
-        self.local_state
-            .report_synthetic_read(durability, changed_at);
+        self.local_state.report_synthetic_read(durability, changed_at);
     }
 
     /// Handles a cycle in the dependency graph that was detected when the
@@ -270,10 +266,7 @@ impl Runtime {
         database_key_index: DatabaseKeyIndex,
         to_id: RuntimeId,
     ) {
-        debug!(
-            "unblock_cycle_and_maybe_throw(database_key={:?})",
-            database_key_index
-        );
+        debug!("unblock_cycle_and_maybe_throw(database_key={:?})", database_key_index);
 
         let mut from_stack = self.local_state.take_query_stack();
         let from_id = self.id();
@@ -312,11 +305,7 @@ impl Runtime {
 
             Cycle::new(Arc::new(v))
         };
-        debug!(
-            "cycle {:?}, cycle_query {:#?}",
-            cycle.debug(db),
-            cycle_query,
-        );
+        debug!("cycle {:?}, cycle_query {:#?}", cycle.debug(db), cycle_query,);
 
         // We can remove the cycle participants from the list of dependencies;
         // they are a strongly connected component (SCC) and we only care about
@@ -329,12 +318,10 @@ impl Runtime {
         // are going to be unwound so that fallback can occur.
         dg.for_each_cycle_participant(from_id, &mut from_stack, database_key_index, to_id, |aqs| {
             aqs.iter_mut()
-                .skip_while(
-                    |aq| match db.cycle_recovery_strategy(aq.database_key_index) {
-                        CycleRecoveryStrategy::Panic => true,
-                        CycleRecoveryStrategy::Fallback => false,
-                    },
-                )
+                .skip_while(|aq| match db.cycle_recovery_strategy(aq.database_key_index) {
+                    CycleRecoveryStrategy::Panic => true,
+                    CycleRecoveryStrategy::Fallback => false,
+                })
                 .for_each(|aq| {
                     debug!("marking {:?} for fallback", aq.database_key_index.debug(db));
                     aq.take_inputs_from(&cycle_query);
@@ -404,10 +391,7 @@ impl Runtime {
 
         db.salsa_event(Event {
             runtime_id: self.id(),
-            kind: EventKind::WillBlockOn {
-                other_runtime_id: other_id,
-                database_key,
-            },
+            kind: EventKind::WillBlockOn { other_runtime_id: other_id, database_key },
         });
 
         let stack = self.local_state.take_query_stack();
@@ -585,18 +569,12 @@ impl ActiveQuery {
                 if dependencies.is_empty() {
                     QueryInputs::NoInputs
                 } else {
-                    QueryInputs::Tracked {
-                        inputs: dependencies.iter().copied().collect(),
-                    }
+                    QueryInputs::Tracked { inputs: dependencies.iter().copied().collect() }
                 }
             }
         };
 
-        QueryRevisions {
-            changed_at: self.changed_at,
-            inputs,
-            durability: self.durability,
-        }
+        QueryRevisions { changed_at: self.changed_at, inputs, durability: self.durability }
     }
 
     /// Adds any dependencies from `other` into `self`.
@@ -673,9 +651,7 @@ impl RevisionGuard {
             shared_state.query_lock.raw().lock_shared_recursive();
         }
 
-        Self {
-            shared_state: shared_state.clone(),
-        }
+        Self { shared_state: shared_state.clone() }
     }
 }
 

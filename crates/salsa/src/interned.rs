@@ -110,10 +110,7 @@ where
     K: Eq + Hash,
 {
     fn default() -> Self {
-        Self {
-            map: Default::default(),
-            values: Default::default(),
-        }
+        Self { map: Default::default(), values: Default::default() }
     }
 }
 
@@ -159,11 +156,7 @@ where
                 query_index: Q::QUERY_INDEX,
                 key_index: index.as_u32(),
             };
-            Arc::new(Slot {
-                database_key_index,
-                value: owned_key2,
-                interned_at: revision_now,
-            })
+            Arc::new(Slot { database_key_index, value: owned_key2, interned_at: revision_now })
         };
 
         let (slot, index);
@@ -194,10 +187,7 @@ where
     const CYCLE_STRATEGY: crate::plumbing::CycleRecoveryStrategy = CycleRecoveryStrategy::Panic;
 
     fn new(group_index: u16) -> Self {
-        InternedStorage {
-            group_index,
-            tables: RwLock::new(InternTables::default()),
-        }
+        InternedStorage { group_index, tables: RwLock::new(InternTables::default()) }
     }
 
     fn fmt_index(
@@ -231,12 +221,11 @@ where
         db.unwind_if_cancelled();
         let (slot, index) = self.intern_index(db, key);
         let changed_at = slot.interned_at;
-        db.salsa_runtime()
-            .report_query_read_and_unwind_if_cycle_resulted(
-                slot.database_key_index,
-                INTERN_DURABILITY,
-                changed_at,
-            );
+        db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
+            slot.database_key_index,
+            INTERN_DURABILITY,
+            changed_at,
+        );
         <Q::Value>::from_intern_id(index)
     }
 
@@ -313,9 +302,7 @@ where
     const CYCLE_STRATEGY: CycleRecoveryStrategy = CycleRecoveryStrategy::Panic;
 
     fn new(_group_index: u16) -> Self {
-        LookupInternedStorage {
-            phantom: std::marker::PhantomData,
-        }
+        LookupInternedStorage { phantom: std::marker::PhantomData }
     }
 
     fn fmt_index(
@@ -350,12 +337,11 @@ where
         let slot = interned_storage.lookup_value(index);
         let value = slot.value.clone();
         let interned_at = slot.interned_at;
-        db.salsa_runtime()
-            .report_query_read_and_unwind_if_cycle_resulted(
-                slot.database_key_index,
-                INTERN_DURABILITY,
-                interned_at,
-            );
+        db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
+            slot.database_key_index,
+            INTERN_DURABILITY,
+            interned_at,
+        );
         value
     }
 

@@ -21,9 +21,7 @@ impl Revision {
     }
 
     pub(crate) fn from(g: u32) -> Self {
-        Self {
-            generation: NonZeroU32::new(g).unwrap(),
-        }
+        Self { generation: NonZeroU32::new(g).unwrap() }
     }
 
     pub(crate) fn next(self) -> Revision {
@@ -48,9 +46,7 @@ pub(crate) struct AtomicRevision {
 
 impl AtomicRevision {
     pub(crate) fn start() -> Self {
-        Self {
-            data: AtomicU32::new(START),
-        }
+        Self { data: AtomicU32::new(START) }
     }
 
     pub(crate) fn load(&self) -> Revision {

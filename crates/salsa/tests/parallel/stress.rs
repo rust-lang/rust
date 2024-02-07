@@ -38,9 +38,7 @@ impl salsa::Database for StressDatabaseImpl {}
 
 impl salsa::ParallelDatabase for StressDatabaseImpl {
     fn snapshot(&self) -> Snapshot<StressDatabaseImpl> {
-        Snapshot::new(StressDatabaseImpl {
-            storage: self.storage.snapshot(),
-        })
+        Snapshot::new(StressDatabaseImpl { storage: self.storage.snapshot() })
     }
 }
 
@@ -53,10 +51,7 @@ enum Query {
 
 enum MutatorOp {
     WriteOp(WriteOp),
-    LaunchReader {
-        ops: Vec<ReadOp>,
-        check_cancellation: bool,
-    },
+    LaunchReader { ops: Vec<ReadOp>, check_cancellation: bool },
 }
 
 #[derive(Debug)]
@@ -158,13 +153,12 @@ fn stress_test() {
     for op in write_ops {
         match op {
             MutatorOp::WriteOp(w) => w.execute(&mut db),
-            MutatorOp::LaunchReader {
-                ops,
-                check_cancellation,
-            } => all_threads.push(std::thread::spawn({
-                let db = db.snapshot();
-                move || Cancelled::catch(|| db_reader_thread(&db, ops, check_cancellation))
-            })),
+            MutatorOp::LaunchReader { ops, check_cancellation } => {
+                all_threads.push(std::thread::spawn({
+                    let db = db.snapshot();
+                    move || Cancelled::catch(|| db_reader_thread(&db, ops, check_cancellation))
+                }))
+            }
         }
     }
 

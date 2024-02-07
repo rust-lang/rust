@@ -12,10 +12,7 @@ pub struct Storage<DB: DatabaseStorageTypes> {
 
 impl<DB: DatabaseStorageTypes> Default for Storage<DB> {
     fn default() -> Self {
-        Self {
-            query_store: Default::default(),
-            runtime: Default::default(),
-        }
+        Self { query_store: Default::default(), runtime: Default::default() }
     }
 }
 
@@ -51,9 +48,6 @@ impl<DB: DatabaseStorageTypes> Storage<DB> {
     /// thread. Using two database handles from the **same thread** can lead to
     /// deadlock.
     pub fn snapshot(&self) -> Self {
-        Storage {
-            query_store: self.query_store.clone(),
-            runtime: self.runtime.snapshot(),
-        }
+        Storage { query_store: self.query_store.clone(), runtime: self.runtime.snapshot() }
     }
 }

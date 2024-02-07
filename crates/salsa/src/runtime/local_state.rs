@@ -53,9 +53,7 @@ pub(crate) enum QueryInputs {
 
 impl Default for LocalState {
     fn default() -> Self {
-        LocalState {
-            query_stack: RefCell::new(Some(Vec::new())),
-        }
+        LocalState { query_stack: RefCell::new(Some(Vec::new())) }
     }
 }
 
@@ -65,19 +63,11 @@ impl LocalState {
         let mut query_stack = self.query_stack.borrow_mut();
         let query_stack = query_stack.as_mut().expect("local stack taken");
         query_stack.push(ActiveQuery::new(database_key_index));
-        ActiveQueryGuard {
-            local_state: self,
-            database_key_index,
-            push_len: query_stack.len(),
-        }
+        ActiveQueryGuard { local_state: self, database_key_index, push_len: query_stack.len() }
     }
 
     fn with_query_stack<R>(&self, c: impl FnOnce(&mut Vec<ActiveQuery>) -> R) -> R {
-        c(self
-            .query_stack
-            .borrow_mut()
-            .as_mut()
-            .expect("query stack taken"))
+        c(self.query_stack.borrow_mut().as_mut().expect("query stack taken"))
     }
 
     pub(super) fn query_in_progress(&self) -> bool {
@@ -86,9 +76,7 @@ impl LocalState {
 
     pub(super) fn active_query(&self) -> Option<DatabaseKeyIndex> {
         self.with_query_stack(|stack| {
-            stack
-                .last()
-                .map(|active_query| active_query.database_key_index)
+            stack.last().map(|active_query| active_query.database_key_index)
         })
     }
 
@@ -156,10 +144,7 @@ impl LocalState {
     /// the current thread is blocking. The stack must be restored
     /// with [`Self::restore_query_stack`] when the thread unblocks.
     pub(super) fn take_query_stack(&self) -> Vec<ActiveQuery> {
-        assert!(
-            self.query_stack.borrow().is_some(),
-            "query stack already taken"
-        );
+        assert!(self.query_stack.borrow().is_some(), "query stack already taken");
         self.query_stack.take().unwrap()
     }
 
@@ -188,10 +173,7 @@ impl ActiveQueryGuard<'_> {
         self.local_state.with_query_stack(|stack| {
             // Sanity check: pushes and pops should be balanced.
             assert_eq!(stack.len(), self.push_len);
-            debug_assert_eq!(
-                stack.last().unwrap().database_key_index,
-                self.database_key_index
-            );
+            debug_assert_eq!(stack.last().unwrap().database_key_index, self.database_key_index);
             stack.pop().unwrap()
         })
     }
@@ -220,8 +202,7 @@ impl ActiveQueryGuard<'_> {
     /// If the active query is registered as a cycle participant, remove and
     /// return that cycle.
     pub(crate) fn take_cycle(&self) -> Option<Cycle> {
-        self.local_state
-            .with_query_stack(|stack| stack.last_mut()?.cycle.take())
+        self.local_state.with_query_stack(|stack| stack.last_mut()?.cycle.take())
     }
 }
 

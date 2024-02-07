@@ -108,9 +108,7 @@ where
             query_index: Q::QUERY_INDEX,
             key_index,
         };
-        entry
-            .or_insert_with(|| Arc::new(Slot::new(key.clone(), database_key_index)))
-            .clone()
+        entry.or_insert_with(|| Arc::new(Slot::new(key.clone(), database_key_index))).clone()
     }
 }
 
@@ -152,13 +150,7 @@ where
         assert_eq!(input.group_index, self.group_index);
         assert_eq!(input.query_index, Q::QUERY_INDEX);
         debug_assert!(revision < db.salsa_runtime().current_revision());
-        let slot = self
-            .slot_map
-            .read()
-            .get_index(input.key_index as usize)
-            .unwrap()
-            .1
-            .clone();
+        let slot = self.slot_map.read().get_index(input.key_index as usize).unwrap().1.clone();
         slot.maybe_changed_after(db, revision)
     }
 
@@ -166,22 +158,17 @@ where
         db.unwind_if_cancelled();
 
         let slot = self.slot(key);
-        let StampedValue {
-            value,
-            durability,
-            changed_at,
-        } = slot.read(db);
+        let StampedValue { value, durability, changed_at } = slot.read(db);
 
         if let Some(evicted) = self.lru_list.record_use(&slot) {
             evicted.evict();
         }
 
-        db.salsa_runtime()
-            .report_query_read_and_unwind_if_cycle_resulted(
-                slot.database_key_index(),
-                durability,
-                changed_at,
-            );
+        db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
+            slot.database_key_index(),
+            durability,
+            changed_at,
+        );
 
         value
     }
@@ -195,10 +182,7 @@ where
         C: std::iter::FromIterator<TableEntry<Q::Key, Q::Value>>,
     {
         let slot_map = self.slot_map.read();
-        slot_map
-            .values()
-            .filter_map(|slot| slot.as_table_entry())
-            .collect()
+        slot_map.values().filter_map(|slot| slot.as_table_entry()).collect()
     }
 }
 

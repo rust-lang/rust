@@ -18,11 +18,10 @@ fn true_parallel_different_keys() {
     let thread1 = std::thread::spawn({
         let db = db.snapshot();
         move || {
-            let v = db.knobs().sum_signal_on_entry.with_value(1, || {
-                db.knobs()
-                    .sum_wait_for_on_exit
-                    .with_value(2, || db.sum("a"))
-            });
+            let v = db
+                .knobs()
+                .sum_signal_on_entry
+                .with_value(1, || db.knobs().sum_wait_for_on_exit.with_value(2, || db.sum("a")));
             v
         }
     });
@@ -32,9 +31,10 @@ fn true_parallel_different_keys() {
     let thread2 = std::thread::spawn({
         let db = db.snapshot();
         move || {
-            let v = db.knobs().sum_wait_for_on_entry.with_value(1, || {
-                db.knobs().sum_signal_on_exit.with_value(2, || db.sum("b"))
-            });
+            let v = db
+                .knobs()
+                .sum_wait_for_on_entry
+                .with_value(1, || db.knobs().sum_signal_on_exit.with_value(2, || db.sum("b")));
             v
         }
     });
@@ -58,11 +58,10 @@ fn true_parallel_same_keys() {
     let thread1 = std::thread::spawn({
         let db = db.snapshot();
         move || {
-            let v = db.knobs().sum_signal_on_entry.with_value(1, || {
-                db.knobs()
-                    .sum_wait_for_on_entry
-                    .with_value(2, || db.sum("abc"))
-            });
+            let v = db
+                .knobs()
+                .sum_signal_on_entry
+                .with_value(1, || db.knobs().sum_wait_for_on_entry.with_value(2, || db.sum("abc")));
             v
         }
     });
@@ -99,9 +98,9 @@ fn true_parallel_propagate_panic() {
         let db = db.snapshot();
         move || {
             let v = db.knobs().sum_signal_on_entry.with_value(1, || {
-                db.knobs().sum_wait_for_on_entry.with_value(2, || {
-                    db.knobs().sum_should_panic.with_value(true, || db.sum("a"))
-                })
+                db.knobs()
+                    .sum_wait_for_on_entry
+                    .with_value(2, || db.knobs().sum_should_panic.with_value(true, || db.sum("a")))
             });
             v
         }

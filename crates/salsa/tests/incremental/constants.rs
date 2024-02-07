@@ -111,10 +111,7 @@ fn becomes_constant_with_change() {
 
     db.set_input_with_durability('b', 45, Durability::MEDIUM);
     assert_eq!(db.add('a', 'b'), 68);
-    assert_eq!(
-        Durability::MEDIUM,
-        AddQuery.in_db(&db).durability(('a', 'b'))
-    );
+    assert_eq!(Durability::MEDIUM, AddQuery.in_db(&db).durability(('a', 'b')));
 }
 
 // Test a subtle case in which an input changes from constant to
