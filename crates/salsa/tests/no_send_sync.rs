@@ -1,5 +1,3 @@
-extern crate salsa;
-
 use std::rc::Rc;
 
 #[salsa::query_group(NoSendSyncStorage)]

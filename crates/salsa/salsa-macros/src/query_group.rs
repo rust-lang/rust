@@ -625,13 +625,6 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
         }
         // ANCHOR_END:group_storage_methods
     });
-
-    if std::env::var("SALSA_DUMP").is_ok() {
-        println!("~~~ query_group");
-        println!("{}", output);
-        println!("~~~ query_group");
-    }
-
     output.into()
 }
 

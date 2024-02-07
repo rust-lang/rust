@@ -51,6 +51,7 @@ struct Error {
 }
 
 #[salsa::database(GroupStruct)]
+#[derive(Default)]
 struct DatabaseImpl {
     storage: salsa::Storage<Self>,
 }
@@ -60,14 +61,6 @@ impl salsa::Database for DatabaseImpl {}
 impl ParallelDatabase for DatabaseImpl {
     fn snapshot(&self) -> Snapshot<Self> {
         Snapshot::new(DatabaseImpl { storage: self.storage.snapshot() })
-    }
-}
-
-impl Default for DatabaseImpl {
-    fn default() -> Self {
-        let res = DatabaseImpl { storage: salsa::Storage::default() };
-
-        res
     }
 }
 
@@ -151,17 +144,14 @@ impl CycleQuery {
 }
 
 fn cycle_a(db: &dyn Database) -> Result<(), Error> {
-    dbg!("cycle_a");
     db.a_invokes().invoke(db)
 }
 
 fn cycle_b(db: &dyn Database) -> Result<(), Error> {
-    dbg!("cycle_b");
     db.b_invokes().invoke(db)
 }
 
 fn cycle_c(db: &dyn Database) -> Result<(), Error> {
-    dbg!("cycle_c");
     db.c_invokes().invoke(db)
 }
 

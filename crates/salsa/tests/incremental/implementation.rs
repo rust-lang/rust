@@ -33,6 +33,7 @@ impl TestContextImpl {
             return;
         }
 
+        #[allow(clippy::print_stdout)]
         for diff in dissimilar::diff(expected_text, actual_text) {
             match diff {
                 dissimilar::Chunk::Delete(l) => println!("-{}", l),

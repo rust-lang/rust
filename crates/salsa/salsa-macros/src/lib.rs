@@ -2,8 +2,6 @@
 
 #![recursion_limit = "256"]
 
-extern crate proc_macro;
-extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 

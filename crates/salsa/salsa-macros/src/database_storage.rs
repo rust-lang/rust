@@ -203,12 +203,6 @@ pub(crate) fn database(args: TokenStream, input: TokenStream) -> TokenStream {
 
     output.extend(has_group_impls);
 
-    if std::env::var("SALSA_DUMP").is_ok() {
-        println!("~~~ database_storage");
-        println!("{}", output);
-        println!("~~~ database_storage");
-    }
-
     output.into()
 }
 
@@ -218,7 +212,7 @@ struct QueryGroupList {
 }
 
 impl Parse for QueryGroupList {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let query_groups: PunctuatedQueryGroups =
             input.parse_terminated(QueryGroup::parse, Token![,])?;
         Ok(QueryGroupList { query_groups })
@@ -241,7 +235,7 @@ impl Parse for QueryGroup {
     /// ```ignore
     ///         impl HelloWorldDatabase;
     /// ```
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let group_path: Path = input.parse()?;
         Ok(QueryGroup { group_path })
     }
@@ -250,7 +244,7 @@ impl Parse for QueryGroup {
 struct Nothing;
 
 impl Parse for Nothing {
-    fn parse(_input: ParseStream) -> syn::Result<Self> {
+    fn parse(_input: ParseStream<'_>) -> syn::Result<Self> {
         Ok(Nothing)
     }
 }

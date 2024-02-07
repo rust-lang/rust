@@ -18,3 +18,6 @@ heck = "0.4"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2.0", features = ["full", "extra-traits"] }
+
+[lints]
+workspace = true

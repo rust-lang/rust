@@ -4,6 +4,8 @@
 //! via a b query with zero inputs, which uses `add_synthetic_read` to
 //! tweak durability and `invalidate` to clear the input.
 
+#![allow(clippy::disallowed_types, clippy::type_complexity)]
+
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use salsa::{Database as _, Durability, EventKind};
@@ -40,8 +42,6 @@ struct Database {
 
 impl salsa::Database for Database {
     fn salsa_event(&self, event: salsa::Event) {
-        dbg!(event.debug(self));
-
         if let Some(cb) = &self.on_event {
             cb(self, event)
         }
@@ -111,7 +111,6 @@ fn on_demand_input_durability() {
         }
     "#]].assert_debug_eq(&events);
 
-    eprintln!("------------------");
     db.salsa_runtime_mut().synthetic_write(Durability::LOW);
     events.replace(vec![]);
     assert_eq!(db.c(1), 10);
@@ -129,7 +128,6 @@ fn on_demand_input_durability() {
         }
     "#]].assert_debug_eq(&events);
 
-    eprintln!("------------------");
     db.salsa_runtime_mut().synthetic_write(Durability::HIGH);
     events.replace(vec![]);
     assert_eq!(db.c(1), 10);

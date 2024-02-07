@@ -46,7 +46,7 @@ impl<T> WithValue<T> for Cell<T> {
     fn with_value<R>(&self, value: T, closure: impl FnOnce() -> R) -> R {
         let old_value = self.replace(value);
 
-        let result = catch_unwind(AssertUnwindSafe(|| closure()));
+        let result = catch_unwind(AssertUnwindSafe(closure));
 
         self.set(old_value);
 
@@ -57,16 +57,11 @@ impl<T> WithValue<T> for Cell<T> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CancellationFlag {
+    #[default]
     Down,
     Panic,
-}
-
-impl Default for CancellationFlag {
-    fn default() -> CancellationFlag {
-        CancellationFlag::Down
-    }
 }
 
 /// Various "knobs" that can be used to customize how the queries
