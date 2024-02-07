@@ -98,9 +98,6 @@ trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.skeleton().visit_projection_ty(projection)
-    }
     fn visit_predicates(
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
