@@ -1593,12 +1593,71 @@ fn deny_equality_constraints(
             }
         }
     }
-    // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
+        // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+        for bounds in generics.params.iter().map(|p| &p.bounds).chain(
+            generics.where_clause.predicates.iter().filter_map(|pred| match pred {
+                WherePredicate::BoundPredicate(p) => Some(&p.bounds),
+                _ => None,
+            }),
+        ) {
+            for bound in bounds {
+                if let GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                    if full_path.segments[..full_path.segments.len() - 1]
+                        .iter()
+                        .map(|segment| segment.ident.name)
+                        .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
+                        .all(|(a, b)| a == b)
+                    {
+                        let potential_assoc = full_path.segments.iter().last().unwrap();
+                        // println!("asd");
+                        if let [trait_segment] = &poly.trait_ref.path.segments[..] {
+                            let assoc = pprust::path_to_string(&ast::Path::from_ident(
+                                potential_assoc.ident,
+                            ));
+                            let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                            let (args, span) = match &trait_segment.args {
+                                Some(args) => match args.deref() {
+                                    ast::GenericArgs::AngleBracketed(args) => {
+                                        let Some(arg) = args.args.last() else {
+                                            continue;
+                                        };
+                                        (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
+                                    }
+                                    _ => continue,
+                                },
+                                None => (
+                                    format!("<{assoc} = {ty}>"),
+                                    trait_segment.span().shrink_to_hi(),
+                                ),
+                            };
+                            err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                                span,
+                                args,
+                                predicate: predicate.span,
+                                trait_segment: trait_segment.ident,
+                                potential_assoc: potential_assoc.ident,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
-                if param.ident == potential_param.ident {
-                    for bound in &param.bounds {
+            for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
+                generics.where_clause.predicates.iter().filter_map(|pred| match pred {
+                    WherePredicate::BoundPredicate(p)
+                        if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
+                            && let [segment] = &path.segments[..] =>
+                    {
+                        Some((segment.ident, &p.bounds))
+                    }
+                    _ => None,
+                }),
+            ) {
+                if ident == potential_param.ident {
+                    for bound in bounds {
                         if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
                             bound
                         {

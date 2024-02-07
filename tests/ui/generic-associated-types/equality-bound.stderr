@@ -32,6 +32,96 @@ LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/equality-bound.rs:23:9
+   |
+LL |         IntoIterator::Item = A,
+   |         ^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL ~         T: IntoIterator<Item = A>,
+LL ~         ,
+   |
+
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/equality-bound.rs:37:9
+   |
+LL |         T::Item = A,
+   |         ^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL ~         T: IntoIterator<Item = A>,
+LL ~         ,
+   |
+
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/equality-bound.rs:50:9
+   |
+LL |         IntoIterator::Item = A,
+   |         ^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL ~     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self
+LL |     where
+LL ~         ,
+   |
+
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/equality-bound.rs:63:9
+   |
+LL |         T::Item = A,
+   |         ^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `IntoIterator::Item` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL ~     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self
+LL |     where
+LL ~         ,
+   |
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/equality-bound.rs:23:30
+   |
+LL |         IntoIterator::Item = A,
+   |                              ^ help: a struct with a similar name exists: `K`
+...
+LL | struct K {}
+   | -------- similarly named struct `K` defined here
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/equality-bound.rs:37:19
+   |
+LL |         T::Item = A,
+   |                   ^ help: a struct with a similar name exists: `K`
+...
+LL | struct K {}
+   | -------- similarly named struct `K` defined here
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/equality-bound.rs:50:30
+   |
+LL |         IntoIterator::Item = A,
+   |                              ^ help: a struct with a similar name exists: `K`
+...
+LL | struct K {}
+   | -------- similarly named struct `K` defined here
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/equality-bound.rs:63:19
+   |
+LL | struct K {}
+   | -------- similarly named struct `K` defined here
+...
+LL |         T::Item = A,
+   |                   ^ help: a struct with a similar name exists: `K`
+
 error[E0433]: failed to resolve: use of undeclared type `I`
   --> $DIR/equality-bound.rs:9:41
    |
@@ -41,6 +131,7 @@ LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    |                                         use of undeclared type `I`
    |                                         help: a type parameter with a similar name exists: `J`
 
-error: aborting due to 4 previous errors
+error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0433`.
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.
