@@ -42,11 +42,10 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::TyAlias {..} | DefKind::AssocTy |
         // Walk over the type of the item
         DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
-            let span = match tcx.hir_node_by_def_id(item).ty() {
-                Some(ty) => ty.span,
-                _ => tcx.def_span(item),
-            };
-            visitor.visit(span, tcx.type_of(item).instantiate_identity());
+            if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
+                // Associated types in traits don't necessarily have a type that we can visit
+                visitor.visit(ty.span, tcx.type_of(item).instantiate_identity())?;
+            }
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
