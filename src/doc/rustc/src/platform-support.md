@@ -280,6 +280,7 @@ target | std | host | notes
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare ARMv7-A, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
+[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare ARMv8-R, hardfloat
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
