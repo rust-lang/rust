@@ -919,14 +919,14 @@ impl<'a> State<'a> {
         self.maybe_print_comment(arm.pat.span.lo());
         self.print_outer_attributes(&arm.attrs);
         self.print_pat(&arm.pat);
-        self.space();
         if let Some(e) = &arm.guard {
+            self.space();
             self.word_space("if");
             self.print_expr(e, FixupContext::default());
-            self.space();
         }
 
         if let Some(body) = &arm.body {
+            self.space();
             self.word_space("=>");
 
             match &body.kind {
@@ -951,7 +951,9 @@ impl<'a> State<'a> {
                 }
             }
         } else {
+            // Empty body following a never pattern.
             self.word(",");
+            self.end(); // Close the ibox for the pattern.
         }
         self.end(); // Close enclosing cbox.
     }
