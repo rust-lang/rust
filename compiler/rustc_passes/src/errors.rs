@@ -1732,7 +1732,7 @@ pub struct UnusedVariableTryPrefix {
 
 #[derive(Subdiagnostic)]
 pub enum UnusedVariableSugg {
-    #[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
+    #[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
     TryPrefixSugg {
         #[suggestion_part(code = "_{name}")]
         spans: Vec<Span>,
@@ -1771,7 +1771,7 @@ pub struct UnusedVarTryIgnore {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
 pub struct UnusedVarTryIgnoreSugg {
     #[suggestion_part(code = "{name}: _")]
     pub shorthands: Vec<Span>,
