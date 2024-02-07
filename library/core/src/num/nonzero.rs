@@ -3,6 +3,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::intrinsics;
 #[cfg(bootstrap)]
 use crate::marker::StructuralEq;
 use crate::marker::StructuralPartialEq;
@@ -11,7 +12,6 @@ use crate::str::FromStr;
 
 use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
-use crate::intrinsics;
 
 mod private {
     #[unstable(
@@ -115,12 +115,11 @@ where
             None => {
                 // SAFETY: The caller guarantees that `n` is non-zero, so this is unreachable.
                 unsafe {
-                    crate::intrinsics::assert_unsafe_precondition!(
-                        "NonZero::new_unchecked requires the argument to be non-zero",
-                        () => false
+                    intrinsics::assert_unsafe_precondition!(
+                      "NonZero::new_unchecked requires the argument to be non-zero",
+                      () => false,
                     );
-
-                    crate::hint::unreachable_unchecked()
+                    intrinsics::unreachable()
                 }
             }
         }
@@ -155,12 +154,11 @@ where
             None => {
                 // SAFETY: The caller guarantees that `n` references a value that is non-zero, so this is unreachable.
                 unsafe {
-                    crate::intrinsics::assert_unsafe_precondition!(
+                    intrinsics::assert_unsafe_precondition!(
                       "NonZero::from_mut_unchecked requires the argument to dereference as non-zero",
-                        () => false
+                      () => false,
                     );
-
-                    crate::hint::unreachable_unchecked()
+                    intrinsics::unreachable()
                 }
             }
         }
@@ -770,7 +768,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             fn div(self, other: $Ty) -> $Int {
                 // SAFETY: div by zero is checked because `other` is a nonzero,
                 // and MIN/-1 is checked because `self` is an unsigned int.
-                unsafe { crate::intrinsics::unchecked_div(self, other.get()) }
+                unsafe { intrinsics::unchecked_div(self, other.get()) }
             }
         }
 
@@ -783,7 +781,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             fn rem(self, other: $Ty) -> $Int {
                 // SAFETY: rem by zero is checked because `other` is a nonzero,
                 // and MIN/-1 is checked because `self` is an unsigned int.
-                unsafe { crate::intrinsics::unchecked_rem(self, other.get()) }
+                unsafe { intrinsics::unchecked_rem(self, other.get()) }
             }
         }
     };
