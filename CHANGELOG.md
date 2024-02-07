@@ -5426,6 +5426,7 @@ Released 2018-09-13
 [`missing_safety_doc`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_safety_doc
 [`missing_spin_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_spin_loop
 [`missing_trait_methods`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_trait_methods
+[`missing_transmute_annotations`]: https://rust-lang.github.io/rust-clippy/master/index.html#missing_transmute_annotations
 [`mistyped_literal_suffixes`]: https://rust-lang.github.io/rust-clippy/master/index.html#mistyped_literal_suffixes
 [`mixed_attributes_style`]: https://rust-lang.github.io/rust-clippy/master/index.html#mixed_attributes_style
 [`mixed_case_hex_literals`]: https://rust-lang.github.io/rust-clippy/master/index.html#mixed_case_hex_literals

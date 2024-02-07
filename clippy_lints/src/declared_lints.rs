@@ -677,6 +677,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::trait_bounds::TYPE_REPETITION_IN_BOUNDS_INFO,
     crate::transmute::CROSSPOINTER_TRANSMUTE_INFO,
     crate::transmute::EAGER_TRANSMUTE_INFO,
+    crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS_INFO,
     crate::transmute::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS_INFO,
     crate::transmute::TRANSMUTE_BYTES_TO_STR_INFO,
     crate::transmute::TRANSMUTE_FLOAT_TO_INT_INFO,
