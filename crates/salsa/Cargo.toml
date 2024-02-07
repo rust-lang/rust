@@ -25,9 +25,9 @@ triomphe = "0.1.11"
 salsa-macros = { version = "0.0.0", path = "salsa-macros" }
 
 [dev-dependencies]
-diff = "0.1.0"
-linked-hash-map = "0.5.2"
-rand = "0.7"
-rand_distr = "0.2.1"
-test-log = "0.2.7"
-insta = "1.8.0"
+diff = "0.1.13"
+linked-hash-map = "0.5.6"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+test-log = "0.2.14"
+insta = "1.18.0"
