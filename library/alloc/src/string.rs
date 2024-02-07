@@ -1445,6 +1445,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("delete", "take")]
     pub fn remove(&mut self, idx: usize) -> char {
         let ch = match self[idx..].chars().next() {
             Some(ch) => ch,
@@ -1639,6 +1640,7 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
         let mut bits = [0; 4];
@@ -1738,6 +1740,7 @@ impl String {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("length", "size")]
     pub fn len(&self) -> usize {
         self.vec.len()
     }

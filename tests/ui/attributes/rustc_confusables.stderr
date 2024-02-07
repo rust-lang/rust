@@ -60,7 +60,12 @@ error[E0599]: no method named `pulled` found for struct `rustc_confusables_acros
   --> $DIR/rustc_confusables.rs:22:7
    |
 LL |     x.pulled();
-   |       ^^^^^^ help: there is a method with a similar name: `pull`
+   |       ^^^^^^
+   |
+help: you might have meant to use `pull`
+   |
+LL |     x.pull();
+   |       ~~~~
 
 error: aborting due to 9 previous errors
 

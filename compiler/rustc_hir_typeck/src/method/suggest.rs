@@ -1107,32 +1107,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(format!(
                             "the {item_kind} was found for\n{type_candidates}{additional_types}"
                         ));
-                    } else {
-                        'outer: for inherent_impl_did in
-                            self.tcx.inherent_impls(adt.did()).into_iter().flatten()
-                        {
-                            for inherent_method in
-                                self.tcx.associated_items(inherent_impl_did).in_definition_order()
-                            {
-                                if let Some(attr) = self
-                                    .tcx
-                                    .get_attr(inherent_method.def_id, sym::rustc_confusables)
-                                    && let Some(candidates) = parse_confusables(attr)
-                                    && candidates.contains(&item_name.name)
-                                {
-                                    err.span_suggestion_verbose(
-                                        item_name.span,
-                                        format!(
-                                            "you might have meant to use `{}`",
-                                            inherent_method.name
-                                        ),
-                                        inherent_method.name,
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                    break 'outer;
-                                }
-                            }
-                        }
                     }
                 }
             } else {
@@ -1156,6 +1130,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else if !custom_span_label {
             label_span_not_found(&mut err);
+        }
+
+        let mut confusable_suggested = None;
+        if let ty::Adt(adt, _) = rcvr_ty.kind() {
+            'outer: for inherent_impl_did in
+                self.tcx.inherent_impls(adt.did()).into_iter().flatten()
+            {
+                for inherent_method in
+                    self.tcx.associated_items(inherent_impl_did).in_definition_order()
+                {
+                    if let Some(attr) =
+                        self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
+                        && let Some(candidates) = parse_confusables(attr)
+                        && candidates.contains(&item_name.name)
+                    {
+                        {
+                            err.span_suggestion_verbose(
+                                item_name.span,
+                                format!("you might have meant to use `{}`", inherent_method.name),
+                                inherent_method.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                            confusable_suggested = Some(inherent_method.name);
+                            break 'outer;
+                        }
+                    }
+                }
+            }
         }
 
         // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
@@ -1259,7 +1261,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let Some(similar_candidate) = similar_candidate {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
-            if unsatisfied_predicates.is_empty() {
+            if unsatisfied_predicates.is_empty()
+                // ...or if we already suggested that name because of `rustc_confusable` annotation.
+                && Some(similar_candidate.name) != confusable_suggested
+            {
                 let def_kind = similar_candidate.kind.as_def_kind();
                 // Methods are defined within the context of a struct and their first parameter is always self,
                 // which represents the instance of the struct the method is being called on
