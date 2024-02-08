@@ -592,6 +592,22 @@ pub trait StrExt: private::Sealed {
     /// See [`str::to_ascii_uppercase`].
     #[must_use = "this returns a new SmolStr without modifying the original"]
     fn to_ascii_uppercase_smolstr(&self) -> SmolStr;
+
+    /// Replaces all matches of a &str with another &str returning a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::replace`].
+    // TODO: Use `Pattern` when stable.
+    #[must_use = "this returns a new SmolStr without modifying the original"]
+    fn replace_smolstr(&self, from: &str, to: &str) -> SmolStr;
+
+    /// Replaces first N matches of a &str with another &str returning a new [`SmolStr`],
+    /// potentially without allocating.
+    ///
+    /// See [`str::replacen`].
+    // TODO: Use `Pattern` when stable.
+    #[must_use = "this returns a new SmolStr without modifying the original"]
+    fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr;
 }
 
 impl StrExt for str {
@@ -613,6 +629,24 @@ impl StrExt for str {
     #[inline]
     fn to_ascii_uppercase_smolstr(&self) -> SmolStr {
         SmolStr::from_char_iter(self.chars().map(|c| c.to_ascii_uppercase()))
+    }
+
+    #[inline]
+    fn replace_smolstr(&self, from: &str, to: &str) -> SmolStr {
+        self.replacen_smolstr(from, to, usize::MAX)
+    }
+
+    #[inline]
+    fn replacen_smolstr(&self, from: &str, to: &str, count: usize) -> SmolStr {
+        let mut result = Writer::new();
+        let mut last_end = 0;
+        for (start, part) in self.match_indices(from).take(count) {
+            result.push_str(unsafe { self.get_unchecked(last_end..start) });
+            result.push_str(to);
+            last_end = start + part.len();
+        }
+        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
+        SmolStr::from(result)
     }
 }
 
@@ -651,10 +685,8 @@ impl Writer {
             len: 0,
         }
     }
-}
 
-impl fmt::Write for Writer {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
+    fn push_str(&mut self, s: &str) {
         // if currently on the stack
         if self.len <= INLINE_CAP {
             let old_len = self.len;
@@ -663,8 +695,7 @@ impl fmt::Write for Writer {
             // if the new length will fit on the stack (even if it fills it entirely)
             if self.len <= INLINE_CAP {
                 self.inline[old_len..self.len].copy_from_slice(s.as_bytes());
-
-                return Ok(()); // skip the heap push below
+                return; // skip the heap push below
             }
 
             self.heap.reserve(self.len);
@@ -678,7 +709,13 @@ impl fmt::Write for Writer {
         }
 
         self.heap.push_str(s);
+    }
+}
 
+impl fmt::Write for Writer {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.push_str(s);
         Ok(())
     }
 }

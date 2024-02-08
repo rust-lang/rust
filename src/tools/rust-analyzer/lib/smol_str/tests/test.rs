@@ -312,4 +312,18 @@ mod test_str_ext {
         assert_eq!(uppercase, "AßΔC");
         assert!(!uppercase.is_heap_allocated());
     }
+
+    #[test]
+    fn replace() {
+        let result = "foo_bar_baz".replace_smolstr("ba", "do");
+        assert_eq!(result, "foo_dor_doz");
+        assert!(!result.is_heap_allocated());
+    }
+
+    #[test]
+    fn replacen() {
+        let result = "foo_bar_baz".replacen_smolstr("ba", "do", 1);
+        assert_eq!(result, "foo_dor_baz");
+        assert!(!result.is_heap_allocated());
+    }
 }
