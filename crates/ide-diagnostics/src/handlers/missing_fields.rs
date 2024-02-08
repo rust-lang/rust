@@ -13,7 +13,7 @@ use syntax::{
     ast::{self, make},
     AstNode, SyntaxNode, SyntaxNodePtr,
 };
-use text_edit::{TextEdit, TextRange};
+use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
