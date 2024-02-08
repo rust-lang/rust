@@ -223,6 +223,9 @@ config_data! {
         ///
         /// Aliased as `"checkOnSave.targets"`.
         check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = "null",
+        /// Whether `--workspace` should be passed to `cargo check`.
+        /// If false, `-p <package>` will be passed instead.
+        check_workspace: bool = "true",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -1321,6 +1324,10 @@ impl Config {
                 enable_range_formatting: self.data.rustfmt_rangeFormatting_enable,
             },
         }
+    }
+
+    pub fn flycheck_workspace(&self) -> bool {
+        self.data.check_workspace
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {

@@ -503,7 +503,7 @@ impl GlobalState {
             let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let mut load = |path: &AbsPath| {
-                let _p = tracing::span!(tracing::Level::INFO, "switch_workspaces::load").entered();
+                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
                 match vfs.file_id(&vfs_path) {
