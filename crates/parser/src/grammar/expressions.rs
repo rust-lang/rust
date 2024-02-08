@@ -620,30 +620,15 @@ fn arg_list(p: &mut Parser<'_>) {
     // fn main() {
     //     foo(#[attr] 92)
     // }
-    p.bump(T!['(']);
-    while !p.at(T![')']) && !p.at(EOF) {
-        if p.at(T![,]) {
-            // Recover if an argument is missing and only got a delimiter,
-            // e.g. `(a, , b)`.
-            p.error("expected expression");
-            p.bump(T![,]);
-            continue;
-        }
-
-        if expr(p).is_none() {
-            break;
-        }
-        if !p.at(T![,]) {
-            if p.at_ts(EXPR_FIRST.union(ATTRIBUTE_FIRST)) {
-                p.error(format!("expected {:?}", T![,]));
-            } else {
-                break;
-            }
-        } else {
-            p.bump(T![,]);
-        }
-    }
-    p.expect(T![')']);
+    delimited(
+        p,
+        T!['('],
+        T![')'],
+        T![,],
+        || "expected expression".into(),
+        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        |p| expr(p).is_some(),
+    );
     m.complete(p, ARG_LIST);
 }
 

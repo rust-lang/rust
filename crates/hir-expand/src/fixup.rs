@@ -632,6 +632,20 @@ fn foo () {a . b ; bar () ;}
     }
 
     #[test]
+    fn extraneous_comma() {
+        check(
+            r#"
+fn foo() {
+    bar(,);
+}
+"#,
+            expect![[r#"
+fn foo () {__ra_fixup ;}
+"#]],
+        )
+    }
+
+    #[test]
     fn fixup_if_1() {
         check(
             r#"

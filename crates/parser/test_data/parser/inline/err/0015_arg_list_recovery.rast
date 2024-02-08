@@ -85,7 +85,8 @@ SOURCE_FILE
                       IDENT "a"
               COMMA ","
               WHITESPACE " "
-              COMMA ","
+              ERROR
+                COMMA ","
               WHITESPACE " "
               PATH_EXPR
                 PATH
@@ -101,4 +102,4 @@ error 25: expected identifier
 error 39: expected COMMA
 error 39: expected expression
 error 55: expected expression
-error 68: expected expression
+error 69: expected expression
