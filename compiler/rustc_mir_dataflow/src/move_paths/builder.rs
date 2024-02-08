@@ -1,7 +1,7 @@
 use rustc_index::IndexVec;
 use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;
@@ -132,6 +132,9 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
             let place_ty = place_ref.ty(body, tcx).ty;
+            if place_ty.references_error() {
+                return MovePathResult::Error;
+            }
             match elem {
                 ProjectionElem::Deref => match place_ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
