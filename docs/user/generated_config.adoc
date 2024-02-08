@@ -251,6 +251,12 @@ Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, 
 
 Aliased as `"checkOnSave.targets"`.
 --
+[[rust-analyzer.check.workspace]]rust-analyzer.check.workspace (default: `true`)::
++
+--
+Whether `--workspace` should be passed to `cargo check`.
+If false, `-p <package>` will be passed instead.
+--
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --
