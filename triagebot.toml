@@ -669,7 +669,6 @@ libs = [
     "@cuviper",
     "@joshtriplett",
     "@Mark-Simulacrum",
-    "@m-ou-se",
 ]
 bootstrap = [
     "@Mark-Simulacrum",
