@@ -644,6 +644,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
@@ -992,10 +993,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Complain about any other kind of error -- those are bad because we'd like to
             // report them in a way that shows *where* in the value the issue lies.
             Err(err) => {
-                bug!(
-                    "Unexpected Undefined Behavior error during validation: {}",
-                    self.format_error(err)
-                );
+                bug!("Unexpected error during validation: {}", self.format_error(err));
             }
         }
     }

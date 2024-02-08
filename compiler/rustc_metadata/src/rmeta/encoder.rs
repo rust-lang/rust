@@ -386,7 +386,7 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
@@ -398,7 +398,7 @@ macro_rules! record {
     }};
 }
 
-// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_value($value))`, which would
+// Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_array($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{

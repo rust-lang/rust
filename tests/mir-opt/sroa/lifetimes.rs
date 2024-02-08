@@ -1,4 +1,3 @@
-// skip-filecheck
 // unit-test: ScalarReplacementOfAggregates
 // compile-flags: -Cpanic=abort
 // no-prefer-dynamic
@@ -16,6 +15,10 @@ struct Foo<T: Err> {
 
 // EMIT_MIR lifetimes.foo.ScalarReplacementOfAggregates.diff
 fn foo<T: Err>() {
+    // CHECK-LABEL: fn foo(
+
+    // CHECK-NOT: [foo:_.*]: Foo
+    // CHECK-NOT: Box<dyn std::fmt::Display + 'static>
     let foo: Foo<T> = Foo {
         x: Ok(Box::new(5_u32)),
         y: 7_u32,

@@ -1472,7 +1472,7 @@ fn suggest_ampmut<'tcx>(
 }
 
 fn is_closure_or_coroutine(ty: Ty<'_>) -> bool {
-    ty.is_closure() || ty.is_coroutine()
+    ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure()
 }
 
 /// Given a field that needs to be mutable, returns a span where the " mut " could go.

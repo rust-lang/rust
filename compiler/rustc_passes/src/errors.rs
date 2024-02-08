@@ -390,13 +390,6 @@ pub struct FfiConstInvalidTarget {
     pub attr_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_ffi_returns_twice_invalid_target, code = E0724)]
-pub struct FfiReturnsTwiceInvalidTarget {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_must_use_async)]
 pub struct MustUseAsync {
@@ -1739,7 +1732,7 @@ pub struct UnusedVariableTryPrefix {
 
 #[derive(Subdiagnostic)]
 pub enum UnusedVariableSugg {
-    #[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
+    #[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
     TryPrefixSugg {
         #[suggestion_part(code = "_{name}")]
         spans: Vec<Span>,
@@ -1778,7 +1771,7 @@ pub struct UnusedVarTryIgnore {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
 pub struct UnusedVarTryIgnoreSugg {
     #[suggestion_part(code = "{name}: _")]
     pub shorthands: Vec<Span>,

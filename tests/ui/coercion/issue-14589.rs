@@ -19,6 +19,6 @@ impl<T> Test<T> {
     fn send(&self, _: T) {}
 }
 
-trait Foo { fn dummy(&self) { }}
+trait Foo { fn dummy(&self) { }} //~ WARN method `dummy` is never used
 struct Output(#[allow(dead_code)] isize);
 impl Foo for Output {}

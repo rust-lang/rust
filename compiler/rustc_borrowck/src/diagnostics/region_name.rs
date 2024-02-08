@@ -324,9 +324,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    let DefiningTy::Closure(_, args) = def_ty else {
-                        // Can't have BrEnv in functions, constants or coroutines.
-                        bug!("BrEnv outside of closure.");
+                    let closure_kind = match def_ty {
+                        DefiningTy::Closure(_, args) => args.as_closure().kind(),
+                        DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().kind(),
+                        _ => {
+                            // Can't have BrEnv in functions, constants or coroutines.
+                            bug!("BrEnv outside of closure.");
+                        }
                     };
                     let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
                         tcx.hir().expect_expr(self.mir_hir_id()).kind
@@ -334,21 +338,18 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         bug!("Closure is not defined by a closure expr");
                     };
                     let region_name = self.synthesize_region_name();
-
-                    let closure_kind_ty = args.as_closure().kind_ty();
-                    let note = match closure_kind_ty.to_opt_closure_kind() {
-                        Some(ty::ClosureKind::Fn) => {
+                    let note = match closure_kind {
+                        ty::ClosureKind::Fn => {
                             "closure implements `Fn`, so references to captured variables \
                              can't escape the closure"
                         }
-                        Some(ty::ClosureKind::FnMut) => {
+                        ty::ClosureKind::FnMut => {
                             "closure implements `FnMut`, so references to captured variables \
                              can't escape the closure"
                         }
-                        Some(ty::ClosureKind::FnOnce) => {
+                        ty::ClosureKind::FnOnce => {
                             bug!("BrEnv in a `FnOnce` closure");
                         }
-                        None => bug!("Closure kind not inferred in borrow check"),
                     };
 
                     Some(RegionName {
@@ -692,7 +693,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
                         hir::CoroutineSource::Closure,
-                    )) => " of async closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => {
+                        " of async closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
@@ -719,7 +723,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Gen,
                         hir::CoroutineSource::Closure,
-                    )) => " of gen closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
+                        " of gen closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Gen,
@@ -743,7 +750,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::AsyncGen,
                         hir::CoroutineSource::Closure,
-                    )) => " of async gen closure",
+                    ))
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::AsyncGen) => {
+                        " of async gen closure"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::AsyncGen,

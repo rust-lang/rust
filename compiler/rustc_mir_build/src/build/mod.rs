@@ -495,7 +495,7 @@ fn construct_fn<'tcx>(
             args.as_coroutine().yield_ty(),
             args.as_coroutine().resume_ty(),
         ))),
-        ty::Closure(..) | ty::FnDef(..) => None,
+        ty::Closure(..) | ty::CoroutineClosure(..) | ty::FnDef(..) => None,
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
@@ -822,6 +822,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let upvar_args = match closure_ty.kind() {
             ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
             ty::Coroutine(_, args) => ty::UpvarArgs::Coroutine(args),
+            ty::CoroutineClosure(_, args) => ty::UpvarArgs::CoroutineClosure(args),
             _ => return,
         };
 

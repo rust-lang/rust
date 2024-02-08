@@ -24,7 +24,9 @@ use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
 use rustc_errors::registry::Registry;
-use rustc_errors::{markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, PResult};
+use rustc_errors::{
+    markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
+};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -1231,11 +1233,10 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
 /// The compiler currently unwinds with a special sentinel value to abort
 /// compilation on fatal errors. This function catches that sentinel and turns
 /// the panic into a `Result` instead.
-pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuaranteed> {
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, FatalError> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<rustc_errors::FatalErrorMarker>() {
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
+            FatalError
         } else {
             panic::resume_unwind(value);
         }
@@ -1245,9 +1246,9 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuarantee
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
 pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
-    match catch_fatal_errors(f).flatten() {
-        Ok(()) => EXIT_SUCCESS,
-        Err(_) => EXIT_FAILURE,
+    match catch_fatal_errors(f) {
+        Ok(Ok(())) => EXIT_SUCCESS,
+        _ => EXIT_FAILURE,
     }
 }
 

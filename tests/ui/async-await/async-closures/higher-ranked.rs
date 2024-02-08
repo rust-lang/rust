@@ -1,12 +1,16 @@
+// aux-build:block-on.rs
 // edition:2021
+// build-pass
 
 #![feature(async_closure)]
 
+extern crate block_on;
+
 fn main() {
-    let x = async move |x: &str| {
-        //~^ ERROR lifetime may not live long enough
-        // This error is proof that the `&str` type is higher-ranked.
-        // This won't work until async closures are fully impl'd.
-        println!("{x}");
-    };
+    block_on::block_on(async {
+        let x = async move |x: &str| {
+            println!("{x}");
+        };
+        x("hello!").await;
+    });
 }

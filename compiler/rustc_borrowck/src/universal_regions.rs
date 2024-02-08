@@ -97,6 +97,13 @@ pub enum DefiningTy<'tcx> {
     /// `ClosureArgs::coroutine_return_ty`.
     Coroutine(DefId, GenericArgsRef<'tcx>),
 
+    /// The MIR is a special kind of closure that returns coroutines.
+    ///
+    /// See the documentation on `CoroutineClosureSignature` for details
+    /// on how to construct the callable signature of the coroutine from
+    /// its args.
+    CoroutineClosure(DefId, GenericArgsRef<'tcx>),
+
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
     FnDef(DefId, GenericArgsRef<'tcx>),
@@ -119,6 +126,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
+            DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().upvar_tys(),
             DefiningTy::Coroutine(_, args) => args.as_coroutine().upvar_tys(),
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 ty::List::empty()
@@ -131,7 +139,9 @@ impl<'tcx> DefiningTy<'tcx> {
     /// user's code.
     pub fn implicit_inputs(self) -> usize {
         match self {
-            DefiningTy::Closure(..) | DefiningTy::Coroutine(..) => 1,
+            DefiningTy::Closure(..)
+            | DefiningTy::CoroutineClosure(..)
+            | DefiningTy::Coroutine(..) => 1,
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => 0,
         }
     }
@@ -147,6 +157,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             DefiningTy::Closure(def_id, ..)
+            | DefiningTy::CoroutineClosure(def_id, ..)
             | DefiningTy::Coroutine(def_id, ..)
             | DefiningTy::FnDef(def_id, ..)
             | DefiningTy::Const(def_id, ..)
@@ -354,6 +365,9 @@ impl<'tcx> UniversalRegions<'tcx> {
                 for_each_late_bound_region_in_recursive_scope(tcx, def_id.expect_local(), |r| {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
+            }
+            DefiningTy::CoroutineClosure(..) => {
+                todo!()
             }
             DefiningTy::Coroutine(def_id, args) => {
                 let v = with_no_trimmed_paths!(
@@ -568,6 +582,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
                     ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
+                    ty::CoroutineClosure(def_id, args) => {
+                        DefiningTy::CoroutineClosure(def_id, args)
+                    }
                     ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
                     _ => span_bug!(
                         tcx.def_span(self.mir_def),
@@ -623,6 +640,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let fr_args = match defining_ty {
             DefiningTy::Closure(_, args)
+            | DefiningTy::CoroutineClosure(_, args)
             | DefiningTy::Coroutine(_, args)
             | DefiningTy::InlineConst(_, args) => {
                 // In the case of closures, we rely on the fact that
@@ -700,6 +718,55 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let inputs_and_output =
                     self.infcx.tcx.mk_type_list(&[coroutine_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
+            }
+
+            // Construct the signature of the CoroutineClosure for the purposes of borrowck.
+            // This is pretty straightforward -- we:
+            // 1. first grab the `coroutine_closure_sig`,
+            // 2. compute the self type (`&`/`&mut`/no borrow),
+            // 3. flatten the tupled_input_tys,
+            // 4. construct the correct generator type to return with
+            //    `CoroutineClosureSignature::to_coroutine_given_kind_and_upvars`.
+            // Then we wrap it all up into a list of inputs and output.
+            DefiningTy::CoroutineClosure(def_id, args) => {
+                assert_eq!(self.mir_def.to_def_id(), def_id);
+                let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
+                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+                    closure_sig
+                        .bound_vars()
+                        .iter()
+                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BrEnv,
+                };
+                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+                let closure_kind = args.as_coroutine_closure().kind();
+
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_coroutine_closure(tcx, def_id, args),
+                    closure_kind,
+                    env_region,
+                );
+
+                let inputs = closure_sig.skip_binder().tupled_inputs_ty.tuple_fields();
+                let output = closure_sig.skip_binder().to_coroutine_given_kind_and_upvars(
+                    tcx,
+                    args.as_coroutine_closure().parent_args(),
+                    tcx.coroutine_for_closure(def_id),
+                    closure_kind,
+                    env_region,
+                    args.as_coroutine_closure().tupled_upvars_ty(),
+                    args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                );
+
+                ty::Binder::bind_with_vars(
+                    tcx.mk_type_list_from_iter(
+                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
+                    ),
+                    bound_vars,
+                )
             }
 
             DefiningTy::FnDef(def_id, _) => {

@@ -123,9 +123,6 @@ ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
     .suggestion = remove this guard
 
-ast_lowering_not_supported_for_lifetime_binder_async_closure =
-    `for<...>` binders on `async` closures are not currently supported
-
 ast_lowering_previously_used_here = previously used here
 
 ast_lowering_register1 = register `{$reg1_name}`

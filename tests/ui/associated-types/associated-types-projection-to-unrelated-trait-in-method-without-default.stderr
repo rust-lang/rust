@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Self: Get` is not satisfied
-  --> $DIR/associated-types-projection-to-unrelated-trait-in-method-without-default.rs:10:40
+  --> $DIR/associated-types-projection-to-unrelated-trait-in-method-without-default.rs:11:40
    |
 LL |     fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value);
    |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`

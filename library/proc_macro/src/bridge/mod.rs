@@ -16,7 +16,6 @@ use std::mem;
 use std::ops::Bound;
 use std::ops::Range;
 use std::panic;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
 

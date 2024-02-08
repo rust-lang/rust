@@ -28,7 +28,7 @@ impl Drop for Test {
 
 // EMIT_MIR retag.main.SimplifyCfg-elaborate-drops.after.mir
 // EMIT_MIR retag.main-{closure#0}.SimplifyCfg-elaborate-drops.after.mir
-fn main() {
+pub fn main() {
     let mut x = 0;
     {
         let v = Test(0).foo(&mut x); // just making sure we do not panic when there is a tuple struct ctor

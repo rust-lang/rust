@@ -22,6 +22,8 @@ impl B {
 
     // test for unused code in generics
     fn baz<A: T<D>>() {}
+
+    fn foz<A: T<D>>(a: A) { a.dummy(D); }
 }
 
 pub fn main() {
@@ -29,4 +31,5 @@ pub fn main() {
     B::foo(b);
     B::bar();
     B::baz::<()>();
+    B::foz::<()>(());
 }

@@ -12,7 +12,7 @@ struct Cat {
 }
 
 trait Dummy {
-    fn get(&self) -> usize;
+    fn get(&self) -> usize; //~ WARN method `get` is never used
 }
 
 impl Dummy for Cat {

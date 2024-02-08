@@ -45,6 +45,17 @@ pub(crate) struct GenericParamsFromOuterItem {
     pub(crate) refer_to_type_directly: Option<Span>,
     #[subdiagnostic]
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
+    #[subdiagnostic]
+    pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
+    pub(crate) is_self: bool,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum GenericParamsFromOuterItemStaticOrConst {
+    #[note(resolve_generic_params_from_outer_item_static)]
+    Static,
+    #[note(resolve_generic_params_from_outer_item_const)]
+    Const,
 }
 
 #[derive(Subdiagnostic)]
@@ -799,4 +810,18 @@ pub(crate) struct UnexpectedResChangeTyToConstParamSugg {
     pub span: Span,
     #[applicability]
     pub applicability: Applicability,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg,
+    code = "{snippet}",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct UnexpectedResUseAtOpInSlicePatWithRangeSugg {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Ident,
+    pub snippet: String,
 }

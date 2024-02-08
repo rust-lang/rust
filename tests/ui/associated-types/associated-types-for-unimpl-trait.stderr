@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Self: Get` is not satisfied
-  --> $DIR/associated-types-for-unimpl-trait.rs:10:40
+  --> $DIR/associated-types-for-unimpl-trait.rs:11:40
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
    |                                        ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
