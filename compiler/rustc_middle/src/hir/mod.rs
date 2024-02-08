@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
-use rustc_span::{ErrorGuaranteed, ExpnId, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, ExpnId};
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -148,10 +148,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attrs = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.def_span = |tcx, def_id| {
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
-    };
+    providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir().opt_ident_span(hir_id)
