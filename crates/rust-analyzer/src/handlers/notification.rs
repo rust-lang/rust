@@ -70,7 +70,15 @@ pub(crate) fn handle_did_open_text_document(
         if already_exists {
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
+
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
+        if state.config.notifications().unindexed_project {
+            tracing::debug!("queuing task");
+            let _ = state
+                .deferred_task_queue
+                .sender
+                .send(crate::main_loop::QueuedTask::CheckIfIndexed(params.text_document.uri));
+        }
     }
     Ok(())
 }

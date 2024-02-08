@@ -30,7 +30,7 @@ use lsp_types::{
     PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
     TextDocumentPositionParams, WorkDoneProgressParams,
 };
-use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
+use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
 use stdx::format_to_acc;
 use test_utils::skip_slow_tests;
@@ -585,6 +585,66 @@ fn main() {{}}
         },
         json!([]),
     );
+}
+
+#[test]
+fn test_opening_a_file_outside_of_indexed_workspace() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let tmp_dir = TestDir::new();
+    let path = tmp_dir.path();
+
+    let project = json!({
+        "roots": [path],
+        "crates": [ {
+            "root_module": path.join("src/crate_one/lib.rs"),
+            "deps": [],
+            "edition": "2015",
+            "cfg": [ "cfg_atom_1", "feature=\"cfg_1\""],
+        } ]
+    });
+
+    let code = format!(
+        r#"
+//- /rust-project.json
+{project}
+
+//- /src/crate_one/lib.rs
+mod bar;
+
+fn main() {{}}
+"#,
+    );
+
+    let server = Project::with_fixture(&code)
+        .tmp_dir(tmp_dir)
+        .with_config(serde_json::json!({
+            "notifications": {
+                "unindexedProject": true
+            },
+        }))
+        .server()
+        .wait_until_workspace_is_loaded();
+
+    let uri = server.doc_id("src/crate_two/lib.rs").uri;
+    server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: uri.clone(),
+            language_id: "rust".to_string(),
+            version: 0,
+            text: "/// Docs\nfn foo() {}".to_string(),
+        },
+    });
+    let expected = json!({
+        "textDocuments": [
+            {
+                "uri": uri
+            }
+        ]
+    });
+    server.expect_notification::<UnindexedProject>(expected);
 }
 
 #[test]

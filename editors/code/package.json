@@ -1473,6 +1473,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.notifications.unindexedProject": {
+                    "markdownDescription": "Whether to send an UnindexedProject notification to the client.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.numThreads": {
                     "markdownDescription": "How many worker threads in the main loop. The default `null` means to pick automatically.",
                     "default": null,
