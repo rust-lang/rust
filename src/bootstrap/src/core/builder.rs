@@ -732,7 +732,7 @@ impl<'a> Builder<'a> {
                 check::Rls,
                 check::Rustfmt,
                 check::RustAnalyzer,
-                check::Bootstrap
+                check::Bootstrap,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -866,7 +866,7 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
-                install::Rustc
+                install::Rustc,
             ),
             Kind::Run => describe!(
                 run::ExpandYamlAnchors,
