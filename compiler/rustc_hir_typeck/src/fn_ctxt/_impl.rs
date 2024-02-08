@@ -521,7 +521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
     #[instrument(level = "debug", skip(self))]
-    pub(in super::super) fn resolve_coroutine_interiors(&self, def_id: DefId) {
+    pub(in super::super) fn resolve_coroutine_interiors(&self) {
         // Try selecting all obligations that are not blocked on inference variables.
         // Once we start unifying coroutine witnesses, trying to select obligations on them will
         // trigger query cycle ICEs, as doing so requires MIR.
@@ -1179,14 +1179,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let arg_count = check_generic_arg_count_for_call(
-                tcx,
-                span,
-                def_id,
-                generics,
-                seg,
-                IsMethodCall::No,
-            );
+            let arg_count =
+                check_generic_arg_count_for_call(tcx, def_id, generics, seg, IsMethodCall::No);
 
             if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
                 explicit_late_bound = ExplicitLateBound::Yes;

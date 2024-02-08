@@ -213,7 +213,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 CustomTypeOp::new(
                     |ocx| {
                         ocx.infcx.register_member_constraints(
-                            param_env,
                             opaque_type_key,
                             decl.hidden_type.ty,
                             decl.hidden_type.span,

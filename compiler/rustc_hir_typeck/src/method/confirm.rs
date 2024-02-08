@@ -356,7 +356,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         let arg_count_correct = check_generic_arg_count_for_call(
             self.tcx,
-            self.span,
             pick.item.def_id,
             generics,
             seg,
