@@ -39,6 +39,7 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
+use crate::traits::util::HasImpossiblePredicates;
 use crate::traits::{
     CodegenObligationError, EvaluationResult, ImplSource, ObjectSafetyViolation, ObligationCause,
     OverflowError, WellFormedLoc,
@@ -1019,7 +1020,7 @@ rustc_queries! {
     }
 
     /// Run the const prop lints on the `mir_promoted` of an item.
-    query const_prop_lint(key: LocalDefId) {
+    query const_prop_lint(key: LocalDefId) -> Result<(), HasImpossiblePredicates> {
         desc { |tcx| "checking const prop lints for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
