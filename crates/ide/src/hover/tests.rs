@@ -702,7 +702,7 @@ fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
         r#"
-struct Foo { field_a: u32 }
+struct Foo { pub field_a: u32 }
 
 fn main() {
     let foo = Foo { field_a$0: 0, };
@@ -717,7 +717,7 @@ fn main() {
 
             ```rust
              // size = 4, align = 4, offset = 0
-            field_a: u32
+            pub field_a: u32
             ```
         "#]],
     );
@@ -725,7 +725,7 @@ fn main() {
     // Hovering over the field in the definition
     check(
         r#"
-struct Foo { field_a$0: u32 }
+struct Foo { pub field_a$0: u32 }
 
 fn main() {
     let foo = Foo { field_a: 0 };
@@ -740,7 +740,74 @@ fn main() {
 
             ```rust
              // size = 4, align = 4, offset = 0
-            field_a: u32
+            pub field_a: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_shows_tuple_struct_field_info() {
+    check(
+        r#"
+struct Foo(pub u32)
+
+fn main() {
+    let foo = Foo { 0$0: 0, };
+}
+"#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+             // size = 4, align = 4, offset = 0
+            pub 0: u32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+struct Foo(pub u32)
+
+fn foo(foo: Foo) {
+    foo.0$0;
+}
+"#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+             // size = 4, align = 4, offset = 0
+            pub 0: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_tuple_struct() {
+    check(
+        r#"
+struct Foo$0(pub u32)
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+             // size = 4, align = 4
+            struct Foo(pub u32);
             ```
         "#]],
     );
