@@ -2274,6 +2274,7 @@ dependencies = [
 name = "linkchecker"
 version = "0.1.0"
 dependencies = [
+ "html5ever",
  "once_cell",
  "regex",
 ]
