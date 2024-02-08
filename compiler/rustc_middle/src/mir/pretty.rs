@@ -461,8 +461,30 @@ pub fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
+    if let Some(branch_info) = &body.coverage_branch_info {
+        write_coverage_branch_info(branch_info, w)?;
+    }
     if let Some(function_coverage_info) = &body.function_coverage_info {
         write_function_coverage_info(function_coverage_info, w)?;
+    }
+
+    Ok(())
+}
+
+fn write_coverage_branch_info(
+    branch_info: &coverage::BranchInfo,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
+    let coverage::BranchInfo { branch_spans, .. } = branch_info;
+
+    for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
+        writeln!(
+            w,
+            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
+        )?;
+    }
+    if !branch_spans.is_empty() {
+        writeln!(w)?;
     }
 
     Ok(())
