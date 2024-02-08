@@ -655,7 +655,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let drops = if destination.is_some() {
             &mut self.scopes.breakable_scopes[break_index].break_drops
         } else {
-            self.scopes.breakable_scopes[break_index].continue_drops.as_mut().unwrap()
+            let Some(drops) = self.scopes.breakable_scopes[break_index].continue_drops.as_mut()
+            else {
+                self.tcx.dcx().span_delayed_bug(
+                    source_info.span,
+                    "unlabelled `continue` within labelled block",
+                );
+                self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+
+                return self.cfg.start_new_block().unit();
+            };
+            drops
         };
 
         let drop_idx = self.scopes.scopes[scope_index + 1..]

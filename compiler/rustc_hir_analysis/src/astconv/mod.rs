@@ -12,7 +12,7 @@ use crate::astconv::errors::prohibit_assoc_ty_binding;
 use crate::astconv::generics::{check_generic_arg_count, create_args_for_parent_generic_args};
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
-use crate::errors::{AmbiguousLifetimeBound, TypeofReservedKeywordUsed};
+use crate::errors::AmbiguousLifetimeBound;
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
@@ -30,8 +30,8 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, IsSuggestable, ParamEnv, Ty,
-    TyCtxt, TypeVisitableExt,
+    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -2539,21 +2539,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 Ty::new_array_with_const_len(tcx, self.ast_ty_to_ty(ty), length)
             }
-            hir::TyKind::Typeof(e) => {
-                let ty_erased = tcx.type_of(e.def_id).instantiate_identity();
-                let ty = tcx.fold_regions(ty_erased, |r, _| {
-                    if r.is_erased() { tcx.lifetimes.re_static } else { r }
-                });
-                let span = ast_ty.span;
-                let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
-                    (ty, Some((span, Applicability::MachineApplicable)))
-                } else {
-                    (ty, None)
-                };
-                tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
-
-                ty
-            }
+            hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
                 // values in an ExprKind::Closure, or as

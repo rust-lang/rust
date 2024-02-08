@@ -666,7 +666,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                     let yield_ty = args.yield_ty();
                     let return_ty = args.return_ty();
                     (
-                        vec![closure_ty, args.resume_ty()],
+                        vec![closure_ty, resume_ty],
                         return_ty,
                         Some(Box::new(CoroutineInfo::initial(
                             tcx.coroutine_kind(def_id).unwrap(),
@@ -675,8 +675,23 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                         ))),
                     )
                 }
-                _ => {
-                    span_bug!(span, "expected type of closure body to be a closure or coroutine");
+                ty::CoroutineClosure(did, _args) => {
+                    // FIXME(async_closures): Recover the proper error signature
+                    let inputs = tcx
+                        .closure_user_provided_sig(did.expect_local())
+                        .value
+                        .skip_binder()
+                        .inputs();
+
+                    let err = Ty::new_error(tcx, guar);
+                    (inputs.iter().map(|_| err).collect(), err, None)
+                }
+                ty::Error(_) => (vec![closure_ty, closure_ty], closure_ty, None),
+                kind => {
+                    span_bug!(
+                        span,
+                        "expected type of closure body to be a closure or coroutine, got {kind:?}"
+                    );
                 }
             }
         }

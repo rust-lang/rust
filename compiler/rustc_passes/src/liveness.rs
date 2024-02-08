@@ -123,6 +123,7 @@ enum LiveNodeKind {
     VarDefNode(Span, HirId),
     ClosureNode,
     ExitNode,
+    ErrNode,
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
@@ -133,6 +134,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
         VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
         ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
+        ErrNode => "Error node".to_owned(),
     }
 }
 
@@ -967,10 +969,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
-                self.cont_ln
-                    .get(&sc)
-                    .cloned()
-                    .unwrap_or_else(|| span_bug!(expr.span, "continue to unknown label"))
+                self.cont_ln.get(&sc).cloned().unwrap_or_else(|| {
+                    self.ir.tcx.dcx().span_delayed_bug(expr.span, "continue to unknown label");
+                    self.ir.add_live_node(ErrNode)
+                })
             }
 
             hir::ExprKind::Assign(ref l, ref r, _) => {

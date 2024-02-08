@@ -4,7 +4,7 @@ error[E0277]: `*mut ()` cannot be shared between threads safely
 LL | fn foo(x: NotSync) -> impl Future + Send {
    |                       ^^^^^^^^^^^^^^^^^^ `*mut ()` cannot be shared between threads safely
    |
-   = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`, which is required by `{async block@$DIR/issue-70935-complex-spans.rs:17:5: 21:6}: Send`
+   = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`, which is required by `{async block@$DIR/issue-70935-complex-spans.rs:18:5: 22:6}: Send`
 note: required because it appears within the type `PhantomData<*mut ()>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `NotSync`
@@ -14,7 +14,7 @@ LL | struct NotSync(PhantomData<*mut ()>);
    |        ^^^^^^^
    = note: required for `&NotSync` to implement `Send`
 note: required because it's used within this closure
-  --> $DIR/issue-70935-complex-spans.rs:18:13
+  --> $DIR/issue-70935-complex-spans.rs:19:13
    |
 LL |         baz(|| async {
    |             ^^
@@ -27,7 +27,7 @@ LL | | }
    | |_^
    = note: required because it captures the following types: `impl Future<Output = ()>`
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:17:5
+  --> $DIR/issue-70935-complex-spans.rs:18:5
    |
 LL | /     async move {
 LL | |         baz(|| async {
@@ -36,6 +36,45 @@ LL | |         }).await;
 LL | |     }
    | |_____^
 
-error: aborting due to 1 previous error
+error[E0277]: `*mut ()` cannot be shared between threads safely
+  --> $DIR/issue-70935-complex-spans.rs:15:23
+   |
+LL | fn foo(x: NotSync) -> impl Future + Send {
+   |                       ^^^^^^^^^^^^^^^^^^ `*mut ()` cannot be shared between threads safely
+   |
+   = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`, which is required by `{async block@$DIR/issue-70935-complex-spans.rs:18:5: 22:6}: Send`
+note: required because it appears within the type `PhantomData<*mut ()>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `NotSync`
+  --> $DIR/issue-70935-complex-spans.rs:9:8
+   |
+LL | struct NotSync(PhantomData<*mut ()>);
+   |        ^^^^^^^
+   = note: required for `&NotSync` to implement `Send`
+note: required because it's used within this closure
+  --> $DIR/issue-70935-complex-spans.rs:19:13
+   |
+LL |         baz(|| async {
+   |             ^^
+note: required because it's used within this `async` fn body
+  --> $DIR/issue-70935-complex-spans.rs:12:67
+   |
+LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
+   |  ___________________________________________________________________^
+LL | | }
+   | |_^
+   = note: required because it captures the following types: `impl Future<Output = ()>`
+note: required because it's used within this `async` block
+  --> $DIR/issue-70935-complex-spans.rs:18:5
+   |
+LL | /     async move {
+LL | |         baz(|| async {
+LL | |             foo(x.clone());
+LL | |         }).await;
+LL | |     }
+   | |_____^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
