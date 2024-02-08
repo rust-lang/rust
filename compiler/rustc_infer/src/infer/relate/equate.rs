@@ -7,7 +7,7 @@ use crate::traits::PredicateObligations;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
@@ -168,7 +168,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             return Ok(a);
         }
 
-        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
+        if let (Some(a), Some(b)) = (a.no_bound_vars(), b.no_bound_vars()) {
+            // Fast path for the common case.
+            self.relate(a, b)?;
+        } else {
             // When equating binders, we check that there is a 1-to-1
             // correspondence between the bound vars in both types.
             //
@@ -193,9 +196,6 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
                 self.relate(a, b)
             })?;
-        } else {
-            // Fast path for the common case.
-            self.relate(a.skip_binder(), b.skip_binder())?;
         }
         Ok(a)
     }
