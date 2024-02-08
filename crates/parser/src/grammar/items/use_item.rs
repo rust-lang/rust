@@ -93,9 +93,16 @@ pub(crate) fn use_tree_list(p: &mut Parser<'_>) {
     // use b;
     // struct T;
     // fn test() {}
-    delimited(p, T!['{'], T!['}'], T![,], USE_TREE_LIST_FIRST_SET, |p: &mut Parser<'_>| {
-        use_tree(p, false) || p.at_ts(USE_TREE_LIST_RECOVERY_SET)
-    });
+    // use {a ,, b};
+    delimited(
+        p,
+        T!['{'],
+        T!['}'],
+        T![,],
+        || "expected use tree".into(),
+        USE_TREE_LIST_FIRST_SET,
+        |p: &mut Parser<'_>| use_tree(p, false) || p.at_ts(USE_TREE_LIST_RECOVERY_SET),
+    );
 
     m.complete(p, USE_TREE_LIST);
 }

@@ -611,6 +611,7 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
 //     foo(bar::);
 //     foo(bar:);
 //     foo(bar+);
+//     foo(a, , b);
 // }
 fn arg_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
@@ -624,8 +625,9 @@ fn arg_list(p: &mut Parser<'_>) {
         T!['('],
         T![')'],
         T![,],
+        || "expected expression".into(),
         EXPR_FIRST.union(ATTRIBUTE_FIRST),
-        |p: &mut Parser<'_>| expr(p).is_some(),
+        |p| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);
 }
