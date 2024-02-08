@@ -29,9 +29,9 @@ trait BoundOnGat where Self::Assoc<u8>: Sub {
     type Assoc<T>;
 }
 impl BoundOnGat for u8 {
-    //~^ ERROR type mismatch resolving `<() as Super>::Assoc == u16`
     type Assoc<T> = ();
     //~^ ERROR the trait bound `(): Sub` is not satisfied
+    //~| ERROR type mismatch resolving `<() as Super>::Assoc == u16`
 }
 
 fn trivial_bound() where (): Sub {}

@@ -16,10 +16,10 @@ LL | trait BoundOnSelf: Sub {}
    |                    ^^^ required by this bound in `BoundOnSelf`
 
 error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
-  --> $DIR/super-assoc-mismatch.rs:10:6
+  --> $DIR/super-assoc-mismatch.rs:10:22
    |
 LL | impl BoundOnSelf for () {}
-   |      ^^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |                      ^^ type mismatch resolving `<() as Super>::Assoc == u16`
    |
 note: expected this to be `u16`
   --> $DIR/super-assoc-mismatch.rs:5:18
@@ -55,10 +55,10 @@ LL | trait BoundOnParam<T: Sub> {}
    |                       ^^^ required by this bound in `BoundOnParam`
 
 error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
-  --> $DIR/super-assoc-mismatch.rs:15:6
+  --> $DIR/super-assoc-mismatch.rs:15:27
    |
 LL | impl BoundOnParam<()> for () {}
-   |      ^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+   |                           ^^ type mismatch resolving `<() as Super>::Assoc == u16`
    |
 note: expected this to be `u16`
   --> $DIR/super-assoc-mismatch.rs:5:18
@@ -116,7 +116,7 @@ LL |     type Assoc: Sub;
    |                 ^^^ required by this bound in `BoundOnAssoc::Assoc`
 
 error[E0277]: the trait bound `(): Sub` is not satisfied
-  --> $DIR/super-assoc-mismatch.rs:33:21
+  --> $DIR/super-assoc-mismatch.rs:32:21
    |
 LL |     type Assoc<T> = ();
    |                     ^^ the trait `Sub` is not implemented for `()`, which is required by `<u8 as BoundOnGat>::Assoc<u8>: Sub`
@@ -133,10 +133,10 @@ LL | trait BoundOnGat where Self::Assoc<u8>: Sub {
    |                                         ^^^ required by this bound in `BoundOnGat`
 
 error[E0271]: type mismatch resolving `<() as Super>::Assoc == u16`
-  --> $DIR/super-assoc-mismatch.rs:31:6
+  --> $DIR/super-assoc-mismatch.rs:32:21
    |
-LL | impl BoundOnGat for u8 {
-   |      ^^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == u16`
+LL |     type Assoc<T> = ();
+   |                     ^^ type mismatch resolving `<() as Super>::Assoc == u16`
    |
 note: expected this to be `u16`
   --> $DIR/super-assoc-mismatch.rs:5:18

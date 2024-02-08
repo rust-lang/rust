@@ -1294,8 +1294,9 @@ fn check_impl<'tcx>(
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
                 tcx.ensure().coherent_trait(trait_ref.def_id)?;
+                let trait_span = ast_trait_ref.path.span;
                 let trait_ref = wfcx.normalize(
-                    ast_trait_ref.path.span,
+                    trait_span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     trait_ref,
                 );
@@ -1306,12 +1307,21 @@ fn check_impl<'tcx>(
                     wfcx.param_env,
                     wfcx.body_def_id,
                     trait_pred,
-                    ast_trait_ref.path.span,
+                    trait_span,
                     item,
                 );
                 for obligation in &mut obligations {
+                    if obligation.cause.span != trait_span {
+                        // We already have a better span.
+                        continue;
+                    }
                     if let Some(pred) = obligation.predicate.to_opt_poly_trait_pred()
-                        && pred.self_ty().skip_binder() == trait_ref.self_ty()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
+                    {
+                        obligation.cause.span = ast_self_ty.span;
+                    }
+                    if let Some(pred) = obligation.predicate.to_opt_poly_projection_pred()
+                        && pred.skip_binder().self_ty() == trait_ref.self_ty()
                     {
                         obligation.cause.span = ast_self_ty.span;
                     }
