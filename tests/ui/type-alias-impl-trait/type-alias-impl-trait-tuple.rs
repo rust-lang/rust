@@ -22,8 +22,8 @@ impl Blah {
         //[next]~^ ERROR type annotations needed: cannot satisfy `Foo == _`
     }
     fn into_inner(self) -> (Foo, u8, Foo) {
-        //[next]~^ ERROR type annotations needed
         (self.my_foo, self.my_u8, make_foo())
+        //[next]~^ ERROR type annotations needed: cannot satisfy `Foo == _`
     }
 }
 
