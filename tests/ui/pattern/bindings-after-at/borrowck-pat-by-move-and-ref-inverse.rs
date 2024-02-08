@@ -48,19 +48,17 @@ fn main() {
         //~^ ERROR borrow of moved value
         //~| ERROR borrow of moved value
         //~| ERROR borrow of moved value
-        //~| ERROR use of moved value
+        //~| ERROR use of partially moved value
         None => {}
     }
     match Some([U, U]) {
         mut a @ Some([ref b, ref mut c]) => {}
         //~^ ERROR borrow of moved value
-        //~| ERROR borrow of moved value
         None => {}
     }
     match Some(u()) {
         a @ Some(ref b) => {}
         //~^ ERROR borrow of moved value
-        //~| ERROR borrow of moved value
         None => {}
     }
     match Some((u(), u())) {
@@ -68,13 +66,12 @@ fn main() {
         //~^ ERROR borrow of moved value
         //~| ERROR borrow of moved value
         //~| ERROR borrow of moved value
-        //~| ERROR use of moved value
+        //~| ERROR use of partially moved value
         None => {}
     }
     match Some([u(), u()]) {
         mut a @ Some([ref b, ref mut c]) => {}
         //~^ ERROR borrow of moved value
-        //~| ERROR borrow of moved value
         None => {}
     }
 }
