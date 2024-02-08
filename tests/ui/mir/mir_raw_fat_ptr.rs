@@ -98,7 +98,7 @@ fn assert_inorder<T: Copy>(a: &[T],
     }
 }
 
-trait Foo { fn foo(&self) -> usize; }
+trait Foo { fn foo(&self) -> usize; } //~ WARN method `foo` is never used
 impl<T> Foo for T {
     fn foo(&self) -> usize {
         mem::size_of::<T>()

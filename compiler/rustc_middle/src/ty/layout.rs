@@ -906,6 +906,12 @@ where
                     i,
                 ),
 
+                ty::CoroutineClosure(_, args) => field_ty_or_layout(
+                    TyAndLayout { ty: args.as_coroutine_closure().tupled_upvars_ty(), ..this },
+                    cx,
+                    i,
+                ),
+
                 ty::Coroutine(def_id, args) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()

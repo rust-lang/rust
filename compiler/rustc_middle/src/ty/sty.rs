@@ -36,6 +36,7 @@ use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::TypeAndMut as IrTypeAndMut;
 
+use super::fold::FnMutDelegate;
 use super::GenericParamDefKind;
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -269,6 +270,275 @@ impl<'tcx> ClosureArgs<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
+pub struct CoroutineClosureArgs<'tcx> {
+    pub args: GenericArgsRef<'tcx>,
+}
+
+/// See docs for explanation of how each argument is used.
+///
+/// See [`CoroutineClosureSignature`] for how these arguments are put together
+/// to make a callable [`FnSig`] suitable for typeck and borrowck.
+pub struct CoroutineClosureArgsParts<'tcx> {
+    /// This is the args of the typeck root.
+    pub parent_args: &'tcx [GenericArg<'tcx>],
+    /// Represents the maximum calling capability of the closure.
+    pub closure_kind_ty: Ty<'tcx>,
+    /// Represents all of the relevant parts of the coroutine returned by this
+    /// coroutine-closure. This signature parts type will have the general
+    /// shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where
+    /// `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the
+    /// coroutine returned by the coroutine-closure.
+    ///
+    /// Use `coroutine_closure_sig` to break up this type rather than using it
+    /// yourself.
+    pub signature_parts_ty: Ty<'tcx>,
+    /// The upvars captured by the closure. Remains an inference variable
+    /// until the upvar analysis, which happens late in HIR typeck.
+    pub tupled_upvars_ty: Ty<'tcx>,
+    /// a function pointer that has the shape `for<'env> fn() -> (&'env T, ...)`.
+    /// This allows us to represent the binder of the self-captures of the closure.
+    ///
+    /// For example, if the coroutine returned by the closure borrows `String`
+    /// from the closure's upvars, this will be `for<'env> fn() -> (&'env String,)`,
+    /// while the `tupled_upvars_ty`, representing the by-move version of the same
+    /// captures, will be `(String,)`.
+    pub coroutine_captures_by_ref_ty: Ty<'tcx>,
+    /// Witness type returned by the generator produced by this coroutine-closure.
+    pub coroutine_witness_ty: Ty<'tcx>,
+}
+
+impl<'tcx> CoroutineClosureArgs<'tcx> {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        parts: CoroutineClosureArgsParts<'tcx>,
+    ) -> CoroutineClosureArgs<'tcx> {
+        CoroutineClosureArgs {
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.closure_kind_ty.into(),
+                parts.signature_parts_ty.into(),
+                parts.tupled_upvars_ty.into(),
+                parts.coroutine_captures_by_ref_ty.into(),
+                parts.coroutine_witness_ty.into(),
+            ])),
+        }
+    }
+
+    fn split(self) -> CoroutineClosureArgsParts<'tcx> {
+        match self.args[..] {
+            [
+                ref parent_args @ ..,
+                closure_kind_ty,
+                signature_parts_ty,
+                tupled_upvars_ty,
+                coroutine_captures_by_ref_ty,
+                coroutine_witness_ty,
+            ] => CoroutineClosureArgsParts {
+                parent_args,
+                closure_kind_ty: closure_kind_ty.expect_ty(),
+                signature_parts_ty: signature_parts_ty.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+                coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
+                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
+            },
+            _ => bug!("closure args missing synthetics"),
+        }
+    }
+
+    pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
+        self.split().parent_args
+    }
+
+    #[inline]
+    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
+        match self.tupled_upvars_ty().kind() {
+            TyKind::Error(_) => ty::List::empty(),
+            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
+            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
+        }
+    }
+
+    #[inline]
+    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+        self.split().tupled_upvars_ty
+    }
+
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().closure_kind_ty
+    }
+
+    pub fn kind(self) -> ty::ClosureKind {
+        self.kind_ty().to_opt_closure_kind().unwrap()
+    }
+
+    pub fn signature_parts_ty(self) -> Ty<'tcx> {
+        self.split().signature_parts_ty
+    }
+
+    pub fn coroutine_closure_sig(self) -> ty::Binder<'tcx, CoroutineClosureSignature<'tcx>> {
+        let interior = self.coroutine_witness_ty();
+        let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { bug!() };
+        sig.map_bound(|sig| {
+            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
+                bug!();
+            };
+            let [yield_ty, return_ty] = **sig.output().tuple_fields() else { bug!() };
+            CoroutineClosureSignature {
+                interior,
+                tupled_inputs_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                c_variadic: sig.c_variadic,
+                unsafety: sig.unsafety,
+                abi: sig.abi,
+            }
+        })
+    }
+
+    pub fn coroutine_captures_by_ref_ty(self) -> Ty<'tcx> {
+        self.split().coroutine_captures_by_ref_ty
+    }
+
+    pub fn coroutine_witness_ty(self) -> Ty<'tcx> {
+        self.split().coroutine_witness_ty
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
+pub struct CoroutineClosureSignature<'tcx> {
+    pub interior: Ty<'tcx>,
+    pub tupled_inputs_ty: Ty<'tcx>,
+    pub resume_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+
+    // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
+    // never actually differ. But we save them rather than recreating them
+    // from scratch just for good measure.
+    /// Always false
+    pub c_variadic: bool,
+    /// Always [`hir::Unsafety::Normal`]
+    pub unsafety: hir::Unsafety,
+    /// Always [`abi::Abi::RustCall`]
+    pub abi: abi::Abi,
+}
+
+impl<'tcx> CoroutineClosureSignature<'tcx> {
+    /// Construct a coroutine from the closure signature. Since a coroutine signature
+    /// is agnostic to the type of generator that is returned (by-ref/by-move),
+    /// the caller must specify what "flavor" of generator that they'd like to
+    /// create. Additionally, they must manually compute the upvars of the closure.
+    ///
+    /// This helper is not really meant to be used directly except for early on
+    /// during typeck, when we want to put inference vars into the kind and upvars tys.
+    /// When the kind and upvars are known, use the other helper functions.
+    pub fn to_coroutine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_kind_ty: Ty<'tcx>,
+        coroutine_def_id: DefId,
+        tupled_upvars_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let coroutine_args = ty::CoroutineArgs::new(
+            tcx,
+            ty::CoroutineArgsParts {
+                parent_args,
+                kind_ty: coroutine_kind_ty,
+                resume_ty: self.resume_ty,
+                yield_ty: self.yield_ty,
+                return_ty: self.return_ty,
+                witness: self.interior,
+                tupled_upvars_ty,
+            },
+        );
+
+        Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
+    }
+
+    /// Given known upvars and a [`ClosureKind`](ty::ClosureKind), compute the coroutine
+    /// returned by that corresponding async fn trait.
+    ///
+    /// This function expects the upvars to have been computed already, and doesn't check
+    /// that the `ClosureKind` is actually supported by the coroutine-closure.
+    pub fn to_coroutine_given_kind_and_upvars(
+        self,
+        tcx: TyCtxt<'tcx>,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        coroutine_def_id: DefId,
+        goal_kind: ty::ClosureKind,
+        env_region: ty::Region<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
+            tcx,
+            goal_kind,
+            self.tupled_inputs_ty,
+            closure_tupled_upvars_ty,
+            coroutine_captures_by_ref_ty,
+            env_region,
+        );
+
+        self.to_coroutine(
+            tcx,
+            parent_args,
+            Ty::from_closure_kind(tcx, goal_kind),
+            coroutine_def_id,
+            tupled_upvars_ty,
+        )
+    }
+
+    /// Compute the tupled upvars that a coroutine-closure's output coroutine
+    /// would return for the given `ClosureKind`.
+    ///
+    /// When `ClosureKind` is `FnMut`/`Fn`, then this will use the "captures by ref"
+    /// to return a set of upvars which are borrowed with the given `env_region`.
+    ///
+    /// This ensures that the `AsyncFn::call` will return a coroutine whose upvars'
+    /// lifetimes are related to the lifetime of the borrow on the closure made for
+    /// the call. This allows borrowck to enforce the self-borrows correctly.
+    pub fn tupled_upvars_by_closure_kind(
+        tcx: TyCtxt<'tcx>,
+        kind: ty::ClosureKind,
+        tupled_inputs_ty: Ty<'tcx>,
+        closure_tupled_upvars_ty: Ty<'tcx>,
+        coroutine_captures_by_ref_ty: Ty<'tcx>,
+        env_region: ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                let ty::FnPtr(sig) = *coroutine_captures_by_ref_ty.kind() else {
+                    bug!();
+                };
+                let coroutine_captures_by_ref_ty = tcx.replace_escaping_bound_vars_uncached(
+                    sig.output().skip_binder(),
+                    FnMutDelegate {
+                        consts: &mut |c, t| ty::Const::new_bound(tcx, ty::INNERMOST, c, t),
+                        types: &mut |t| Ty::new_bound(tcx, ty::INNERMOST, t),
+                        regions: &mut |_| env_region,
+                    },
+                );
+                Ty::new_tup_from_iter(
+                    tcx,
+                    tupled_inputs_ty
+                        .tuple_fields()
+                        .iter()
+                        .chain(coroutine_captures_by_ref_ty.tuple_fields()),
+                )
+            }
+            ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
+                tcx,
+                tupled_inputs_ty
+                    .tuple_fields()
+                    .iter()
+                    .chain(closure_tupled_upvars_ty.tuple_fields()),
+            ),
+        }
+    }
+}
 /// Similar to `ClosureArgs`; see the above documentation for more.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub struct CoroutineArgs<'tcx> {
@@ -278,13 +548,27 @@ pub struct CoroutineArgs<'tcx> {
 pub struct CoroutineArgsParts<'tcx> {
     /// This is the args of the typeck root.
     pub parent_args: &'tcx [GenericArg<'tcx>],
+
+    /// The coroutines returned by a coroutine-closure's `AsyncFnOnce`/`AsyncFnMut`
+    /// implementations must be distinguished since the former takes the closure's
+    /// upvars by move, and the latter takes the closure's upvars by ref.
+    ///
+    /// This field distinguishes these fields so that codegen can select the right
+    /// body for the coroutine. This has the same type representation as the closure
+    /// kind: `i8`/`i16`/`i32`.
+    ///
+    /// For regular coroutines, this field will always just be `()`.
+    pub kind_ty: Ty<'tcx>,
+
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
+
     /// The interior type of the coroutine.
     /// Represents all types that are stored in locals
     /// in the coroutine's body.
     pub witness: Ty<'tcx>,
+
     /// The upvars captured by the closure. Remains an inference variable
     /// until the upvar analysis, which happens late in HIR typeck.
     pub tupled_upvars_ty: Ty<'tcx>,
@@ -296,6 +580,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
         CoroutineArgs {
             args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.kind_ty.into(),
                 parts.resume_ty.into(),
                 parts.yield_ty.into(),
                 parts.return_ty.into(),
@@ -309,16 +594,23 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
     fn split(self) -> CoroutineArgsParts<'tcx> {
         match self.args[..] {
-            [ref parent_args @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
-                CoroutineArgsParts {
-                    parent_args,
-                    resume_ty: resume_ty.expect_ty(),
-                    yield_ty: yield_ty.expect_ty(),
-                    return_ty: return_ty.expect_ty(),
-                    witness: witness.expect_ty(),
-                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                }
-            }
+            [
+                ref parent_args @ ..,
+                kind_ty,
+                resume_ty,
+                yield_ty,
+                return_ty,
+                witness,
+                tupled_upvars_ty,
+            ] => CoroutineArgsParts {
+                parent_args,
+                kind_ty: kind_ty.expect_ty(),
+                resume_ty: resume_ty.expect_ty(),
+                yield_ty: yield_ty.expect_ty(),
+                return_ty: return_ty.expect_ty(),
+                witness: witness.expect_ty(),
+                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
+            },
             _ => bug!("coroutine args missing synthetics"),
         }
     }
@@ -326,6 +618,11 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Returns the substitutions of the coroutine's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
+    }
+
+    // Returns the kind of the coroutine. See docs on the `kind_ty` field.
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().kind_ty
     }
 
     /// This describes the types that can be contained in a coroutine.
@@ -479,6 +776,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
 pub enum UpvarArgs<'tcx> {
     Closure(GenericArgsRef<'tcx>),
     Coroutine(GenericArgsRef<'tcx>),
+    CoroutineClosure(GenericArgsRef<'tcx>),
 }
 
 impl<'tcx> UpvarArgs<'tcx> {
@@ -490,6 +788,7 @@ impl<'tcx> UpvarArgs<'tcx> {
         let tupled_tys = match self {
             UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
             UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
+            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
         };
 
         match tupled_tys.kind() {
@@ -505,6 +804,7 @@ impl<'tcx> UpvarArgs<'tcx> {
         match self {
             UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
             UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
+            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
         }
     }
 }
@@ -1394,6 +1694,20 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn new_coroutine_closure(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        closure_args: GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        debug_assert_eq!(
+            closure_args.len(),
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
+            "closure constructed with incorrect substitutions"
+        );
+        Ty::new(tcx, CoroutineClosure(def_id, closure_args))
+    }
+
+    #[inline]
     pub fn new_coroutine(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
@@ -1401,7 +1715,7 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
-            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
+            tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
             "coroutine constructed with incorrect number of substitutions"
         );
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
@@ -1728,6 +2042,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_coroutine_closure(self) -> bool {
+        matches!(self.kind(), CoroutineClosure(..))
+    }
+
+    #[inline]
     pub fn is_integral(self) -> bool {
         matches!(self.kind(), Infer(IntVar(_)) | Int(_) | Uint(_))
     }
@@ -1795,7 +2114,7 @@ impl<'tcx> Ty<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::Closure(_, _) = t.kind() {
+                if let ty::Closure(..) = t.kind() {
                     ControlFlow::Break(())
                 } else {
                     t.super_visit_with(self)
@@ -1942,6 +2261,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnPtr(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
@@ -1980,6 +2300,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_)
             // Extern types have metadata = ().
@@ -2034,7 +2355,7 @@ impl<'tcx> Ty<'tcx> {
 
             // "Bound" types appear in canonical queries when the
             // closure type is not yet known
-            Bound(..) | Infer(_) => None,
+            Bound(..) | Param(_) | Infer(_) => None,
 
             Error(_) => Some(ty::ClosureKind::Fn),
 
@@ -2077,6 +2398,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_) => true,
 
@@ -2140,7 +2462,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) => false,
+            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
@@ -2212,6 +2534,7 @@ impl<'tcx> Ty<'tcx> {
             | FnPtr(_)
             | Dynamic(_, _, _)
             | Closure(_, _)
+            | CoroutineClosure(_, _)
             | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never

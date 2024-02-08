@@ -5,10 +5,13 @@ use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelega
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::ty::{TypeFoldable, TypeVisitableExt};
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::solve::deeply_normalize;
+use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
+use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -33,6 +36,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     locations: Locations,
     span: Span,
@@ -47,6 +51,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
         locations: Locations,
         span: Span,
@@ -59,6 +64,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             universal_regions,
             region_bound_pairs,
             implicit_region_bound,
+            param_env,
             known_type_outlives_obligations,
             locations,
             span,
@@ -137,36 +143,68 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // Extract out various useful fields we'll need below.
         let ConstraintConversion {
             tcx,
+            infcx,
             region_bound_pairs,
             implicit_region_bound,
             known_type_outlives_obligations,
             ..
         } = *self;
 
-        let ty::OutlivesPredicate(k1, r2) = predicate;
-        match k1.unpack() {
-            GenericArgKind::Lifetime(r1) => {
-                let r1_vid = self.to_region_vid(r1);
-                let r2_vid = self.to_region_vid(r2);
-                self.add_outlives(r1_vid, r2_vid, constraint_category);
+        let mut outlives_predicates = vec![(predicate, constraint_category)];
+        for iteration in 0.. {
+            if outlives_predicates.is_empty() {
+                break;
             }
 
-            GenericArgKind::Type(t1) => {
-                // we don't actually use this for anything, but
-                // the `TypeOutlives` code needs an origin.
-                let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
-
-                TypeOutlives::new(
-                    &mut *self,
-                    tcx,
-                    region_bound_pairs,
-                    Some(implicit_region_bound),
-                    known_type_outlives_obligations,
-                )
-                .type_must_outlive(origin, t1, r2, constraint_category);
+            if !self.tcx.recursion_limit().value_within_limit(iteration) {
+                bug!(
+                    "FIXME(-Znext-solver): Overflowed when processing region obligations: {outlives_predicates:#?}"
+                );
             }
 
-            GenericArgKind::Const(_) => unreachable!(),
+            let mut next_outlives_predicates = vec![];
+            for (ty::OutlivesPredicate(k1, r2), constraint_category) in outlives_predicates {
+                match k1.unpack() {
+                    GenericArgKind::Lifetime(r1) => {
+                        let r1_vid = self.to_region_vid(r1);
+                        let r2_vid = self.to_region_vid(r2);
+                        self.add_outlives(r1_vid, r2_vid, constraint_category);
+                    }
+
+                    GenericArgKind::Type(mut t1) => {
+                        // Normalize the type we receive from a `TypeOutlives` obligation
+                        // in the new trait solver.
+                        if infcx.next_trait_solver() {
+                            t1 = self.normalize_and_add_type_outlives_constraints(
+                                t1,
+                                &mut next_outlives_predicates,
+                            );
+                        }
+
+                        // we don't actually use this for anything, but
+                        // the `TypeOutlives` code needs an origin.
+                        let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
+
+                        TypeOutlives::new(
+                            &mut *self,
+                            tcx,
+                            region_bound_pairs,
+                            Some(implicit_region_bound),
+                            known_type_outlives_obligations,
+                        )
+                        .type_must_outlive(
+                            origin,
+                            t1,
+                            r2,
+                            constraint_category,
+                        );
+                    }
+
+                    GenericArgKind::Const(_) => unreachable!(),
+                }
+            }
+
+            outlives_predicates = next_outlives_predicates;
         }
     }
 
@@ -231,6 +269,42 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
         debug!("add_type_test(type_test={:?})", type_test);
         self.constraints.type_tests.push(type_test);
+    }
+
+    fn normalize_and_add_type_outlives_constraints(
+        &self,
+        ty: Ty<'tcx>,
+        next_outlives_predicates: &mut Vec<(
+            ty::OutlivesPredicate<ty::GenericArg<'tcx>, ty::Region<'tcx>>,
+            ConstraintCategory<'tcx>,
+        )>,
+    ) -> Ty<'tcx> {
+        let result = CustomTypeOp::new(
+            |ocx| {
+                deeply_normalize(
+                    ocx.infcx.at(&ObligationCause::dummy_with_span(self.span), self.param_env),
+                    ty,
+                )
+                .map_err(|_| NoSolution)
+            },
+            "normalize type outlives obligation",
+        )
+        .fully_perform(self.infcx, self.span);
+
+        match result {
+            Ok(TypeOpOutput { output: ty, constraints, .. }) => {
+                if let Some(constraints) = constraints {
+                    assert!(
+                        constraints.member_constraints.is_empty(),
+                        "no member constraints expected from normalizing: {:#?}",
+                        constraints.member_constraints
+                    );
+                    next_outlives_predicates.extend(constraints.outlives.iter().copied());
+                }
+                ty
+            }
+            Err(_) => ty,
+        }
     }
 }
 

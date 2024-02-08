@@ -14,6 +14,7 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_hash)]
 #![feature(const_heap)]
+#![feature(const_intrinsic_copy)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_nonnull_new)]
 #![feature(const_pointer_is_aligned)]

@@ -172,6 +172,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         | ty::Infer(_)
         // FIXME(oli-obk): we can probably encode closures just like structs
         | ty::Closure(..)
+        | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..) => Err(ValTreeCreationError::NonSupportedType),
     }
@@ -301,6 +302,7 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Closure(..)
+        | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::FnPtr(_)

@@ -196,6 +196,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let allocs = LiveAllocs { ecx: this, collected: allocs };
         this.machine.allocation_spans.borrow_mut().retain(|id, _| allocs.is_live(*id));
+        this.machine.symbolic_alignment.borrow_mut().retain(|id, _| allocs.is_live(*id));
         this.machine.intptrcast.borrow_mut().remove_unreachable_allocs(&allocs);
         if let Some(borrow_tracker) = &this.machine.borrow_tracker {
             borrow_tracker.borrow_mut().remove_unreachable_allocs(&allocs);

@@ -20,7 +20,7 @@ LL |     fn baz<U,
 LL |            (y: T) {
    |                ^ use of generic parameter from outer item
 
-error[E0401]: can't use generic parameters from outer item
+error[E0401]: can't use `Self` from outer item
   --> $DIR/E0401.rs:24:25
    |
 LL | impl<T> Iterator for A<T> {
@@ -29,7 +29,7 @@ LL | impl<T> Iterator for A<T> {
 LL |         fn helper(sel: &Self) -> u8 {
    |                         ^^^^
    |                         |
-   |                         use of generic parameter from outer item
+   |                         use of `Self` from outer item
    |                         refer to the type directly here instead
 
 error[E0283]: type annotations needed

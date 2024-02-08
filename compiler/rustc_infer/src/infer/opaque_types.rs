@@ -456,6 +456,17 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
+            ty::CoroutineClosure(_, args) => {
+                // Skip lifetime parameters of the enclosing item(s)
+
+                for upvar in args.as_coroutine_closure().upvar_tys() {
+                    upvar.visit_with(self);
+                }
+
+                // FIXME(async_closures): Is this the right signature to visit here?
+                args.as_coroutine_closure().signature_parts_ty().visit_with(self);
+            }
+
             ty::Coroutine(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.

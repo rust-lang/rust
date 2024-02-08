@@ -5,7 +5,7 @@
 // including `Bar`, but the object type `Bar` also implicitly supplies
 // this context.
 
-trait Foo { fn dummy(&self) { } }
+trait Foo { fn dummy(&self) { } } //~ WARN method `dummy` is never used
 
 trait Bar: Foo { }
 

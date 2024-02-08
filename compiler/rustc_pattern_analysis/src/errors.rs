@@ -23,7 +23,10 @@ impl<'tcx> Uncovered<'tcx> {
         span: Span,
         cx: &RustcMatchCheckCtxt<'p, 'tcx>,
         witnesses: Vec<WitnessPat<'p, 'tcx>>,
-    ) -> Self {
+    ) -> Self
+    where
+        'tcx: 'p,
+    {
         let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap());
         Self {
             span,

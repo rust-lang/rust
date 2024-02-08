@@ -1,5 +1,6 @@
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 
 pub trait InferCtxtRegionExt<'tcx> {
@@ -31,7 +32,7 @@ impl<'tcx> InferCtxtRegionExt<'tcx> for InferCtxt<'tcx> {
                     ),
                     ty,
                 )
-                .map_err(|_| ty)
+                .map_err(|_| NoSolution)
             } else {
                 Ok(ty)
             }

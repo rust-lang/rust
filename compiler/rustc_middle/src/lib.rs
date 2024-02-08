@@ -30,6 +30,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
+#![feature(const_type_name)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(coroutines)]

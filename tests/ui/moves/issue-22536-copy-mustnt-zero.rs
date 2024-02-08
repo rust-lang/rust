@@ -5,7 +5,7 @@
 
 trait Resources {
     type Buffer: Copy;
-    fn foo(&self) {}
+    fn foo(&self) {} //~ WARN method `foo` is never used
 }
 
 struct BufferHandle<R: Resources> {

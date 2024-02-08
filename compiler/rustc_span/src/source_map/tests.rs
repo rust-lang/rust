@@ -1,5 +1,7 @@
 use super::*;
 
+use rustc_data_structures::sync::FreezeLock;
+
 fn init_source_map() -> SourceMap {
     let sm = SourceMap::new(FilePathMapping::empty());
     sm.new_source_file(PathBuf::from("blork.rs").into(), "first line.\nsecond line".to_string());
@@ -261,53 +263,6 @@ fn t10() {
         normalized,
         "imported source file should be normalized"
     );
-}
-
-/// Returns the span corresponding to the `n`th occurrence of `substring` in `source_text`.
-trait SourceMapExtension {
-    fn span_substr(
-        &self,
-        file: &Lrc<SourceFile>,
-        source_text: &str,
-        substring: &str,
-        n: usize,
-    ) -> Span;
-}
-
-impl SourceMapExtension for SourceMap {
-    fn span_substr(
-        &self,
-        file: &Lrc<SourceFile>,
-        source_text: &str,
-        substring: &str,
-        n: usize,
-    ) -> Span {
-        eprintln!(
-            "span_substr(file={:?}/{:?}, substring={:?}, n={})",
-            file.name, file.start_pos, substring, n
-        );
-        let mut i = 0;
-        let mut hi = 0;
-        loop {
-            let offset = source_text[hi..].find(substring).unwrap_or_else(|| {
-                panic!(
-                    "source_text `{}` does not have {} occurrences of `{}`, only {}",
-                    source_text, n, substring, i
-                );
-            });
-            let lo = hi + offset;
-            hi = lo + substring.len();
-            if i == n {
-                let span = Span::with_root_ctxt(
-                    BytePos(lo as u32 + file.start_pos.0),
-                    BytePos(hi as u32 + file.start_pos.0),
-                );
-                assert_eq!(&self.span_to_snippet(span).unwrap()[..], substring);
-                return span;
-            }
-            i += 1;
-        }
-    }
 }
 
 // Takes a unix-style path and returns a platform specific path.

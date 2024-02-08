@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `test`, `baz`
-  --> $DIR/suggest-missing-item.rs:19:1
+  --> $DIR/suggest-missing-item.rs:20:1
    |
 LL |     async fn foo();
    |     --------------- `foo` from trait

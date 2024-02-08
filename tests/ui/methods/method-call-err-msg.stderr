@@ -63,8 +63,9 @@ LL | |      .take()
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `take`, perhaps you need to implement it:
-           candidate #1: `Iterator`
+   = note: the following traits define an item `take`, perhaps you need to implement one of them:
+           candidate #1: `std::io::Read`
+           candidate #2: `Iterator`
 
 error[E0061]: this method takes 3 arguments but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:21:7

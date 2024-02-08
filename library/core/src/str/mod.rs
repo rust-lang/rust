@@ -1157,8 +1157,13 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
-    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// The [pattern] can be a `&str`, in which case this function will return true if
+    /// the `&str` is a prefix of this string slice.
+    ///
+    /// The [pattern] can also be a [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
+    /// These will only be checked against the first character of this string slice.
+    /// Look at the second example below regarding behavior for slices of [`char`]s.
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
@@ -1170,6 +1175,14 @@ impl str {
     ///
     /// assert!(bananas.starts_with("bana"));
     /// assert!(!bananas.starts_with("nana"));
+    /// ```
+    ///
+    /// ```
+    /// let bananas = "bananas";
+    ///
+    /// // Note that both of these assert successfully.
+    /// assert!(bananas.starts_with(&['b', 'a', 'n', 'a']));
+    /// assert!(bananas.starts_with(&['a', 'b', 'c', 'd']));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {

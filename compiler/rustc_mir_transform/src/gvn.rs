@@ -861,9 +861,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let tcx = self.tcx;
         if fields.is_empty() {
             let is_zst = match *kind {
-                AggregateKind::Array(..) | AggregateKind::Tuple | AggregateKind::Closure(..) => {
-                    true
-                }
+                AggregateKind::Array(..)
+                | AggregateKind::Tuple
+                | AggregateKind::Closure(..)
+                | AggregateKind::CoroutineClosure(..) => true,
                 // Only enums can be non-ZST.
                 AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
                 // Coroutines are never ZST, as they at least contain the implicit states.
@@ -885,7 +886,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
+            AggregateKind::Closure(did, substs)
+            | AggregateKind::CoroutineClosure(did, substs)
+            | AggregateKind::Coroutine(did, substs) => {
                 (AggregateTy::Def(did, substs), FIRST_VARIANT)
             }
             AggregateKind::Adt(did, variant_index, substs, _, None) => {

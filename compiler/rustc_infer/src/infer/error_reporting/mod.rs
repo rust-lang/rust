@@ -71,6 +71,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::{with_forced_trimmed_paths, PrintError};
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
     self, error::TypeError, IsSuggestable, List, Region, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -519,10 +520,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
 
-                    RegionResolutionError::CannotNormalize(ty, origin) => {
+                    RegionResolutionError::CannotNormalize(clause, origin) => {
+                        let clause: ty::Clause<'tcx> =
+                            clause.map_bound(ty::ClauseKind::TypeOutlives).to_predicate(self.tcx);
                         self.tcx
                             .dcx()
-                            .struct_span_err(origin.span(), format!("cannot normalize `{ty}`"))
+                            .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
                             .emit();
                     }
                 }
@@ -2839,7 +2842,11 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => Error0644,
+                TypeError::CyclicTy(ty)
+                    if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() =>
+                {
+                    Error0644
+                }
                 TypeError::IntrinsicCast => Error0308,
                 _ => Error0308,
             },
@@ -2886,7 +2893,9 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => {
+                TypeError::CyclicTy(ty)
+                    if ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure() =>
+                {
                     ObligationCauseFailureCode::ClosureSelfref { span }
                 }
                 TypeError::IntrinsicCast => {

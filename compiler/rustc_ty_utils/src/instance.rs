@@ -38,6 +38,7 @@ fn resolve_instance<'tcx>(
                 debug!(" => nontrivial drop glue");
                 match *ty.kind() {
                     ty::Closure(..)
+                    | ty::CoroutineClosure(..)
                     | ty::Coroutine(..)
                     | ty::Tuple(..)
                     | ty::Adt(..)
@@ -215,6 +216,7 @@ fn resolve_associated_item<'tcx>(
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)
+                        | ty::CoroutineClosure(..)
                         | ty::Tuple(..) => {}
                         _ => return Ok(None),
                     };
@@ -278,6 +280,34 @@ fn resolve_associated_item<'tcx>(
                     }),
                     _ => bug!(
                         "no built-in definition for `{trait_ref}::{}` for non-fn type",
+                        tcx.item_name(trait_item_id)
+                    ),
+                }
+            } else if let Some(target_kind) = tcx.async_fn_trait_kind_from_def_id(trait_ref.def_id)
+            {
+                match *rcvr_args.type_at(0).kind() {
+                    ty::CoroutineClosure(coroutine_closure_def_id, args) => {
+                        // If we're computing `AsyncFnOnce`/`AsyncFnMut` for a by-ref closure,
+                        // or `AsyncFnOnce` for a by-mut closure, then construct a new body that
+                        // has the right return types.
+                        //
+                        // Specifically, `AsyncFnMut` for a by-ref coroutine-closure just needs
+                        // to have its input and output types fixed (`&mut self` and returning
+                        // `i16` coroutine kind).
+                        if target_kind > args.as_coroutine_closure().kind() {
+                            Some(Instance {
+                                def: ty::InstanceDef::ConstructCoroutineInClosureShim {
+                                    coroutine_closure_def_id,
+                                    target_kind,
+                                },
+                                args,
+                            })
+                        } else {
+                            Some(Instance::new(coroutine_closure_def_id, args))
+                        }
+                    }
+                    _ => bug!(
+                        "no built-in definition for `{trait_ref}::{}` for non-lending-closure type",
                         tcx.item_name(trait_item_id)
                     ),
                 }

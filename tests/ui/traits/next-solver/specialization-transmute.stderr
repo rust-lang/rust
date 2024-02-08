@@ -8,7 +8,7 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error: cannot normalize `<T as Default>::Id`
+error: cannot normalize `<T as Default>::Id: '_`
 
 error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id == _`
   --> $DIR/specialization-transmute.rs:16:23

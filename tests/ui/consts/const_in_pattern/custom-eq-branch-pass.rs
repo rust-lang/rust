@@ -12,6 +12,7 @@ impl PartialEq for CustomEq {
 }
 
 #[derive(PartialEq, Eq)]
+#[allow(unused)]
 enum Foo {
     Bar,
     Baz,
@@ -21,7 +22,7 @@ enum Foo {
 const BAR_BAZ: Foo = if 42 == 42 {
     Foo::Bar
 } else {
-    Foo::Baz
+    Foo::Qux(CustomEq) // dead arm
 };
 
 fn main() {

@@ -46,6 +46,13 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_) => Some("reify"),
 
+        ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }
+        | ty::InstanceDef::CoroutineKindShim { target_kind, .. } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!(),
+            ty::ClosureKind::FnMut => Some("fn_mut"),
+            ty::ClosureKind::FnOnce => Some("fn_once"),
+        },
+
         _ => None,
     };
 
@@ -386,6 +393,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
+            | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => {
                 self.print_def_path(def_id, args)?;
             }

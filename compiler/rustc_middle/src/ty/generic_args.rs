@@ -2,7 +2,7 @@
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-use crate::ty::sty::{ClosureArgs, CoroutineArgs, InlineConstArgs};
+use crate::ty::sty::{ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs};
 use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
@@ -286,6 +286,14 @@ impl<'tcx> GenericArgs<'tcx> {
     /// see `ty::ClosureArgs` struct for more comments.
     pub fn as_closure(&'tcx self) -> ClosureArgs<'tcx> {
         ClosureArgs { args: self }
+    }
+
+    /// Interpret these generic args as the args of a coroutine-closure type.
+    /// Coroutine-closure args have a particular structure controlled by the
+    /// compiler that encodes information like the signature and closure kind;
+    /// see `ty::CoroutineClosureArgs` struct for more comments.
+    pub fn as_coroutine_closure(&'tcx self) -> CoroutineClosureArgs<'tcx> {
+        CoroutineClosureArgs { args: self }
     }
 
     /// Interpret these generic args as the args of a coroutine type.

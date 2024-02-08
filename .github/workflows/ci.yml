@@ -364,8 +364,8 @@ jobs:
             os: macos-13
           - name: dist-aarch64-apple
             env:
-              SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --disable-docs --set rust.jemalloc"
+              SCRIPT: "./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin"
+              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               SELECT_XCODE: /Applications/Xcode_13.4.1.app
               USE_XCODE_CLANG: 1
@@ -375,8 +375,20 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              JEMALLOC_SYS_WITH_LG_PAGE: 14
-            os: macos-13
+            os: macos-14
+          - name: aarch64-apple
+            env:
+              SCRIPT: "./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin"
+              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            os: macos-14
           - name: x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"

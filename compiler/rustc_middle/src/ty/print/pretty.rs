@@ -874,6 +874,48 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 p!("}}");
             }
+            ty::CoroutineClosure(did, args) => {
+                p!(write("{{"));
+                if !self.should_print_verbose() {
+                    p!(write("coroutine-closure"));
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
+                            p!("@", print_def_path(did.to_def_id(), args));
+                        } else {
+                            let span = self.tcx().def_span(did);
+                            let preference = if with_forced_trimmed_paths() {
+                                FileNameDisplayPreference::Short
+                            } else {
+                                FileNameDisplayPreference::Remapped
+                            };
+                            p!(write(
+                                "@{}",
+                                // This may end up in stderr diagnostics but it may also be emitted
+                                // into MIR. Hence we use the remapped path if available
+                                self.tcx().sess.source_map().span_to_string(span, preference)
+                            ));
+                        }
+                    } else {
+                        p!(write("@"), print_def_path(did, args));
+                    }
+                } else {
+                    p!(print_def_path(did, args));
+                    p!(
+                        " closure_kind_ty=",
+                        print(args.as_coroutine_closure().kind_ty()),
+                        " signature_parts_ty=",
+                        print(args.as_coroutine_closure().signature_parts_ty()),
+                        " upvar_tys=",
+                        print(args.as_coroutine_closure().tupled_upvars_ty()),
+                        " coroutine_captures_by_ref_ty=",
+                        print(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
+                        " coroutine_witness_ty=",
+                        print(args.as_coroutine_closure().coroutine_witness_ty())
+                    );
+                }
+                p!("}}");
+            }
             ty::Array(ty, sz) => p!("[", print(ty), "; ", print(sz), "]"),
             ty::Slice(ty) => p!("[", print(ty), "]"),
         }

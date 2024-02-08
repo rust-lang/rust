@@ -3,7 +3,7 @@
 #![feature(ptr_metadata)]
 
 trait Foo {
-    fn foo(&self) {}
+    fn foo(&self) {} //~ WARN method `foo` is never used
 }
 
 struct Bar;

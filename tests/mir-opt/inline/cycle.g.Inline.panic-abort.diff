@@ -4,35 +4,16 @@
   fn g() -> () {
       let mut _0: ();
       let _1: ();
-+     let mut _2: fn() {main};
-+     scope 1 (inlined f::<fn() {main}>) {
-+         debug g => _2;
-+         let mut _3: &fn() {main};
-+         let _4: ();
-+     }
   
       bb0: {
           StorageLive(_1);
--         _1 = f::<fn() {main}>(main) -> [return: bb1, unwind unreachable];
-+         StorageLive(_2);
-+         _2 = main;
-+         StorageLive(_4);
-+         StorageLive(_3);
-+         _3 = &_2;
-+         _4 = <fn() {main} as Fn<()>>::call(move _3, const ()) -> [return: bb2, unwind unreachable];
+          _1 = f::<fn() {main}>(main) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-+         StorageDead(_4);
-+         StorageDead(_2);
           StorageDead(_1);
           _0 = const ();
           return;
-+     }
-+ 
-+     bb2: {
-+         StorageDead(_3);
-+         drop(_2) -> [return: bb1, unwind unreachable];
       }
   }
   

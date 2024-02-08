@@ -18,7 +18,9 @@ fn sized_constraint_for_ty<'tcx>(
 
     let result = match ty.kind() {
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
-        | FnPtr(_) | Array(..) | Closure(..) | Coroutine(..) | Never => vec![],
+        | FnPtr(_) | Array(..) | Closure(..) | CoroutineClosure(..) | Coroutine(..) | Never => {
+            vec![]
+        }
 
         Str | Dynamic(..) | Slice(_) | Foreign(..) | Error(_) | CoroutineWitness(..) => {
             // these are never sized - return the target type

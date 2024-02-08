@@ -1864,6 +1864,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1894,6 +1896,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(_)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1930,6 +1934,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1946,6 +1952,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2054,6 +2062,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2066,6 +2076,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate,
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2106,6 +2118,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
@@ -2227,6 +2240,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
+            // FIXME(async_closures): These are never clone, for now.
+            ty::CoroutineClosure(_, _) => None,
+
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
@@ -2302,6 +2318,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Closure(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
+                t.rebind(vec![ty])
+            }
+
+            ty::CoroutineClosure(_, args) => {
+                let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
                 t.rebind(vec![ty])
             }
 

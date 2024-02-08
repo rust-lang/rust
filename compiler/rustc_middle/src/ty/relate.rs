@@ -481,6 +481,13 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_closure(tcx, a_id, args))
         }
 
+        (&ty::CoroutineClosure(a_id, a_args), &ty::CoroutineClosure(b_id, b_args))
+            if a_id == b_id =>
+        {
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
+            Ok(Ty::new_coroutine_closure(tcx, a_id, args))
+        }
+
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
             Ok(Ty::new_ptr(tcx, mt))

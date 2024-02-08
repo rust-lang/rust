@@ -4,6 +4,7 @@
 // is dead.
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
+use hir::ItemKind;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -14,7 +15,7 @@ use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{sym, Symbol};
@@ -381,9 +382,46 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
+                hir::ItemKind::Trait(..) => {
+                    for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
+                        if let Some(local_def_id) = impl_def_id.as_local()
+                            && let ItemKind::Impl(impl_ref) =
+                                self.tcx.hir().expect_item(local_def_id).kind
+                        {
+                            // skip items
+                            // mark dependent traits live
+                            intravisit::walk_generics(self, impl_ref.generics);
+                            // mark dependent parameters live
+                            intravisit::walk_path(self, impl_ref.of_trait.unwrap().path);
+                        }
+                    }
+
+                    intravisit::walk_item(self, item)
+                }
                 _ => intravisit::walk_item(self, item),
             },
             Node::TraitItem(trait_item) => {
+                // mark corresponing ImplTerm live
+                let trait_item_id = trait_item.owner_id.to_def_id();
+                if let Some(trait_id) = self.tcx.trait_of_item(trait_item_id) {
+                    // mark the trait live
+                    self.check_def_id(trait_id);
+
+                    for impl_id in self.tcx.all_impls(trait_id) {
+                        if let Some(local_impl_id) = impl_id.as_local()
+                            && let ItemKind::Impl(impl_ref) =
+                                self.tcx.hir().expect_item(local_impl_id).kind
+                        {
+                            // mark self_ty live
+                            intravisit::walk_ty(self, impl_ref.self_ty);
+                            if let Some(&impl_item_id) =
+                                self.tcx.impl_item_implementor_ids(impl_id).get(&trait_item_id)
+                            {
+                                self.check_def_id(impl_item_id);
+                            }
+                        }
+                    }
+                }
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
@@ -636,10 +674,6 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Impl { of_trait } => {
-            if of_trait {
-                worklist.push((id.owner_id.def_id, ComesFromAllowExpect::No));
-            }
-
             // get DefIds from another query
             let local_def_ids = tcx
                 .associated_item_def_ids(id.owner_id)
@@ -648,7 +682,11 @@ fn check_item<'tcx>(
 
             // And we access the Map here to get HirId from LocalDefId
             for id in local_def_ids {
-                if of_trait {
+                // for impl trait blocks, mark associate functions live if the trait is public
+                if of_trait
+                    && (!matches!(tcx.def_kind(id), DefKind::AssocFn)
+                        || tcx.local_visibility(id) == Visibility::Public)
+                {
                     worklist.push((id, ComesFromAllowExpect::No));
                 } else if let Some(comes_from_allow) = has_allow_dead_code_or_lang_attr(tcx, id) {
                     worklist.push((id, comes_from_allow));
@@ -679,7 +717,7 @@ fn check_trait_item(
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
-        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
+        if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)
         {
@@ -948,7 +986,8 @@ impl<'tcx> DeadVisitor<'tcx> {
             | DefKind::TyAlias
             | DefKind::Enum
             | DefKind::Union
-            | DefKind::ForeignTy => self.warn_dead_code(def_id, "used"),
+            | DefKind::ForeignTy
+            | DefKind::Trait => self.warn_dead_code(def_id, "used"),
             DefKind::Struct => self.warn_dead_code(def_id, "constructed"),
             DefKind::Variant | DefKind::Field => bug!("should be handled specially"),
             _ => {}
@@ -973,18 +1012,33 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
-        if let hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
-            let mut dead_items = Vec::new();
-            for item in impl_item.items {
-                let def_id = item.id.owner_id.def_id;
-                if !visitor.is_live_code(def_id) {
-                    let name = tcx.item_name(def_id.to_def_id());
-                    let level = visitor.def_lint_level(def_id);
+        let def_kind = tcx.def_kind(item.owner_id);
 
-                    dead_items.push(DeadItem { def_id, name, level })
+        let mut dead_codes = Vec::new();
+        // if we have diagnosed the trait, do not diagnose unused methods
+        if matches!(def_kind, DefKind::Impl { .. })
+            || (def_kind == DefKind::Trait && live_symbols.contains(&item.owner_id.def_id))
+        {
+            for &def_id in tcx.associated_item_def_ids(item.owner_id.def_id) {
+                // We have diagnosed unused methods in traits
+                if matches!(def_kind, DefKind::Impl { of_trait: true })
+                    && tcx.def_kind(def_id) == DefKind::AssocFn
+                    || def_kind == DefKind::Trait && tcx.def_kind(def_id) != DefKind::AssocFn
+                {
+                    continue;
+                }
+
+                if let Some(local_def_id) = def_id.as_local()
+                    && !visitor.is_live_code(local_def_id)
+                {
+                    let name = tcx.item_name(def_id);
+                    let level = visitor.def_lint_level(local_def_id);
+                    dead_codes.push(DeadItem { def_id: local_def_id, name, level });
                 }
             }
-            visitor.warn_multiple(item.owner_id.def_id, "used", dead_items, ReportOn::NamedField);
+        }
+        if !dead_codes.is_empty() {
+            visitor.warn_multiple(item.owner_id.def_id, "used", dead_codes, ReportOn::NamedField);
         }
 
         if !live_symbols.contains(&item.owner_id.def_id) {
@@ -997,7 +1051,6 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
             continue;
         }
 
-        let def_kind = tcx.def_kind(item.owner_id);
         if let DefKind::Struct | DefKind::Union | DefKind::Enum = def_kind {
             let adt = tcx.adt_def(item.owner_id);
             let mut dead_variants = Vec::new();
@@ -1044,8 +1097,6 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
     for foreign_item in module_items.foreign_items() {
         visitor.check_definition(foreign_item.owner_id.def_id);
     }
-
-    // We do not warn trait items.
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

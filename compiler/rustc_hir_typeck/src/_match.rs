@@ -1,7 +1,11 @@
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::Diagnostic;
-use rustc_hir::{self as hir, ExprKind};
+use rustc_errors::{Applicability, Diagnostic};
+use rustc_hir::{
+    self as hir,
+    def::{CtorOf, DefKind, Res},
+    ExprKind, PatKind,
+};
 use rustc_hir_pretty::ty_to_string;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
@@ -273,7 +277,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns `true` if there was an error forcing the coercion to the `()` type.
     pub(super) fn if_fallback_coercion<T>(
         &self,
-        span: Span,
+        if_span: Span,
+        cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
         coercion: &mut CoerceMany<'tcx, '_, T>,
     ) -> bool
@@ -283,27 +288,104 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
         let hir_id = self.tcx.hir().parent_id(self.tcx.hir().parent_id(then_expr.hir_id));
-        let ret_reason = self.maybe_get_coercion_reason(hir_id, span);
-        let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
+        let ret_reason = self.maybe_get_coercion_reason(hir_id, if_span);
+        let cause = self.cause(if_span, ObligationCauseCode::IfExpressionWithNoElse);
         let mut error = false;
         coercion.coerce_forced_unit(
             self,
             &cause,
-            |err| {
-                if let Some((span, msg)) = &ret_reason {
-                    err.span_label(*span, msg.clone());
-                } else if let ExprKind::Block(block, _) = &then_expr.kind
-                    && let Some(expr) = &block.expr
-                {
-                    err.span_label(expr.span, "found here");
-                }
-                err.note("`if` expressions without `else` evaluate to `()`");
-                err.help("consider adding an `else` block that evaluates to the expected type");
-                error = true;
-            },
+            |err| self.explain_if_expr(err, ret_reason, if_span, cond_expr, then_expr, &mut error),
             false,
         );
         error
+    }
+
+    /// Explain why `if` expressions without `else` evaluate to `()` and detect likely irrefutable
+    /// `if let PAT = EXPR {}` expressions that could be turned into `let PAT = EXPR;`.
+    fn explain_if_expr(
+        &self,
+        err: &mut Diagnostic,
+        ret_reason: Option<(Span, String)>,
+        if_span: Span,
+        cond_expr: &'tcx hir::Expr<'tcx>,
+        then_expr: &'tcx hir::Expr<'tcx>,
+        error: &mut bool,
+    ) {
+        if let Some((if_span, msg)) = ret_reason {
+            err.span_label(if_span, msg.clone());
+        } else if let ExprKind::Block(block, _) = then_expr.kind
+            && let Some(expr) = block.expr
+        {
+            err.span_label(expr.span, "found here");
+        }
+        err.note("`if` expressions without `else` evaluate to `()`");
+        err.help("consider adding an `else` block that evaluates to the expected type");
+        *error = true;
+        if let ExprKind::Let(hir::Let { span, pat, init, .. }) = cond_expr.kind
+            && let ExprKind::Block(block, _) = then_expr.kind
+            // Refutability checks occur on the MIR, so we approximate it here by checking
+            // if we have an enum with a single variant or a struct in the pattern.
+            && let PatKind::TupleStruct(qpath, ..) | PatKind::Struct(qpath, ..) = pat.kind
+            && let hir::QPath::Resolved(_, path) = qpath
+        {
+            match path.res {
+                Res::Def(DefKind::Ctor(CtorOf::Struct, _), _) => {
+                    // Structs are always irrefutable. Their fields might not be, but we
+                    // don't check for that here, it's only an approximation.
+                }
+                Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id)
+                    if self
+                        .tcx
+                        .adt_def(self.tcx.parent(self.tcx.parent(def_id)))
+                        .variants()
+                        .len()
+                        == 1 =>
+                {
+                    // There's only a single variant in the `enum`, so we can suggest the
+                    // irrefutable `let` instead of `if let`.
+                }
+                _ => return,
+            }
+
+            let mut sugg = vec![
+                // Remove the `if`
+                (if_span.until(*span), String::new()),
+            ];
+            match (block.stmts, block.expr) {
+                ([first, ..], Some(expr)) => {
+                    let padding = self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .indentation_before(first.span)
+                        .unwrap_or_else(|| String::new());
+                    sugg.extend([
+                        (init.span.between(first.span), format!(";\n{padding}")),
+                        (expr.span.shrink_to_hi().with_hi(block.span.hi()), String::new()),
+                    ]);
+                }
+                ([], Some(expr)) => {
+                    let padding = self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .indentation_before(expr.span)
+                        .unwrap_or_else(|| String::new());
+                    sugg.extend([
+                        (init.span.between(expr.span), format!(";\n{padding}")),
+                        (expr.span.shrink_to_hi().with_hi(block.span.hi()), String::new()),
+                    ]);
+                }
+                // If there's no value in the body, then the `if` expression would already
+                // be of type `()`, so checking for those cases is unnecessary.
+                (_, None) => return,
+            }
+            err.multipart_suggestion(
+                "consider using an irrefutable `let` binding instead",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     pub fn maybe_get_coercion_reason(

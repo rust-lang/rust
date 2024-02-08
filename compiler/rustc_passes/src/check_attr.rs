@@ -192,7 +192,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 sym::ffi_pure => self.check_ffi_pure(attr.span, attrs, target),
                 sym::ffi_const => self.check_ffi_const(attr.span, target),
-                sym::ffi_returns_twice => self.check_ffi_returns_twice(attr.span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1305,15 +1304,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             true
         } else {
             self.dcx().emit_err(errors::FfiConstInvalidTarget { attr_span });
-            false
-        }
-    }
-
-    fn check_ffi_returns_twice(&self, attr_span: Span, target: Target) -> bool {
-        if target == Target::ForeignFn {
-            true
-        } else {
-            self.dcx().emit_err(errors::FfiReturnsTwiceInvalidTarget { attr_span });
             false
         }
     }

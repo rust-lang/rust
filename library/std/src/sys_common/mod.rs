@@ -59,12 +59,14 @@ cfg_if::cfg_if! {
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
+#[allow(dead_code)] // not used on all platforms
 pub trait AsInner<Inner: ?Sized> {
     fn as_inner(&self) -> &Inner;
 }
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
+#[allow(dead_code)] // not used on all platforms
 pub trait AsInnerMut<Inner: ?Sized> {
     fn as_inner_mut(&mut self) -> &mut Inner;
 }
