@@ -72,15 +72,14 @@ pub fn check_drop_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
             tcx.impl_of_method(def_id.to_def_id()).and_then(|def_id| tcx.impl_trait_ref(def_id))
         && let Some(drop_trait) = tcx.lang_items().drop_trait()
         && drop_trait == trait_ref.instantiate_identity().def_id
+        // avoid erroneous `Drop` impls from causing ICEs below
+        && let sig = tcx.fn_sig(def_id).instantiate_identity()
+        && sig.inputs().skip_binder().len() == 1
     {
         // It was. Now figure out for what type `Drop` is implemented and then
         // check for recursion.
-        if let ty::Ref(_, dropped_ty, _) = tcx
-            .liberate_late_bound_regions(
-                def_id.to_def_id(),
-                tcx.fn_sig(def_id).instantiate_identity().input(0),
-            )
-            .kind()
+        if let ty::Ref(_, dropped_ty, _) =
+            tcx.liberate_late_bound_regions(def_id.to_def_id(), sig.input(0)).kind()
         {
             check_recursion(tcx, body, RecursiveDrop { drop_for: *dropped_ty });
         }
