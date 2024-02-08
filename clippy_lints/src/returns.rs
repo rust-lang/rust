@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && is_res_lang_ctor(cx, path_res(cx, maybe_constr), ResultErr)
 
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
-            && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
+            && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn(_, _, body) = item.kind
             && let block = cx.tcx.hir().body(body).value
             && let ExprKind::Block(block, _) = block.kind
