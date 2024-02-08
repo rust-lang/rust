@@ -226,6 +226,11 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         }
 
         StatementKind::Coverage(box mir::Coverage {
+            // Block markers are used for branch coverage, so ignore them here.
+            kind: CoverageKind::BlockMarker {..}
+        }) => None,
+
+        StatementKind::Coverage(box mir::Coverage {
             // These coverage statements should not exist prior to coverage instrumentation.
             kind: CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
         }) => bug!("Unexpected coverage statement found during coverage instrumentation: {statement:?}"),
