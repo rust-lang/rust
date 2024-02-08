@@ -223,7 +223,10 @@ const unsafe impl<T> SliceIndex<[T]> for usize {
             (this: usize = self, len: usize = slice.len()) => this < len
         );
         // SAFETY: see comments for `get_unchecked` above.
-        unsafe { slice_get_unchecked(slice, self) }
+        unsafe {
+            crate::intrinsics::assume(self < slice.len());
+            slice_get_unchecked(slice, self)
+        }
     }
 
     #[inline]
@@ -277,7 +280,10 @@ const unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
-        unsafe { get_offset_len_noubcheck(slice, self.start(), self.len()) }
+        unsafe {
+            crate::intrinsics::assume(self.end() <= slice.len());
+            get_offset_len_noubcheck(slice, self.start(), self.len())
+        }
     }
 
     #[inline]
@@ -290,7 +296,10 @@ const unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
         );
 
         // SAFETY: see comments for `get_unchecked` above.
-        unsafe { get_offset_len_mut_noubcheck(slice, self.start(), self.len()) }
+        unsafe {
+            crate::intrinsics::assume(self.end() <= slice.len());
+            get_offset_len_mut_noubcheck(slice, self.start(), self.len())
+        }
     }
 
     #[inline]
@@ -367,6 +376,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         unsafe {
             // Using the intrinsic avoids a superfluous UB check,
             // since the one on this method already checked `end >= start`.
+            crate::intrinsics::assume(self.end <= slice.len());
             let new_len = crate::intrinsics::unchecked_sub(self.end, self.start);
             get_offset_len_noubcheck(slice, self.start, new_len)
         }
@@ -386,6 +396,7 @@ const unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         );
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
+            crate::intrinsics::assume(self.end <= slice.len());
             let new_len = crate::intrinsics::unchecked_sub(self.end, self.start);
             get_offset_len_mut_noubcheck(slice, self.start, new_len)
         }
