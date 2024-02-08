@@ -600,6 +600,7 @@ pub(crate) fn add_method_to_adt(
 pub(crate) struct ReferenceConversion {
     conversion: ReferenceConversionType,
     ty: hir::Type,
+    impls_deref: bool,
 }
 
 #[derive(Debug)]
@@ -656,7 +657,13 @@ impl ReferenceConversion {
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
-            | ReferenceConversionType::Result => format!("self.{field_name}.as_ref()"),
+            | ReferenceConversionType::Result => {
+                if self.impls_deref {
+                    format!("&self.{field_name}")
+                } else {
+                    format!("self.{field_name}.as_ref()")
+                }
+            }
         }
     }
 }
@@ -675,54 +682,64 @@ pub(crate) fn convert_reference_type(
         .or_else(|| handle_dereferenced(&ty, db, famous_defs))
         .or_else(|| handle_option_as_ref(&ty, db, famous_defs))
         .or_else(|| handle_result_as_ref(&ty, db, famous_defs))
-        .map(|conversion| ReferenceConversion { ty, conversion })
+        .map(|(conversion, impls_deref)| ReferenceConversion { ty, conversion, impls_deref })
 }
 
-fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversionType> {
-    ty.is_copy(db).then_some(ReferenceConversionType::Copy)
+fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
+    let ty_ref = hir::Type::reference(ty, hir::Mutability::Shared);
+    let target_ref = hir::Type::reference(target, hir::Mutability::Shared);
+    ty_ref.could_coerce_to(db, &target_ref)
+}
+
+fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<(ReferenceConversionType, bool)> {
+    ty.is_copy(db).then_some((ReferenceConversionType::Copy, true))
 }
 
 fn handle_as_ref_str(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
-        .then_some(ReferenceConversionType::AsRefStr)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()])
+        .then_some((ReferenceConversionType::AsRefStr, could_deref_to_target(ty, &str_type, db)))
 }
 
 fn handle_as_ref_slice(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
-        .then_some(ReferenceConversionType::AsRefSlice)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type.clone()]).then_some((
+        ReferenceConversionType::AsRefSlice,
+        could_deref_to_target(ty, &slice_type, db),
+    ))
 }
 
 fn handle_dereferenced(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument])
-        .then_some(ReferenceConversionType::Dereferenced)
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument.clone()]).then_some((
+        ReferenceConversionType::Dereferenced,
+        could_deref_to_target(ty, &type_argument, db),
+    ))
 }
 
 fn handle_option_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     if ty.as_adt() == famous_defs.core_option_Option()?.ty(db).as_adt() {
-        Some(ReferenceConversionType::Option)
+        Some((ReferenceConversionType::Option, false))
     } else {
         None
     }
@@ -732,9 +749,9 @@ fn handle_result_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversionType> {
+) -> Option<(ReferenceConversionType, bool)> {
     if ty.as_adt() == famous_defs.core_result_Result()?.ty(db).as_adt() {
-        Some(ReferenceConversionType::Result)
+        Some((ReferenceConversionType::Result, false))
     } else {
         None
     }

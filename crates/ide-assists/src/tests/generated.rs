@@ -1429,10 +1429,17 @@ fn doctest_generate_getter() {
     check_doc_test(
         "generate_getter",
         r#####"
-//- minicore: as_ref
+//- minicore: as_ref, deref
 pub struct String;
 impl AsRef<str> for String {
     fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
         ""
     }
 }
@@ -1449,13 +1456,20 @@ impl AsRef<str> for String {
     }
 }
 
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        ""
+    }
+}
+
 struct Person {
     name: String,
 }
 
 impl Person {
     fn $0name(&self) -> &str {
-        self.name.as_ref()
+        &self.name
     }
 }
 "#####,

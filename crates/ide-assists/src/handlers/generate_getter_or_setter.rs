@@ -75,10 +75,17 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 // Generate a getter method.
 //
 // ```
-// # //- minicore: as_ref
+// # //- minicore: as_ref, deref
 // # pub struct String;
 // # impl AsRef<str> for String {
 // #     fn as_ref(&self) -> &str {
+// #         ""
+// #     }
+// # }
+// #
+// # impl core::ops::Deref for String {
+// #     type Target = str;
+// #     fn deref(&self) -> &Self::Target {
 // #         ""
 // #     }
 // # }
@@ -96,13 +103,20 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 // #     }
 // # }
 // #
+// # impl core::ops::Deref for String {
+// #     type Target = str;
+// #     fn deref(&self) -> &Self::Target {
+// #         ""
+// #     }
+// # }
+// #
 // struct Person {
 //     name: String,
 // }
 //
 // impl Person {
 //     fn $0name(&self) -> &str {
-//         self.name.as_ref()
+//         &self.name
 //     }
 // }
 // ```
