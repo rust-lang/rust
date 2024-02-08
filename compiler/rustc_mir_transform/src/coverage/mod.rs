@@ -14,7 +14,6 @@ use self::spans::{BcbMapping, BcbMappingKind, CoverageSpans};
 use crate::MirPass;
 
 use rustc_middle::hir;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
@@ -44,7 +43,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 
         let def_id = mir_source.def_id().expect_local();
 
-        if !is_eligible_for_coverage(tcx, def_id) {
+        if !tcx.is_eligible_for_coverage(def_id) {
             trace!("InstrumentCoverage skipped for {def_id:?} (not eligible)");
             return;
         }
@@ -347,37 +346,6 @@ fn check_code_region(code_region: CodeRegion) -> Option<CodeRegion> {
         debug_assert!(false, "Improper code region: {code_region:?}");
         None
     }
-}
-
-fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    // Only instrument functions, methods, and closures (not constants since they are evaluated
-    // at compile time by Miri).
-    // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
-    // expressions get coverage spans, we will probably have to "carve out" space for const
-    // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
-    // be tricky if const expressions have no corresponding statements in the enclosing MIR.
-    // Closures are carved out by their initial `Assign` statement.)
-    if !tcx.def_kind(def_id).is_fn_like() {
-        trace!("InstrumentCoverage skipped for {def_id:?} (not an fn-like)");
-        return false;
-    }
-
-    // Don't instrument functions with `#[automatically_derived]` on their
-    // enclosing impl block, on the assumption that most users won't care about
-    // coverage for derived impls.
-    if let Some(impl_of) = tcx.impl_of_method(def_id.to_def_id())
-        && tcx.is_automatically_derived(impl_of)
-    {
-        trace!("InstrumentCoverage skipped for {def_id:?} (automatically derived)");
-        return false;
-    }
-
-    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-        trace!("InstrumentCoverage skipped for {def_id:?} (`#[coverage(off)]`)");
-        return false;
-    }
-
-    true
 }
 
 /// Function information extracted from HIR by the coverage instrumentor.
