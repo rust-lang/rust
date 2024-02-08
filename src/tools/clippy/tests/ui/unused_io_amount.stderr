@@ -180,7 +180,7 @@ note: the result is consumed here, but the amount of I/O bytes remains unhandled
   --> $DIR/unused_io_amount.rs:149:9
    |
 LL |         Ok(_) => todo!(),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: read amount is not handled
   --> $DIR/unused_io_amount.rs:155:11
@@ -193,7 +193,7 @@ note: the result is consumed here, but the amount of I/O bytes remains unhandled
   --> $DIR/unused_io_amount.rs:157:9
    |
 LL |         Ok(_) => todo!(),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: read amount is not handled
   --> $DIR/unused_io_amount.rs:164:11
@@ -206,7 +206,7 @@ note: the result is consumed here, but the amount of I/O bytes remains unhandled
   --> $DIR/unused_io_amount.rs:166:9
    |
 LL |         Ok(_) => todo!(),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: written amount is not handled
   --> $DIR/unused_io_amount.rs:173:11
@@ -219,7 +219,7 @@ note: the result is consumed here, but the amount of I/O bytes remains unhandled
   --> $DIR/unused_io_amount.rs:175:9
    |
 LL |         Ok(_) => todo!(),
-   |         ^^^^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: read amount is not handled
   --> $DIR/unused_io_amount.rs:186:8

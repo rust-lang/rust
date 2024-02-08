@@ -260,7 +260,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE, ITER_KV_MAP.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE, ITER_KV_MAP, MANUAL_C_STR_LITERALS.
     ///
     /// The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
     #[default_text = ""]
@@ -567,6 +567,26 @@ define_Conf! {
     /// Lint "public" fields in a struct that are prefixed with an underscore based on their
     /// exported visibility, or whether they are marked as "pub".
     (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported),
+    /// Lint: MODULO_ARITHMETIC.
+    ///
+    /// Don't lint when comparing the result of a modulo operation to zero.
+    (allow_comparison_to_zero: bool = true),
+    /// Lint: WILDCARD_IMPORTS.
+    ///
+    /// List of path segments allowed to have wildcard imports.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// allowed-wildcard-imports = [ "utils", "common" ]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// 1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
+    /// 2. Paths with any segment that containing the word 'prelude'
+    /// are already allowed by default.
+    (allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default()),
 }
 
 /// Search for the configuration file.

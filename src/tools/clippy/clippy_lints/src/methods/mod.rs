@@ -51,6 +51,7 @@ mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
+mod manual_c_str_literals;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
@@ -113,6 +114,7 @@ mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
+mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
 mod unwrap_expect_used;
@@ -3951,6 +3953,64 @@ declare_clippy_lint! {
     "cloning an `Option` via `as_ref().cloned()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.map_or_else()` "map closure" for `Result` type.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or_else()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.map_or_else(|err| handle_error(err), |n| n);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.unwrap_or_else(|err| handle_error(err));
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub UNNECESSARY_RESULT_MAP_OR_ELSE,
+    suspicious,
+    "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
+}
+
+declare_clippy_lint! {
+    /// Checks for the manual creation of C strings (a string with a `NUL` byte at the end), either
+    /// through one of the `CStr` constructor functions, or more plainly by calling `.as_ptr()`
+    /// on a (byte) string literal with a hardcoded `\0` byte at the end.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely using `c"str"` literals and is also less error-prone,
+    /// because the compiler checks for interior `NUL` bytes and the terminating `NUL` byte is inserted automatically.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::ffi::CStr;
+    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// fn needs_cstr(_: &CStr) {}
+    ///
+    /// needs_cstr(CStr::from_bytes_with_nul(b"Hello\0").unwrap());
+    /// unsafe { libc::puts("World\0".as_ptr().cast()) }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # use std::ffi::CStr;
+    /// # mod libc { pub unsafe fn puts(_: *const i8) {} }
+    /// fn needs_cstr(_: &CStr) {}
+    ///
+    /// needs_cstr(c"Hello");
+    /// unsafe { libc::puts(c"World".as_ptr()) }
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub MANUAL_C_STR_LITERALS,
+    pedantic,
+    r#"creating a `CStr` through functions when `c""` literals can be used"#
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4109,6 +4169,8 @@ impl_lint_pass!(Methods => [
     MANUAL_IS_VARIANT_AND,
     STR_SPLIT_AT_NEWLINE,
     OPTION_AS_REF_CLONED,
+    UNNECESSARY_RESULT_MAP_OR_ELSE,
+    MANUAL_C_STR_LITERALS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4136,6 +4198,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
+                manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
             },
             hir::ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4354,6 +4417,7 @@ impl Methods {
                     }
                 },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
+                ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, &self.msrv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
                 ("cloned", []) => {
@@ -4592,6 +4656,7 @@ impl Methods {
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
+                    unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
                 ("next", []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
