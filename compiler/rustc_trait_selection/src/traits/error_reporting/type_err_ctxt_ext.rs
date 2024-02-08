@@ -993,13 +993,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> Result<(), ErrorGuaranteed> {
         if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
             obligation.cause.code()
-            && let Some(Node::Expr(arg)) = self.tcx.opt_hir_node(*arg_hir_id)
+            && let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id)
             && let arg = arg.peel_borrows()
             && let hir::ExprKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path { res: hir::def::Res::Local(hir_id), .. },
             )) = arg.kind
-            && let Some(Node::Pat(pat)) = self.tcx.opt_hir_node(*hir_id)
+            && let Node::Pat(pat) = self.tcx.hir_node(*hir_id)
             && let Some((preds, guar)) = self.reported_trait_errors.borrow().get(&pat.span)
             && preds.contains(&obligation.predicate)
         {
@@ -1037,10 +1037,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
-        let body_id = match self.tcx.opt_hir_node(hir_id) {
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
-                body_id
-            }
+        let body_id = match self.tcx.hir_node(hir_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => body_id,
             _ => return false,
         };
         let mut v = V { search_span: span, found: None };
@@ -1163,7 +1161,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
-                && let Some(hir::Node::Pat(binding)) = self.tcx.opt_hir_node(*hir_id)
+                && let hir::Node::Pat(binding) = self.tcx.hir_node(*hir_id)
                 && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
                 // We've reached the root of the method call chain...

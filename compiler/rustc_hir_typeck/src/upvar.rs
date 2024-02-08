@@ -972,9 +972,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Ok(mut s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
                         if s.starts_with('$') {
                             // Looks like a macro fragment. Try to find the real block.
-                            if let Some(hir::Node::Expr(&hir::Expr {
+                            if let hir::Node::Expr(&hir::Expr {
                                 kind: hir::ExprKind::Block(block, ..), ..
-                            })) = self.tcx.opt_hir_node(body_id.hir_id) {
+                            }) = self.tcx.hir_node(body_id.hir_id) {
                                 // If the body is a block (with `{..}`), we use the span of that block.
                                 // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
                                 // Since we know it's a block, we know we can insert the `let _ = ..` without

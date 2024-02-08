@@ -177,10 +177,10 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
-    if let Some(Node::Pat(pat)) = cx.tcx.opt_hir_node(hir_id)
+    if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
         && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
         && let parent = hir.parent_id(hir_id)
-        && let Some(Node::Local(local)) = cx.tcx.opt_hir_node(parent)
+        && let Node::Local(local) = cx.tcx.hir_node(parent)
     {
         return local.init;
     }
@@ -1327,7 +1327,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| cx.tcx.opt_hir_node(enclosing_id));
+        .map(|enclosing_id| cx.tcx.hir_node(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
@@ -2696,10 +2696,10 @@ impl<'tcx> ExprUseNode<'tcx> {
             )),
             Self::Return(id) => {
                 let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
-                if let Some(Node::Expr(Expr {
+                if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..
-                })) = cx.tcx.opt_hir_node(hir_id)
+                }) = cx.tcx.hir_node(hir_id)
                 {
                     match c.fn_decl.output {
                         FnRetTy::DefaultReturn(_) => None,
