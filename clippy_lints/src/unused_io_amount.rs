@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{is_res_lang_ctor, is_trait_method, match_trait_method, paths};
+use clippy_utils::macros::{is_panic, root_macro_call_first_node};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, match_trait_method, paths, peel_blocks};
 use hir::{ExprKind, PatKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -82,37 +83,72 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         }
 
         if let Some(exp) = block.expr
-            && matches!(exp.kind, hir::ExprKind::If(_, _, _) | hir::ExprKind::Match(_, _, _))
+            && matches!(
+                exp.kind,
+                hir::ExprKind::If(_, _, _) | hir::ExprKind::Match(_, _, hir::MatchSource::Normal)
+            )
         {
             check_expr(cx, exp);
         }
     }
 }
 
+fn non_consuming_err_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
+    // if there is a guard, we consider the result to be consumed
+    if arm.guard.is_some() {
+        return false;
+    }
+    if is_unreachable_or_panic(cx, arm.body) {
+        // if the body is unreachable or there is a panic,
+        // we consider the result to be consumed
+        return false;
+    }
+
+    if let PatKind::TupleStruct(ref path, [inner_pat], _) = arm.pat.kind {
+        return is_res_lang_ctor(cx, cx.qpath_res(path, inner_pat.hir_id), hir::LangItem::ResultErr);
+    }
+
+    false
+}
+
+fn non_consuming_ok_arm<'a>(cx: &LateContext<'a>, arm: &hir::Arm<'a>) -> bool {
+    // if there is a guard, we consider the result to be consumed
+    if arm.guard.is_some() {
+        return false;
+    }
+    if is_unreachable_or_panic(cx, arm.body) {
+        // if the body is unreachable or there is a panic,
+        // we consider the result to be consumed
+        return false;
+    }
+
+    if is_ok_wild_or_dotdot_pattern(cx, arm.pat) {
+        return true;
+    }
+    false
+}
+
 fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
     match expr.kind {
         hir::ExprKind::If(cond, _, _)
             if let ExprKind::Let(hir::Let { pat, init, .. }) = cond.kind
-                && pattern_is_ignored_ok(cx, pat)
+                && is_ok_wild_or_dotdot_pattern(cx, pat)
                 && let Some(op) = should_lint(cx, init) =>
         {
             emit_lint(cx, cond.span, op, &[pat.span]);
         },
-        hir::ExprKind::Match(expr, arms, hir::MatchSource::Normal) if let Some(op) = should_lint(cx, expr) => {
-            let found_arms: Vec<_> = arms
-                .iter()
-                .filter_map(|arm| {
-                    if pattern_is_ignored_ok(cx, arm.pat) {
-                        Some(arm.span)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            if !found_arms.is_empty() {
-                emit_lint(cx, expr.span, op, found_arms.as_slice());
+        // we will capture only the case where the match is Ok( ) or Err( )
+        // prefer to match the minimum possible, and expand later if needed
+        // to avoid false positives on something as used as this
+        hir::ExprKind::Match(expr, [arm1, arm2], hir::MatchSource::Normal) if let Some(op) = should_lint(cx, expr) => {
+            if non_consuming_ok_arm(cx, arm1) && non_consuming_err_arm(cx, arm2) {
+                emit_lint(cx, expr.span, op, &[arm1.pat.span]);
+            }
+            if non_consuming_ok_arm(cx, arm2) && non_consuming_err_arm(cx, arm1) {
+                emit_lint(cx, expr.span, op, &[arm2.pat.span]);
             }
         },
+        hir::ExprKind::Match(_, _, hir::MatchSource::Normal) => {},
         _ if let Some(op) = should_lint(cx, expr) => {
             emit_lint(cx, expr.span, op, &[]);
         },
@@ -130,23 +166,38 @@ fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option
     check_io_mode(cx, inner)
 }
 
-fn pattern_is_ignored_ok(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> bool {
+fn is_ok_wild_or_dotdot_pattern<'a>(cx: &LateContext<'a>, pat: &hir::Pat<'a>) -> bool {
     // the if checks whether we are in a result Ok( ) pattern
     // and the return checks whether it is unhandled
 
-    if let PatKind::TupleStruct(ref path, inner_pat, ddp) = pat.kind
+    if let PatKind::TupleStruct(ref path, inner_pat, _) = pat.kind
         // we check against Result::Ok to avoid linting on Err(_) or something else.
         && is_res_lang_ctor(cx, cx.qpath_res(path, pat.hir_id), hir::LangItem::ResultOk)
     {
-        return match (inner_pat, ddp.as_opt_usize()) {
-            // Ok(_) pattern
-            ([inner_pat], None) if matches!(inner_pat.kind, PatKind::Wild) => true,
-            // Ok(..) pattern
-            ([], Some(0)) => true,
-            _ => false,
-        };
+        if matches!(inner_pat, []) {
+            return true;
+        }
+
+        if let [cons_pat] = inner_pat
+            && matches!(cons_pat.kind, PatKind::Wild)
+        {
+            return true;
+        }
+        return false;
     }
     false
+}
+
+// this is partially taken from panic_unimplemented
+fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    let expr = peel_blocks(expr);
+    let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+        return false;
+    };
+    if is_panic(cx, macro_call.def_id) {
+        return !cx.tcx.hir().is_inside_const_context(expr.hir_id);
+    }
+    matches!(cx.tcx.item_name(macro_call.def_id).as_str(), "unreachable")
 }
 
 fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {

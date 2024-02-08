@@ -3,6 +3,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -14,6 +15,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allowed-duplicate-crates
            allowed-idents-below-min-chars
            allowed-scripts
+           allowed-wildcard-imports
            arithmetic-side-effects-allowed
            arithmetic-side-effects-allowed-binary
            arithmetic-side-effects-allowed-unary
@@ -80,6 +82,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -91,6 +94,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allowed-duplicate-crates
            allowed-idents-below-min-chars
            allowed-scripts
+           allowed-wildcard-imports
            arithmetic-side-effects-allowed
            arithmetic-side-effects-allowed-binary
            arithmetic-side-effects-allowed-unary
@@ -157,6 +161,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            absolute-paths-max-segments
            accept-comment-above-attributes
            accept-comment-above-statement
+           allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
            allow-mixed-uninlined-format-args
@@ -168,6 +173,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allowed-duplicate-crates
            allowed-idents-below-min-chars
            allowed-scripts
+           allowed-wildcard-imports
            arithmetic-side-effects-allowed
            arithmetic-side-effects-allowed-binary
            arithmetic-side-effects-allowed-unary

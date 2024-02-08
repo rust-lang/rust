@@ -69,14 +69,6 @@ fn span_error(cx: &LateContext<'_>, method_span: Span, expr: &Expr<'_>) {
     );
 }
 
-fn get_ty_def_id(ty: Ty<'_>) -> Option<DefId> {
-    match ty.peel_refs().kind() {
-        ty::Adt(adt, _) => Some(adt.did()),
-        ty::Foreign(def_id) => Some(*def_id),
-        _ => None,
-    }
-}
-
 fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Option<DefId> {
     let TyKind::Path(qpath) = hir_ty.kind else { return None };
     match qpath {
@@ -131,21 +123,49 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
     }
 }
 
-#[allow(clippy::unnecessary_def_path)]
+/// When we have `x == y` where `x = &T` and `y = &T`, then that resolves to
+/// `<&T as PartialEq<&T>>::eq`, which is not the same as `<T as PartialEq<T>>::eq`,
+/// however we still would want to treat it the same, because we know that it's a blanket impl
+/// that simply delegates to the `PartialEq` impl with one reference removed.
+///
+/// Still, we can't just do `lty.peel_refs() == rty.peel_refs()` because when we have `x = &T` and
+/// `y = &&T`, this is not necessarily the same as `<T as PartialEq<T>>::eq`
+///
+/// So to avoid these FNs and FPs, we keep removing a layer of references from *both* sides
+/// until both sides match the expected LHS and RHS type (or they don't).
+fn matches_ty<'tcx>(
+    mut left: Ty<'tcx>,
+    mut right: Ty<'tcx>,
+    expected_left: Ty<'tcx>,
+    expected_right: Ty<'tcx>,
+) -> bool {
+    while let (&ty::Ref(_, lty, _), &ty::Ref(_, rty, _)) = (left.kind(), right.kind()) {
+        if lty == expected_left && rty == expected_right {
+            return true;
+        }
+        left = lty;
+        right = rty;
+    }
+    false
+}
+
 fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident, expr: &Expr<'_>) {
-    let args = cx
-        .tcx
-        .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(method_def_id).skip_binder())
-        .inputs();
+    let Some(sig) = cx
+        .typeck_results()
+        .liberated_fn_sigs()
+        .get(cx.tcx.local_def_id_to_hir_id(method_def_id))
+    else {
+        return;
+    };
+
     // That has two arguments.
-    if let [self_arg, other_arg] = args
-        && let Some(self_arg) = get_ty_def_id(*self_arg)
-        && let Some(other_arg) = get_ty_def_id(*other_arg)
+    if let [self_arg, other_arg] = sig.inputs()
+        && let &ty::Ref(_, self_arg, _) = self_arg.kind()
+        && let &ty::Ref(_, other_arg, _) = other_arg.kind()
         // The two arguments are of the same type.
-        && self_arg == other_arg
         && let Some(trait_def_id) = get_impl_trait_def_id(cx, method_def_id)
         // The trait is `PartialEq`.
-        && Some(trait_def_id) == get_trait_def_id(cx, &["core", "cmp", "PartialEq"])
+        && cx.tcx.is_diagnostic_item(sym::PartialEq, trait_def_id)
     {
         let to_check_op = if name.name == sym::eq {
             BinOpKind::Eq
@@ -154,31 +174,19 @@ fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: Loca
         };
         let is_bad = match expr.kind {
             ExprKind::Binary(op, left, right) if op.node == to_check_op => {
-                // Then we check if the left-hand element is of the same type as `self`.
-                if let Some(left_ty) = cx.typeck_results().expr_ty_opt(left)
-                    && let Some(left_id) = get_ty_def_id(left_ty)
-                    && self_arg == left_id
-                    && let Some(right_ty) = cx.typeck_results().expr_ty_opt(right)
-                    && let Some(right_id) = get_ty_def_id(right_ty)
-                    && other_arg == right_id
-                {
-                    true
-                } else {
-                    false
-                }
+                // Then we check if the LHS matches self_arg and RHS matches other_arg
+                let left_ty = cx.typeck_results().expr_ty_adjusted(left);
+                let right_ty = cx.typeck_results().expr_ty_adjusted(right);
+                matches_ty(left_ty, right_ty, self_arg, other_arg)
             },
-            ExprKind::MethodCall(segment, receiver, &[_arg], _) if segment.ident.name == name.name => {
-                if let Some(ty) = cx.typeck_results().expr_ty_opt(receiver)
-                    && let Some(ty_id) = get_ty_def_id(ty)
-                    && self_arg != ty_id
-                {
-                    // Since this called on a different type, the lint should not be
-                    // triggered here.
-                    return;
-                }
+            ExprKind::MethodCall(segment, receiver, [arg], _) if segment.ident.name == name.name => {
+                let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver);
+                let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+
                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                     && trait_id == trait_def_id
+                    && matches_ty(receiver_ty, arg_ty, self_arg, other_arg)
                 {
                     true
                 } else {
