@@ -1,5 +1,5 @@
 error[E0277]: can't compare `i32` with `Foo`
-  --> $DIR/self-referential-2.rs:6:13
+  --> $DIR/self-referential-2.rs:9:13
    |
 LL | fn bar() -> Bar {
    |             ^^^ no implementation for `i32 == Foo`
