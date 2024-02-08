@@ -1,14 +1,16 @@
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_macros::HashStable;
+use std::iter;
+
+use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
 use crate::ty::{Ident, Ty, TyCtxt};
-use hir::def_id::LOCAL_CRATE;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use std::iter;
-
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorGuaranteed;
-use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]
@@ -278,4 +280,28 @@ pub(super) fn incoherent_impls_provider(
     res?;
 
     Ok(tcx.arena.alloc_slice(&impls))
+}
+
+pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut traits = Vec::new();
+    for id in tcx.hir().items() {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
+            traits.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&traits)
+}
+
+pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut trait_impls = Vec::new();
+    for id in tcx.hir().items() {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
+            && tcx.impl_trait_ref(id.owner_id).is_some()
+        {
+            trait_impls.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&trait_impls)
 }
