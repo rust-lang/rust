@@ -2,8 +2,6 @@
     feature = "nightly",
     feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
 )]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 

@@ -3,6 +3,8 @@
 #![cfg_attr(doc, doc(rust_logo))]
 #![feature(rustc_private)]
 // Note: please avoid adding other feature gates where possible
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]

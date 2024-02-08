@@ -1,6 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-
 use std::collections::BTreeSet;
 
 use rustc_middle::mir::visit::{PlaceContext, Visitor};

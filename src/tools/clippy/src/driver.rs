@@ -1,3 +1,5 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
