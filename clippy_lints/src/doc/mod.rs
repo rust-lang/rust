@@ -226,7 +226,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
-    #[clippy::version = "1.40.0"]
+    #[clippy::version = "1.76.0"]
     pub TEST_ATTR_IN_DOCTEST,
     suspicious,
     "presence of `#[test]` in code examples"

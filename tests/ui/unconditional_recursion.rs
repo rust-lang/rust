@@ -206,6 +206,7 @@ impl PartialEq for S8 {
 
 struct S9;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S9 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
@@ -215,6 +216,7 @@ impl std::string::ToString for S9 {
 
 struct S10;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S10 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
@@ -225,6 +227,7 @@ impl std::string::ToString for S10 {
 
 struct S11;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S11 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
@@ -285,6 +288,65 @@ impl PartialEq for S15<'_> {
         let mine = &self.field;
         let theirs = &other.field;
         mine.eq(theirs)
+    }
+}
+
+mod issue12154 {
+    struct MyBox<T>(T);
+
+    impl<T> std::ops::Deref for MyBox<T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+
+    impl<T: PartialEq> PartialEq for MyBox<T> {
+        fn eq(&self, other: &Self) -> bool {
+            (**self).eq(&**other)
+        }
+    }
+
+    // Not necessarily related to the issue but another FP from the http crate that was fixed with it:
+    // https://docs.rs/http/latest/src/http/header/name.rs.html#1424
+    // We used to simply peel refs from the LHS and RHS, so we couldn't differentiate
+    // between `PartialEq<T> for &T` and `PartialEq<&T> for T` impls.
+    #[derive(PartialEq)]
+    struct HeaderName;
+    impl<'a> PartialEq<&'a HeaderName> for HeaderName {
+        fn eq(&self, other: &&'a HeaderName) -> bool {
+            *self == **other
+        }
+    }
+
+    impl<'a> PartialEq<HeaderName> for &'a HeaderName {
+        fn eq(&self, other: &HeaderName) -> bool {
+            *other == *self
+        }
+    }
+
+    // Issue #12181 but also fixed by the same PR
+    struct Foo;
+
+    impl Foo {
+        fn as_str(&self) -> &str {
+            "Foo"
+        }
+    }
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Self) -> bool {
+            self.as_str().eq(other.as_str())
+        }
+    }
+
+    impl<T> PartialEq<T> for Foo
+    where
+        for<'a> &'a str: PartialEq<T>,
+    {
+        fn eq(&self, other: &T) -> bool {
+            (&self.as_str()).eq(other)
+        }
     }
 }
 
