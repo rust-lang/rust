@@ -1646,7 +1646,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                    let res = self.create_fresh_lifetime(lifetime.id, lifetime.ident, binder);
+                    let res = self.create_fresh_lifetime(lifetime.ident, binder);
                     self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
                 }
@@ -1738,7 +1738,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
+    fn create_fresh_lifetime(&mut self, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
 
@@ -1759,7 +1759,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetimes_in_path(
         &mut self,
-        path_id: NodeId,
         partial_res: PartialRes,
         path: &[Segment],
         source: PathSource<'_>,
@@ -1892,7 +1891,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         // Group all suggestions into the first record.
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            let res = self.create_fresh_lifetime(id, ident, binder);
+                            let res = self.create_fresh_lifetime(ident, binder);
                             self.record_lifetime_res(
                                 id,
                                 res,
@@ -3942,7 +3941,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if record_partial_res == RecordPartialRes::Yes {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(node_id, partial_res);
-            self.resolve_elided_lifetimes_in_path(node_id, partial_res, path, source, path_span);
+            self.resolve_elided_lifetimes_in_path(partial_res, path, source, path_span);
         }
 
         partial_res

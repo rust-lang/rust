@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::{symbol::kw, Span};
+use rustc_span::symbol::kw;
 use smallvec::SmallVec;
 
 /// Report an error that a generic argument did not match the generic parameter that was
@@ -404,7 +404,6 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
 /// Used specifically for function calls.
 pub fn check_generic_arg_count_for_call(
     tcx: TyCtxt<'_>,
-    span: Span,
     def_id: DefId,
     generics: &ty::Generics,
     seg: &hir::PathSegment<'_>,
@@ -418,17 +417,7 @@ pub fn check_generic_arg_count_for_call(
     };
     let has_self = generics.parent.is_none() && generics.has_self;
 
-    check_generic_arg_count(
-        tcx,
-        span,
-        def_id,
-        seg,
-        generics,
-        gen_args,
-        gen_pos,
-        has_self,
-        seg.infer_args,
-    )
+    check_generic_arg_count(tcx, def_id, seg, generics, gen_args, gen_pos, has_self, seg.infer_args)
 }
 
 /// Checks that the correct number of generic arguments have been provided.
@@ -436,7 +425,6 @@ pub fn check_generic_arg_count_for_call(
 #[instrument(skip(tcx, gen_pos), level = "debug")]
 pub(crate) fn check_generic_arg_count(
     tcx: TyCtxt<'_>,
-    span: Span,
     def_id: DefId,
     seg: &hir::PathSegment<'_>,
     gen_params: &ty::Generics,

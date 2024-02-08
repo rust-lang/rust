@@ -863,7 +863,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(skip(self, snapshot), level = "debug")]
-    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'tcx>) {
+    fn rollback_to(&self, snapshot: CombinedSnapshot<'tcx>) {
         let CombinedSnapshot { undo_snapshot, region_constraints_snapshot, universe } = snapshot;
 
         self.universe.set(universe);
@@ -895,7 +895,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.commit_from(snapshot);
             }
             Err(_) => {
-                self.rollback_to("commit_if_ok -- error", snapshot);
+                self.rollback_to(snapshot);
             }
         }
         r
@@ -909,7 +909,7 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
-        self.rollback_to("probe", snapshot);
+        self.rollback_to(snapshot);
         r
     }
 
