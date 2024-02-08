@@ -63,16 +63,11 @@ for rlib in $(echo $path); do
     stdout=$($NM -g --defined-only $rlib 2>&1)
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
     # times so ignore it
-    #
-    # FIXME(#167) - we shouldn't ignore `__builtin_cl` style symbols here.
     set +e
     echo "$stdout" | \
       sort | \
       uniq -d | \
       grep -v __x86.get_pc_thunk | \
-      grep -v __builtin_cl | \
-      grep -v __builtin_ctz | \
-      grep -v __builtin_sadd_overflow | \
       grep 'T __'
 
     if test $? = 0; then
