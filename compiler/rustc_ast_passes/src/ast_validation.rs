@@ -36,6 +36,29 @@ enum SelfSemantic {
     No,
 }
 
+struct Context<'a> {
+    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
+    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
+    /// Nested `impl Trait` _is_ allowed in associated type position,
+    /// e.g., `impl Iterator<Item = impl Debug>`.
+    outer_impl_trait: Option<Span>,
+    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
+    /// or `Foo::Bar<impl Trait>`
+    is_impl_trait_banned: bool,
+    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
+}
+
+impl Default for Context<'_> {
+    fn default() -> Self {
+        Self {
+            outer_trait_or_trait_impl: None,
+            outer_impl_trait: None,
+            is_impl_trait_banned: false,
+            disallow_tilde_const: Some(DisallowTildeConstContext::Item),
+        }
+    }
+}
+
 /// What is the context that prevents using `~const`?
 // FIXME(effects): Consider getting rid of this in favor of `errors::TildeConstReason`, they're
 // almost identical. This gets rid of an abstraction layer which might be considered bad.
@@ -73,20 +96,9 @@ struct AstValidator<'a> {
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod: Option<&'a Item>,
 
-    outer_trait_or_trait_impl: Option<TraitOrTraitImpl<'a>>,
-
     has_proc_macro_decls: bool,
 
-    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-    /// Nested `impl Trait` _is_ allowed in associated type position,
-    /// e.g., `impl Iterator<Item = impl Debug>`.
-    outer_impl_trait: Option<Span>,
-
-    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
-
-    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    /// or `Foo::Bar<impl Trait>`
-    is_impl_trait_banned: bool,
+    context: Context<'a>,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -134,6 +146,18 @@ impl<'a> AstValidator<'a> {
         self.disallow_tilde_const = old;
     }
 
+    fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.outer_impl_trait, outer);
+        f(self);
+        self.outer_impl_trait = old;
+    }
+
+    fn in_new_context(&mut self, f: impl FnOnce(&mut Self)) {
+        let context = mem::take(&mut self.context);
+        f(self);
+        self.context = context;
+    }
+
     fn check_type_alias_where_clause_location(
         &mut self,
         ty_alias: &TyAlias,
@@ -170,12 +194,6 @@ impl<'a> AstValidator<'a> {
                 right: ty_alias.where_clauses.1.1.shrink_to_hi(),
             },
         })
-    }
-
-    fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.outer_impl_trait, outer);
-        f(self);
-        self.outer_impl_trait = old;
     }
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
@@ -418,10 +436,10 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
-        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
-            if param.is_self() {
-                self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
-            }
+        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs)
+            && param.is_self()
+        {
+            self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
         }
     }
 
@@ -550,16 +568,16 @@ impl<'a> AstValidator<'a> {
             return;
         }
 
-        if let Some(header) = fk.header() {
-            if let Const::Yes(const_span) = header.constness {
-                let mut spans = variadic_spans.clone();
-                spans.push(const_span);
-                self.dcx().emit_err(errors::ConstAndCVariadic {
-                    spans,
-                    const_span,
-                    variadic_spans: variadic_spans.clone(),
-                });
-            }
+        if let Some(header) = fk.header()
+            && let Const::Yes(const_span) = header.constness
+        {
+            let mut spans = variadic_spans.clone();
+            spans.push(const_span);
+            self.dcx().emit_err(errors::ConstAndCVariadic {
+                spans,
+                const_span,
+                variadic_spans: variadic_spans.clone(),
+            });
         }
 
         match (fk.ctxt(), fk.header()) {
@@ -753,8 +771,24 @@ impl<'a> AstValidator<'a> {
     }
 }
 
-/// Checks that generic parameters are in the correct order,
-/// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
+impl<'a> std::ops::Deref for AstValidator<'a> {
+    type Target = Context<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.context
+    }
+}
+
+impl<'a> std::ops::DerefMut for AstValidator<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.context
+    }
+}
+
+/// Checks that generic parameters are in the correct order.
+///
+/// Namely lifetimes first, followed by types and consts.
+/// E.g., `<'a, T, const N: usize>` and `<'a, const N: usize, T>`.
 fn validate_generic_param_order(
     dcx: &rustc_errors::DiagCtxt,
     generics: &[GenericParam],
@@ -785,48 +819,49 @@ fn validate_generic_param_order(
         };
     }
 
-    if !out_of_order.is_empty() {
-        let mut ordered_params = "<".to_string();
-        param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
-        let mut first = true;
-        for (kind, _, bounds, _, ident) in param_idents {
-            if !first {
-                ordered_params += ", ";
-            }
-            ordered_params += &ident;
+    if out_of_order.is_empty() {
+        return;
+    }
 
-            if !bounds.is_empty() {
-                ordered_params += ": ";
-                ordered_params += &pprust::bounds_to_string(bounds);
-            }
+    let mut ordered_params = "<".to_string();
+    param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
+    let mut first = true;
+    for (kind, _, bounds, _, ident) in param_idents {
+        if !first {
+            ordered_params += ", ";
+        }
+        ordered_params += &ident;
 
-            match kind {
-                GenericParamKind::Type { default: Some(default) } => {
-                    ordered_params += " = ";
-                    ordered_params += &pprust::ty_to_string(default);
-                }
-                GenericParamKind::Type { default: None } => (),
-                GenericParamKind::Lifetime => (),
-                GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
-                    ordered_params += " = ";
-                    ordered_params += &pprust::expr_to_string(&default.value);
-                }
-                GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
-            }
-            first = false;
+        if !bounds.is_empty() {
+            ordered_params += ": ";
+            ordered_params += &pprust::bounds_to_string(bounds);
         }
 
-        ordered_params += ">";
-
-        for (param_ord, (max_param, spans)) in &out_of_order {
-            dcx.emit_err(errors::OutOfOrderParams {
-                spans: spans.clone(),
-                sugg_span: span,
-                param_ord,
-                max_param,
-                ordered_params: &ordered_params,
-            });
+        match kind {
+            GenericParamKind::Type { default: Some(default) } => {
+                ordered_params += " = ";
+                ordered_params += &pprust::ty_to_string(default);
+            }
+            GenericParamKind::Type { default: None } => (),
+            GenericParamKind::Lifetime => (),
+            GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
+                ordered_params += " = ";
+                ordered_params += &pprust::expr_to_string(&default.value);
+            }
+            GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
         }
+        first = false;
+    }
+    ordered_params += ">";
+
+    for (param_ord, (max_param, spans)) in &out_of_order {
+        dcx.emit_err(errors::OutOfOrderParams {
+            spans: spans.clone(),
+            sugg_span: span,
+            param_ord,
+            max_param,
+            ordered_params: &ordered_params,
+        });
     }
 }
 
@@ -925,35 +960,38 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         only_trait: only_trait.then_some(()),
                     };
 
-                self.visibility_not_permitted(
-                    &item.vis,
-                    errors::VisibilityNotPermittedNote::IndividualImplItems,
-                );
-                if let &Unsafe::Yes(span) = unsafety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
+                self.with_in_trait_impl(None, |this| {
+                    this.visibility_not_permitted(
+                        &item.vis,
+                        errors::VisibilityNotPermittedNote::IndividualImplItems,
+                    );
+                    if let &Unsafe::Yes(span) = unsafety {
+                        this.dcx().emit_err(errors::InherentImplCannotUnsafe {
+                            span: self_ty.span,
+                            annotation_span: span,
+                            annotation: "unsafe",
+                            self_ty: self_ty.span,
+                        });
+                    }
+                    if let &ImplPolarity::Negative(span) = polarity {
+                        this.dcx().emit_err(error(span, "negative", false));
+                    }
+                    if let &Defaultness::Default(def_span) = defaultness {
+                        this.dcx().emit_err(error(def_span, "`default`", true));
+                    }
+                    if let &Const::Yes(span) = constness {
+                        this.dcx().emit_err(error(span, "`const`", true));
+                    }
 
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                self.with_tilde_const(Some(DisallowTildeConstContext::Impl(item.span)), |this| {
-                    this.visit_generics(generics)
+                    this.visit_vis(&item.vis);
+                    this.visit_ident(item.ident);
+                    this.with_tilde_const(
+                        Some(DisallowTildeConstContext::Impl(item.span)),
+                        |this| this.visit_generics(generics),
+                    );
+                    this.visit_ty(self_ty);
+                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl);
                 });
-                self.visit_ty(self_ty);
-                walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
@@ -1509,6 +1547,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
+                walk_list!(self, visit_attribute, &item.attrs);
                 let kind = FnKind::Fn(
                     FnCtxt::Assoc(ctxt),
                     item.ident,
@@ -1529,12 +1568,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                     None => DisallowTildeConstContext::InherentAssocTy(item.span),
                 });
-                self.with_tilde_const(disallowed, |this| {
-                    this.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt))
-                })
+                self.with_tilde_const(disallowed, |this| visit::walk_assoc_item(this, item, ctxt))
             }
-            _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
+            _ => visit::walk_assoc_item(self, item, ctxt),
         }
+    }
+
+    fn visit_anon_const(&mut self, c: &'a AnonConst) {
+        self.in_new_context(|this| visit::walk_anon_const(this, c))
     }
 }
 
@@ -1553,85 +1594,82 @@ fn deny_equality_constraints(
         && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
     {
         for param in &generics.params {
-            if param.ident == *ident
-                && let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..]
-            {
-                // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
-                let mut assoc_path = full_path.clone();
-                // Remove `Bar` from `Foo::Bar`.
-                assoc_path.segments.pop();
-                let len = assoc_path.segments.len() - 1;
-                let gen_args = args.as_deref().cloned();
-                // Build `<Bar = RhsTy>`.
-                let arg = AngleBracketedArg::Constraint(AssocConstraint {
-                    id: rustc_ast::node_id::DUMMY_NODE_ID,
-                    ident: *ident,
-                    gen_args,
-                    kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
-                    span: ident.span,
-                });
-                // Add `<Bar = RhsTy>` to `Foo`.
-                match &mut assoc_path.segments[len].args {
-                    Some(args) => match args.deref_mut() {
-                        GenericArgs::Parenthesized(_) => continue,
-                        GenericArgs::AngleBracketed(args) => {
-                            args.args.push(arg);
-                        }
-                    },
-                    empty_args => {
-                        *empty_args = Some(
-                            AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into(),
-                        );
-                    }
-                }
-                err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate.span,
-                    ident: *ident,
-                    param: param.ident,
-                    path: pprust::path_to_string(&assoc_path),
-                })
+            if param.ident != *ident {
+                continue;
             }
+            let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..] else {
+                continue;
+            };
+
+            // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+            let mut assoc_path = full_path.clone();
+            // Remove `Bar` from `Foo::Bar`.
+            assoc_path.segments.pop();
+            let gen_args = args.as_deref().cloned();
+            // Build `<Bar = RhsTy>`.
+            let arg = AngleBracketedArg::Constraint(AssocConstraint {
+                id: rustc_ast::node_id::DUMMY_NODE_ID,
+                ident: *ident,
+                gen_args,
+                kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
+                span: ident.span,
+            });
+            // Add `<Bar = RhsTy>` to `Foo`.
+            match &mut assoc_path.segments.last_mut().unwrap().args {
+                Some(args) => match args.deref_mut() {
+                    GenericArgs::Parenthesized(_) => continue,
+                    GenericArgs::AngleBracketed(args) => {
+                        args.args.push(arg);
+                    }
+                },
+                empty_args => {
+                    *empty_args =
+                        Some(AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into());
+                }
+            }
+            err.assoc = Some(errors::AssociatedSuggestion {
+                span: predicate.span,
+                ident: *ident,
+                param: param.ident,
+                path: pprust::path_to_string(&assoc_path),
+            })
         }
     }
     // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
-        if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
-                if param.ident == potential_param.ident {
-                    for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
-                            bound
-                        {
-                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
-                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                    potential_assoc.ident,
-                                ));
-                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                                let (args, span) = match &trait_segment.args {
-                                    Some(args) => match args.deref() {
-                                        ast::GenericArgs::AngleBracketed(args) => {
-                                            let Some(arg) = args.args.last() else {
-                                                continue;
-                                            };
-                                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                                        }
-                                        _ => continue,
-                                    },
-                                    None => (
-                                        format!("<{assoc} = {ty}>"),
-                                        trait_segment.span().shrink_to_hi(),
-                                    ),
+    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind
+        && let [potential_param, potential_assoc] = &full_path.segments[..]
+    {
+        for param in &generics.params {
+            if param.ident != potential_param.ident {
+                continue;
+            };
+
+            for bound in &param.bounds {
+                if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) = bound
+                    && let [trait_segment] = &trait_ref.trait_ref.path.segments[..]
+                {
+                    let assoc =
+                        pprust::path_to_string(&ast::Path::from_ident(potential_assoc.ident));
+                    let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                    let (args, span) = match &trait_segment.args {
+                        Some(args) => match args.deref() {
+                            ast::GenericArgs::AngleBracketed(args) => {
+                                let Some(arg) = args.args.last() else {
+                                    continue;
                                 };
-                                err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                                    span,
-                                    args,
-                                    predicate: predicate.span,
-                                    trait_segment: trait_segment.ident,
-                                    potential_assoc: potential_assoc.ident,
-                                });
+                                (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
                             }
-                        }
-                    }
+                            _ => continue,
+                        },
+                        None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
+                    };
+                    err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                        span,
+                        args,
+                        predicate: predicate.span,
+                        trait_segment: trait_segment.ident,
+                        potential_assoc: potential_assoc.ident,
+                    });
                 }
             }
         }
@@ -1649,11 +1687,8 @@ pub fn check_crate(
         session,
         features,
         extern_mod: None,
-        outer_trait_or_trait_impl: None,
         has_proc_macro_decls: false,
-        outer_impl_trait: None,
-        disallow_tilde_const: Some(DisallowTildeConstContext::Item),
-        is_impl_trait_banned: false,
+        context: Context::default(),
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);

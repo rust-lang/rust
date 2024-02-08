@@ -1,0 +1,34 @@
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-invalid-places-nested.rs:11:27
+   |
+LL |             fn perform<T: ~const Trait0>() {}
+   |                           ^^^^^^
+   |
+note: this function is not `const`, so it cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places-nested.rs:11:16
+   |
+LL |             fn perform<T: ~const Trait0>() {}
+   |                ^^^^^^^
+
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-invalid-places-nested.rs:23:27
+   |
+LL |             fn compute<T: ~const Trait1>() {}
+   |                           ^^^^^^
+   |
+note: this function is not `const`, so it cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places-nested.rs:23:16
+   |
+LL |             fn compute<T: ~const Trait1>() {}
+   |                ^^^^^^^
+
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-invalid-places-nested.rs:34:17
+   |
+LL |     struct I<U: ~const Trait2<0>>(U);
+   |                 ^^^^^^
+   |
+   = note: this item cannot have `~const` trait bounds
+
+error: aborting due to 3 previous errors
+
