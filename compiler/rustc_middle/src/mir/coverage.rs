@@ -7,6 +7,15 @@ use rustc_span::Symbol;
 use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
+    /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
+    /// lowering, so that those blocks can be identified later.
+    #[derive(HashStable)]
+    #[encodable]
+    #[debug_format = "BlockMarkerId({})"]
+    pub struct BlockMarkerId {}
+}
+
+rustc_index::newtype_index! {
     /// ID of a coverage counter. Values ascend from 0.
     ///
     /// Before MIR inlining, counter IDs are local to their enclosing function.
@@ -83,6 +92,12 @@ pub enum CoverageKind {
     /// codegen.
     SpanMarker,
 
+    /// Marks its enclosing basic block with an ID that can be referred to by
+    /// other data in the MIR body.
+    ///
+    /// Has no effect during codegen.
+    BlockMarker { id: BlockMarkerId },
+
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
     /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
@@ -107,6 +122,7 @@ impl Debug for CoverageKind {
         use CoverageKind::*;
         match self {
             SpanMarker => write!(fmt, "SpanMarker"),
+            BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
             CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
             ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
         }
