@@ -2,7 +2,7 @@
 
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 use std::fmt::{self, Debug, Formatter};
 
@@ -93,7 +93,7 @@ pub enum CoverageKind {
     SpanMarker,
 
     /// Marks its enclosing basic block with an ID that can be referred to by
-    /// other data in the MIR body.
+    /// side data in [`HirBranchInfo`].
     ///
     /// Has no effect during codegen.
     BlockMarker { id: BlockMarkerId },
@@ -217,4 +217,19 @@ pub struct FunctionCoverageInfo {
 
     pub expressions: IndexVec<ExpressionId, Expression>,
     pub mappings: Vec<Mapping>,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct HirBranchInfo {
+    pub num_block_markers: usize,
+    pub branch_spans: Vec<BranchSpan>,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct BranchSpan {
+    pub span: Span,
+    pub true_marker: BlockMarkerId,
+    pub false_marker: BlockMarkerId,
 }
