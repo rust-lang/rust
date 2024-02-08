@@ -10,6 +10,8 @@
 use std::{sync::Arc, rc::Rc};
 
 fn main() {
+    // Looking at --emit mir, we can see that all parameters below are passed
+    // with by move.
     let _ = Arc::new([0; 9999]); // OK!
     let _ = Box::new([0; 9999]); // OK!
     let _ = Rc::new([0; 9999]); // OK!
