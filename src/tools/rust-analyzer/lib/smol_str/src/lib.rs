@@ -551,24 +551,28 @@ pub trait StrExt: private::Sealed {
     /// potentially without allocating.
     ///
     /// See [`str::to_lowercase`].
+    #[must_use = "this returns a new SmolStr without modifying the original"]
     fn to_lowercase_smolstr(&self) -> SmolStr;
 
     /// Returns the uppercase equivalent of this string slice as a new [`SmolStr`],
     /// potentially without allocating.
     ///
     /// See [`str::to_uppercase`].
+    #[must_use = "this returns a new SmolStr without modifying the original"]
     fn to_uppercase_smolstr(&self) -> SmolStr;
 
     /// Returns the ASCII lowercase equivalent of this string slice as a new [`SmolStr`],
     /// potentially without allocating.
     ///
     /// See [`str::to_ascii_lowercase`].
+    #[must_use = "this returns a new SmolStr without modifying the original"]
     fn to_ascii_lowercase_smolstr(&self) -> SmolStr;
 
     /// Returns the ASCII uppercase equivalent of this string slice as a new [`SmolStr`],
     /// potentially without allocating.
     ///
     /// See [`str::to_ascii_uppercase`].
+    #[must_use = "this returns a new SmolStr without modifying the original"]
     fn to_ascii_uppercase_smolstr(&self) -> SmolStr;
 }
 
