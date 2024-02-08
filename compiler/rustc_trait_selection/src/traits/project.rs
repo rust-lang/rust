@@ -27,6 +27,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -318,17 +319,6 @@ fn project_and_unify_type<'cx, 'tcx>(
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
-    // For an example where this is necessary see tests/ui/impl-trait/nested-return-type2.rs
-    // This allows users to omit re-mentioning all bounds on an associated type and just use an
-    // `impl Trait` for the assoc type to add more bounds.
-    let InferOk { value: actual, obligations: new } =
-        selcx.infcx.replace_opaque_types_with_inference_vars(
-            actual,
-            obligation.cause.body_id,
-            obligation.cause.span,
-            obligation.param_env,
-        );
-    obligations.extend(new);
 
     // Need to define opaque types to support nested opaque types like `impl Fn() -> impl Trait`
     match infcx.at(&obligation.cause, obligation.param_env).eq(
@@ -409,25 +399,6 @@ where
     result
 }
 
-pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
-    value: &T,
-    reveal: Reveal,
-) -> bool {
-    match reveal {
-        Reveal::UserFacing => value.has_type_flags(
-            ty::TypeFlags::HAS_TY_PROJECTION
-                | ty::TypeFlags::HAS_TY_INHERENT
-                | ty::TypeFlags::HAS_CT_PROJECTION,
-        ),
-        Reveal::All => value.has_type_flags(
-            ty::TypeFlags::HAS_TY_PROJECTION
-                | ty::TypeFlags::HAS_TY_INHERENT
-                | ty::TypeFlags::HAS_TY_OPAQUE
-                | ty::TypeFlags::HAS_CT_PROJECTION,
-        ),
-    }
-}
-
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -488,11 +459,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             "Normalizing {value:?} without wrapping in a `Binder`"
         );
 
-        if !needs_normalization(&value, self.param_env.reveal()) {
-            value
-        } else {
-            value.fold_with(self)
-        }
+        if !value.has_projections() { value } else { value.fold_with(self) }
     }
 }
 
@@ -512,7 +479,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !needs_normalization(&ty, self.param_env.reveal()) {
+        if !ty.has_projections() {
             return ty;
         }
 
@@ -548,7 +515,36 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.super_fold_with(self),
+                    Reveal::UserFacing => {
+                        if !data.has_escaping_bound_vars()
+                            && let Some(def_id) = data.def_id.as_local()
+                            && let Some(
+                                OpaqueTyOrigin::TyAlias { in_assoc_ty: true }
+                                | OpaqueTyOrigin::AsyncFn(_)
+                                | OpaqueTyOrigin::FnReturn(_),
+                            ) = self.selcx.infcx.opaque_type_origin(def_id)
+                        {
+                            let infer = self.selcx.infcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::OpaqueTypeInference(data.def_id),
+                                span: self.cause.span,
+                            });
+                            let InferOk { value: (), obligations } = self
+                                .selcx
+                                .infcx
+                                .register_hidden_type(
+                                    ty::OpaqueTypeKey { def_id, args: data.args },
+                                    self.cause.clone(),
+                                    self.param_env,
+                                    infer,
+                                    true,
+                                )
+                                .expect("uwu");
+                            self.obligations.extend(obligations);
+                            self.selcx.infcx.resolve_vars_if_possible(infer)
+                        } else {
+                            ty.super_fold_with(self)
+                        }
+                    }
 
                     Reveal::All => {
                         let recursion_limit = self.interner().recursion_limit();
@@ -752,9 +748,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.features().generic_const_exprs
-            || !needs_normalization(&constant, self.param_env.reveal())
-        {
+        if tcx.features().generic_const_exprs || !constant.has_projections() {
             constant
         } else {
             let constant = constant.super_fold_with(self);
@@ -770,11 +764,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
     #[inline]
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
-            p.super_fold_with(self)
-        } else {
-            p
-        }
+        if p.allow_normalization() && p.has_projections() { p.super_fold_with(self) } else { p }
     }
 }
 

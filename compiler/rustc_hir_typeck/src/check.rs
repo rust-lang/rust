@@ -38,15 +38,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let tcx = fcx.tcx;
     let hir = tcx.hir();
 
-    let declared_ret_ty = fn_sig.output();
-
-    let ret_ty =
-        fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
-            declared_ret_ty,
-            fn_def_id,
-            decl.output.span(),
-            fcx.param_env,
-        ));
+    let ret_ty = fn_sig.output();
 
     fcx.coroutine_types = coroutine_types;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
@@ -109,7 +101,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         hir::FnRetTy::DefaultReturn(_) => body.value.span,
         hir::FnRetTy::Return(ty) => ty.span,
     };
-    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
+    fcx.require_type_is_sized(ret_ty, return_or_body_span, traits::SizedReturnType);
     fcx.is_whole_body.set(true);
     fcx.check_return_expr(body.value, false);
 
@@ -120,7 +112,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let coercion = fcx.ret_coercion.take().unwrap().into_inner();
     let mut actual_return_ty = coercion.complete(fcx);
     debug!("actual_return_ty = {:?}", actual_return_ty);
-    if let ty::Dynamic(..) = declared_ret_ty.kind() {
+    if let ty::Dynamic(..) = ret_ty.kind() {
         // We have special-cased the case where the function is declared
         // `-> dyn Foo` and we don't actually relate it to the
         // `fcx.ret_coercion`, so just substitute a type variable.

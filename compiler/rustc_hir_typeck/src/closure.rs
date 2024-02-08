@@ -879,17 +879,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output_ty = self.normalize(closure_span, output_ty);
 
-        // async fn that have opaque types in their return type need to redo the conversion to inference variables
-        // as they fetch the still opaque version from the signature.
-        let InferOk { value: output_ty, obligations } = self
-            .replace_opaque_types_with_inference_vars(
-                output_ty,
-                body_def_id,
-                closure_span,
-                self.param_env,
-            );
-        self.register_predicates(obligations);
-
         Some(output_ty)
     }
 

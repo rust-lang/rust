@@ -1,4 +1,3 @@
-use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{DefineOpaqueTypes, InferResult};
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{InferCtxt, InferOk};
@@ -36,60 +35,6 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    /// This is a backwards compatibility hack to prevent breaking changes from
-    /// lazy TAIT around RPIT handling.
-    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
-        &self,
-        value: T,
-        body_id: LocalDefId,
-        span: Span,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> InferOk<'tcx, T> {
-        // We handle opaque types differently in the new solver.
-        if self.next_trait_solver() {
-            return InferOk { value, obligations: vec![] };
-        }
-
-        if !value.has_opaque_types() {
-            return InferOk { value, obligations: vec![] };
-        }
-
-        let mut obligations = vec![];
-        let replace_opaque_type = |def_id: DefId| {
-            def_id.as_local().is_some_and(|def_id| self.opaque_type_origin(def_id).is_some())
-        };
-        let value = value.fold_with(&mut BottomUpFolder {
-            tcx: self.tcx,
-            lt_op: |lt| lt,
-            ct_op: |ct| ct,
-            ty_op: |ty| match *ty.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
-                    if replace_opaque_type(def_id) && !ty.has_escaping_bound_vars() =>
-                {
-                    let def_span = self.tcx.def_span(def_id);
-                    let span = if span.contains(def_span) { def_span } else { span };
-                    let code = traits::ObligationCauseCode::OpaqueReturnType(None);
-                    let cause = ObligationCause::new(span, body_id, code);
-                    // FIXME(compiler-errors): We probably should add a new TypeVariableOriginKind
-                    // for opaque types, and then use that kind to fix the spans for type errors
-                    // that we see later on.
-                    let ty_var = self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::OpaqueTypeInference(def_id),
-                        span,
-                    });
-                    obligations.extend(
-                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
-                            .unwrap()
-                            .obligations,
-                    );
-                    ty_var
-                }
-                _ => ty,
-            },
-        });
-        InferOk { value, obligations }
-    }
-
     pub fn handle_opaque_type(
         &self,
         a: Ty<'tcx>,
@@ -515,7 +460,7 @@ impl UseKind {
 
 impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
-    fn register_hidden_type(
+    pub fn register_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         cause: ObligationCause<'tcx>,

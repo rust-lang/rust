@@ -1004,14 +1004,14 @@ pub enum CodegenObligationError {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum DefiningAnchor {
     /// Define opaques which are in-scope of the `LocalDefId`. Also, eagerly
-    /// replace opaque types in `replace_opaque_types_with_inference_vars`.
+    /// replace opaque types in normalization.
     Bind(LocalDefId),
     /// In contexts where we don't currently know what opaques are allowed to be
     /// defined, such as (old solver) canonical queries, we will simply allow
     /// opaques to be defined, but "bubble" them up in the canonical response or
     /// otherwise treat them to be handled later.
     ///
-    /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
+    /// We do not eagerly replace opaque types in normalization,
     /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
     /// Do not allow any opaques to be defined. This is used to catch type mismatch
