@@ -15,6 +15,8 @@
 	--desktop-sidebar-width: 200px;
 	--src-sidebar-width: 300px;
 	--desktop-sidebar-z-index: 100;
+	--width-limiter-width: 960px;
+	--desktop-grid-column-gap: 45px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -317,7 +319,7 @@ button#toggle-all-docs {
 main {
 	position: relative;
 	flex-grow: 1;
-	padding: 10px 15px 40px 45px;
+	padding: 10px 15px 40px var(--desktop-grid-column-gap);
 	min-width: 0; /* avoid growing beyond the size limit */
 }
 
@@ -326,7 +328,7 @@ main {
 }
 
 .width-limiter {
-	max-width: 960px;
+	max-width: var(--width-limiter-width);
 	margin-right: auto;
 }
 
@@ -441,7 +443,7 @@ img {
 .sidebar-resizing .sidebar {
 	position: fixed;
 }
-.sidebar-resizing > body {
+.sidebar-resizing .rustdoc {
 	padding-left: var(--resizing-sidebar-width);
 }
 
@@ -515,7 +517,7 @@ img {
 	scrollbar-width: initial;
 	scrollbar-color: var(--scrollbar-color);
 }
-.sidebar {
+.sidebar, #TOC section, #ModNav section {
 	scrollbar-width: thin;
 	scrollbar-color: var(--scrollbar-color);
 }
@@ -524,17 +526,24 @@ img {
 ::-webkit-scrollbar {
 	width: 12px;
 }
-.sidebar::-webkit-scrollbar {
+.sidebar::-webkit-scrollbar,
+#TOC section::-webkit-scrollbar,
+#ModNav section::-webkit-scrollbar {
 	width: 8px;
 }
 ::-webkit-scrollbar-track {
 	-webkit-box-shadow: inset 0;
 	background-color: var(--scrollbar-track-background-color);
 }
-.sidebar::-webkit-scrollbar-track {
+.sidebar::-webkit-scrollbar-track,
+#TOC section::-webkit-scrollbar-track,
+#ModNav section::-webkit-scrollbar-track {
 	background-color: var(--scrollbar-track-background-color);
 }
-::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
+#TOC section::-webkit-scrollbar-thumb,
+#ModNav section::-webkit-scrollbar-thumb {
 	background-color: var(--scrollbar-thumb-background-color);
 }
 
@@ -675,7 +684,7 @@ ul.block, .block li, .block ul {
 	overflow-wrap: break-word;
 }
 
-.sidebar-crate + .version {
+.sidebar > .version {
 	margin-top: -1rem;
 	margin-bottom: 1rem;
 }
@@ -1852,6 +1861,111 @@ However, it's not needed with smaller screen width because the doc/code block is
 }
 
 /* Media Queries */
+
+/* Very-large-screen mode. */
+@supports (display: grid) and (display: contents) {
+	@media (min-width: 1600px) and (min-height: 800px) {
+		.rustdoc:not(.src) {
+			display: grid;
+			grid-template-columns:
+				var(--desktop-sidebar-width)
+				var(--width-limiter-width)
+				minmax(0, 1fr);
+			grid-template-rows: min-content 1fr;
+			grid-template-areas:
+				"sidebar-title main sidebar-cratenav"
+				"sidebar-modnav main sidebar-toc";
+			grid-column-gap: var(--desktop-grid-column-gap);
+		}
+		.sidebar-resizing .rustdoc:not(.src) {
+			padding-left: 0;
+		}
+		.hide-sidebar .rustdoc:not(.src) {
+			grid-template-columns:
+				var(--width-limiter-width)
+				minmax(0, 1fr);
+			grid-template-rows: minmax(min-content, calc(64px + 0.75rem)) 1fr;
+			grid-template-areas:
+				"main sidebar-cratenav"
+				"main sidebar-toc";
+			padding-left: var(--desktop-grid-column-gap);
+		}
+		.rustdoc:not(.src) .sidebar,
+		.rustdoc:not(.src) main {
+			display: contents;
+		}
+		.width-limiter {
+			grid-area: main;
+			width: var(--width-limiter-width);
+			--desktop-sidebar-width: 0;
+		}
+		.rustdoc:not(.src) nav.sub {
+			padding-top: 10px;
+		}
+		.rustdoc:not(.src) .doc-sidebar-title {
+			grid-area: sidebar-title;
+			background: var(--sidebar-background-color);
+			position: sticky;
+			top: 0;
+		}
+		.rustdoc:not(.src) .sidebar-crate {
+			margin-bottom: 0.5rem;
+		}
+		.rustdoc:not(.src) #TOC,
+		.rustdoc:not(.src) #CrateNav {
+			grid-area: sidebar-toc;
+			background: var(--main-background-color);
+			padding-left: 0;
+		}
+		.rustdoc:not(.src) #CrateNav {
+			grid-area: sidebar-cratenav;
+			align-self: middle;
+		}
+		.rustdoc:not(.src) #ModNav {
+			grid-area: sidebar-modnav;
+			background: var(--sidebar-background-color);
+			padding-left: 0;
+		}
+		.rustdoc:not(.src) #ModNav .in-crate {
+			display: none;
+		}
+		.rustdoc:not(.src) #TOC section,
+		.rustdoc:not(.src) #ModNav section {
+			position: sticky;
+			top: 0;
+			bottom: 0;
+			overflow-y: scroll;
+			overscroll-behavior: contain;
+			max-height: 100vh;
+			padding-left: 24px;
+		}
+		.rustdoc:not(.src) #TOC .location,
+		.rustdoc:not(.src) #ModNav h2 {
+			margin-top: 0;
+		}
+		.rustdoc:not(.src) #ModNav section {
+			top: calc(64px + 0.75rem);
+			max-height: calc(100vh - 64px - 0.75rem);
+			background: var(--sidebar-background-color);
+			border-top: solid 1px var(--border-color);
+		}
+		.rustdoc:not(.src) #TOC section {
+			max-height: calc(100vh - 0.5rem);
+			top: 0.25rem;
+			margin: 0 var(--desktop-grid-column-gap) var(--desktop-grid-column-gap) 0;
+			border: solid 1px var(--border-color);
+			padding: 0.25rem;
+		}
+		.rustdoc:not(.src) #CrateNav .block:last-child,
+		.rustdoc:not(.src) #TOC .block:last-child {
+			margin-bottom: 0;
+		}
+		.rustdoc:not(.src) #CrateNav a:hover,
+		.rustdoc:not(.src) #TOC a:hover {
+			background-color: var(--sidebar-background-color);
+		}
+	}
+}
 
 /* Make sure all the buttons line wrap at the same time */
 @media (max-width: 850px) {
