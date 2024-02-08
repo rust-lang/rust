@@ -82,7 +82,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
     items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
-        // First, lower everything other than imports.
+        // First, lower everything other than glob imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
         }

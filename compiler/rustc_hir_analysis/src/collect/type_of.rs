@@ -521,6 +521,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 
+        Node::ArrayLenInfer(_) => tcx.types.usize,
+
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }

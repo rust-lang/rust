@@ -1231,8 +1231,8 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Move(place) = *operand
-            && let Some(local) = place.as_local()
-            && self.reused_locals.contains(local)
+            && !place.is_indirect_first_projection()
+            && self.reused_locals.contains(place.local)
         {
             *operand = Operand::Copy(place);
         }

@@ -19,6 +19,7 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -35,6 +36,7 @@ pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
     DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, StringPart, SubDiagnostic,
+    SubdiagnosticMessageOp,
 };
 pub use diagnostic_builder::{
     BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,

@@ -1715,8 +1715,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let ret_msg = "return a value for the case when the loop has zero elements to iterate on";
         let ret_ty_msg =
             "otherwise consider changing the return type to account for that possibility";
-        if let Some(node) = tcx.opt_hir_node(item.into())
-            && let Some(body_id) = node.body_id()
+        let node = tcx.hir_node(item.into());
+        if let Some(body_id) = node.body_id()
             && let Some(sig) = node.fn_sig()
             && let hir::ExprKind::Block(block, _) = hir.body(body_id).value.kind
             && !ty.is_never()

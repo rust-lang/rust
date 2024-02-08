@@ -1520,11 +1520,9 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         split_ctors.push(Constructor::Missing);
     }
 
-    // Decide what constructors to report.
-    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. });
-    let always_report_all = place.is_scrutinee && !is_integers;
-    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
-    let report_individual_missing_ctors = always_report_all || !all_missing;
+    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing". At the top
+    // level we prefer to list all constructors.
+    let report_individual_missing_ctors = place.is_scrutinee || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
     // split_ctors.contains(Missing)`. The converse usually holds except when
     // `!place_validity.is_known_valid()`.
