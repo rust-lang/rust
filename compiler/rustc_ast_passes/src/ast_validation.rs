@@ -1593,6 +1593,58 @@ fn deny_equality_constraints(
             }
         }
     }
+
+    let mut suggest =
+        |poly: &PolyTraitRef, potential_assoc: &PathSegment, predicate: &WhereEqPredicate| {
+            if let [trait_segment] = &poly.trait_ref.path.segments[..] {
+                let assoc = pprust::path_to_string(&ast::Path::from_ident(potential_assoc.ident));
+                let ty = pprust::ty_to_string(&predicate.rhs_ty);
+                let (args, span) = match &trait_segment.args {
+                    Some(args) => match args.deref() {
+                        ast::GenericArgs::AngleBracketed(args) => {
+                            let Some(arg) = args.args.last() else {
+                                return;
+                            };
+                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
+                        }
+                        _ => return,
+                    },
+                    None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
+                };
+                let removal_span = if generics.where_clause.predicates.len() == 1 {
+                    // We're removing th eonly where bound left, remove the whole thing.
+                    generics.where_clause.span
+                } else {
+                    let mut span = predicate.span;
+                    let mut prev: Option<Span> = None;
+                    let mut preds = generics.where_clause.predicates.iter().peekable();
+                    // Find the predicate that shouldn't have been in the where bound list.
+                    while let Some(pred) = preds.next() {
+                        if let WherePredicate::EqPredicate(pred) = pred
+                            && pred.span == predicate.span
+                        {
+                            if let Some(next) = preds.peek() {
+                                // This is the first predicate, remove the trailing comma as well.
+                                span = span.with_hi(next.span().lo());
+                            } else if let Some(prev) = prev {
+                                // Remove the previous comma as well.
+                                span = span.with_lo(prev.hi());
+                            }
+                        }
+                        prev = Some(pred.span());
+                    }
+                    span
+                };
+                err.assoc2 = Some(errors::AssociatedSuggestion2 {
+                    span,
+                    args,
+                    predicate: removal_span,
+                    trait_segment: trait_segment.ident,
+                    potential_assoc: potential_assoc.ident,
+                });
+            }
+        };
+
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         for bounds in generics.params.iter().map(|p| &p.bounds).chain(
@@ -1608,37 +1660,9 @@ fn deny_equality_constraints(
                         .map(|segment| segment.ident.name)
                         .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
                         .all(|(a, b)| a == b)
+                        && let Some(potential_assoc) = full_path.segments.iter().last()
                     {
-                        let potential_assoc = full_path.segments.iter().last().unwrap();
-                        // println!("asd");
-                        if let [trait_segment] = &poly.trait_ref.path.segments[..] {
-                            let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                potential_assoc.ident,
-                            ));
-                            let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                            let (args, span) = match &trait_segment.args {
-                                Some(args) => match args.deref() {
-                                    ast::GenericArgs::AngleBracketed(args) => {
-                                        let Some(arg) = args.args.last() else {
-                                            continue;
-                                        };
-                                        (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                                    }
-                                    _ => continue,
-                                },
-                                None => (
-                                    format!("<{assoc} = {ty}>"),
-                                    trait_segment.span().shrink_to_hi(),
-                                ),
-                            };
-                            err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                                span,
-                                args,
-                                predicate: predicate.span,
-                                trait_segment: trait_segment.ident,
-                                potential_assoc: potential_assoc.ident,
-                            });
-                        }
+                        suggest(poly, potential_assoc, predicate);
                     }
                 }
             }
@@ -1658,37 +1682,8 @@ fn deny_equality_constraints(
             ) {
                 if ident == potential_param.ident {
                     for bound in bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
-                            bound
-                        {
-                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
-                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                    potential_assoc.ident,
-                                ));
-                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                                let (args, span) = match &trait_segment.args {
-                                    Some(args) => match args.deref() {
-                                        ast::GenericArgs::AngleBracketed(args) => {
-                                            let Some(arg) = args.args.last() else {
-                                                continue;
-                                            };
-                                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                                        }
-                                        _ => continue,
-                                    },
-                                    None => (
-                                        format!("<{assoc} = {ty}>"),
-                                        trait_segment.span().shrink_to_hi(),
-                                    ),
-                                };
-                                err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                                    span,
-                                    args,
-                                    predicate: predicate.span,
-                                    trait_segment: trait_segment.ident,
-                                    potential_assoc: potential_assoc.ident,
-                                });
-                            }
+                        if let ast::GenericBound::Trait(poly, TraitBoundModifiers::NONE) = bound {
+                            suggest(poly, potential_assoc, predicate);
                         }
                     }
                 }
