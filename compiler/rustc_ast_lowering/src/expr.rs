@@ -99,7 +99,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         seg,
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                         // Method calls can't have bound modifiers
                         None,
@@ -141,13 +141,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
-                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
-                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ohs) => {
@@ -267,7 +267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     hir::ExprKind::Path(qpath)
@@ -295,7 +295,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
                     self.lower_ty(
                         container,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
                     ),
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
@@ -314,7 +314,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.qself,
                             &se.path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         )),
                         self.arena
@@ -1241,7 +1241,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     // Destructure like a tuple struct.
@@ -1261,7 +1261,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     // Destructure like a unit struct.
@@ -1286,7 +1286,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );
                 let fields_omitted = match &se.rest {
