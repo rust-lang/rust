@@ -343,18 +343,18 @@ compilation might inadvertently succeed!
 
 Sometimes there is a third case. You believe that an error has been reported, but you believe it
 would've been reported earlier in the compilation, not locally. In that case, you can invoke
-[`delay_span_bug`] This will make a note that you expect compilation to yield an error -- if however
-compilation should succeed, then it will trigger a compiler bug report.
+[`span_delayed_bug`] This will make a note that you expect compilation to yield an error -- if
+however compilation should succeed, then it will trigger a compiler bug report.
 
-[`delay_span_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.delay_span_bug
+[`span_delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_delayed_bug
 
 For added safety, it's not actually possible to produce a `TyKind::Error` value
 outside of [`rustc_middle::ty`][ty]; there is a private member of
 `TyKind::Error` that prevents it from being constructable elsewhere. Instead,
 one should use the [`TyCtxt::ty_error`][terr] or
 [`TyCtxt::ty_error_with_message`][terrmsg] methods. These methods automatically
-call `delay_span_bug` before returning an interned `Ty` of kind `Error`. If you
-were already planning to use [`delay_span_bug`], then you can just pass the
+call `span_delayed_bug` before returning an interned `Ty` of kind `Error`. If you
+were already planning to use [`span_delayed_bug`], then you can just pass the
 span and message to [`ty_error_with_message`][terrmsg] instead to avoid
 delaying a redundant span bug.
 
