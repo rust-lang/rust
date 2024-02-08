@@ -527,6 +527,11 @@ fn register_builtins(store: &mut LintStore) {
         "no longer needed, see #93367 \
          <https://github.com/rust-lang/rust/issues/93367> for more information",
     );
+    store.register_removed(
+        "const_patterns_without_partial_eq",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
