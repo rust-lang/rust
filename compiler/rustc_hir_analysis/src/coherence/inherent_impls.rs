@@ -144,6 +144,7 @@ impl<'tcx> InherentCollect<'tcx> {
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
+        let self_ty = peel_off_weak_aliases(self.tcx, self_ty);
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),
@@ -166,7 +167,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Never
             | ty::FnPtr(_)
             | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
-            ty::Alias(..) | ty::Param(_) => {
+            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)
@@ -174,6 +175,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
+            | ty::Alias(ty::Weak, _)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {
@@ -183,4 +185,31 @@ impl<'tcx> InherentCollect<'tcx> {
             ty::Error(_) => Ok(()),
         }
     }
+}
+
+/// Peel off all weak alias types in this type until there are none left.
+///
+/// <div class="warning">
+///
+/// This assumes that `ty` gets normalized later and that any overflows occurring
+/// during said normalization get reported.
+///
+/// </div>
+fn peel_off_weak_aliases<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    let ty::Alias(ty::Weak, _) = ty.kind() else { return ty };
+
+    let limit = tcx.recursion_limit();
+    let mut depth = 0;
+
+    while let ty::Alias(ty::Weak, alias) = ty.kind() {
+        if !limit.value_within_limit(depth) {
+            let guar = tcx.dcx().delayed_bug("overflow expanding weak alias type");
+            return Ty::new_error(tcx, guar);
+        }
+
+        ty = tcx.type_of(alias.def_id).instantiate(tcx, alias.args);
+        depth += 1;
+    }
+
+    ty
 }
