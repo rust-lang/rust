@@ -826,7 +826,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_candidates(
         &mut self,
-        mut candidates: Vec<Candidate<'tcx>>,
+        candidates: Vec<Candidate<'tcx>>,
     ) -> QueryResult<'tcx> {
         // First try merging all candidates. This is complete and fully sound.
         let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();

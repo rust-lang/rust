@@ -10,7 +10,7 @@ use crate::MatchArm;
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
 /// in a given column.
 #[instrument(level = "debug", skip(cx), ret)]
-fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
+fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     cx: &RustcMatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'p, RustcMatchCheckCtxt<'p, 'tcx>>,
 ) -> Result<Vec<WitnessPat<'p, 'tcx>>, ErrorGuaranteed> {

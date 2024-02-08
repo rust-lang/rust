@@ -124,25 +124,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn compute_closure_kind_goal(
-        &mut self,
-        goal: Goal<'tcx, (DefId, ty::GenericArgsRef<'tcx>, ty::ClosureKind)>,
-    ) -> QueryResult<'tcx> {
-        let (_, args, expected_kind) = goal.predicate;
-        let found_kind = args.as_closure().kind_ty().to_opt_closure_kind();
-
-        let Some(found_kind) = found_kind else {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-        };
-        if found_kind.extends(expected_kind) {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            Err(NoSolution)
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
         if self.tcx().check_is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
