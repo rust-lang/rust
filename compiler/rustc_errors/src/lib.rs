@@ -945,20 +945,19 @@ impl DiagCtxt {
 // Functions beginning with `struct_`/`create_` create a diagnostic. Other
 // functions create and emit a diagnostic all in one go.
 impl DiagCtxt {
-    /// Construct a builder at the `Bug` level with the `msg`.
-    #[rustc_lint_diagnostics]
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
     pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, BugAbort> {
         DiagnosticBuilder::new(self, Bug, msg)
     }
 
-    #[rustc_lint_diagnostics]
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    #[track_caller]
     pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.struct_bug(msg).emit()
     }
 
-    /// Construct a builder at the `Bug` level at the given `span` with the `msg`.
-    #[rustc_lint_diagnostics]
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
     pub fn struct_span_bug(
         &self,
@@ -968,6 +967,8 @@ impl DiagCtxt {
         self.struct_bug(msg).with_span(span)
     }
 
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    #[track_caller]
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.struct_span_bug(span, msg).emit()
     }
@@ -981,11 +982,10 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, diagnostic_builder::BugAbort>) -> ! {
+    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> ! {
         self.create_bug(bug).emit()
     }
 
-    /// Construct a builder at the `Fatal` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_fatal(
@@ -996,11 +996,11 @@ impl DiagCtxt {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.struct_fatal(msg).emit()
     }
 
-    /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_fatal(
@@ -1046,7 +1046,6 @@ impl DiagCtxt {
         self.create_almost_fatal(fatal).emit()
     }
 
-    /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -1055,11 +1054,11 @@ impl DiagCtxt {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.struct_err(msg).emit()
     }
 
-    /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_err(
@@ -1090,24 +1089,18 @@ impl DiagCtxt {
         self.create_err(err).emit()
     }
 
-    /// Ensures that compilation cannot succeed.
-    ///
-    /// If this function has been called but no errors have been emitted and
-    /// compilation succeeds, it will cause an internal compiler error (ICE).
-    ///
-    /// This can be used in code paths that should never run on successful compilations.
-    /// For example, it can be used to create an [`ErrorGuaranteed`]
-    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
-    /// directly).
+    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
     pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
     }
 
-    /// Like `delayed_bug`, but takes an additional span.
+    /// Ensures that an error is printed. See `Level::DelayedBug`.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
     pub fn span_delayed_bug(
         &self,
@@ -1118,13 +1111,12 @@ impl DiagCtxt {
     }
 
     /// Ensures that a diagnostic is printed. See `Level::GoodPathDelayedBug`.
+    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
+    #[track_caller]
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         DiagnosticBuilder::<()>::new(self, GoodPathDelayedBug, msg).emit()
     }
 
-    /// Construct a builder at the `Warning` level with the `msg`.
-    ///
-    /// An `emit` call on the builder will only emit if `can_emit_warnings` is `true`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
@@ -1132,13 +1124,11 @@ impl DiagCtxt {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.struct_warn(msg).emit()
     }
 
-    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
-    ///
-    /// An `emit` call on the builder will only emit if `can_emit_warnings` is `true`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_span_warn(
@@ -1168,7 +1158,6 @@ impl DiagCtxt {
         self.create_warn(warning).emit()
     }
 
-    /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
@@ -1176,12 +1165,13 @@ impl DiagCtxt {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
         self.struct_note(msg).emit()
     }
 
-    #[track_caller]
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_note(
         &self,
         span: impl Into<MultiSpan>,
@@ -1190,8 +1180,8 @@ impl DiagCtxt {
         DiagnosticBuilder::new(self, Note, msg).with_span(span)
     }
 
-    #[track_caller]
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.struct_span_note(span, msg).emit()
     }
@@ -1209,20 +1199,18 @@ impl DiagCtxt {
         self.create_note(note).emit()
     }
 
-    /// Construct a builder at the `Help` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Help, msg)
     }
 
-    /// Construct a builder at the `Allow` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Allow, msg)
     }
 
-    /// Construct a builder at the `Expect` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_expect(
@@ -1589,6 +1577,7 @@ pub enum Level {
     ForceWarning(Option<LintExpectationId>),
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
+    /// Will be skipped if `can_emit_warnings` is false.
     Warning,
 
     /// A message giving additional context.
