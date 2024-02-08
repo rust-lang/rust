@@ -54,7 +54,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveTrailingReturn) -> Option<Vec<A
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{
+        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_fix_with_disabled,
+    };
 
     #[test]
     fn remove_trailing_return() {
@@ -127,7 +129,7 @@ fn foo() -> u8 {
 
     #[test]
     fn remove_trailing_return_in_if() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn foo(x: usize) -> u8 {
     if x > 0 {
@@ -138,6 +140,7 @@ fn foo(x: usize) -> u8 {
     } //^^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_string()),
         );
     }
 
@@ -287,7 +290,7 @@ fn foo() -> u8 {
 
     #[test]
     fn replace_in_if() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 fn foo(x: usize) -> u8 {
     if x > 0 {
@@ -306,6 +309,7 @@ fn foo(x: usize) -> u8 {
     }
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_string()),
         );
         check_fix(
             r#"
