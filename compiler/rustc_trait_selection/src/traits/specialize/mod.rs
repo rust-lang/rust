@@ -446,7 +446,7 @@ fn report_conflicting_impls<'tcx>(
     match used_to_be_allowed {
         None => {
             let reported = if overlap.with_impl.is_local()
-                || tcx.orphan_check_impl(impl_def_id).is_ok()
+                || tcx.ensure().orphan_check_impl(impl_def_id).is_ok()
             {
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg);
                 err.code(E0119);
