@@ -106,6 +106,13 @@ impl<T: ?Sized> Unique<T> {
         self.pointer.as_ptr()
     }
 
+    /// Acquires the underlying `*mut` pointer.
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[inline]
+    pub const fn as_non_null_ptr(self) -> NonNull<T> {
+        self.pointer
+    }
+
     /// Dereferences the content.
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"

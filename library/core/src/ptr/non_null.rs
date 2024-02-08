@@ -1591,8 +1591,7 @@ impl<T> NonNull<[T]> {
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
-        // SAFETY: We know `self` is non-null.
-        unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+        self.cast()
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -1828,8 +1827,7 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
-        // SAFETY: A Unique pointer cannot be null.
-        unsafe { NonNull { pointer: unique.as_ptr() } }
+        unique.as_non_null_ptr()
     }
 }
 
