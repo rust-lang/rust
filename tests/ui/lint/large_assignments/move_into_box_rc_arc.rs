@@ -2,7 +2,7 @@
 #![feature(large_assignments)]
 #![move_size_limit = "1000"]
 // build-fail
-// only-x86_64
+// only-64bit
 
 // edition:2018
 // compile-flags: -Zmir-opt-level=0
