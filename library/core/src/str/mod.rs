@@ -1160,6 +1160,12 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
+    /// Note that there is a footgun to this method when using a slice of [`char`]s.
+    /// Some users may expect that a slice of chars will behave similarly to a `&str` with this method. 
+    /// That is not currently the case. When you pass a slice of [`char`]s to this method, it will return true
+    /// if any of the [`char`]s in the slice is the first [`char`] of this string slice. It does not work for
+    /// sequentially comparing a slice of [`char`]s to a string slice. See the second example below.
+    ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
     ///
@@ -1170,6 +1176,14 @@ impl str {
     ///
     /// assert!(bananas.starts_with("bana"));
     /// assert!(!bananas.starts_with("nana"));
+    /// ```
+    /// 
+    /// ```
+    /// let bananas = "bananas";
+    /// 
+    /// // Note that both of these assert successfully. 
+    /// assert!(bananas.starts_with(&['b', 'a', 'n', 'a']));
+    /// assert!(bananas.starts_with(&['a', 'b', 'c', 'd']));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
