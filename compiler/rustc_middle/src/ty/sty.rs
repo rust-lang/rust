@@ -1313,6 +1313,7 @@ impl<'tcx> PolyFnSig<'tcx> {
         self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
     }
     #[inline]
+    #[track_caller]
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }

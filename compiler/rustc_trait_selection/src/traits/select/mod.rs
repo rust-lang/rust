@@ -483,7 +483,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap(), stack.obligation);
+            return self.filter_reservation_impls(candidates.pop().unwrap());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -557,7 +557,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_reservation_impls(candidates.pop().unwrap().candidate, stack.obligation)
+        self.filter_reservation_impls(candidates.pop().unwrap().candidate)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1436,7 +1436,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn filter_reservation_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
-        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Treat reservation impls as ambiguity.

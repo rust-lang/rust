@@ -1027,21 +1027,16 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceDef<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    match instance {
-        ty::InstanceDef::DropGlue(_, Some(ty)) => match ty.kind() {
-            ty::Adt(def, args) => {
-                let fields = def.all_fields();
-                for field in fields {
-                    let field_ty = field.ty(tcx, args);
-                    if field_ty.has_param() && field_ty.has_projections() {
-                        return Err("cannot build drop shim for polymorphic type");
-                    }
-                }
-
-                Ok(tcx.instance_mir(instance))
+    if let ty::InstanceDef::DropGlue(_, Some(ty)) = instance
+        && let ty::Adt(def, args) = ty.kind()
+    {
+        let fields = def.all_fields();
+        for field in fields {
+            let field_ty = field.ty(tcx, args);
+            if field_ty.has_param() && field_ty.has_projections() {
+                return Err("cannot build drop shim for polymorphic type");
             }
-            _ => Ok(tcx.instance_mir(instance)),
-        },
-        _ => Ok(tcx.instance_mir(instance)),
+        }
     }
+    Ok(tcx.instance_mir(instance))
 }
