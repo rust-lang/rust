@@ -14,10 +14,10 @@
 
 //@ has foo/index.html
 // User header
-//@ has - '//section[@id="rustdoc-toc"]/h3' 'Sections'
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/@title' 'Basic link, emphasis, very emphasis and `code`'
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]' 'Basic link, emphasis, very emphasis and code'
-//@ count - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/em' 0
-//@ count - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/a' 0
-//@ count - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/code' 1
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/code' 'code'
+//@ has - '//div[@id="rustdoc-toc"]//h3' 'Sections'
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/@title' 'Basic link, emphasis, very emphasis and `code`'
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]' 'Basic link, emphasis, very emphasis and code'
+//@ count - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/em' 0
+//@ count - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/a' 0
+//@ count - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/code' 1
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#basic-link-emphasis-very-emphasis-and-code"]/code' 'code'

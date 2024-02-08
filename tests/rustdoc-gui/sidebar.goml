@@ -45,7 +45,7 @@ call-function: (
 
 call-function: ("switch-theme", {"theme": "light"})
 
-assert-text: (".sidebar > .sidebar-crate > h2 > a", "test_docs")
+assert-text: (".sidebar-crate > h2 > a", "test_docs")
 // Crate root has no "location" element
 assert-count: (".sidebar .location", 0)
 assert-count: (".sidebar h2", 1)
@@ -69,7 +69,7 @@ assert-text: ("#structs + .item-table .item-name > a", "Foo")
 click: "#structs + .item-table .item-name > a"
 
 // PAGE: struct.Foo.html
-assert-count: (".sidebar .sidebar-crate", 1)
+assert-count: (".sidebar-crate", 1)
 assert-count: (".sidebar .location", 1)
 assert-count: (".sidebar h2", 3)
 assert-text: (".sidebar-elems ul.block > li.current > a", "Foo")
@@ -91,7 +91,7 @@ click: ".sidebar-elems ul.crate > li:first-child > a"
 // PAGE: lib2/index.html
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
-assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar-crate > h2 > a", "lib2")
 assert-count: (".sidebar .location", 0)
 // We check that we have the crates list and that the "current" on is now "lib2".
 assert-text: (".sidebar-elems ul.crate > li.current > a", "lib2")
@@ -108,7 +108,7 @@ click: "#functions + .item-table .item-name > a"
 // In items containing no items (like functions or constants) and in modules, we have no
 // "location" elements. Only the crate and optional parent module.
 // This page, being directly below the crate, only has its heading.
-assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar-crate > h2 > a", "lib2")
 assert-count: (".sidebar .location", 0)
 assert-count: (".sidebar h2", 1)
 assert-text: (".sidebar-elems ul.block > li.current > a", "foobar")
@@ -117,7 +117,7 @@ assert-false: ".sidebar-elems > .crate"
 
 go-to: "./module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
-assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar-crate > h2 > a", "lib2")
 assert-text: (".sidebar .location", "Module module")
 assert-count: (".sidebar .location", 1)
 assert-text: (".sidebar-elems ul.block > li.current > a", "module")
@@ -126,8 +126,8 @@ assert-text: (".sidebar-elems ul.block > li.current > a", "module")
 //   - Module name, followed by TOC for module headings
 //   - "In crate [name]" parent pointer, followed by sibling navigation
 assert-count: (".sidebar h2", 3)
-assert-text: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2", "In crate lib2")
-assert-property: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2 > a", {
+assert-text: ("#rustdoc-modnav > section > h2", "In crate lib2")
+assert-property: ("#rustdoc-modnav > section > h2 > a", {
     "href": "/lib2/index.html",
 }, ENDS_WITH)
 // We check that we don't have the crate list.
@@ -135,10 +135,10 @@ assert-false: ".sidebar-elems > .crate"
 
 go-to: "./sub_module/sub_sub_module/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
-assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar-crate > h2 > a", "lib2")
 assert-text: (".sidebar .location", "Module sub_sub_module")
-assert-text: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2", "In lib2::module::sub_module")
-assert-property: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2 > a", {
+assert-text: ("#rustdoc-modnav > section > h2", "In lib2::module::sub_module")
+assert-property: ("#rustdoc-modnav > section > h2 > a", {
     "href": "/module/sub_module/index.html",
 }, ENDS_WITH)
 assert-text: (".sidebar-elems ul.block > li.current > a", "sub_sub_module")
@@ -170,14 +170,14 @@ assert-property: (".sidebar", {"clientWidth": "200"})
 
 // Checks that all.html and index.html have their sidebar link in the same place.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-store-property: (".sidebar .sidebar-crate h2 a", {
+store-property: (".sidebar-crate h2 a", {
     "clientWidth": index_sidebar_width,
     "clientHeight": index_sidebar_height,
     "offsetTop": index_sidebar_y,
     "offsetLeft": index_sidebar_x,
 })
 go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
-assert-property: (".sidebar .sidebar-crate h2 a", {
+assert-property: (".sidebar-crate h2 a", {
     "clientWidth": |index_sidebar_width|,
     "clientHeight": |index_sidebar_height|,
     "offsetTop": |index_sidebar_y|,
