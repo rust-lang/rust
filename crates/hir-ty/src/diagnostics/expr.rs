@@ -44,6 +44,9 @@ pub enum BodyValidationDiagnostic {
         match_expr: ExprId,
         uncovered_patterns: String,
     },
+    RemoveTrailingReturn {
+        return_expr: ExprId,
+    },
     RemoveUnnecessaryElse {
         if_expr: ExprId,
     },
@@ -75,6 +78,10 @@ impl ExprValidator {
         let body = db.body(self.owner);
         let mut filter_map_next_checker = None;
 
+        if matches!(self.owner, DefWithBodyId::FunctionId(_)) {
+            self.check_for_trailing_return(body.body_expr, &body);
+        }
+
         for (id, expr) in body.exprs.iter() {
             if let Some((variant, missed_fields, true)) =
                 record_literal_missing_fields(db, &self.infer, id, expr)
@@ -93,12 +100,16 @@ impl ExprValidator {
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr, &mut filter_map_next_checker);
                 }
+                Expr::Closure { body: body_expr, .. } => {
+                    self.check_for_trailing_return(*body_expr, &body);
+                }
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr, &body);
                 }
                 _ => {}
             }
         }
+
         for (id, pat) in body.pats.iter() {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
@@ -242,6 +253,38 @@ impl ExprValidator {
             *have_errors = true;
         }
         pattern
+    }
+
+    fn check_for_trailing_return(&mut self, body_expr: ExprId, body: &Body) {
+        match &body.exprs[body_expr] {
+            Expr::Block { statements, tail, .. } => {
+                let last_stmt = tail.or_else(|| match statements.last()? {
+                    Statement::Expr { expr, .. } => Some(*expr),
+                    _ => None,
+                });
+                if let Some(last_stmt) = last_stmt {
+                    self.check_for_trailing_return(last_stmt, body);
+                }
+            }
+            Expr::If { then_branch, else_branch, .. } => {
+                self.check_for_trailing_return(*then_branch, body);
+                if let Some(else_branch) = else_branch {
+                    self.check_for_trailing_return(*else_branch, body);
+                }
+            }
+            Expr::Match { arms, .. } => {
+                for arm in arms.iter() {
+                    let MatchArm { expr, .. } = arm;
+                    self.check_for_trailing_return(*expr, body);
+                }
+            }
+            Expr::Return { .. } => {
+                self.diagnostics.push(BodyValidationDiagnostic::RemoveTrailingReturn {
+                    return_expr: body_expr,
+                });
+            }
+            _ => (),
+        }
     }
 
     fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, body: &Body) {

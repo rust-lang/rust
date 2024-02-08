@@ -67,8 +67,9 @@ diagnostics![
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
-    ReplaceFilterMapNextWithFindMap,
+    RemoveTrailingReturn,
     RemoveUnnecessaryElse,
+    ReplaceFilterMapNextWithFindMap,
     TraitImplIncorrectSafety,
     TraitImplMissingAssocItems,
     TraitImplOrphan,
@@ -344,6 +345,11 @@ pub struct TraitImplRedundantAssocItems {
 }
 
 #[derive(Debug)]
+pub struct RemoveTrailingReturn {
+    pub return_expr: InFile<AstPtr<ast::ReturnExpr>>,
+}
+
+#[derive(Debug)]
 pub struct RemoveUnnecessaryElse {
     pub if_expr: InFile<AstPtr<ast::IfExpr>>,
 }
@@ -448,6 +454,19 @@ impl AnyDiagnostic {
                         }
                     }
                     Err(SyntheticSyntax) => (),
+                }
+            }
+            BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
+                if let Ok(source_ptr) = source_map.expr_syntax(return_expr) {
+                    // Filters out desugared return expressions (e.g. desugared try operators).
+                    if let Some(ptr) = source_ptr.value.cast::<ast::ReturnExpr>() {
+                        return Some(
+                            RemoveTrailingReturn {
+                                return_expr: InFile::new(source_ptr.file_id, ptr),
+                            }
+                            .into(),
+                        );
+                    }
                 }
             }
             BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr } => {

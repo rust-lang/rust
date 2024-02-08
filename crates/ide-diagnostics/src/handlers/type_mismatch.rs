@@ -186,7 +186,9 @@ fn str_ref_to_owned(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{
+        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_no_fix,
+    };
 
     #[test]
     fn missing_reference() {
@@ -718,7 +720,7 @@ struct Bar {
 
     #[test]
     fn return_no_value() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn f() -> i32 {
     return;
@@ -727,6 +729,7 @@ fn f() -> i32 {
 }
 fn g() { return; }
 "#,
+            std::iter::once("needless_return".to_string()),
         );
     }
 

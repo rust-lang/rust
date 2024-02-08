@@ -34,13 +34,35 @@ pub(crate) fn check_fixes(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>)
 
 #[track_caller]
 fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    check_nth_fix_with_config(config, nth, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+pub(crate) fn check_fix_with_disabled(
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    disabled: impl Iterator<Item = String>,
+) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    config.disabled.extend(disabled);
+    check_nth_fix_with_config(config, 0, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+fn check_nth_fix_with_config(
+    config: DiagnosticsConfig,
+    nth: usize,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+) {
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let mut conf = DiagnosticsConfig::test_sample();
-    conf.expr_fill_default = ExprFillDefaultMode::Default;
     let diagnostic =
-        super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
     let fix = &diagnostic

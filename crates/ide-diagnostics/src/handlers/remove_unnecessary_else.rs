@@ -87,11 +87,15 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
+
+    fn check_diagnostics_with_needless_return_disabled(ra_fixture: &str) {
+        check_diagnostics_with_disabled(ra_fixture, std::iter::once("needless_return".to_string()));
+    }
 
     #[test]
     fn remove_unnecessary_else_for_return() {
-        check_diagnostics(
+        check_diagnostics_with_needless_return_disabled(
             r#"
 fn test() {
     if foo {
@@ -126,7 +130,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_return2() {
-        check_diagnostics(
+        check_diagnostics_with_needless_return_disabled(
             r#"
 fn test() {
     if foo {
@@ -169,7 +173,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_return_in_child_if_expr() {
-        check_diagnostics(
+        check_diagnostics_with_needless_return_disabled(
             r#"
 fn test() {
     if foo {
@@ -371,7 +375,7 @@ fn test() {
 
     #[test]
     fn no_diagnostic_if_no_divergence_in_else_branch() {
-        check_diagnostics(
+        check_diagnostics_with_needless_return_disabled(
             r#"
 fn test() {
     if foo {
