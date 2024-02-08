@@ -847,6 +847,7 @@ impl DiagCtxt {
         self.struct_span_warn(span, msg).emit()
     }
 
+    #[track_caller]
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.struct_span_bug(span, msg).emit()
     }
