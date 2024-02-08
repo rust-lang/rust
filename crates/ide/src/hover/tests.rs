@@ -406,8 +406,8 @@ fn main() {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 631..866,
-                                focus_range: 692..698,
+                                full_range: 632..867,
+                                focus_range: 693..699,
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
@@ -7263,8 +7263,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6156..6364,
-                                focus_range: 6221..6227,
+                                full_range: 6157..6365,
+                                focus_range: 6222..6228,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -7277,8 +7277,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 6994..7460,
-                                focus_range: 7038..7046,
+                                full_range: 6995..7461,
+                                focus_range: 7039..7047,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
