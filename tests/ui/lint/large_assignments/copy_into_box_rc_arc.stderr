@@ -1,5 +1,5 @@
 error: moving 9999 bytes
-  --> $DIR/copy_into_box_rc_arc.rs:20:25
+  --> $DIR/copy_into_box_rc_arc.rs:23:25
    |
 LL |     let _ = NotBox::new(data);
    |                         ^^^^ value moved from here
@@ -12,7 +12,7 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 9999 bytes
-  --> $DIR/copy_into_box_rc_arc.rs:29:9
+  --> $DIR/copy_into_box_rc_arc.rs:34:9
    |
 LL | /         Self {
 LL | |             data,

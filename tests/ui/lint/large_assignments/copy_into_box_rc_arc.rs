@@ -17,6 +17,9 @@ fn main() {
     let _ = Arc::new(data); // OK!
     let _ = Box::new(data); // OK!
     let _ = Rc::new(data); // OK!
+
+    // Looking at --emit llvm-ir, we can see that a memcpy is involved in the
+    // parameter passing. So we want the lint to trigger here.
     let _ = NotBox::new(data); //~ ERROR large_assignments
 }
 
@@ -26,6 +29,8 @@ struct NotBox {
 
 impl NotBox {
     fn new(data: [u8; 9999]) -> Self {
+        // Looking at --emit llvm-ir, we can see that a memcpy is involved.
+        // So we want the lint to trigger here.
         Self { //~ ERROR large_assignments
             data,
         }
