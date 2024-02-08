@@ -156,3 +156,11 @@ fn issue11932() {
         x % 3 == 0
     };
 }
+
+fn issue_5794() {
+    let a = 0;
+    if !(12 == a) {} //~ ERROR: this boolean expression can be simplified
+    if !(a == 12) {} //~ ERROR: this boolean expression can be simplified
+    if !(12 != a) {} //~ ERROR: this boolean expression can be simplified
+    if !(a != 12) {} //~ ERROR: this boolean expression can be simplified
+}

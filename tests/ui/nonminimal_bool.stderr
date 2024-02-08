@@ -114,5 +114,29 @@ error: this boolean expression can be simplified
 LL |     if matches!(true, true) && true {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(true, true)`
 
-error: aborting due to 13 previous errors
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:162:8
+   |
+LL |     if !(12 == a) {}
+   |        ^^^^^^^^^^ help: try: `12 != a`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:163:8
+   |
+LL |     if !(a == 12) {}
+   |        ^^^^^^^^^^ help: try: `a != 12`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:164:8
+   |
+LL |     if !(12 != a) {}
+   |        ^^^^^^^^^^ help: try: `12 == a`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:165:8
+   |
+LL |     if !(a != 12) {}
+   |        ^^^^^^^^^^ help: try: `a == 12`
+
+error: aborting due to 17 previous errors
 

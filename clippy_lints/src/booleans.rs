@@ -85,6 +85,32 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body);
     }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if let ExprKind::Unary(UnOp::Not, sub) = expr.kind
+            && !expr.span.from_expansion()
+            && let ExprKind::Binary(op, left, right) = sub.kind
+        {
+            let new_op = match op.node {
+                BinOpKind::Eq => "!=",
+                BinOpKind::Ne => "==",
+                _ => return,
+            };
+            let Some(left) = snippet_opt(cx, left.span) else { return };
+            let Some(right) = snippet_opt(cx, right.span) else {
+                return;
+            };
+            span_lint_and_sugg(
+                cx,
+                NONMINIMAL_BOOL,
+                expr.span,
+                "this boolean expression can be simplified",
+                "try",
+                format!("{left} {new_op} {right}"),
+                Applicability::MachineApplicable,
+            );
+        }
+    }
 }
 struct NonminimalBoolVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
