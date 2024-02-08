@@ -11,8 +11,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub mod ast_validation;
 mod errors;

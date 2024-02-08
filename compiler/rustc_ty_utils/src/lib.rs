@@ -15,8 +15,6 @@
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
