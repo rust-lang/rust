@@ -30,14 +30,19 @@ enum FunctionKind {
 }
 
 impl FunctionKind {
-    fn applicability(&self, parent_unwrap_call: &Option<Span>) -> Applicability {
-        if parent_unwrap_call.is_none() {
-            return Applicability::Unspecified;
-        }
+    fn appl_sugg(&self, parent_unwrap_call: Option<Span>, primary_span: Span) -> (Applicability, Vec<(Span, String)>) {
+        let Some(unwrap_span) = parent_unwrap_call else {
+            return (Applicability::Unspecified, self.default_sugg(primary_span));
+        };
 
         match &self {
-            FunctionKind::TryFromFunction(None) | FunctionKind::TryIntoFunction(None) => Applicability::Unspecified,
-            _ => Applicability::MachineApplicable,
+            FunctionKind::TryFromFunction(None) | FunctionKind::TryIntoFunction(None) => {
+                (Applicability::Unspecified, self.default_sugg(primary_span))
+            },
+            _ => (
+                Applicability::MachineApplicable,
+                self.machine_applicable_sugg(primary_span, unwrap_span),
+            ),
         }
     }
 
@@ -123,13 +128,7 @@ fn check<'tcx>(
             FunctionKind::TryFromFunction(_) => (other_ty, self_ty),
         };
 
-        let applicability = kind.applicability(&parent_unwrap_call);
-
-        let sugg = if applicability == Applicability::MachineApplicable {
-            kind.machine_applicable_sugg(primary_span, parent_unwrap_call.unwrap())
-        } else {
-            kind.default_sugg(primary_span)
-        };
+        let (applicability, sugg) = kind.appl_sugg(parent_unwrap_call, primary_span);
 
         span_lint_and_then(
             cx,
