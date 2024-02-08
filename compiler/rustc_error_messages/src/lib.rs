@@ -3,8 +3,6 @@
 #![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]
