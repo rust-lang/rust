@@ -32,6 +32,7 @@ use crate::clean::{
     self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, ItemId,
     PrimitiveType,
 };
+use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
@@ -581,22 +582,11 @@ fn generate_macro_def_id_path(
     cx: &Context<'_>,
     root_path: Option<&str>,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
-    let tcx = cx.shared.tcx;
+    let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
 
-    let fqp: Vec<Symbol> = tcx
-        .def_path(def_id)
-        .data
-        .into_iter()
-        .filter_map(|elem| {
-            // extern blocks (and a few others things) have an empty name.
-            match elem.data.get_opt_name() {
-                Some(s) if !s.is_empty() => Some(s),
-                _ => None,
-            }
-        })
-        .collect();
+    let fqp = clean::inline::item_relative_path(tcx, def_id);
     let mut relative = fqp.iter().copied();
     let cstore = CStore::from_tcx(tcx);
     // We need this to prevent a `panic` when this function is used from intra doc links...
@@ -651,76 +641,82 @@ fn generate_macro_def_id_path(
     Ok((url, ItemType::Macro, fqp))
 }
 
-pub(crate) fn href_with_root_path(
-    did: DefId,
+fn generate_item_def_id_path(
+    mut def_id: DefId,
+    original_def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
+    original_def_kind: DefKind,
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    use crate::rustc_trait_selection::infer::TyCtxtInferExt;
+    use crate::rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+    use rustc_middle::traits::ObligationCause;
+
     let tcx = cx.tcx();
-    let def_kind = tcx.def_kind(did);
-    let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
-            // documented on their parent's page
-            tcx.parent(did)
-        }
-        DefKind::ExternCrate => {
-            // Link to the crate itself, not the `extern crate` item.
-            if let Some(local_did) = did.as_local() {
-                tcx.extern_mod_stmt_cnum(local_did).unwrap_or(LOCAL_CRATE).as_def_id()
-            } else {
-                did
-            }
-        }
-        _ => did,
-    };
-    let cache = cx.cache();
-    let relative_to = &cx.current;
-    fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
-        if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
+    let crate_name = tcx.crate_name(def_id.krate);
+
+    // No need to try to infer the actual parent item if it's not an associated item from the `impl`
+    // block.
+    if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
+        let infcx = tcx.infer_ctxt().build();
+        def_id = infcx
+            .at(&ObligationCause::dummy(), tcx.param_env(def_id))
+            .query_normalize(ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()))
+            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value))
+            .ok()
+            .and_then(|normalized| normalized.skip_binder().ty_adt_def())
+            .map(|adt| adt.did())
+            .unwrap_or(def_id);
     }
 
-    if !did.is_local()
-        && !cache.effective_visibilities.is_directly_public(tcx, did)
-        && !cache.document_private
-        && !cache.primitive_locations.values().any(|&id| id == did)
-    {
-        return Err(HrefError::Private);
-    }
+    let relative = clean::inline::item_relative_path(tcx, def_id);
+    let fqp: Vec<Symbol> = once(crate_name).chain(relative).collect();
 
+    let def_kind = tcx.def_kind(def_id);
+    let shortty = def_kind.into();
+    let module_fqp = to_module_fqp(shortty, &fqp);
     let mut is_remote = false;
-    let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (fqp, shortty, {
-            let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-            debug!(?fqp, ?shortty, ?module_fqp);
-            href_relative_parts(module_fqp, relative_to).collect()
-        }),
-        None => {
-            if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&did) {
-                let module_fqp = to_module_fqp(shortty, fqp);
-                (
-                    fqp,
-                    shortty,
-                    match cache.extern_locations[&did.krate] {
-                        ExternalLocation::Remote(ref s) => {
-                            is_remote = true;
-                            let s = s.trim_end_matches('/');
-                            let mut builder = UrlPartsBuilder::singleton(s);
-                            builder.extend(module_fqp.iter().copied());
-                            builder
-                        }
-                        ExternalLocation::Local => {
-                            href_relative_parts(module_fqp, relative_to).collect()
-                        }
-                        ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
-                    },
-                )
-            } else if matches!(def_kind, DefKind::Macro(_)) {
-                return generate_macro_def_id_path(did, cx, root_path);
-            } else {
-                return Err(HrefError::NotInExternalCache);
-            }
+
+    let url_parts = url_parts(cx.cache(), def_id, &module_fqp, &cx.current, &mut is_remote)?;
+    let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
+    if def_id == original_def_id {
+        return Ok((url_parts, shortty, fqp));
+    }
+    let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+    Ok((format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id)), shortty, fqp))
+}
+
+fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
+    if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
+}
+
+fn url_parts(
+    cache: &Cache,
+    def_id: DefId,
+    module_fqp: &[Symbol],
+    relative_to: &[Symbol],
+    is_remote: &mut bool,
+) -> Result<UrlPartsBuilder, HrefError> {
+    match cache.extern_locations[&def_id.krate] {
+        ExternalLocation::Remote(ref s) => {
+            *is_remote = true;
+            let s = s.trim_end_matches('/');
+            let mut builder = UrlPartsBuilder::singleton(s);
+            builder.extend(module_fqp.iter().copied());
+            Ok(builder)
         }
-    };
+        ExternalLocation::Local => Ok(href_relative_parts(module_fqp, relative_to).collect()),
+        ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
+    }
+}
+
+fn make_href(
+    root_path: Option<&str>,
+    shortty: ItemType,
+    mut url_parts: UrlPartsBuilder,
+    fqp: &[Symbol],
+    is_remote: bool,
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     if !is_remote && let Some(root_path) = root_path {
         let root = root_path.trim_end_matches('/');
         url_parts.push_front(root);
@@ -737,6 +733,76 @@ pub(crate) fn href_with_root_path(
         }
     }
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
+}
+
+pub(crate) fn href_with_root_path(
+    original_did: DefId,
+    cx: &Context<'_>,
+    root_path: Option<&str>,
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    let tcx = cx.tcx();
+    let def_kind = tcx.def_kind(original_did);
+    let did = match def_kind {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            // documented on their parent's page
+            tcx.parent(original_did)
+        }
+        // If this a constructor, we get the parent (either a struct or a variant) and then
+        // generate the link for this item.
+        DefKind::Ctor(..) => return href_with_root_path(tcx.parent(original_did), cx, root_path),
+        DefKind::ExternCrate => {
+            // Link to the crate itself, not the `extern crate` item.
+            if let Some(local_did) = original_did.as_local() {
+                tcx.extern_mod_stmt_cnum(local_did).unwrap_or(LOCAL_CRATE).as_def_id()
+            } else {
+                original_did
+            }
+        }
+        _ => original_did,
+    };
+    let cache = cx.cache();
+    let relative_to = &cx.current;
+
+    if !original_did.is_local() {
+        // If we are generating an href for the "jump to def" feature, then the only case we want
+        // to ignore is if the item is `doc(hidden)` because we can't link to it.
+        if root_path.is_some() {
+            if tcx.is_doc_hidden(original_did) {
+                return Err(HrefError::Private);
+            }
+        } else if !cache.effective_visibilities.is_directly_public(tcx, did)
+            && !cache.document_private
+            && !cache.primitive_locations.values().any(|&id| id == did)
+        {
+            return Err(HrefError::Private);
+        }
+    }
+
+    let mut is_remote = false;
+    let (fqp, shortty, url_parts) = match cache.paths.get(&did) {
+        Some(&(ref fqp, shortty)) => (fqp, shortty, {
+            let module_fqp = to_module_fqp(shortty, fqp.as_slice());
+            debug!(?fqp, ?shortty, ?module_fqp);
+            href_relative_parts(module_fqp, relative_to).collect()
+        }),
+        None => {
+            // Associated items are handled differently with "jump to def". The anchor is generated
+            // directly here whereas for intra-doc links, we have some extra computation being
+            // performed there.
+            let def_id_to_get = if root_path.is_some() { original_did } else { did };
+            if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
+                let module_fqp = to_module_fqp(shortty, fqp);
+                (fqp, shortty, url_parts(cache, did, module_fqp, relative_to, &mut is_remote)?)
+            } else if matches!(def_kind, DefKind::Macro(_)) {
+                return generate_macro_def_id_path(did, cx, root_path);
+            } else if did.is_local() {
+                return Err(HrefError::Private);
+            } else {
+                return generate_item_def_id_path(did, original_did, cx, root_path, def_kind);
+            }
+        }
+    };
+    make_href(root_path, shortty, url_parts, fqp, is_remote)
 }
 
 pub(crate) fn href(
