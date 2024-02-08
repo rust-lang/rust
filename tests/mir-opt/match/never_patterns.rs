@@ -4,7 +4,7 @@
 
 enum Void {}
 
-// EMIT_MIR never_patterns.opt1.UninhabitedEnumBranching.before.mir
+// EMIT_MIR never_patterns.opt1.built.after.mir
 fn opt1(res: &Result<u32, Void>) -> &u32 {
     match res {
         Ok(x) => x,
