@@ -63,7 +63,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             self.inner.drain(..n);
             0
         };
-        NonZero::<usize>::new(rem).map_or(Ok(()), Err)
+        NonZero::new(rem).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -192,7 +192,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             self.inner.truncate(len - n);
             0
         };
-        NonZero::<usize>::new(rem).map_or(Ok(()), Err)
+        NonZero::new(rem).map_or(Ok(()), Err)
     }
 
     fn try_rfold<B, F, R>(&mut self, mut init: B, mut f: F) -> R

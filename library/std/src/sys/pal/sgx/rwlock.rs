@@ -53,8 +53,7 @@ impl RwLock {
         // Another thread has passed the lock to us
         } else {
             // No waiting writers, acquire the read lock
-            *rguard.lock_var_mut() =
-                NonZero::<usize>::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
+            *rguard.lock_var_mut() = NonZero::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
         }
     }
 
@@ -68,8 +67,7 @@ impl RwLock {
             false
         } else {
             // No waiting writers, acquire the read lock
-            *rguard.lock_var_mut() =
-                NonZero::<usize>::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
+            *rguard.lock_var_mut() = NonZero::new(rguard.lock_var().map_or(0, |n| n.get()) + 1);
             true
         }
     }
@@ -111,7 +109,7 @@ impl RwLock {
         mut rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZero<usize>>>>,
         wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
-        *rguard.lock_var_mut() = NonZero::<usize>::new(rguard.lock_var().unwrap().get() - 1);
+        *rguard.lock_var_mut() = NonZero::new(rguard.lock_var().unwrap().get() - 1);
         if rguard.lock_var().is_some() {
             // There are other active readers
         } else {

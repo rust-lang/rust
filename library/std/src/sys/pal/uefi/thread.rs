@@ -46,7 +46,7 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // UEFI is single threaded
-    Ok(NonZero::<usize>::new(1).unwrap())
+    Ok(NonZero::new(1).unwrap())
 }
 
 pub mod guard {

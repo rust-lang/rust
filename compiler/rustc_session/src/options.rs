@@ -1007,7 +1007,7 @@ mod parse {
                 }
             },
             None => {
-                *slot = NonZero::<usize>::new(1);
+                *slot = NonZero::new(1);
                 true
             }
         }

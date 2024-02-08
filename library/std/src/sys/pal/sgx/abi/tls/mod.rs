@@ -38,7 +38,7 @@ impl Key {
     }
 
     fn from_index(index: usize) -> Self {
-        Key(NonZero::<usize>::new(index + 1).unwrap())
+        Key(NonZero::new(index + 1).unwrap())
     }
 
     pub fn as_usize(self) -> usize {
@@ -46,7 +46,7 @@ impl Key {
     }
 
     pub fn from_usize(index: usize) -> Self {
-        Key(NonZero::<usize>::new(index).unwrap())
+        Key(NonZero::new(index).unwrap())
     }
 }
 

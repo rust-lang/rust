@@ -134,7 +134,7 @@ impl Thread {
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
-    Ok(unsafe { NonZero::<usize>::new_unchecked(1) })
+    Ok(unsafe { NonZero::new_unchecked(1) })
 }
 
 pub mod guard {

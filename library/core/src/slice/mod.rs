@@ -1086,7 +1086,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        let size = NonZero::<usize>::new(size).expect("window size must be non-zero");
+        let size = NonZero::new(size).expect("window size must be non-zero");
         Windows::new(self, size)
     }
 

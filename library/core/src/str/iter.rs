@@ -96,7 +96,7 @@ impl<'a> Iterator for Chars<'a> {
             unsafe { self.iter.advance_by(slurp).unwrap_unchecked() };
         }
 
-        NonZero::<usize>::new(remainder).map_or(Ok(()), Err)
+        NonZero::new(remainder).map_or(Ok(()), Err)
     }
 
     #[inline]

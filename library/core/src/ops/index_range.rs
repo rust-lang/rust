@@ -132,7 +132,7 @@ impl Iterator for IndexRange {
     #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_prefix(n);
-        NonZero::<usize>::new(n - taken.len()).map_or(Ok(()), Err)
+        NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
 }
 
@@ -150,7 +150,7 @@ impl DoubleEndedIterator for IndexRange {
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         let taken = self.take_suffix(n);
-        NonZero::<usize>::new(n - taken.len()).map_or(Ok(()), Err)
+        NonZero::new(n - taken.len()).map_or(Ok(()), Err)
     }
 }
 

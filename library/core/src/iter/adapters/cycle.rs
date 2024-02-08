@@ -97,7 +97,7 @@ where
             };
         }
 
-        NonZero::<usize>::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,

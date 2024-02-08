@@ -137,7 +137,7 @@ thread_local! {
         names: fxhash::FxHashMap::default(),
         strings: Vec::new(),
         // Start with a base of 1 to make sure that `NonZeroU32` works.
-        sym_base: NonZero::<u32>::new(1).unwrap(),
+        sym_base: NonZero::new(1).unwrap(),
     });
 }
 

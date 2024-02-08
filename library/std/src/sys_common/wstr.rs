@@ -26,7 +26,7 @@ impl WStrUnits<'_> {
     pub fn peek(&self) -> Option<NonZero<u16>> {
         // SAFETY: It's always safe to read the current item because we don't
         // ever move out of the array's bounds.
-        unsafe { NonZero::<u16>::new(*self.lpwstr.as_ptr()) }
+        unsafe { NonZero::new(*self.lpwstr.as_ptr()) }
     }
 
     /// Advance the iterator while `predicate` returns true.

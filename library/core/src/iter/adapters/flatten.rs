@@ -200,7 +200,7 @@ where
 #[rustc_specialization_trait]
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe trait BoundedSize {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::<usize>::new(1);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -217,11 +217,11 @@ unsafe impl<T> BoundedSize for Once<T> {}
 unsafe impl<T> BoundedSize for OnceWith<T> {}
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T, const N: usize> BoundedSize for [T; N] {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::<usize>::new(N);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T, const N: usize> BoundedSize for array::IntoIter<T, N> {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::<usize>::new(N);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize, P> BoundedSize for Filter<I, P> {
@@ -680,9 +680,7 @@ where
         }
 
         match self.iter_try_fold(n, advance) {
-            ControlFlow::Continue(remaining) => {
-                NonZero::<usize>::new(remaining).map_or(Ok(()), Err)
-            }
+            ControlFlow::Continue(remaining) => NonZero::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }
@@ -772,9 +770,7 @@ where
         }
 
         match self.iter_try_rfold(n, advance) {
-            ControlFlow::Continue(remaining) => {
-                NonZero::<usize>::new(remaining).map_or(Ok(()), Err)
-            }
+            ControlFlow::Continue(remaining) => NonZero::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }

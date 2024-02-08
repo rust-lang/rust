@@ -4,7 +4,7 @@ use std::mem::size_of;
 
 #[test]
 fn test_create_nonzero_instance() {
-    let _a = unsafe { NonZero::<u32>::new_unchecked(21) };
+    let _a = unsafe { NonZero::new_unchecked(21) };
 }
 
 #[test]
@@ -18,12 +18,12 @@ fn test_match_on_nonzero_option() {
     let a = Some(unsafe { NonZero::<u32>::new_unchecked(42) });
     match a {
         Some(val) => assert_eq!(val.get(), 42),
-        None => panic!("unexpected None while matching on Some(NonZeroU32(_))"),
+        None => panic!("unexpected None while matching on Some(NonZero(_))"),
     }
 
     match unsafe { Some(NonZero::<u32>::new_unchecked(43)) } {
         Some(val) => assert_eq!(val.get(), 43),
-        None => panic!("unexpected None while matching on Some(NonZeroU32(_))"),
+        None => panic!("unexpected None while matching on Some(NonZero(_))"),
     }
 }
 
@@ -93,7 +93,7 @@ mod atom {
         index: NonZero<u32>, // private
     }
 
-    pub const FOO_ATOM: Atom = Atom { index: unsafe { NonZero::<u32>::new_unchecked(7) } };
+    pub const FOO_ATOM: Atom = Atom { index: unsafe { NonZero::new_unchecked(7) } };
 }
 
 macro_rules! atom {
@@ -113,21 +113,21 @@ fn test_match_nonzero_const_pattern() {
 
 #[test]
 fn test_from_nonzero() {
-    let nz = NonZero::<u32>::new(1).unwrap();
+    let nz = NonZero::new(1).unwrap();
     let num: u32 = nz.into();
     assert_eq!(num, 1u32);
 }
 
 #[test]
 fn test_from_signed_nonzero() {
-    let nz = NonZero::<i32>::new(1).unwrap();
+    let nz = NonZero::new(1).unwrap();
     let num: i32 = nz.into();
     assert_eq!(num, 1i32);
 }
 
 #[test]
 fn test_from_str() {
-    assert_eq!("123".parse::<NonZero<u8>>(), Ok(NonZero::<u8>::new(123).unwrap()));
+    assert_eq!("123".parse::<NonZero<u8>>(), Ok(NonZero::new(123).unwrap()));
     assert_eq!(
         "0".parse::<NonZero<u8>>().err().map(|e| e.kind().clone()),
         Some(IntErrorKind::Zero)
@@ -148,8 +148,8 @@ fn test_from_str() {
 
 #[test]
 fn test_nonzero_bitor() {
-    let nz_alt = NonZero::<u8>::new(0b1010_1010).unwrap();
-    let nz_low = NonZero::<u8>::new(0b0000_1111).unwrap();
+    let nz_alt = NonZero::new(0b1010_1010).unwrap();
+    let nz_low = NonZero::new(0b0000_1111).unwrap();
 
     let both_nz: NonZero<u8> = nz_alt | nz_low;
     assert_eq!(both_nz.get(), 0b1010_1111);
@@ -171,7 +171,7 @@ fn test_nonzero_bitor() {
 fn test_nonzero_bitor_assign() {
     let mut target = NonZero::<u8>::new(0b1010_1010).unwrap();
 
-    target |= NonZero::<u8>::new(0b0000_1111).unwrap();
+    target |= NonZero::new(0b0000_1111).unwrap();
     assert_eq!(target.get(), 0b1010_1111);
 
     target |= 0b0001_0000;
@@ -183,11 +183,11 @@ fn test_nonzero_bitor_assign() {
 
 #[test]
 fn test_nonzero_from_int_on_success() {
-    assert_eq!(NonZero::<u8>::try_from(5), Ok(NonZero::<u8>::new(5).unwrap()));
-    assert_eq!(NonZero::<u32>::try_from(5), Ok(NonZero::<u32>::new(5).unwrap()));
+    assert_eq!(NonZero::<u8>::try_from(5), Ok(NonZero::new(5).unwrap()));
+    assert_eq!(NonZero::<u32>::try_from(5), Ok(NonZero::new(5).unwrap()));
 
-    assert_eq!(NonZero::<i8>::try_from(-5), Ok(NonZero::<i8>::new(-5).unwrap()));
-    assert_eq!(NonZero::<i32>::try_from(-5), Ok(NonZero::<i32>::new(-5).unwrap()));
+    assert_eq!(NonZero::<i8>::try_from(-5), Ok(NonZero::new(-5).unwrap()));
+    assert_eq!(NonZero::<i32>::try_from(-5), Ok(NonZero::new(-5).unwrap()));
 }
 
 #[test]
@@ -204,15 +204,15 @@ fn nonzero_const() {
     // test that the methods of `NonZeroX>` are usable in a const context
     // Note: only tests NonZero<u8>
 
-    const NONZERO_U8: NonZero<u8> = unsafe { NonZero::<u8>::new_unchecked(5) };
+    const NONZERO_U8: NonZero<u8> = unsafe { NonZero::new_unchecked(5) };
 
     const GET: u8 = NONZERO_U8.get();
     assert_eq!(GET, 5);
 
-    const ZERO: Option<NonZero<u8>> = NonZero::<u8>::new(0);
+    const ZERO: Option<NonZero<u8>> = NonZero::new(0);
     assert!(ZERO.is_none());
 
-    const ONE: Option<NonZero<u8>> = NonZero::<u8>::new(1);
+    const ONE: Option<NonZero<u8>> = NonZero::new(1);
     assert!(ONE.is_some());
 
     /* FIXME(#110395)
@@ -323,7 +323,7 @@ fn nonzero_trailing_zeros() {
 
 #[test]
 fn test_nonzero_uint_div() {
-    let nz = NonZero::<u32>::new(1).unwrap();
+    let nz = NonZero::new(1).unwrap();
 
     let x: u32 = 42u32 / nz;
     assert_eq!(x, 42u32);
@@ -331,7 +331,7 @@ fn test_nonzero_uint_div() {
 
 #[test]
 fn test_nonzero_uint_rem() {
-    let nz = NonZero::<u32>::new(10).unwrap();
+    let nz = NonZero::new(10).unwrap();
 
     let x: u32 = 42u32 % nz;
     assert_eq!(x, 2u32);

@@ -761,7 +761,7 @@ where
                 };
                 tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
-                    fields: match NonZero::<usize>::new(fields) {
+                    fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
                         None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
                     },

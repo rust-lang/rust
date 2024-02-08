@@ -30,7 +30,7 @@ macro_rules! declare_id {
         impl SyncId for $name {
             // Panics if `id == 0`.
             fn from_u32(id: u32) -> Self {
-                Self(std::num::NonZero::<u32>::new(id).unwrap())
+                Self(std::num::NonZero::new(id).unwrap())
             }
             fn to_u32(&self) -> u32 {
                 self.0.get()
@@ -43,7 +43,7 @@ macro_rules! declare_id {
                 // therefore, need to shift by one when converting from an index
                 // into a vector.
                 let shifted_idx = u32::try_from(idx).unwrap().checked_add(1).unwrap();
-                $name(std::num::NonZero::<u32>::new(shifted_idx).unwrap())
+                $name(std::num::NonZero::new(shifted_idx).unwrap())
             }
             fn index(self) -> usize {
                 // See the comment in `Self::new`.

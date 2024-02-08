@@ -121,7 +121,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             io::ErrorKind::NotFound,
             "The number of hardware threads is not known for the target platform",
         )),
-        cpus => Ok(unsafe { NonZero::<usize>::new_unchecked(cpus) }),
+        cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }
 

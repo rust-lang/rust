@@ -411,7 +411,7 @@ fn result_try_trait_v2_branch() {
 
     assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
     assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));
-    let one = NonZero::<u32>::new(1).unwrap();
+    let one = NonZero::new(1).unwrap();
     assert_eq!(Ok::<(), NonZero<u32>>(()).branch(), Continue(()));
     assert_eq!(Err::<(), NonZero<u32>>(one).branch(), Break(Err(one)));
     assert_eq!(Ok::<NonZero<u32>, ()>(one).branch(), Continue(one));
