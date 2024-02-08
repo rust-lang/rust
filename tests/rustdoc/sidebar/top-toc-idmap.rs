@@ -16,11 +16,11 @@
 
 //@ has foo/index.html
 // User header
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#structs"]' 'Structs'
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#structs"]' 'Structs'
 //@ has - '//details[@class="toggle top-doc"]/div[@class="docblock"]/h2[@id="structs"]' 'Structs'
 // Built-in header
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block"]/li/a[@href="#structs-1"]' 'Structs'
-//@ has - '//section[@id="main-content"]/h2[@id="structs-1"]' 'Structs'
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block"]/li/a[@href="#structs-1"]' 'Structs'
+//@ has - '//section[@id="main-content"]//h2[@id="structs-1"]' 'Structs'
 
 /// # Fields
 /// ## Fields
@@ -31,12 +31,12 @@
 
 //@ has foo/struct.MyStruct.html
 // User header
-//@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#fields-1"]' 'Fields'
+//@ has - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]/li/a[@href="#fields-1"]' 'Fields'
 //@ has - '//details[@class="toggle top-doc"]/div[@class="docblock"]/h2[@id="fields-1"]' 'Fields'
 // Only one level of nesting
-//@ count - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]//a' 2
+//@ count - '//div[@id="rustdoc-toc"]//ul[@class="block top-toc"]//a' 2
 // Built-in header
-//@ has - '//section[@id="rustdoc-toc"]/h3/a[@href="#fields"]' 'Fields'
+//@ has - '//div[@id="rustdoc-toc"]//h3/a[@href="#fields"]' 'Fields'
 //@ has - '//section[@id="main-content"]/h2[@id="fields"]' 'Fields'
 
 pub struct MyStruct {
