@@ -23,7 +23,6 @@ pub mod locks;
 pub mod memchr;
 pub mod net;
 pub mod os;
-pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
@@ -210,7 +209,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // yielded the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
+pub fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> crate::io::Result<T>
 where
     F1: FnMut(*mut u16, c::DWORD) -> c::DWORD,
     F2: FnOnce(&[u16]) -> T,
@@ -274,7 +273,7 @@ where
     }
 }
 
-fn os2path(s: &[u16]) -> PathBuf {
+pub fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
 
