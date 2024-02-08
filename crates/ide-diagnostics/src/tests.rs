@@ -91,6 +91,16 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
 }
 
 #[track_caller]
+pub(crate) fn check_diagnostics_with_disabled(
+    ra_fixture: &str,
+    disabled: impl Iterator<Item = String>,
+) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.disabled.extend(disabled);
+    check_diagnostics_with_config(config, ra_fixture)
+}
+
+#[track_caller]
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixture: &str) {
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     let mut annotations = files

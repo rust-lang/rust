@@ -86,7 +86,7 @@ pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 
     #[test]
     fn unused_mut_simple() {
@@ -428,7 +428,7 @@ fn main() {
 }
 "#,
         );
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 enum X {}
 fn g() -> X {
@@ -448,8 +448,9 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_string()),
         );
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn main(b: bool) {
     if b {
@@ -462,6 +463,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_string()),
         );
     }
 
