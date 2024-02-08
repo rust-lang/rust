@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
+use rustc_hir::{GenericArg, GenericArgs};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
@@ -379,7 +379,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut arg_count = check_generic_arg_count(
             tcx,
-            span,
             def_id,
             seg,
             generics,
@@ -773,9 +772,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 speculative,
                 &mut dup_bindings,
                 binding.span,
-                constness,
                 only_self_bounds,
-                polarity,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -2493,7 +2490,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opaque_ty = tcx.hir().item(item_id);
 
                 match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { origin, .. }) => {
+                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { .. }) => {
                         let local_def_id = item_id.owner_id.def_id;
                         // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
                         // generate the def_id of an associated type for the trait and return as
@@ -2503,7 +2500,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             local_def_id.to_def_id()
                         };
-                        self.impl_trait_ty_to_ty(def_id, lifetimes, origin, in_trait)
+                        self.impl_trait_ty_to_ty(def_id, lifetimes, in_trait)
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
@@ -2559,7 +2556,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         def_id: DefId,
         lifetimes: &[hir::GenericArg<'_>],
-        origin: OpaqueTyOrigin,
         in_trait: bool,
     ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
