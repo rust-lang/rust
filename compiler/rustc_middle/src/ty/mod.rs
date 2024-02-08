@@ -40,7 +40,6 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -2096,8 +2095,8 @@ pub fn provide(providers: &mut Providers) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
-    pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
-    pub incoherent_impls: UnordMap<SimplifiedType, Vec<LocalDefId>>,
+    pub inherent_impls: FxIndexMap<LocalDefId, Vec<DefId>>,
+    pub incoherent_impls: FxIndexMap<SimplifiedType, Vec<LocalDefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
