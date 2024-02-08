@@ -1052,6 +1052,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
+        // `self.value` is equivalent to `self.skip_binder()`
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 

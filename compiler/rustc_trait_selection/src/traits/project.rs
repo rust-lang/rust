@@ -250,8 +250,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
     let infcx = selcx.infcx;
     let r = infcx.commit_if_ok(|_snapshot| {
         let old_universe = infcx.universe();
-        let placeholder_predicate =
-            infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_predicate = infcx.enter_forall_and_leak_universe(obligation.predicate);
         let new_universe = infcx.universe();
 
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);

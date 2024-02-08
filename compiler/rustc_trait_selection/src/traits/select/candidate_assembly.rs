@@ -728,64 +728,63 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-            let placeholder_trait_predicate =
-                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
-
-            let self_ty = placeholder_trait_predicate.self_ty();
-            let principal_trait_ref = match self_ty.kind() {
-                ty::Dynamic(data, ..) => {
-                    if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
-                        debug!(
-                            "assemble_candidates_from_object_ty: matched builtin bound, \
+            self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
+                let self_ty = placeholder_trait_predicate.self_ty();
+                let principal_trait_ref = match self_ty.kind() {
+                    ty::Dynamic(data, ..) => {
+                        if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
+                            debug!(
+                                "assemble_candidates_from_object_ty: matched builtin bound, \
                              pushing candidate"
-                        );
-                        candidates.vec.push(BuiltinObjectCandidate);
-                        return;
-                    }
-
-                    if let Some(principal) = data.principal() {
-                        if !self.infcx.tcx.features().object_safe_for_dispatch {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else {
+                            );
+                            candidates.vec.push(BuiltinObjectCandidate);
                             return;
                         }
-                    } else {
-                        // Only auto trait bounds exist.
+
+                        if let Some(principal) = data.principal() {
+                            if !self.infcx.tcx.features().object_safe_for_dispatch {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else if self.tcx().check_is_object_safe(principal.def_id()) {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else {
+                                return;
+                            }
+                        } else {
+                            // Only auto trait bounds exist.
+                            return;
+                        }
+                    }
+                    ty::Infer(ty::TyVar(_)) => {
+                        debug!("assemble_candidates_from_object_ty: ambiguous");
+                        candidates.ambiguous = true; // could wind up being an object type
                         return;
                     }
-                }
-                ty::Infer(ty::TyVar(_)) => {
-                    debug!("assemble_candidates_from_object_ty: ambiguous");
-                    candidates.ambiguous = true; // could wind up being an object type
-                    return;
-                }
-                _ => return,
-            };
+                    _ => return,
+                };
 
-            debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
+                debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
 
-            // Count only those upcast versions that match the trait-ref
-            // we are looking for. Specifically, do not only check for the
-            // correct trait, but also the correct type parameters.
-            // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
-            // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
-                .enumerate()
-                .filter(|&(_, upcast_trait_ref)| {
-                    self.infcx.probe(|_| {
-                        self.match_normalize_trait_ref(
-                            obligation,
-                            upcast_trait_ref,
-                            placeholder_trait_predicate.trait_ref,
-                        )
-                        .is_ok()
+                // Count only those upcast versions that match the trait-ref
+                // we are looking for. Specifically, do not only check for the
+                // correct trait, but also the correct type parameters.
+                // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
+                // but `Foo` is declared as `trait Foo: Bar<u32>`.
+                let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
+                    .enumerate()
+                    .filter(|&(_, upcast_trait_ref)| {
+                        self.infcx.probe(|_| {
+                            self.match_normalize_trait_ref(
+                                obligation,
+                                upcast_trait_ref,
+                                placeholder_trait_predicate.trait_ref,
+                            )
+                            .is_ok()
+                        })
                     })
-                })
-                .map(|(idx, _)| ObjectCandidate(idx));
+                    .map(|(idx, _)| ObjectCandidate(idx));
 
-            candidates.vec.extend(candidate_supertraits);
+                candidates.vec.extend(candidate_supertraits);
+            })
         })
     }
 

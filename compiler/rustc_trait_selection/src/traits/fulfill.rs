@@ -358,8 +358,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..) => {
-                    let pred =
-                        ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
+                    let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe(binder));
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,

@@ -31,103 +31,108 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
-        let trait_goal = Goal::new(
-            self.tcx,
-            obligation.param_env,
-            self.instantiate_binder_with_placeholders(obligation.predicate),
-        );
+        self.enter_forall(obligation.predicate, |pred| {
+            let trait_goal = Goal::new(self.tcx, obligation.param_env, pred);
 
-        let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::Never, |ecx| {
-            let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
-            let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
-            let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
+            let (result, _) = EvalCtxt::enter_root(self, GenerateProofTree::Never, |ecx| {
+                let goal = Goal::new(ecx.tcx(), trait_goal.param_env, trait_goal.predicate);
+                let (orig_values, canonical_goal) = ecx.canonicalize_goal(goal);
+                let mut candidates = ecx.compute_canonical_trait_candidates(canonical_goal);
 
-            // pseudo-winnow
-            if candidates.len() == 0 {
-                return Err(SelectionError::Unimplemented);
-            } else if candidates.len() > 1 {
-                let mut i = 0;
-                while i < candidates.len() {
-                    let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                        candidate_should_be_dropped_in_favor_of(
-                            ecx.tcx(),
-                            &candidates[i],
-                            &candidates[j],
-                        )
-                    });
-                    if should_drop_i {
-                        candidates.swap_remove(i);
-                    } else {
-                        i += 1;
-                        if i > 1 {
-                            return Ok(None);
+                // pseudo-winnow
+                if candidates.len() == 0 {
+                    return Err(SelectionError::Unimplemented);
+                } else if candidates.len() > 1 {
+                    let mut i = 0;
+                    while i < candidates.len() {
+                        let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
+                            candidate_should_be_dropped_in_favor_of(
+                                ecx.tcx(),
+                                &candidates[i],
+                                &candidates[j],
+                            )
+                        });
+                        if should_drop_i {
+                            candidates.swap_remove(i);
+                        } else {
+                            i += 1;
+                            if i > 1 {
+                                return Ok(None);
+                            }
                         }
                     }
                 }
+
+                let candidate = candidates.pop().unwrap();
+                let (certainty, nested_goals) = ecx
+                    .instantiate_and_apply_query_response(
+                        trait_goal.param_env,
+                        orig_values,
+                        candidate.result,
+                    )
+                    .map_err(|_| SelectionError::Unimplemented)?;
+
+                Ok(Some((candidate, certainty, nested_goals)))
+            });
+
+            let (candidate, certainty, nested_goals) = match result {
+                Ok(Some((candidate, certainty, nested_goals))) => {
+                    (candidate, certainty, nested_goals)
+                }
+                Ok(None) => return Ok(None),
+                Err(e) => return Err(e),
+            };
+
+            let nested_obligations: Vec<_> = nested_goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(
+                        self.tcx,
+                        ObligationCause::dummy(),
+                        goal.param_env,
+                        goal.predicate,
+                    )
+                })
+                .collect();
+
+            let goal = self.resolve_vars_if_possible(trait_goal);
+            match (certainty, candidate.source) {
+                // Rematching the implementation will instantiate the same nested goals that
+                // would have caused the ambiguity, so we can still make progress here regardless.
+                (_, CandidateSource::Impl(def_id)) => {
+                    rematch_impl(self, goal, def_id, nested_obligations)
+                }
+
+                // If an unsize goal is ambiguous, then we can manually rematch it to make
+                // selection progress for coercion during HIR typeck. If it is *not* ambiguous,
+                // but is `BuiltinImplSource::Misc`, it may have nested `Unsize` goals,
+                // and we need to rematch those to detect tuple unsizing and trait upcasting.
+                // FIXME: This will be wrong if we have param-env or where-clause bounds
+                // with the unsize goal -- we may need to mark those with different impl
+                // sources.
+                (Certainty::Maybe(_), CandidateSource::BuiltinImpl(src))
+                | (Certainty::Yes, CandidateSource::BuiltinImpl(src @ BuiltinImplSource::Misc))
+                    if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
+                {
+                    rematch_unsize(self, goal, nested_obligations, src, certainty)
+                }
+
+                // Technically some builtin impls have nested obligations, but if
+                // `Certainty::Yes`, then they should've all been verified and don't
+                // need re-checking.
+                (Certainty::Yes, CandidateSource::BuiltinImpl(src)) => {
+                    Ok(Some(ImplSource::Builtin(src, nested_obligations)))
+                }
+
+                // It's fine not to do anything to rematch these, since there are no
+                // nested obligations.
+                (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
+                    Ok(Some(ImplSource::Param(nested_obligations)))
+                }
+
+                (Certainty::Maybe(_), _) => Ok(None),
             }
-
-            let candidate = candidates.pop().unwrap();
-            let (certainty, nested_goals) = ecx
-                .instantiate_and_apply_query_response(
-                    trait_goal.param_env,
-                    orig_values,
-                    candidate.result,
-                )
-                .map_err(|_| SelectionError::Unimplemented)?;
-
-            Ok(Some((candidate, certainty, nested_goals)))
-        });
-
-        let (candidate, certainty, nested_goals) = match result {
-            Ok(Some((candidate, certainty, nested_goals))) => (candidate, certainty, nested_goals),
-            Ok(None) => return Ok(None),
-            Err(e) => return Err(e),
-        };
-
-        let nested_obligations: Vec<_> = nested_goals
-            .into_iter()
-            .map(|goal| {
-                Obligation::new(self.tcx, ObligationCause::dummy(), goal.param_env, goal.predicate)
-            })
-            .collect();
-
-        let goal = self.resolve_vars_if_possible(trait_goal);
-        match (certainty, candidate.source) {
-            // Rematching the implementation will instantiate the same nested goals that
-            // would have caused the ambiguity, so we can still make progress here regardless.
-            (_, CandidateSource::Impl(def_id)) => {
-                rematch_impl(self, goal, def_id, nested_obligations)
-            }
-
-            // If an unsize goal is ambiguous, then we can manually rematch it to make
-            // selection progress for coercion during HIR typeck. If it is *not* ambiguous,
-            // but is `BuiltinImplSource::Misc`, it may have nested `Unsize` goals,
-            // and we need to rematch those to detect tuple unsizing and trait upcasting.
-            // FIXME: This will be wrong if we have param-env or where-clause bounds
-            // with the unsize goal -- we may need to mark those with different impl
-            // sources.
-            (Certainty::Maybe(_), CandidateSource::BuiltinImpl(src))
-            | (Certainty::Yes, CandidateSource::BuiltinImpl(src @ BuiltinImplSource::Misc))
-                if self.tcx.lang_items().unsize_trait() == Some(goal.predicate.def_id()) =>
-            {
-                rematch_unsize(self, goal, nested_obligations, src, certainty)
-            }
-
-            // Technically some builtin impls have nested obligations, but if
-            // `Certainty::Yes`, then they should've all been verified and don't
-            // need re-checking.
-            (Certainty::Yes, CandidateSource::BuiltinImpl(src)) => {
-                Ok(Some(ImplSource::Builtin(src, nested_obligations)))
-            }
-
-            // It's fine not to do anything to rematch these, since there are no
-            // nested obligations.
-            (Certainty::Yes, CandidateSource::ParamEnv(_) | CandidateSource::AliasBound) => {
-                Ok(Some(ImplSource::Param(nested_obligations)))
-            }
-
-            (Certainty::Maybe(_), _) => Ok(None),
-        }
+        })
     }
 }
 

@@ -1032,10 +1032,9 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        let ty::SubtypePredicate { a_is_expected, a, b } =
-            self.instantiate_binder_with_placeholders(predicate);
-
-        Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
+        self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
+            Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
+        })
     }
 
     pub fn region_outlives_predicate(
@@ -1043,10 +1042,12 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) {
-        let ty::OutlivesPredicate(r_a, r_b) = self.instantiate_binder_with_placeholders(predicate);
-        let origin =
-            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
-        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
+            let origin = SubregionOrigin::from_obligation_cause(cause, || {
+                RelateRegionParamBound(cause.span)
+            });
+            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        })
     }
 
     /// Number of type variables created so far.
@@ -1455,7 +1456,7 @@ impl<'tcx> InferCtxt<'tcx> {
     // Use this method if you'd like to find some substitution of the binder's
     // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
-    // use [`InferCtxt::instantiate_binder_with_placeholders`] instead.
+    // use [`InferCtxt::enter_forall`] instead.
     pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,

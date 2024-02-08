@@ -1305,12 +1305,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut pred = obligation.predicate.to_opt_poly_trait_pred();
         while let Some((next_code, next_pred)) = code.parent() {
             if let Some(pred) = pred {
-                let pred = self.instantiate_binder_with_placeholders(pred);
-                diag.note(format!(
-                    "`{}` must implement `{}`, but it does not",
-                    pred.self_ty(),
-                    pred.print_modifiers_and_trait_path()
-                ));
+                self.enter_forall(pred, |pred| {
+                    diag.note(format!(
+                        "`{}` must implement `{}`, but it does not",
+                        pred.self_ty(),
+                        pred.print_modifiers_and_trait_path()
+                    ));
+                })
             }
             code = next_code;
             pred = next_pred;
@@ -2015,70 +2016,78 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let [single] = &impl_candidates {
             if self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-                let obligation_trait_ref = self.instantiate_binder_with_placeholders(trait_ref);
-                let impl_args = self.fresh_args_for_item(DUMMY_SP, single.impl_def_id);
-                let impl_trait_ref = ocx.normalize(
-                    &ObligationCause::dummy(),
-                    param_env,
-                    ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
-                );
 
-                ocx.register_obligations(
-                    self.tcx
-                        .predicates_of(single.impl_def_id)
-                        .instantiate(self.tcx, impl_args)
-                        .into_iter()
-                        .map(|(clause, _)| {
-                            Obligation::new(self.tcx, ObligationCause::dummy(), param_env, clause)
-                        }),
-                );
-                if !ocx.select_where_possible().is_empty() {
-                    return false;
-                }
+                self.enter_forall(trait_ref, |obligation_trait_ref| {
+                    let impl_args = self.fresh_args_for_item(DUMMY_SP, single.impl_def_id);
+                    let impl_trait_ref = ocx.normalize(
+                        &ObligationCause::dummy(),
+                        param_env,
+                        ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
+                    );
 
-                let mut terrs = vec![];
-                for (obligation_arg, impl_arg) in
-                    std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
-                {
-                    if let Err(terr) =
-                        ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
-                    {
-                        terrs.push(terr);
-                    }
+                    ocx.register_obligations(
+                        self.tcx
+                            .predicates_of(single.impl_def_id)
+                            .instantiate(self.tcx, impl_args)
+                            .into_iter()
+                            .map(|(clause, _)| {
+                                Obligation::new(
+                                    self.tcx,
+                                    ObligationCause::dummy(),
+                                    param_env,
+                                    clause,
+                                )
+                            }),
+                    );
                     if !ocx.select_where_possible().is_empty() {
                         return false;
                     }
-                }
 
-                // Literally nothing unified, just give up.
-                if terrs.len() == impl_trait_ref.args.len() {
-                    return false;
-                }
+                    let mut terrs = vec![];
+                    for (obligation_arg, impl_arg) in
+                        std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
+                    {
+                        if let Err(terr) =
+                            ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
+                        {
+                            terrs.push(terr);
+                        }
+                        if !ocx.select_where_possible().is_empty() {
+                            return false;
+                        }
+                    }
 
-                let cand =
-                    self.resolve_vars_if_possible(impl_trait_ref).fold_with(&mut BottomUpFolder {
-                        tcx: self.tcx,
-                        ty_op: |ty| ty,
-                        lt_op: |lt| lt,
-                        ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
-                    });
-                err.highlighted_help(vec![
-                    StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
-                    StringPart::highlighted("is"),
-                    StringPart::normal(" implemented for `"),
-                    StringPart::highlighted(cand.self_ty().to_string()),
-                    StringPart::normal("`"),
-                ]);
+                    // Literally nothing unified, just give up.
+                    if terrs.len() == impl_trait_ref.args.len() {
+                        return false;
+                    }
 
-                if let [TypeError::Sorts(exp_found)] = &terrs[..] {
-                    let exp_found = self.resolve_vars_if_possible(*exp_found);
-                    err.help(format!(
-                        "for that trait implementation, expected `{}`, found `{}`",
-                        exp_found.expected, exp_found.found
-                    ));
-                }
+                    let cand = self.resolve_vars_if_possible(impl_trait_ref).fold_with(
+                        &mut BottomUpFolder {
+                            tcx: self.tcx,
+                            ty_op: |ty| ty,
+                            lt_op: |lt| lt,
+                            ct_op: |ct| ct.normalize(self.tcx, ty::ParamEnv::empty()),
+                        },
+                    );
+                    err.highlighted_help(vec![
+                        StringPart::normal(format!("the trait `{}` ", cand.print_trait_sugared())),
+                        StringPart::highlighted("is"),
+                        StringPart::normal(" implemented for `"),
+                        StringPart::highlighted(cand.self_ty().to_string()),
+                        StringPart::normal("`"),
+                    ]);
 
-                true
+                    if let [TypeError::Sorts(exp_found)] = &terrs[..] {
+                        let exp_found = self.resolve_vars_if_possible(*exp_found);
+                        err.help(format!(
+                            "for that trait implementation, expected `{}`, found `{}`",
+                            exp_found.expected, exp_found.found
+                        ));
+                    }
+
+                    true
+                })
             }) {
                 return true;
             }
