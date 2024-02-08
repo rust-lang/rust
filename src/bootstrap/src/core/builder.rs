@@ -1313,6 +1313,7 @@ impl<'a> Builder<'a> {
         source_type: SourceType,
         target: TargetSelection,
         cmd: &str,
+        is_for_mir_opt_tests: bool,
     ) -> Cargo {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
         let out_dir = self.stage_out(compiler, mode);
@@ -1872,7 +1873,7 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Wrustc::internal");
         }
 
-        if cmd != "check" {
+        if !is_for_mir_opt_tests {
             self.configure_linker(
                 compiler,
                 target,

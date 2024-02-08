@@ -2500,7 +2500,7 @@ impl Step for Crate {
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let mut cargo =
-            builder.cargo(compiler, mode, SourceType::InTree, target, builder.kind.as_str());
+            builder.cargo(compiler, mode, SourceType::InTree, target, builder.kind.as_str(), false);
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -3140,6 +3140,7 @@ impl Step for CodegenCranelift {
                 SourceType::InTree,
                 target,
                 "run",
+                false,
             );
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
             cargo
@@ -3266,6 +3267,7 @@ impl Step for CodegenGCC {
                 SourceType::InTree,
                 target,
                 "run",
+                false,
             );
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
             cargo

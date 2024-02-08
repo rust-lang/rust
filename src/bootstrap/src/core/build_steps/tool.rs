@@ -142,7 +142,7 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let mut cargo = builder.cargo(compiler, mode, source_type, target, command);
+    let mut cargo = builder.cargo(compiler, mode, source_type, target, command, false);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 

@@ -116,6 +116,7 @@ impl Step for Std {
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
+            false,
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
@@ -168,6 +169,7 @@ impl Step for Std {
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
+            false,
         );
 
         // If we're not in stage 0, tests and examples will fail to compile
@@ -262,6 +264,7 @@ impl Step for Rustc {
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
+            false,
         );
         rustc_cargo(builder, &mut cargo, target, compiler.stage);
 
@@ -338,6 +341,7 @@ impl Step for CodegenBackend {
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
+            false,
         );
         cargo
             .arg("--manifest-path")
