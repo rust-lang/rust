@@ -32,6 +32,7 @@ jobs:
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
+          "--projects",
         ]
 
     steps:

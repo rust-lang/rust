@@ -283,9 +283,10 @@ pub fn get_gcc_path() -> Result<String, String> {
 pub struct CloneResult {
     pub ran_clone: bool,
     pub repo_name: String,
+    pub repo_dir: String,
 }
 
-pub fn git_clone(to_clone: &str, dest: Option<&Path>) -> Result<CloneResult, String> {
+pub fn git_clone(to_clone: &str, dest: Option<&Path>, shallow_clone: bool) -> Result<CloneResult, String> {
     let repo_name = to_clone.split('/').last().unwrap();
     let repo_name = match repo_name.strip_suffix(".git") {
         Some(n) => n.to_string(),
@@ -299,13 +300,20 @@ pub fn git_clone(to_clone: &str, dest: Option<&Path>) -> Result<CloneResult, Str
         return Ok(CloneResult {
             ran_clone: false,
             repo_name,
+            repo_dir: dest.display().to_string(),
         });
     }
 
-    run_command_with_output(&[&"git", &"clone", &to_clone, &dest], None)?;
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"git", &"clone", &to_clone, &dest];
+    if shallow_clone {
+        command.push(&"--depth");
+        command.push(&"1");
+    }
+    run_command_with_output(&command, None)?;
     Ok(CloneResult {
         ran_clone: true,
         repo_name,
+        repo_dir: dest.display().to_string(),
     })
 }
 

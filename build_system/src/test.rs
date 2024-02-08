@@ -1,13 +1,13 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    get_gcc_path, get_toolchain, remove_file, run_command, run_command_with_env,
+    get_gcc_path, get_toolchain, git_clone, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
 };
 
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
-use std::fs::{remove_dir_all, File};
+use std::fs::{create_dir_all, remove_dir_all, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -31,6 +31,7 @@ fn get_runners() -> Runners {
         "--test-failing-rustc",
         ("Run failing rustc tests", test_failing_rustc),
     );
+    runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
@@ -678,6 +679,57 @@ where
 // FIXME(antoyo): linker gives multiple definitions error on Linux
 // echo "[BUILD] sysroot in release mode"
 // ./build_sysroot/build_sysroot.sh --release
+
+fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
+    let projects = [
+        //"https://gitlab.gnome.org/GNOME/librsvg", // FIXME: doesn't compile in the CI since the
+        // version of cairo and other libraries is too old.
+        "https://github.com/rust-random/getrandom",
+        "https://github.com/BurntSushi/memchr",
+        "https://github.com/dtolnay/itoa",
+        "https://github.com/rust-lang/cfg-if",
+        "https://github.com/rust-lang-nursery/lazy-static.rs",
+        //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
+        // TODO: ignore the base64 test that is OOM-killed.
+        "https://github.com/time-rs/time",
+        "https://github.com/rust-lang/log",
+        "https://github.com/bitflags/bitflags",
+        //"https://github.com/serde-rs/serde", // FIXME: one test fails.
+        //"https://github.com/rayon-rs/rayon", // TODO: very slow, only run on master?
+        //"https://github.com/rust-lang/cargo", // TODO: very slow, only run on master?
+    ];
+
+    let run_tests = |projects_path, iter: &mut dyn Iterator<Item=&&str>| -> Result<(), String> {
+        for project in iter {
+            let clone_result = git_clone(project, Some(projects_path), true)?;
+            let repo_path = Path::new(&clone_result.repo_dir);
+            run_cargo_command(&[&"build", &"--release"], Some(repo_path), env, args)?;
+            run_cargo_command(&[&"test"], Some(repo_path), env, args)?;
+        }
+
+        Ok(())
+    };
+
+    let projects_path = Path::new("projects");
+    create_dir_all(projects_path)
+        .map_err(|err| format!("Failed to create directory `projects`: {}", err))?;
+
+    let nb_parts = args.nb_parts.unwrap_or(0);
+    if nb_parts > 0 {
+        // We increment the number of tests by one because if this is an odd number, we would skip
+        // one test.
+        let count = projects.len() / nb_parts + 1;
+        let current_part = args.current_part.unwrap();
+        let start = current_part * count;
+        // We remove the projects we don't want to test.
+        run_tests(projects_path, &mut projects.iter().skip(start).take(count))?;
+    }
+    else {
+        run_tests(projects_path, &mut projects.iter())?;
+    }
+
+    Ok(())
+}
 
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
