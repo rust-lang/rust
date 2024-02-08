@@ -270,7 +270,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.tcx.features().exhaustive_patterns
+                        (self.tcx.features().exhaustive_patterns
+                            || self.tcx.features().min_exhaustive_patterns)
                             && !v
                                 .inhabited_predicate(self.tcx, adt_def)
                                 .instantiate(self.tcx, args)
