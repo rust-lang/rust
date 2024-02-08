@@ -2371,6 +2371,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     return e;
                 }
 
+                if let Err(guar) = self.tcx.ensure().coherent_trait(trait_ref.def_id()) {
+                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+                    // other `Foo` impls are incoherent.
+                    return guar;
+                }
+
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
                 // a bunch of uninteresting errors saying something like "<generic
@@ -2665,6 +2671,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
+                }
+
+                if let Err(guar) =
+                    self.tcx.ensure().coherent_trait(self.tcx.parent(data.projection_ty.def_id))
+                {
+                    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+                    // other `Foo` impls are incoherent.
+                    return guar;
                 }
                 let subst = data
                     .projection_ty

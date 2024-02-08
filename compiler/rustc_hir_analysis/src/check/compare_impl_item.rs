@@ -1990,6 +1990,10 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
+    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+    // other `Foo` impls are incoherent.
+    tcx.ensure().coherent_trait(impl_trait_ref.def_id)?;
+
     let param_env = tcx.param_env(impl_ty.def_id);
     debug!(?param_env);
 
