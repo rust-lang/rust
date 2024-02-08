@@ -13,7 +13,6 @@ use rustc_hir_pretty::id_to_string;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
-use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
@@ -2296,30 +2295,6 @@ pub fn provide(providers: &mut Providers) {
             tcx.resolutions(()).doc_link_traits_in_scope.get(&def_id).unwrap_or_else(|| {
                 span_bug!(tcx.def_span(def_id), "no traits in scope for a doc link")
             })
-        },
-
-        // TODO: Uplift these into
-        traits: |tcx, LocalCrate| {
-            let mut traits = Vec::new();
-            for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
-                    traits.push(id.owner_id.to_def_id())
-                }
-            }
-
-            tcx.arena.alloc_slice(&traits)
-        },
-        trait_impls_in_crate: |tcx, LocalCrate| {
-            let mut trait_impls = Vec::new();
-            for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
-                    && tcx.impl_trait_ref(id.owner_id).is_some()
-                {
-                    trait_impls.push(id.owner_id.to_def_id())
-                }
-            }
-
-            tcx.arena.alloc_slice(&trait_impls)
         },
 
         ..*providers

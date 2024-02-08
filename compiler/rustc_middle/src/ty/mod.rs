@@ -2082,6 +2082,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
+        trait_impls_in_crate: trait_def::trait_impls_in_crate_provider,
+        traits: trait_def::traits_provider,
         const_param_default: consts::const_param_default,
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers
