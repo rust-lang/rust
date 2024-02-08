@@ -1060,7 +1060,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
                     .map(|ty| {
-                        // FIXME(tree_universes): leaking universes
                         ecx.enter_forall(ty, |ty| {
                             goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty))
                         })

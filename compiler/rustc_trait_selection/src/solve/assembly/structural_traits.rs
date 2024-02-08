@@ -59,7 +59,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
-        ty::CoroutineClosure(_, args) => Ok(vec![args.as_coroutine_closure().tupled_upvars_ty()]),
+        ty::CoroutineClosure(_, args) => {
+            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+        }
 
         ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();

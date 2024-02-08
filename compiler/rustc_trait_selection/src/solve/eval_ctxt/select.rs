@@ -31,7 +31,6 @@ impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
-        // FIXME(tree_universes): leaking universes?
         self.enter_forall(obligation.predicate, |pred| {
             let trait_goal = Goal::new(self.tcx, obligation.param_env, pred);
 

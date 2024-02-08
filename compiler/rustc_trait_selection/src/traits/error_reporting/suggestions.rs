@@ -4621,7 +4621,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let ocx = ObligationCtxt::new(self);
                 self.enter_forall(pred, |pred| {
                     let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
-                    // FIXME(tree_universes): universe leakage
                     ocx.register_obligation(Obligation::new(
                         self.tcx,
                         ObligationCause::dummy(),

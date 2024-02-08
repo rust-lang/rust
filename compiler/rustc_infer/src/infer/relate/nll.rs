@@ -261,54 +261,6 @@ where
         Ok(a)
     }
 
-    #[instrument(skip(self), level = "debug")]
-    fn enter_forall_and_leak_universe<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
-    where
-        T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
-    {
-        if let Some(inner) = binder.no_bound_vars() {
-            return inner;
-        }
-
-        let mut next_region = {
-            let nll_delegate = &mut self.delegate;
-            let mut lazy_universe = None;
-
-            move |br: ty::BoundRegion| {
-                // The first time this closure is called, create a
-                // new universe for the placeholders we will make
-                // from here out.
-                let universe = lazy_universe.unwrap_or_else(|| {
-                    let universe = nll_delegate.create_next_universe();
-                    lazy_universe = Some(universe);
-                    universe
-                });
-
-                let placeholder = ty::PlaceholderRegion { universe, bound: br };
-                debug!(?placeholder);
-                let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
-                debug!(?placeholder_reg);
-
-                placeholder_reg
-            }
-        };
-
-        let delegate = FnMutDelegate {
-            regions: &mut next_region,
-            types: &mut |_bound_ty: ty::BoundTy| {
-                unreachable!("we only replace regions in nll_relate, not types")
-            },
-            consts: &mut |_bound_var: ty::BoundVar, _ty| {
-                unreachable!("we only replace regions in nll_relate, not consts")
-            },
-        };
-
-        let replaced = self.infcx.tcx.replace_bound_vars_uncached(binder, delegate);
-        debug!(?replaced);
-
-        replaced
-    }
-
     fn enter_forall<T, U>(
         &mut self,
         binder: ty::Binder<'tcx, T>,
@@ -317,7 +269,46 @@ where
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        let value = self.enter_forall_and_leak_universe(binder);
+        let value = if let Some(inner) = binder.no_bound_vars() {
+            inner
+        } else {
+            let mut next_region = {
+                let nll_delegate = &mut self.delegate;
+                let mut lazy_universe = None;
+
+                move |br: ty::BoundRegion| {
+                    // The first time this closure is called, create a
+                    // new universe for the placeholders we will make
+                    // from here out.
+                    let universe = lazy_universe.unwrap_or_else(|| {
+                        let universe = nll_delegate.create_next_universe();
+                        lazy_universe = Some(universe);
+                        universe
+                    });
+
+                    let placeholder = ty::PlaceholderRegion { universe, bound: br };
+                    debug!(?placeholder);
+                    let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
+                    debug!(?placeholder_reg);
+
+                    placeholder_reg
+                }
+            };
+
+            let delegate = FnMutDelegate {
+                regions: &mut next_region,
+                types: &mut |_bound_ty: ty::BoundTy| {
+                    unreachable!("we only replace regions in nll_relate, not types")
+                },
+                consts: &mut |_bound_var: ty::BoundVar, _ty| {
+                    unreachable!("we only replace regions in nll_relate, not consts")
+                },
+            };
+
+            self.infcx.tcx.replace_bound_vars_uncached(binder, delegate)
+        };
+
+        debug!(?value);
         f(self, value)
     }
 

@@ -2049,7 +2049,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     for (obligation_arg, impl_arg) in
                         std::iter::zip(obligation_trait_ref.args, impl_trait_ref.args)
                     {
-                        // FIXME(tree_universes): universe leakage
                         if let Err(terr) =
                             ocx.eq(&ObligationCause::dummy(), param_env, impl_arg, obligation_arg)
                         {
