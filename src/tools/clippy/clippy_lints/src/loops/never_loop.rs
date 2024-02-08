@@ -256,6 +256,7 @@ fn never_loop_expr<'tcx>(
                 NeverLoopResult::Normal
             },
         })),
+        ExprKind::Unreachable => NeverLoopResult::Diverging,
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }

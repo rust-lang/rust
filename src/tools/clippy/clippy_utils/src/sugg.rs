@@ -147,6 +147,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Path(..)
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Unreachable
             | hir::ExprKind::Become(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)

@@ -609,6 +609,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     },
                 }
             },
+            ExprKind::Unreachable => kind!("Unreachable"),
             ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);

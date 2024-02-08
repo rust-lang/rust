@@ -348,6 +348,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprKind::Type(le, lt), &ExprKind::Type(re, rt)) => self.eq_expr(le, re) && self.eq_ty(lt, rt),
+            (&ExprKind::Unreachable, &ExprKind::Unreachable) => true,
             (&ExprKind::Unary(l_op, le), &ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprKind::Yield(le, _), &ExprKind::Yield(re, _)) => return self.eq_expr(le, re),
             (
@@ -381,6 +382,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | &ExprKind::Tup(..)
                 | &ExprKind::Type(..)
                 | &ExprKind::Unary(..)
+                | &ExprKind::Unreachable
                 | &ExprKind::Yield(..)
 
                 // --- Special cases that do not have a positive branch.
@@ -915,7 +917,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
-            ExprKind::Err(_) => {},
+            ExprKind::Unreachable | ExprKind::Err(_) => {},
         }
     }
 

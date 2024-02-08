@@ -348,7 +348,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Loop(_, _, _, _) |
             ExprKind::Path(_) |
             ExprKind::Struct(_, _, _) |
-            ExprKind::Type(_, _) => {
+            ExprKind::Type(_, _) |
+            ExprKind::Unreachable => {
                 return;
             }
         }
