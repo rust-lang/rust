@@ -119,7 +119,7 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
 
 impl<T> Default for LazyArray<T> {
     fn default() -> LazyArray<T> {
-        LazyArray::from_position_and_num_elems(NonZero::<usize>::new(1).unwrap(), 0)
+        LazyArray::from_position_and_num_elems(NonZero::new(1).unwrap(), 0)
     }
 }
 

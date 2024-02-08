@@ -345,7 +345,7 @@ pub trait Iterator {
         for i in 0..n {
             if self.next().is_none() {
                 // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZero::<usize>::new_unchecked(n - i) });
+                return Err(unsafe { NonZero::new_unchecked(n - i) });
             }
         }
         Ok(())

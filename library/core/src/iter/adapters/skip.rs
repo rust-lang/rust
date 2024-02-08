@@ -154,7 +154,7 @@ where
             }
         }
 
-        NonZero::<usize>::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[doc(hidden)]
@@ -238,7 +238,7 @@ where
         let min = crate::cmp::min(self.len(), n);
         let rem = self.iter.advance_back_by(min);
         assert!(rem.is_ok(), "ExactSizeIterator contract violation");
-        NonZero::<usize>::new(n - min).map_or(Ok(()), Err)
+        NonZero::new(n - min).map_or(Ok(()), Err)
     }
 }
 

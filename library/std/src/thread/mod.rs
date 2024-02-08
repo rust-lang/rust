@@ -1188,7 +1188,7 @@ impl ThreadId {
                     };
 
                     match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
-                        Ok(_) => return ThreadId(NonZero::<u64>::new(id).unwrap()),
+                        Ok(_) => return ThreadId(NonZero::new(id).unwrap()),
                         Err(id) => last = id,
                     }
                 }
@@ -1207,7 +1207,7 @@ impl ThreadId {
 
                 *counter = id;
                 drop(counter);
-                ThreadId(NonZero::<u64>::new(id).unwrap())
+                ThreadId(NonZero::new(id).unwrap())
             }
         }
     }

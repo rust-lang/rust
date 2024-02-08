@@ -338,7 +338,7 @@ macro_rules! nonzero_integer {
                 // SAFETY:
                 // `self` is non-zero, which means it has at least one bit set, which means
                 // that the result of `count_ones` is non-zero.
-                unsafe { NonZero::<u32>::new_unchecked(self.get().count_ones()) }
+                unsafe { NonZero::new_unchecked(self.get().count_ones()) }
             }
 
             nonzero_integer_signedness_dependent_methods! {

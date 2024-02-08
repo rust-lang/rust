@@ -314,7 +314,7 @@ fn test_range_advance_by() {
 
     assert_eq!((r.start, r.end), (1, usize::MAX - 1));
 
-    assert_eq!(Err(NonZero::<usize>::new(2).unwrap()), r.advance_by(usize::MAX));
+    assert_eq!(Err(NonZero::new(2).unwrap()), r.advance_by(usize::MAX));
 
     assert_eq!(Ok(()), r.advance_by(0));
     assert_eq!(Ok(()), r.advance_back_by(0));

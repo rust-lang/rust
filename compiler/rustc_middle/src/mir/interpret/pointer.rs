@@ -155,7 +155,7 @@ impl CtfeProvenance {
     /// Returns the `AllocId` of this provenance.
     #[inline(always)]
     pub fn alloc_id(self) -> AllocId {
-        AllocId(NonZero::<u64>::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
+        AllocId(NonZero::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
     }
 
     /// Returns whether this provenance is immutable.

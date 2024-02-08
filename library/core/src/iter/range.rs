@@ -678,7 +678,7 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
         self.start =
             Step::forward_checked(self.start.clone(), taken).expect("`Step` invariants not upheld");
 
-        NonZero::<usize>::new(n - taken).map_or(Ok(()), Err)
+        NonZero::new(n - taken).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -719,7 +719,7 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
         self.end =
             Step::backward_checked(self.end.clone(), taken).expect("`Step` invariants not upheld");
 
-        NonZero::<usize>::new(n - taken).map_or(Ok(()), Err)
+        NonZero::new(n - taken).map_or(Ok(()), Err)
     }
 }
 
@@ -766,7 +766,7 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
         // Otherwise 0 is returned which always safe to use.
         self.start = unsafe { Step::forward_unchecked(self.start, taken) };
 
-        NonZero::<usize>::new(n - taken).map_or(Ok(()), Err)
+        NonZero::new(n - taken).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -807,7 +807,7 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
         // SAFETY: same as the spec_advance_by() implementation
         self.end = unsafe { Step::backward_unchecked(self.end, taken) };
 
-        NonZero::<usize>::new(n - taken).map_or(Ok(()), Err)
+        NonZero::new(n - taken).map_or(Ok(()), Err)
     }
 }
 

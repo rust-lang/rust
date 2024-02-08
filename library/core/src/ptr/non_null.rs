@@ -295,7 +295,7 @@ impl<T: ?Sized> NonNull<T> {
     pub fn addr(self) -> NonZeroUsize {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
-        unsafe { NonZero::<usize>::new_unchecked(self.pointer.addr()) }
+        unsafe { NonZero::new_unchecked(self.pointer.addr()) }
     }
 
     /// Creates a new pointer with the given address.

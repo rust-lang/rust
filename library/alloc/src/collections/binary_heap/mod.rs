@@ -350,7 +350,7 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
             // the standard library as "leak amplification".
             unsafe {
                 // SAFETY: len > 1 so len != 0.
-                self.original_len = Some(NonZero::<usize>::new_unchecked(len));
+                self.original_len = Some(NonZero::new_unchecked(len));
                 // SAFETY: len > 1 so all this does for now is leak elements,
                 // which is safe.
                 self.heap.data.set_len(1);
@@ -1576,8 +1576,8 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {
-    const EXPAND_BY: Option<NonZero<usize>> = NonZero::<usize>::new(1);
-    const MERGE_BY: Option<NonZero<usize>> = NonZero::<usize>::new(1);
+    const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
+    const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 unsafe impl<I> AsVecIntoIter for IntoIter<I> {

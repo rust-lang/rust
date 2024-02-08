@@ -292,7 +292,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        NonZero::<usize>::new(remaining).map_or(Ok(()), Err)
+        NonZero::new(remaining).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -347,7 +347,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
         }
 
-        NonZero::<usize>::new(remaining).map_or(Ok(()), Err)
+        NonZero::new(remaining).map_or(Ok(()), Err)
     }
 }
 

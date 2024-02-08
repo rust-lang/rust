@@ -125,7 +125,7 @@ where
         };
         let advanced = min - rem;
         self.n -= advanced;
-        NonZero::<usize>::new(n - advanced).map_or(Ok(()), Err)
+        NonZero::new(n - advanced).map_or(Ok(()), Err)
     }
 }
 
@@ -235,7 +235,7 @@ where
         let advanced_by_inner = advance_by - remainder;
         let advanced_by = advanced_by_inner - trim_inner;
         self.n -= advanced_by;
-        NonZero::<usize>::new(n - advanced_by).map_or(Ok(()), Err)
+        NonZero::new(n - advanced_by).map_or(Ok(()), Err)
     }
 }
 

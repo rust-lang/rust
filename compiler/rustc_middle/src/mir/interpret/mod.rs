@@ -500,7 +500,7 @@ impl<'tcx> AllocMap<'tcx> {
         AllocMap {
             alloc_map: Default::default(),
             dedup: Default::default(),
-            next_id: AllocId(NonZero::<u64>::new(1).unwrap()),
+            next_id: AllocId(NonZero::new(1).unwrap()),
         }
     }
     fn reserve(&mut self) -> AllocId {

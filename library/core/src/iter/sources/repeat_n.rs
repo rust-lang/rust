@@ -145,7 +145,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
 
         if skip > len {
             // SAFETY: we just checked that the difference is positive
-            Err(unsafe { NonZero::<usize>::new_unchecked(skip - len) })
+            Err(unsafe { NonZero::new_unchecked(skip - len) })
         } else {
             self.count = len - skip;
             Ok(())

@@ -152,14 +152,11 @@ fn test_iterator_advance_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[i]);
-        assert_eq!(
-            iter.advance_by(100),
-            Err(NonZero::<usize>::new(100 - (v.len() - 1 - i)).unwrap())
-        );
+        assert_eq!(iter.advance_by(100), Err(NonZero::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_by(100), Err(NonZero::<usize>::new(100 - v.len()).unwrap()));
+    assert_eq!(v.iter().advance_by(100), Err(NonZero::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -170,14 +167,11 @@ fn test_iterator_advance_back_by() {
         let mut iter = v.iter();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(
-            iter.advance_back_by(100),
-            Err(NonZero::<usize>::new(100 - (v.len() - 1 - i)).unwrap())
-        );
+        assert_eq!(iter.advance_back_by(100), Err(NonZero::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().advance_back_by(v.len()), Ok(()));
-    assert_eq!(v.iter().advance_back_by(100), Err(NonZero::<usize>::new(100 - v.len()).unwrap()));
+    assert_eq!(v.iter().advance_back_by(100), Err(NonZero::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -188,17 +182,11 @@ fn test_iterator_rev_advance_back_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_back_by(i), Ok(()));
         assert_eq!(iter.next_back().unwrap(), &v[i]);
-        assert_eq!(
-            iter.advance_back_by(100),
-            Err(NonZero::<usize>::new(100 - (v.len() - 1 - i)).unwrap())
-        );
+        assert_eq!(iter.advance_back_by(100), Err(NonZero::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_back_by(v.len()), Ok(()));
-    assert_eq!(
-        v.iter().rev().advance_back_by(100),
-        Err(NonZero::<usize>::new(100 - v.len()).unwrap())
-    );
+    assert_eq!(v.iter().rev().advance_back_by(100), Err(NonZero::new(100 - v.len()).unwrap()));
 }
 
 #[test]
@@ -466,14 +454,11 @@ fn test_iterator_rev_advance_by() {
         let mut iter = v.iter().rev();
         assert_eq!(iter.advance_by(i), Ok(()));
         assert_eq!(iter.next().unwrap(), &v[v.len() - 1 - i]);
-        assert_eq!(
-            iter.advance_by(100),
-            Err(NonZero::<usize>::new(100 - (v.len() - 1 - i)).unwrap())
-        );
+        assert_eq!(iter.advance_by(100), Err(NonZero::new(100 - (v.len() - 1 - i)).unwrap()));
     }
 
     assert_eq!(v.iter().rev().advance_by(v.len()), Ok(()));
-    assert_eq!(v.iter().rev().advance_by(100), Err(NonZero::<usize>::new(100 - v.len()).unwrap()));
+    assert_eq!(v.iter().rev().advance_by(100), Err(NonZero::new(100 - v.len()).unwrap()));
 }
 
 #[test]

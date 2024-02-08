@@ -105,7 +105,7 @@ const fn to_nonzero(n: Option<u32>) -> Option<NonZero<u32>> {
     // in const context. Requires https://github.com/rust-lang/rfcs/pull/2632.
     match n {
         None => None,
-        Some(n) => NonZero::<u32>::new(n),
+        Some(n) => NonZero::new(n),
     }
 }
 

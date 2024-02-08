@@ -147,7 +147,7 @@ fn test_iterator_advance_by() {
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZero::<usize>::new(1).unwrap()));
+    assert_eq!(iter.advance_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();
@@ -169,7 +169,7 @@ fn test_iterator_advance_back_by() {
     }
 
     let mut iter = v.iter();
-    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZero::<usize>::new(1).unwrap()));
+    assert_eq!(iter.advance_back_by(v.len() + 1), Err(NonZero::new(1).unwrap()));
     assert_eq!(iter.as_slice(), &[]);
 
     let mut iter = v.iter();

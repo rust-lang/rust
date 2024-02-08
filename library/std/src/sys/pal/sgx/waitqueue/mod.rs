@@ -252,7 +252,7 @@ impl WaitQueue {
                 entry_guard.wake = true;
             }
 
-            if let Some(count) = NonZero::<usize>::new(count) {
+            if let Some(count) = NonZero::new(count) {
                 Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::All { count } })
             } else {
                 Err(guard)

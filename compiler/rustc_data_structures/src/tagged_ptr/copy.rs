@@ -143,15 +143,14 @@ where
             // `{non_zero} | packed_tag` can't make the value zero.
 
             let packed = (addr.get() >> T::BITS) | packed_tag;
-            unsafe { NonZero::<usize>::new_unchecked(packed) }
+            unsafe { NonZero::new_unchecked(packed) }
         })
     }
 
     /// Retrieves the original raw pointer from `self.packed`.
     #[inline]
     pub(super) fn pointer_raw(&self) -> NonNull<P::Target> {
-        self.packed
-            .map_addr(|addr| unsafe { NonZero::<usize>::new_unchecked(addr.get() << T::BITS) })
+        self.packed.map_addr(|addr| unsafe { NonZero::new_unchecked(addr.get() << T::BITS) })
     }
 
     /// This provides a reference to the `P` pointer itself, rather than the

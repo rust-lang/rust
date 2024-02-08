@@ -445,9 +445,9 @@ fn test_into_iter() {
         assert_eq!(it.next_back(), Some(3));
 
         let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
-        assert_eq!(it.advance_by(10), Err(NonZero::<usize>::new(5).unwrap()));
+        assert_eq!(it.advance_by(10), Err(NonZero::new(5).unwrap()));
         let mut it = VecDeque::from(vec![1, 2, 3, 4, 5]).into_iter();
-        assert_eq!(it.advance_back_by(10), Err(NonZero::<usize>::new(5).unwrap()));
+        assert_eq!(it.advance_back_by(10), Err(NonZero::new(5).unwrap()));
     }
 }
 

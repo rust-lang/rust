@@ -338,7 +338,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             }
             LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        let position = NonZero::<usize>::new(position).unwrap();
+        let position = NonZero::new(position).unwrap();
         self.lazy_state = LazyState::Previous(position);
         f(position)
     }
@@ -685,17 +685,15 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(
-            NonZero::<usize>::new(METADATA_HEADER.len() + 8).unwrap(),
-        )
-        .decode(self)
+        LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
+            .decode(self)
     }
 
     fn root_pos(&self) -> NonZero<usize> {
         let offset = METADATA_HEADER.len();
         let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
-        NonZero::<usize>::new(pos as usize).unwrap()
+        NonZero::new(pos as usize).unwrap()
     }
 
     pub(crate) fn get_header(&self) -> CrateHeader {

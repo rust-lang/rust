@@ -255,7 +255,7 @@ where
 unsafe impl<I: InPlaceIterable + Iterator, const N: usize> InPlaceIterable for ArrayChunks<I, N> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = const {
-        match (I::MERGE_BY, NonZero::<usize>::new(N)) {
+        match (I::MERGE_BY, NonZero::new(N)) {
             (Some(m), Some(n)) => m.checked_mul(n),
             _ => None,
         }

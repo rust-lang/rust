@@ -248,7 +248,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        NonZero::<usize>::new(n - step_size).map_or(Ok(()), Err)
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -350,7 +350,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        NonZero::<usize>::new(n - step_size).map_or(Ok(()), Err)
+        NonZero::new(n - step_size).map_or(Ok(()), Err)
     }
 }
 
@@ -457,8 +457,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {
-    const EXPAND_BY: Option<NonZero<usize>> = NonZero::<usize>::new(1);
-    const MERGE_BY: Option<NonZero<usize>> = NonZero::<usize>::new(1);
+    const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
+    const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

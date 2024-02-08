@@ -225,7 +225,7 @@ impl<S: Encoder> Encodable<S> for NonZero<u32> {
 
 impl<D: Decoder> Decodable<D> for NonZero<u32> {
     fn decode(d: &mut D) -> Self {
-        NonZero::<u32>::new(d.read_u32()).unwrap()
+        NonZero::new(d.read_u32()).unwrap()
     }
 }
 

@@ -645,7 +645,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: UnstableReason::Default,
-                    issue: NonZero::<u32>::new(27812),
+                    issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
                 },

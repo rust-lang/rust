@@ -433,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == NonZero::<u32>::new(27812) {
+                if feature == sym::rustc_private && issue == NonZero::new(27812) {
                     if self.sess.opts.unstable_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }

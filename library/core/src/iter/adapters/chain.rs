@@ -110,7 +110,7 @@ where
             // we don't fuse the second iterator
         }
 
-        NonZero::<usize>::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -196,7 +196,7 @@ where
             // we don't fuse the second iterator
         }
 
-        NonZero::<usize>::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]

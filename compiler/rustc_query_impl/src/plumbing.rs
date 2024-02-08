@@ -68,10 +68,8 @@ impl QueryContext for QueryCtxt<'_> {
     #[inline]
     fn next_job_id(self) -> QueryJobId {
         QueryJobId(
-            NonZero::<u64>::new(
-                self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            )
-            .unwrap(),
+            NonZero::new(self.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                .unwrap(),
         )
     }
 

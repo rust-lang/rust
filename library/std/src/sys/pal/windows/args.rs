@@ -21,12 +21,12 @@ use crate::vec;
 
 use crate::iter;
 
-/// This is the const equivalent to `NonZero::<u16>::new(n).unwrap()`
+/// This is the const equivalent to `NonZero::new(n).unwrap()`
 ///
 /// FIXME: This can be removed once `Option::unwrap` is stably const.
 /// See the `const_option` feature (#67441).
 const fn non_zero_u16(n: u16) -> NonZero<u16> {
-    match NonZero::<u16>::new(n) {
+    match NonZero::new(n) {
         Some(n) => n,
         None => panic!("called `unwrap` on a `None` value"),
     }
