@@ -4,8 +4,6 @@
 #![feature(rustc_attrs)]
 #![feature(map_many_mut)]
 #![feature(iter_intersperse)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]

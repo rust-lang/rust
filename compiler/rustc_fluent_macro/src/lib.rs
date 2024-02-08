@@ -4,8 +4,6 @@
 #![feature(rustdoc_internals)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::default_hash_types)]
 
 use proc_macro::TokenStream;

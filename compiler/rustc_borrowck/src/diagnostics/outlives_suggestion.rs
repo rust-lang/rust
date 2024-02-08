@@ -1,6 +1,9 @@
 //! Contains utilities for generating suggestions for borrowck errors related to unsatisfied
 //! outlives constraints.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
