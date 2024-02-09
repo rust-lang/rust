@@ -38,7 +38,7 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     let version_part = items.next().ok_or_else(|| err!("no version string"))?;
     let mut version_parts = version_part.split('-');
     let version = version_parts.next().ok_or_else(|| err!("no version"))?;
-    let channel = version_parts.next().unwrap_or_default().to_string();
+    let channel = version_parts.next().unwrap_or_default().to_owned();
 
     let commit = match items.next() {
         Some(commit) => {
