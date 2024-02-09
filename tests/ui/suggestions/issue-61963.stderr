@@ -1,5 +1,5 @@
 error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:28:14
+  --> $DIR/issue-61963.rs:22:14
    |
 LL |     bar: Box<Bar>,
    |              ^^^
@@ -29,75 +29,5 @@ help: use `dyn`
 LL | dyn pub struct Foo {
    | +++
 
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:28:14
-   |
-LL |     bar: Box<Bar>,
-   |              ^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL |     bar: Box<dyn Bar>,
-   |              +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:28:14
-   |
-LL |     bar: Box<Bar>,
-   |              ^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL |     bar: Box<dyn Bar>,
-   |              +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:18:1
-   |
-LL | pub struct Foo {
-   | ^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | dyn pub struct Foo {
-   | +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:18:1
-   |
-LL | pub struct Foo {
-   | ^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | dyn pub struct Foo {
-   | +++
-
-error: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-61963.rs:18:1
-   |
-LL | pub struct Foo {
-   | ^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: use `dyn`
-   |
-LL | dyn pub struct Foo {
-   | +++
-
-error: aborting due to 7 previous errors
+error: aborting due to 2 previous errors
 

@@ -32,10 +32,10 @@ LL |     priv_trait::mac1!();
    = note: this error originates in the macro `priv_trait::mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `PrivTr` is private
-  --> $DIR/associated-item-privacy-type-binding.rs:16:31
+  --> $DIR/associated-item-privacy-type-binding.rs:16:37
    |
 LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
-   |                               ^^^^^^^^^^^^^^^^^^^ private trait
+   |                                     ^^^^^^^^^^^^ private trait
 ...
 LL |     priv_trait::mac1!();
    |     ------------------- in this macro invocation
@@ -164,10 +164,10 @@ LL |     priv_parent_substs::mac!();
    = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `Priv` is private
-  --> $DIR/associated-item-privacy-type-binding.rs:56:31
+  --> $DIR/associated-item-privacy-type-binding.rs:56:37
    |
 LL |         trait InSignatureTr2: PubTr<AssocTy = u8> {}
-   |                               ^^^^^^^^^^^^^^^^^^^ private type
+   |                                     ^^^^^^^^^^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
    |     -------------------------- in this macro invocation

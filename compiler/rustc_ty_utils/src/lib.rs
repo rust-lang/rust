@@ -37,7 +37,7 @@ mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
 mod representability;
-mod sig_types;
+pub mod sig_types;
 mod structural_match;
 mod ty;
 
