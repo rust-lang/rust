@@ -1,7 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-#[allow(unused_imports)]
 use rustc_ast::expand::autodiff_attrs::DiffActivity;
 
 use super::debuginfo::{
@@ -14,8 +13,6 @@ use super::debuginfo::{
 use libc::{c_char, c_int, c_uint, size_t};
 use libc::{c_ulonglong, c_void};
 
-use core::fmt;
-use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 
 use super::RustString;
@@ -2607,117 +2604,414 @@ extern "C" {
     ) -> *mut c_void;
 }
 
-// Enzyme
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct EnzymeOpaqueTypeAnalysis {
-    _unused: [u8; 0],
+#[cfg(AD_FALLBACK)]
+pub use self::Fallback_AD::*;
+
+#[cfg(AD_FALLBACK)]
+pub mod Fallback_AD {
+    #![allow(unused_variables)]
+    use super::*;
+
+    pub fn EnzymeNewTypeTree() -> CTypeTreeRef { unimplemented!() }
+    pub fn EnzymeFreeTypeTree(CTT: CTypeTreeRef) { unimplemented!() }
+    pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8) { unimplemented!() }
+    pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64) { unimplemented!() }
+
+    pub fn set_max_int_offset(offset: u64) { unimplemented!() }
+    pub fn set_max_type_offset(offset: u64) { unimplemented!() }
+    pub fn set_max_type_depth(depth: u64) { unimplemented!() }
+    pub fn set_print_perf(print: bool) { unimplemented!() }
+    pub fn set_print_activity(print: bool) { unimplemented!() }
+    pub fn set_print_type(print: bool) { unimplemented!() }
+    pub fn set_print(print: bool) { unimplemented!() }
+    pub fn set_strict_aliasing(strict: bool) { unimplemented!() }
+
+    pub fn EnzymeCreatePrimalAndGradient<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8, // &'a Builder<'_>,
+        _callerCtx: *const u8,  // &'a Value,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        dretUsed: u8,
+        mode: CDerivativeMode,
+        width: ::std::os::raw::c_uint,
+        freeMemory: u8,
+        additionalArg: Option<&Type>,
+        forceAnonymousTape: u8,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+        AtomicAdd: u8,
+    ) -> &'a Value {
+        unimplemented!()
+    }
+    pub fn EnzymeCreateForwardDiff<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8, // &'a Builder<'_>,
+        _callerCtx: *const u8,  // &'a Value,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        mode: CDerivativeMode,
+        freeMemory: u8,
+        width: ::std::os::raw::c_uint,
+        additionalArg: Option<&Type>,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+    ) -> &'a Value {
+        unimplemented!()
+    }
+pub type CustomRuleType = ::std::option::Option<
+    unsafe extern "C" fn(
+        direction: ::std::os::raw::c_int,
+        ret: CTypeTreeRef,
+        args: *mut CTypeTreeRef,
+        known_values: *mut IntList,
+        num_args: size_t,
+        fnc: &Value,
+        ta: *const ::std::os::raw::c_void,
+    ) -> u8,
+>;
+extern "C" {
+    pub fn CreateTypeAnalysis(
+        Log: EnzymeLogicRef,
+        customRuleNames: *mut *mut ::std::os::raw::c_char,
+        customRules: *mut CustomRuleType,
+        numRules: size_t,
+    ) -> EnzymeTypeAnalysisRef;
 }
-pub type EnzymeTypeAnalysisRef = *mut EnzymeOpaqueTypeAnalysis;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct EnzymeOpaqueLogic {
-    _unused: [u8; 0],
+    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef) { unimplemented!() }
+    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef) { unimplemented!() }
+    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef { unimplemented!() }
+    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef) { unimplemented!() }
+    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef) { unimplemented!() }
+
+    pub fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef {
+        unimplemented!()
+    }
+    pub fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef {
+        unimplemented!()
+    }
+    pub fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool {
+        unimplemented!()
+    }
+    pub fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64) {
+        unimplemented!()
+    }
+    pub fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef) {
+        unimplemented!()
+    }
+    pub fn EnzymeTypeTreeShiftIndiciesEq(
+        arg1: CTypeTreeRef,
+        data_layout: *const c_char,
+        offset: i64,
+        max_size: i64,
+        add_offset: u64,
+    ) {
+        unimplemented!()
+    }
+    pub fn EnzymeTypeTreeToStringFree(arg1: *const c_char) {
+        unimplemented!()
+    }
+    pub fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
+        unimplemented!()
+    }
 }
-pub type EnzymeLogicRef = *mut EnzymeOpaqueLogic;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct EnzymeOpaqueAugmentedReturn {
-    _unused: [u8; 0],
+
+
+// Enzyme specific, but doesn't require Enzyme to be build
+pub use self::Shared_AD::*;
+pub mod Shared_AD {
+    // Depending on the AD backend (Enzyme or Fallback), some functions might or might not be
+    // unsafe. So we just allways call them in an unsafe context.
+    #![allow(unused_unsafe)]
+    #![allow(unused_variables)]
+
+    use libc::size_t;
+    use super::Context;
+
+    #[cfg(AD_FALLBACK)]
+    use super::Fallback_AD::*;
+    #[cfg(not(AD_FALLBACK))]
+    use super::Enzyme_AD::*;
+
+    use core::fmt;
+    use std::ffi::{CStr, CString};
+    use rustc_ast::expand::autodiff_attrs::DiffActivity;
+    #[repr(u32)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub enum CDIFFE_TYPE {
+        DFT_OUT_DIFF = 0,
+        DFT_DUP_ARG = 1,
+        DFT_CONSTANT = 2,
+        DFT_DUP_NONEED = 3,
+    }
+
+    pub fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
+        return match act {
+            DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
+            DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+            DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
+            DiffActivity::ActiveOnly => CDIFFE_TYPE::DFT_OUT_DIFF,
+            DiffActivity::Dual => CDIFFE_TYPE::DFT_DUP_ARG,
+            DiffActivity::DualOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
+            DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
+            DiffActivity::DuplicatedOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
+        };
+    }
+
+    #[repr(u32)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub enum CDerivativeMode {
+        DEM_ForwardMode = 0,
+        DEM_ReverseModePrimal = 1,
+        DEM_ReverseModeGradient = 2,
+        DEM_ReverseModeCombined = 3,
+        DEM_ForwardModeSplit = 4,
+    }
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct EnzymeOpaqueTypeAnalysis {
+        _unused: [u8; 0],
+    }
+    pub type EnzymeTypeAnalysisRef = *mut EnzymeOpaqueTypeAnalysis;
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct EnzymeOpaqueLogic {
+        _unused: [u8; 0],
+    }
+    pub type EnzymeLogicRef = *mut EnzymeOpaqueLogic;
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct EnzymeOpaqueAugmentedReturn {
+        _unused: [u8; 0],
+    }
+    pub type EnzymeAugmentedReturnPtr = *mut EnzymeOpaqueAugmentedReturn;
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct IntList {
+        pub data: *mut i64,
+        pub size: size_t,
+    }
+    #[repr(u32)]
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+    pub enum CConcreteType {
+        DT_Anything = 0,
+        DT_Integer = 1,
+        DT_Pointer = 2,
+        DT_Half = 3,
+        DT_Float = 4,
+        DT_Double = 5,
+        DT_Unknown = 6,
+    }
+
+    pub type CTypeTreeRef = *mut EnzymeTypeTree;
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct EnzymeTypeTree {
+        _unused: [u8; 0],
+    }
+    pub struct TypeTree {
+        pub inner: CTypeTreeRef,
+    }
+
+    impl TypeTree {
+        pub fn new() -> TypeTree {
+            let inner = unsafe { EnzymeNewTypeTree() };
+            TypeTree { inner }
+        }
+
+        #[must_use]
+        pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+            let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+            TypeTree { inner }
+        }
+
+        #[must_use]
+        pub fn only(self, idx: isize) -> TypeTree {
+            unsafe {
+                EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
+            }
+            self
+        }
+
+        #[must_use]
+        pub fn data0(self) -> TypeTree {
+            unsafe {
+                EnzymeTypeTreeData0Eq(self.inner);
+            }
+            self
+        }
+
+        pub fn merge(self, other: Self) -> Self {
+            unsafe {
+                EnzymeMergeTypeTree(self.inner, other.inner);
+            }
+            drop(other);
+            self
+        }
+
+        #[must_use]
+        pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+            let layout = CString::new(layout).unwrap();
+
+            unsafe {
+                EnzymeTypeTreeShiftIndiciesEq(
+                    self.inner,
+                    layout.as_ptr(),
+                    offset as i64,
+                    max_size as i64,
+                    add_offset as u64,
+                )
+            }
+
+            self
+        }
+    }
+
+    impl Clone for TypeTree {
+        fn clone(&self) -> Self {
+            let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+            TypeTree { inner }
+        }
+    }
+
+    impl fmt::Display for TypeTree {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
+            let cstr = unsafe { CStr::from_ptr(ptr) };
+            match cstr.to_str() {
+                Ok(x) => write!(f, "{}", x)?,
+                Err(err) => write!(f, "could not parse: {}", err)?,
+            }
+
+            // delete C string pointer
+            unsafe { EnzymeTypeTreeToStringFree(ptr) }
+
+            Ok(())
+        }
+    }
+
+    impl fmt::Debug for TypeTree {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            <Self as fmt::Display>::fmt(self, f)
+        }
+    }
+
+    impl Drop for TypeTree {
+        fn drop(&mut self) {
+            unsafe { EnzymeFreeTypeTree(self.inner) }
+        }
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone)]
+    pub struct CFnTypeInfo {
+        #[doc = " Types of arguments, assumed of size len(Arguments)"]
+        pub Arguments: *mut CTypeTreeRef,
+        #[doc = " Type of return"]
+        pub Return: CTypeTreeRef,
+        #[doc = " The specific constant(s) known to represented by an argument, if constant"]
+        pub KnownValues: *mut IntList,
+    }
 }
-pub type EnzymeAugmentedReturnPtr = *mut EnzymeOpaqueAugmentedReturn;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct IntList {
-    pub data: *mut i64,
-    pub size: size_t,
-}
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum CConcreteType {
-    DT_Anything = 0,
-    DT_Integer = 1,
-    DT_Pointer = 2,
-    DT_Half = 3,
-    DT_Float = 4,
-    DT_Double = 5,
-    DT_Unknown = 6,
-}
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct EnzymeTypeTree {
-    _unused: [u8; 0],
-}
-pub type CTypeTreeRef = *mut EnzymeTypeTree;
+
+#[cfg(not(AD_FALLBACK))]
+pub use self::Enzyme_AD::*;
+
+// Enzyme is an optional component, so we do need to provide a fallback when it is ont getting
+// compiled. We deny the usage of #[autodiff(..)] on a higher level, so a placeholder implementation
+// here is completely fine.
+#[cfg(not(AD_FALLBACK))]
+pub mod Enzyme_AD {
+use super::*;
+
+use super::debuginfo::{
+    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
+    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
+    DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
+    DebugEmissionKind, DebugNameTableKind,
+};
+
+use libc::{c_char, c_int, c_uint, size_t};
+use libc::{c_ulonglong, c_void};
+
+use std::marker::PhantomData;
+
+use super::RustString;
+use core::fmt;
+use std::ffi::{CStr, CString};
+
 extern "C" {
     fn EnzymeNewTypeTree() -> CTypeTreeRef;
-}
-extern "C" {
     fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
-}
-extern "C" {
     pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
-}
-extern "C" {
     pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
 }
 
 extern "C" {
-    pub static mut MaxIntOffset: c_void;
-    pub static mut MaxTypeOffset: c_void;
-    pub static mut EnzymeMaxTypeDepth: c_void;
+    static mut MaxIntOffset: c_void;
+    static mut MaxTypeOffset: c_void;
+    static mut EnzymeMaxTypeDepth: c_void;
 
-    pub static mut EnzymePrintPerf: c_void;
-    pub static mut EnzymePrintActivity: c_void;
-    pub static mut EnzymePrintType: c_void;
-    pub static mut EnzymePrint: c_void;
-    pub static mut EnzymeStrictAliasing: c_void;
+    static mut EnzymePrintPerf: c_void;
+    static mut EnzymePrintActivity: c_void;
+    static mut EnzymePrintType: c_void;
+    static mut EnzymePrint: c_void;
+    static mut EnzymeStrictAliasing: c_void;
 }
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct CFnTypeInfo {
-    #[doc = " Types of arguments, assumed of size len(Arguments)"]
-    pub Arguments: *mut CTypeTreeRef,
-    #[doc = " Type of return"]
-    pub Return: CTypeTreeRef,
-    #[doc = " The specific constant(s) known to represented by an argument, if constant"]
-    pub KnownValues: *mut IntList,
+pub fn set_max_int_offset(offset: u64) {
+    unsafe {
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxIntOffset), offset);
+    }
 }
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum CDIFFE_TYPE {
-    DFT_OUT_DIFF = 0,
-    DFT_DUP_ARG = 1,
-    DFT_CONSTANT = 2,
-    DFT_DUP_NONEED = 3,
+pub fn set_max_type_offset(offset: u64) {
+    unsafe {
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxTypeOffset), offset);
+    }
 }
-
-fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
-    return match act {
-        DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
-        DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
-        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
-        DiffActivity::ActiveOnly => CDIFFE_TYPE::DFT_OUT_DIFF,
-        DiffActivity::Dual => CDIFFE_TYPE::DFT_DUP_ARG,
-        DiffActivity::DualOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
-        DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
-        DiffActivity::DuplicatedOnly => CDIFFE_TYPE::DFT_DUP_NONEED,
-    };
+pub fn set_max_type_depth(depth: u64) {
+    unsafe {
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::EnzymeMaxTypeDepth), depth);
+    }
 }
-
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum CDerivativeMode {
-    DEM_ForwardMode = 0,
-    DEM_ReverseModePrimal = 1,
-    DEM_ReverseModeGradient = 2,
-    DEM_ReverseModeCombined = 3,
-    DEM_ForwardModeSplit = 4,
+pub fn set_print_perf(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), print as u8);
+    }
+}
+pub fn set_print_activity(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), print as u8);
+    }
+}
+pub fn set_print_type(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), print as u8);
+    }
+}
+pub fn set_print(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), print as u8);
+    }
+}
+pub fn set_strict_aliasing(strict: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), strict as u8);
+    }
 }
 extern "C" {
-    #[allow(dead_code)]
-    fn EnzymeCreatePrimalAndGradient<'a>(
+    pub fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
         _builderCtx: *const u8, // &'a Builder<'_>,
         _callerCtx: *const u8,  // &'a Value,
@@ -2739,10 +3033,9 @@ extern "C" {
         augmented: EnzymeAugmentedReturnPtr,
         AtomicAdd: u8,
     ) -> &'a Value;
-    //) -> LLVMValueRef;
 }
 extern "C" {
-    fn EnzymeCreateForwardDiff<'a>(
+    pub fn EnzymeCreateForwardDiff<'a>(
         arg1: EnzymeLogicRef,
         _builderCtx: *const u8, // &'a Builder<'_>,
         _callerCtx: *const u8,  // &'a Value,
@@ -2781,21 +3074,13 @@ extern "C" {
         numRules: size_t,
     ) -> EnzymeTypeAnalysisRef;
 }
-extern "C" {
-    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
-}
-extern "C" {
-    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
-}
-extern "C" {
-    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
-}
-extern "C" {
-    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
-}
-extern "C" {
-    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
-}
+//extern "C" {
+//    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+//    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+//    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
+//    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
+//    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
+//}
 
 extern "C" {
     fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
@@ -2813,99 +3098,4 @@ extern "C" {
     fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
     fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
 }
-
-pub struct TypeTree {
-    pub inner: CTypeTreeRef,
-}
-
-impl TypeTree {
-    pub fn new() -> TypeTree {
-        let inner = unsafe { EnzymeNewTypeTree() };
-
-        TypeTree { inner }
-    }
-
-    #[must_use]
-    pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
-        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
-
-        TypeTree { inner }
-    }
-
-    #[must_use]
-    pub fn only(self, idx: isize) -> TypeTree {
-        unsafe {
-            EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
-        }
-        self
-    }
-
-    #[must_use]
-    pub fn data0(self) -> TypeTree {
-        unsafe {
-            EnzymeTypeTreeData0Eq(self.inner);
-        }
-        self
-    }
-
-    pub fn merge(self, other: Self) -> Self {
-        unsafe {
-            EnzymeMergeTypeTree(self.inner, other.inner);
-        }
-        drop(other);
-
-        self
-    }
-
-    #[must_use]
-    pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
-        let layout = CString::new(layout).unwrap();
-
-        unsafe {
-            EnzymeTypeTreeShiftIndiciesEq(
-                self.inner,
-                layout.as_ptr(),
-                offset as i64,
-                max_size as i64,
-                add_offset as u64,
-            )
-        }
-
-        self
-    }
-}
-
-impl Clone for TypeTree {
-    fn clone(&self) -> Self {
-        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
-        TypeTree { inner }
-    }
-}
-
-impl fmt::Display for TypeTree {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
-        let cstr = unsafe { CStr::from_ptr(ptr) };
-        match cstr.to_str() {
-            Ok(x) => write!(f, "{}", x)?,
-            Err(err) => write!(f, "could not parse: {}", err)?,
-        }
-
-        // delete C string pointer
-        unsafe { EnzymeTypeTreeToStringFree(ptr) }
-
-        Ok(())
-    }
-}
-
-impl fmt::Debug for TypeTree {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <Self as fmt::Display>::fmt(self, f)
-    }
-}
-
-impl Drop for TypeTree {
-    fn drop(&mut self) {
-        unsafe { EnzymeFreeTypeTree(self.inner) }
-    }
 }

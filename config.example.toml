@@ -149,6 +149,9 @@
 # Whether to build the clang compiler.
 #clang = false
 
+# Wheter to build Enzyme as AutoDiff backend.
+#enzyme = true
+
 # Whether to enable llvm compilation warnings.
 #enable-warnings = false
 
