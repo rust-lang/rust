@@ -1006,7 +1006,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
-    /// Returns the `Size` for primitive types (bool, uint, int, char, float).
+    /// Returns the `Size` for primitive types (bool, uint, int, char, float), or panic.
     pub fn primitive_size(self, tcx: TyCtxt<'tcx>) -> Size {
         match *self.kind() {
             ty::Bool => Size::from_bytes(1),
@@ -1018,7 +1018,8 @@ impl<'tcx> Ty<'tcx> {
             _ => bug!("non primitive type"),
         }
     }
-
+    /// Returns the size and sign of an inieger type.
+    /// If the type is not an intieger, will panic with message "non integer discriminant".
     pub fn int_size_and_signed(self, tcx: TyCtxt<'tcx>) -> (Size, bool) {
         match *self.kind() {
             ty::Int(ity) => (Integer::from_int_ty(&tcx, ity).size(), true),

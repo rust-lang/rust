@@ -1269,6 +1269,9 @@ pub struct GenSig<'tcx> {
 /// - `inputs`: is the list of arguments and their modes.
 /// - `output`: is the return type.
 /// - `c_variadic`: indicates whether this is a C-variadic function.
+/// NOTE: this signature may not match exactly with the signature of a compiled function.
+/// Attributes like `#[track_caller]` may introduce additional arguments, which are not present here, but are represented in [`rustc_target::abi::call::FnAbi`].
+/// If you are interested in the exact signature and the way arguments are aligned/passed, use [`rustc_target::abi::call::FnAbi`].
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct FnSig<'tcx> {
@@ -1279,10 +1282,11 @@ pub struct FnSig<'tcx> {
 }
 
 impl<'tcx> FnSig<'tcx> {
+    /// Inputs of this signature.
     pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
-
+    /// The return type of this signature.
     pub fn output(&self) -> Ty<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
@@ -1308,28 +1312,38 @@ impl<'tcx> IntoDiagnosticArg for FnSig<'tcx> {
 pub type PolyFnSig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
+    /// Returns a [`Binder`] containing the inputs of this signature.
     #[inline]
     pub fn inputs(&self) -> Binder<'tcx, &'tcx [Ty<'tcx>]> {
         self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
     }
+  
+    /// Returns a [`Binder`] containing the indexth input of this signature. 
     #[inline]
     #[track_caller]
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
+  
+    /// Returns a [`Binder`] containing the inputs and outputs of this signature.
     pub fn inputs_and_output(&self) -> ty::Binder<'tcx, &'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
+  
+    /// Returns a [`Binder`] containing the return type this signature.
     #[inline]
     pub fn output(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
+  
     pub fn c_variadic(&self) -> bool {
         self.skip_binder().c_variadic
     }
+  
     pub fn unsafety(&self) -> hir::Unsafety {
         self.skip_binder().unsafety
     }
+  
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
     }
@@ -1416,9 +1430,9 @@ impl From<BoundVar> for BoundTy {
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
-    // Avoid this in favour of more specific `new_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
+    /// Turns a [`TyKind`] into a [`Ty`]. Use more specific `new_*` methods(such as `new_int`), where possible.
     pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
@@ -1477,12 +1491,12 @@ impl<'tcx> Ty<'tcx> {
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
     }
-
+    /// Creates a new [`Ty`] representing a parameter, with index `index` and name `name`.
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
     }
-
+    /// Creates an new [`Ty`] representing a bound type variable, with debruijn index `index` and bound type `bound_ty`.
     #[inline]
     pub fn new_bound(
         tcx: TyCtxt<'tcx>,
@@ -1540,6 +1554,7 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Error(reported))
     }
 
+    /// Creates a new [`Ty`] representing a signed integer `i`.
     #[inline]
     pub fn new_int(tcx: TyCtxt<'tcx>, i: ty::IntTy) -> Ty<'tcx> {
         use ty::IntTy::*;
@@ -1553,6 +1568,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Creates a new [`Ty`] representing an unsigned integer `ui`.
     #[inline]
     pub fn new_uint(tcx: TyCtxt<'tcx>, ui: ty::UintTy) -> Ty<'tcx> {
         use ty::UintTy::*;
@@ -1566,6 +1582,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Creates a new [`Ty`] representing a floating-point number `f`.
     #[inline]
     pub fn new_float(tcx: TyCtxt<'tcx>, f: ty::FloatTy) -> Ty<'tcx> {
         use ty::FloatTy::*;
@@ -1575,36 +1592,43 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Creates a reference with type and mutability for a certain [`Region`].
     #[inline]
     pub fn new_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Ref(r, tm.ty, tm.mutbl))
     }
 
+    /// Creates a new [`Ty`] representing a mutable reference to type `ty` in region `r`.
     #[inline]
     pub fn new_mut_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
+    /// Creates a new [`Ty`] representing an immutable reference to type `ty` in region `r`.
     #[inline]
     pub fn new_imm_ref(tcx: TyCtxt<'tcx>, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new_ref(tcx, r, TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
+    /// Creates a new [`Ty`] representing a pointer to type `tm.ty` with mutability `tm.mutbl`.
     #[inline]
     pub fn new_ptr(tcx: TyCtxt<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, RawPtr(tm))
     }
 
+    /// Creates a new [`Ty`] representing a mutable pointer to type `ty`.
     #[inline]
     pub fn new_mut_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Mut })
     }
 
+    /// Creates a new [`Ty`] representing an immutable pointer to type `ty`.
     #[inline]
     pub fn new_imm_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: hir::Mutability::Not })
     }
 
+    /// Creates a new [`Ty`] representing an ADT with definition `def` and generic args `args`.
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Adt(def, args))
@@ -1615,6 +1639,7 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Foreign(def_id))
     }
 
+    /// Creates a new [`Ty`] representing an array of `n` elements of type `ty`.
     #[inline]
     pub fn new_array(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
         Ty::new(tcx, Array(ty, ty::Const::from_target_usize(tcx, n)))
@@ -1629,16 +1654,19 @@ impl<'tcx> Ty<'tcx> {
         Ty::new(tcx, Array(ty, ct))
     }
 
+    /// Creates a new [`Ty`] representing a slice of elements of type `ty`.
     #[inline]
     pub fn new_slice(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         Ty::new(tcx, Slice(ty))
     }
 
+    /// Create a new tuple type.
     #[inline]
     pub fn new_tup(tcx: TyCtxt<'tcx>, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         if ts.is_empty() { tcx.types.unit } else { Ty::new(tcx, Tuple(tcx.mk_type_list(ts))) }
     }
 
+    /// Create a new [`Ty`] representing a tuple containing types from an iterator.
     pub fn new_tup_from_iter<I, T>(tcx: TyCtxt<'tcx>, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -1647,6 +1675,7 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
+    /// Create a new [`Ty`] representing a function definition type.
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
@@ -1821,21 +1850,25 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks if this type is of [`TyKind::Never`].
     #[inline]
     pub fn is_never(self) -> bool {
         matches!(self.kind(), Never)
     }
 
+    /// Checks if this type is primitive
     #[inline]
     pub fn is_primitive(self) -> bool {
         self.kind().is_primitive()
     }
 
+    /// Checks if this type is an Algebraic Data Type(a struct, union, or enum).
     #[inline]
     pub fn is_adt(self) -> bool {
         matches!(self.kind(), Adt(..))
     }
 
+    /// Checks if a type is a reference.
     #[inline]
     pub fn is_ref(self) -> bool {
         matches!(self.kind(), Ref(..))
@@ -1859,11 +1892,13 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Infer(_))
     }
 
+    /// Checks if this type is [`core::marker::PhantomData`].
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
     }
 
+    /// Checks if this type is a boolean.
     #[inline]
     pub fn is_bool(self) -> bool {
         *self.kind() == Bool
@@ -1875,6 +1910,7 @@ impl<'tcx> Ty<'tcx> {
         *self.kind() == Str
     }
 
+    /// Checks if a type is a parameter type, with index `index`.
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
@@ -1883,11 +1919,13 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// `true` if this type is a slice type.
     #[inline]
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
     }
 
+    /// Checks if this type is a slice or a reference/pointer to a slice.
     #[inline]
     pub fn is_array_slice(self) -> bool {
         match self.kind() {
@@ -1897,6 +1935,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks if this type is an array.
     #[inline]
     pub fn is_array(self) -> bool {
         matches!(self.kind(), Array(..))
@@ -1910,6 +1949,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Return the element type of a slice, array, or a string slice, or panic.
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
@@ -1944,6 +1984,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks if this type is a mutable reference or a mutable pointer.
     #[inline]
     pub fn is_mutable_ptr(self) -> bool {
         matches!(
@@ -1962,6 +2003,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks if this type is a raw pointer.
     #[inline]
     pub fn is_unsafe_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_))
@@ -1973,6 +2015,7 @@ impl<'tcx> Ty<'tcx> {
         self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
+    /// `true` if this type is [`Box`].
     #[inline]
     pub fn is_box(self) -> bool {
         match self.kind() {
@@ -1981,6 +2024,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type contained within a `Box<T>`.
     /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(self) -> Ty<'tcx> {
         match self.kind() {
@@ -2013,26 +2057,31 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Float(_) | Infer(FloatVar(_)))
     }
 
+    /// `true` if this type is an unsized trait object (`dyn Trait`).
     #[inline]
     pub fn is_trait(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::Dyn))
     }
 
+    /// `true` if this type is an sized trait object (`dyn* Trait`).
     #[inline]
     pub fn is_dyn_star(self) -> bool {
         matches!(self.kind(), Dynamic(_, _, ty::DynStar))
     }
 
+    /// Checks if this type is an enum.
     #[inline]
     pub fn is_enum(self) -> bool {
         matches!(self.kind(), Adt(adt_def, _) if adt_def.is_enum())
     }
 
+    /// Checks if this type is an union.
     #[inline]
     pub fn is_union(self) -> bool {
         matches!(self.kind(), Adt(adt_def, _) if adt_def.is_union())
     }
 
+    /// Checks if this type is a closure.
     #[inline]
     pub fn is_closure(self) -> bool {
         matches!(self.kind(), Closure(..))
@@ -2043,6 +2092,7 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Coroutine(..))
     }
 
+    /// `true` if this type is an integer type.
     #[inline]
     pub fn is_coroutine_closure(self) -> bool {
         matches!(self.kind(), CoroutineClosure(..))
@@ -2063,21 +2113,25 @@ impl<'tcx> Ty<'tcx> {
         matches!(self.kind(), Infer(FreshTy(_) | FreshIntTy(_) | FreshFloatTy(_)))
     }
 
+    /// Checks if this type is a `char`.
     #[inline]
     pub fn is_char(self) -> bool {
         matches!(self.kind(), Char)
     }
 
+    /// `true` if this type is an integer or floating point.
     #[inline]
     pub fn is_numeric(self) -> bool {
         self.is_integral() || self.is_floating_point()
     }
 
+    /// `true` if this type is a signed integer.
     #[inline]
     pub fn is_signed(self) -> bool {
         matches!(self.kind(), Int(_))
     }
 
+    /// `true` if this type is `usize` or `isize`.
     #[inline]
     pub fn is_ptr_sized_integral(self) -> bool {
         matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
@@ -2151,6 +2205,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// If this type is a function definition or a function pointer, return its signature. Otherwise, panic.
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
@@ -2166,11 +2221,13 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// `true` if this type is a function definition or a function pointer.
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(_))
     }
 
+    /// `true` if this type is a function pointer.
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), FnPtr(_))
@@ -2180,7 +2237,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_impl_trait(self) -> bool {
         matches!(self.kind(), Alias(ty::Opaque, ..))
     }
-
+    /// Returns the `AdtDef` for this type's definition if it is an ADT, `None` otherwise.
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
