@@ -60,6 +60,8 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 ty::Closure(..) => Abi::RustCall,
                 ty::CoroutineClosure(..) => Abi::RustCall,
                 ty::Coroutine(..) => Abi::Rust,
+                // No need to do MIR validation on error bodies
+                ty::Error(_) => return,
                 _ => {
                     span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
                 }
