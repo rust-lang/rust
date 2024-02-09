@@ -15,6 +15,7 @@ impl<T> MyTrait for (T,T) {
 impl<A,B> MyTrait for (A,B) {
 //~^ ERROR E0119
     fn get(&self) -> usize { self.dummy }
+    //~^ ERROR: no field `dummy`
 }
 
 fn main() { }

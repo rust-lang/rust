@@ -8,4 +8,5 @@ fn foo<const N: usize, const A: [u8; N]>() {}
 
 fn main() {
     foo::<_, { [1] }>();
+    //[min]~^ ERROR: type provided when a constant was expected
 }

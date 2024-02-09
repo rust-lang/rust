@@ -187,8 +187,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.time("wf_checking", || {
-        tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-    })?;
+        tcx.hir().par_for_each_module(|module| {
+            let _ = tcx.ensure().check_mod_type_wf(module);
+        })
+    });
 
     if tcx.features().rustc_attrs {
         collect::test_opaque_hidden_types(tcx)?;

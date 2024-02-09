@@ -20,9 +20,9 @@ fn main() {
 
     let _ = Checked::<generic_arg>;
     let _ = Checked::<{generic_arg::<usize>}>;
-    let _ = Checked::<{generic_arg::<u32>}>;
+    let _ = Checked::<{generic_arg::<u32>}>; //~ ERROR: mismatched types
 
-    let _ = Checked::<generic>;
+    let _ = Checked::<generic>; //~ ERROR: type annotations needed
     let _ = Checked::<{generic::<u16>}>;
     let _: Checked<{generic::<u16>}> = Checked::<{generic::<u16>}>;
     let _: Checked<{generic::<u32>}> = Checked::<{generic::<u16>}>;

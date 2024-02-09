@@ -16,6 +16,19 @@ help: consider adding an explicit lifetime bound
 LL | impl<'a, T: 'a> Trait<'a> for T {
    |           ++++
 
-error: aborting due to 1 previous error
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/implied-bounds-unnorm-associated-type-5.rs:21:10
+   |
+LL |     let x = String::from("Hello World!");
+   |         - binding `x` declared here
+LL |     let y = f(&x, ());
+   |               -- borrow of `x` occurs here
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+LL |     println!("{}", y);
+   |                    - borrow later used here
 
-For more information about this error, try `rustc --explain E0309`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0309, E0505.
+For more information about an error, try `rustc --explain E0309`.

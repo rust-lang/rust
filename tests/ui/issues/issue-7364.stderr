@@ -11,6 +11,16 @@ note: required because it appears within the type `Box<RefCell<isize>>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    = note: shared static variables must have a type that implements `Sync`
 
-error: aborting due to 1 previous error
+error[E0015]: cannot call non-const fn `Box::<RefCell<isize>>::new` in statics
+  --> $DIR/issue-7364.rs:4:37
+   |
+LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

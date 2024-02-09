@@ -28,6 +28,38 @@ LL |     fn baz(&self) -> Self;
    |                      ^^^^ ...because method `baz` references the `Self` type in its return type
    = help: consider moving `baz` to another trait
 
-error: aborting due to 2 previous errors
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/object-safety-mentions-Self.rs:24:5
+   |
+LL |     t
+   |     ^ `Bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-mentions-Self.rs:11:22
+   |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
+LL |     fn bar(&self, x: &Self);
+   |                      ^^^^^ ...because method `bar` references the `Self` type in this parameter
+   = help: consider moving `bar` to another trait
+   = note: required for the cast from `&T` to `&dyn Bar`
+
+error[E0038]: the trait `Baz` cannot be made into an object
+  --> $DIR/object-safety-mentions-Self.rs:30:5
+   |
+LL |     t
+   |     ^ `Baz` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-mentions-Self.rs:15:22
+   |
+LL | trait Baz {
+   |       --- this trait cannot be made into an object...
+LL |     fn baz(&self) -> Self;
+   |                      ^^^^ ...because method `baz` references the `Self` type in its return type
+   = help: consider moving `baz` to another trait
+   = note: required for the cast from `&T` to `&dyn Baz`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0038`.

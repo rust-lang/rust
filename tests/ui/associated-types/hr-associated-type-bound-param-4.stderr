@@ -14,6 +14,22 @@ LL | trait X<'a, T>
 LL |     for<'b> <(T,) as X<'b, T>>::U: Clone,
    |                                    ^^^^^ required by this bound in `X`
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-4.rs:18:5
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
+   |
+   = help: the trait `Clone` is implemented for `String`
+note: required by a bound in `X::f`
+  --> $DIR/hr-associated-type-bound-param-4.rs:4:36
+   |
+LL |     for<'b> <(T,) as X<'b, T>>::U: Clone,
+   |                                    ^^^^^ required by this bound in `X::f`
+...
+LL |     fn f(x: &<(T,) as X<'_, T>>::U) {
+   |        - required by a bound in this associated function
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

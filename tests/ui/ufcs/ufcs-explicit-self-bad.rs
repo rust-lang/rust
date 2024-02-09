@@ -7,7 +7,7 @@ struct Foo {
 impl Foo {
     fn foo(self: isize, x: isize) -> isize {
         //~^ ERROR invalid `self` parameter type
-        self.f + x
+        self.f + x //~ ERROR: doesn't have fields
     }
 }
 
@@ -53,8 +53,10 @@ fn main() {
         f: 1,
     });
     println!("{}", foo.foo(2));
+    //~^ ERROR: no method named `foo`
     let bar = Box::new(Bar {
         f: 1,
     });
     println!("{} {}", bar.foo(2), bar.bar(2));
+    //~^ ERROR: no method named `bar`
 }
