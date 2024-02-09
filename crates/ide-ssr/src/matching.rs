@@ -456,7 +456,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                         SyntaxElement::Token(t) => Some(t.clone()),
                         SyntaxElement::Node(n) => n.first_token(),
                     })
-                    .map(|p| p.text().to_string());
+                    .map(|p| p.text().to_owned());
                 let first_matched_token = child.clone();
                 let mut last_matched_token = child;
                 // Read code tokens util we reach one equal to the next token from our pattern
@@ -795,7 +795,7 @@ mod tests {
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
         let edit = &edits[&position.file_id];
-        let mut after = input.to_string();
+        let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");
     }
