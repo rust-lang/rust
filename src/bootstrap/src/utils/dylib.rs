@@ -38,3 +38,16 @@ pub fn exe(name: &str, target: &str) -> String {
         name.to_string()
     }
 }
+
+/// Given a shared library called `name`, return the filename for the
+/// shared library for a particular target.
+#[allow(dead_code)]
+pub fn shared_lib_name(name: &str, target: &str) -> String {
+    if target.contains("windows") {
+        format!("lib{name}.dll")
+    } else if target.contains("apple") {
+        format!("lib{name}.dylib")
+    } else {
+        format!("lib{name}.so")
+    }
+}
