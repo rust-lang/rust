@@ -69,7 +69,7 @@ impl CommentBlock {
                 panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
             }
 
-            block.id = id.trim().to_string();
+            block.id = id.trim().to_owned();
             true
         });
         blocks
@@ -93,7 +93,7 @@ impl CommentBlock {
                     if let Some(' ') = contents.chars().next() {
                         contents = &contents[1..];
                     }
-                    block.contents.push(contents.to_string());
+                    block.contents.push(contents.to_owned());
                 }
                 None => {
                     if !block.contents.is_empty() {
