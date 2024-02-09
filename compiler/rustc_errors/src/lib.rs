@@ -526,12 +526,15 @@ pub enum StashKey {
     UndeterminedMacroResolution,
 }
 
-fn default_track_diagnostic(diag: DiagInner, f: &mut dyn FnMut(DiagInner)) {
+fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
     (*f)(diag)
 }
 
-pub static TRACK_DIAGNOSTIC: AtomicRef<fn(DiagInner, &mut dyn FnMut(DiagInner))> =
-    AtomicRef::new(&(default_track_diagnostic as _));
+/// Diagnostics emitted by `DiagCtxtInner::emit_diagnostic` are passed through this function. Used
+/// for tracking by incremental, to replay diagnostics as necessary.
+pub static TRACK_DIAGNOSTIC: AtomicRef<
+    fn(DiagInner, &mut dyn FnMut(DiagInner) -> Option<ErrorGuaranteed>) -> Option<ErrorGuaranteed>,
+> = AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
 pub struct DiagCtxtFlags {
@@ -1406,19 +1409,18 @@ impl DiagCtxtInner {
             }
             Warning if !self.flags.can_emit_warnings => {
                 if diagnostic.has_future_breakage() {
-                    (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                 }
                 return None;
             }
             Allow | Expect(_) => {
-                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
+                TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                 return None;
             }
             _ => {}
         }
 
-        let mut guaranteed = None;
-        (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
+        TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
             if let Some(code) = diagnostic.code {
                 self.emitted_diagnostic_codes.insert(code);
             }
@@ -1481,17 +1483,17 @@ impl DiagCtxtInner {
                 // `ErrorGuaranteed` for errors and lint errors originates.
                 #[allow(deprecated)]
                 let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                guaranteed = Some(guar);
                 if is_lint {
                     self.lint_err_guars.push(guar);
                 } else {
                     self.err_guars.push(guar);
                 }
                 self.panic_if_treat_err_as_bug();
+                Some(guar)
+            } else {
+                None
             }
-        });
-
-        guaranteed
+        })
     }
 
     fn treat_err_as_bug(&self) -> bool {
