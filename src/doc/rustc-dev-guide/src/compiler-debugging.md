@@ -108,12 +108,8 @@ stack backtrace:
 
 If you want to get a backtrace to the point where the compiler emits an
 error message, you can pass the `-Z treat-err-as-bug=n`, which will make
-the compiler panic on the `nth` error on `span_delayed_bug`. If you leave
-off `=n`, the compiler will assume `1` for `n` and thus panic on the
-first error it encounters.
-
-This can also help when debugging `span_delayed_bug` calls - it will make
-the first `span_delayed_bug` call panic, which will give you a useful backtrace.
+the compiler panic on the `nth` error. If you leave off `=n`, the compiler will
+assume `1` for `n` and thus panic on the first error it encounters.
 
 For example:
 
@@ -183,6 +179,13 @@ stack backtrace:
 ```
 
 Cool, now I have a backtrace for the error!
+
+## Debugging delayed bugs
+
+The `-Z eagerly-emit-delayed-bugs` option makes it easy to debug delayed bugs.
+It turns them into normal errors, i.e. makes them visible. This can be used in
+combination with `-Z treat-err-as-bug` to stop at a particular delayed bug and
+get a backtrace.
 
 ## Getting the error creation location
 

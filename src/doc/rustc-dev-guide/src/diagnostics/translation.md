@@ -7,13 +7,13 @@ rustc's diagnostic infrastructure supports translatable diagnostics using
 
 There are two ways of writing translatable diagnostics:
 
-1. For simple diagnostics, using a diagnostic (or subdiagnostic) derive
-   ("simple" diagnostics being those that don't require a lot of logic in
+1. For simple diagnostics, using a diagnostic (or subdiagnostic) derive.
+   ("Simple" diagnostics being those that don't require a lot of logic in
    deciding to emit subdiagnostics and can therefore be represented as
    diagnostic structs). See [the diagnostic and subdiagnostic structs
    documentation](./diagnostic-structs.md).
 2. Using typed identifiers with `DiagnosticBuilder` APIs (in
-   `Diagnostic` implementations).
+   `IntoDiagnostic` or `AddToDiagnostic` or `DecorateLint` implementations).
 
 When adding or changing a translatable diagnostic,
 you don't need to worry about the translations.

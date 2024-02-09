@@ -76,7 +76,7 @@ Registration of these lints happens in the [`rustc_lint::register_internals`]
 function which is called when constructing a new lint store inside
 [`rustc_lint::new_lint_store`].
 
-### Builtin Lints
+#### Builtin Lints
 
 These are primarily described in two places,
 `rustc_lint_defs::builtin` and `rustc_lint::builtin`.

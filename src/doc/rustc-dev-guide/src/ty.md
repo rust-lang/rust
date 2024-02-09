@@ -342,24 +342,26 @@ emitting an error to the user, then this could cause later errors to be suppress
 compilation might inadvertently succeed!
 
 Sometimes there is a third case. You believe that an error has been reported, but you believe it
-would've been reported earlier in the compilation, not locally. In that case, you can invoke
-[`span_delayed_bug`] This will make a note that you expect compilation to yield an error -- if
-however compilation should succeed, then it will trigger a compiler bug report.
+would've been reported earlier in the compilation, not locally. In that case, you can create a
+"delayed bug" with [`delayed_bug`] or [`span_delayed_bug`]. This will make a note that you expect
+compilation to yield an error -- if however compilation should succeed, then it will trigger a
+compiler bug report.
 
+[`delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.delayed_bug
 [`span_delayed_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagCtxt.html#method.span_delayed_bug
 
 For added safety, it's not actually possible to produce a `TyKind::Error` value
 outside of [`rustc_middle::ty`][ty]; there is a private member of
 `TyKind::Error` that prevents it from being constructable elsewhere. Instead,
-one should use the [`TyCtxt::ty_error`][terr] or
-[`TyCtxt::ty_error_with_message`][terrmsg] methods. These methods automatically
-call `span_delayed_bug` before returning an interned `Ty` of kind `Error`. If you
+one should use the [`Ty::new_error`][terr] or
+[`Ty::new_error_with_message`][terrmsg] methods. These methods either take an `ErrorGuaranteed`
+or call `span_delayed_bug` before returning an interned `Ty` of kind `Error`. If you
 were already planning to use [`span_delayed_bug`], then you can just pass the
 span and message to [`ty_error_with_message`][terrmsg] instead to avoid
-delaying a redundant span bug.
+a redundant delayed bug.
 
-[terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.ty_error
-[terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.ty_error_with_message
+[terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error
+[terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error_with_message
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 

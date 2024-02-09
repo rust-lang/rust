@@ -313,7 +313,7 @@ Let's say that we've adopted `E0592` as our code. Then we can change the
 `add_lint()` call above to something like:
 
 ```rust
-struct_span_err!(self.tcx.sess, self.tcx.span_of_impl(item1).unwrap(), msg)
+struct_span_code_err!(self.dcx(), self.tcx.span_of_impl(item1).unwrap(), E0592, msg)
     .emit();
 ```
 

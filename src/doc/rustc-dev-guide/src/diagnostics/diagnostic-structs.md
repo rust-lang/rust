@@ -1,23 +1,23 @@
 # Diagnostic and subdiagnostic structs
-rustc has two diagnostic derives that can be used to create simple diagnostics,
+rustc has three diagnostic derives that can be used to create simple diagnostics,
 which are recommended to be used when they are applicable:
-`#[derive(Diagnostic)]` and `#[derive(Subdiagnostic)]`.
+`#[derive(Diagnostic)]`, #[derive(LintDiagnostic)], and `#[derive(Subdiagnostic)]`.
 
 Diagnostics created with the derive macros can be translated into different
 languages and each has a slug that uniquely identifies the diagnostic.
 
-## `#[derive(Diagnostic)]`
+## `#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]`
 Instead of using the `DiagnosticBuilder` API to create and emit diagnostics,
-the `Diagnostic` derive can be used. `#[derive(Diagnostic)]` is
-only applicable for simple diagnostics that don't require much logic in
-deciding whether or not to add additional subdiagnostics.
+these derives can be used. They are only applicable for simple diagnostics that
+don't require much logic in deciding whether or not to add additional
+subdiagnostics.
 
 Consider the [definition][defn] of the "field already declared" diagnostic
 shown below:
 
 ```rust,ignore
 #[derive(Diagnostic)]
-#[diag(hir_analysis_field_already_declared, code = "E0124")]
+#[diag(hir_analysis_field_already_declared, code = E0124)]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
@@ -113,17 +113,18 @@ In the end, the `Diagnostic` derive will generate an implementation of
 `IntoDiagnostic` that looks like the following:
 
 ```rust,ignore
-impl IntoDiagnostic<'_> for FieldAlreadyDeclared {
-    fn into_diagnostic(self, handler: &'_ rustc_errors::Handler) -> DiagnosticBuilder<'_> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::hir_analysis_field_already_declared);
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a> for FieldAlreadyDeclared {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag =
+            DiagnosticBuilder::new(dcx, level, fluent::hir_analysis_field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
-            rustc_errors::fluent::hir_analysis_label
+            fluent::hir_analysis_label
         );
         diag.span_label(
             self.prev_span,
-            rustc_errors::fluent::hir_analysis_previous_decl_label
+            fluent::hir_analysis_previous_decl_label
         );
         diag
     }
@@ -135,7 +136,7 @@ straightforward, just create an instance of the struct and pass it to
 `emit_err` (or `emit_warning`):
 
 ```rust,ignore
-tcx.sess.emit_err(FieldAlreadyDeclared {
+tcx.dcx().emit_err(FieldAlreadyDeclared {
     field_name: f.ident,
     span: f.span,
     prev_span,
