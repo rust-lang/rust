@@ -14,6 +14,11 @@ error[E0425]: cannot find value `S` in this scope
    |
 LL |     struct Foo([u8; S]);
    |                     ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL |     struct Foo<const S: /* Type */>([u8; S]);
+   |               +++++++++++++++++++++
 
 error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/issue-119778-type-error-ice.rs:9:14

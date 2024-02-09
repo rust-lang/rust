@@ -12,6 +12,7 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | #[derive(Eq, PartialEq)]
    |          -- lifetime `'b` is missing in item created through this procedural macro
 LL | struct Test {
+   |            - help: consider introducing lifetime `'b` here: `<'b>`
 LL |     a: &'b str,
    |         ^^ undeclared lifetime
 

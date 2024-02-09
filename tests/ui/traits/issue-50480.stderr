@@ -20,6 +20,11 @@ error[E0412]: cannot find type `N` in this scope
    |
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |            ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | struct Foo<N>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |           +++
 
 error[E0412]: cannot find type `NotDefined` in this scope
   --> $DIR/issue-50480.rs:3:15
