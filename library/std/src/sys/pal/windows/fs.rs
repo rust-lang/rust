@@ -16,8 +16,8 @@ use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
-use super::path::maybe_verbatim;
 use super::{api, to_u16s, IoResult};
+use crate::sys::path::maybe_verbatim;
 
 pub struct File {
     handle: Handle,

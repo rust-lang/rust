@@ -1,8 +1,8 @@
-use super::{c, fill_utf16_buf, to_u16s};
 use crate::ffi::{OsStr, OsString};
 use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr;
+use crate::sys::pal::{c, fill_utf16_buf, os2path, to_u16s};
 
 #[cfg(test)]
 mod tests;
@@ -339,6 +339,6 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         // `lpfilename` is a pointer to a null terminated string that is not
         // invalidated until after `GetFullPathNameW` returns successfully.
         |buffer, size| unsafe { c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()) },
-        super::os2path,
+        os2path,
     )
 }
