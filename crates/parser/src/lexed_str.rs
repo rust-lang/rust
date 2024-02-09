@@ -149,7 +149,7 @@ impl<'a> Converter<'a> {
 
         if let Some(err) = err {
             let token = self.res.len() as u32;
-            let msg = err.to_string();
+            let msg = err.to_owned();
             self.res.error.push(LexError { msg, token });
         }
     }
